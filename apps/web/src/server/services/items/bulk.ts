@@ -49,6 +49,9 @@ export interface RunBulkUpdateParams {
   data: Record<string, unknown>;
   /** Resolved `update` permission for the collection (from requirePermission). */
   perm: ResolvedPerm;
+  /** The fields the caller may READ back — what each row's response is
+   *  projected through. See `WriteEnv.readFields`. */
+  readFields: Set<string> | null;
   meta: Record<string, unknown>;
   durationMs: () => number;
   locale: string | null;
@@ -69,7 +72,7 @@ export interface RunBulkUpdateParams {
  * batch endpoint.
  */
 export const runBulkUpdate = async (params: RunBulkUpdateParams): Promise<BulkUpdateResult> => {
-  const { ctx, auth, collection, data, perm } = params;
+  const { ctx, auth, collection, data, perm, readFields } = params;
 
   if (Object.keys(data).length === 0) {
     throw new AppError("VALIDATION", "Bulk update requires at least one field in `data`");
@@ -105,6 +108,7 @@ export const runBulkUpdate = async (params: RunBulkUpdateParams): Promise<BulkUp
     meta: params.meta,
     durationMs: params.durationMs,
     locale: params.locale,
+    readFields,
   });
 
   const results: BulkUpdateRowResult[] = [];

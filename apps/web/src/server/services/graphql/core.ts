@@ -1126,12 +1126,24 @@ const toCamelOutput = (
  * wherever it hands work to a shared service (batch, bulk update, changefeed).
  * The write core is another of those places.
  */
-const writeEnvOf = (
+const writeEnvOf = async (
   gqlCtx: GqlCtx,
   collection: WriteEnv["collection"],
-): WriteEnv => {
+): Promise<WriteEnv> => {
   const started = Date.now();
+  // What the mutation's response is projected through. Resolved here rather
+  // than at each resolver so create/update/delete cannot answer differently,
+  // which is exactly how the two write surfaces drifted apart in the first
+  // place. Shares the request's permission cache, so it is one lookup.
+  const readPerm = await resolvePermission(
+    gqlCtx.ctx,
+    gqlCtx.auth,
+    collection.slug,
+    "read",
+    gqlCtx.permCache,
+  );
   return {
+    readFields: readPerm.allowed ? readPerm.fields : new Set<string>(),
     ctx: gqlCtx.ctx,
     collection,
     userId: gqlCtx.auth.userId,
@@ -1184,8 +1196,9 @@ export const createResolver = async (
   }
 
   const full = await loadCollection(ctx, auth.tenantId ?? undefined, collection.slug);
+  const env = await writeEnvOf(gqlCtx, full);
   const res = await asGqlErrorAsync(() =>
-    performCreate(writeEnvOf(gqlCtx, full), toSnakeInput(args.data, collection), perm),
+    performCreate(env, toSnakeInput(args.data, collection), perm),
   );
   for (const fx of res.sideEffects) await fx();
   return toCamelOutput(res.data, collection);
@@ -1684,6 +1697,10 @@ export const bulkUpdateResolver = async (
       keys,
       data,
       perm: { whereSql: perm.whereSql, fields: perm.fields },
+      readFields: await (async () => {
+        const r = await resolvePermission(ctx, auth, collection.slug, "read");
+        return r.allowed ? r.fields : new Set<string>();
+      })(),
       meta: {},
       durationMs: () => 0,
       locale: null,

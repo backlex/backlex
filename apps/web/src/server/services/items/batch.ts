@@ -74,6 +74,10 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     if (!p.allowed) throw new AppError("FORBIDDEN", `No ${action} permission on ${collection.slug}`);
     return { whereSql: p.whereSql, fields: p.fields };
   };
+  // What every op's RESPONSE is projected through — the caller's read grant,
+  // not the grant that authorised the write. See `WriteEnv.readFields`.
+  const readPerm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+  const readFields = readPerm.allowed ? readPerm.fields : new Set<string>();
 
   // One allocation statement per sequence field for the whole batch instead of
   // one per create. Sized to the number of creates; anything left over is a
@@ -99,6 +103,7 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     meta: params.meta,
     durationMs: params.durationMs,
     locale: params.locale,
+    readFields,
     collect,
     sequencePool,
   });

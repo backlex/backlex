@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { AppBindings } from "../../app";
-import { requirePermission } from "../../middleware/permission";
+import { getRequestPermCache, requirePermission } from "../../middleware/permission";
+import { resolvePermission } from "../../services/permissions";
 import { elapsedMs, requestMeta } from "../../services/activity";
 import { SECURITY, errorResponses } from "../../lib/openapi";
 import {
@@ -123,6 +124,10 @@ export const itemsBatchRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         keys: body.keys,
         data: body.data,
         perm: { whereSql: perm.whereSql, fields: perm.fields },
+        readFields: await (async () => {
+          const r = await resolvePermission(ctx, auth, collection.slug, "read", getRequestPermCache(c));
+          return r.allowed ? r.fields : new Set<string>();
+        })(),
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,

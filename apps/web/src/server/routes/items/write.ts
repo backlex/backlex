@@ -38,6 +38,28 @@ import {
 } from "../../services/items/sequence";
 import { backfillSlugs, slugFieldsOf } from "../../services/items/slug";
 import { defaultHook } from "../../lib/openapi-router";
+
+/**
+ * The fields this caller may READ back — what a write's response is projected
+ * through. Not the write grant's list: see `WriteEnv.readFields`.
+ *
+ * A caller with no read grant at all gets an empty set rather than `null`,
+ * because `null` means "unrestricted" downstream and a missing grant is the
+ * opposite of that.
+ */
+const readFieldsFor = async (
+  c: Parameters<typeof getRequestPermCache>[0],
+  slug: string,
+): Promise<Set<string> | null> => {
+  const readPerm = await resolvePermission(
+    c.get("ctx"),
+    c.get("auth"),
+    slug,
+    "read",
+    getRequestPermCache(c),
+  );
+  return readPerm.allowed ? readPerm.fields : new Set<string>();
+};
 import {
   deletedFilter,
   execute,
@@ -100,6 +122,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,
+        readFields: await readFieldsFor(c, collection.slug),
       };
       const res = await performCreate(env, data, {
         whereSql: perm.whereSql,
@@ -154,6 +177,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,
+        readFields: await readFieldsFor(c, collection.slug),
       };
       // `?live=1` opts out of staged-edits interception — since it changes
       // what's live on a published row, it needs the publish permission (the
@@ -226,6 +250,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: null,
+        readFields: await readFieldsFor(c, collection.slug),
       };
       const res = await performDelete(env, id, {
         whereSql: perm.whereSql,
@@ -356,6 +381,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             meta: requestMeta(c.req.raw),
             durationMs: () => elapsedMs(c),
             locale: null,
+            readFields: await readFieldsFor(c, collection.slug),
           };
           const res = await performUpdate(
             env,

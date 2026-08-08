@@ -347,6 +347,10 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: null,
+        // The import answers with a per-row summary, never a row. Empty rather
+        // than `null` so a change that starts echoing rows inherits the
+        // restrictive answer instead of the permissive one.
+        readFields: new Set<string>(),
         // An import is the one write path here with no bound on how many rows
         // it processes, and a geocoder is metered and rate-limited — one call
         // per row would make a large file a request that cannot finish. The

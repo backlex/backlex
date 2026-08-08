@@ -104,6 +104,27 @@ export interface WriteEnv {
   /** ?locale= write target for `localized` (sidecar) fields. */
   locale: string | null;
   /**
+   * The fields this caller may READ, or `null` for no restriction — what the
+   * write's RESPONSE is projected through.
+   *
+   * Deliberately not the write permission's list. A permission row is per
+   * (role, collection, ACTION), so `update` and `read` carry independent field
+   * lists and nothing intersects them: a role can be granted `update:
+   * [internal_score]` while its `read` names only `title`. Projecting the
+   * response through the write list then hands that caller a column they are
+   * not allowed to see — and not merely the value they just sent, since the
+   * projection filters the whole refreshed row, so a second field in the update
+   * list comes back carrying whatever an admin last put in it.
+   *
+   * The response is a READ. The write grant authorises the write; it does not
+   * authorise reading the result back. See
+   * `tests/mutation-response-projection.test.ts`.
+   *
+   * Required rather than optional on purpose — a caller that forgets it should
+   * not silently inherit either answer.
+   */
+  readFields: Set<string> | null;
+  /**
    * Skip synchronous hooks for this write.
    *
    * Opt-OUT rather than opt-in on purpose: a validation hook that silently does
@@ -470,7 +491,7 @@ export const performCreate = async (
   if (collection.hasCreatedAt) out.createdAt = deserialize(now, "timestamp", ctx.dialect);
   if (collection.hasUpdatedAt) out.updatedAt = deserialize(now, "timestamp", ctx.dialect);
   if (collection.ownerScoped) out.ownerId = env.userId;
-  const projected = projectFields(out, perm.fields);
+  const projected = projectFields(out, env.readFields);
 
   const sideEffects: SideEffect[] = [
     () => embedAndUpsert(ctx, collection, env.tenantId ?? null, id, data),
@@ -692,7 +713,7 @@ export const performUpdate = async (
       ...beforeRow,
       ...stagedViewOf(mergedStaged, collection.fields),
     };
-    const projectedPreview = projectFields(preview, perm.fields);
+    const projectedPreview = projectFields(preview, env.readFields);
     // Set after projection — `_staged` is a system annotation, not a field.
     projectedPreview._staged = true;
     const auditPatch = stagedViewOf(stagedPatch, collection.fields);
@@ -834,7 +855,7 @@ export const performUpdate = async (
   // Reflect the localized fields this write touched (native value or map).
   Object.assign(refreshedRow, echoLocalized(localeSplit, env.locale));
   if (collection.hasUpdatedAt) refreshedRow.updatedAt = deserialize(now, "timestamp", ctx.dialect);
-  const projected = projectFields(refreshedRow, perm.fields);
+  const projected = projectFields(refreshedRow, env.readFields);
 
   const sideEffects: SideEffect[] = [
     () => embedAndUpsert(ctx, collection, env.tenantId ?? null, id, refreshedRow),

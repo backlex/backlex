@@ -159,6 +159,9 @@ export const unpublishDueItems = async (ctx: Ctx): Promise<void> => {
                 meta: {},
                 durationMs: () => 0,
                 locale: null,
+                // Cron. There is no caller whose read grant could narrow this,
+                // and nothing reads the projected row back.
+                readFields: null,
               };
               const res = await performUpdate(
                 env,

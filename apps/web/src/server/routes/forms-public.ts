@@ -794,6 +794,10 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         meta,
         durationMs: () => elapsedMs(c),
         locale: null,
+        // A public submitter has no read path to the record — the response
+        // below deliberately withholds even its id. Empty, not `null`: `null`
+        // means unrestricted.
+        readFields: new Set<string>(),
       };
       // Spend the invite BEFORE the write: that is the only ordering in which
       // a double-click cannot leave two answers behind one link. The cost is

@@ -1,25 +1,28 @@
 /**
  * What a write hands back, and whose allow-list decides it.
  *
- * Permissions are one row per (role, collection, ACTION), so `update` and
- * `read` carry independent field lists. Nothing intersects them. A role can
- * therefore be granted `update: [internal_score]` while its `read` names only
+ * A permission row is per (role, collection, ACTION), so `update` and `read`
+ * carry independent field lists and nothing intersects them. A role can be
+ * granted `update: [internal_score, internal_note]` while its `read` names only
  * `title` — "you may set the score, you may not see it" — and that is a
- * configuration an admin can reach through the ordinary UI.
+ * configuration an admin reaches through the ordinary UI.
  *
- * The two write surfaces disagree about what such a caller gets back:
+ * **The response to a write is a READ.** The write grant authorises the write;
+ * it does not authorise reading the result back. Both surfaces now project
+ * through the caller's read allow-list (`WriteEnv.readFields`).
  *
- *  - REST (`routes/items/write.ts` → `performUpdate` → `projectFields(row,
- *    perm.fields)`) projects through the **update** list. There is no read
- *    projection anywhere in the write path.
- *  - GraphQL (`services/graphql/core.ts::updateResolver`) re-resolves the
- *    caller's **read** permission and renders the response through that — with
- *    a comment claiming it mirrors REST, which it does not.
+ * They did not always. This file was first written to pin the divergence:
  *
- * This file does not decide which is right. It pins what each surface does
- * today, so the answer is a decision someone makes on purpose rather than a
- * side effect of unifying the two write paths. Whichever way that goes, one of
- * the two `expect`s below changes and the change is visible in the diff.
+ *  - REST projected through the UPDATE list (`routes/items/write.ts` →
+ *    `performUpdate` → `projectFields(row, perm.fields)`), so it handed back
+ *    columns the caller could not read — and not merely the value they had just
+ *    sent, because the projection filters the whole refreshed row.
+ *  - GraphQL re-resolved the caller's READ permission and rendered through
+ *    that, with a comment claiming it mirrored REST, which it did not.
+ *
+ * The last case below is the one that made the choice obvious: a caller who
+ * PATCHes one column used to get a DIFFERENT column's stored value back,
+ * carrying whatever an admin last put in it.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { type TestHarness, makeHarness, seedAdmin } from "./setup";
@@ -31,7 +34,7 @@ const json = (body: unknown, method = "POST"): RequestInit => ({
   body: JSON.stringify(body),
 });
 
-describe("a write's response, and the allow-list that shapes it", () => {
+describe("a write's response is projected through the caller's READ grant", () => {
   let h: TestHarness;
   const ts = Date.now();
   const slug = `proj_${ts}`;
@@ -70,6 +73,8 @@ describe("a write's response, and the allow-list that shapes it", () => {
     const created = await h.fetch(`/api/items/${slug}`, json({ title: "Visible", internal_score: 1 }));
     expect(created.status).toBe(201);
     itemId = ((await created.json()) as { data: { id: string } }).data.id;
+    // Only the admin knows what is in here.
+    await h.fetch(`/api/items/${slug}/${itemId}`, json({ internal_note: "board-only" }, "PATCH"));
 
     const roles = ((await (await h.fetch("/api/roles")).json()) as {
       data: { id: string; name: string }[];
@@ -83,7 +88,12 @@ describe("a write's response, and the allow-list that shapes it", () => {
     );
     await h.fetch(
       `/api/roles/${authRoleId}/permissions`,
-      json({ collection: slug, action: "update", condition: null, fields: ["internal_score"] }),
+      json({
+        collection: slug,
+        action: "update",
+        condition: null,
+        fields: ["internal_score", "internal_note"],
+      }),
     );
 
     await h.fetch("/api/auth/sign-out", { method: "POST" });
@@ -104,28 +114,46 @@ describe("a write's response, and the allow-list that shapes it", () => {
   afterAll(() => h.cleanup());
 
   /** The fixture is only meaningful if the read grant really does hide the
-   *  column. Asserted first so neither case below can pass vacuously. */
-  test("the member cannot READ internal_score", async () => {
+   *  columns. Asserted first so nothing below can pass vacuously. */
+  test("the member can read `title` and neither internal column", async () => {
     await signInMember();
     const res = await h.fetch(`/api/items/${slug}/${itemId}`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: Record<string, unknown> };
     expect(body.data.title).toBe("Visible");
     expect("internal_score" in body.data).toBe(false);
+    expect("internal_note" in body.data).toBe(false);
   });
 
-  test("REST hands back the field the caller may write but not read", async () => {
+  test("REST does not hand back a field the caller may write but not read", async () => {
     await signInMember();
     const res = await h.fetch(`/api/items/${slug}/${itemId}`, json({ internal_score: 42 }, "PATCH"));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: Record<string, unknown> };
-    // Today's behaviour: projected through the UPDATE list, so the value comes
-    // back to a caller whose read grant does not name the column.
-    expect(body.data.internal_score).toBe(42);
-    expect("title" in body.data).toBe(false);
+    expect("internal_score" in body.data).toBe(false);
+    // …and it DOES hand back what the caller may read, which the update-list
+    // projection used to withhold.
+    expect(body.data.title).toBe("Visible");
   });
 
-  test("GraphQL does not — it projects the same write through the READ list", async () => {
+  /**
+   * The sharp case, and the reason this is a leak rather than an echo. Above,
+   * the withheld value is one the caller had just supplied. Here the update
+   * grant names a SECOND column the caller never writes and cannot read: under
+   * the update-list projection its stored value came back, because the
+   * projection is a filter over the whole refreshed row rather than over what
+   * the request touched.
+   */
+  test("nor a field it never wrote, whose value only the admin set", async () => {
+    await signInMember();
+    const res = await h.fetch(`/api/items/${slug}/${itemId}`, json({ internal_score: 5 }, "PATCH"));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: Record<string, unknown> };
+    expect(JSON.stringify(body)).not.toContain("board-only");
+    expect("internal_note" in body.data).toBe(false);
+  });
+
+  test("GraphQL answers the same way", async () => {
     await signInMember();
     // The schema keeps the slug's underscores and only capitalises the first
     // letter: `proj_123` → `updateProj_123`, input `Proj_123Input`.
@@ -134,78 +162,80 @@ describe("a write's response, and the allow-list that shapes it", () => {
       "/api/graphql",
       json({
         query: `mutation($id: ID!, $data: ${typeName}Input!) {
-          update${typeName}(id: $id, data: $data) { id title internalScore }
+          update${typeName}(id: $id, data: $data) { id title internalScore internalNote }
         }`,
         variables: { id: itemId, data: { internalScore: 7 } },
       }),
     );
     const body = (await res.json()) as {
-      data?: Record<string, { id: string; title: string | null; internalScore: number | null }>;
+      data?: Record<
+        string,
+        { id: string; title: string | null; internalScore: number | null; internalNote: string | null }
+      >;
       errors?: { message: string }[];
     };
     expect(body.errors ?? []).toEqual([]);
     const row = body.data![`update${typeName}`]!;
-
-    // Today's behaviour, and the opposite of REST's: the write landed, but the
-    // response is rendered through the caller's READ list, which does not name
-    // the column — so the value they just wrote comes back null.
     expect(row.internalScore).toBeNull();
+    expect(row.internalNote).toBeNull();
     expect(row.title).toBe("Visible");
   });
 
-  /** The write itself must have happened on both surfaces — otherwise the two
-   *  cases above would be comparing a refusal to a success rather than two
-   *  projections of the same successful write. */
-  test("both writes actually landed", async () => {
+  /**
+   * Both writes must have landed — otherwise the cases above would be
+   * comparing a refusal to a success rather than two projections of the same
+   * successful write. The member could not see either value; the admin can.
+   */
+  test("every write actually landed", async () => {
     await signInAdmin();
     const res = await h.fetch(`/api/items/${slug}/${itemId}`);
-    const body = (await res.json()) as { data: { internal_score: number } };
-    expect(body.data.internal_score).toBe(7);
+    const body = (await res.json()) as {
+      data: { internal_score: number; internal_note: string };
+    };
+    expect(body.data.internal_score).toBe(7); // the GraphQL write, last in
+    expect(body.data.internal_note).toBe("board-only");
   });
 
   /**
-   * The sharp version. Above, the value handed back is one the caller had just
-   * supplied, so "leak" is arguable. Here the update grant names a SECOND
-   * column the caller never writes and cannot read — and REST returns its
-   * stored value anyway, because the projection is a filter over the whole
-   * refreshed row rather than over what the request touched.
+   * The parity the whole exercise is for: one caller, one collection, two
+   * surfaces, the same visible shape. Asserted on the KEY SET rather than on
+   * spellings, so this stays true when a field is added and fails when only one
+   * surface learns to hide something.
    */
-  test("REST also hands back an update-list field the caller never wrote", async () => {
-    await signInAdmin();
-    // Widen the update grant, and put a value in the new column that only the
-    // admin knows.
-    const list = ((await (await h.fetch(`/api/roles`)).json()) as {
-      data: { id: string; name: string }[];
-    }).data;
-    const authRoleId = list.find((r) => r.name === "authenticated")!.id;
-    const perms = ((await (await h.fetch(`/api/roles/${authRoleId}/permissions`)).json()) as {
-      data: { id: string; collection: string; action: string }[];
-    }).data;
-    for (const p of perms) {
-      if (p.collection === slug && p.action === "update") {
-        await h.fetch(`/api/permissions/${p.id}`, { method: "DELETE" });
-      }
-    }
-    expect(
-      (
-        await h.fetch(
-          `/api/roles/${authRoleId}/permissions`,
-          json({
-            collection: slug,
-            action: "update",
-            condition: null,
-            fields: ["internal_score", "internal_note"],
-          }),
-        )
-      ).status,
-    ).toBeLessThan(300);
-    await h.fetch(`/api/items/${slug}/${itemId}`, json({ internal_note: "board-only" }, "PATCH"));
-
+  test("REST and GraphQL expose the same fields for the same write", async () => {
     await signInMember();
-    const res = await h.fetch(`/api/items/${slug}/${itemId}`, json({ internal_score: 5 }, "PATCH"));
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: Record<string, unknown> };
-    // Never sent by this request, never readable by this caller.
-    expect(body.data.internal_note).toBe("board-only");
+    const rest = (await (
+      await h.fetch(`/api/items/${slug}/${itemId}`, json({ internal_score: 11 }, "PATCH"))
+    ).json()) as { data: Record<string, unknown> };
+
+    const typeName = slug.charAt(0).toUpperCase() + slug.slice(1);
+    const gql = (await (
+      await h.fetch(
+        "/api/graphql",
+        json({
+          query: `mutation($id: ID!, $data: ${typeName}Input!) {
+            update${typeName}(id: $id, data: $data) { id title internalScore internalNote }
+          }`,
+          variables: { id: itemId, data: { internalScore: 11 } },
+        }),
+      )
+    ).json()) as { data: Record<string, Record<string, unknown>> };
+    const row = gql.data[`update${typeName}`]!;
+
+    // Compared over the collection's OWN columns only. GraphQL returns what the
+    // query selected and nothing else, while REST always carries `id` and the
+    // timestamps through `projectFields`' system keeps — a difference in what
+    // the two protocols are, not in what either is willing to show. And an
+    // unreadable field arrives from GraphQL as an explicit null rather than
+    // being absent, so the comparable set is the non-null ones.
+    const OWN = ["title", "internalScore", "internalNote"];
+    const gqlVisible = OWN.filter((k) => row[k] !== null).sort();
+    const restVisible = ["title", "internal_score", "internal_note"]
+      .filter((k) => k in rest.data)
+      .map((k) => k.replace(/_(.)/g, (_, ch: string) => ch.toUpperCase()))
+      .sort();
+    expect(gqlVisible).toEqual(restVisible);
+    // Non-vacuous: both really do show something, and it is `title`.
+    expect(restVisible).toEqual(["title"]);
   });
 });

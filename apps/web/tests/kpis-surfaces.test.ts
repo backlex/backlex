@@ -330,12 +330,16 @@ describe("kpis: SDK + CLI reach the feature", () => {
   const ROOT = join(import.meta.dir, "../../..");
 
   test("the SDK exposes a kpis client with run()", () => {
-    const src = readFileSync(join(ROOT, "packages/client/src/index.ts"), "utf8");
-    expect(src).toContain("KpisClient");
-    expect(src).toMatch(/kpis: KpisClient;/);
+    // `index.ts` declares the client's place on `BacklexClient`; the shapes and
+    // the factory live in the domain module. Reading both is what keeps this
+    // from passing on the field declaration alone.
+    const index = readFileSync(join(ROOT, "packages/client/src/index.ts"), "utf8");
+    const mod = readFileSync(join(ROOT, "packages/client/src/clients/kpis.ts"), "utf8");
+    expect(index).toMatch(/kpis: KpisClient;/);
+    expect(mod).toContain("KpisClient");
     // The zero-baseline rule has to travel with the type, or a consumer prints
     // "+0%" for a period that had nothing to compare against.
-    expect(src).toMatch(/Null when the previous period was[\s\S]{0,300}?deltaPct/);
+    expect(mod).toMatch(/Null when the previous period was[\s\S]{0,300}?deltaPct/);
   });
 
   test("the CLI registers a kpis command", () => {

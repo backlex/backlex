@@ -15,6 +15,10 @@
 // preference — see `AdminLocaleSync`, mounted inside `PreferencesProvider`.
 import { useEffect } from "react";
 import { i18n } from "@lingui/core";
+import {
+  type CompiledMessage,
+  compileMessage,
+} from "@lingui/message-utils/compileMessage";
 import { usePreferences } from "./preferences";
 
 /** Locales the admin chrome ships translations for. Adding one is: a new
@@ -57,6 +61,25 @@ export function resolveAdminLocale(
   }
   return DEFAULT_ADMIN_LOCALE;
 }
+
+// A catalog miss falls back to the inline English `message`, which is raw ICU
+// source — `i18n._()` has to compile it before it can interpolate. `@lingui/core`
+// registers that compiler in its constructor, but ONLY behind
+// `process.env.NODE_ENV !== "production"`, so a prod bundle tree-shakes it away
+// and `_()` takes its uncompiled branch instead: one `console.warn` per lookup,
+// and the ICU source returned verbatim — `… and {0} more` reaches the DOM with
+// the braces still in it. English is 100% misses by design (see below), so
+// without this every English string is affected in production while dev looks
+// fine. Register the compiler ourselves, memoised because `_()` compiles on
+// every single call and keeps no cache of its own.
+const compiledMessages = new Map<string, CompiledMessage>();
+i18n.setMessagesCompiler((message) => {
+  const hit = compiledMessages.get(message);
+  if (hit !== undefined) return hit;
+  const ast = compileMessage(message);
+  compiledMessages.set(message, ast);
+  return ast;
+});
 
 // Activate `en` synchronously at module load so `<I18nProvider>` has an active
 // locale before first paint. The catalog is deliberately EMPTY: with the

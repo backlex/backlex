@@ -90,11 +90,19 @@ gh run list --workflow test.yml --limit 1
 
 # 6. After the gate is green, prove WHICH bundle is live
 bun scripts/verify-deploy.ts --marker <string-only-in-this-commit> --wait 600
+
+# 7. Reclaim the shipped branch's tree. Step 3's merge already fires this via
+#    lefthook's post-merge hook, so this is a no-op unless the hook was skipped;
+#    run it explicitly when you merged with --no-verify or merged elsewhere.
+bun scripts/cleanup-worktrees.ts
+git branch -d <feat/branch-name>
 ```
 
 **`git push` runs the full pre-push suite (~5-6 min): lint + typecheck + `bun test` + `build:targets`.** Give the command a generous timeout — never `--no-verify`.
 
 After pushing, report the test.yml run URL back to the user. Don't claim "deployed" until both are green — `gh run watch` confirms the gate, and `scripts/verify-deploy.ts` confirms the deploy.
+
+**Agent worktrees are collected on merge.** Parallel agent sessions each get a worktree under `.claude/worktrees/`, nothing removes them when the session ends, and each carries its own `node_modules` — left alone the directory reaches tens of GB. `lefthook.yml`'s `post-merge` job runs `scripts/cleanup-worktrees.ts`, which removes only worktrees that are orphaned, or merged into `main` + clean + idle for an hour; a dirty or unmerged tree is reported and kept. Note that a worktree's `.git` is an **absolute** path into `.git/worktrees/`, so moving or renaming the repo orphans every one of them at once — after such a move they are unreadable by git and only `rm` clears them.
 
 **Do not use `wrangler deployments list` to confirm a deploy.** It is stale for Workers Builds deploys (the native git integration this repo uses) and will show a days-old deployment while the new bundle is already serving. `scripts/verify-deploy.ts` checks behaviourally instead: it probes `/health` (**not** `/api/health`, which is a 404 that reads exactly like "deploy hasn't landed"), walks the entry chunks *and the lazy chunks they reference* (admin pages are lazy — grepping `index.html`'s chunks alone finds nothing), and fails if a marker you know is new is absent. Pick a marker that exists only in the commit just shipped: a new provider id, a brand hex, a fresh route path.
 

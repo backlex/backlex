@@ -55,3 +55,16 @@ pre-push:
     # (~6s total when caches are warm; cold first run ~15s).
     - name: build:targets
       run: bun run build:targets
+
+# Post-merge: reclaim agent worktrees. Parallel agent sessions each get a
+# worktree under `.claude/worktrees/` and nothing removes them when the session
+# ends; each carries its own `node_modules`, so the directory reached 62 GB
+# before this hook existed. The publish flow's `git merge <feat/...>` is the
+# natural sweep point — the branch has just landed, so its worktree is
+# collectable by definition. Fires on `git pull` too, which is harmless: the
+# script only removes worktrees that are orphaned, or merged + clean + idle.
+# See scripts/cleanup-worktrees.ts for the full safety envelope.
+post-merge:
+  jobs:
+    - name: cleanup-worktrees
+      run: bun scripts/cleanup-worktrees.ts

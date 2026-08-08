@@ -427,7 +427,7 @@ msgid "{0} free"
 msgstr "{0} free"
 
 #. placeholder {0}: res.data.invites.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} fresh link(s) — copy them now."
 msgstr "{0} fresh link(s) — copy them now."
 
@@ -438,7 +438,7 @@ msgstr "{0} has no number column to aggregate."
 
 #. placeholder {0}: res.data.invites.length
 #. placeholder {1}: res.data.sent
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} invited, {1} emailed."
 msgstr "{0} invited, {1} emailed."
 
@@ -483,7 +483,7 @@ msgid "{0} left"
 msgstr "{0} left"
 
 #. placeholder {0}: res.data.invites.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} link(s) minted — copy them now."
 msgstr "{0} link(s) minted — copy them now."
 
@@ -504,7 +504,7 @@ msgstr "{0} match · {1} loaded"
 #~ msgstr "{0} minutes"
 
 #. placeholder {0}: data.truncated
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "{0} more questions are not summarised — this form has more than the panel computes."
 msgstr "{0} more questions are not summarised — this form has more than the panel computes."
 
@@ -577,7 +577,7 @@ msgstr "{0} published."
 
 #. placeholder {0}: res.data.invites.length
 #. placeholder {1}: res.data.sent
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} reminded, {1} emailed."
 msgstr "{0} reminded, {1} emailed."
 
@@ -826,7 +826,7 @@ msgstr "{d} days"
 msgid "{doneTables}/{0} tables · {copied} rows"
 msgstr "{doneTables}/{0} tables · {copied} rows"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "{eligibleCount} eligible fields"
 msgstr "{eligibleCount} eligible fields"
 
@@ -956,7 +956,7 @@ msgid "+ preset"
 msgstr "+ preset"
 
 #. placeholder {0}: i.reminderCount
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "+{0}"
 msgstr "+{0}"
 
@@ -1106,7 +1106,7 @@ msgstr "A chosen agent answers"
 msgid "A confirmation is on its way, with a calendar invite attached."
 msgstr "A confirmation is on its way, with a calendar invite attached."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "a cookie, not an identity — another browser answers again"
 msgstr "a cookie, not an identity — another browser answers again"
 
@@ -1167,7 +1167,7 @@ msgstr "A loop runs inline, so its body cannot wait for an approval or a long de
 msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 msgstr "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 
@@ -1316,7 +1316,7 @@ msgstr "A4 (default)"
 msgid "About"
 msgstr "About"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "accent"
 msgstr "accent"
 
@@ -1333,19 +1333,19 @@ msgid "Accept invite"
 msgstr "Accept invite"
 
 #. placeholder {0}: form.submissionCount
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
 msgstr "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "accepted through this form"
 msgstr "accepted through this form"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Accepted types"
 msgstr "Accepted types"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "accepted, all time"
 msgstr "accepted, all time"
 
@@ -1353,7 +1353,7 @@ msgstr "accepted, all time"
 #~ msgid "Accepting bookings"
 #~ msgstr "Accepting bookings"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Accepting submissions"
 msgstr "Accepting submissions"
 
@@ -1514,7 +1514,7 @@ msgstr "Adapter auto-selected from bindings/env."
 msgid "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
 msgstr "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "add"
 msgstr "add"
 
@@ -1564,11 +1564,11 @@ msgstr "Add a Client ID and secret first"
 msgid "Add a country…"
 msgstr "Add a country…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Add a description…"
 msgstr "Add a description…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Add a dropdown field to the form to build show-conditions on it."
 msgstr "Add a dropdown field to the form to build show-conditions on it."
 
@@ -1601,7 +1601,7 @@ msgstr "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 msgid "Add a remote MCP connector"
 msgstr "Add a remote MCP connector"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Add a row…"
 msgstr "Add a row…"
 
@@ -1637,11 +1637,12 @@ msgstr "Add at least one signer."
 msgid "Add at least one step before saving"
 msgstr "Add at least one step before saving"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "add block"
 msgstr "add block"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Add block"
 msgstr "Add block"
 
@@ -1685,7 +1686,7 @@ msgstr "Add from template"
 msgid "Add hook"
 msgstr "Add hook"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Add language"
 msgstr "Add language"
 
@@ -1948,7 +1949,7 @@ msgstr "Aggregate"
 msgid "Aggregate function"
 msgstr "Aggregate function"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "ago"
 msgstr "ago"
 
@@ -2134,7 +2135,7 @@ msgstr "already set"
 msgid "Already verified?"
 msgstr "Already verified?"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "always on"
 msgstr "always on"
 
@@ -2223,16 +2224,17 @@ msgstr "Anonymize is usually the lawful option — an invoice generally cannot b
 msgid "Another signer declined it."
 msgstr "Another signer declined it."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Answer style"
 msgstr "Answer style"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "answered"
 msgstr "answered"
 
 #: src/client/admin/pages/automation/approvals.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Answered"
 msgstr "Answered"
 
@@ -2456,7 +2458,7 @@ msgstr "archived"
 msgid "Archived"
 msgstr "Archived"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Archives"
 msgstr "Archives"
 
@@ -2542,7 +2544,7 @@ msgstr "Attempts"
 msgid "Attribute map"
 msgstr "Attribute map"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Audio"
 msgstr "Audio"
 
@@ -2617,7 +2619,7 @@ msgstr "Authorize MCP access"
 msgid "Authorizing…"
 msgstr "Authorizing…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "auto"
 msgstr "auto"
@@ -2659,7 +2661,7 @@ msgstr "auto-disabled"
 msgid "auto-run reads"
 msgstr "auto-run reads"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "auto-sizes to the form's height — recommended"
 msgstr "auto-sizes to the form's height — recommended"
 
@@ -2726,7 +2728,7 @@ msgid "Average"
 msgstr "Average"
 
 #. placeholder {0}: b.average
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "avg {0}"
 msgstr "avg {0}"
 
@@ -2755,7 +2757,7 @@ msgstr "B-tree index — speeds up filter/sort by this column."
 msgid "Back"
 msgstr "Back"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Back to forms"
 msgstr "Back to forms"
 
@@ -2912,11 +2914,11 @@ msgstr "Block the write (deny)"
 msgid "blocked"
 msgstr "blocked"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Blocked"
 msgstr "Blocked"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Blocked so far"
 msgstr "Blocked so far"
 
@@ -3151,7 +3153,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
 #: src/client/admin/pages/data/database-import.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
@@ -3231,7 +3233,7 @@ msgstr "Cannot delete the trigger."
 msgid "Cannot save: {0}"
 msgstr "Cannot save: {0}"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "canvas · what visitors see"
 msgstr "canvas · what visitors see"
 
@@ -3360,7 +3362,7 @@ msgstr "Checking…"
 msgid "Checkout reference"
 msgstr "Checkout reference"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Checks"
 msgstr "Checks"
 
@@ -3377,7 +3379,7 @@ msgstr "Choice color"
 msgid "Choices"
 msgstr "Choices"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "choices · from schema enum"
 msgstr "choices · from schema enum"
 
@@ -3385,7 +3387,7 @@ msgstr "choices · from schema enum"
 msgid "Choose a different folder"
 msgstr "Choose a different folder"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 #: src/client/pages/public-form.tsx
 msgid "Choose a file or drag it here"
 msgstr "Choose a file or drag it here"
@@ -3586,11 +3588,11 @@ msgstr "Close"
 msgid "Closed instance."
 msgstr "Closed instance."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Closed message"
 msgstr "Closed message"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Closes"
 msgstr "Closes"
 
@@ -3639,7 +3641,8 @@ msgstr "colleague@example.com"
 
 #: src/client/admin/pages/access/permission-tester.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/data/search-playground.tsx
 #: src/client/admin/pages/observability/advisor.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -3673,7 +3676,7 @@ msgstr "Collection default"
 msgid "Collection enabled."
 msgstr "Collection enabled."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Collection fields not yet on the form, plus layout blocks."
 msgstr "Collection fields not yet on the form, plus layout blocks."
 
@@ -3786,11 +3789,11 @@ msgstr "column: <0>{0}</0>"
 msgid "Columns"
 msgstr "Columns"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "columns · from schema enum"
 msgstr "columns · from schema enum"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
 msgstr "Comma or newline separated. Each gets its own single-use link."
 
@@ -4066,11 +4069,11 @@ msgstr "Connection failed."
 msgid "Connection URL"
 msgstr "Connection URL"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Consent checkbox"
 msgstr "Consent checkbox"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "consent must be accepted — always required"
 msgstr "consent must be accepted — always required"
 
@@ -4082,7 +4085,7 @@ msgstr "console (dev)"
 msgid "Consumer"
 msgstr "Consumer"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Contact us"
 msgstr "Contact us"
 
@@ -4147,7 +4150,7 @@ msgstr "Copied JSON."
 msgid "Copied to clipboard."
 msgstr "Copied to clipboard."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -4168,7 +4171,7 @@ msgstr "copy"
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
@@ -4198,7 +4201,7 @@ msgstr "Copy curl example for {0}"
 #~ msgid "Copy embed snippet"
 #~ msgstr "Copy embed snippet"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Copy failed — select and copy manually."
 msgstr "Copy failed — select and copy manually."
 
@@ -4233,7 +4236,7 @@ msgstr "Copy JSON"
 
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Copy link"
 msgstr "Copy link"
 
@@ -4436,7 +4439,7 @@ msgid "Country the typed number is read as"
 msgstr "Country the typed number is read as"
 
 #. placeholder {0}: data.collection
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Counts cover every row in {0}, including any written outside this form."
 msgstr "Counts cover every row in {0}, including any written outside this form."
 
@@ -4465,7 +4468,7 @@ msgstr "Create {slug}"
 msgid "Create a flag to gate a feature or ship remote config to your apps."
 msgstr "Create a flag to gate a feature or ship remote config to your apps."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Create a form to collect submissions from visitors — no account or code required on their side."
 msgstr "Create a form to collect submissions from visitors — no account or code required on their side."
 
@@ -4485,7 +4488,7 @@ msgstr "Create account"
 msgid "Create an account"
 msgstr "Create an account"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Create and email"
 msgstr "Create and email"
 
@@ -4505,7 +4508,7 @@ msgstr "Create dashboard"
 msgid "Create folder"
 msgstr "Create folder"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Create form"
 msgstr "Create form"
 
@@ -4529,7 +4532,7 @@ msgstr "Create Linear issues from data events."
 msgid "Create link"
 msgstr "Create link"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Create links"
 msgstr "Create links"
 
@@ -4642,7 +4645,7 @@ msgstr "Creating key"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -4814,7 +4817,7 @@ msgid "Danger zone"
 msgstr "Danger zone"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Dark"
 msgstr "Dark"
@@ -5037,7 +5040,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
 #: src/client/admin/pages/data/database-import.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
@@ -5105,7 +5108,7 @@ msgstr "Delete dashboard \"{0}\"?"
 msgid "Delete end-user"
 msgstr "Delete end-user"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Delete form"
 msgstr "Delete form"
 
@@ -5163,7 +5166,7 @@ msgstr "Delete source"
 msgid "Delete source?"
 msgstr "Delete source?"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete submission"
 msgstr "Delete submission"
 
@@ -5175,7 +5178,7 @@ msgstr "Delete template"
 msgid "Delete this collection"
 msgstr "Delete this collection"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Delete this form?"
 msgstr "Delete this form?"
 
@@ -5196,7 +5199,7 @@ msgstr "Delete this resource?"
 msgid "Delete this row too (cascade)"
 msgstr "Delete this row too (cascade)"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete this submission?"
 msgstr "Delete this submission?"
 
@@ -5225,7 +5228,7 @@ msgstr "Deliveries"
 msgid "Deliveries pause immediately when off; queued events are dropped after 24h."
 msgstr "Deliveries pause immediately when off; queued events are dropped after 24h."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Delivery"
 msgstr "Delivery"
 
@@ -5297,7 +5300,7 @@ msgstr "Descending"
 msgid "Description"
 msgstr "Description"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Deselect"
 msgstr "Deselect"
 
@@ -5509,7 +5512,7 @@ msgstr "Document template"
 msgid "Document templates"
 msgstr "Document templates"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Documents"
 msgstr "Documents"
 
@@ -5610,7 +5613,7 @@ msgstr "Drag to another collection to create a relation"
 msgid "Drag to move"
 msgstr "Drag to move"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Drag to reorder"
 msgstr "Drag to reorder"
 
@@ -5668,7 +5671,7 @@ msgstr "Drop images here, or click to upload"
 msgid "Drop in a workspace API key (<0>pak_…</0>) before running."
 msgstr "Drop in a workspace API key (<0>pak_…</0>) before running."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Drop it into any site — the form keeps its own theme."
 msgstr "Drop it into any site — the form keeps its own theme."
 
@@ -5750,7 +5753,7 @@ msgstr "Each code works once if you lose your authenticator. Store them somewher
 msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 msgstr "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Each gets a fresh link. The ones already sent keep working — every link into an invite opens the same turn, and answering spends it."
 msgstr "Each gets a fresh link. The ones already sent keep working — every link into an invite opens the same turn, and answering spends it."
 
@@ -5793,7 +5796,7 @@ msgstr "edit"
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Edit"
 msgstr "Edit"
@@ -5823,7 +5826,7 @@ msgstr "Edit agent"
 msgid "Edit args"
 msgstr "Edit args"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "edit choices on the field in <0>{collection}</0>"
 msgstr "edit choices on the field in <0>{collection}</0>"
 
@@ -5899,13 +5902,14 @@ msgstr "Edited since publish"
 
 #. placeholder {0}: locale.toUpperCase()
 #. placeholder {1}: base.toUpperCase()
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "editing {0} — empty falls back to {1}"
 msgstr "editing {0} — empty falls back to {1}"
 
 #. placeholder {0}: locale.toUpperCase()
 #. placeholder {1}: base.toUpperCase()
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "editing {0} — empty strings fall back to {1}"
 msgstr "editing {0} — empty strings fall back to {1}"
 
@@ -5965,7 +5969,7 @@ msgstr "Email + password is always available — toggle it off to hide the form 
 msgid "Email address"
 msgstr "Email address"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Email addresses"
 msgstr "Email addresses"
 
@@ -6028,7 +6032,7 @@ msgstr "EMAIL_FROM set"
 msgid "Emails a one-time link valid for 30 minutes."
 msgstr "Emails a one-time link valid for 30 minutes."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Embed"
 msgstr "Embed"
 
@@ -6167,11 +6171,11 @@ msgstr "End-users of the application built on this workspace — a pool separate
 msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
 msgstr "End-users who signed in through it keep their accounts, but lose this sign-in route."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "ending"
 msgstr "ending"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Ending"
 msgstr "Ending"
 
@@ -6492,7 +6496,7 @@ msgstr "Every booking is written as a row in <0>{recordTarget}</0>, where permis
 msgid "Every day"
 msgstr "Every day"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Every free number field on <0>{collection}</0> is already on the form."
 msgstr "Every free number field on <0>{collection}</0> is already on the form."
 
@@ -6512,7 +6516,7 @@ msgstr "Every occurrence of this bug, with the latest stack trace and how many v
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Every panel runs with this flow's identity, then prints to a PDF."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Every row is answered on these — edit them on the field in <0>{collection}</0>."
 msgstr "Every row is answered on these — edit them on the field in <0>{collection}</0>."
 
@@ -6647,7 +6651,7 @@ msgstr "Export"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Export CSV"
 msgstr "Export CSV"
@@ -6737,7 +6741,7 @@ msgstr "External column"
 msgid "External identity rows are kept as an audit trail."
 msgstr "External identity rows are kept as an audit trail."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Extremely"
 msgstr "Extremely"
 
@@ -6904,7 +6908,7 @@ msgstr "fields"
 #: src/client/admin/collections/item-editor.tsx
 #: src/client/admin/fields/display-template-editor.tsx
 #: src/client/admin/pages/access/permission-tester.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Fields"
@@ -7100,7 +7104,7 @@ msgstr "Fix copied to clipboard."
 msgid "Fix the highlighted fields before saving."
 msgstr "Fix the highlighted fields before saving."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "fixed height, zero JavaScript"
 msgstr "fixed height, zero JavaScript"
 
@@ -7188,7 +7192,7 @@ msgstr "Folder tag"
 msgid "Folders"
 msgstr "Folders"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "font"
 msgstr "font"
 
@@ -7240,7 +7244,7 @@ msgstr "Fork a branch to stage schema changes off to the side."
 #~ msgid "Form"
 #~ msgstr "Form"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Form design"
 msgstr "Form design"
 
@@ -7248,7 +7252,7 @@ msgstr "Form design"
 #~ msgid "Form link ready"
 #~ msgstr "Form link ready"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Form title"
 msgstr "Form title"
 
@@ -7264,7 +7268,7 @@ msgstr "Form-wide — every section becomes a tab across the top instead of a st
 msgid "Format"
 msgstr "Format"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Forms"
 msgstr "Forms"
@@ -7290,7 +7294,7 @@ msgstr "Fri"
 msgid "from"
 msgstr "from"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "From"
@@ -7435,7 +7439,7 @@ msgstr "General"
 msgid "Generate"
 msgstr "Generate"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Generate a link first — the token is only shown once."
 msgstr "Generate a link first — the token is only shown once."
 
@@ -7443,7 +7447,7 @@ msgstr "Generate a link first — the token is only shown once."
 msgid "Generate keypair"
 msgstr "Generate keypair"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Generate new link"
 msgstr "Generate new link"
 
@@ -7591,7 +7595,7 @@ msgstr "Guests"
 msgid "Half width"
 msgstr "Half width"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "half-filled answers are kept so people can come back — invited people resume on any device, everyone else in the same browser"
 msgstr "half-filled answers are kept so people can come back — invited people resume on any device, everyone else in the same browser"
 
@@ -7656,7 +7660,7 @@ msgstr "Height"
 msgid "Held"
 msgstr "Held"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Help text"
 msgstr "Help text"
 
@@ -7707,7 +7711,7 @@ msgstr "Hide variables"
 msgid "Hiding off"
 msgstr "Hiding off"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "High label"
 msgstr "High label"
 
@@ -7723,7 +7727,7 @@ msgstr "History"
 msgid "Hold"
 msgstr "Hold"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Honeypot"
 msgstr "Honeypot"
 
@@ -7821,7 +7825,7 @@ msgstr "Hybrid"
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
 msgstr "I agree to the <0>Terms</0> and <1>Privacy</1>."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "I copied it — hide the link"
 msgstr "I copied it — hide the link"
 
@@ -7883,7 +7887,7 @@ msgstr "IdP SLO URL <0>(optional)</0>"
 msgid "IdP SSO URL"
 msgstr "IdP SSO URL"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "if"
 msgstr "if"
 
@@ -7891,7 +7895,7 @@ msgstr "if"
 msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 msgstr "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "If set, visitors are sent there instead of seeing the message."
 msgstr "If set, visitors are sent there instead of seeing the message."
 
@@ -7907,7 +7911,7 @@ msgstr "Ignored"
 msgid "Ignored by a KPI with no date column — it reports a running total."
 msgstr "Ignored by a KPI with no date column — it reports a running total."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Images"
 msgstr "Images"
 
@@ -7966,7 +7970,7 @@ msgstr "in order"
 msgid "In order — each link waits for the one above"
 msgstr "In order — each link waits for the one above"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "In progress"
 msgstr "In progress"
 
@@ -8218,7 +8222,7 @@ msgstr "Invite link copied."
 msgid "Invite not found"
 msgstr "Invite not found"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invite only"
 msgstr "Invite only"
 
@@ -8245,11 +8249,11 @@ msgstr "Invite user"
 msgid "invited"
 msgstr "invited"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invited"
 msgstr "Invited"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invites"
 msgstr "Invites"
 
@@ -8291,11 +8295,11 @@ msgstr "invoking {0}…"
 msgid "IP"
 msgstr "IP"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "is"
 msgstr "is"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "is not"
 msgstr "is not"
 
@@ -8597,7 +8601,7 @@ msgstr "KPI"
 msgid "KPIs"
 msgstr "KPIs"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Label"
 msgstr "Label"
 
@@ -8629,7 +8633,7 @@ msgstr "Lands in {pending}"
 msgid "Landscape"
 msgstr "Landscape"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "language"
 msgstr "language"
 
@@ -8641,7 +8645,7 @@ msgstr "Language"
 #~ msgid "Language code (e.g. tr, de, fr):"
 #~ msgstr "Language code (e.g. tr, de, fr):"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "languages"
 msgstr "languages"
 
@@ -8662,7 +8666,7 @@ msgid "largest value"
 msgstr "largest value"
 
 #: src/client/admin/collections/collections-index.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Last"
 msgstr "Last"
 
@@ -8760,7 +8764,8 @@ msgstr "Last seen"
 msgid "Last seen at"
 msgstr "Last seen at"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Last submission"
 msgstr "Last submission"
 
@@ -8800,7 +8805,7 @@ msgid "Latitude"
 msgstr "Latitude"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "layout"
 msgstr "layout"
 
@@ -8968,7 +8973,7 @@ msgid "lifetime"
 msgstr "lifetime"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Light"
 msgstr "Light"
@@ -9016,7 +9021,7 @@ msgstr "Link copied."
 msgid "Link field"
 msgstr "Link field"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "link pins this language"
 msgstr "link pins this language"
 
@@ -9055,7 +9060,8 @@ msgstr "Lists"
 
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/shared.tsx
 #: src/client/admin/pages/observability/revisions.tsx
 #: src/client/admin/ui.tsx
 msgid "live"
@@ -9167,7 +9173,7 @@ msgstr "Locked to one row — useful for site settings."
 msgid "log entry"
 msgstr "log entry"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Logic"
 msgstr "Logic"
 
@@ -9226,7 +9232,7 @@ msgstr "Looking up…"
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Low label"
 msgstr "Low label"
 
@@ -9363,7 +9369,8 @@ msgstr "match {0} of the following"
 msgid "Matched rules"
 msgstr "Matched rules"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Matrix"
 msgstr "Matrix"
 
@@ -9387,7 +9394,7 @@ msgstr "Max 80 characters."
 msgid "Max attempts"
 msgstr "Max attempts"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Max file size"
 msgstr "Max file size"
 
@@ -9618,7 +9625,7 @@ msgstr "Mint key"
 msgid "Minting a new key immediately invalidates the old one."
 msgstr "Minting a new key immediately invalidates the old one."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Mints a new token; the current link stops working"
 msgstr "Mints a new token; the current link stops working"
 
@@ -9703,7 +9710,7 @@ msgid "Monthly request quota"
 msgstr "Monthly request quota"
 
 #: src/client/admin/pages/automation/flows.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 msgid "more"
 msgstr "more"
 
@@ -9725,7 +9732,8 @@ msgid "Morning"
 msgstr "Morning"
 
 #: src/client/admin/collections/collection-settings.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Move down"
 msgstr "Move down"
 
@@ -9738,7 +9746,8 @@ msgid "Move to this time"
 msgstr "Move to this time"
 
 #: src/client/admin/collections/collection-settings.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Move up"
 msgstr "Move up"
 
@@ -9795,7 +9804,7 @@ msgstr "Must be a JSON object."
 #~ msgid "must be accepted"
 #~ msgstr "must be accepted"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "must be accepted to submit"
 msgstr "must be accepted to submit"
@@ -9879,7 +9888,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
 #: src/client/admin/pages/data/database-import.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -9907,7 +9916,7 @@ msgid "name is required"
 msgstr "name is required"
 
 #: src/client/admin/pages/automation/agents.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Name is required."
 msgstr "Name is required."
 
@@ -9944,7 +9953,7 @@ msgstr "needs {0}"
 #~ msgid "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
 #~ msgstr "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "needs TURNSTILE_SITE_KEY on the server"
 msgstr "needs TURNSTILE_SITE_KEY on the server"
 
@@ -10048,7 +10057,7 @@ msgstr "New flow"
 msgid "New folder"
 msgstr "New folder"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "New form"
 msgstr "New form"
 
@@ -10084,11 +10093,11 @@ msgid "New link minted — the old one no longer works."
 msgstr "New link minted — the old one no longer works."
 
 #. placeholder {0}: waiting.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "New links for {0} waiting"
 msgstr "New links for {0} waiting"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "New matrix"
 msgstr "New matrix"
 
@@ -10154,7 +10163,7 @@ msgstr "New rows go to the end of the list. Drag them in the list view to move."
 msgid "New slug"
 msgstr "New slug"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "New step"
 msgstr "New step"
 
@@ -10204,7 +10213,7 @@ msgstr "Next"
 msgid "next {HORIZON_DAYS} days"
 msgstr "next {HORIZON_DAYS} days"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "Next →"
 msgstr "Next →"
@@ -10230,7 +10239,7 @@ msgid "no"
 msgstr "no"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 #: src/client/pages/book.tsx
 msgid "No"
 msgstr "No"
@@ -10275,7 +10284,7 @@ msgstr "No activity in this window"
 msgid "No activity recorded."
 msgstr "No activity recorded."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "no address"
 msgstr "no address"
 
@@ -10303,7 +10312,7 @@ msgstr "no AI key configured"
 msgid "no answer yet"
 msgstr "no answer yet"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "No answers yet"
 msgstr "No answers yet"
 
@@ -10319,11 +10328,11 @@ msgstr "No archived collections"
 #~ msgid "No auth on the visitor's side — the token in the URL is the credential."
 #~ msgstr "No auth on the visitor's side — the token in the URL is the credential."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No auth on the visitor's side — the token in the URL is the credential. It's stored hashed, so it can only be shown <0>once</0>."
 msgstr "No auth on the visitor's side — the token in the URL is the credential. It's stored hashed, so it can only be shown <0>once</0>."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "No blocks match \"{q}\""
 msgstr "No blocks match \"{q}\""
 
@@ -10601,7 +10610,7 @@ msgstr "No folders yet — uploads land under <0>uploads/</0>."
 msgid "No folders yet. <0>Create one</0>."
 msgstr "No folders yet. <0>Create one</0>."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "No forms yet"
 msgstr "No forms yet"
 
@@ -10702,7 +10711,7 @@ msgstr "No KPIs defined yet"
 msgid "No KPIs for this collection"
 msgstr "No KPIs for this collection"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No language found."
 msgstr "No language found."
 
@@ -10710,7 +10719,7 @@ msgstr "No language found."
 msgid "no limit"
 msgstr "no limit"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No limit"
 msgstr "No limit"
 
@@ -10790,7 +10799,7 @@ msgstr "No open times in the next two weeks."
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "No organizations yet — create one here, or let end-users start their own from your app."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "No other field on <0>{collection}</0> offers these same choices."
 msgstr "No other field on <0>{collection}</0> offers these same choices."
 
@@ -10928,7 +10937,7 @@ msgstr "No SAML providers configured. Operators will sign in with email/password
 msgid "No schema."
 msgstr "No schema."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "No selection — any file type is accepted."
 msgstr "No selection — any file type is accepted."
 
@@ -10957,7 +10966,7 @@ msgstr "No sources yet"
 msgid "No spans recorded for this trace."
 msgstr "No spans recorded for this trace."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "No submissions yet"
 msgstr "No submissions yet"
 
@@ -11063,7 +11072,7 @@ msgstr "No-show"
 msgid "Nobody answers"
 msgstr "Nobody answers"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Nobody invited yet."
 msgstr "Nobody invited yet."
 
@@ -11101,7 +11110,7 @@ msgstr "not allowed"
 msgid "Not asked"
 msgstr "Not asked"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Not at all"
 msgstr "Not at all"
 
@@ -11136,7 +11145,7 @@ msgstr "Not needed for count"
 msgid "NOT NULL — adding to a table that already has rows needs a default."
 msgstr "NOT NULL — adding to a table that already has rows needs a default."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "not on this collection"
 msgstr "not on this collection"
 
@@ -11165,7 +11174,7 @@ msgstr "Not recorded — {0}"
 msgid "not saved"
 msgstr "not saved"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "not sent"
 msgstr "not sent"
 
@@ -11339,20 +11348,20 @@ msgstr "npm package"
 msgid "npm registry"
 msgstr "npm registry"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "NPS — how likely to recommend (0–10)"
 msgstr "NPS — how likely to recommend (0–10)"
 
 #. placeholder {0}: b.nps.score
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "NPS {0}"
 msgstr "NPS {0}"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Number input"
 msgstr "Number input"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Numbered scale"
 msgstr "Numbered scale"
 
@@ -11488,7 +11497,7 @@ msgstr "On error"
 msgid "On expiry the request rejects — nobody answering is not the same as approval."
 msgstr "On expiry the request rejects — nobody answering is not the same as approval."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "On submit"
 msgstr "On submit"
 
@@ -11505,7 +11514,7 @@ msgstr "Once a provider posts to the webhook URL above, every delivery shows up 
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "One answer per browser"
 msgstr "One answer per browser"
 
@@ -11558,7 +11567,7 @@ msgstr "One URL per line — saved when you click away."
 msgid "One-time link, no <0>password</0>."
 msgstr "One-time link, no <0>password</0>."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "only a visitor holding an unspent link may answer"
 msgstr "only a visitor holding an unspent link may answer"
 
@@ -11602,7 +11611,7 @@ msgstr "Only the fields you change are written to all {count} selected rows in <
 msgid "Only the hash of the link is stored, so the one handed out when this resource was created cannot be shown again. Mint a replacement to see one — the old link stops working the moment you do."
 msgstr "Only the hash of the link is stored, so the one handed out when this resource was created cannot be shown again. Mint a replacement to see one — the old link stops working the moment you do."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Only the invite tokens are shown: generate a new form link above and the next batch comes back as full URLs."
 msgstr "Only the invite tokens are shown: generate a new form link above and the next batch comes back as full URLs."
 
@@ -11614,7 +11623,7 @@ msgstr "Only the most recent spans in the window were aggregated."
 msgid "Only the moves you allow are accepted — on the API, in flows, everywhere. Leave it off and any value may follow any other."
 msgstr "Only the moves you allow are accepted — on the API, in flows, everywhere. Leave it off and any value may follow any other."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Only the selected types are accepted — enforced server-side."
 msgstr "Only the selected types are accepted — enforced server-side."
 
@@ -11659,17 +11668,18 @@ msgstr "Open checkouts through {0} and record each settlement as it is reported.
 msgid "Open checkouts through {0} and record each settlement as it is reported. There are no billing objects to mirror."
 msgstr "Open checkouts through {0} and record each settlement as it is reported. There are no billing objects to mirror."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "Open collection"
 msgstr "Open collection"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Open form"
 msgstr "Open form"
 
 #. placeholder {0}: form.collection
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Open in {0}"
 msgstr "Open in {0}"
 
@@ -11723,7 +11733,7 @@ msgstr "Opening hours"
 msgid "Opening…"
 msgstr "Opening…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Opens"
 msgstr "Opens"
 
@@ -11756,7 +11766,7 @@ msgid "Ops bots — admin role required."
 msgstr "Ops bots — admin role required."
 
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "optional"
@@ -12104,7 +12114,8 @@ msgstr "Pause"
 
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/shared.tsx
 msgid "paused"
 msgstr "paused"
 
@@ -12114,7 +12125,7 @@ msgstr "paused"
 msgid "Paused"
 msgstr "Paused"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "pausing returns 410 on the public link"
 msgstr "pausing returns 410 on the public link"
 
@@ -12160,7 +12171,7 @@ msgstr "Payments"
 msgid "PayTR and iyzico both require one."
 msgstr "PayTR and iyzico both require one."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "PDF"
 msgstr "PDF"
 
@@ -12323,13 +12334,13 @@ msgstr "Pick a collection, type a query, and run it. Full-text needs the collect
 #~ msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
 #~ msgstr "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Pick a collection."
 msgstr "Pick a collection."
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/field-rollup-editor.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Pick a collection…"
 msgstr "Pick a collection…"
@@ -12597,7 +12608,7 @@ msgstr "Pick the source tables to copy. Every table becomes a collection."
 msgid "Pick type…"
 msgstr "Pick type…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Pick where submissions land — you'll design the form next."
 msgstr "Pick where submissions land — you'll design the form next."
 
@@ -12645,7 +12656,7 @@ msgstr "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 msgid "PKCE"
 msgstr "PKCE"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Placeholder"
 msgstr "Placeholder"
 
@@ -12751,7 +12762,7 @@ msgstr "Point a connected source at a collection and pick how often it should ru
 msgid "Policy"
 msgstr "Policy"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Policy URL"
 msgstr "Policy URL"
 
@@ -12951,7 +12962,7 @@ msgstr "Profile saved."
 #. placeholder {0}: b.nps.promoters
 #. placeholder {1}: b.nps.passives
 #. placeholder {2}: b.nps.detractors
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "promoters {0} · passives {1} · detractors {2}"
 
@@ -13041,7 +13052,7 @@ msgstr "Public embed enabled."
 msgid "public link"
 msgstr "public link"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Public link"
 msgstr "Public link"
 
@@ -13061,7 +13072,7 @@ msgstr "public read"
 msgid "Public read-only link"
 msgstr "Public read-only link"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Public, embeddable forms that write straight into a collection — share a link or drop the iframe anywhere."
 msgstr "Public, embeddable forms that write straight into a collection — share a link or drop the iframe anywhere."
 
@@ -13190,7 +13201,7 @@ msgid "Query your backend in natural language, browse the MCP tool catalog, and 
 msgstr "Query your backend in natural language, browse the MCP tool catalog, and connect external clients over OAuth or an API key — every call scoped to your role and the per-key allowlist."
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Questions"
 msgstr "Questions"
 
@@ -13219,7 +13230,7 @@ msgstr "Qwen mid-tier · balanced pricing"
 msgid "Rana"
 msgstr "Rana"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Rate limit"
 msgstr "Rate limit"
 
@@ -13296,7 +13307,7 @@ msgstr "Read from another column"
 msgid "Read on your own clock, then stored as an instant."
 msgstr "Read on your own clock, then stored as an instant."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "read the full text"
 msgstr "read the full text"
@@ -13496,7 +13507,7 @@ msgstr "Redirect URI"
 msgid "Redirect URI to register"
 msgstr "Redirect URI to register"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Redirect URL"
 msgstr "Redirect URL"
 
@@ -13708,12 +13719,12 @@ msgstr "Reload schema"
 msgid "Remembered facts apply to"
 msgstr "Remembered facts apply to"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Remind by email"
 msgstr "Remind by email"
 
 #. placeholder {0}: relTime(i.remindedAt)
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "reminded {0}"
 msgstr "reminded {0}"
 
@@ -13766,7 +13777,7 @@ msgstr "Remove column"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Remove condition"
 msgstr "Remove condition"
 
@@ -13778,7 +13789,7 @@ msgstr "Remove device"
 msgid "Remove file"
 msgstr "Remove file"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Remove from form"
 msgstr "Remove from form"
 
@@ -13791,7 +13802,7 @@ msgstr "Remove group"
 msgid "Remove it from the list"
 msgstr "Remove it from the list"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Remove language"
 msgstr "Remove language"
 
@@ -13803,7 +13814,7 @@ msgstr "Remove one person from collections, revision history, activity, comments
 msgid "Remove question"
 msgstr "Remove question"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Remove row"
 msgstr "Remove row"
 
@@ -13970,7 +13981,7 @@ msgid "Require these fields first"
 msgstr "Require these fields first"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "required"
@@ -13980,15 +13991,15 @@ msgstr "required"
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Required"
 msgstr "Required"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "required by the collection schema"
 msgstr "required by the collection schema"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "required by the schema — can't be removed from the form"
 msgstr "required by the schema — can't be removed from the form"
 
@@ -14114,7 +14125,7 @@ msgstr "response"
 msgid "Response"
 msgstr "Response"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Response limit"
 msgstr "Response limit"
 
@@ -14174,15 +14185,15 @@ msgstr "Result"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Result is piped into <0>$last</0> for the next step."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Results"
 msgstr "Results"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Results can't be read"
 msgstr "Results can't be read"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Results score this as promoters (9–10) minus detractors (0–6)."
 msgstr "Results score this as promoters (9–10) minus detractors (0–6)."
 
@@ -14313,7 +14324,7 @@ msgstr "revocable anytime"
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -14441,12 +14452,12 @@ msgstr "Rotate"
 msgid "Rotate key"
 msgstr "Rotate key"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Rotate link"
 msgstr "Rotate link"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Rotate the form link?"
 msgstr "Rotate the form link?"
 
@@ -14454,12 +14465,12 @@ msgstr "Rotate the form link?"
 #~ msgid "Rotate the token to mint a fresh embed snippet."
 #~ msgstr "Rotate the token to mint a fresh embed snippet."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Rotate token"
 msgstr "Rotate token"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Row"
 msgstr "Row"
 
@@ -14487,14 +14498,14 @@ msgstr "rows"
 
 #: src/client/admin/collections/collections-index.tsx
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "Rows"
 msgstr "Rows"
 
 #. placeholder {0}: rows.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "rows · {0}"
 msgstr "rows · {0}"
 
@@ -14514,7 +14525,7 @@ msgstr "Rows created by {r} must match this rule."
 msgid "rows in"
 msgstr "rows in"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Rows in collection"
 msgstr "Rows in collection"
 
@@ -14523,7 +14534,7 @@ msgid "Rows land in an ordinary collection, so permissions, querying and exports
 msgstr "Rows land in an ordinary collection, so permissions, querying and exports apply to them like any other data."
 
 #. placeholder {0}: form.collection
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "rows live in <0>{0}</0>"
 msgstr "rows live in <0>{0}</0>"
 
@@ -14793,7 +14804,7 @@ msgid "Save credentials"
 msgstr "Save credentials"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "save failed"
 msgstr "save failed"
 
@@ -14837,7 +14848,7 @@ msgstr "Save limits"
 msgid "Save metadata"
 msgstr "Save metadata"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Save progress"
 msgstr "Save progress"
 
@@ -14866,7 +14877,7 @@ msgid "Save this secret now"
 msgstr "Save this secret now"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "saved"
 msgstr "saved"
 
@@ -14904,7 +14915,7 @@ msgid "Saving MCP guards"
 msgstr "Saving MCP guards"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "saving…"
 msgstr "saving…"
 
@@ -15045,7 +15056,7 @@ msgstr "Scopes"
 msgid "scoping & lifecycle"
 msgstr "scoping & lifecycle"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Script"
 msgstr "Script"
 
@@ -15067,7 +15078,7 @@ msgstr "Search {total} items by title or slug…"
 msgid "Search a collection"
 msgstr "Search a collection"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Search blocks…"
 msgstr "Search blocks…"
 
@@ -15132,7 +15143,7 @@ msgstr "Search index rebuilt: {0} indexed, {1} total."
 msgid "Search keys…"
 msgstr "Search keys…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Search languages…"
 msgstr "Search languages…"
 
@@ -15211,7 +15222,7 @@ msgstr "Select"
 #~ msgid "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
 #~ msgstr "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Select a block on the canvas to edit its settings. Scalar and file fields can be exposed — never private or computed ones."
 msgstr "Select a block on the canvas to edit its settings. Scalar and file fields can be exposed — never private or computed ones."
 
@@ -15259,7 +15270,7 @@ msgstr "Select an item to see its history."
 msgid "Select environment"
 msgstr "Select environment"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 #: src/client/pages/public-form.tsx
 msgid "Select one…"
 msgstr "Select one…"
@@ -15406,7 +15417,7 @@ msgstr "Sends a one-time sign-in link by email — requires a configured email a
 #~ msgid "Sends the visitor here after submitting, instead of the message."
 #~ msgstr "Sends the visitor here after submitting, instead of the message."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "sent"
 msgstr "sent"
 
@@ -15426,7 +15437,7 @@ msgstr "sequential"
 #~ msgid "Server default (10 MB)"
 #~ msgstr "Server default (10 MB)"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Server default (5 MB)"
 msgstr "Server default (5 MB)"
 
@@ -15621,11 +15632,11 @@ msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses. (Or skip 
 msgid "settled"
 msgstr "settled"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Several answers allowed, so the shares can add up to more than 100%."
 msgstr "Several answers allowed, so the shares can add up to more than 100%."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Several questions on one shared set of columns"
 msgstr "Several questions on one shared set of columns"
 
@@ -15634,7 +15645,7 @@ msgid "Severity"
 msgstr "Severity"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Share"
 msgstr "Share"
@@ -15656,11 +15667,11 @@ msgstr "Share link created."
 msgid "Share link revoked."
 msgstr "Share link revoked."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Share the public link — every question gets a breakdown here as answers arrive."
 msgstr "Share the public link — every question gets a breakdown here as answers arrive."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Share the public link — rows land here (and in the collection) as they arrive."
 msgstr "Share the public link — rows land here (and in the collection) as they arrive."
 
@@ -15726,7 +15737,7 @@ msgstr "Show all {0} sessions"
 msgid "Show archived collections"
 msgstr "Show archived collections"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Show conditionally"
 msgstr "Show conditionally"
 
@@ -15772,7 +15783,7 @@ msgstr "Show password"
 msgid "Show sections as tabs"
 msgstr "Show sections as tabs"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Show this block only when"
 msgstr "Show this block only when"
 
@@ -15797,7 +15808,7 @@ msgstr "Showing {0} changed field{1}"
 
 #. placeholder {0}: rows.length
 #. placeholder {1}: total ?? rows.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Showing {0} of {1} rows"
 msgstr "Showing {0} of {1} rows"
 
@@ -15823,7 +15834,7 @@ msgstr "Showing the 100 most recently updated rows. Use search to narrow down."
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 msgstr "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Shown as a \"read the full text\" link next to the checkbox."
 msgstr "Shown as a \"read the full text\" link next to the checkbox."
 
@@ -15839,7 +15850,7 @@ msgstr "Shown in author bylines and the header dropdown."
 msgid "Shown in lists as"
 msgstr "Shown in lists as"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Shown in place of the questions. The form keeps its title, so the link still says what it was."
 msgstr "Shown in place of the questions. The form keeps its title, so the link still says what it was."
 
@@ -15867,7 +15878,7 @@ msgstr "Shown on the public page."
 msgid "Shown on tiles and reports"
 msgstr "Shown on tiles and reports"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "shown once — copy it now, it won't appear again"
 msgstr "shown once — copy it now, it won't appear again"
 
@@ -15875,7 +15886,7 @@ msgstr "shown once — copy it now, it won't appear again"
 msgid "Shown once — store it now."
 msgstr "Shown once — store it now."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Shown once — these links cannot be listed again."
 msgstr "Shown once — these links cannot be listed again."
 
@@ -16225,7 +16236,7 @@ msgstr "Sorted by"
 msgid "Source"
 msgstr "Source"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "source collection"
 msgstr "source collection"
 
@@ -16287,11 +16298,11 @@ msgstr "Spec unavailable. Try Refresh."
 msgid "Specific dates"
 msgstr "Specific dates"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Splits the form into pages"
 msgstr "Splits the form into pages"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Spreadsheets"
 msgstr "Spreadsheets"
 
@@ -16327,7 +16338,7 @@ msgstr "Staged edits"
 msgid "Staging"
 msgstr "Staging"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Star rating"
 msgstr "Star rating"
 
@@ -16373,7 +16384,7 @@ msgstr "Start the connection again from your MCP client (for example claude.ai �
 msgid "Start with a template"
 msgstr "Start with a template"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "started, not submitted"
 msgstr "started, not submitted"
 
@@ -16431,15 +16442,16 @@ msgstr "Stay connected without re-approving"
 msgid "step {0} of 2"
 msgstr "step {0} of 2"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "step {stepNo}"
 msgstr "step {stepNo}"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Step break"
 msgstr "Step break"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Step breaks split the form into pages — presentation only, nothing is written to the collection."
 msgstr "Step breaks split the form into pages — presentation only, nothing is written to the collection."
 
@@ -16570,28 +16582,30 @@ msgstr "Subject is required."
 msgid "Submission failed — please try again"
 msgstr "Submission failed — please try again"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Submissions"
 msgstr "Submissions"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Submissions go through the standard items write path — validation, flows, webhooks, realtime, audit. Anything listening on this collection fires as if an authenticated user created the row."
 msgstr "Submissions go through the standard items write path — validation, flows, webhooks, realtime, audit. Anything listening on this collection fires as if an authenticated user created the row."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "submissions run collection validation · versioned collections land as drafts"
 msgstr "submissions run collection validation · versioned collections land as drafts"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/pages/public-form.tsx
 msgid "Submit"
 msgstr "Submit"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Submit button label"
 msgstr "Submit button label"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Submitted"
 msgstr "Submitted"
 
@@ -16612,7 +16626,7 @@ msgstr "Succeeded"
 msgid "Success"
 msgstr "Success"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Success message"
 msgstr "Success message"
 
@@ -16640,7 +16654,7 @@ msgstr "suggested: {suggestedAlias}"
 msgid "Sum"
 msgstr "Sum"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "summarised"
 msgstr "summarised"
 
@@ -16745,7 +16759,7 @@ msgstr "system"
 
 #: src/client/admin/fields/display-template-editor.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "System"
 msgstr "System"
@@ -16968,7 +16982,7 @@ msgstr "Thank you"
 msgid "Thank you — your answer is recorded"
 msgstr "Thank you — your answer is recorded"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Thanks — we got it!"
 msgstr "Thanks — we got it!"
 
@@ -17024,7 +17038,7 @@ msgstr "The client secret is encrypted at rest. If you leave both fields blank, 
 msgid "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
 msgstr "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "The collection this form writes into may have been deleted or renamed."
 msgstr "The collection this form writes into may have been deleted or renamed."
 
@@ -17036,7 +17050,7 @@ msgstr "The column always stores the encoded form a mail server resolves. This o
 msgid "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 msgstr "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 
@@ -17061,7 +17075,7 @@ msgstr "The embed link may have been revoked, or the dashboard was removed."
 msgid "The field on {0} that points back at this row."
 msgstr "The field on {0} that points back at this row."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "the field stays in the collection"
 msgstr "the field stays in the collection"
 
@@ -17182,7 +17196,7 @@ msgstr "The public booking link"
 msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 msgstr "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "The public link stops working immediately. Submitted rows stay in the collection."
 msgstr "The public link stops working immediately. Submitted rows stay in the collection."
 
@@ -17215,7 +17229,7 @@ msgstr "The role dropdown governs org administration. In-org roles are workspace
 msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 msgstr "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "The row is removed from the collection. This can't be undone."
 msgstr "The row is removed from the collection. This can't be undone."
 
@@ -17240,7 +17254,7 @@ msgstr "The selected folder has no backlex-extension.json at its root."
 msgid "The sender cancelled this request."
 msgstr "The sender cancelled this request."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "The server-wide upload ceiling still applies on top."
 msgstr "The server-wide upload ceiling still applies on top."
 
@@ -17264,7 +17278,7 @@ msgstr "The slot goes back on sale and the customer is emailed."
 msgid "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 msgstr "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 
@@ -17300,7 +17314,7 @@ msgstr "The zone the opening hours are written in — not a display preference."
 msgid "Their link to change or cancel"
 msgstr "Their link to change or cancel"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "theme"
 msgstr "theme"
 
@@ -17364,7 +17378,7 @@ msgstr "this collection"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 
@@ -17436,7 +17450,7 @@ msgstr "This document is no longer open for signature"
 msgid "This does not reach"
 msgstr "This does not reach"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "This form is closed."
 msgstr "This form is closed."
 
@@ -17665,7 +17679,7 @@ msgid "to"
 msgstr "to"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/observability/translations.tsx
 msgid "To"
 msgstr "To"
@@ -17809,7 +17823,7 @@ msgstr "Top pages"
 msgid "Top referrers"
 msgstr "Top referrers"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Total"
 msgstr "Total"
 
@@ -18000,11 +18014,11 @@ msgstr "Turning this off makes the content API return 404 for this collection (R
 msgid "Turns the KPI into a ranking"
 msgstr "Turns the KPI into a ranking"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Turnstile"
 msgstr "Turnstile"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "turnstile + honeypot + rate limit"
 msgstr "turnstile + honeypot + rate limit"
 
@@ -18247,7 +18261,7 @@ msgid "up to {0}"
 msgstr "up to {0}"
 
 #. placeholder {0}: Math.floor((block.maxBytes ?? 5 * 1024 * 1024) / 1024 / 1024)
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 msgid "up to {0} MB"
 msgstr "up to {0} MB"
 
@@ -18386,7 +18400,7 @@ msgstr "Usage refreshed."
 msgid "Use \"{label}\" column"
 msgstr "Use \"{label}\" column"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Use \"Generate new link\" above — the embed snippet is minted together with it."
 msgstr "Use \"Generate new link\" above — the embed snippet is minted together with it."
 
@@ -18636,7 +18650,7 @@ msgstr "Version"
 msgid "Version <0>(optional)</0>"
 msgstr "Version <0>(optional)</0>"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "versioned"
 msgstr "versioned"
 
@@ -18644,7 +18658,7 @@ msgstr "versioned"
 msgid "Versioned (draft / published)"
 msgstr "Versioned (draft / published)"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Video"
 msgstr "Video"
 
@@ -18680,7 +18694,7 @@ msgstr "View profile"
 msgid "Views"
 msgstr "Views"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "visitor's browser language"
 msgstr "visitor's browser language"
 
@@ -18693,11 +18707,11 @@ msgid "Visitors"
 msgstr "Visitors"
 
 #. placeholder {0}: languages[1] ?? "tr"
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
 msgstr "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
 msgstr "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
 
@@ -18877,7 +18891,7 @@ msgstr "whatever the collection has enabled"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "When"
 msgstr "When"
 
@@ -18987,7 +19001,7 @@ msgstr "Whichever agent fits best"
 msgid "Who"
 msgstr "Who"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Who can answer, and until when"
 msgstr "Who can answer, and until when"
 
@@ -19076,7 +19090,7 @@ msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
@@ -19189,11 +19203,11 @@ msgstr "Writes 24h"
 msgid "Writes blocked. Toggle \"read-only\" off to run mutations."
 msgstr "Writes blocked. Toggle \"read-only\" off to run mutations."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Writes to"
 msgstr "Writes to"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Written answers are not shown here — read them in the collection"
 msgstr "Written answers are not shown here — read them in the collection"
 
@@ -19218,7 +19232,7 @@ msgid "yes"
 msgstr "yes"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 #: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx
 msgid "Yes"
@@ -19366,7 +19380,7 @@ msgstr "Your session expired — sign in and retry from the client."
 msgid "Your signature is recorded. You will get a copy once everyone has signed."
 msgstr "Your signature is recorded. You will get a copy once everyone has signed."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "Your submission has been received."
 msgstr "Your submission has been received."

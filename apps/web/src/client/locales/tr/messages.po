@@ -427,7 +427,7 @@ msgid "{0} free"
 msgstr "{0} boş"
 
 #. placeholder {0}: res.data.invites.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} fresh link(s) — copy them now."
 msgstr "{0} yeni bağlantı — şimdi kopyalayın."
 
@@ -438,7 +438,7 @@ msgstr "{0} koleksiyonunda toplanacak sayı sütunu yok."
 
 #. placeholder {0}: res.data.invites.length
 #. placeholder {1}: res.data.sent
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} invited, {1} emailed."
 msgstr "{0} kişi davet edildi, {1} kişiye e-posta gitti."
 
@@ -483,7 +483,7 @@ msgid "{0} left"
 msgstr "{0} yer kaldı"
 
 #. placeholder {0}: res.data.invites.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} link(s) minted — copy them now."
 msgstr "{0} bağlantı oluşturuldu — şimdi kopyalayın."
 
@@ -504,7 +504,7 @@ msgstr "{0} eşleşme · {1} yüklendi"
 #~ msgstr "{0} dakika"
 
 #. placeholder {0}: data.truncated
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "{0} more questions are not summarised — this form has more than the panel computes."
 msgstr "{0} soru daha özetlenmedi — bu formda panelin hesapladığından fazla soru var."
 
@@ -577,7 +577,7 @@ msgstr "{0} yayınlandı."
 
 #. placeholder {0}: res.data.invites.length
 #. placeholder {1}: res.data.sent
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "{0} reminded, {1} emailed."
 msgstr "{0} kişiye hatırlatıldı, {1} e-posta gönderildi."
 
@@ -826,7 +826,7 @@ msgstr "{d} gün"
 msgid "{doneTables}/{0} tables · {copied} rows"
 msgstr "{doneTables}/{0} tablo · {copied} satır"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "{eligibleCount} eligible fields"
 msgstr "{eligibleCount} uygun alan"
 
@@ -956,7 +956,7 @@ msgid "+ preset"
 msgstr "+ ön ayar"
 
 #. placeholder {0}: i.reminderCount
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "+{0}"
 msgstr "+{0}"
 
@@ -1106,7 +1106,7 @@ msgstr "Seçilen bir agent cevaplar"
 msgid "A confirmation is on its way, with a calendar invite attached."
 msgstr "Takvim daveti ekli bir onay e-postası yolda."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "a cookie, not an identity — another browser answers again"
 msgstr "kimlik değil çerez — başka bir tarayıcı yeniden yanıtlar"
 
@@ -1167,7 +1167,7 @@ msgstr "Döngü satır içinde çalışır; gövdesi bir onayı ya da uzun bir b
 msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 msgstr "Örneğin öğle arası — açık olduğunuz her günde kapalı, hem de her açık aralığı ikiye bölmeden."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "Bir matris, aynı sütunları paylaşabilecek iki alana ihtiyaç duyar — iki sayı alanı ya da aynı seçenekleri sunan iki açılır liste."
 
@@ -1316,7 +1316,7 @@ msgstr "A4 (varsayılan)"
 msgid "About"
 msgstr "Hakkında"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "accent"
 msgstr "vurgu rengi"
 
@@ -1333,19 +1333,19 @@ msgid "Accept invite"
 msgstr "Daveti kabul et"
 
 #. placeholder {0}: form.submissionCount
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
 msgstr "Şu ana kadar kabul edilen: {0}. Kayıt yazılmadan önce kontrol edilir; aynı anda gelen yoğunlukta birkaç fazla yanıt geçebilir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "accepted through this form"
 msgstr "bu formdan kabul edilen"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Accepted types"
 msgstr "Kabul edilen türler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "accepted, all time"
 msgstr "kabul edilen, tüm zamanlar"
 
@@ -1353,7 +1353,7 @@ msgstr "kabul edilen, tüm zamanlar"
 #~ msgid "Accepting bookings"
 #~ msgstr "Rezervasyon alıyor"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Accepting submissions"
 msgstr "Gönderim kabul ediliyor"
 
@@ -1514,7 +1514,7 @@ msgstr "Bağlamalar/env'den adaptör otomatik seçildi."
 msgid "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
 msgstr "Adaptör otomatik seçildi: R2 bağlaması → R2; S3 ortam değişkenleri → S3; aksi halde yerel dosya sistemi (Bun dev). Genel klasörler <0>/storage/<key></0> adresinden sunulur; özel olanlar imzalı URL gerektirir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "add"
 msgstr "ekle"
 
@@ -1564,11 +1564,11 @@ msgstr "Önce bir Client ID ve gizli anahtar ekleyin"
 msgid "Add a country…"
 msgstr "Ülke ekle…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Add a description…"
 msgstr "Açıklama ekle…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Add a dropdown field to the form to build show-conditions on it."
 msgstr "Koşullu görünürlük kurmak için forma bir açılır liste alanı ekleyin."
 
@@ -1601,7 +1601,7 @@ msgstr "<0>c_{from}</0> koleksiyonuna <1>c_{to}</1> öğesini gösteren bir ili�
 msgid "Add a remote MCP connector"
 msgstr "Uzak bir MCP bağlayıcısı ekleyin"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Add a row…"
 msgstr "Satır ekle…"
 
@@ -1637,11 +1637,12 @@ msgstr "En az bir imzalayan ekleyin."
 msgid "Add at least one step before saving"
 msgstr "Kaydetmeden önce en az bir adım ekleyin"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "add block"
 msgstr "blok ekle"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Add block"
 msgstr "Blok ekle"
 
@@ -1685,7 +1686,7 @@ msgstr "Şablondan ekle"
 msgid "Add hook"
 msgstr "Hook ekle"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Add language"
 msgstr "Dil ekle"
 
@@ -1948,7 +1949,7 @@ msgstr "Toplama işlevi"
 msgid "Aggregate function"
 msgstr "Toplama fonksiyonu"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "ago"
 msgstr "önce"
 
@@ -2134,7 +2135,7 @@ msgstr "zaten ayarlandı"
 msgid "Already verified?"
 msgstr "Zaten doğrulandı mı?"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "always on"
 msgstr "her zaman açık"
 
@@ -2223,16 +2224,17 @@ msgstr "Genelde hukuka uygun seçenek anonimleştirmedir — bir fatura çoğunl
 msgid "Another signer declined it."
 msgstr "Başka bir imzalayan reddetti."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Answer style"
 msgstr "Yanıt biçimi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "answered"
 msgstr "yanıtladı"
 
 #: src/client/admin/pages/automation/approvals.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Answered"
 msgstr "Yanıtlayan"
 
@@ -2456,7 +2458,7 @@ msgstr "arşivlendi"
 msgid "Archived"
 msgstr "Arşivlendi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Archives"
 msgstr "Arşivler"
 
@@ -2542,7 +2544,7 @@ msgstr "Denemeler"
 msgid "Attribute map"
 msgstr "Öznitelik eşlemesi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Audio"
 msgstr "Ses"
 
@@ -2617,7 +2619,7 @@ msgstr "MCP erişimini yetkilendir"
 msgid "Authorizing…"
 msgstr "Yetkilendiriliyor…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "auto"
 msgstr "otomatik"
@@ -2659,7 +2661,7 @@ msgstr "otomatik kapatıldı"
 msgid "auto-run reads"
 msgstr "okumaları otomatik çalıştır"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "auto-sizes to the form's height — recommended"
 msgstr "formun yüksekliğine göre kendini boyutlandırır — önerilen"
 
@@ -2726,7 +2728,7 @@ msgid "Average"
 msgstr "Ortalama"
 
 #. placeholder {0}: b.average
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "avg {0}"
 msgstr "ort. {0}"
 
@@ -2755,7 +2757,7 @@ msgstr "B-tree indeksi — bu sütuna göre filtreleme/sıralamayı hızlandır�
 msgid "Back"
 msgstr "Geri"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Back to forms"
 msgstr "Formlara dön"
 
@@ -2912,11 +2914,11 @@ msgstr "Yazmayı blokla (deny)"
 msgid "blocked"
 msgstr "engellendi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Blocked"
 msgstr "Engellenen"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Blocked so far"
 msgstr "Şimdiye dek engellenen"
 
@@ -3151,7 +3153,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
 #: src/client/admin/pages/data/database-import.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
@@ -3231,7 +3233,7 @@ msgstr "Tetikleyici silinemez."
 msgid "Cannot save: {0}"
 msgstr "Kaydedilemedi: {0}"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "canvas · what visitors see"
 msgstr "tuval · ziyaretçinin gördüğü"
 
@@ -3360,7 +3362,7 @@ msgstr "Kontrol ediliyor…"
 msgid "Checkout reference"
 msgstr "Ödeme referansı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Checks"
 msgstr "Kontroller"
 
@@ -3377,7 +3379,7 @@ msgstr "Seçenek rengi"
 msgid "Choices"
 msgstr "Seçenekler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "choices · from schema enum"
 msgstr "seçenekler · şema enum'ından"
 
@@ -3385,7 +3387,7 @@ msgstr "seçenekler · şema enum'ından"
 msgid "Choose a different folder"
 msgstr "Farklı bir klasör seç"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 #: src/client/pages/public-form.tsx
 msgid "Choose a file or drag it here"
 msgstr "Bir dosya seçin veya buraya sürükleyin"
@@ -3586,11 +3588,11 @@ msgstr "Kapat"
 msgid "Closed instance."
 msgstr "Kapalı örnek."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Closed message"
 msgstr "Kapalı mesajı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Closes"
 msgstr "Kapanış"
 
@@ -3639,7 +3641,8 @@ msgstr "meslektas@ornek.com"
 
 #: src/client/admin/pages/access/permission-tester.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/data/search-playground.tsx
 #: src/client/admin/pages/observability/advisor.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -3673,7 +3676,7 @@ msgstr "Koleksiyon varsayılanı"
 msgid "Collection enabled."
 msgstr "Koleksiyon etkinleştirildi."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Collection fields not yet on the form, plus layout blocks."
 msgstr "Formda henüz olmayan koleksiyon alanları ve yerleşim blokları."
 
@@ -3786,11 +3789,11 @@ msgstr "sütun: <0>{0}</0>"
 msgid "Columns"
 msgstr "Kolonlar"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "columns · from schema enum"
 msgstr "sütunlar · şema seçeneklerinden"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
 msgstr "Virgül veya satır sonuyla ayırın. Her biri kendi tek kullanımlık bağlantısını alır."
 
@@ -4066,11 +4069,11 @@ msgstr "Bağlantı başarısız."
 msgid "Connection URL"
 msgstr "Bağlantı URL'i"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Consent checkbox"
 msgstr "Onay kutusu"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "consent must be accepted — always required"
 msgstr "onay kabul edilmek zorunda — her zaman zorunlu"
 
@@ -4082,7 +4085,7 @@ msgstr "konsol (geliştirme)"
 msgid "Consumer"
 msgstr "Tüketici"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Contact us"
 msgstr "Bize ulaşın"
 
@@ -4147,7 +4150,7 @@ msgstr "JSON kopyalandı."
 msgid "Copied to clipboard."
 msgstr "Panoya kopyalandı."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -4168,7 +4171,7 @@ msgstr "kopyala"
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
@@ -4198,7 +4201,7 @@ msgstr "{0} için curl örneğini kopyala"
 #~ msgid "Copy embed snippet"
 #~ msgstr "Gömme kodunu kopyala"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Copy failed — select and copy manually."
 msgstr "Kopyalama başarısız — metni seçip elle kopyalayın."
 
@@ -4233,7 +4236,7 @@ msgstr "JSON'u kopyala"
 
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Copy link"
 msgstr "Linki kopyala"
 
@@ -4436,7 +4439,7 @@ msgid "Country the typed number is read as"
 msgstr "Yazılan numaranın hangi ülkeye ait okunacağı"
 
 #. placeholder {0}: data.collection
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Counts cover every row in {0}, including any written outside this form."
 msgstr "Sayılar {0} koleksiyonundaki tüm satırları kapsar — bu form dışında yazılanlar dahil."
 
@@ -4465,7 +4468,7 @@ msgstr "{slug} oluştur"
 msgid "Create a flag to gate a feature or ship remote config to your apps."
 msgstr "Bir özelliği kapılamak ya da uygulamalarınıza uzaktan yapılandırma göndermek için bayrak oluşturun."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Create a form to collect submissions from visitors — no account or code required on their side."
 msgstr "Ziyaretçilerden kayıt toplamak için bir form oluşturun — karşı tarafta hesap da kod da gerekmez."
 
@@ -4485,7 +4488,7 @@ msgstr "Hesap oluştur"
 msgid "Create an account"
 msgstr "Hesap oluşturun"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Create and email"
 msgstr "Oluştur ve gönder"
 
@@ -4505,7 +4508,7 @@ msgstr "Pano oluştur"
 msgid "Create folder"
 msgstr "Klasör oluştur"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Create form"
 msgstr "Formu oluştur"
 
@@ -4529,7 +4532,7 @@ msgstr "Veri olaylarından Linear kayıtları (issue) oluştur."
 msgid "Create link"
 msgstr "Bağlantı oluştur"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Create links"
 msgstr "Bağlantı oluştur"
 
@@ -4642,7 +4645,7 @@ msgstr "Anahtar oluşturuluyor"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -4814,7 +4817,7 @@ msgid "Danger zone"
 msgstr "Tehlike bölgesi"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Dark"
 msgstr "Koyu"
@@ -5037,7 +5040,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
 #: src/client/admin/pages/data/database-import.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
@@ -5105,7 +5108,7 @@ msgstr "\"{0}\" panosu silinsin mi?"
 msgid "Delete end-user"
 msgstr "Son kullanıcıyı sil"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Delete form"
 msgstr "Formu sil"
 
@@ -5163,7 +5166,7 @@ msgstr "Kaynağı sil"
 msgid "Delete source?"
 msgstr "Kaynak silinsin mi?"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete submission"
 msgstr "Gönderimi sil"
 
@@ -5175,7 +5178,7 @@ msgstr "Şablonu sil"
 msgid "Delete this collection"
 msgstr "Bu koleksiyonu sil"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Delete this form?"
 msgstr "Bu form silinsin mi?"
 
@@ -5196,7 +5199,7 @@ msgstr "Bu kaynak silinsin mi?"
 msgid "Delete this row too (cascade)"
 msgstr "Bu satırı da sil (art arda)"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete this submission?"
 msgstr "Bu gönderim silinsin mi?"
 
@@ -5225,7 +5228,7 @@ msgstr "Teslimatlar"
 msgid "Deliveries pause immediately when off; queued events are dropped after 24h."
 msgstr "Devre dışı bırakıldığında teslimatlar hemen duraklar; kuyruktaki olaylar 24 saat sonra düşürülür."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Delivery"
 msgstr "Teslimat"
 
@@ -5297,7 +5300,7 @@ msgstr "Azalan"
 msgid "Description"
 msgstr "Açıklama"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Deselect"
 msgstr "Seçimi bırak"
 
@@ -5509,7 +5512,7 @@ msgstr "Belge şablonu"
 msgid "Document templates"
 msgstr "Belge şablonları"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Documents"
 msgstr "Belgeler"
 
@@ -5610,7 +5613,7 @@ msgstr "İlişki oluşturmak için başka bir koleksiyona sürükleyin"
 msgid "Drag to move"
 msgstr "Taşımak için sürükleyin"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Drag to reorder"
 msgstr "Sürükleyerek sırala"
 
@@ -5668,7 +5671,7 @@ msgstr "Görselleri buraya bırakın veya yüklemek için tıklayın"
 msgid "Drop in a workspace API key (<0>pak_…</0>) before running."
 msgstr "Çalıştırmadan önce bir çalışma alanı API anahtarı (<0>pak_…</0>) girin."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Drop it into any site — the form keeps its own theme."
 msgstr "Herhangi bir siteye ekleyin — form kendi temasını korur."
 
@@ -5750,7 +5753,7 @@ msgstr "Doğrulayıcınızı kaybederseniz her kod bir kez çalışır. Güvenli
 msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 msgstr "Her koleksiyon, çalışma zamanında oluşturulan fiziksel bir tablodur. Alanları sürükleyin, izinleri ayarlayın veya REST/GraphQL olarak gösterin — tüm bunlar migrasyon yazmadan."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Each gets a fresh link. The ones already sent keep working — every link into an invite opens the same turn, and answering spends it."
 msgstr "Herkes yeni bir bağlantı alır. Daha önce gönderilenler de çalışmaya devam eder — bir davete giden her bağlantı aynı sırayı açar, yanıtlamak onu harcar."
 
@@ -5793,7 +5796,7 @@ msgstr "düzenle"
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Edit"
 msgstr "Düzenle"
@@ -5823,7 +5826,7 @@ msgstr "Ajanı düzenle"
 msgid "Edit args"
 msgstr "Argümanları düzenle"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "edit choices on the field in <0>{collection}</0>"
 msgstr "seçenekleri <0>{collection}</0> içindeki alan üzerinde düzenleyin"
 
@@ -5899,13 +5902,14 @@ msgstr "Yayından sonra düzenlendi"
 
 #. placeholder {0}: locale.toUpperCase()
 #. placeholder {1}: base.toUpperCase()
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "editing {0} — empty falls back to {1}"
 msgstr "{0} düzenleniyor — boş bırakılan {1} değerine düşer"
 
 #. placeholder {0}: locale.toUpperCase()
 #. placeholder {1}: base.toUpperCase()
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "editing {0} — empty strings fall back to {1}"
 msgstr "{0} düzenleniyor — boş metinler {1} değerine düşer"
 
@@ -5965,7 +5969,7 @@ msgstr "E-posta + parola her zaman kullanılabilir — giriş ekranındaki formu
 msgid "Email address"
 msgstr "E-posta adresi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Email addresses"
 msgstr "E-posta adresleri"
 
@@ -6028,7 +6032,7 @@ msgstr "EMAIL_FROM ayarlandı"
 msgid "Emails a one-time link valid for 30 minutes."
 msgstr "30 dakika geçerli tek kullanımlık bir bağlantı e-posta ile gönderir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Embed"
 msgstr "Göm"
 
@@ -6167,11 +6171,11 @@ msgstr "Bu workspace üstüne kurulan uygulamanın son kullanıcıları — pane
 msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
 msgstr "Bu yolla giriş yapmış son kullanıcılar hesaplarını korur, ancak bu giriş yolunu kaybeder."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "ending"
 msgstr "bitiş"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Ending"
 msgstr "Bitiş"
 
@@ -6492,7 +6496,7 @@ msgstr "Her rezervasyon <0>{recordTarget}</0> içine bir satır olarak yazılır
 msgid "Every day"
 msgstr "Her gün"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Every free number field on <0>{collection}</0> is already on the form."
 msgstr "<0>{collection}</0> içindeki boştaki tüm sayı alanları zaten formda."
 
@@ -6512,7 +6516,7 @@ msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Her panel bu akışın kimliğiyle çalışır, sonra PDF'e basılır."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Every row is answered on these — edit them on the field in <0>{collection}</0>."
 msgstr "Her satır bunlarla yanıtlanır — düzenlemek için <0>{collection}</0> içindeki alana gidin."
 
@@ -6647,7 +6651,7 @@ msgstr "Dışa aktar"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Export CSV"
 msgstr "CSV olarak dışa aktar"
@@ -6737,7 +6741,7 @@ msgstr "Dış sütun"
 msgid "External identity rows are kept as an audit trail."
 msgstr "Harici kimlik satırları denetim kaydı olarak tutulur."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Extremely"
 msgstr "Kesinlikle"
 
@@ -6904,7 +6908,7 @@ msgstr "alanlar"
 #: src/client/admin/collections/item-editor.tsx
 #: src/client/admin/fields/display-template-editor.tsx
 #: src/client/admin/pages/access/permission-tester.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Alanlar"
@@ -7100,7 +7104,7 @@ msgstr "Düzeltme panoya kopyalandı."
 msgid "Fix the highlighted fields before saving."
 msgstr "Kaydetmeden önce işaretli alanları düzeltin."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "fixed height, zero JavaScript"
 msgstr "sabit yükseklik, sıfır JavaScript"
 
@@ -7188,7 +7192,7 @@ msgstr "Klasör etiketi"
 msgid "Folders"
 msgstr "Klasörler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "font"
 msgstr "yazı tipi"
 
@@ -7240,7 +7244,7 @@ msgstr "Şema değişikliklerini ayrı tutmak için bir dal çatallayın."
 #~ msgid "Form"
 #~ msgstr "Form"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Form design"
 msgstr "Form tasarımı"
 
@@ -7248,7 +7252,7 @@ msgstr "Form tasarımı"
 #~ msgid "Form link ready"
 #~ msgstr "Form bağlantısı hazır"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Form title"
 msgstr "Form başlığı"
 
@@ -7264,7 +7268,7 @@ msgstr "Form geneli — her bölüm, üst üste başlık yerine üstte bir sekme
 msgid "Format"
 msgstr "Biçim"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Forms"
 msgstr "Formlar"
@@ -7290,7 +7294,7 @@ msgstr "Cum"
 msgid "from"
 msgstr "kaynak"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "From"
@@ -7435,7 +7439,7 @@ msgstr "Genel"
 msgid "Generate"
 msgstr "Oluştur"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Generate a link first — the token is only shown once."
 msgstr "Önce bir bağlantı üretin — token yalnızca bir kez gösterilir."
 
@@ -7443,7 +7447,7 @@ msgstr "Önce bir bağlantı üretin — token yalnızca bir kez gösterilir."
 msgid "Generate keypair"
 msgstr "Anahtar çifti üret"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Generate new link"
 msgstr "Yeni bağlantı üret"
 
@@ -7591,7 +7595,7 @@ msgstr "Konuklar"
 msgid "Half width"
 msgstr "Yarım genişlik"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "half-filled answers are kept so people can come back — invited people resume on any device, everyone else in the same browser"
 msgstr "yarım kalan cevaplar saklanır, kişiler geri dönebilir — davetliler her cihazdan, diğerleri aynı tarayıcıda devam eder"
 
@@ -7656,7 +7660,7 @@ msgstr "Yükseklik"
 msgid "Held"
 msgstr "Tutuluyor"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Help text"
 msgstr "Yardım metni"
 
@@ -7707,7 +7711,7 @@ msgstr "Değişkenleri gizle"
 msgid "Hiding off"
 msgstr "Gizleme kapalı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "High label"
 msgstr "Üst uç etiketi"
 
@@ -7723,7 +7727,7 @@ msgstr "Geçmiş"
 msgid "Hold"
 msgstr "Tutma"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Honeypot"
 msgstr "Honeypot"
 
@@ -7821,7 +7825,7 @@ msgstr "Hibrit"
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
 msgstr "<0>Şartlar</0>'ı ve <1>Gizlilik Politikası</1>'nı kabul ediyorum."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "I copied it — hide the link"
 msgstr "Kopyaladım — bağlantıyı gizle"
 
@@ -7883,7 +7887,7 @@ msgstr "IdP SLO URL'si <0>(isteğe bağlı)</0>"
 msgid "IdP SSO URL"
 msgstr "IdP SSO URL'si"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "if"
 msgstr "eğer"
 
@@ -7891,7 +7895,7 @@ msgstr "eğer"
 msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çıktı. 15 dakika içinde geçerliliğini yitirir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "If set, visitors are sent there instead of seeing the message."
 msgstr "Ayarlanırsa ziyaretçi mesaj yerine bu adrese yönlendirilir."
 
@@ -7907,7 +7911,7 @@ msgstr "Yoksayıldı"
 msgid "Ignored by a KPI with no date column — it reports a running total."
 msgstr "Tarih sütunu olmayan KPI bunu yok sayar — yürüyen toplam gösterir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Images"
 msgstr "Görseller"
 
@@ -7966,7 +7970,7 @@ msgstr "sırayla"
 msgid "In order — each link waits for the one above"
 msgstr "Sırayla — her bağlantı bir üstündekini bekler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "In progress"
 msgstr "Devam eden"
 
@@ -8218,7 +8222,7 @@ msgstr "Davet linki kopyalandı."
 msgid "Invite not found"
 msgstr "Davet bulunamadı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invite only"
 msgstr "Yalnızca davetli"
 
@@ -8245,11 +8249,11 @@ msgstr "Kullanıcı davet et"
 msgid "invited"
 msgstr "davet edildi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invited"
 msgstr "Davet edilen"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invites"
 msgstr "Davetler"
 
@@ -8291,11 +8295,11 @@ msgstr "{0} çağrılıyor…"
 msgid "IP"
 msgstr "IP"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "is"
 msgstr "ise"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "is not"
 msgstr "değilse"
 
@@ -8597,7 +8601,7 @@ msgstr "KPI"
 msgid "KPIs"
 msgstr "KPI'lar"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Label"
 msgstr "Etiket"
 
@@ -8629,7 +8633,7 @@ msgstr "{pending} içine düşer"
 msgid "Landscape"
 msgstr "Yatay"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "language"
 msgstr "dil"
 
@@ -8641,7 +8645,7 @@ msgstr "Dil"
 #~ msgid "Language code (e.g. tr, de, fr):"
 #~ msgstr "Dil kodu (örn. tr, de, fr):"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "languages"
 msgstr "diller"
 
@@ -8662,7 +8666,7 @@ msgid "largest value"
 msgstr "en büyük değer"
 
 #: src/client/admin/collections/collections-index.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Last"
 msgstr "Son"
 
@@ -8760,7 +8764,8 @@ msgstr "Son görülme"
 msgid "Last seen at"
 msgstr "Son görülme adresi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Last submission"
 msgstr "Son gönderim"
 
@@ -8800,7 +8805,7 @@ msgid "Latitude"
 msgstr "Enlem"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "layout"
 msgstr "düzen"
 
@@ -8968,7 +8973,7 @@ msgid "lifetime"
 msgstr "toplam"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Light"
 msgstr "Açık"
@@ -9016,7 +9021,7 @@ msgstr "Bağlantı kopyalandı."
 msgid "Link field"
 msgstr "Bağlantı alanı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "link pins this language"
 msgstr "bağlantı bu dili sabitler"
 
@@ -9055,7 +9060,8 @@ msgstr "Liste"
 
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/shared.tsx
 #: src/client/admin/pages/observability/revisions.tsx
 #: src/client/admin/ui.tsx
 msgid "live"
@@ -9167,7 +9173,7 @@ msgstr "Tek satıra kilitli — site ayarları için kullanışlı."
 msgid "log entry"
 msgstr "günlük girdisi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Logic"
 msgstr "Mantık"
 
@@ -9226,7 +9232,7 @@ msgstr "Aranıyor…"
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Kodlarınızı kaybettiniz veya azaldı mı? Yeni bir set oluşturun — eski kodlar hemen çalışmayı durdurur."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Low label"
 msgstr "Alt uç etiketi"
 
@@ -9363,7 +9369,8 @@ msgstr "aşağıdakilerin {0} ile eşleş"
 msgid "Matched rules"
 msgstr "Eşleşen kurallar"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Matrix"
 msgstr "Matris"
 
@@ -9387,7 +9394,7 @@ msgstr "En fazla 80 karakter."
 msgid "Max attempts"
 msgstr "Maksimum deneme"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Max file size"
 msgstr "Azami dosya boyutu"
 
@@ -9618,7 +9625,7 @@ msgstr "Anahtar oluştur"
 msgid "Minting a new key immediately invalidates the old one."
 msgstr "Yeni anahtar oluşturmak eskisini anında geçersiz kılar."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Mints a new token; the current link stops working"
 msgstr "Yeni bir token üretir; mevcut bağlantı çalışmayı durdurur"
 
@@ -9703,7 +9710,7 @@ msgid "Monthly request quota"
 msgstr "Aylık istek kotası"
 
 #: src/client/admin/pages/automation/flows.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 msgid "more"
 msgstr "daha fazla"
 
@@ -9725,7 +9732,8 @@ msgid "Morning"
 msgstr "Sabah"
 
 #: src/client/admin/collections/collection-settings.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Move down"
 msgstr "Aşağı taşı"
 
@@ -9738,7 +9746,8 @@ msgid "Move to this time"
 msgstr "Bu saate taşı"
 
 #: src/client/admin/collections/collection-settings.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Move up"
 msgstr "Yukarı taşı"
 
@@ -9795,7 +9804,7 @@ msgstr "Bir JSON nesnesi olmalıdır."
 #~ msgid "must be accepted"
 #~ msgstr "kabul edilmesi zorunlu"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "must be accepted to submit"
 msgstr "göndermek için kabul edilmeli"
@@ -9879,7 +9888,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
 #: src/client/admin/pages/data/database-import.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -9907,7 +9916,7 @@ msgid "name is required"
 msgstr "ad zorunludur"
 
 #: src/client/admin/pages/automation/agents.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Name is required."
 msgstr "İsim gerekli."
 
@@ -9944,7 +9953,7 @@ msgstr "{0} gerekir"
 #~ msgid "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
 #~ msgstr "Sunucuda TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY gerektirir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "needs TURNSTILE_SITE_KEY on the server"
 msgstr "sunucuda TURNSTILE_SITE_KEY gerektirir"
 
@@ -10048,7 +10057,7 @@ msgstr "Yeni akış"
 msgid "New folder"
 msgstr "Yeni klasör"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "New form"
 msgstr "Yeni form"
 
@@ -10084,11 +10093,11 @@ msgid "New link minted — the old one no longer works."
 msgstr "Yeni bağlantı üretildi — eskisi artık çalışmıyor."
 
 #. placeholder {0}: waiting.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "New links for {0} waiting"
 msgstr "Bekleyen {0} kişi için yeni bağlantı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "New matrix"
 msgstr "Yeni matris"
 
@@ -10154,7 +10163,7 @@ msgstr "Yeni satırlar listenin sonuna eklenir. Taşımak için liste görünüm
 msgid "New slug"
 msgstr "Yeni slug"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "New step"
 msgstr "Yeni adım"
 
@@ -10204,7 +10213,7 @@ msgstr "İleri"
 msgid "next {HORIZON_DAYS} days"
 msgstr "önümüzdeki {HORIZON_DAYS} gün"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "Next →"
 msgstr "İleri →"
@@ -10230,7 +10239,7 @@ msgid "no"
 msgstr "hayır"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 #: src/client/pages/book.tsx
 msgid "No"
 msgstr "Hayır"
@@ -10275,7 +10284,7 @@ msgstr "Bu pencerede etkinlik yok"
 msgid "No activity recorded."
 msgstr "Etkinlik kaydedilmedi."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "no address"
 msgstr "adres yok"
 
@@ -10303,7 +10312,7 @@ msgstr "AI anahtarı tanımlı değil"
 msgid "no answer yet"
 msgstr "henüz yanıt yok"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "No answers yet"
 msgstr "Henüz yanıt yok"
 
@@ -10319,11 +10328,11 @@ msgstr "Arşivlenmiş koleksiyon yok"
 #~ msgid "No auth on the visitor's side — the token in the URL is the credential."
 #~ msgstr "Ziyaretçi tarafında oturum yok — URL'deki token kimlik bilgisidir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No auth on the visitor's side — the token in the URL is the credential. It's stored hashed, so it can only be shown <0>once</0>."
 msgstr "Ziyaretçi tarafında oturum yok — URL'deki token kimlik bilgisidir. Hash'lenerek saklanır, bu yüzden yalnızca <0>bir kez</0> gösterilebilir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "No blocks match \"{q}\""
 msgstr "\\\"{q}\\\" ile eşleşen blok yok"
 
@@ -10601,7 +10610,7 @@ msgstr "Henüz klasör yok — yüklemeler <0>uploads/</0> altına gider."
 msgid "No folders yet. <0>Create one</0>."
 msgstr "Henüz klasör yok. <0>Bir tane oluşturun</0>."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "No forms yet"
 msgstr "Henüz form yok"
 
@@ -10702,7 +10711,7 @@ msgstr "Henüz KPI tanımlanmadı"
 msgid "No KPIs for this collection"
 msgstr "Bu koleksiyon için KPI yok"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No language found."
 msgstr "Dil bulunamadı."
 
@@ -10710,7 +10719,7 @@ msgstr "Dil bulunamadı."
 msgid "no limit"
 msgstr "limit yok"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No limit"
 msgstr "Sınırsız"
 
@@ -10790,7 +10799,7 @@ msgstr "Önümüzdeki iki hafta içinde açık saat yok."
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "Henüz organizasyon yok — buradan oluşturun ya da son kullanıcılar uygulamanızdan kendileri açsın."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "No other field on <0>{collection}</0> offers these same choices."
 msgstr "<0>{collection}</0> içinde aynı seçenekleri sunan başka alan yok."
 
@@ -10928,7 +10937,7 @@ msgstr "Yapılandırılmış SAML sağlayıcı yok. Bir tane ekleyene kadar oper
 msgid "No schema."
 msgstr "Şema yok."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "No selection — any file type is accepted."
 msgstr "Seçim yok — her dosya türü kabul edilir."
 
@@ -10957,7 +10966,7 @@ msgstr "Henüz kaynak yok"
 msgid "No spans recorded for this trace."
 msgstr "Bu iz için kayıtlı span yok."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "No submissions yet"
 msgstr "Henüz gönderim yok"
 
@@ -11063,7 +11072,7 @@ msgstr "Gelmedi"
 msgid "Nobody answers"
 msgstr "Kimse cevaplamaz"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Nobody invited yet."
 msgstr "Henüz kimse davet edilmedi."
 
@@ -11101,7 +11110,7 @@ msgstr "izin verilmiyor"
 msgid "Not asked"
 msgstr "Sorulmadı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Not at all"
 msgstr "Hiç"
 
@@ -11136,7 +11145,7 @@ msgstr "Sayım için gerekli değil"
 msgid "NOT NULL — adding to a table that already has rows needs a default."
 msgstr "NOT NULL — satırları olan bir tabloya eklemek varsayılan değer gerektirir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "not on this collection"
 msgstr "bu koleksiyonda yok"
 
@@ -11165,7 +11174,7 @@ msgstr "Kaydedilmedi — {0}"
 msgid "not saved"
 msgstr "kaydedilmedi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "not sent"
 msgstr "gönderilmedi"
 
@@ -11339,20 +11348,20 @@ msgstr "npm paketi"
 msgid "npm registry"
 msgstr "npm kayıt deposu"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "NPS — how likely to recommend (0–10)"
 msgstr "NPS — tavsiye etme olasılığı (0–10)"
 
 #. placeholder {0}: b.nps.score
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "NPS {0}"
 msgstr "NPS {0}"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Number input"
 msgstr "Sayı girişi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Numbered scale"
 msgstr "Numaralı ölçek"
 
@@ -11488,7 +11497,7 @@ msgstr "Hata durumunda"
 msgid "On expiry the request rejects — nobody answering is not the same as approval."
 msgstr "Süre dolunca istek reddedilir — kimsenin yanıtlamaması onay anlamına gelmez."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "On submit"
 msgstr "Gönderimde"
 
@@ -11505,7 +11514,7 @@ msgstr "Bir sağlayıcı yukarıdaki webhook URL'sine gönderim yaptığında, h
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir. MCP erişimini istediğiniz zaman anahtarın Connect MCP panelinden ayarlayabilirsiniz."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "One answer per browser"
 msgstr "Tarayıcı başına tek yanıt"
 
@@ -11558,7 +11567,7 @@ msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir.
 msgid "One-time link, no <0>password</0>."
 msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "only a visitor holding an unspent link may answer"
 msgstr "yalnızca kullanılmamış bağlantısı olan biri yanıtlayabilir"
 
@@ -11602,7 +11611,7 @@ msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {
 msgid "Only the hash of the link is stored, so the one handed out when this resource was created cannot be shown again. Mint a replacement to see one — the old link stops working the moment you do."
 msgstr "Bağlantının yalnızca özeti saklanır; bu kaynak oluşturulurken verilen bağlantı bir daha gösterilemez. Görmek için yenisini üretin — ürettiğiniz anda eski bağlantı çalışmayı bırakır."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Only the invite tokens are shown: generate a new form link above and the next batch comes back as full URLs."
 msgstr "Yalnızca davet anahtarları gösteriliyor: yukarıdan yeni bir form bağlantısı oluşturun, sonraki grup tam URL olarak gelsin."
 
@@ -11614,7 +11623,7 @@ msgstr "Penceredeki yalnızca en yeni span'ler toplandı."
 msgid "Only the moves you allow are accepted — on the API, in flows, everywhere. Leave it off and any value may follow any other."
 msgstr "Yalnızca izin verdiğiniz geçişler kabul edilir — API'de, akışlarda, her yerde. Kapalı bırakırsanız her değer her değeri izleyebilir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Only the selected types are accepted — enforced server-side."
 msgstr "Yalnızca seçili türler kabul edilir — sunucu tarafında uygulanır."
 
@@ -11659,17 +11668,18 @@ msgstr "{0} üzerinden ödeme sayfası açın ve her tahsilatı bildirildiği an
 msgid "Open checkouts through {0} and record each settlement as it is reported. There are no billing objects to mirror."
 msgstr "{0} üzerinden ödeme bağlantısı açın; her tahsilat bildirildiği anda kaydedilir. Aynalanacak bir faturalama nesnesi yok."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "Open collection"
 msgstr "Koleksiyonu aç"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Open form"
 msgstr "Formu aç"
 
 #. placeholder {0}: form.collection
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Open in {0}"
 msgstr "{0} içinde aç"
 
@@ -11723,7 +11733,7 @@ msgstr "Çalışma saatleri"
 msgid "Opening…"
 msgstr "Açılıyor…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Opens"
 msgstr "Açılış"
 
@@ -11756,7 +11766,7 @@ msgid "Ops bots — admin role required."
 msgstr "Operasyon botları — yönetici rolü gerekli."
 
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "optional"
@@ -12104,7 +12114,8 @@ msgstr "Duraklat"
 
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/shared.tsx
 msgid "paused"
 msgstr "duraklatıldı"
 
@@ -12114,7 +12125,7 @@ msgstr "duraklatıldı"
 msgid "Paused"
 msgstr "Duraklatıldı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "pausing returns 410 on the public link"
 msgstr "duraklatınca herkese açık bağlantı 410 döner"
 
@@ -12160,7 +12171,7 @@ msgstr "Ödemeler"
 msgid "PayTR and iyzico both require one."
 msgstr "PayTR ve iyzico bunu zorunlu tutar."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "PDF"
 msgstr "PDF"
 
@@ -12323,13 +12334,13 @@ msgstr "Bir koleksiyon seçin, bir sorgu yazın ve çalıştırın. Tam metin i�
 #~ msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
 #~ msgstr "Bir koleksiyon seçin, sorgunuzu yazın ve çalıştırın. Tam metin için koleksiyonun FTS anahtarı açık olmalı; vektör için bir embedding modeli yapılandırılmış olmalı."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Pick a collection."
 msgstr "Bir koleksiyon seçin."
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/field-rollup-editor.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Pick a collection…"
 msgstr "Koleksiyon seçin…"
@@ -12597,7 +12608,7 @@ msgstr "Kopyalanacak kaynak tabloları seçin. Her tablo bir koleksiyona dönü�
 msgid "Pick type…"
 msgstr "Tür seçin…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Pick where submissions land — you'll design the form next."
 msgstr "Gönderimlerin nereye düşeceğini seçin — formu bir sonraki adımda tasarlayacaksınız."
 
@@ -12645,7 +12656,7 @@ msgstr "Koleksiyon olaylarını Slack'e, API'nize veya herhangi bir HTTPS uç no
 msgid "PKCE"
 msgstr "PKCE"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Placeholder"
 msgstr "Yer tutucu"
 
@@ -12751,7 +12762,7 @@ msgstr "Bağlı bir kaynağı bir koleksiyona yöneltin ve ne sıklıkla çalı�
 msgid "Policy"
 msgstr "Politika"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Policy URL"
 msgstr "Sözleşme URL'si"
 
@@ -12951,7 +12962,7 @@ msgstr "Profil kaydedildi."
 #. placeholder {0}: b.nps.promoters
 #. placeholder {1}: b.nps.passives
 #. placeholder {2}: b.nps.detractors
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "destekleyici {0} · nötr {1} · eleştiren {2}"
 
@@ -13041,7 +13052,7 @@ msgstr "Herkese açık gömme etkinleştirildi."
 msgid "public link"
 msgstr "herkese açık bağlantı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Public link"
 msgstr "Herkese açık bağlantı"
 
@@ -13061,7 +13072,7 @@ msgstr "herkese açık okuma"
 msgid "Public read-only link"
 msgstr "Herkese açık salt okunur bağlantı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Public, embeddable forms that write straight into a collection — share a link or drop the iframe anywhere."
 msgstr "Doğrudan bir koleksiyona yazan herkese açık, gömülebilir formlar — bağlantıyı paylaşın ya da iframe'i istediğiniz yere ekleyin."
 
@@ -13190,7 +13201,7 @@ msgid "Query your backend in natural language, browse the MCP tool catalog, and 
 msgstr "Arka ucunuzu doğal dilde sorgulayın, MCP araç kataloğuna göz atın ve harici istemcileri OAuth veya API anahtarıyla bağlayın — her çağrı rolünüze ve anahtar bazlı izin listesine göre kapsanır."
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Questions"
 msgstr "Soru"
 
@@ -13219,7 +13230,7 @@ msgstr "Qwen orta seviye · dengeli fiyat"
 msgid "Rana"
 msgstr "Rana"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Rate limit"
 msgstr "Hız limiti"
 
@@ -13296,7 +13307,7 @@ msgstr "Başka bir sütundan okunsun"
 msgid "Read on your own clock, then stored as an instant."
 msgstr "Kendi saatinizle okunur, sonra bir zaman anı olarak saklanır."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "read the full text"
 msgstr "metnin tamamını oku"
@@ -13496,7 +13507,7 @@ msgstr "Yönlendirme URI’si"
 msgid "Redirect URI to register"
 msgstr "Kaydedilecek yönlendirme adresi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Redirect URL"
 msgstr "Yönlendirme URL'si"
 
@@ -13708,12 +13719,12 @@ msgstr "Şemayı yeniden yükle"
 msgid "Remembered facts apply to"
 msgstr "Hatırlanan bilgilerin kapsamı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Remind by email"
 msgstr "E-posta ile hatırlat"
 
 #. placeholder {0}: relTime(i.remindedAt)
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "reminded {0}"
 msgstr "hatırlatıldı {0}"
 
@@ -13766,7 +13777,7 @@ msgstr "Sütunu kaldır"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Remove condition"
 msgstr "Koşulu kaldır"
 
@@ -13778,7 +13789,7 @@ msgstr "Cihazı kaldır"
 msgid "Remove file"
 msgstr "Dosyayı kaldır"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Remove from form"
 msgstr "Formdan kaldır"
 
@@ -13791,7 +13802,7 @@ msgstr "Grubu kaldır"
 msgid "Remove it from the list"
 msgstr "Listeden çıkar"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Remove language"
 msgstr "Dili kaldır"
 
@@ -13803,7 +13814,7 @@ msgstr "Bir kişiyi koleksiyonlardan, revizyon geçmişinden, etkinlik kaydında
 msgid "Remove question"
 msgstr "Soruyu kaldır"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Remove row"
 msgstr "Satırı kaldır"
 
@@ -13970,7 +13981,7 @@ msgid "Require these fields first"
 msgstr "Önce şu alanlar dolu olsun"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "required"
@@ -13980,15 +13991,15 @@ msgstr "zorunlu"
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Required"
 msgstr "Zorunlu"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "required by the collection schema"
 msgstr "koleksiyon şeması gerektiriyor"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "required by the schema — can't be removed from the form"
 msgstr "şema gereği zorunlu — formdan çıkarılamaz"
 
@@ -14114,7 +14125,7 @@ msgstr "yanıt"
 msgid "Response"
 msgstr "Yanıt"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Response limit"
 msgstr "Yanıt sınırı"
 
@@ -14174,15 +14185,15 @@ msgstr "Sonuç"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Sonuç bir sonraki adım için <0>$last</0> değişkenine aktarılır."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Results"
 msgstr "Sonuçlar"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Results can't be read"
 msgstr "Sonuçlar okunamıyor"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Results score this as promoters (9–10) minus detractors (0–6)."
 msgstr "Sonuçlarda bu, destekleyiciler (9–10) eksi eleştirenler (0–6) olarak puanlanır."
 
@@ -14313,7 +14324,7 @@ msgstr "istediğiniz zaman iptal edilebilir"
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -14441,12 +14452,12 @@ msgstr "Döndür"
 msgid "Rotate key"
 msgstr "Anahtarı yenile"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Rotate link"
 msgstr "Bağlantıyı yenile"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Rotate the form link?"
 msgstr "Form bağlantısı yenilensin mi?"
 
@@ -14454,12 +14465,12 @@ msgstr "Form bağlantısı yenilensin mi?"
 #~ msgid "Rotate the token to mint a fresh embed snippet."
 #~ msgstr "Yeni bir gömme kodu için token'ı yenileyin."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Rotate token"
 msgstr "Token'ı yenile"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Row"
 msgstr "Satır"
 
@@ -14487,14 +14498,14 @@ msgstr "satır"
 
 #: src/client/admin/collections/collections-index.tsx
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "Rows"
 msgstr "Satırlar"
 
 #. placeholder {0}: rows.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "rows · {0}"
 msgstr "satır · {0}"
 
@@ -14514,7 +14525,7 @@ msgstr "{r} tarafından oluşturulan satırlar bu kuralı karşılamalıdır."
 msgid "rows in"
 msgstr "satır girişi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Rows in collection"
 msgstr "Koleksiyondaki satırlar"
 
@@ -14523,7 +14534,7 @@ msgid "Rows land in an ordinary collection, so permissions, querying and exports
 msgstr "Satırlar sıradan bir koleksiyona düşer; izinler, sorgulama ve dışa aktarma diğer veriler gibi geçerlidir."
 
 #. placeholder {0}: form.collection
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "rows live in <0>{0}</0>"
 msgstr "satırlar <0>{0}</0> içinde yaşar"
 
@@ -14793,7 +14804,7 @@ msgid "Save credentials"
 msgstr "Bilgileri kaydet"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "save failed"
 msgstr "kayıt başarısız"
 
@@ -14837,7 +14848,7 @@ msgstr "Limitleri kaydet"
 msgid "Save metadata"
 msgstr "Meta verileri kaydet"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Save progress"
 msgstr "İlerlemeyi kaydet"
 
@@ -14866,7 +14877,7 @@ msgid "Save this secret now"
 msgstr "Bu gizli anahtarı şimdi kaydedin"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "saved"
 msgstr "kaydedildi"
 
@@ -14904,7 +14915,7 @@ msgid "Saving MCP guards"
 msgstr "MCP korumaları kaydediliyor"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "saving…"
 msgstr "kaydediliyor…"
 
@@ -15045,7 +15056,7 @@ msgstr "Kapsamlar"
 msgid "scoping & lifecycle"
 msgstr "kapsam ve yaşam döngüsü"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Script"
 msgstr "Script"
 
@@ -15067,7 +15078,7 @@ msgstr "{total} öğeyi başlık veya slug ile ara…"
 msgid "Search a collection"
 msgstr "Bir koleksiyonda arayın"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Search blocks…"
 msgstr "Blok ara…"
 
@@ -15132,7 +15143,7 @@ msgstr "Arama indeksi yeniden oluşturuldu: {0} indekslendi, toplam {1}."
 msgid "Search keys…"
 msgstr "Anahtarları ara…"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Search languages…"
 msgstr "Dil ara…"
 
@@ -15211,7 +15222,7 @@ msgstr "Seç"
 #~ msgid "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
 #~ msgstr "Ayarlarını düzenlemek için tuvalden bir blok seçin. Yalnızca skaler, gizli olmayan alanlar gösterilebilir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Select a block on the canvas to edit its settings. Scalar and file fields can be exposed — never private or computed ones."
 msgstr "Ayarlarını düzenlemek için tuvalde bir blok seçin. Skaler ve dosya alanları formda gösterilebilir — gizli veya hesaplanan alanlar asla."
 
@@ -15259,7 +15270,7 @@ msgstr "Geçmişini görmek için bir öğe seçin."
 msgid "Select environment"
 msgstr "Ortam seçin"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 #: src/client/pages/public-form.tsx
 msgid "Select one…"
 msgstr "Birini seçin…"
@@ -15406,7 +15417,7 @@ msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapıla
 #~ msgid "Sends the visitor here after submitting, instead of the message."
 #~ msgstr "Gönderimden sonra ziyaretçiyi mesaj yerine buraya yönlendirir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "sent"
 msgstr "gönderildi"
 
@@ -15426,7 +15437,7 @@ msgstr "sırayla"
 #~ msgid "Server default (10 MB)"
 #~ msgstr "Sunucu varsayılanı (10 MB)"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Server default (5 MB)"
 msgstr "Sunucu varsayılanı (5 MB)"
 
@@ -15621,11 +15632,11 @@ msgstr "Settings → MCP → Add. Claude Desktop ile aynı JSON şekli. (Veya an
 msgid "settled"
 msgstr "sonuçlandı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Several answers allowed, so the shares can add up to more than 100%."
 msgstr "Birden fazla yanıt seçilebildiği için oranların toplamı %100'ü aşabilir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Several questions on one shared set of columns"
 msgstr "Birkaç soru, ortak bir sütun kümesi üzerinde"
 
@@ -15634,7 +15645,7 @@ msgid "Severity"
 msgstr "Önem düzeyi"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Share"
 msgstr "Paylaş"
@@ -15656,11 +15667,11 @@ msgstr "Paylaşım bağlantısı oluşturuldu."
 msgid "Share link revoked."
 msgstr "Paylaşım bağlantısı iptal edildi."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Share the public link — every question gets a breakdown here as answers arrive."
 msgstr "Herkese açık bağlantıyı paylaşın — yanıtlar geldikçe her sorunun dağılımı burada görünür."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Share the public link — rows land here (and in the collection) as they arrive."
 msgstr "Herkese açık bağlantıyı paylaşın — satırlar geldikçe buraya (ve koleksiyona) düşer."
 
@@ -15726,7 +15737,7 @@ msgstr "Tüm {0} oturumu göster"
 msgid "Show archived collections"
 msgstr "Arşivlenmiş koleksiyonları göster"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Show conditionally"
 msgstr "Koşullu göster"
 
@@ -15772,7 +15783,7 @@ msgstr "Parolayı göster"
 msgid "Show sections as tabs"
 msgstr "Bölümleri sekme olarak göster"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Show this block only when"
 msgstr "Bu bloğu yalnızca şu durumda göster"
 
@@ -15797,7 +15808,7 @@ msgstr "{0} değiştirilmiş alan gösteriliyor"
 
 #. placeholder {0}: rows.length
 #. placeholder {1}: total ?? rows.length
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Showing {0} of {1} rows"
 msgstr "{1} satırdan {0} tanesi gösteriliyor"
 
@@ -15823,7 +15834,7 @@ msgstr "En son güncellenen 100 satır gösteriliyor. Daraltmak için arama yap�
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 msgstr "Yukarıda orijinal gösteriliyor. Bu dosya için kenar yeniden boyutlandırmayı etkinleştirmek için <0>Herkese açık</0> seçeneğini açın."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Shown as a \"read the full text\" link next to the checkbox."
 msgstr "Onay kutusunun yanında \"metnin tamamını oku\" bağlantısı olarak gösterilir."
 
@@ -15839,7 +15850,7 @@ msgstr "Yazar satırlarında ve üst bilgi açılır menüsünde gösterilir."
 msgid "Shown in lists as"
 msgstr "Listelerde şöyle gösterilir"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Shown in place of the questions. The form keeps its title, so the link still says what it was."
 msgstr "Soruların yerine gösterilir. Form başlığını korur, böylece bağlantı neyin bağlantısı olduğunu söylemeye devam eder."
 
@@ -15867,7 +15878,7 @@ msgstr "Herkese açık sayfada görünür."
 msgid "Shown on tiles and reports"
 msgstr "Kartlarda ve raporlarda görünür"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "shown once — copy it now, it won't appear again"
 msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
 
@@ -15875,7 +15886,7 @@ msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
 msgid "Shown once — store it now."
 msgstr "Yalnızca bir kez gösterilir — şimdi kaydedin."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Shown once — these links cannot be listed again."
 msgstr "Bir kez gösterilir — bu bağlantılar tekrar listelenemez."
 
@@ -16225,7 +16236,7 @@ msgstr "Sıralanan"
 msgid "Source"
 msgstr "Kaynak"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "source collection"
 msgstr "kaynak koleksiyon"
 
@@ -16287,11 +16298,11 @@ msgstr "Belirtim kullanılamıyor. Yenilemeyi deneyin."
 msgid "Specific dates"
 msgstr "Belirli tarihler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Splits the form into pages"
 msgstr "Formu sayfalara böler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Spreadsheets"
 msgstr "Tablolar"
 
@@ -16327,7 +16338,7 @@ msgstr "Aşamalı düzenleme"
 msgid "Staging"
 msgstr "Hazırlık"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Star rating"
 msgstr "Yıldızlı puan"
 
@@ -16373,7 +16384,7 @@ msgstr "Bağlantıyı MCP istemcinizden yeniden başlatın (örneğin claude.ai 
 msgid "Start with a template"
 msgstr "Bir şablonla başla"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "started, not submitted"
 msgstr "başlanmış, gönderilmemiş"
 
@@ -16431,15 +16442,16 @@ msgstr "Yeniden onaylamadan bağlı kalma"
 msgid "step {0} of 2"
 msgstr "{0}. adım / 2"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "step {stepNo}"
 msgstr "adım {stepNo}"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "Step break"
 msgstr "Adım sonu"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Step breaks split the form into pages — presentation only, nothing is written to the collection."
 msgstr "Adım sonları formu sayfalara böler — yalnızca sunumdur, koleksiyona hiçbir şey yazılmaz."
 
@@ -16570,28 +16582,30 @@ msgstr "Konu zorunludur."
 msgid "Submission failed — please try again"
 msgstr "Gönderim başarısız — lütfen tekrar deneyin"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Submissions"
 msgstr "Gönderimler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Submissions go through the standard items write path — validation, flows, webhooks, realtime, audit. Anything listening on this collection fires as if an authenticated user created the row."
 msgstr "Gönderimler standart kayıt yazma yolundan geçer — doğrulama, flow'lar, webhook'lar, realtime, denetim. Bu koleksiyonu dinleyen her şey, satırı oturum açmış bir kullanıcı oluşturmuş gibi tetiklenir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "submissions run collection validation · versioned collections land as drafts"
 msgstr "gönderimler koleksiyon doğrulamasından geçer · sürümlü koleksiyonlarda taslak olarak kaydedilir"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/pages/public-form.tsx
 msgid "Submit"
 msgstr "Gönder"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Submit button label"
 msgstr "Gönder butonu etiketi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Submitted"
 msgstr "Gönderildi"
 
@@ -16612,7 +16626,7 @@ msgstr "Başarılı"
 msgid "Success"
 msgstr "Başarılı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Success message"
 msgstr "Başarı mesajı"
 
@@ -16640,7 +16654,7 @@ msgstr "önerilen: {suggestedAlias}"
 msgid "Sum"
 msgstr "Toplam"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "summarised"
 msgstr "özetlendi"
 
@@ -16745,7 +16759,7 @@ msgstr "sistem"
 
 #: src/client/admin/fields/display-template-editor.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "System"
 msgstr "Sistem"
@@ -16968,7 +16982,7 @@ msgstr "Teşekkürler"
 msgid "Thank you — your answer is recorded"
 msgstr "Teşekkürler — yanıtınız kaydedildi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Thanks — we got it!"
 msgstr "Teşekkürler — aldık!"
 
@@ -17024,7 +17038,7 @@ msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı
 msgid "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
 msgstr "Koleksiyon sizin için oluşturulur ve güncel tutulur — eşlenecek bir şey yok. Oradaki bir satırı düzenlemek randevuyu taşımaz ya da iptal etmez."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "The collection this form writes into may have been deleted or renamed."
 msgstr "Bu formun yazdığı koleksiyon silinmiş ya da adı değişmiş olabilir."
 
@@ -17036,7 +17050,7 @@ msgstr "Sütun her zaman posta sunucusunun çözümlediği kodlanmış biçimi s
 msgid "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 msgstr "Kolon her zaman bir çözümleyicinin yanıt verdiği kodlanmış biçimi saklar. Bu yalnızca GÖRÜNÜMÜ değiştirir — https://xn--rnek-4qa.com/ yerine https://örnek.com/. Çalışma alanında gerçekten böyle host'lar yoksa kapalı bırakın."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. Eski bağlantının gömülü olduğu her yerin güncellenmesi gerekir."
 
@@ -17061,7 +17075,7 @@ msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir.
 msgid "The field on {0} that points back at this row."
 msgstr "{0} üzerinde bu satıra geri işaret eden alan."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "the field stays in the collection"
 msgstr "alan koleksiyonda kalır"
 
@@ -17182,7 +17196,7 @@ msgstr "Herkese açık rezervasyon bağlantısı"
 msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 msgstr "Herkese açık gömme aktif. Bağlantı oluşturulduğunda yalnızca bir kez gösterildi — URL’ye tekrar ihtiyacınız olursa aşağıdan yenileyin."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "The public link stops working immediately. Submitted rows stay in the collection."
 msgstr "Herkese açık bağlantı anında devre dışı kalır. Gönderilen kayıtlar koleksiyonda kalır."
 
@@ -17215,7 +17229,7 @@ msgstr "Rol menüsü organizasyon yönetimini belirler. Organizasyon içi roller
 msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 msgstr "Bu eşleşmedikçe satır reddedilir. Başka bir alanın değerine <0>$field.name</0> ile referans verin (örn. <1>end_date ≥ $field.start_date</1>)."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "The row is removed from the collection. This can't be undone."
 msgstr "Satır koleksiyondan kaldırılır. Bu işlem geri alınamaz."
 
@@ -17240,7 +17254,7 @@ msgstr "Seçilen klasörün kökünde backlex-extension.json yok."
 msgid "The sender cancelled this request."
 msgstr "Gönderen bu talebi iptal etti."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "The server-wide upload ceiling still applies on top."
 msgstr "Sunucu genelindeki yükleme sınırı ayrıca geçerlidir."
 
@@ -17264,7 +17278,7 @@ msgstr "Saat yeniden satışa açılır ve müşteriye e-posta gider."
 msgid "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 msgstr "Saat alındı. Değiştirme veya iptal bağlantısı yalnızca burada, bir kez gösterilir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "Token tekrar gösterilemez — yeni bir bağlantı üretmek tek yoldur. Eski bağlantı anında çalışmayı durdurur; gömülü kullanımları güncelleyin."
 
@@ -17300,7 +17314,7 @@ msgstr "Çalışma saatlerinin yazıldığı saat dilimi — bir görüntüleme 
 msgid "Their link to change or cancel"
 msgstr "Değiştirme veya iptal bağlantısı"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "theme"
 msgstr "tema"
 
@@ -17364,7 +17378,7 @@ msgstr "bu koleksiyon"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json / dosya / ilişki listesi / yerelleştirilmiş) ve zengin metin alanları kayıt bazında düzenlenir."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "Bu koleksiyonda forma uygun alan yok (yalnızca skaler, gizli olmayan alanlar gösterilebilir)."
 
@@ -17436,7 +17450,7 @@ msgstr "Bu belge artık imzaya açık değil"
 msgid "This does not reach"
 msgstr "Bunun ulaşamadıkları"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "This form is closed."
 msgstr "Bu form kapalı."
 
@@ -17665,7 +17679,7 @@ msgid "to"
 msgstr "→"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/observability/translations.tsx
 msgid "To"
 msgstr "Alıcı"
@@ -17809,7 +17823,7 @@ msgstr "En çok sayfa"
 msgid "Top referrers"
 msgstr "En çok yönlendiren"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Total"
 msgstr "Toplam"
 
@@ -18000,11 +18014,11 @@ msgstr "Bunu kapatmak bu koleksiyonun içerik API'sinin 404 döndürmesine neden
 msgid "Turns the KPI into a ranking"
 msgstr "KPI'ı sıralamaya çevirir"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Turnstile"
 msgstr "Turnstile"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "turnstile + honeypot + rate limit"
 msgstr "turnstile + honeypot + hız limiti"
 
@@ -18247,7 +18261,7 @@ msgid "up to {0}"
 msgstr "en fazla {0}"
 
 #. placeholder {0}: Math.floor((block.maxBytes ?? 5 * 1024 * 1024) / 1024 / 1024)
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/canvas.tsx
 msgid "up to {0} MB"
 msgstr "en fazla {0} MB"
 
@@ -18386,7 +18400,7 @@ msgstr "Kullanım yenilendi."
 msgid "Use \"{label}\" column"
 msgstr "\"{label}\" sütununu kullan"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Use \"Generate new link\" above — the embed snippet is minted together with it."
 msgstr "Yukarıdaki \"Yeni bağlantı üret\" düğmesini kullanın — gömme kodu onunla birlikte üretilir."
 
@@ -18636,7 +18650,7 @@ msgstr "Sürüm"
 msgid "Version <0>(optional)</0>"
 msgstr "Sürüm <0>(isteğe bağlı)</0>"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "versioned"
 msgstr "sürümlü"
 
@@ -18644,7 +18658,7 @@ msgstr "sürümlü"
 msgid "Versioned (draft / published)"
 msgstr "Sürümlü (taslak / yayınlandı)"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Video"
 msgstr "Video"
 
@@ -18680,7 +18694,7 @@ msgstr "Profili görüntüle"
 msgid "Views"
 msgstr "Görünümler"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "visitor's browser language"
 msgstr "ziyaretçinin tarayıcı dili"
 
@@ -18693,11 +18707,11 @@ msgid "Visitors"
 msgstr "Ziyaretçiler"
 
 #. placeholder {0}: languages[1] ?? "tr"
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/panels.tsx
 msgid "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
 msgstr "Ziyaretçiler tarayıcı dilini görür; <0>?lang={0}</0> belirli bir dili zorlar. Eksik metinler ana dile düşer."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
 msgstr "Ziyaretçi işaretlemeden gönderemez — sunucu tarafında da zorunlu. Onay cümlesini Etiket alanına yazın."
 
@@ -18877,7 +18891,7 @@ msgstr "koleksiyonda etkin olan neyse"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "When"
 msgstr "Ne zaman"
 
@@ -18987,7 +19001,7 @@ msgstr "En uygun agent"
 msgid "Who"
 msgstr "Kim"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Who can answer, and until when"
 msgstr "Kim, ne zamana kadar yanıtlayabilir"
 
@@ -19076,7 +19090,7 @@ msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
@@ -19189,11 +19203,11 @@ msgstr "Yazma işlemleri 24s"
 msgid "Writes blocked. Toggle \"read-only\" off to run mutations."
 msgstr "Yazma işlemleri engellendi. Değişiklik yapmak için \"salt okunur\" seçeneğini kapatın."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Writes to"
 msgstr "Yazma hedefi"
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "Written answers are not shown here — read them in the collection"
 msgstr "Yazılı yanıtlar burada gösterilmez — koleksiyonda okuyun"
 
@@ -19218,7 +19232,7 @@ msgid "yes"
 msgstr "evet"
 
 #: src/client/admin/pages/data/booking.tsx
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/results-tab.tsx
 #: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx
 msgid "Yes"
@@ -19366,7 +19380,7 @@ msgstr "Oturumunuzun süresi doldu — giriş yapıp istemciden yeniden deneyin.
 msgid "Your signature is recorded. You will get a copy once everyone has signed."
 msgstr "İmzanız kaydedildi. Herkes imzaladığında size bir kopya gönderilecek."
 
-#: src/client/admin/pages/data/forms.tsx
+#: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx
 msgid "Your submission has been received."
 msgstr "Gönderiminiz alındı."

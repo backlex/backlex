@@ -3,15 +3,15 @@ import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@backlex/ui/components/sheet";
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@backlex/ui/components/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
 import { I } from "../../icons";
 import { Badge, Button, PageHeader } from "../../ui";
@@ -265,16 +265,16 @@ function CreateOrgDialog({
   };
 
   return (
-    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetContent side="right" className="flex w-[min(460px,100vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
-        <SheetHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <SheetTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>New organization</Trans></SheetTitle>
-          <SheetDescription className="text-[12.5px]">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle><Trans>New organization</Trans></DialogTitle>
+          <DialogDescription>
             <Trans>Seed an owner now, or leave it empty and add members once it exists.</Trans>
-          </SheetDescription>
-        </SheetHeader>
-        <ScrollArea className="w-full" viewportClassName="max-h-[calc(100vh-14rem)]">
-          <div className="flex flex-col gap-4 px-5 py-[18px]">
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex min-w-0 flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Name</Trans></label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t`Acme Inc.`} />
@@ -302,15 +302,15 @@ function CreateOrgDialog({
               </span>
             </div>
           </div>
-        </ScrollArea>
-        <SheetFooter className="shrink-0 flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
+        </DialogBody>
+        <DialogFooter>
           <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button variant="primary" disabled={!name.trim() || saving} onClick={() => void submit()}>
             {saving ? <Trans>Creating…</Trans> : <Trans>Create</Trans>}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -507,22 +507,22 @@ function OrgDrawer({
   const pendingInvites = invites.filter((i) => i.pending);
 
   return (
-    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetContent side="right" className="flex w-[min(620px,100vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
-        <SheetHeader className="shrink-0 flex-row items-start gap-3 space-y-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader className="flex-row items-start gap-3 space-y-0 text-left">
           <div className="grid size-10 shrink-0 place-items-center rounded-control bg-primary text-primary-foreground">
             <I.Building size={16} />
           </div>
           <div className="min-w-0">
-            <SheetTitle className="text-base font-semibold tracking-[-0.01em]">{org.name}</SheetTitle>
-            <SheetDescription className="mt-0.5 text-[12.5px]">
+            <DialogTitle>{org.name}</DialogTitle>
+            <DialogDescription className="mt-0.5">
               <span className="font-mono">{org.slug}</span> · {members.length} <Trans>members</Trans>
-            </SheetDescription>
+            </DialogDescription>
           </div>
-        </SheetHeader>
+        </DialogHeader>
 
-        <ScrollArea className="w-full" viewportClassName="max-h-[calc(100vh-11rem)]">
-          <div className="flex flex-col gap-8 px-5 py-[18px]">
+        <DialogBody>
+          <div className="flex min-w-0 flex-col gap-8">
             <div>
               <div className="mb-2 text-[12.5px] font-medium"><Trans>Details</Trans></div>
               <div className="flex flex-col gap-3">
@@ -684,15 +684,15 @@ function OrgDrawer({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
-        <SheetFooter className="shrink-0 flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
+        <DialogFooter>
           <Button variant="ghost" onClick={onClose}><Trans>Close</Trans></Button>
           <Button variant="primary" disabled={!dirty || saving} onClick={() => void save()}>
             {saving ? <Trans>Saving…</Trans> : <Trans>Save changes</Trans>}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

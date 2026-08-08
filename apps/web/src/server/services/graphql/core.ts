@@ -23,14 +23,10 @@ import {
   type FieldType,
   isKnownFieldType,
   isLocalized,
-  resolveAutoFill,
   sidecarFields,
 } from "@backlex/db";
 import {
   loadSidecarForRows,
-  sidecarDeleteRow,
-  sidecarUpsert,
-  splitLocalized,
 } from "../items/i18n-sidecar";
 import {
   AppError,
@@ -42,38 +38,24 @@ import {
   resolvePermission,
   type PermResolveCache,
 } from "../permissions";
-import { dispatchEventHandlers, publishEvent } from "../events";
 import { loadCollection } from "../items/collection-loader";
 import { ITEMS_AGG_FUNCS, runItemsAggregate } from "../items/aggregate";
 import { searchCollectionItems } from "../items/search";
 import { runBatch, type BatchOp } from "../items/batch";
 import { runChangefeed } from "../items/changefeed";
 import { runBulkUpdate } from "../items/bulk";
-import { hashIncomingFields, } from "../items/hash-fields";
-import { getStagedRow, stagedDeleteSql, stagedUpsertSql, stagedViewOf } from "../items/staged";
-import { enforceOnDeleteTriggers } from "../items/on-delete";
-import { performCreate, type WriteEnv } from "../items/write";
+import { performCreate, performDelete, performUpdate, type WriteEnv } from "../items/write";
 import {
-  rollupRefreshAllStatements,
   rollupRefreshStatements,
 } from "../items/rollup";
-import {
-  appendPositionSql,
-  orderFieldsOf,
-  sameScope,
-} from "../items/order";
-import { resolveSlugsForWrite, slugFieldsOf } from "../items/slug";
 import { validateAndNormalizeGeo } from "../items/geo-fields";
 import {
-  assertTransitions,
   describeTransitions,
-  transitionEventName,
 } from "../items/transitions";
 import {
   deserialize as sharedDeserialize,
   deserializeField,
   serialize as sharedSerialize,
-  serializeField,
 } from "../items/serialize";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "../items/money-fields";
 import { canonicalizeEmailFields, normalizeEmailOperands } from "../items/email-fields";
@@ -444,7 +426,7 @@ const fieldByCamel = (collection: CollectionRow, camelName: string): FieldDef | 
  * `stored` is the row as it exists now, for an update: a patch changing only
  * `city` still has to resolve against the `address` it did not mention.
  */
-const gqlAutoGeocode = async (
+const _gqlAutoGeocode = async (
   ctx: Ctx,
   collection: CollectionRow,
   data: Record<string, unknown>,
@@ -471,7 +453,7 @@ const gqlAutoGeocode = async (
   }
 };
 
-const validateInput = (
+const _validateInput = (
   inputData: Record<string, unknown>,
   collection: CollectionRow,
   perm: Awaited<ReturnType<typeof resolvePermission>>,
@@ -546,7 +528,7 @@ const validateInput = (
  * once it has loaded the row: a patch that sets `total` and not `currency` on a
  * multi-currency collection takes the currency from the row it is patching.
  */
-const canonicalizeMoneyForGql = (
+const _canonicalizeMoneyForGql = (
   inputData: Record<string, unknown>,
   collection: CollectionRow,
   existing: Record<string, unknown> | null,
@@ -596,7 +578,7 @@ const canonicalizeMoneyForGql = (
  * `GraphQLError`, preserving the code so the two surfaces refuse with the same
  * words and the same classification.
  */
-const asGqlError = <T>(fn: () => T): T => {
+const _asGqlError = <T>(fn: () => T): T => {
   try {
     return fn();
   } catch (e) {
@@ -693,7 +675,7 @@ const attachLocalizedMaps = async (
 /** Split a camelCase GraphQL input into a snake-keyed patch of just the
  *  `localized` fields (values are `{locale: value}` maps), for the sidecar
  *  write. Removes those keys from `data` so the base INSERT/UPDATE skips them. */
-const takeLocalizedInput = (
+const _takeLocalizedInput = (
   data: Record<string, unknown>,
   fields: FieldDef[],
 ): Record<string, unknown> => {
@@ -1039,7 +1021,7 @@ export const getResolver = async (
  * The row keys are translated back to snake_case first: everything on the
  * GraphQL side is camelCase, and the rollup spec names real columns.
  */
-const gqlRollupRefresh = async (
+const _gqlRollupRefresh = async (
   ctx: Ctx,
   collection: CollectionRow,
   tenantId: string | null | undefined,
@@ -1217,254 +1199,13 @@ export const updateResolver = async (
       { extensions: { code: auth.userId ? "FORBIDDEN" : "UNAUTHORIZED" } },
     );
   }
-  validateInput(args.data, collection, perm, true);
-  // Hash `hash`-typed fields; empty/omitted values are dropped so the existing
-  // digest survives. The re-SELECT + renderRow below re-reads from the DB and
-  // masks hash columns to null, so no explicit scrub of the response is needed.
-  await hashIncomingFields(args.data, collection.fields, (f) => camel(f.name));
-  // Pull `localized` fields out for the sidecar upsert; base UPDATE skips them.
-  const localizedPatch = takeLocalizedInput(args.data, collection.fields);
-
-  const table = collection.physicalTable;
-  const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
-  const tenantWhere = gqlTenantWhere(collection, auth);
-  if (tenantWhere) wheres.push(tenantWhere);
-  if (perm.whereSql) wheres.push(perm.whereSql);
-  if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
-  const existing = await queryAll<Record<string, unknown>>(
-    ctx,
-    sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`,
+  const full = await loadCollection(ctx, auth.tenantId ?? undefined, collection.slug);
+  const env = await writeEnvOf(gqlCtx, full);
+  const res = await asGqlErrorAsync(() =>
+    performUpdate(env, args.id, toSnakeInput(args.data, collection), perm),
   );
-  if (!existing[0]) {
-    throw new GraphQLError("Item not found", { extensions: { code: "NOT_FOUND" } });
-  }
-
-  // Lifecycle check, before the staged branch for the same reason the REST path
-  // puts it there: a staged move must be refused when it is queued, not when
-  // someone else publishes it. The merged row is built with SNAKE keys because
-  // `requires` names fields, and the stored row is what it is being read from.
-  const mergedForTransitions: Record<string, unknown> = { ...(existing[0] as Record<string, unknown>) };
-  for (const f of collection.fields) {
-    const v = args.data[camel(f.name)];
-    if (v !== undefined) mergedForTransitions[f.name] = v;
-  }
-  const transitions = asGqlError(() =>
-    assertTransitions({
-      fields: collection.fields,
-      before: existing[0] as Record<string, unknown>,
-      patch: args.data,
-      merged: mergedForTransitions,
-      roles: auth.roles,
-      keyOf: (f) => camel(f.name),
-    }),
-  );
-
-  // Staged-edits interception — REST-parity (see performUpdate). On a
-  // `stagedEdits` collection, updating a *published* row folds the (validated,
-  // hashed) patch into the item's staged JSON patch instead of the live row;
-  // the next publish applies it. Values are stored REST-shaped (snake field
-  // names; localized fields as `{locale: value}` maps).
-  if (
-    collection.versioned &&
-    collection.stagedEdits &&
-    (existing[0] as Record<string, unknown>)._status === "published"
-  ) {
-    const stagedPatch: Record<string, unknown> = {};
-    for (const f of collection.fields) {
-      if (f.onUpdate) continue;
-      const v = args.data[camel(f.name)];
-      if (v !== undefined) stagedPatch[f.name] = v;
-    }
-    const locSplit = splitLocalized(localizedPatch, collection.fields, null);
-    for (const [loc, fieldMap] of locSplit.localePatches) {
-      for (const [fname, v] of Object.entries(fieldMap)) {
-        const prev = stagedPatch[fname];
-        stagedPatch[fname] = {
-          ...(prev && typeof prev === "object" && !Array.isArray(prev)
-            ? (prev as Record<string, unknown>)
-            : {}),
-          [loc]: v,
-        };
-      }
-    }
-    for (const name of locSplit.clearAll) stagedPatch[name] = null;
-    const existingStaged = await getStagedRow(ctx, collection, args.id);
-    const mergedStaged = { ...(existingStaged?.data ?? {}), ...stagedPatch };
-    await execute(
-      ctx,
-      stagedUpsertSql(
-        ctx.dialect,
-        collection.id,
-        args.id,
-        auth.tenantId ?? null,
-        mergedStaged,
-        auth.userId,
-      ),
-    );
-    // Respond with the (unchanged) live row rendered through the caller's
-    // read allow-list, previewing the staged values on top — mirrors the
-    // REST staged response.
-    const readPermStaged = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
-    const outStaged = renderRow(
-      existing[0]!,
-      collection.fields,
-      ctx.dialect,
-      !!collection.ownerScoped,
-      collection.hasCreatedAt,
-      collection.hasUpdatedAt,
-      readPermStaged.allowed ? readPermStaged.fields : new Set<string>(),
-    );
-    const view = stagedViewOf(mergedStaged, collection.fields);
-    for (const f of collection.fields) {
-      if (f.name in view && !isLocalized(f)) {
-        if (readPermStaged.allowed && readPermStaged.fields && !readPermStaged.fields.has(f.name)) continue;
-        outStaged[camel(f.name)] = view[f.name];
-      }
-    }
-    await attachLocalizedMaps(
-      ctx,
-      collection,
-      [existing[0]!],
-      [outStaged],
-      readPermStaged.allowed ? readPermStaged.fields : new Set<string>(),
-    );
-    return outStaged;
-  }
-
-  const now = ctx.dialect === "pg" ? new Date() : Date.now();
-  // Only stamp updated_at when the collection has it; skip the UPDATE entirely
-  // if there's nothing to set (no timestamp + no changed fields → empty SET).
-  const sets: SQL[] = collection.hasUpdatedAt
-    ? [sql`${sql.identifier("updated_at")} = ${now}`]
-    : [];
-  // Same as create, with the stored row supplying the address columns the
-  // patch did not mention.
-  await gqlAutoGeocode(ctx, collection, args.data, existing[0] as Record<string, unknown>);
-  // Deferred until here for the row's currency — see canonicalizeMoneyForGql.
-  canonicalizeMoneyForGql(args.data, collection, existing[0] as Record<string, unknown>);
-  // Slug columns — same rule as the REST update path, repeated because this
-  // resolver hand-builds its SET: only the slug fields this mutation NAMES are
-  // resolved, so a mutation that edits the title alone never moves a published
-  // URL. Sources come off the stored row merged with the patch, and the answer
-  // is written back into `args.data` so the loop below picks it up like any
-  // other value. Snake-keyed view for the same camelCase reason as create.
-  const updSlugFields = slugFieldsOf(collection.fields);
-  if (updSlugFields.length > 0 && updSlugFields.some((f) => args.data[camel(f.name)] !== undefined)) {
-    const merged: Record<string, unknown> = { ...(existing[0] as Record<string, unknown>) };
-    for (const f of collection.fields) {
-      const v = args.data[camel(f.name)];
-      if (v !== undefined) merged[f.name] = v;
-    }
-    const outcomes = await resolveSlugsForWrite(ctx, collection, merged, { excludeId: args.id });
-    for (const o of outcomes) {
-      if (args.data[camel(o.field)] === undefined) continue;
-      args.data[camel(o.field)] = o.value;
-    }
-  }
-  for (const f of collection.fields) {
-    if (f.onUpdate) continue; // system-managed, injected below
-    const v = args.data[camel(f.name)];
-    if (v === undefined) continue;
-    sets.push(sql`${sql.identifier(f.name)} = ${serializeField(v, f, ctx.dialect)}`);
-  }
-  // Re-parenting appends to the end of the list the row just joined — same rule
-  // as the REST update path, repeated because this resolver hand-builds its SET.
-  // No `args.data` write-back is needed here: the re-SELECT below reflects it.
-  for (const f of orderFieldsOf(collection.fields)) {
-    if (!f.spec.scope) continue;
-    if (args.data[camel(f.name)] !== undefined) continue;
-    const scopeDef = collection.fields.find((x) => x.name === f.spec.scope);
-    if (!scopeDef || args.data[camel(scopeDef.name)] === undefined) continue;
-    const nextScope = serializeField(args.data[camel(scopeDef.name)], scopeDef, ctx.dialect);
-    if (sameScope(nextScope, (existing[0] as Record<string, unknown>)[scopeDef.name])) continue;
-    sets.push(
-      sql`${sql.identifier(f.name)} = ${appendPositionSql(collection, auth.tenantId, f, nextScope)}`,
-    );
-  }
-  // Auto-filled-on-update columns — computed + written server-side. The re-
-  // SELECT below reflects them in the response, so no args.data mutation.
-  for (const f of collection.fields) {
-    if (!f.onUpdate) continue;
-    const v = resolveAutoFill(f.onUpdate, { now, userId: auth.userId, tenantId: auth.tenantId });
-    if (v === undefined) continue;
-    sets.push(sql`${sql.identifier(f.name)} = ${serializeField(v, f, ctx.dialect)}`);
-  }
-  if (sets.length > 0) {
-    await execute(
-      ctx,
-      sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} WHERE ${sql.join(wheres, sql` AND `)}`,
-    );
-  }
-  // Translations sidecar: upsert each touched locale (other locales preserved).
-  const updSplit = splitLocalized(localizedPatch, collection.fields, null);
-  if (updSplit.localePatches.size > 0) {
-    const byName = new Map(collection.fields.map((f) => [f.name, f]));
-    for (const [loc, fieldMap] of updSplit.localePatches) {
-      await execute(ctx, sidecarUpsert(table, args.id, loc, fieldMap, byName, ctx.dialect));
-    }
-  }
-
-  await gqlRollupRefresh(ctx, collection, auth.tenantId, {
-    before: existing[0]!,
-    after: args.data,
-  });
-
-  const refreshed = await queryAll<Record<string, unknown>>(
-    ctx,
-    sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.identifier("id")} = ${args.id} LIMIT 1`,
-  );
-  // Full (unprojected) row feeds the realtime event — the event renderer
-  // re-projects per subscriber's own read allow-list downstream.
-  const refreshedRow = renderRow(
-    refreshed[0]!,
-    collection.fields,
-    ctx.dialect,
-    !!collection.ownerScoped,
-    collection.hasCreatedAt,
-    collection.hasUpdatedAt,
-  );
-  await attachLocalizedMaps(ctx, collection, [refreshed[0]!], [refreshedRow]);
-  await publishEvent(
-    ctx.env,
-    `items:${collection.slug}`,
-    { event: "updated", data: refreshedRow },
-    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-  );
-  // Lifecycle moves reach the automation plane only — see the same loop in
-  // `performUpdate` for why this is not a second trip round the realtime bus.
-  for (const t of transitions) {
-    dispatchEventHandlers(
-      ctx.env,
-      `items:${collection.slug}`,
-      {
-        event: transitionEventName(t),
-        data: refreshedRow,
-        before: existing[0] as Record<string, unknown>,
-      },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-    );
-  }
-  // The value returned to the mutating caller must respect their READ field
-  // allow-list (the `update` grant may permit writing fields they can't read).
-  // Mirrors REST, which renders mutation responses through the read projection.
-  const readPerm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
-  const out = renderRow(
-    refreshed[0]!,
-    collection.fields,
-    ctx.dialect,
-    !!collection.ownerScoped,
-    collection.hasCreatedAt,
-    collection.hasUpdatedAt,
-    readPerm.allowed ? readPerm.fields : new Set<string>(),
-  );
-  await attachLocalizedMaps(
-    ctx,
-    collection,
-    [refreshed[0]!],
-    [out],
-    readPerm.allowed ? readPerm.fields : new Set<string>(),
-  );
-  return out;
+  for (const fx of res.sideEffects) await fx();
+  return toCamelOutput(res.data, collection);
 };
 
 export const deleteResolver = async (
@@ -1480,68 +1221,10 @@ export const deleteResolver = async (
       { extensions: { code: auth.userId ? "FORBIDDEN" : "UNAUTHORIZED" } },
     );
   }
-  const table = collection.physicalTable;
-  const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
-  const tenantWhere = gqlTenantWhere(collection, auth);
-  if (tenantWhere) wheres.push(tenantWhere);
-  if (perm.whereSql) wheres.push(perm.whereSql);
-  // Already-soft-deleted rows are a clean "not found" (idempotent).
-  if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
-
-  const existing = await queryAll<Record<string, unknown>>(
-    ctx,
-    sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`,
-  );
-  if (!existing[0]) {
-    throw new GraphQLError("Item not found", { extensions: { code: "NOT_FOUND" } });
-  }
-  const oldRow = renderRow(
-    existing[0],
-    collection.fields,
-    ctx.dialect,
-    !!collection.ownerScoped,
-    collection.hasCreatedAt,
-    collection.hasUpdatedAt,
-  );
-  if (collection.softDelete) {
-    const now = ctx.dialect === "pg" ? new Date() : Date.now();
-    await execute(
-      ctx,
-      sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier("deleted_at")} = ${now} WHERE ${sql.join(wheres, sql` AND `)}`,
-    );
-  } else {
-    await execute(
-      ctx,
-      sql`DELETE FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)}`,
-    );
-    // Hard delete: drop the row's sidecar translations too (no FK cascade on
-    // SQLite/D1). Mirrors the REST delete path.
-    if (sidecarFields(collection.fields).length > 0) {
-      await execute(ctx, sidecarDeleteRow(table, args.id));
-    }
-  }
-  // Deleting the row obsoletes any staged patch — mirrors the REST delete path.
-  if (collection.versioned) {
-    await execute(ctx, stagedDeleteSql(collection.id, args.id));
-  }
-  await gqlRollupRefresh(ctx, collection, auth.tenantId, { before: existing[0]!, always: true });
-  // App-layer ON DELETE relational triggers — mirrors the REST delete path.
-  const touched = await enforceOnDeleteTriggers(ctx, auth.tenantId, collection.slug, args.id, (stmt) =>
-    execute(ctx, stmt).then(() => undefined),
-  );
-  // Those triggers move rows set-wise and can't name the parents they hit, so
-  // anything rolling up over a collection they touched is restated wholesale.
-  for (const slug of touched) {
-    for (const stmt of await rollupRefreshAllStatements(ctx, auth.tenantId, slug)) {
-      await execute(ctx, stmt);
-    }
-  }
-  await publishEvent(
-    ctx.env,
-    `items:${collection.slug}`,
-    { event: "deleted", data: oldRow },
-    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-  );
+  const full = await loadCollection(ctx, auth.tenantId ?? undefined, collection.slug);
+  const env = await writeEnvOf(gqlCtx, full);
+  const res = await asGqlErrorAsync(() => performDelete(env, args.id, perm));
+  for (const fx of res.sideEffects) await fx();
   return true;
 };
 

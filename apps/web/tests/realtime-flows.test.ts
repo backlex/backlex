@@ -279,6 +279,106 @@ describe("realtime SSE", () => {
     expect(viaGql[key!]).toBe("Grace");
   });
 
+  /**
+   * The same parity for `updated` and `deleted`.
+   *
+   * `created` was pinned when `createResolver` moved onto the write core; the
+   * other two resolvers hand-built their events until they moved too, and the
+   * failure mode is identical — a subscriber written against one surface reads
+   * `undefined` off the other on any multi-word field, silently.
+   */
+  test("REST and GraphQL publish the same key shape for updated and deleted", async () => {
+    const parity = "parity_moves";
+    expect(
+      (
+        await h.fetch("/api/collections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug: parity, fields: [{ name: "author_name", type: "text" }] }),
+        })
+      ).status,
+    ).toBe(201);
+
+    const mk = async (name: string): Promise<string> => {
+      const r = await h.fetch(`/api/items/${parity}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ author_name: name }),
+      });
+      return ((await r.json()) as { data: { id: string } }).data.id;
+    };
+    const eventFor = async (
+      want: string,
+      write: () => Promise<string>,
+    ): Promise<Record<string, unknown>> => {
+      const sub = await openSubscription(h, `items:${parity}`);
+      try {
+        const id = await write();
+        const frame = await nextMatch(
+          sub.iter,
+          (f) => f.event === "message" && f.data.includes(id) && f.data.includes(`"${want}"`),
+          4000,
+        );
+        expect(frame).not.toBeNull();
+        return (JSON.parse(frame!.data) as { data: Record<string, unknown> }).data;
+      } finally {
+        sub.abort();
+      }
+    };
+
+    const [restUpd, gqlUpd] = [await mk("Ada"), await mk("Grace")];
+    const viaRestUpdated = await eventFor("updated", async () => {
+      await h.fetch(`/api/items/${parity}/${restUpd}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ author_name: "Ada L" }),
+      });
+      return restUpd;
+    });
+    const viaGqlUpdated = await eventFor("updated", async () => {
+      const r = await h.fetch("/api/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `mutation($id: ID!){ updateParityMoves(id: $id, data: { authorName: "Grace H" }) { id } }`,
+          variables: { id: gqlUpd },
+        }),
+      });
+      const j = (await r.json()) as { errors?: unknown[] };
+      expect(j.errors).toBeUndefined();
+      return gqlUpd;
+    });
+
+    expect(Object.keys(viaGqlUpdated).sort()).toEqual(Object.keys(viaRestUpdated).sort());
+    const key = Object.keys(viaRestUpdated).find((k) => k.toLowerCase().includes("author"));
+    expect(key).toBeTruthy();
+    // Non-vacuous: both really carried the new value under that one key.
+    expect(viaRestUpdated[key!]).toBe("Ada L");
+    expect(viaGqlUpdated[key!]).toBe("Grace H");
+
+    const [restDel, gqlDel] = [await mk("Del R"), await mk("Del G")];
+    const viaRestDeleted = await eventFor("deleted", async () => {
+      await h.fetch(`/api/items/${parity}/${restDel}`, { method: "DELETE" });
+      return restDel;
+    });
+    const viaGqlDeleted = await eventFor("deleted", async () => {
+      const r = await h.fetch("/api/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `mutation($id: ID!){ deleteParityMoves(id: $id) }`,
+          variables: { id: gqlDel },
+        }),
+      });
+      expect((await r.json() as { errors?: unknown[] }).errors).toBeUndefined();
+      return gqlDel;
+    });
+
+    expect(Object.keys(viaGqlDeleted).sort()).toEqual(Object.keys(viaRestDeleted).sort());
+    expect(viaRestDeleted[key!]).toBe("Del R");
+    expect(viaGqlDeleted[key!]).toBe("Del G");
+  });
+
   test("two subscribers on same channel both receive the event", async () => {
     const subA = await openSubscription(h, channel);
     const subB = await openSubscription(h, channel);

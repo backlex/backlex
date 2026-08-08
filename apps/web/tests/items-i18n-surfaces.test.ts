@@ -81,6 +81,49 @@ describe("localized fields — REST / GraphQL / MCP parity", () => {
     expect(read.data?.locSurfOne.title).toEqual({ en: "Hi", tr: "Selam" });
   });
 
+  /**
+   * An UPDATE of a localized field, on both write surfaces.
+   *
+   * The gap this closes: `update` was covered on REST and MCP but not on
+   * GraphQL, which is the one surface whose update used to re-load every locale
+   * for the response. It now goes through the same write core as REST, so both
+   * echo the locales the write TOUCHED — and the stored row keeps the others,
+   * which is the part that actually matters and is asserted separately.
+   */
+  test("update of a localized field: both surfaces echo the same, and neither loses a locale", async () => {
+    const create = await gql(
+      `mutation($d: LocSurfInput!){ createLocSurf(data: $d){ id } }`,
+      { d: { title: { en: "One", tr: "Bir" } } },
+    );
+    const id = create.data?.createLocSurf.id as string;
+
+    const patched = await gql(
+      `mutation($id: ID!, $d: LocSurfInput!){ updateLocSurf(id: $id, data: $d){ id title } }`,
+      { id, d: { title: { en: "Two" } } },
+    );
+    expect(patched.errors).toBeUndefined();
+    const viaGql = patched.data?.updateLocSurf.title;
+
+    // The same shape of write over REST, for comparison.
+    const c2 = await h.fetch(`/api/items/${slug}`, json({ title: { en: "One", tr: "Bir" } }));
+    const id2 = ((await c2.json()) as { data: { id: string } }).data.id;
+    const r2 = await h.fetch(`/api/items/${slug}/${id2}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: { en: "Two" } }),
+    });
+    const viaRest = ((await r2.json()) as { data: { title: unknown } }).data.title;
+
+    expect(viaGql).toEqual(viaRest);
+
+    // What must not happen on either: the untouched locale disappearing from
+    // the STORED row. The response is a projection; the sidecar is the truth.
+    for (const rid of [id, id2]) {
+      const stored = await (await h.fetch(`/api/items/${slug}/${rid}?locale=*`)).json();
+      expect((stored as any).data.title).toEqual({ en: "Two", tr: "Bir" });
+    }
+  });
+
   test("MCP: insert with locale, read with locale", async () => {
     const ins = await callTool("collections.insert", {
       collection: slug,

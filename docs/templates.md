@@ -44,7 +44,8 @@ bundled `roles`/`dashboards` names, and its collections (with their admin
   "Remove sample data" affordance).
 
 Template **ids are the contract with the cloud control plane** — keep them
-stable. Definitions live in `apps/web/src/server/templates/catalog.ts`.
+stable. Definitions live one per vertical in
+`apps/web/src/server/templates/defs/<id>.ts`.
 
 ## Applying
 
@@ -152,8 +153,21 @@ Like flows, templates are mirrored across every surface:
 
 ## Authoring templates
 
-Templates live in `apps/web/src/server/templates/catalog.ts`, built from a
-small helper DSL (`text`, `rel`, `money`, `select`, …). Hard constraints:
+Templates live under `apps/web/src/server/templates/`, one file per vertical:
+
+| File | Holds |
+|---|---|
+| `defs/<id>.ts` | one vertical's definition — the file name IS the template id |
+| `defs/index.ts` | the authoring standard, and the order the picker lists them in |
+| `dsl.ts` | the helper DSL (`text`, `rel`, `money`, `select`, …) every def is written in |
+| `types.ts` | `SchemaTemplate` and friends |
+| `kpis.ts` | bundled KPI definitions, keyed by template id |
+| `catalog.ts` | the entry point — `TEMPLATES`, `getTemplate`, `templateSummaries` |
+
+Adding a vertical is a new `defs/<id>.ts` plus one line in `defs/index.ts`;
+`tests/templates-catalog.test.ts` fails if a definition is inlined into the
+index instead, or if a def file outlives the template it named.
+Hard constraints:
 
 - **Samples are scalar / single-relation only.** Never seed a JSON array into
   a `json`/`relation_many` field — it trips the Postgres driver. Define the
@@ -199,7 +213,7 @@ model, which is where Vendure/Medusa earn their place.
 ### Form layout
 
 Collections are laid out with the field-organization primitives, not left as a
-flat column of inputs. The helpers at the top of `catalog.ts` — `sec`, `half`,
+flat column of inputs. The helpers in `templates/dsl.ts` — `sec`, `half`,
 `stacked`, `tabbed`, `divider`, `hint` — wrap `group`, `width`,
 `sectionCollapsible` / `sectionCollapsed`, `sectionsAsTabs` and the
 presentational `divider` / `notice` field types. The house rules:

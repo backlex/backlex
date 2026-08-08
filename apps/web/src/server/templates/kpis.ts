@@ -33,7 +33,7 @@
  *   quantity is the point, so the figure survives a schema whose sample data is
  *   sparse.
  */
-import type { TemplateKpi } from "./catalog";
+import type { TemplateKpi } from "./types";
 
 export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
   blog: [

@@ -16,6 +16,13 @@ import { Card } from "@backlex/ui/components/card";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@backlex/ui/components/select";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
 const isValidColor = (v: string): boolean => {
@@ -401,6 +408,7 @@ export function SignInBrandingCard({ pushToast }: { pushToast: PushToast }) {
   const [tagline, setTagline] = useState("");
   const [termsUrl, setTermsUrl] = useState("");
   const [privacyUrl, setPrivacyUrl] = useState("");
+  const [passwordLogin, setPasswordLogin] = useState("enabled");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -414,6 +422,7 @@ export function SignInBrandingCard({ pushToast }: { pushToast: PushToast }) {
       setTagline(typeof d.signInTagline === "string" ? d.signInTagline : "");
       setTermsUrl(typeof d.termsUrl === "string" ? d.termsUrl : "");
       setPrivacyUrl(typeof d.privacyUrl === "string" ? d.privacyUrl : "");
+      setPasswordLogin(typeof d.passwordLogin === "string" ? d.passwordLogin : "enabled");
       setDirty(false);
     } catch (e) {
       pushToast((e as Error).message);
@@ -432,6 +441,7 @@ export function SignInBrandingCard({ pushToast }: { pushToast: PushToast }) {
         signInTagline: tagline.trim(),
         termsUrl: termsUrl.trim(),
         privacyUrl: privacyUrl.trim(),
+        passwordLogin,
       });
       setDirty(false);
       pushToast(t`Sign-in screen saved.`);
@@ -498,6 +508,27 @@ export function SignInBrandingCard({ pushToast }: { pushToast: PushToast }) {
           onChange={(e) => { setPrivacyUrl(e.target.value); setDirty(true); }}
         />
         <span className="text-[11.5px] text-muted-foreground"><Trans>Linked from the sign-up consent line. Leave blank to show plain text with no link.</Trans></span>
+      </div>
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Password sign-in</Trans></label>
+        <Select
+          value={passwordLogin}
+          onValueChange={(v) => { setPasswordLogin(v); setDirty(true); }}
+          disabled={loading}
+        >
+          <SelectTrigger className="min-w-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="enabled">{t`Everyone`}</SelectItem>
+            <SelectItem value="app-only">{t`Workspace end-users only`}</SelectItem>
+            <SelectItem value="disabled">{t`Nobody`}</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Who may still sign in with an email and password. Pick "Workspace end-users
+        only" once your team is on SSO or passkeys — staff go through the identity
+        provider, your app's customers keep the login they signed up with. Saving is
+        refused while the password is the only way into the dashboard.</Trans></span>
       </div>
       <div className="flex justify-end gap-2 border-t border-border pt-2.5">
         <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}><Trans>Discard</Trans></Button>

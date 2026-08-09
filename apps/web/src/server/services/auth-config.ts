@@ -4,7 +4,11 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { userCount, type DbCtx } from "./seed";
 import { demoCredentials, isDemoMode } from "./demo";
-import { loadSignInBranding } from "./settings";
+import {
+  loadPasswordLoginMode,
+  loadSignInBranding,
+  type PasswordLoginMode,
+} from "./settings";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { isEdgeRuntime } from "../lib/runtime";
 
@@ -219,6 +223,67 @@ export const disabledAuthProviderForPath = async (
 };
 
 /**
+ * Does this better-auth path exchange an email + password for a session?
+ *
+ * Every one of these is a password path, and blocking only `/sign-in/email`
+ * would leave the others open: a sign-up mints a session directly, and a reset
+ * sets a password the caller then signs in with. `/change-password` is
+ * deliberately NOT here — it needs an existing session, so it is a
+ * *credential-management* call by someone already inside, and blocking it would
+ * strand anyone who wanted to rotate a password before it stops being usable.
+ */
+const isPasswordPath = (path: string): boolean =>
+  /\/sign-in\/email(?:$|\/|\?)/.test(path) ||
+  /\/sign-up\/email(?:$|\/|\?)/.test(path) ||
+  /\/(?:forget|reset)-password(?:$|\/|\?)/.test(path);
+
+/**
+ * Refuse a password exchange the instance has turned off, or `null` to let it
+ * through. `plane` says which side of the split is asking — `app-only` blocks
+ * the admin dashboard and lets workspace end-users keep theirs.
+ *
+ * Reads only for paths that could possibly be blocked, so ordinary auth traffic
+ * (callbacks, sessions, sign-out) never pays for the lookup.
+ */
+export const passwordLoginBlocked = async (
+  ctx: DbCtx,
+  path: string,
+  plane: "platform" | "app",
+): Promise<string | null> => {
+  if (!isPasswordPath(path)) return null;
+  const mode = await loadPasswordLoginMode(ctx.db, ctx.dialect);
+  if (mode === "enabled") return null;
+  if (mode === "app-only" && plane === "app") return null;
+  return plane === "platform"
+    ? "Password sign-in is disabled for the admin dashboard. Use SSO, a passkey, or a magic link."
+    : "Password sign-in is disabled for this instance.";
+};
+
+/**
+ * Reflect the password-login mode in a resolved surface, so a sign-in screen
+ * stops offering a form the server will refuse.
+ *
+ * The gate on the auth routes is the enforcement; this is what makes the UI
+ * honest. Marking the provider `enabled: false` rather than dropping it keeps
+ * the entry visible to the settings screen, which needs to know the password
+ * exists in order to say it is off.
+ */
+export const applyPasswordLoginMode = (
+  surface: ResolvedAuthSurface,
+  mode: PasswordLoginMode,
+  plane: "platform" | "app",
+): ResolvedAuthSurface => {
+  const blocked = mode === "disabled" || (mode === "app-only" && plane === "platform");
+  if (!blocked) return surface;
+  return {
+    ...surface,
+    providers: surface.providers.map((p) =>
+      p.kind === "credential" ? { ...p, enabled: false } : p,
+    ),
+  };
+};
+
+/**
  * Resolve just the policy flags for a workspace (stored `auth_config.policy`
  * over {@link POLICY_DEFAULTS}). Lean alternative to {@link resolveAuthSurface}
  * for the sign-up / verification enforcement paths, which only need a couple of
@@ -377,7 +442,13 @@ export const resolvePlatformAuthSurface = async (
   env: Env,
   tenantId: string | null | undefined,
 ): Promise<ResolvedAuthSurface> => {
-  const base = await resolveAuthSurface(ctx, env, tenantId, undefined, true);
+  const raw = await resolveAuthSurface(ctx, env, tenantId, undefined, true);
+  // The admin dashboard is the `platform` plane, so `app-only` blocks here.
+  const base = applyPasswordLoginMode(
+    raw,
+    await loadPasswordLoginMode(ctx.db, ctx.dialect),
+    "platform",
+  );
   if (!isPlatformSsoEnabled(env)) return { ...base, platformSso: false };
 
   const providers: PublicProvider[] = [...base.providers];

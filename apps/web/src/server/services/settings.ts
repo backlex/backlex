@@ -194,13 +194,61 @@ export const SIGN_IN_BRANDING_DEFAULTS: SignInBranding = {
   privacyUrl: "",
 };
 
-/** Keys persisted by {@link SignInBranding}. The settings route consults this
- *  to route these keys to the global (`tenant_id IS NULL`) row on write. */
+/**
+ * Whether an email + password may be exchanged for a session, and on which
+ * plane.
+ *
+ * Once a workspace has SSO, a passkey, or a magic link, the password is the
+ * weakest surviving way in — and the one an attacker with a credential dump
+ * tries. Turning SSO *on* does not turn the password *off*, so without this
+ * there is no way to finish the migration.
+ *
+ * - `enabled`  — both planes accept a password (the default).
+ * - `app-only` — workspace end-users still may; the admin dashboard may not.
+ *   This is the usual shape: staff go through the company IdP, customers keep
+ *   the login they signed up with.
+ * - `disabled` — neither plane accepts one.
+ *
+ * Instance-global (the `tenant_id IS NULL` row), for the same reason the
+ * sign-in branding is: the admin sign-in page is reached before any workspace
+ * is selected, so there is no tenant to scope the answer to.
+ */
+export type PasswordLoginMode = "enabled" | "app-only" | "disabled";
+
+export const PASSWORD_LOGIN_DEFAULT: PasswordLoginMode = "enabled";
+
+export const isPasswordLoginMode = (v: unknown): v is PasswordLoginMode =>
+  v === "enabled" || v === "app-only" || v === "disabled";
+
+/** Read the instance-global password-login mode (always the `tenant_id IS NULL`
+ *  row). Any read failure resolves to `enabled` — a settings table that cannot
+ *  be read must not lock every admin out of their own instance. */
+export const loadPasswordLoginMode = async (
+  db: PgDb | SqliteDb,
+  dialect: "pg" | "sqlite",
+): Promise<PasswordLoginMode> => {
+  const t = tableFor(dialect);
+  try {
+    const rows = (await (db as any)
+      .select()
+      .from(t)
+      .where(isNull(t.tenantId))) as { key: string; value: unknown }[];
+    const row = rows.find((r) => r.key === "passwordLogin");
+    return row && isPasswordLoginMode(row.value) ? row.value : PASSWORD_LOGIN_DEFAULT;
+  } catch {
+    return PASSWORD_LOGIN_DEFAULT;
+  }
+};
+
+/** Keys persisted by {@link SignInBranding} plus the password-login mode. The
+ *  settings route consults this to route these keys to the global
+ *  (`tenant_id IS NULL`) row on write. */
 export const SIGN_IN_BRANDING_KEYS = [
   "signInHeadline",
   "signInTagline",
   "termsUrl",
   "privacyUrl",
+  "passwordLogin",
 ] as const;
 
 /** Read the instance-global login-screen branding (always the

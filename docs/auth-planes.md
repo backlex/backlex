@@ -351,6 +351,44 @@ email/password + social, all reached under `/api/auth/*`:
   handler. (The workspace plane already rebuilds its plugin list from
   stored config, so it needs no edge gate.)
 
+- **Password sign-in mode.** Turning SSO on never turned the password
+  *off*, so the weakest way in survived every migration. `passwordLogin`
+  (**Settings → Appearance → sign-in screen**, or `PATCH /api/admin/settings`)
+  closes it, per plane:
+
+  | Mode | Admin dashboard | Workspace end-users |
+  |---|---|---|
+  | `enabled` (default) | password OK | password OK |
+  | `app-only` | refused | password OK |
+  | `disabled` | refused | refused |
+
+  `app-only` is the usual shape: staff go through the company IdP while
+  the app's customers keep the login they signed up with. Enforcement is
+  at the HTTP edge on both mounts (`routes/auth.ts` for the platform
+  plane, `routes/tenant-auth.ts` for the app plane) and covers **every**
+  password path — `sign-in/email`, `sign-up/email`, and
+  `forget`/`reset-password` — because a sign-up mints a session directly
+  and a reset sets a password the caller then signs in with. Blocking
+  only `/sign-in/email` would leave the other doors open.
+  `/change-password` is deliberately *not* blocked: it needs an existing
+  session, so it is credential management by somebody already inside.
+
+  The setting is **instance-global** (the `tenant_id IS NULL`
+  `app_settings` row) for the same reason the sign-in branding is — the
+  admin sign-in page is reached before any workspace is selected.
+  `/api/auth/providers` reports the credential provider as
+  `enabled: false` so the screen stops offering a form the server will
+  refuse; the entry stays in the list because the settings screen has to
+  know the password exists in order to say it is off.
+
+  **Lock-out guard.** Leaving `enabled` is refused with 422 unless the
+  admin sign-in screen offers something else — SSO, a passkey, a magic
+  link, or an email code. Without it an admin could turn the password off
+  on an instance with no other provider and the only way back would be a
+  manual DB write. Returning *to* `enabled` is never gated. A settings
+  read that fails for any reason resolves to `enabled` for the same
+  reason.
+
 ## Per-workspace config
 
 Two key-value tables hold per-workspace overrides for the auth

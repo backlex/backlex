@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
-import { disabledAuthProviderForPath } from "../services/auth-config";
+import { disabledAuthProviderForPath, passwordLoginBlocked } from "../services/auth-config";
 
 /**
  * better-auth ships its own router. We mount it at /api/auth/* and let it
@@ -28,5 +28,10 @@ export const authRoutes = new Hono<AppBindings>().all("/*", async (c) => {
       `${disabled === "magic" ? "Magic-link" : "Email-code"} sign-in is disabled for this instance.`,
     );
   }
+  // Same shape, for the instance-global password-login mode. This is the
+  // control plane, so `app-only` blocks here and leaves the workspace plane's
+  // own mount (routes/tenant-auth.ts) alone.
+  const passwordBlocked = await passwordLoginBlocked(ctx, c.req.path, "platform");
+  if (passwordBlocked) throw new AppError("FORBIDDEN", passwordBlocked);
   return ctx.auth.handler(c.req.raw);
 });

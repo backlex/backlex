@@ -6,7 +6,13 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import { hashSecret } from "@backlex/auth";
 import type { AppBindings } from "../app";
 import { findTenantBySlugOrId, getTenantAuth } from "../services/tenant-auth";
-import { loadAuthConfigRow, resolveAuthSurface } from "../services/auth-config";
+import {
+  applyPasswordLoginMode,
+  loadAuthConfigRow,
+  passwordLoginBlocked,
+  resolveAuthSurface,
+} from "../services/auth-config";
+import { loadPasswordLoginMode } from "../services/settings";
 import { resolveSamlProvider } from "../services/saml-providers";
 import { resolveLdapAdapter } from "../services/ldap-config";
 import { provisionAppUser } from "../services/sso-provisioning";
@@ -292,13 +298,21 @@ const pruneExpiredVerifications = async (
 export const tenantAuthRoutes = new Hono<AppBindings>()
   .get("/:slug/auth/providers", async (c) => {
     const { ctx, tenant } = await resolveTenant(c);
+    const dbCtx = { db: ctx.db as any, dialect: ctx.dialect };
     const surface = await resolveAuthSurface(
-      { db: ctx.db, dialect: ctx.dialect },
+      dbCtx,
       ctx.env,
       tenant.id,
       tenant.slug,
     );
-    return c.json({ data: surface });
+    // Only `disabled` reaches the workspace plane — mirrors the gate below.
+    return c.json({
+      data: applyPasswordLoginMode(
+        surface,
+        await loadPasswordLoginMode(ctx.db, ctx.dialect),
+        "app",
+      ),
+    });
   })
   /**
    * SP-initiated SAML login. Builds an AuthnRequest, persists its id in
@@ -853,6 +867,15 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
   })
   .all("/:slug/auth/*", async (c) => {
     const { ctx, tenant } = await resolveTenant(c);
+    // The workspace (app) plane. `disabled` blocks here; `app-only` does not —
+    // that mode exists precisely to move staff onto SSO while customers keep
+    // the login they signed up with.
+    const passwordBlocked = await passwordLoginBlocked(
+      { db: ctx.db as any, dialect: ctx.dialect },
+      c.req.path,
+      "app",
+    );
+    if (passwordBlocked) throw new AppError("FORBIDDEN", passwordBlocked);
     const auth = await getTenantAuth(
       { db: ctx.db, dialect: ctx.dialect },
       ctx.env,

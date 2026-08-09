@@ -10,9 +10,11 @@ import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isCloudflareWorkers, isDenoDeploy, isNetlify } from "../lib/runtime";
 import {
   loadAppSettings,
+  loadPasswordLoginMode,
   loadSignInBranding,
   SIGN_IN_BRANDING_KEYS,
 } from "../services/settings";
+import { resolvePlatformAuthSurface } from "../services/auth-config";
 import { timeZoneCode } from "../lib/locale";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -67,6 +69,10 @@ const SettingsInput = z
      *  must be a valid absolute URL. Also instance-global (`tenant_id IS NULL`). */
     termsUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
     privacyUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
+    /** Whether an email + password may be exchanged for a session, and on which
+     *  plane. Instance-global (`tenant_id IS NULL`). Leaving `enabled` is gated
+     *  on another way in existing — see the lock-out check in the handler. */
+    passwordLogin: z.enum(["enabled", "app-only", "disabled"]).optional(),
     /** Saved Schema-graph (ERD) node positions, keyed by collection slug.
      *  Admin-UI convenience state only — capped at 500 collections to keep the
      *  settings row small. */
@@ -171,14 +177,16 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const [settings, branding] = await Promise.all([
+      const [settings, branding, passwordLogin] = await Promise.all([
         loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null),
         loadSignInBranding(ctx.db, ctx.dialect),
+        loadPasswordLoginMode(ctx.db, ctx.dialect),
       ]);
       return c.json({
         data: {
           ...settings,
           ...branding,
+          passwordLogin,
           appUrl: ctx.env.APP_URL,
           emailFrom: ctx.env.EMAIL_FROM ?? null,
         },
@@ -214,6 +222,26 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const auth = c.get("auth");
       const body = c.req.valid("json");
       const t = tableFor(ctx.dialect);
+      // Turning the password off with nothing else configured locks every admin
+      // out of their own instance, and the fix would be a manual DB write. The
+      // admin sign-in screen's own provider list is the authority on what is
+      // left: if nothing but the password survives, refuse the change.
+      if (body.passwordLogin && body.passwordLogin !== "enabled") {
+        const surface = await resolvePlatformAuthSurface(
+          { db: ctx.db as any, dialect: ctx.dialect },
+          ctx.env,
+          auth.tenantId ?? null,
+        );
+        const alternatives = surface.providers.filter(
+          (p) => p.kind !== "credential" && p.enabled !== false,
+        );
+        if (alternatives.length === 0) {
+          throw new AppError(
+            "VALIDATION",
+            "Enable another way in first — SSO, a passkey, a magic link or an email code. Turning off the password with nothing else configured would lock every admin out.",
+          );
+        }
+      }
       const globalKeys = new Set<string>(SIGN_IN_BRANDING_KEYS);
       for (const [key, value] of Object.entries(body)) {
         if (value === undefined) continue;

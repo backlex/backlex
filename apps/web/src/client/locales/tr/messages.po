@@ -6550,6 +6550,10 @@ msgstr "Her yıl"
 msgid "everyone"
 msgstr "herkes"
 
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Everyone"
+msgstr "Herkes"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Everyone — one rejection ends it"
 msgstr "Herkes — tek bir ret süreci bitirir"
@@ -11073,6 +11077,10 @@ msgstr "Çalışma alanı dili yapılandırılmamış — Ayarlar → Yerelleşt
 msgid "No-show"
 msgstr "Gelmedi"
 
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Nobody"
+msgstr "Hiç kimse"
+
 #: src/client/admin/pages/automation/_agents-shared.tsx
 msgid "Nobody answers"
 msgstr "Kimse cevaplamaz"
@@ -12074,6 +12082,10 @@ msgstr "Bu örnek üzerinde parola sıfırlama etkin değil"
 #: src/client/admin/pages/account-page.tsx
 msgid "Password set."
 msgstr "Parola ayarlandı."
+
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Password sign-in"
+msgstr "Parola ile giriş"
 
 #: src/client/pages/reset-password.tsx
 msgid "Passwords do not match"
@@ -19029,6 +19041,10 @@ msgstr "Kim"
 msgid "Who can answer, and until when"
 msgstr "Kim, ne zamana kadar yanıtlayabilir"
 
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Who may still sign in with an email and password. Pick \"Workspace end-users only\" once your team is on SSO or passkeys — staff go through the identity provider, your app's customers keep the login they signed up with. Saving is refused while the password is the only way into the dashboard."
+msgstr "E-posta ve parolayla kimlerin giriş yapabileceği. Ekibiniz SSO veya passkey'e geçtiğinde \"Yalnızca çalışma alanı son kullanıcıları\" seçin — personel kimlik sağlayıcıdan geçer, uygulamanızın müşterileri kaydolduğu girişi kullanmaya devam eder. Panele giden tek yol parolayken kayıt reddedilir."
+
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Who was asked, who answered, and why."
 msgstr "Kime soruldu, kim yanıtladı ve neden."
@@ -19146,6 +19162,10 @@ msgstr "Çalışma alanı varsayılanı — {0}"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace default theme"
 msgstr "Çalışma alanı varsayılan teması"
+
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Workspace end-users only"
+msgstr "Yalnızca çalışma alanı son kullanıcıları"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "workspace favicon"

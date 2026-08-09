@@ -6550,6 +6550,10 @@ msgstr "Every year"
 msgid "everyone"
 msgstr "everyone"
 
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Everyone"
+msgstr "Everyone"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Everyone — one rejection ends it"
 msgstr "Everyone — one rejection ends it"
@@ -11073,6 +11077,10 @@ msgstr "No workspace locales configured — add them under Settings → Localiza
 msgid "No-show"
 msgstr "No-show"
 
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Nobody"
+msgstr "Nobody"
+
 #: src/client/admin/pages/automation/_agents-shared.tsx
 msgid "Nobody answers"
 msgstr "Nobody answers"
@@ -12074,6 +12082,10 @@ msgstr "Password reset is not enabled on this instance"
 #: src/client/admin/pages/account-page.tsx
 msgid "Password set."
 msgstr "Password set."
+
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Password sign-in"
+msgstr "Password sign-in"
 
 #: src/client/pages/reset-password.tsx
 msgid "Passwords do not match"
@@ -19029,6 +19041,10 @@ msgstr "Who"
 msgid "Who can answer, and until when"
 msgstr "Who can answer, and until when"
 
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Who may still sign in with an email and password. Pick \"Workspace end-users only\" once your team is on SSO or passkeys — staff go through the identity provider, your app's customers keep the login they signed up with. Saving is refused while the password is the only way into the dashboard."
+msgstr "Who may still sign in with an email and password. Pick \"Workspace end-users only\" once your team is on SSO or passkeys — staff go through the identity provider, your app's customers keep the login they signed up with. Saving is refused while the password is the only way into the dashboard."
+
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Who was asked, who answered, and why."
 msgstr "Who was asked, who answered, and why."
@@ -19146,6 +19162,10 @@ msgstr "Workspace default — {0}"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace default theme"
 msgstr "Workspace default theme"
+
+#: src/client/admin/pages/settings/appearance-cards.tsx
+msgid "Workspace end-users only"
+msgstr "Workspace end-users only"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "workspace favicon"

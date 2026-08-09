@@ -516,7 +516,9 @@ export function SignInBrandingCard({ pushToast }: { pushToast: PushToast }) {
           onValueChange={(v) => { setPasswordLogin(v); setDirty(true); }}
           disabled={loading}
         >
-          <SelectTrigger className="min-w-0">
+          {/* w-full, not the default w-fit: every other control in this card is
+              full width, and a fit trigger resizes as the selection changes. */}
+          <SelectTrigger className="w-full min-w-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

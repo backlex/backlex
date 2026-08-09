@@ -26,8 +26,11 @@ import {
   sidecarFields,
 } from "@backlex/db";
 import {
+  isSingleLocale,
   loadSidecarForRows,
 } from "../items/i18n-sidecar";
+import { decodeCursor, encodeCursor, keysetWhere } from "../items/keyset";
+import { loadAppSettings } from "../settings";
 import {
   AppError,
   type AuthSubject,
@@ -38,7 +41,7 @@ import {
   resolvePermission,
   type PermResolveCache,
 } from "../permissions";
-import { loadCollection } from "../items/collection-loader";
+import { hasLocalizedField, loadCollection } from "../items/collection-loader";
 import { ITEMS_AGG_FUNCS, runItemsAggregate } from "../items/aggregate";
 import { searchCollectionItems } from "../items/search";
 import { runBatch, type BatchOp } from "../items/batch";
@@ -578,7 +581,7 @@ const _canonicalizeMoneyForGql = (
  * `GraphQLError`, preserving the code so the two surfaces refuse with the same
  * words and the same classification.
  */
-const _asGqlError = <T>(fn: () => T): T => {
+const asGqlError = <T>(fn: () => T): T => {
   try {
     return fn();
   } catch (e) {
@@ -644,9 +647,18 @@ const renderRow = (
 };
 
 /**
- * Attach `localized` fields as full `{locale: value}` maps (camelCase keys) onto
- * already-rendered GraphQL rows, batch-loading the sidecar for all ids in one
- * query. GraphQL always surfaces the full map (no per-locale projection), the full per-locale map.
+ * Attach `localized` fields (camelCase keys) onto already-rendered GraphQL rows,
+ * batch-loading the sidecar for all ids in one query.
+ *
+ * Two shapes, chosen by `locale` — the same choice REST's `?locale=` makes:
+ *  - `null` / `"*"` — the full `{locale: value}` map.
+ *  - a locale — that locale's value, falling back to the workspace default,
+ *    then `null`. Same chain as `applySidecarFromRows`, which is what the REST
+ *    single-item read uses; a `localized` field then reads as the plain scalar
+ *    a client wants rather than a map it has to index.
+ *
+ * The GraphQL type is the `JSON` scalar either way, so the projection needs no
+ * schema change — the same field can carry a map or a string.
  */
 const attachLocalizedMaps = async (
   ctx: Ctx,
@@ -654,16 +666,28 @@ const attachLocalizedMaps = async (
   baseRows: Array<Record<string, unknown>>,
   rendered: Array<Record<string, unknown>>,
   allowedFields: Set<string> | null = null,
+  locale: string | null = null,
+  defaultLocale: string | null = null,
 ): Promise<void> => {
   const defs = sidecarFields(collection.fields).filter(
     (f) => !f.private && (!allowedFields || allowedFields.has(f.name)),
   );
   if (defs.length === 0 || baseRows.length === 0) return;
+  const single = isSingleLocale(locale);
   const ids = baseRows.map((r) => String(r.id));
   const byRow = await loadSidecarForRows(ctx, collection.physicalTable, ids, defs);
   for (let i = 0; i < baseRows.length; i++) {
     const sidecarRows = byRow.get(String(baseRows[i]!.id)) ?? [];
     const out = rendered[i]!;
+    if (single) {
+      const byLocale = new Map(sidecarRows.map((r) => [r.locale as string, r]));
+      for (const f of defs) {
+        const req = byLocale.get(locale as string)?.[f.name];
+        const def = defaultLocale ? byLocale.get(defaultLocale)?.[f.name] : undefined;
+        out[camel(f.name)] = deserialize(req ?? def ?? null, f.type, ctx.dialect);
+      }
+      continue;
+    }
     for (const f of defs) {
       const map: Record<string, unknown> = {};
       for (const r of sidecarRows) map[r.locale as string] = deserialize(r[f.name], f.type, ctx.dialect);
@@ -671,6 +695,21 @@ const attachLocalizedMaps = async (
     }
   }
 };
+
+/**
+ * Workspace default locale, loaded only when a single locale was actually
+ * asked for AND the collection has something to localize — the settings read
+ * is a query, and full-map mode has no fallback to resolve.
+ */
+const defaultLocaleFor = async (
+  ctx: Ctx,
+  tenantId: string | null,
+  collection: CollectionRow,
+  locale: string | null,
+): Promise<string | null> =>
+  isSingleLocale(locale) && hasLocalizedField(collection.fields)
+    ? ((await loadAppSettings(ctx.db, ctx.dialect, tenantId)).i18nDefaultLocale ?? null)
+    : null;
 
 /** Split a camelCase GraphQL input into a snake-keyed patch of just the
  *  `localized` fields (values are `{locale: value}` maps), for the sidecar
@@ -690,16 +729,41 @@ const _takeLocalizedInput = (
   return patch;
 };
 
-const buildOrderClause = (
-  sortStr: string | undefined,
-  collection: CollectionRow,
-): SQL => {
+/**
+ * The resolved sort, as both an ORDER BY clause and the column/direction pairs
+ * keyset pagination seeks on.
+ *
+ * One function produces both on purpose. A cursor is only correct if it was
+ * minted under the exact tuple the query orders by, so a second copy of this
+ * allow-list — even one that starts identical — is a page that silently skips
+ * or repeats rows the first time the two drift.
+ */
+interface SortPlan {
+  orderBy: SQL;
+  /** Ordered `(column, direction)` pairs, always ending in a unique tiebreaker. */
+  keyset: Array<{ column: string; dir: "asc" | "desc" }>;
+}
+
+const buildSortPlan = (sortStr: string | undefined, collection: CollectionRow): SortPlan => {
+  const plan = (cols: Array<{ column: string; dir: "asc" | "desc" }>): SortPlan => {
+    // A cursor identifies ONE row, so the tuple has to be unique. The primary
+    // key is appended unless the caller already sorted by it.
+    const keyset = cols.some((c) => c.column === collection.pkColumn)
+      ? cols
+      : [...cols, { column: collection.pkColumn, dir: "desc" as const }];
+    return {
+      orderBy: sql`ORDER BY ${sql.join(
+        keyset.map((c) => sql`${sql.identifier(c.column)} ${sql.raw(c.dir === "asc" ? "ASC" : "DESC")}`),
+        sql`, `,
+      )}`,
+      keyset,
+    };
+  };
   // Default sort needs a column that exists: created_at when the collection
   // has it, otherwise the primary key (timestamps-off collections).
-  const fallback = collection.hasCreatedAt
-    ? sql`ORDER BY ${sql.identifier("created_at")} DESC`
-    : sql`ORDER BY ${sql.identifier(collection.pkColumn)} DESC`;
-  if (!sortStr) return fallback;
+  const fallback = () =>
+    plan(collection.hasCreatedAt ? [{ column: "created_at", dir: "desc" }] : []);
+  if (!sortStr) return fallback();
   // Allow-list of sortable columns: system columns + the collection's own
   // fields. An unknown column is dropped rather than spliced into the query —
   // this stops ORDER BY against columns outside the schema (a 500 / probing
@@ -713,18 +777,17 @@ const buildOrderClause = (
     ...(collection.versioned ? ["_status", "_published_at", "_publish_at", "_unpublish_at"] : []),
     ...collection.fields.map((f) => f.name),
   ]);
-  const parts = sortStr
+  const cols = sortStr
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => {
-      const dir: "ASC" | "DESC" = s.startsWith("-") ? "DESC" : "ASC";
-      const field = s.replace(/^[-+]/, "");
-      if (!sortable.has(field)) return null;
-      return sql`${sql.identifier(field)} ${sql.raw(dir)}`;
+      const dir: "asc" | "desc" = s.startsWith("-") ? "desc" : "asc";
+      const column = s.replace(/^[-+]/, "");
+      return sortable.has(column) ? { column, dir } : null;
     })
-    .filter((x): x is SQL => x != null);
-  return parts.length === 0 ? fallback : sql`ORDER BY ${sql.join(parts, sql`, `)}`;
+    .filter((x): x is { column: string; dir: "asc" | "desc" } => x != null);
+  return cols.length === 0 ? fallback() : plan(cols);
 };
 
 /** Tenant-isolation predicate, mirroring the REST `tenantFilter`. Returns null
@@ -768,11 +831,38 @@ const gqlDraftWhere = async (
   return canSee ? null : sql`${sql.identifier("_status")} = 'published'`;
 };
 
-export const listResolver = async (
+export interface ListArgs {
+  filter?: Condition;
+  sort?: string;
+  limit?: number;
+  offset?: number;
+  /** Keyset pagination. `""` starts; echo back `nextCursor` to page forward.
+   *  When present, `offset` is ignored — same rule as REST's `?cursor=`. */
+  cursor?: string | null;
+  /** Project `localized` fields to one locale, or `"*"` for the full map. */
+  locale?: string | null;
+}
+
+export interface ListPage {
+  items: Array<Record<string, unknown>>;
+  /** Null on the last page. Only ever non-null in cursor mode. */
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+/**
+ * The list read, in the shape both `<slug>` (a bare array) and `<slug>Page`
+ * (the paging envelope) are built from.
+ *
+ * Cursor mode fetches one row past the page to learn whether another exists,
+ * exactly as REST does — `hasMore` is otherwise a guess, and a client that
+ * pages until an empty response makes one extra round trip every time.
+ */
+export const listPageResolver = async (
   gqlCtx: GqlCtx,
   collection: CollectionRow,
-  args: { filter?: Condition; sort?: string; limit?: number; offset?: number },
-) => {
+  args: ListArgs,
+): Promise<ListPage> => {
   const { ctx, auth, permCache } = gqlCtx;
   const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
   if (!perm.allowed) denyOrThrow(auth, collection.slug);
@@ -838,24 +928,68 @@ export const listResolver = async (
     ? sql`${sql.identifier("deleted_at")} IS NULL`
     : null;
   const draftWhere = await gqlDraftWhere(gqlCtx, collection, perm);
+  const sortPlan = buildSortPlan(args.sort, collection);
+  // Cursor mode replaces `offset` with a seek predicate on the sort tuple.
+  // A cursor minted under a different sort has a different arity, which
+  // `keysetWhere` refuses rather than paginating the wrong axis.
+  const cursorMode = typeof args.cursor === "string";
+  // A cursor is the sort tuple of the last row, base64url-encoded and handed
+  // to the caller. That makes every keyset column READABLE by whoever holds
+  // the cursor, whatever `perm.fields` says — sorting by a column the caller
+  // may not select would otherwise disclose one of its values per page. So the
+  // cursor path refuses a sort it cannot expose, rather than minting one.
+  // (`buildSortPlan`'s allow-list is about which columns EXIST; this is about
+  // which the caller may see. System columns aren't in `perm.fields`, which
+  // enumerates collection fields only, so only those are checked.)
+  if (cursorMode) {
+    const byName = new Map(collection.fields.map((f) => [f.name, f]));
+    const hidden = sortPlan.keyset.find((c) => {
+      const f = byName.get(c.column);
+      if (!f) return false; // a system column — always readable
+      return f.private === true || (perm.fields != null && !perm.fields.has(c.column));
+    });
+    if (hidden) {
+      throw new GraphQLError(
+        `Cannot paginate by "${hidden.column}" — the cursor would expose a field you cannot read. Sort by a readable column.`,
+        { extensions: { code: "FORBIDDEN" } },
+      );
+    }
+  }
+  // Both `decodeCursor` and `keysetWhere` refuse a bad cursor with an AppError.
+  // Unwrapped it would reach yoga as an unknown error and be masked to
+  // "Unexpected error." — the caller has to be told their cursor is stale or
+  // was minted under a different sort, which is exactly what REST tells them.
+  const seekWhere =
+    cursorMode && args.cursor
+      ? asGqlError(() =>
+          keysetWhere(
+            sortPlan.keyset.map((c) => ({ ref: sql`${sql.identifier(c.column)}`, dir: c.dir })),
+            decodeCursor(args.cursor as string),
+          ),
+        )
+      : null;
   const wheres = [
     gqlTenantWhere(collection, auth),
     userWhere,
     perm.whereSql,
     deletedWhere,
     draftWhere,
+    seekWhere,
   ].filter((x): x is SQL => x != null);
   const whereClause = wheres.length
     ? sql`WHERE ${sql.join(wheres, sql` AND `)}`
     : sql``;
-  const orderClause = buildOrderClause(args.sort, collection);
   const limit = Math.min(200, Math.max(1, args.limit ?? 50));
-  const offset = Math.max(0, args.offset ?? 0);
+  const offset = cursorMode ? 0 : Math.max(0, args.offset ?? 0);
+  // One row past the page, to answer `hasMore` without a second COUNT.
+  const fetchLimit = limit + 1;
 
-  const rows = await queryAll<Record<string, unknown>>(
+  const fetched = await queryAll<Record<string, unknown>>(
     ctx,
-    sql`SELECT * FROM ${sql.identifier(table)} ${whereClause} ${orderClause} LIMIT ${limit} OFFSET ${offset}`,
+    sql`SELECT * FROM ${sql.identifier(table)} ${whereClause} ${sortPlan.orderBy} LIMIT ${fetchLimit} OFFSET ${offset}`,
   );
+  const hasMore = fetched.length > limit;
+  const rows = hasMore ? fetched.slice(0, limit) : fetched;
   const rendered = rows.map((r) =>
     renderRow(
       r,
@@ -867,9 +1001,33 @@ export const listResolver = async (
       perm.fields,
     ),
   );
-  await attachLocalizedMaps(ctx, collection, rows, rendered, perm.fields);
-  return rendered;
+  const locale = args.locale ?? null;
+  await attachLocalizedMaps(
+    ctx,
+    collection,
+    rows,
+    rendered,
+    perm.fields,
+    locale,
+    await defaultLocaleFor(ctx, auth.tenantId ?? null, collection, locale),
+  );
+  // The cursor is the ORDER-BY tuple of the last row ON THIS PAGE, read from
+  // the RAW row — `rendered` is camelCased and permission-projected, so a sort
+  // column the caller may not read would be missing from it.
+  const last = rows[rows.length - 1];
+  const nextCursor =
+    cursorMode && hasMore && last
+      ? encodeCursor(sortPlan.keyset.map((c) => last[c.column] ?? null))
+      : null;
+  return { items: rendered, nextCursor, hasMore };
 };
+
+/** The bare-array list field. Same read, envelope discarded. */
+export const listResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  args: ListArgs,
+) => (await listPageResolver(gqlCtx, collection, args)).items;
 
 /**
  * Build a per-request batch loader for one target collection. Every `.load(id)`
@@ -978,6 +1136,7 @@ export const getResolver = async (
   gqlCtx: GqlCtx,
   collection: CollectionRow,
   id: string,
+  locale: string | null = null,
 ) => {
   const { ctx, auth, permCache } = gqlCtx;
   const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
@@ -1005,7 +1164,15 @@ export const getResolver = async (
     collection.hasUpdatedAt,
     perm.fields,
   );
-  await attachLocalizedMaps(ctx, collection, [rows[0]], [out], perm.fields);
+  await attachLocalizedMaps(
+    ctx,
+    collection,
+    [rows[0]],
+    [out],
+    perm.fields,
+    locale,
+    await defaultLocaleFor(ctx, auth.tenantId ?? null, collection, locale),
+  );
   return out;
 };
 

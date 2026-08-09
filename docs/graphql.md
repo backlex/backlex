@@ -30,8 +30,16 @@ input <Slug>Input {
 }
 
 type Query {
-  <slug>(filter: JSON, sort: String, limit: Int, offset: Int): [<Slug>!]!
-  <singular>(id: ID!): <Slug>
+  <slug>(filter: JSON, sort: String, limit: Int, offset: Int, locale: String): [<Slug>!]!
+  <slug>Page(filter: JSON, sort: String, limit: Int, offset: Int, locale: String,
+             cursor: String): <Slug>Page!
+  <singular>(id: ID!, locale: String): <Slug>
+}
+
+type <Slug>Page {
+  items: [<Slug>!]!
+  nextCursor: String   # pass back as `cursor`; null on the last page
+  hasMore: Boolean!
 }
 
 type Mutation {
@@ -342,6 +350,69 @@ their REST routes through the same service layer (gate:
   like REST. Upload/download/transform stay REST-only (byte streams).
 - **Backups** — `backups`, `backupConfig`; `runBackup(label)`,
   `restoreBackup(id, confirm: true)`, `setBackupConfig(data)`.
+
+## Localized fields (`locale`)
+
+A `localized` field lives in the translations sidecar, and GraphQL surfaces it
+through the `JSON` scalar. By default that is the full map, so one query can
+render every language at once:
+
+```graphql
+{ articles { title } }        # → { "title": { "en": "Hello", "tr": "Merhaba" } }
+```
+
+Pass `locale` to get the one value a client actually renders, with the same
+fallback chain REST's `?locale=` uses — **requested locale → workspace default
+→ null**:
+
+```graphql
+{ articles(locale: "tr") { title } }   # → { "title": "Merhaba" }
+{ article(id: "…", locale: "tr") { title } }
+```
+
+`locale: "*"` (or omitting it) returns the map. Because both shapes ride the
+same `JSON` scalar, the projection needs no separate type and no schema
+change — the analogue of Saleor's `translation(languageCode:)`, without a
+parallel `*Translation` object per collection.
+
+Mutations always write the full `{locale: value}` map form; single-locale
+*writes* are a REST/SDK feature (`{ locale }` on create/update).
+
+## Keyset pagination (`<slug>Page`)
+
+`<slug>` pages with `offset`, which is O(offset): the engine walks and discards
+every skipped row, so deep pages get linearly slower and can skip or repeat
+rows when something is inserted mid-scroll. `<slug>Page` is the same read
+behind a keyset cursor — O(page size) at any depth, and stable under
+concurrent inserts.
+
+```graphql
+query ($c: String) {
+  ordersPage(sort: "-created_at", limit: 50, cursor: $c) {
+    items { id total }
+    nextCursor
+    hasMore
+  }
+}
+```
+
+- Start with `cursor: ""`, then echo each response's `nextCursor` back. `null`
+  means you are on the last page.
+- The cursor is opaque base64url — don't parse it. It is only valid for the
+  exact `sort` it was minted under; a mismatched or hand-edited one is refused
+  with a `VALIDATION` error rather than paginating the wrong axis.
+- **When `cursor` is present, `offset` is ignored** — same rule as REST.
+- The primary key is appended to the sort tuple as a tiebreaker, so the order
+  is total and a cursor identifies exactly one row.
+- `hasMore` costs nothing extra: the page fetches one row past its limit rather
+  than running a second `COUNT`.
+- **You can only paginate by a column you can read.** The cursor *is* the sort
+  tuple handed back to the caller, so paginating by a `private` field — or one
+  outside your permission's `fields` allow-list — would disclose one of its
+  values per page. That combination is refused with `FORBIDDEN`; the same sort
+  without a cursor is unaffected.
+- Called without `cursor`, `<slug>Page` is plain offset paging that still
+  reports `hasMore` — `nextCursor` is `null` because offset mode has none.
 
 ## Query budget
 

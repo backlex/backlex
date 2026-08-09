@@ -12,6 +12,7 @@ import {
   createResolver,
   deleteResolver,
   getResolver,
+  listPageResolver,
   listResolver,
   pascal,
   searchResolver,
@@ -207,6 +208,29 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...slugMutationFields,
   };
 
+  // `<Pascal>Page` — the keyset envelope. Deliberately NOT the Relay
+  // connection shape: the REST surface pages with an opaque `next_cursor` and
+  // a `has_more` flag, and a second, differently-named vocabulary for the same
+  // mechanism is a thing to keep translating between rather than a feature.
+  const pageTypes = new Map<string, GraphQLObjectType>();
+  const buildPageType = (pascalName: string, itemType: GraphQLObjectType) => {
+    const existing = pageTypes.get(pascalName);
+    if (existing) return existing;
+    const t = new GraphQLObjectType({
+      name: `${pascalName}Page`,
+      fields: {
+        items: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(itemType))) },
+        nextCursor: {
+          type: GraphQLString,
+          description: "Pass back as `cursor` for the next page. Null on the last page.",
+        },
+        hasMore: { type: new GraphQLNonNull(GraphQLBoolean) },
+      },
+    });
+    pageTypes.set(pascalName, t);
+    return t;
+  };
+
   // Pre-build the type registry so relation fields can reference target
   // collection types via the lazy `fields` thunk; types referencing each
   // other resolve at first-query time once all entries are populated.
@@ -222,25 +246,56 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     const singleName = singularize(lowerName);
     const Pascal = pascal(c.slug);
 
+    // Shared by the list field and its paging twin, so the two can never
+    // disagree about what a caller may ask for.
+    const listArgs = {
+      filter: { type: JSONScalar },
+      sort: { type: GraphQLString },
+      limit: { type: GraphQLInt },
+      offset: { type: GraphQLInt },
+      locale: {
+        type: GraphQLString,
+        description:
+          "Project `localized` fields to this locale (falling back to the " +
+          "workspace default), instead of returning the full `{locale: value}` " +
+          "map. `*` or omitted returns the map. Mirrors REST `?locale=`.",
+      },
+    } as const;
+
     queryFields[lowerName] = {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Type))),
       description: `List items in collection "${c.slug}".`,
-      args: {
-        filter: { type: JSONScalar },
-        sort: { type: GraphQLString },
-        limit: { type: GraphQLInt },
-        offset: { type: GraphQLInt },
-      },
+      args: listArgs,
       resolve: async (_src, rawArgs, gqlCtx) =>
         listResolver(gqlCtx, c, rawArgs as Parameters<typeof listResolver>[2]),
+    };
+
+    queryFields[`${lowerName}Page`] = {
+      type: new GraphQLNonNull(buildPageType(Pascal, Type)),
+      description:
+        `List items in "${c.slug}" with keyset pagination. Pass \`cursor: ""\` ` +
+        "to start and echo back `nextCursor` to page forward — O(page size) at " +
+        "any depth and stable under concurrent inserts, unlike `offset`. " +
+        "Mirrors REST `?cursor=`; when `cursor` is present `offset` is ignored.",
+      args: {
+        ...listArgs,
+        cursor: { type: GraphQLString },
+      },
+      resolve: async (_src, rawArgs, gqlCtx) =>
+        listPageResolver(gqlCtx, c, rawArgs as Parameters<typeof listPageResolver>[2]),
     };
 
     queryFields[singleName] = {
       type: Type,
       description: `Single item from "${c.slug}" by id.`,
-      args: { id: { type: new GraphQLNonNull(GraphQLID) } },
-      resolve: async (_src, rawArgs, gqlCtx) =>
-        getResolver(gqlCtx, c, (rawArgs as { id: string }).id),
+      args: {
+        id: { type: new GraphQLNonNull(GraphQLID) },
+        locale: { type: GraphQLString, description: listArgs.locale.description },
+      },
+      resolve: async (_src, rawArgs, gqlCtx) => {
+        const a = rawArgs as { id: string; locale?: string | null };
+        return getResolver(gqlCtx, c, a.id, a.locale ?? null);
+      },
     };
 
     queryFields[`${lowerName}Aggregate`] = {

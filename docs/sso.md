@@ -10,6 +10,14 @@ for the **workspace end-user pool** (the `app_users` table, served via
 
 Both flows land in the same `external_identities` row store (SAML rows
 carry `provider_type = 'saml'`, LDAP rows `provider_type = 'ldap'`).
+
+:::note
+These are **redirect** flows: Backlex sends the user to the IdP and mints its
+own session. If the app already holds a token from its own provider (Clerk,
+Auth0, Firebase, Cognito, WorkOS) and just wants to call the API with it, that
+is [third-party auth](/docs/third-party-auth/) — same `external_identities`
+store, `provider_type = 'jwt'`, no redirect and no client secret.
+:::
 SAML is covered first; LDAP / AD reference is at the bottom of this
 page.
 

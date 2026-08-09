@@ -48,6 +48,7 @@ import { tenantsTools } from "./tenants";
 import { appUsersTools } from "./app-users";
 import { appOrgsTools } from "./app-orgs";
 import { samlTools } from "./saml";
+import { thirdPartyAuthTools } from "./third-party-auth";
 import { sharedLinksTools } from "./shared-links";
 import { foldersTools } from "./folders";
 import { revisionsTools } from "./revisions";
@@ -113,6 +114,7 @@ export const allTools: McpTool[] = [
   ...appUsersTools,
   ...appOrgsTools,
   ...samlTools,
+  ...thirdPartyAuthTools,
   ...sharedLinksTools,
   ...foldersTools,
   ...revisionsTools,

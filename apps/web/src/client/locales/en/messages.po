@@ -77,6 +77,10 @@ msgstr " Set the target collection in the field settings."
 msgid "—"
 msgstr "—"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "— any audience —"
+msgstr "— any audience —"
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "— default (email) —"
 msgstr "— default (email) —"
@@ -84,6 +88,7 @@ msgstr "— default (email) —"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "— none —"
 msgstr "— none —"
 
@@ -1332,6 +1337,14 @@ msgstr "Accent for the icon in nav and lists."
 msgid "Accept invite"
 msgstr "Accept invite"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Accept tokens from this issuer."
+msgstr "Accept tokens from this issuer."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Accept tokens minted by another identity provider as they are. This is not a sign-in button — the app already holds the token."
+msgstr "Accept tokens minted by another identity provider as they are. This is not a sign-in button — the app already holds the token."
+
 #. placeholder {0}: form.submissionCount
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
@@ -2238,6 +2251,14 @@ msgstr "answered"
 msgid "Answered"
 msgstr "Answered"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Any audience accepted"
+msgstr "Any audience accepted"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+#~ msgid "Any audience accepted — set one if this issuer serves other apps too."
+#~ msgstr "Any audience accepted — set one if this issuer serves other apps too."
+
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Any day up to the end"
 msgstr "Any day up to the end"
@@ -2532,6 +2553,10 @@ msgstr "At least 8 characters."
 msgid "At least one language is required."
 msgstr "At least one language is required."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Attach to an existing end-user with the same address. Only safe when the issuer verifies emails."
+msgstr "Attach to an existing end-user with the same address. Only safe when the issuer verifies emails."
+
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "attempts"
 msgstr "attempts"
@@ -2543,6 +2568,10 @@ msgstr "Attempts"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Attribute map"
 msgstr "Attribute map"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Audience"
+msgstr "Audience"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Audio"
@@ -3168,6 +3197,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/signatures.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/admin/ui.tsx
 #: src/client/components/confirm-action.tsx
@@ -3336,6 +3366,10 @@ msgstr "Channels refreshed."
 msgid "Chat"
 msgstr "Chat"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Check token"
+msgstr "Check token"
+
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Check your inbox"
@@ -3354,6 +3388,7 @@ msgid "Checking your invite…"
 msgstr "Checking your invite…"
 
 #: src/client/admin/pages/access/erasure-card.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Checking…"
 msgstr "Checking…"
 
@@ -3909,13 +3944,16 @@ msgid "config-only panel rendered from props"
 msgstr "config-only panel rendered from props"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Configure"
 msgstr "Configure"
 
 #. placeholder {0}: existing!.name
+#. placeholder {0}: existing.name
 #. placeholder {0}: provider.name
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Configure {0}"
 msgstr "Configure {0}"
 
@@ -4488,6 +4526,10 @@ msgstr "Create a new physical table from scratch. Pick a preset (Content / Taxon
 msgid "Create account"
 msgstr "Create account"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Create accounts on first sight"
+msgstr "Create accounts on first sight"
+
 #: src/client/pages/sign-up.tsx
 msgid "Create an account"
 msgstr "Create an account"
@@ -4788,6 +4830,7 @@ msgstr "custom rule"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 #: src/client/components/time-field.tsx
 msgid "Custom…"
 msgstr "Custom…"
@@ -4973,6 +5016,7 @@ msgstr "Default project"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Default role"
 msgstr "Default role"
 
@@ -5053,6 +5097,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Delete"
 msgstr "Delete"
 
@@ -5424,6 +5469,7 @@ msgid "Disconnecting…"
 msgstr "Disconnecting…"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Discovery URL"
 msgstr "Discovery URL"
 
@@ -5460,6 +5506,7 @@ msgstr "Display label. The storage key stays <0>{0}</0>."
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Display name"
 msgstr "Display name"
 
@@ -5989,6 +6036,7 @@ msgid "Email changes aren't supported yet — contact an admin if you need to sw
 msgstr "Email changes aren't supported yet — contact an admin if you need to switch addresses."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Email claim"
 msgstr "Email claim"
 
@@ -6138,6 +6186,7 @@ msgstr "enabled"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Enabled"
 msgstr "Enabled"
 
@@ -6493,6 +6542,10 @@ msgstr "Every 3 hours"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Every 30 minutes"
 msgstr "Every 30 minutes"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Every app authenticating with its tokens stops being recognised immediately. The people already linked keep their accounts, so re-adding the same issuer restores access rather than creating duplicates."
+msgstr "Every app authenticating with its tokens stops being recognised immediately. The people already linked keep their accounts, so re-adding the same issuer restores access rather than creating duplicates."
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
@@ -6976,6 +7029,7 @@ msgstr "Fill in the address fields to look this up automatically."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Fill the required fields."
 msgstr "Fill the required fields."
 
@@ -7589,6 +7643,7 @@ msgid "Groups"
 msgstr "Groups"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Groups claim"
 msgstr "Groups claim"
 
@@ -8333,9 +8388,33 @@ msgstr "ISO or $now"
 msgid "Issued by backlex when this row was created — it never changes."
 msgstr "Issued by backlex when this row was created — it never changes."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "issuer"
+msgstr "issuer"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer"
+msgstr "Issuer"
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Issuer origin works too — the well-known path is appended."
 msgstr "Issuer origin works too — the well-known path is appended."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer removed."
+msgstr "Issuer removed."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer trusted."
+msgstr "Issuer trusted."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer updated."
+msgstr "Issuer updated."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "issuers"
+msgstr "issuers"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Istanbul, Turkey"
@@ -8502,6 +8581,10 @@ msgstr "just now"
 #: src/client/admin/collections/collections-index.tsx
 msgid "Just system fields. Add your own columns."
 msgstr "Just system fields. Add your own columns."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "JWKS URL"
+msgstr "JWKS URL"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "kanban"
@@ -8873,6 +8956,10 @@ msgstr "LDAP URL"
 msgid "LDAP username"
 msgstr "LDAP username"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Leave blank only when this issuer serves this workspace alone. One IdP shared by several apps needs it set."
+msgstr "Leave blank only when this issuer serves this workspace alone. One IdP shared by several apps needs it set."
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Leave blank to create the key with empty values across all locales."
 msgstr "Leave blank to create the key with empty values across all locales."
@@ -9020,6 +9107,10 @@ msgstr "Limits which MCP tools an AI agent may call on behalf of members of this
 #: src/client/admin/pages/account-page.tsx
 msgid "Link"
 msgstr "Link"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Link by email"
+msgstr "Link by email"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
@@ -9851,6 +9942,10 @@ msgstr "Must be between 50 and 60000."
 #: src/client/admin/collections/item-form.tsx
 msgid "must be valid json"
 msgstr "must be valid json"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Must equal the token's `iss` claim character for character — including any trailing slash. Unique across this instance."
+msgstr "Must equal the token's `iss` claim character for character — including any trailing slash. Unique across this instance."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Must render to E.164, e.g. +14155552671. Use this for customers, who are not platform users."
@@ -11056,6 +11151,10 @@ msgstr "No traffic for this consumer"
 msgid "No traffic recorded yet"
 msgstr "No traffic recorded yet"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "No trusted issuers. Add one to let an app that already signs users in with Clerk, Auth0, Firebase, Cognito or WorkOS call this API with the token it already has — no user migration, no second login."
+msgstr "No trusted issuers. Add one to let an app that already signs users in with Clerk, Auth0, Firebase, Cognito or WorkOS call this API with the token it already has — no user migration, no second login."
+
 #: src/client/admin/fields/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
 msgstr "No two rows can hold the same value (case-sensitive)."
@@ -11616,6 +11715,10 @@ msgstr "Only count rows matching"
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
 msgstr "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Only needed when the issuer publishes no discovery document."
+msgstr "Only needed when the issuer publishes no discovery document."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Only rows matching (optional)"
 msgstr "Only rows matching (optional)"
@@ -12111,6 +12214,10 @@ msgstr "Past"
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
 msgstr "Paste a base64 SAMLResponse"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Paste a real token from this issuer. Nothing is provisioned and no session is created."
+msgstr "Paste a real token from this issuer. Nothing is provisioned and no session is created."
 
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
@@ -13014,6 +13121,7 @@ msgstr "provider"
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Provider"
 msgstr "Provider"
 
@@ -13414,6 +13522,7 @@ msgstr "Ready to register <0>{slugClean}</0>"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Ready to save."
 msgstr "Ready to save."
 
@@ -13687,6 +13796,10 @@ msgstr "Reject responses whose assertion isn't signed by the IdP."
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Reject unauthorized certs (recommended)"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "rejected"
+msgstr "rejected"
 
 #: src/client/admin/pages/automation/approvals.tsx
 #: src/client/pages/approve-request.tsx
@@ -14799,6 +14912,7 @@ msgstr "Sat"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 #: src/client/admin/sheet.tsx
 msgid "Save"
 msgstr "Save"
@@ -16503,6 +16617,10 @@ msgstr "Steps"
 msgid "Still free"
 msgstr "Still free"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Stop trusting this issuer?"
+msgstr "Stop trusting this issuer?"
+
 #: src/client/admin/pages/data/storage/index.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/overview.tsx
@@ -16609,6 +16727,10 @@ msgstr "sub"
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Subject"
 msgstr "Subject"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Subject claim"
+msgstr "Subject claim"
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Subject is required."
@@ -16930,6 +17052,10 @@ msgstr "Terms of Service URL"
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Test"
 msgstr "Test"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Test a token"
+msgstr "Test a token"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Test against an item"
@@ -17306,6 +17432,10 @@ msgstr "The signed copy has been produced."
 msgid "The signing link has expired."
 msgstr "The signing link has expired."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "The signing-key endpoint is read from this once, at save time."
+msgstr "The signing-key endpoint is read from this once, at save time."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The slot goes back on sale and the customer is emailed."
 msgstr "The slot goes back on sale and the customer is emailed."
@@ -17382,6 +17512,10 @@ msgstr "They do not clash — the end is not inside the period"
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Thinking…"
 #~ msgstr "Thinking…"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Third-party auth"
+msgstr "Third-party auth"
 
 #: src/client/admin/app.tsx
 msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
@@ -17996,6 +18130,14 @@ msgstr "Trigger PagerDuty alerts on data events."
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 msgstr "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Trust a third-party issuer"
+msgstr "Trust a third-party issuer"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Trust issuer"
+msgstr "Trust issuer"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Try"
 #~ msgstr "Try"
@@ -18035,6 +18177,10 @@ msgstr "Turn off 2FA"
 #: src/client/admin/pages/account-page.tsx
 msgid "Turn off two-factor authentication."
 msgstr "Turn off two-factor authentication."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Turn off when SCIM owns the user lifecycle — unknown subjects are then refused."
+msgstr "Turn off when SCIM owns the user lifecycle — unknown subjects are then refused."
 
 #: src/client/admin/fields/field-email-editor.tsx
 msgid "Turning an existing text column into an email field changes no storage, so nothing has to be migrated — but the rows already in it are still written however they were typed. Run backlex collections normalize-emails to fold them, with --dry-run first if the column is unique."
@@ -18561,6 +18707,10 @@ msgstr "Users"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Users enrol a passkey after signing in once with another method."
 msgstr "Users enrol a passkey after signing in once with another method."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "valid"
+msgstr "valid"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx

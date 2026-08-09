@@ -239,6 +239,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Auth planes (admin vs workspace end-users) | `docs/auth-planes.md` |
 | Organizations / teams (app-plane B2B grouping) | `docs/app-organizations.md` |
 | SSO (SAML / LDAP) | `docs/sso.md` |
+| Third-party auth (trust an external JWT issuer) | `docs/third-party-auth.md` |
 | API keys, access tokens, email & OAuth | `docs/api-keys-and-email.md` |
 | Adopting existing tables | `docs/adopting-tables.md` |
 | Hashed fields (passwords/secrets) | `docs/hashed-fields.md` |

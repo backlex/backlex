@@ -60,12 +60,13 @@ const tables = (dialect: "pg" | "sqlite") =>
 export interface ProvisionAppUserArgs {
   ctx: DbCtx;
   tenantId: string;
-  /** saml | ldap. */
-  providerType: "saml" | "ldap";
+  /** saml | ldap | jwt. */
+  providerType: "saml" | "ldap" | "jwt";
   /** For SAML: `saml_providers.id`. For LDAP: a stable identifier such as
-   *  `"ldap"` or `"ldap:<server-id>"`. */
+   *  `"ldap"` or `"ldap:<server-id>"`. For JWT (a trusted third-party issuer):
+   *  `third_party_auth_providers.id`. */
   providerId: string;
-  /** IdP-side stable identifier — SAML NameID or LDAP DN. */
+  /** IdP-side stable identifier — SAML NameID, LDAP DN, or the JWT subject. */
   subject: string;
   email: string;
   firstName?: string;

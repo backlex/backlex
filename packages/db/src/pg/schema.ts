@@ -2763,6 +2763,79 @@ export const oidcProviders = pgTable(
 );
 
 /**
+ * An external issuer whose JWTs this workspace accepts **as they are** —
+ * Clerk, Auth0, Firebase Auth, AWS Cognito, WorkOS, or any OIDC provider.
+ *
+ * This is not `oidc_providers`, and the difference is the whole point.
+ * `oidc_providers` makes backlex an OAuth *client*: the user is redirected to
+ * the IdP, we exchange a code, and we mint our own session. That requires a
+ * client secret and a second login. Here the app **already holds** a token
+ * from its own auth provider and simply sends it to us; we verify the
+ * signature against the issuer's published JWKS and map the subject onto an
+ * `app_users` row. No redirect, no client secret, no migration of anyone's
+ * user table.
+ *
+ * `issuer` is unique **instance-wide**, not per tenant: a request carrying one
+ * of these tokens has no session and no workspace header to lean on, so the
+ * `iss` claim is the only thing that can name the workspace. In practice
+ * issuers are already customer-specific (`https://<x>.clerk.accounts.dev`,
+ * `https://securetoken.google.com/<project>`, `https://<t>.auth0.com/`), so
+ * this costs nothing real.
+ *
+ * The claim-mapping columns deliberately carry the same names and defaults as
+ * `oidc_providers` — both feed the same `provisionAppUser`, and two spellings
+ * of "which claim holds the email" is how they would drift apart.
+ */
+export const thirdPartyAuthProviders = pgTable(
+  "third_party_auth_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** Display name, shown in the admin list. */
+    name: text("name").notNull(),
+    /** URL-safe handle, scoped within the tenant. */
+    slug: text("slug").notNull(),
+    /** Exact `iss` claim value to match. Instance-wide unique — see above. */
+    issuer: text("issuer").notNull(),
+    /** Where the signing public keys live. Resolved from `discovery_url` at
+     *  save time when one was given. */
+    jwksUrl: text("jwks_url").notNull(),
+    /** `.well-known/openid-configuration`, kept so a re-resolve can refresh
+     *  `jwks_url` if the IdP moves it. */
+    discoveryUrl: text("discovery_url"),
+    /** Expected `aud`. Null accepts any audience — fine when the issuer is
+     *  yours alone, wrong when one IdP serves several relying parties. */
+    audience: text("audience"),
+    /** Claim carrying the IdP's stable subject id. */
+    subjectClaim: text("subject_claim").notNull().default("sub"),
+    emailClaim: text("email_claim").notNull().default("email"),
+    nameClaim: text("name_claim"),
+    groupsClaim: text("groups_claim"),
+    groupsToRoles: jsonb("groups_to_roles").$type<Record<string, string>>(),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    /** Attach to an existing `app_users` row matching the asserted email.
+     *  Off by default: an issuer that does not verify emails would otherwise
+     *  let a new token take over an existing account. */
+    linkByVerifiedEmail: boolean("link_by_verified_email").notNull().default(false),
+    /** When false, a subject with no linked identity is rejected instead of
+     *  provisioned — the right setting when SCIM owns the user lifecycle. */
+    autoProvision: boolean("auto_provision").notNull().default(true),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("third_party_auth_tenant_slug_idx").on(t.tenantId, t.slug),
+    uniqueIndex("third_party_auth_issuer_idx").on(t.issuer),
+    index("third_party_auth_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
  * SCIM 2.0 provisioning endpoint config — one row per workspace.
  *
  * An IdP (Okta, Entra, OneLogin) calls `/api/scim/v2/*` with a bearer token to

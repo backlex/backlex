@@ -100,6 +100,7 @@ import {
   usersRoutes,
 } from "./routes/roles";
 import { samlAdminRoutes } from "./routes/saml-admin";
+import { thirdPartyAuthAdminRoutes } from "./routes/third-party-auth-admin";
 import { oidcAdminRoutes } from "./routes/oidc-admin";
 import { scimAdminRoutes } from "./routes/scim-admin";
 import { syncHooksRoutes } from "./routes/sync-hooks";
@@ -889,6 +890,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/saml", samlAdminRoutes);
   app.route("/api/admin/oidc", oidcAdminRoutes);
+  app.route("/api/admin/third-party-auth", thirdPartyAuthAdminRoutes);
   app.route("/api/admin/scim", scimAdminRoutes);
   app.route("/api/admin/sync-hooks", syncHooksRoutes);
   app.route("/api/admin/erasure", erasureRoutes);

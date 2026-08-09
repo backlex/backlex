@@ -240,6 +240,85 @@ export const oidcAdminApi = {
     }),
 };
 
+/** A trusted external issuer — the app arrives holding its own token instead of
+ *  being redirected to sign in. The read-back is complete: verifying someone
+ *  else's JWT needs only public keys, so unlike OIDC/SAML there is no
+ *  write-only credential and no `has…Secret` flag. */
+export interface ApiThirdPartyAuthProvider {
+  id: string;
+  name: string;
+  slug: string;
+  issuer: string;
+  jwksUrl: string;
+  discoveryUrl: string | null;
+  audience: string | null;
+  subjectClaim: string;
+  emailClaim: string;
+  nameClaim: string | null;
+  groupsClaim: string | null;
+  groupsToRoles: Record<string, string> | null;
+  defaultRoleId: string | null;
+  linkByVerifiedEmail: boolean;
+  autoProvision: boolean;
+  enabled: boolean;
+  createdAt: string | number | null;
+  updatedAt: string | number | null;
+}
+
+export interface ThirdPartyAuthProviderCreate {
+  name: string;
+  slug?: string;
+  issuer: string;
+  /** Either this or `discoveryUrl`; discovery wins when both are sent. */
+  jwksUrl?: string;
+  discoveryUrl?: string | null;
+  audience?: string | null;
+  subjectClaim?: string;
+  emailClaim?: string;
+  nameClaim?: string | null;
+  groupsClaim?: string | null;
+  groupsToRoles?: Record<string, string> | null;
+  defaultRoleId?: string | null;
+  linkByVerifiedEmail?: boolean;
+  autoProvision?: boolean;
+  enabled?: boolean;
+}
+
+/** Result of pasting a real token into the provider's test box. */
+export interface ThirdPartyAuthTestResult {
+  valid: boolean;
+  reason?: string;
+  subject?: string;
+  email?: string | null;
+  name?: string | null;
+  groups?: string[] | null;
+  wouldProvision?: boolean;
+}
+
+export const thirdPartyAuthApi = {
+  list: () =>
+    api<Envelope<ApiThirdPartyAuthProvider[]>>(`/api/admin/third-party-auth/providers`),
+  create: (body: ThirdPartyAuthProviderCreate) =>
+    api<Envelope<ApiThirdPartyAuthProvider>>(`/api/admin/third-party-auth/providers`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<ThirdPartyAuthProviderCreate>) =>
+    api<Envelope<ApiThirdPartyAuthProvider>>(
+      `/api/admin/third-party-auth/providers/${id}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  remove: (id: string) =>
+    api<Envelope<{ ok: true }>>(`/api/admin/third-party-auth/providers/${id}`, {
+      method: "DELETE",
+    }),
+  test: (id: string, token: string) =>
+    api<Envelope<ThirdPartyAuthTestResult>>(
+      `/api/admin/third-party-auth/providers/${id}/test`,
+      { method: "POST", body: JSON.stringify({ token }) },
+    ),
+};
+
 /** Sanitized LDAP config row returned by GET /api/admin/ldap-config. The
  *  encrypted `bindPassword` + `caPem` never travel the wire — `secretsSet`
  *  carries a "is this set" flag per key instead. */

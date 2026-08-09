@@ -5,7 +5,9 @@ import type { MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
 import { verifyAccessToken, verifyAgentRunToken } from "../lib/jwt";
+import { verifyThirdPartyToken } from "../lib/third-party-jwt";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
+import { resolveThirdPartyUser } from "../services/third-party-auth";
 import { getCachedSession, setCachedSession } from "../services/permissions-cache";
 
 const extractIp = (req: Request): string | null => {
@@ -398,6 +400,35 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
               email = oauthTok.email;
               oauthClientId = oauthTok.clientId;
               apiKeyMcpReadOnly = !oauthTok.scopes.includes("mcp:write");
+            } else {
+              // 4. a JWT minted by a **third-party issuer** this instance has
+              //    been told to trust (Clerk, Auth0, Firebase, Cognito,
+              //    WorkOS). Last on purpose: it is the only probe that can
+              //    reach out to the network, and every shape above is cheaper.
+              //    The workspace comes from the token's `iss` — there is no
+              //    session row and no tenant header to read it from.
+              const identity = await verifyThirdPartyToken(
+                { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+                token,
+              );
+              if (identity) {
+                const resolved = await resolveThirdPartyUser(
+                  { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+                  identity,
+                  extractIp(c.req.raw) ?? undefined,
+                );
+                if (resolved) {
+                  plane = "app";
+                  userId = resolved.appUserId;
+                  email = identity.email;
+                  appSessionTenantId = resolved.tenantId;
+                  // No `app_sessions` row backs this — the IdP owns the
+                  // session. `appSessionId` stays null, so anything that
+                  // revokes by session id simply has nothing to revoke here;
+                  // revocation belongs to the issuer, and the short `exp` we
+                  // require is what bounds it.
+                }
+              }
             }
           }
         }

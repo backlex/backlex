@@ -77,6 +77,10 @@ msgstr " Hedef koleksiyonu alan ayarlarından belirleyin."
 msgid "—"
 msgstr "—"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "— any audience —"
+msgstr "— herhangi bir audience —"
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "— default (email) —"
 msgstr "— varsayılan (email) —"
@@ -84,6 +88,7 @@ msgstr "— varsayılan (email) —"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "— none —"
 msgstr "— yok —"
 
@@ -1332,6 +1337,14 @@ msgstr "Gezinti ve listelerdeki ikonun vurgu rengi."
 msgid "Accept invite"
 msgstr "Daveti kabul et"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Accept tokens from this issuer."
+msgstr "Bu sağlayıcının token’larını kabul et."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Accept tokens minted by another identity provider as they are. This is not a sign-in button — the app already holds the token."
+msgstr "Başka bir kimlik sağlayıcının ürettiği token’ları olduğu gibi kabul eder. Bu bir giriş düğmesi değildir — uygulama token’ı zaten elinde tutar."
+
 #. placeholder {0}: form.submissionCount
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
@@ -2238,6 +2251,14 @@ msgstr "yanıtladı"
 msgid "Answered"
 msgstr "Yanıtlayan"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Any audience accepted"
+msgstr "Her audience kabul ediliyor"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+#~ msgid "Any audience accepted — set one if this issuer serves other apps too."
+#~ msgstr "Her audience kabul ediliyor — bu sağlayıcı başka uygulamalara da hizmet ediyorsa bir değer girin."
+
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Any day up to the end"
 msgstr "Bitişe kadar her gün"
@@ -2532,6 +2553,10 @@ msgstr "En az 8 karakter."
 msgid "At least one language is required."
 msgstr "En az bir dil gereklidir."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Attach to an existing end-user with the same address. Only safe when the issuer verifies emails."
+msgstr "Aynı adrese sahip mevcut bir son kullanıcıya bağlar. Yalnızca sağlayıcı e-postaları doğruluyorsa güvenlidir."
+
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "attempts"
 msgstr "deneme"
@@ -2543,6 +2568,10 @@ msgstr "Denemeler"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Attribute map"
 msgstr "Öznitelik eşlemesi"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Audience"
+msgstr "Audience"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Audio"
@@ -3168,6 +3197,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/signatures.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/admin/ui.tsx
 #: src/client/components/confirm-action.tsx
@@ -3336,6 +3366,10 @@ msgstr "Kanallar yenilendi."
 msgid "Chat"
 msgstr "Sohbet"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Check token"
+msgstr "Token’ı kontrol et"
+
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Check your inbox"
@@ -3354,6 +3388,7 @@ msgid "Checking your invite…"
 msgstr "Davetin kontrol ediliyor…"
 
 #: src/client/admin/pages/access/erasure-card.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Checking…"
 msgstr "Kontrol ediliyor…"
 
@@ -3909,13 +3944,16 @@ msgid "config-only panel rendered from props"
 msgstr "props'tan render edilen yalnızca yapılandırma paneli"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Configure"
 msgstr "Yapılandır"
 
 #. placeholder {0}: existing!.name
+#. placeholder {0}: existing.name
 #. placeholder {0}: provider.name
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Configure {0}"
 msgstr "{0} yapılandır"
 
@@ -4488,6 +4526,10 @@ msgstr "Sıfırdan yeni bir fiziksel tablo oluşturun. Bir ön ayar (İçerik / 
 msgid "Create account"
 msgstr "Hesap oluştur"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Create accounts on first sight"
+msgstr "İlk görüşte hesap oluştur"
+
 #: src/client/pages/sign-up.tsx
 msgid "Create an account"
 msgstr "Hesap oluşturun"
@@ -4788,6 +4830,7 @@ msgstr "özel kural"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 #: src/client/components/time-field.tsx
 msgid "Custom…"
 msgstr "Özel…"
@@ -4973,6 +5016,7 @@ msgstr "Varsayılan proje"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Default role"
 msgstr "Varsayılan rol"
 
@@ -5053,6 +5097,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Delete"
 msgstr "Sil"
 
@@ -5424,6 +5469,7 @@ msgid "Disconnecting…"
 msgstr "Bağlantı kesiliyor…"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Discovery URL"
 msgstr "Keşif (discovery) URL’si"
 
@@ -5460,6 +5506,7 @@ msgstr "Görüntü etiketi. Depolama anahtarı <0>{0}</0> olarak kalır."
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Display name"
 msgstr "Görünen ad"
 
@@ -5989,6 +6036,7 @@ msgid "Email changes aren't supported yet — contact an admin if you need to sw
 msgstr "E-posta değişikliği henüz desteklenmiyor — adres değiştirmeniz gerekiyorsa bir admin ile iletişime geçin."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Email claim"
 msgstr "E-posta claim’i"
 
@@ -6138,6 +6186,7 @@ msgstr "etkin"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/scim-card.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Enabled"
 msgstr "Etkin"
 
@@ -6493,6 +6542,10 @@ msgstr "3 saatte bir"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Every 30 minutes"
 msgstr "30 dakikada bir"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Every app authenticating with its tokens stops being recognised immediately. The people already linked keep their accounts, so re-adding the same issuer restores access rather than creating duplicates."
+msgstr "Bu sağlayıcının token’larıyla kimlik doğrulayan her uygulama anında tanınmaz olur. Halihazırda bağlı kişiler hesaplarını korur; aynı sağlayıcıyı yeniden eklemek kopya oluşturmak yerine erişimi geri getirir."
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
@@ -6976,6 +7029,7 @@ msgstr "Otomatik aramak için adres alanlarını doldurun."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
 
@@ -7589,6 +7643,7 @@ msgid "Groups"
 msgstr "Gruplar"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Groups claim"
 msgstr "Gruplar claim’i"
 
@@ -8333,9 +8388,33 @@ msgstr "ISO veya $now"
 msgid "Issued by backlex when this row was created — it never changes."
 msgstr "Bu satır oluşturulurken backlex tarafından verildi — hiç değişmez."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "issuer"
+msgstr "sağlayıcı"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer"
+msgstr "Sağlayıcı (issuer)"
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Issuer origin works too — the well-known path is appended."
 msgstr "Yalnızca issuer adresi de olur — well-known yolu otomatik eklenir."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer removed."
+msgstr "Sağlayıcı kaldırıldı."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer trusted."
+msgstr "Sağlayıcıya güvenildi."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Issuer updated."
+msgstr "Sağlayıcı güncellendi."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "issuers"
+msgstr "sağlayıcı"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Istanbul, Turkey"
@@ -8502,6 +8581,10 @@ msgstr "az önce"
 #: src/client/admin/collections/collections-index.tsx
 msgid "Just system fields. Add your own columns."
 msgstr "Yalnızca sistem alanları. Kendi sütunlarınızı ekleyin."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "JWKS URL"
+msgstr "JWKS adresi"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "kanban"
@@ -8873,6 +8956,10 @@ msgstr "LDAP URL'si"
 msgid "LDAP username"
 msgstr "LDAP kullanıcı adı"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Leave blank only when this issuer serves this workspace alone. One IdP shared by several apps needs it set."
+msgstr "Yalnızca bu sağlayıcı sadece bu çalışma alanına hizmet ediyorsa boş bırakın. Birden fazla uygulamanın paylaştığı bir IdP için doldurulmalıdır."
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Leave blank to create the key with empty values across all locales."
 msgstr "Tüm yerel ayarlarda boş değerlerle anahtar oluşturmak için boş bırakın."
@@ -9020,6 +9107,10 @@ msgstr "Bu roldeki kullanıcılar adına bir yapay zekâ ajanının hangi MCP ar
 #: src/client/admin/pages/account-page.tsx
 msgid "Link"
 msgstr "Bağla"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Link by email"
+msgstr "E-posta ile eşle"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
@@ -9851,6 +9942,10 @@ msgstr "50 ile 60000 arasında olmalıdır."
 #: src/client/admin/collections/item-form.tsx
 msgid "must be valid json"
 msgstr "geçerli JSON olmalıdır"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Must equal the token's `iss` claim character for character — including any trailing slash. Unique across this instance."
+msgstr "Token’ın `iss` claim’iyle karakter karakter aynı olmalıdır — sondaki eğik çizgi dahil. Bu kurulumda benzersizdir."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Must render to E.164, e.g. +14155552671. Use this for customers, who are not platform users."
@@ -11056,6 +11151,10 @@ msgstr "Bu tüketici için trafik yok"
 msgid "No traffic recorded yet"
 msgstr "Henüz trafik kaydedilmedi"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "No trusted issuers. Add one to let an app that already signs users in with Clerk, Auth0, Firebase, Cognito or WorkOS call this API with the token it already has — no user migration, no second login."
+msgstr "Güvenilen sağlayıcı yok. Kullanıcılarını zaten Clerk, Auth0, Firebase, Cognito veya WorkOS ile doğrulayan bir uygulamanın elindeki token ile bu API’yi çağırabilmesi için bir tane ekleyin — kullanıcı taşıma yok, ikinci giriş yok."
+
 #: src/client/admin/fields/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
 msgstr "İki satır aynı değeri tutamaz (büyük/küçük harfe duyarlı)."
@@ -11616,6 +11715,10 @@ msgstr "Yalnızca şu koşula uyan satırlar"
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
 msgstr "Yalnızca öz imzalı LDAPS için gereklidir; sistem güven deposu kamuya açık imzalı sertifikaları yönetir."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Only needed when the issuer publishes no discovery document."
+msgstr "Yalnızca sağlayıcı bir discovery belgesi yayınlamıyorsa gereklidir."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Only rows matching (optional)"
 msgstr "Yalnızca şunu karşılayan satırlar (isteğe bağlı)"
@@ -12111,6 +12214,10 @@ msgstr "Geçmiş"
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
 msgstr "Base64 SAMLResponse yapıştırın"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Paste a real token from this issuer. Nothing is provisioned and no session is created."
+msgstr "Bu sağlayıcıdan gerçek bir token yapıştırın. Hiçbir hesap oluşturulmaz ve oturum açılmaz."
 
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
@@ -13014,6 +13121,7 @@ msgstr "sağlayıcı"
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Provider"
 msgstr "Sağlayıcı"
 
@@ -13414,6 +13522,7 @@ msgstr "<0>{slugClean}</0> kaydedilmeye hazır"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Ready to save."
 msgstr "Kaydetmeye hazır."
 
@@ -13687,6 +13796,10 @@ msgstr "Onayı IdP tarafından imzalanmamış yanıtları reddet."
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Yetkisiz sertifikaları reddet (önerilen)"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "rejected"
+msgstr "reddedildi"
 
 #: src/client/admin/pages/automation/approvals.tsx
 #: src/client/pages/approve-request.tsx
@@ -14799,6 +14912,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
 #: src/client/admin/sheet.tsx
 msgid "Save"
 msgstr "Kaydet"
@@ -16503,6 +16617,10 @@ msgstr "Adımlar"
 msgid "Still free"
 msgstr "Boş kalan"
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Stop trusting this issuer?"
+msgstr "Bu sağlayıcıya güvenmeyi bırakılsın mı?"
+
 #: src/client/admin/pages/data/storage/index.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/overview.tsx
@@ -16609,6 +16727,10 @@ msgstr "abone"
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Subject"
 msgstr "Konu"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Subject claim"
+msgstr "Subject claim"
 
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Subject is required."
@@ -16930,6 +17052,10 @@ msgstr "Hizmet Şartları URL'si"
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Test"
 msgstr "Test"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Test a token"
+msgstr "Token test et"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Test against an item"
@@ -17306,6 +17432,10 @@ msgstr "İmzalı kopya üretildi."
 msgid "The signing link has expired."
 msgstr "İmza bağlantısının süresi doldu."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "The signing-key endpoint is read from this once, at save time."
+msgstr "İmzalama anahtarı adresi buradan bir kez, kaydederken okunur."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The slot goes back on sale and the customer is emailed."
 msgstr "Saat yeniden satışa açılır ve müşteriye e-posta gider."
@@ -17382,6 +17512,10 @@ msgstr "Çakışmazlar — bitiş döneme dahil değildir"
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Thinking…"
 #~ msgstr "Düşünüyor…"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Third-party auth"
+msgstr "Üçüncü taraf kimlik doğrulama"
 
 #: src/client/admin/app.tsx
 msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
@@ -17996,6 +18130,14 @@ msgstr "Veri olaylarında PagerDuty uyarıları tetikle."
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 msgstr "Tetikleyiciler koleksiyon etkinliklerinde, zamanlamalarda veya webhook'larda tetiklenir. Her adım kum havuzunda çalışır."
 
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Trust a third-party issuer"
+msgstr "Üçüncü taraf sağlayıcıya güven"
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Trust issuer"
+msgstr "Sağlayıcıya güven"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Try"
 #~ msgstr "Dene"
@@ -18035,6 +18177,10 @@ msgstr "2FA'yı kapat"
 #: src/client/admin/pages/account-page.tsx
 msgid "Turn off two-factor authentication."
 msgstr "İki adımlı doğrulamayı kapat."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "Turn off when SCIM owns the user lifecycle — unknown subjects are then refused."
+msgstr "Kullanıcı yaşam döngüsünü SCIM yönetiyorsa kapatın — bilinmeyen subject’ler o zaman reddedilir."
 
 #: src/client/admin/fields/field-email-editor.tsx
 msgid "Turning an existing text column into an email field changes no storage, so nothing has to be migrated — but the rows already in it are still written however they were typed. Run backlex collections normalize-emails to fold them, with --dry-run first if the column is unique."
@@ -18561,6 +18707,10 @@ msgstr "Kullanıcılar"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Users enrol a passkey after signing in once with another method."
 msgstr "Kullanıcılar başka bir yöntemle bir kez giriş yaptıktan sonra passkey kaydeder."
+
+#: src/client/admin/pages/settings/third-party-auth-card.tsx
+msgid "valid"
+msgstr "geçerli"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx

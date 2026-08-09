@@ -36,6 +36,7 @@ import { workspaceConfigRoutes } from "./workspace-config";
 import { authAdminRoutes } from "./auth-admin";
 import { samlAdminRoutes } from "./saml-admin";
 import { oidcAdminRoutes } from "./oidc-admin";
+import { thirdPartyAuthAdminRoutes } from "./third-party-auth-admin";
 import { scimAdminRoutes } from "./scim-admin";
 import { syncHooksRoutes } from "./sync-hooks";
 import { erasureRoutes } from "./erasure";
@@ -91,6 +92,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/auth", authAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/saml", samlAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/oidc", oidcAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/third-party-auth", thirdPartyAuthAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/scim", scimAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/sync-hooks", syncHooksRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/erasure", erasureRoutes as unknown as OpenAPIHono<any>],

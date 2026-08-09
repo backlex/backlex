@@ -105,6 +105,7 @@ import m98 from "../../drizzle/pg/20260808090000_form_invite_reminders/migration
 import m99 from "../../drizzle/pg/20260808120000_booking_records_collection/migration.sql" with { type: "text" };
 import m100 from "../../drizzle/pg/20260808170000_role_org_assignable/migration.sql" with { type: "text" };
 import m101 from "../../drizzle/pg/20260809080000_webhook_payload_fields/migration.sql" with { type: "text" };
+import m102 from "../../drizzle/pg/20260809140000_third_party_auth/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -214,4 +215,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260808120000_booking_records_collection", sql: m99 },
   { name: "20260808170000_role_org_assignable", sql: m100 },
   { name: "20260809080000_webhook_payload_fields", sql: m101 },
+  { name: "20260809140000_third_party_auth", sql: m102 },
 ];

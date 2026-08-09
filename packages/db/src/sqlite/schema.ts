@@ -2506,6 +2506,55 @@ export const oidcProviders = sqliteTable(
 );
 
 /**
+ * An external issuer whose JWTs this workspace accepts as they are — Clerk,
+ * Auth0, Firebase Auth, AWS Cognito, WorkOS. Mirror of the PG table; the
+ * doc comment there carries the full rationale, including why `issuer` is
+ * unique instance-wide rather than per tenant.
+ */
+export const thirdPartyAuthProviders = sqliteTable(
+  "third_party_auth_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    /** Exact `iss` claim value to match. */
+    issuer: text("issuer").notNull(),
+    jwksUrl: text("jwks_url").notNull(),
+    discoveryUrl: text("discovery_url"),
+    /** Expected `aud`; null accepts any audience. */
+    audience: text("audience"),
+    subjectClaim: text("subject_claim").notNull().default("sub"),
+    emailClaim: text("email_claim").notNull().default("email"),
+    nameClaim: text("name_claim"),
+    groupsClaim: text("groups_claim"),
+    groupsToRoles: text("groups_to_roles", { mode: "json" }).$type<
+      Record<string, string>
+    >(),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    linkByVerifiedEmail: integer("link_by_verified_email", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    /** When false, an unlinked subject is rejected instead of provisioned. */
+    autoProvision: integer("auto_provision", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("third_party_auth_tenant_slug_idx").on(t.tenantId, t.slug),
+    uniqueIndex("third_party_auth_issuer_idx").on(t.issuer),
+    index("third_party_auth_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
  * SCIM 2.0 provisioning endpoint config — one row per workspace.
  *
  * An IdP (Okta, Entra, OneLogin) calls `/api/scim/v2/*` with a bearer token to

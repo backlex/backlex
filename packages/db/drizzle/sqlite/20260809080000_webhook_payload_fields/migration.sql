@@ -1,0 +1,12 @@
+-- Which fields of a row a webhook is allowed to carry. SQLite/D1 twin of the
+-- pg migration, where the reasoning is written out in full.
+--
+-- The short version: every delivery shipped the whole row, so a hook that only
+-- needs an id and a status was also handed every other column — to a
+-- third-party endpoint, forever. `payload_fields` is a per-hook allow-list of
+-- top-level `data` keys; NULL (the default, and what every existing row gets)
+-- means the whole row, so nothing already delivering changes.
+--
+-- An allow-list, not a deny-list: a column added next month must not start
+-- flowing to an endpoint configured before it existed.
+ALTER TABLE `webhooks` ADD COLUMN `payload_fields` text;

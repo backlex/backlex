@@ -1,0 +1,22 @@
+-- Which fields of a row a webhook is allowed to carry.
+--
+-- Every delivery shipped the whole row. A hook that only needs an id and a
+-- status to kick off a job in someone else's system was handed the customer's
+-- address, the internal note, and whatever column got added last week — to a
+-- third-party endpoint, over the public internet, forever, because nobody
+-- revisits a webhook after it starts working. The receiver did not ask for any
+-- of it and usually cannot refuse it.
+--
+-- `payload_fields` is a per-hook allow-list of top-level `data` keys. NULL (the
+-- default, and what every existing row gets) means "the whole row", so this
+-- deploy changes nothing that is already delivering. Narrowing is opt-in, per
+-- hook, and reversible by clearing the list.
+--
+-- Deliberately an allow-list rather than a deny-list: a new column added to a
+-- collection next month must not start flowing to an endpoint that was
+-- configured before it existed. With an allow-list the default for anything new
+-- is "not sent" for every hook that has narrowed, which is the safe direction.
+--
+-- Re-runnable: the boot runner replays a file whose ledger row it never wrote,
+-- and tolerates "column already exists".
+ALTER TABLE "webhooks" ADD COLUMN "payload_fields" jsonb;

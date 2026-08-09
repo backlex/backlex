@@ -39,7 +39,34 @@ interface WebhookRow {
   secret: string | null;
   active: boolean | number;
   consecutiveFailures?: number;
+  /** Allow-list of top-level `data` keys. Null/empty = the whole row. */
+  payloadFields?: string[] | null;
 }
+
+/**
+ * Narrow an event's `data` to the keys this hook is allowed to carry.
+ *
+ * Every delivery used to ship the whole row, so a hook that only needed an id
+ * and a status was also handed the customer's address and whatever column got
+ * added last week — to a third-party endpoint, forever, because nobody revisits
+ * a webhook once it works.
+ *
+ * Only the top level is projected, and only for object payloads. An array or a
+ * scalar `data` (system events) passes through: there are no keys to choose
+ * from, and silently emptying such a payload would be worse than sending it.
+ * A configured key that the row doesn't have is simply absent — the projection
+ * never invents an explicit `null`, which a receiver would read as "cleared".
+ */
+export const projectPayload = (data: unknown, fields: string[] | null | undefined): unknown => {
+  if (!fields || fields.length === 0) return data;
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const src = data as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const f of fields) {
+    if (Object.hasOwn(src, f)) out[f] = src[f];
+  }
+  return out;
+};
 
 export interface WebhookDeliveryRow {
   id: string;
@@ -394,17 +421,23 @@ export const dispatchWebhooks = async (
     .where(where)) as WebhookRow[];
   if (rows.length === 0) return;
 
-  const body = JSON.stringify({
-    channel,
-    event: payload.event,
-    data: payload.data,
-    deliveredAt: new Date().toISOString(),
-  });
-
   const matching = rows.filter((row) =>
     row.events.some((p) => matchesPattern(p, channel, payload.event)),
   );
   if (matching.length === 0) return;
+
+  // Built per hook, not once for the set: `payloadFields` is per-hook, so two
+  // hooks on the same event can legitimately receive different bodies. The
+  // signature is over the body, so the projection has to happen before signing
+  // — which it does, since the job carries the finished body.
+  const deliveredAt = new Date().toISOString();
+  const bodyFor = (row: WebhookRow): string =>
+    JSON.stringify({
+      channel,
+      event: payload.event,
+      data: projectPayload(payload.data, row.payloadFields),
+      deliveredAt,
+    });
 
   // Prefer the durable queue: one webhook.deliver job per matching hook so a
   // 5xx/timeout from the receiver is retried with backoff and dead-lettered
@@ -418,7 +451,7 @@ export const dispatchWebhooks = async (
           type: "webhook.deliver",
           queue: "webhooks",
           tenantId: row.tenantId ?? tenantId ?? null,
-          payload: { webhookId: row.id, channel, event: payload.event, body },
+          payload: { webhookId: row.id, channel, event: payload.event, body: bodyFor(row) },
         }),
       ),
     );
@@ -428,7 +461,7 @@ export const dispatchWebhooks = async (
   // Fallback (no env / system event): best-effort inline delivery, no retry.
   await Promise.all(
     matching.map(async (row) => {
-      const out = await sendOne(row, channel, payload.event, body);
+      const out = await sendOne(row, channel, payload.event, bodyFor(row));
       await recordDelivery(ctx, {
         webhookId: row.id,
         event: `${channel}:${payload.event}`,
@@ -538,6 +571,9 @@ export interface WebhookConfigInput {
   headers?: Record<string, string> | null;
   secret?: string | null;
   active?: boolean;
+  /** Allow-list of top-level `data` keys this hook may carry. Null/empty = the
+   *  whole row. See {@link projectPayload}. */
+  payloadFields?: string[] | null;
 }
 
 /** Every webhook in the workspace (includes breaker state columns). */
@@ -566,6 +602,7 @@ export const createWebhook = async (
     url: input.url,
     events: input.events,
     headers: input.headers ?? null,
+    payloadFields: input.payloadFields ?? null,
     secret: input.secret ?? null,
     active: input.active ?? true,
   });
@@ -588,6 +625,7 @@ export const updateWebhook = async (
       ...(patch.url !== undefined ? { url: patch.url } : {}),
       ...(patch.events !== undefined ? { events: patch.events } : {}),
       ...(patch.headers !== undefined ? { headers: patch.headers } : {}),
+      ...(patch.payloadFields !== undefined ? { payloadFields: patch.payloadFields } : {}),
       ...(patch.secret !== undefined ? { secret: patch.secret } : {}),
       ...(patch.active !== undefined ? { active: patch.active } : {}),
       // Re-enabling (manual resume) clears the breaker so the hook gets a

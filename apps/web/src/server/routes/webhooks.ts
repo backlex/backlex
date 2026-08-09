@@ -27,6 +27,13 @@ const WebhookInput = z
     headers: z.record(z.string(), z.string()).nullish().openapi({
       description: "Custom request headers sent on every delivery.",
     }),
+    payloadFields: z.array(z.string().min(1)).max(200).nullish().openapi({
+      description:
+        "Allow-list of top-level `data` keys this hook may carry. Omit, null, " +
+        "or empty to send the whole row. An allow-list, so a field added to the " +
+        "collection later never starts flowing to an endpoint configured " +
+        "before it existed.",
+    }),
     secret: z.string().optional().openapi({
       description: "Used to sign deliveries (`X-Backlex-Signature` HMAC-SHA256).",
     }),
@@ -42,6 +49,7 @@ const WebhookRow = z
     url: z.string(),
     events: z.array(z.string()),
     headers: z.record(z.string(), z.string()).nullable(),
+    payloadFields: z.array(z.string()).nullable().optional(),
     secret: z.string().nullable(),
     active: z.boolean(),
     consecutiveFailures: z.number().int().nullable().optional().openapi({

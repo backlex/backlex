@@ -3797,6 +3797,10 @@ msgstr "sütunlar · şema seçeneklerinden"
 msgid "Comma or newline separated. Each gets its own single-use link."
 msgstr "Virgül veya satır sonuyla ayırın. Her biri kendi tek kullanımlık bağlantısını alır."
 
+#: src/client/admin/pages/automation/webhooks.tsx
+msgid "Comma- or newline-separated. Leave blank to send the whole row. Naming fields here is an allow-list, so a column added to the collection later is not sent to this endpoint until you add it."
+msgstr "Virgül veya satır sonuyla ayrılır. Satırın tamamını göndermek için boş bırakın. Burada alan adı yazmak bir izin listesidir; koleksiyona sonradan eklenen bir sütun, siz eklemedikçe bu uca gönderilmez."
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Virgül veya boşlukla ayrılmış. Ayarlandığında, diğer alan adlarından gelen e-posta görünümlü kullanıcı adları LDAP sorgusundan önce reddedilir."
@@ -6928,6 +6932,10 @@ msgstr "{0} alanları"
 #: src/client/admin/fields/edit-field.tsx
 msgid "Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped."
 msgstr "Aynı bölüm adını paylaşan alanlar, öğe formunda tek bir başlık altında gruplanır. Gruplamamak için boş bırakın."
+
+#: src/client/admin/pages/automation/webhooks.tsx
+msgid "Fields to send"
+msgstr "Gönderilecek alanlar"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "File detail"

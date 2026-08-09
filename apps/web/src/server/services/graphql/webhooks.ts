@@ -40,6 +40,7 @@ const WebhookType = new GraphQLObjectType({
     url: { type: new GraphQLNonNull(GraphQLString) },
     events: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     headers: { type: JSONScalar },
+    payloadFields: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     secret: { type: GraphQLString },
     active: { type: new GraphQLNonNull(GraphQLBoolean) },
     consecutiveFailures: { type: GraphQLInt },
@@ -55,6 +56,7 @@ const WebhookInputType = new GraphQLInputObjectType({
     url: { type: GraphQLString },
     events: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     headers: { type: JSONScalar },
+    payloadFields: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     secret: { type: GraphQLString },
     active: { type: GraphQLBoolean },
   },
@@ -119,6 +121,15 @@ const validateWebhookInput = (
   } else if (!partial) invalid("events is required");
   if (data.headers !== undefined)
     out.headers = data.headers as Record<string, string> | null;
+  if (data.payloadFields !== undefined) {
+    const pf = data.payloadFields;
+    if (pf === null) out.payloadFields = null;
+    else {
+      if (!Array.isArray(pf) || pf.some((f) => typeof f !== "string" || f.length === 0))
+        invalid("payloadFields must be a list of non-empty field names, or null");
+      out.payloadFields = pf as string[];
+    }
+  }
   if (data.secret !== undefined && data.secret !== null) out.secret = data.secret as string;
   if (data.active !== undefined && data.active !== null) out.active = data.active as boolean;
   return out;

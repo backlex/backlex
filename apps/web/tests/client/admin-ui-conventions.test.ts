@@ -340,6 +340,9 @@ describe("admin UI conventions", () => {
       "ui.tsx",
       // Shared infrastructure with no single owning page.
       "extension-frame.tsx",
+      // Mounted by the items list, the record editor and the overview page —
+      // three owners is no owner, same bucket as the frame it renders.
+      "extension-widgets.tsx",
     ].sort();
 
     const root = join(CLIENT, "admin");

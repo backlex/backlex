@@ -109,6 +109,7 @@ import m102 from "../../drizzle/sqlite/20260807160000_form_drafts/migration.sql"
 import m103 from "../../drizzle/sqlite/20260808090000_form_invite_reminders/migration.sql" with { type: "text" };
 import m104 from "../../drizzle/sqlite/20260808120000_booking_records_collection/migration.sql" with { type: "text" };
 import m105 from "../../drizzle/sqlite/20260808170000_role_org_assignable/migration.sql" with { type: "text" };
+import m106 from "../../drizzle/sqlite/20260809080000_webhook_payload_fields/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -222,4 +223,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260808090000_form_invite_reminders", sql: m103 },
   { name: "20260808120000_booking_records_collection", sql: m104 },
   { name: "20260808170000_role_org_assignable", sql: m105 },
+  { name: "20260809080000_webhook_payload_fields", sql: m106 },
 ];

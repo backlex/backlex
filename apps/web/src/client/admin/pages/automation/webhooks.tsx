@@ -56,13 +56,23 @@ function parseHeaderLines(text: string): Record<string, string> | null {
   }
   return Object.keys(out).length ? out : null;
 }
+/** A comma/newline-separated field list ⇄ the API's allow-list array. An empty
+ * box means "send the whole row", which the API spells `null` — NOT an empty
+ * array, which would mean "send nothing". */
+function parseFieldList(text: string): string[] | null {
+  const out = String(text ?? "")
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return out.length ? Array.from(new Set(out)) : null;
+}
 function formatHeaderLines(headers: Record<string, string> | null | undefined): string {
   return headers ? Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join("\n") : "";
 }
 
 export function WebhooksPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
-  type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; active: boolean; consecutiveFailures: number; disabledReason: string | null; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
+  type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; payloadFields: string[] | null; active: boolean; consecutiveFailures: number; disabledReason: string | null; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
   const [hooks, setHooks] = useState<HookRow[]>([]);
   // First-load gate — drives the page skeleton until webhooks land.
   const [loaded, setLoaded] = useState(false);
@@ -90,6 +100,7 @@ export function WebhooksPage({ pushToast }: { pushToast: PushToast }) {
           method: "POST",
           secret: h.secret ?? "",
           headers: h.headers ?? null,
+          payloadFields: Array.isArray(h.payloadFields) ? h.payloadFields : null,
           active: !!h.active,
           consecutiveFailures: h.consecutiveFailures ?? 0,
           disabledReason: h.disabledReason ?? null,
@@ -130,16 +141,17 @@ export function WebhooksPage({ pushToast }: { pushToast: PushToast }) {
   const saveHook = async (data: any) => {
     try {
       const headers = parseHeaderLines(data.headers);
+      const payloadFields = parseFieldList(data.payloadFields);
       if (editor!.mode === "create") {
         await api("/api/webhooks", {
           method: "POST",
-          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, secret: data.secret, active: data.active, headers }),
+          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, secret: data.secret, active: data.active, headers, payloadFields }),
         });
         pushToast(t`Webhook "${data.name}" created.`);
       } else {
         await api(`/api/webhooks/${editor!.hook.id}`, {
           method: "PATCH",
-          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, active: data.active, headers }),
+          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, active: data.active, headers, payloadFields }),
         });
         pushToast(t`Webhook "${data.name}" updated.`);
       }
@@ -318,8 +330,8 @@ export function WebhooksPage({ pushToast }: { pushToast: PushToast }) {
 
 function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode: "create" | "edit"; hook: any; onClose: () => void; onSave: (data: any) => void; pushToast: PushToast }) {
   const { t } = useLingui();
-  const blank = { name: "", url: "", method: "POST", events: [], secret: "whsec_" + Math.random().toString(16).slice(2, 14), active: true, headers: "" };
-  const [draft, setDraft] = useState<any>(hook ? { ...hook, headers: formatHeaderLines(hook.headers) } : blank);
+  const blank = { name: "", url: "", method: "POST", events: [], secret: "whsec_" + Math.random().toString(16).slice(2, 14), active: true, headers: "", payloadFields: "" };
+  const [draft, setDraft] = useState<any>(hook ? { ...hook, headers: formatHeaderLines(hook.headers), payloadFields: (hook.payloadFields ?? []).join(", ") } : blank);
   const [revealSecret, setRevealSecret] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const update = (k: string, v: unknown) => { setDraft((d: any) => ({ ...d, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })); };
@@ -400,6 +412,12 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Custom headers</Trans></label>
             <Textarea className="font-mono min-h-[70px] text-xs" value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: backlex"} />
             <span className="text-[11.5px] text-muted-foreground"><Trans>One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Backlex-*</span> are reserved.</Trans></span>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Fields to send</Trans></label>
+            <Textarea className="font-mono min-h-[52px] text-xs" value={draft.payloadFields} onChange={(e) => update("payloadFields", e.target.value)} placeholder="id, status, updated_at" />
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Comma- or newline-separated. Leave blank to send the whole row. Naming fields here is an allow-list, so a column added to the collection later is not sent to this endpoint until you add it.</Trans></span>
           </div>
 
           <div className="flex items-center justify-between gap-3">

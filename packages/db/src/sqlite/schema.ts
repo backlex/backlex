@@ -810,6 +810,11 @@ export const webhooks = sqliteTable(
     url: text("url").notNull(),
     events: text("events", { mode: "json" }).$type<string[]>().notNull(),
     headers: text("headers", { mode: "json" }).$type<Record<string, string> | null>(),
+    /** Allow-list of top-level `data` keys this hook may carry. NULL/empty =
+     *  the whole row (the default). An allow-list rather than a deny-list so a
+     *  column added later never starts flowing to an endpoint configured before
+     *  it existed. */
+    payloadFields: text("payload_fields", { mode: "json" }).$type<string[] | null>(),
     secret: text("secret"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     /** Consecutive failed deliveries since the last 2xx — drives the

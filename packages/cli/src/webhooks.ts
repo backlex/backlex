@@ -29,6 +29,7 @@ const WEBHOOKS_HELP = `backlex webhooks <list|create|test|deliveries|retry|resum
 
   list                          all webhooks
   create --name <n> --url <u> --events a,b [--secret <s>] [--inactive]
+                                [--fields id,status]  send only these keys
   create --data <json|@file|->  full payload (for headers etc.)
   test <id>                     fire a test delivery
   deliveries [--limit N]        recent deliveries
@@ -84,6 +85,12 @@ export const runWebhooks = async (args: string[]): Promise<void> => {
               name: flag(rest, "--name"),
               url: flag(rest, "--url"),
               events: csv(flag(rest, "--events")),
+              // Omitted entirely when the flag is absent, so the server keeps
+              // its "whole row" default rather than being handed an empty
+              // allow-list that would send nothing.
+              ...(flag(rest, "--fields")
+                ? { payloadFields: csv(flag(rest, "--fields")) }
+                : {}),
               secret: flag(rest, "--secret"),
               active: !has(rest, "--inactive"),
             };

@@ -1009,6 +1009,11 @@ export const webhooks = pgTable(
     url: text("url").notNull(),
     events: jsonb("events").$type<string[]>().notNull(),
     headers: jsonb("headers").$type<Record<string, string> | null>(),
+    /** Allow-list of top-level `data` keys this hook may carry. NULL/empty =
+     *  the whole row (the default). An allow-list rather than a deny-list so a
+     *  column added later never starts flowing to an endpoint configured before
+     *  it existed. */
+    payloadFields: jsonb("payload_fields").$type<string[] | null>(),
     secret: text("secret"),
     active: boolean("active").notNull().default(true),
     /** Consecutive failed deliveries since the last 2xx — drives the

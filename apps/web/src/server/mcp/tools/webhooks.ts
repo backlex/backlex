@@ -33,6 +33,12 @@ export const createWebhook: McpTool = {
       url: { type: "string", description: "Target HTTPS URL." },
       events: { type: "array", description: "Array of event patterns." },
       headers: { type: "object", description: "Custom request headers." },
+      payloadFields: {
+        type: "array",
+        description:
+          "Allow-list of top-level `data` keys this hook may carry. Omit to " +
+          "send the whole row.",
+      },
       secret: { type: "string", description: "HMAC signing secret." },
       active: { type: "boolean" },
     },

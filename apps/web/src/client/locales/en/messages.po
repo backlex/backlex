@@ -3797,6 +3797,10 @@ msgstr "columns · from schema enum"
 msgid "Comma or newline separated. Each gets its own single-use link."
 msgstr "Comma or newline separated. Each gets its own single-use link."
 
+#: src/client/admin/pages/automation/webhooks.tsx
+msgid "Comma- or newline-separated. Leave blank to send the whole row. Naming fields here is an allow-list, so a column added to the collection later is not sent to this endpoint until you add it."
+msgstr "Comma- or newline-separated. Leave blank to send the whole row. Naming fields here is an allow-list, so a column added to the collection later is not sent to this endpoint until you add it."
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
@@ -6928,6 +6932,10 @@ msgstr "Fields of {0}"
 #: src/client/admin/fields/edit-field.tsx
 msgid "Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped."
 msgstr "Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped."
+
+#: src/client/admin/pages/automation/webhooks.tsx
+msgid "Fields to send"
+msgstr "Fields to send"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "File detail"

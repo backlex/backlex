@@ -31,6 +31,51 @@ collection's create). The payload body is:
 { "channel": "items", "event": "created", "data": { … }, "deliveredAt": "…" }
 ```
 
+## Choosing what `data` carries
+
+By default `data` is the whole row. A hook that only needs an id and a status to
+kick off a job somewhere else is also handed the customer's address, the
+internal note, and whatever column got added last week — to a third-party
+endpoint, over the public internet, indefinitely, because nobody revisits a
+webhook after it starts working.
+
+`payloadFields` is a per-hook allow-list of top-level `data` keys:
+
+```http
+POST /api/webhooks
+{
+  "name": "Fulfilment",
+  "url": "https://api.example.com/orders",
+  "events": ["items.orders.created"],
+  "payloadFields": ["id", "status", "updated_at"]
+}
+```
+
+```json
+{ "channel": "items", "event": "created",
+  "data": { "id": "…", "status": "paid", "updated_at": "…" },
+  "deliveredAt": "…" }
+```
+
+- **Omit it, or send `null`, for the whole row.** That is the default, so no
+  existing hook changes shape.
+- **An empty list also means the whole row**, not an empty body — a cleared list
+  must not silently blank every delivery.
+- **It is an allow-list, deliberately.** A field added to the collection next
+  month does not start flowing to an endpoint that was configured before it
+  existed; you add it when you mean to.
+- **A listed key the row doesn't have is simply absent** — never an explicit
+  `null`, which a receiver would read as "this was cleared".
+- **Only the top level is projected.** A named object field is sent whole.
+- Non-object payloads (system events whose `data` is an array or a scalar) pass
+  through untouched — there are no keys to choose from.
+- The body is built **per hook**, so two hooks on the same event can receive
+  different payloads, and each signature covers the body that hook actually
+  received.
+
+Also on **Webhooks → edit → Fields to send** in the admin, `payloadFields` in
+GraphQL and MCP, and `--fields id,status` on `backlex webhooks create`.
+
 ## Signing & verification
 
 When a hook has a `secret`, every delivery is signed. Three headers travel with

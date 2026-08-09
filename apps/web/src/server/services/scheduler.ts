@@ -35,6 +35,7 @@ import { listConnectedProviders } from "./payments";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { pruneAnalyticsEvents, pruneErrorEvents } from "./analytics";
+import { pruneBroadcastMessages } from "./broadcast";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
 import { processMigrationRuns } from "./migrate";
@@ -558,6 +559,16 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       // Telemetry pruning must never take down the tick that also runs jobs,
       // backups and scheduled publishing.
       console.error("[analytics-prune] sweep failed", e);
+    }
+
+    // Retained broadcast messages. No retention setting: `retentionHours` is
+    // per RULE and already capped, and `readReplay` clamps each channel to its
+    // own window on the way in — so the prune only has to enforce the ceiling,
+    // in one ranged DELETE on the `day` key rather than a scan per channel.
+    try {
+      await pruneBroadcastMessages(ctx, now.getTime());
+    } catch (e) {
+      console.error("[broadcast-prune] sweep failed", e);
     }
   }
 };

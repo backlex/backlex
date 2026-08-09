@@ -514,6 +514,13 @@ export interface Env {
    *    subscriber does learn the ids and timing of changes to rows its
    *    condition hides. Set this only when that's not sensitive. */
   REALTIME_SIGNAL_SCOPE?: "unconditional" | "all";
+  /** Legacy escape hatch for the free-form realtime channels that used to be
+   *  open to anyone, signed in or not, in both directions. They are now
+   *  default-deny and authorized by a `broadcast_channels` rule (see
+   *  `services/broadcast.ts`). Set to `1` ONLY if an existing deployment
+   *  depends on the old behaviour: it restores anonymous subscribe AND
+   *  anonymous publish on every channel name the managed gates don't own. */
+  REALTIME_OPEN_CHANNELS?: string;
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,
@@ -726,6 +733,7 @@ export const STRING_ENV_KEYS = [
   "UPSTASH_REDIS_REST_TOKEN",
   "ABLY_API_KEY",
   "REALTIME_SIGNAL_SCOPE",
+  "REALTIME_OPEN_CHANNELS",
   "S3_BUCKET",
   "S3_REGION",
   "S3_ENDPOINT",

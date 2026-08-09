@@ -15,12 +15,19 @@ response, so admin / SDK code never speaks raw WebSocket.
 | `items:<slug>`      | session/key   | yes          | `created`/`updated`/`deleted` for the collection       |
 | `collections`       | admin only    | yes          | Schema events                                          |
 | `presence:<name>`   | signed-in     | no           | Roster of currently connected members on the channel   |
-| anything else       | none          | no           | Free-form pub/sub (back-compat)                        |
+| anything else       | **a rule**    | no           | [Broadcast channels](/docs/broadcast-channels) — your application's own pub/sub |
 
 System channels (`items:*`, `collections`, `presence:*`) reject external
 publish — events come from the API itself when CRUD routes fire (or, for
-presence, on join/leave). Free-form channels accept any payload via
-`POST /api/realtime/<channel>/publish`; that endpoint is rate-limited
+presence, on join/leave).
+
+Any other channel name is an **application-owned** channel, authorized by a
+pattern-matched rule (`/api/admin/realtime-channels`). A name with no matching
+rule is refused in both directions; see
+[Broadcast channels](/docs/broadcast-channels) for the pattern grammar,
+presence and retained history — and for `REALTIME_OPEN_CHANNELS=1`, the
+opt-in that restores the pre-rule behaviour where those channels were open to
+anyone. Publishing is `POST /api/realtime/<channel>/publish`, rate-limited
 per `(channel, ip)`. Admins can also call
 `POST /api/realtime/items:<slug>/test-publish` to inject a synthetic
 `{event,data}` for verifying per-subscriber filtering — no webhook /

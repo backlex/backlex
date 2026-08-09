@@ -168,6 +168,7 @@ export default defineConfig({
             { slug: "webhooks" },
             { slug: "sync-hooks" },
             { slug: "auth-hooks" },
+            { slug: "broadcast-channels" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

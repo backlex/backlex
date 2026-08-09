@@ -55,6 +55,7 @@ import type { SignaturesClient } from "./clients/signatures";
 import type { StorageClient } from "./clients/storage";
 import type { SyncHooksClient } from "./clients/sync-hooks";
 import type { AuthHooksClient } from "./clients/auth-hooks";
+import type { ChannelsClient } from "./clients/channels";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
 import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
@@ -139,6 +140,7 @@ export * from "./clients/booking";
 export * from "./clients/integrations";
 export * from "./clients/sync-hooks";
 export * from "./clients/auth-hooks";
+export * from "./clients/channels";
 export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
@@ -168,6 +170,7 @@ import { makeBooking } from "./clients/booking";
 import { makeIntegrations } from "./clients/integrations";
 import { makeSyncHooks } from "./clients/sync-hooks";
 import { makeAuthHooks } from "./clients/auth-hooks";
+import { makeChannels } from "./clients/channels";
 import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
@@ -277,6 +280,9 @@ export interface BacklexClient {
   /** Hooks into this workspace's END-USER auth: sign-up admission, access-token
    *  claims, password verification and auth-mail delivery. */
   authHooks: AuthHooksClient;
+  /** Application-owned realtime channels: the rules that authorize them, plus
+   *  publish / presence / retained history. Subscribing is `client.subscribe`. */
+  channels: ChannelsClient;
   extensions: ExtensionsClient;
   /** Named KPIs — the shared definition layer every surface reads a figure from. */
   kpis: KpisClient;
@@ -843,6 +849,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const integrations = makeIntegrations(core);
   const syncHooks = makeSyncHooks(core);
   const authHooks = makeAuthHooks(core);
+  const channels = makeChannels(core);
   const payments = makePayments(core);
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
@@ -898,6 +905,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     integrations,
     syncHooks,
     authHooks,
+    channels,
     extensions,
     kpis,
     dashboards,

@@ -38,6 +38,7 @@ import { webhookQueryFields, webhookMutationFields } from "./webhooks";
 import { integrationQueryFields, integrationMutationFields } from "./integrations";
 import { syncHookQueryFields, syncHookMutationFields } from "./sync-hooks";
 import { authHookQueryFields, authHookMutationFields } from "./auth-hooks";
+import { channelQueryFields, channelMutationFields } from "./channels";
 import { documentQueryFields, documentMutationFields } from "./documents";
 import { approvalQueryFields, approvalMutationFields } from "./approvals";
 import { signatureQueryFields, signatureMutationFields } from "./signatures";
@@ -102,6 +103,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...integrationQueryFields,
           ...syncHookQueryFields,
           ...authHookQueryFields,
+          ...channelQueryFields,
           ...documentQueryFields,
           ...approvalQueryFields,
           ...signatureQueryFields,
@@ -133,6 +135,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...integrationMutationFields,
           ...syncHookMutationFields,
           ...authHookMutationFields,
+          ...channelMutationFields,
           ...documentMutationFields,
           ...approvalMutationFields,
           ...signatureMutationFields,
@@ -168,6 +171,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...integrationQueryFields,
     ...syncHookQueryFields,
     ...authHookQueryFields,
+    ...channelQueryFields,
     ...documentQueryFields,
     ...approvalQueryFields,
     ...signatureQueryFields,
@@ -196,6 +200,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...integrationMutationFields,
     ...syncHookMutationFields,
     ...authHookMutationFields,
+    ...channelMutationFields,
     ...documentMutationFields,
     ...approvalMutationFields,
     ...signatureMutationFields,

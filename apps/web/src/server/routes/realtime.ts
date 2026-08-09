@@ -44,6 +44,18 @@ import {
   parseCollabChannel,
 } from "../services/collab";
 import { getThread } from "../services/agents/store";
+import { splitChannel, REPLAY_PAGE_SIZE } from "@backlex/core";
+import {
+  buildBroadcastFrame,
+  explainChannel,
+  isManagedChannel,
+  openChannelsEnabled,
+  readReplay,
+  recordBroadcast,
+  resolveChannelRule,
+  satisfiesAccess,
+  type ResolvedChannel,
+} from "../services/broadcast";
 import {
   SIGNAL_ROOT,
   itemsConfig,
@@ -96,6 +108,10 @@ interface Gate {
    *  `meta` because there is no row to filter: the payload is a signal, and the
    *  actual permission gate happens on the client's follow-up REST read. */
   signal?: boolean;
+  /** Set for an application-owned channel authorized by a `broadcast_channels`
+   *  rule. Publish bodies are validated + identity-stamped against the rule,
+   *  and retained when the rule enables replay. */
+  broadcast?: ResolvedChannel;
 }
 
 const clientIp = (c: { req: { header: (n: string) => string | undefined } }): string =>
@@ -383,8 +399,41 @@ const gateForChannel = async (
       agentThread: true,
     };
   }
-  // user-defined channel: no auth, no filter
-  return {};
+  // Application-owned (broadcast) channel. Everything above carries its own
+  // gate; this branch used to return an empty one — no sign-in to subscribe,
+  // no sign-in to publish, no workspace scoping. It is now authorized by a
+  // `broadcast_channels` rule, and DEFAULT DENY: an unmatched channel is
+  // refused rather than open to the world.
+  if (openChannelsEnabled(ctx.env)) {
+    // Legacy behaviour, explicitly opted into. Documented in docs/realtime.md
+    // as what it is: anonymous read AND write on every unmanaged channel.
+    return {};
+  }
+  if (!splitChannel(channel)) {
+    throw new AppError(
+      "VALIDATION",
+      "Channel names are colon-separated segments of letters, digits, `_`, `.`, `@` or `-`",
+    );
+  }
+  const resolved = await resolveChannelRule(ctx, auth.tenantId, channel);
+  if (!resolved) {
+    throw new AppError(
+      auth.userId ? "FORBIDDEN" : "UNAUTHORIZED",
+      `No channel rule matches "${channel}". Create one at POST /api/admin/realtime-channels ` +
+        "(Automation → Realtime → Channels) — free-form channels are no longer open by default.",
+    );
+  }
+  const { rule, params } = resolved;
+  const access = isPublish ? rule.publish : rule.subscribe;
+  if (!satisfiesAccess(access, auth, params)) {
+    throw new AppError(
+      auth.userId ? "FORBIDDEN" : "UNAUTHORIZED",
+      auth.userId
+        ? `The rule "${rule.name}" does not let you ${isPublish ? "publish on" : "subscribe to"} "${channel}"`
+        : "Sign in required for this channel",
+    );
+  }
+  return { broadcast: resolved };
 };
 
 /**
@@ -410,19 +459,38 @@ const gateAndMintAblyToken = async (
   const capabilities: Record<string, string[]> = {};
   for (const channel of channels) {
     const isSignal = channel.startsWith(SIGNAL_ROOT);
+    const isCollab = channel.startsWith(COLLAB_PREFIX);
     if (isSignal && !allowSignal) {
       throw new AppError("VALIDATION", "collab-token only covers collab:* channels");
     }
-    if (!isSignal && !channel.startsWith(COLLAB_PREFIX)) {
+    if (!isSignal && !isCollab && !allowSignal) {
+      throw new AppError("VALIDATION", "collab-token only covers collab:* channels");
+    }
+    if (!isSignal && !isCollab && isManagedChannel(channel)) {
       throw new AppError(
         "VALIDATION",
-        allowSignal
-          ? "ably-token only covers collab:* and signal:items:* channels"
-          : "collab-token only covers collab:* channels",
+        "ably-token covers collab:*, signal:items:* and application-owned channels — " +
+          "`items:*`, `presence:*`, `agent:thread:*` and `collections` stream over SSE, where " +
+          "per-subscriber row filtering happens",
       );
     }
-    await gateForChannel(ctx, auth, channel, false);
-    capabilities[channel] = isSignal ? ["subscribe"] : ["publish", "subscribe"];
+    const gate = await gateForChannel(ctx, auth, channel, false);
+    if (isSignal) {
+      // Server-emitted: a client able to publish these could fabricate change
+      // notifications that make other readers refetch (or miss) rows.
+      capabilities[channel] = ["subscribe"];
+    } else if (isCollab) {
+      capabilities[channel] = ["publish", "subscribe"];
+    } else {
+      // Application-owned: the token's capability mirrors the rule, so Ably
+      // enforces the same split the REST publish endpoint does. Asking the
+      // gate a second time with `isPublish` is what decides it — a caller who
+      // may only listen must not get a publishing token.
+      const canPublish =
+        gate.broadcast !== undefined &&
+        satisfiesAccess(gate.broadcast.rule.publish, auth, gate.broadcast.params);
+      capabilities[channel] = canPublish ? ["publish", "subscribe"] : ["subscribe"];
+    }
   }
   return mintAblyTokenRequest(ctx.env.ABLY_API_KEY, auth.userId!, capabilities);
 };
@@ -535,7 +603,11 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "Publish to a free-form channel",
       description:
-        "Free-form channels only — `items:*`, `collections`, and `presence:*` are managed by the API and reject client publish. Rate limited per `(channel, ip)`.",
+        "Application-owned channels only — `items:*`, `signal:*`, `collections` and `presence:*` are managed by " +
+        "the API and reject client publish. An application-owned channel needs a matching `broadcast_channels` " +
+        "rule whose `publish` access this caller satisfies; the body is `{ event?, data }`, or " +
+        "`{ kind: \"presence\", t, state? }` on a rule with presence enabled. The sender identity is stamped " +
+        "server-side. Rate limited per `(channel, ip)`.",
       security: SECURITY,
       request: {
         params: z.object({ channel: z.string() }),
@@ -597,8 +669,162 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           email: auth.email,
         });
       }
+      if (gate.broadcast) {
+        // Same posture as collab: the raw body is never forwarded. The frame is
+        // built here so the sender identity comes from the session, and so a
+        // presence frame is refused on a channel whose rule has presence off
+        // rather than being delivered as an ordinary message.
+        const frame = buildBroadcastFrame(
+          payload,
+          gate.broadcast.rule,
+          { userId: auth.userId, email: auth.email },
+          Date.now(),
+        );
+        payload = frame;
+        if (gate.broadcast.rule.replay && auth.tenantId) {
+          // Retained BEFORE the fan-out: a subscriber that reconnects and
+          // replays must not find a hole where a message it saw live should be.
+          await recordBroadcast(ctx, auth.tenantId, channel, frame);
+        }
+      }
       await publishToChannel(ctx.env, channel, payload);
       return c.json({ ok: true });
+    },
+  )
+  // Retained history for an application-owned channel whose rule enables
+  // replay. Paged by an opaque `(created_at, id)` keyset cursor — a bare
+  // timestamp cursor skips a message that shared a millisecond, or repeats one
+  // forever. The window is clamped to the rule's retention on the way in, so
+  // turning retention down takes effect immediately rather than whenever the
+  // prune next runs.
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{channel}/replay",
+      tags: [TAG],
+      summary: "Read a broadcast channel's retained messages",
+      description:
+        "Requires the same subscribe permission as a live subscription. Oldest first, " +
+        `at most ${REPLAY_PAGE_SIZE} per request; pass the returned \`cursor\` back as \`since\`.`,
+      security: SECURITY,
+      request: {
+        params: z.object({ channel: z.string() }),
+        query: z.object({
+          since: z.string().optional().openapi({
+            description: "Cursor from a previous response. Omit to start at the window's edge.",
+          }),
+          limit: z.coerce.number().int().min(1).max(REPLAY_PAGE_SIZE).optional(),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Retained messages, oldest first",
+          content: {
+            "application/json": {
+              schema: z
+                .object({
+                  data: z.array(
+                    z.object({
+                      id: z.string(),
+                      event: z.string(),
+                      data: z.unknown(),
+                      from: z
+                        .object({ id: z.string(), name: z.string().nullable() })
+                        .nullable(),
+                      at: z.number(),
+                      cursor: z.string(),
+                    }),
+                  ),
+                  cursor: z.string().nullable(),
+                })
+                .openapi("BroadcastReplayResponse"),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const { channel } = c.req.valid("param");
+      const { since, limit } = c.req.valid("query");
+      const gate = await gateForChannel(ctx, auth, channel, false);
+      if (!gate.broadcast) {
+        throw new AppError(
+          "VALIDATION",
+          "Replay is only available on application-owned channels — managed channels resume over `Last-Event-ID`",
+        );
+      }
+      if (!auth.tenantId) throw new AppError("UNAUTHORIZED", "Active workspace required");
+      return c.json(
+        await readReplay(
+          ctx,
+          auth.tenantId,
+          channel,
+          gate.broadcast.rule,
+          since,
+          limit ?? REPLAY_PAGE_SIZE,
+        ),
+      );
+    },
+  )
+  // "What would happen if I touched this channel" — the affordance
+  // `permissions.simulate` gives for collections. An operator debugging a
+  // pattern should not have to open a stream to learn that `chat:*` does not
+  // match `chat:room:1`.
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{channel}/explain",
+      tags: [TAG],
+      summary: "Explain which rule governs a channel",
+      security: SECURITY,
+      request: { params: z.object({ channel: z.string() }) },
+      responses: {
+        200: {
+          description: "The matching rule and this caller's verdict",
+          content: {
+            "application/json": {
+              schema: z
+                .object({
+                  channel: z.string(),
+                  managed: z.boolean(),
+                  matched: z
+                    .object({ id: z.string(), name: z.string(), pattern: z.string() })
+                    .nullable(),
+                  params: z.record(z.string(), z.string()),
+                  canSubscribe: z.boolean(),
+                  canPublish: z.boolean(),
+                  reason: z.string(),
+                })
+                .openapi("ChannelExplain"),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const auth = c.get("auth");
+      // Signed in, always. The answer NAMES the matching rule, so an anonymous
+      // caller could enumerate a workspace's channel topology — including
+      // rules it has no access to — by probing names. Found in this branch's
+      // own security review: the endpoint resolved the workspace from the
+      // default tenant and answered without a session.
+      if (!auth.userId) {
+        throw new AppError("UNAUTHORIZED", "Sign in required to explain a channel");
+      }
+      if (!auth.tenantId) throw new AppError("UNAUTHORIZED", "Active workspace required");
+      return c.json(
+        await explainChannel(
+          c.get("ctx"),
+          auth.tenantId,
+          auth,
+          c.req.param("channel")!,
+          auth.roles.includes(SYSTEM_ROLES.admin),
+        ),
+      );
     },
   )
   // How the admin SPA should reach collab channels on this deployment —

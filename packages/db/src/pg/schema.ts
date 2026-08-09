@@ -3791,3 +3791,107 @@ export const sequences = pgTable(
     uniqueIndex("sequences_key_idx").on(t.tenantId, t.collection, t.field, t.scope),
   ],
 );
+
+/**
+ * A broadcast channel RULE — who may subscribe to, and who may publish on, a
+ * free-form realtime channel.
+ *
+ * ## Why this table exists
+ *
+ * `items:*`, `signal:items:*`, `collab:*`, `presence:*`, `agent:thread:*` and
+ * `collections` each carry their own permission gate. Everything else — every
+ * channel name an application might invent for a chat room, a cursor feed or a
+ * notification bus — fell through to a branch that returned an empty gate: no
+ * sign-in required to subscribe, no sign-in required to publish. That is not a
+ * pub/sub system an application can put anything real on, so applications
+ * reached for Ably instead.
+ *
+ * A rule is matched by PATTERN, not by exact name, because the channels an app
+ * invents are per-room (`room:42`) and enumerating them is the app's job, not
+ * the operator's. The grammar is closed on purpose (literal / `*` / `**` /
+ * `{name}`) so a pattern can be DECODED as well as matched — a `{name}` segment
+ * captures the value into `$channel.<name>`, which is what lets one rule say
+ * "you may subscribe to `org:{org}:feed` when `{org}` is an org you belong to".
+ *
+ * `subscribe` and `publish` are stored as whole JSON objects rather than as a
+ * roles column plus a condition column, because "who" has FOUR answers and two
+ * nullable columns can only spell three. See `services/broadcast.ts`.
+ */
+export const broadcastChannels = pgTable(
+  "broadcast_channels",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** Operator-facing label. The pattern is the identity. */
+    name: text("name").notNull(),
+    /** Closed grammar: `chat:*`, `org:{org}:feed`, `logs:**`. */
+    pattern: text("pattern").notNull(),
+    /** `{ access: "none" | "public" | "authenticated" | "roles", roles?, condition? }`,
+     *  serialized. TEXT rather than `jsonb` so that BOTH dialects hand the
+     *  application a string and one `readAccess` decides what an unparseable
+     *  rule means. With a driver-parsed column the SQLite twin throws inside
+     *  the row mapper, where no fail-closed default can be applied. */
+    subscribe: text("subscribe").notNull(),
+    publish: text("publish").notNull(),
+    /** Members may announce themselves on this channel (stateless roster —
+     *  hello/ping/bye, same protocol `collab:*` uses, so it works on every
+     *  transport rather than only the two that can hold a server-side roster). */
+    presence: boolean("presence").notNull().default(false),
+    /** Persist messages so a late or reconnecting subscriber can read the
+     *  recent past back over REST. */
+    replay: boolean("replay").notNull().default(false),
+    /** How far back `replay` reaches. Capped at 72h — see the messages table. */
+    retentionHours: integer("retention_hours").notNull().default(24),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("broadcast_channels_pattern_idx").on(t.tenantId, t.pattern),
+    index("broadcast_channels_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * A retained broadcast message, for `GET /api/realtime/{channel}/replay`.
+ *
+ * `day` is the coarse partition key. Supabase drops a day-partitioned table
+ * after three days; we cannot partition (D1 has no such thing and the SQLite
+ * twin has to be the same table), so the same operational property is bought
+ * with an indexed `YYYYMMDD` integer: the prune is one ranged DELETE per run
+ * rather than a scan over timestamps, and it stays one statement on both
+ * dialects.
+ *
+ * Ordering is the keyset `(created_at, id)`. `created_at` alone is not a
+ * cursor: two messages published in the same millisecond would make `>` either
+ * skip one or repeat it forever.
+ */
+export const broadcastMessages = pgTable(
+  "broadcast_messages",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    /** `YYYYMMDD` in UTC — the prune's range key. */
+    day: integer("day").notNull(),
+    /** Caller-chosen event name within the channel (`message` by default). */
+    event: text("event").notNull(),
+    /** The `data` half of the envelope, as published — serialized, for the
+     *  same reason the rule columns are: a corrupt row must degrade to `null`
+     *  in one place, not throw out of the row mapper. */
+    payload: text("payload"),
+    /** Who published it — server-stamped, never taken from the body. Null for
+     *  a message published by an anonymous caller on a `public` channel. */
+    senderId: text("sender_id"),
+    senderName: text("sender_name"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("broadcast_messages_read_idx").on(t.tenantId, t.channel, t.createdAt, t.id),
+    index("broadcast_messages_day_idx").on(t.day),
+  ],
+);

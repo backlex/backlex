@@ -358,9 +358,33 @@ describe("ably-token endpoint", () => {
     });
   });
 
-  test("channels outside the two planes are rejected", async () => {
+  test("a managed channel is rejected — its rows are filtered per subscriber over SSE", async () => {
     expect((await mint([`items:${slug}`])).status).toBe(422);
-    expect((await mint(["anything"])).status).toBe(422);
+  });
+
+  test("an application-owned channel needs a rule, and the token mirrors it", async () => {
+    // Before broadcast channels this was a flat 422 ("outside the two
+    // planes"). It is now a third plane, but a closed one: without a rule the
+    // name is refused, and WITH one the capability is whatever the rule says
+    // — a caller who may only listen must not get a publishing token.
+    expect((await mint(["anything"])).status).toBe(403);
+
+    const made = await h.fetch("/api/admin/realtime-channels", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        name: "Listen only",
+        pattern: "anything",
+        subscribe: { access: "authenticated" },
+        publish: { access: "none" },
+      }),
+    });
+    expect(made.status).toBe(201);
+
+    const res = await mint(["anything"]);
+    expect(res.status).toBe(200);
+    const { tokenRequest } = (await res.json()) as { tokenRequest: { capability: string } };
+    expect(JSON.parse(tokenRequest.capability)).toEqual({ anything: ["subscribe"] });
   });
 
   test("the legacy collab-token endpoint still refuses signal channels", async () => {

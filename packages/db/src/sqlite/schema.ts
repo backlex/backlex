@@ -3395,3 +3395,60 @@ export const sequences = sqliteTable(
     uniqueIndex("sequences_key_idx").on(t.tenantId, t.collection, t.field, t.scope),
   ],
 );
+
+/**
+ * A broadcast channel rule — see packages/db/src/pg/schema.ts for the full
+ * rationale (why free-form channels needed a gate at all, why the pattern
+ * grammar is closed, and why `subscribe`/`publish` are whole JSON objects
+ * rather than a roles column beside a condition column). SQLite twin: booleans
+ * are 0/1, timestamps epoch-ms, JSON is text.
+ */
+export const broadcastChannels = sqliteTable(
+  "broadcast_channels",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    pattern: text("pattern").notNull(),
+    subscribe: text("subscribe").notNull(),
+    publish: text("publish").notNull(),
+    presence: integer("presence", { mode: "boolean" }).notNull().default(false),
+    replay: integer("replay", { mode: "boolean" }).notNull().default(false),
+    retentionHours: integer("retention_hours").notNull().default(24),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("broadcast_channels_pattern_idx").on(t.tenantId, t.pattern),
+    index("broadcast_channels_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * A retained broadcast message — SQLite twin. `day` is a `YYYYMMDD` integer so
+ * the prune is one ranged DELETE on both dialects; the read cursor is the
+ * keyset `(created_at, id)`, because two messages can share a millisecond.
+ */
+export const broadcastMessages = sqliteTable(
+  "broadcast_messages",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    day: integer("day").notNull(),
+    event: text("event").notNull(),
+    payload: text("payload"),
+    senderId: text("sender_id"),
+    senderName: text("sender_name"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("broadcast_messages_read_idx").on(t.tenantId, t.channel, t.createdAt, t.id),
+    index("broadcast_messages_day_idx").on(t.day),
+  ],
+);

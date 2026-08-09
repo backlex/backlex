@@ -270,3 +270,58 @@ export const syncHooksApi = {
   test: (id: string) =>
     api<SyncHookTestResult>(`/api/admin/sync-hooks/${id}/test`, { method: "POST" }),
 };
+
+/* ── broadcast channels ── */
+
+/** Who a channel rule lets through. Four answers, so this is one object rather
+ *  than a nullable roles list beside a nullable condition. */
+export interface ChannelAccess {
+  access: "none" | "public" | "authenticated" | "roles";
+  roles?: string[];
+  /** Permission-DSL condition over the pattern's captures, not over a row. */
+  condition?: unknown;
+}
+
+export interface ApiChannelRule {
+  id: string;
+  name: string;
+  pattern: string;
+  subscribe: ChannelAccess;
+  publish: ChannelAccess;
+  presence: boolean;
+  replay: boolean;
+  retentionHours: number;
+  enabled: boolean;
+}
+
+export type ChannelRuleInput = Omit<ApiChannelRule, "id">;
+
+export interface ChannelExplainResult {
+  channel: string;
+  managed: boolean;
+  matched: { id: string; name: string; pattern: string } | null;
+  params: Record<string, string>;
+  canSubscribe: boolean;
+  canPublish: boolean;
+  reason: string;
+}
+
+export const channelsApi = {
+  list: () => api<Envelope<ApiChannelRule[]>>(`/api/admin/realtime-channels`),
+  create: (body: ChannelRuleInput) =>
+    api<Envelope<ApiChannelRule>>(`/api/admin/realtime-channels`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<ChannelRuleInput>) =>
+    api<Envelope<ApiChannelRule>>(`/api/admin/realtime-channels/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/realtime-channels/${id}`, { method: "DELETE" }),
+  /** Answers for the CALLING identity — which is what makes it a debugging
+   *  aid rather than a second copy of the rule table. */
+  explain: (channel: string) =>
+    api<ChannelExplainResult>(`/api/realtime/${encodeURIComponent(channel)}/explain`),
+};

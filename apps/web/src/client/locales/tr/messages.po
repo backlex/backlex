@@ -1233,6 +1233,10 @@ msgstr "Yeter sayı — içlerinden N kişi"
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "A reconnect aid, not an event store — 25 per page, 72 hours at most. Write rows to a collection for real history."
+msgstr "Yeniden bağlanma yardımcısı, olay deposu değil — sayfa başına 25, en fazla 72 saat. Gerçek geçmiş için bir koleksiyona satır yazın."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 msgstr "Kaynak, insanların rezerve ettiği şeydir — bir kişi, bir oda, bir masa — ve çalışma saatlerini, bir rezervasyonun ne kadar sürdüğünü ve aynı anda kaç kişi sığdığını taşır."
@@ -1756,6 +1760,7 @@ msgstr "Soru ekle"
 msgid "Add role"
 msgstr "Rol ekle"
 
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Add rule"
 msgstr "Kural ekle"
@@ -2326,9 +2331,17 @@ msgstr "herhangi bir sağlayıcı/model kimliği"
 msgid "any signed-in"
 msgstr "oturum açmış herhangi biri"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Any signed-in user"
+msgstr "Oturum açmış herkes"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Anyone — the first approval wins"
 msgstr "Herhangi biri — ilk onay yeterli"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "anyone can publish"
+msgstr "herkes yayınlayabilir"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Anyone with the URL can fetch this file."
@@ -2341,6 +2354,10 @@ msgstr "Bu bağlantıya sahip herkes kaydı görüntüleyebilir — şimdi kopya
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Anyone, any time"
 msgstr "Herkes, istediği zaman"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Anyone, even signed out"
+msgstr "Herkes, oturum açmamış olsa bile"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "API docs"
@@ -3097,6 +3114,10 @@ msgstr "Mola başlangıcı"
 msgid "Bring Contentful entries into a collection. One-way."
 msgstr "Contentful içeriklerini bir koleksiyona getirir. Tek yönlü."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Broadcast channels"
+msgstr "Yayın kanalları"
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Buffer after"
 msgstr "Sonrasında tampon"
@@ -3217,6 +3238,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
@@ -3319,6 +3341,10 @@ msgstr "tuval · ziyaretçinin gördüğü"
 msgid "Capacity"
 msgstr "Kapasite"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Capped at 72."
+msgstr "En fazla 72."
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Döndürülen gruplanmış satır sayısını sınırlar (varsayılan 50, maksimum 200)."
@@ -3408,6 +3434,10 @@ msgstr "Kanal"
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "Channels refreshed."
 msgstr "Kanallar yenilendi."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Channels your own application invents — a chat room, a cursor feed, a notification bus. A channel with no matching rule is refused in both directions."
+msgstr "Uygulamanızın kendi tanımladığı kanallar — bir sohbet odası, imleç akışı, bildirim hattı. Eşleşen kuralı olmayan kanal her iki yönde de reddedilir."
 
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/ui.tsx
@@ -3810,6 +3840,14 @@ msgstr "Arşivlediğiniz koleksiyonlar burada görünür."
 #: src/client/admin/pages/access/role-mcp-guards.tsx
 msgid "collections.read, schema.describe_collection"
 msgstr "collections.read, schema.describe_collection"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+#~ msgid "Colon-separated segments: a literal, * (one segment), ** (the rest, last only), or {name} (one segment, captured for the condition)."
+#~ msgstr ""
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Colon-separated segments: a literal, a single-segment wildcard, a rest wildcard, or a named capture the condition can read."
+msgstr "İki nokta ile ayrılmış parçalar: sabit bir metin, tek parçalık joker, kalanı kapsayan joker veya koşulun okuyabildiği adlandırılmış yakalama."
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Color"
@@ -4539,6 +4577,7 @@ msgid "Covering message"
 msgstr "Üst yazı"
 
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -5130,6 +5169,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
@@ -5906,6 +5946,7 @@ msgstr "düzenle"
 #: src/client/admin/collections/item-form.tsx
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
@@ -5943,6 +5984,10 @@ msgstr "Argümanları düzenle"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Edit auth hook"
 msgstr "Kimlik doğrulama kancasını düzenle"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Edit channel rule"
+msgstr "Kanal kuralını düzenle"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "edit choices on the field in <0>{collection}</0>"
@@ -6770,6 +6815,10 @@ msgstr "Süre (saat)"
 #: src/client/admin/collections/item-editor.tsx
 msgid "Expiry cleared."
 msgstr "Bitiş temizlendi."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Explain"
+msgstr "Açıkla"
 
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/observability/translations.tsx
@@ -7807,6 +7856,10 @@ msgstr "Yükseklik"
 msgid "Held"
 msgstr "Tutuluyor"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "hello / ping / bye frames with a small state object. The roster is derived by each client, so it works on every transport. Never retained."
+msgstr "Küçük bir durum nesnesi taşıyan hello / ping / bye çerçeveleri. Liste her istemcide türetilir, bu yüzden her taşımada çalışır. Hiç saklanmaz."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Help text"
 msgstr "Yardım metni"
@@ -8696,6 +8749,10 @@ msgstr "HubSpot kişilerini bir koleksiyonla eşzamanlı tutar. Kayıt içeriği
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Keep it"
 msgstr "Kalsın"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Keep recent messages for replay"
+msgstr "Son mesajları tekrar için sakla"
 
 #: src/client/pages/sign-document.tsx
 msgid "Keep reviewing"
@@ -9694,6 +9751,10 @@ msgstr "üyeler"
 msgid "Members"
 msgstr "Üyeler"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Members may announce themselves"
+msgstr "Üyeler kendilerini duyurabilir"
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "memory"
 msgstr "hafıza"
@@ -10092,6 +10153,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -10233,6 +10295,10 @@ msgstr "Yeni rezerve edilebilir kaynak"
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "New branch"
 msgstr "Yeni dal"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "New channel rule"
+msgstr "Yeni kanal kuralı"
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "New chat"
@@ -10567,6 +10633,10 @@ msgstr "Henüz dal yok"
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
 msgstr "Bu koleksiyonda toplu düzenlenebilir alan yok."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "No channel rules"
+msgstr "Kanal kuralı yok"
 
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "No channels — create a collection to get one."
@@ -11296,6 +11366,7 @@ msgstr "Çalışma alanı dili yapılandırılmamış — Ayarlar → Yerelleşt
 msgid "No-show"
 msgstr "Gelmedi"
 
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Nobody"
 msgstr "Hiç kimse"
@@ -11795,6 +11866,10 @@ msgstr "Satır başına bir tane. <0>Content-Type</0> ve <1>X-Backlex-*</1> ayr�
 msgid "One row per \"{0}\" — bars / donut / table show the breakdown; counter shows only the first."
 msgstr "\"{0}\" başına bir satır — çubuklar / halka / tablo dağılımı gösterir; sayaç yalnızca ilkini gösterir."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "One rule authorizes every channel its pattern matches — you never enumerate rooms."
+msgstr "Tek kural, deseniyle eşleşen her kanalı yetkilendirir — odaları tek tek saymanız gerekmez."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "One URL per line — saved when you click away."
 msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir."
@@ -11866,6 +11941,10 @@ msgstr "Yalnızca izin verdiğiniz geçişler kabul edilir — API'de, akışlar
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Only the selected types are accepted — enforced server-side."
 msgstr "Yalnızca seçili türler kabul edilir — sunucu tarafında uygulanır."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Only these roles"
+msgstr "Yalnızca bu roller"
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "Only these roles may make this move"
@@ -12361,6 +12440,7 @@ msgid "Paths"
 msgstr "Yollar"
 
 #: src/client/admin/fields/field-sequence-editor.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 msgid "Pattern"
 msgstr "Desen"
 
@@ -13101,6 +13181,10 @@ msgstr "Önek + yıl + numara"
 msgid "Prefix + year, month + number"
 msgstr "Önek + yıl, ay + numara"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "presence"
+msgstr "varlık"
+
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Presets"
 msgstr "Ön ayarlar"
@@ -13352,6 +13436,10 @@ msgstr "Doğrudan bir koleksiyona yazan herkese açık, gömülebilir formlar �
 #~ msgid "Public, embeddable forms that write submissions into a collection — share a link or drop the iframe into any site."
 #~ msgstr "Gönderimleri bir koleksiyona yazan herkese açık, gömülebilir formlar — bağlantıyı paylaşın ya da iframe'i herhangi bir siteye ekleyin."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "publish"
+msgstr "yayınlama"
+
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/sheet.tsx
@@ -13382,6 +13470,14 @@ msgstr "Yayın zamanlandı."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
 msgstr "Bu panoyu herkese açık, kimlik doğrulaması gerektirmeyen bir gömme URL’sinde yayınlayın. Bağlantıya sahip olan herkes görüntüleyebilir — kendi sitenizde bir iframe içine gömün."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "publish: allowed"
+msgstr "yayınlama: izinli"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "publish: refused"
+msgstr "yayınlama: reddedildi"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "published"
@@ -14190,6 +14286,11 @@ msgstr "Yeniden aç"
 msgid "Replace"
 msgstr "Değiştir"
 
+#. placeholder {0}: row.retentionHours
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "replay {0}h"
+msgstr "tekrar {0}sa"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Report"
 msgstr "Rapor"
@@ -14512,6 +14613,10 @@ msgstr "Sakla (otomatik)"
 msgid "Retention"
 msgstr "Elde tutma"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Retention (hours)"
+msgstr "Saklama (saat)"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Retention needs visitors whose first-ever day falls inside the selected window. Widen the window or come back after a few days of traffic."
 msgstr "Elde tutma, ilk gün etkinliği seçili aralığa düşen ziyaretçilere ihtiyaç duyar. Aralığı genişletin ya da birkaç günlük trafikten sonra tekrar bakın."
@@ -14833,7 +14938,24 @@ msgstr "satır çıkışı"
 msgid "RRF fusion of both"
 msgstr "ikisinin RRF birleşimi"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "rule"
+msgstr "kural"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Rule created."
+msgstr "Kural oluşturuldu."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Rule removed — channels it matched are no longer reachable."
+msgstr "Kural kaldırıldı — eşleştiği kanallara artık erişilemez."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Rule updated."
+msgstr "Kural güncellendi."
+
 #: src/client/admin/pages/access/condition-editor.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 msgid "rules"
 msgstr "kurallar"
 
@@ -14940,6 +15062,14 @@ msgstr "çalışmalar"
 msgid "Runs"
 msgstr "Çalışmalar"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Runs against the pattern's captures, not against a row — so a capture is readable as a plain field name."
+msgstr "Bir satıra karşı değil, desenin yakalamalarına karşı çalışır — yakalama düz bir alan adı gibi okunur."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+#~ msgid "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
+#~ msgstr ""
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
 msgstr "her gün 09:00 UTC'de çalışır"
@@ -14963,6 +15093,14 @@ msgstr "Mevcut değerlerle aynı — geri alınacak bir şey yok."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Variables: <3>$user.id</3>, <4>$now</4>, …"
 msgstr "Roller ve izinlerle aynı DSL. Operatörler: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Değişkenler: <3>$user.id</3>, <4>$now</4>, …"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+#~ msgid "Same DSL. Leave publish at \"nobody\" for a feed only your server writes to."
+#~ msgstr ""
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Same DSL. Leave this at \"nobody\" for a feed only your own server writes to."
+msgstr "Aynı DSL. Yalnızca kendi sunucunuzun yazdığı bir akış için bunu \"hiç kimse\" bırakın."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -15033,6 +15171,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database.tsx
@@ -16912,6 +17051,18 @@ msgstr "Gönderildi"
 msgid "Submitting…"
 msgstr "Gönderiliyor…"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "subscribe"
+msgstr "abonelik"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "subscribe: allowed"
+msgstr "abonelik: izinli"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "subscribe: refused"
+msgstr "abonelik: reddedildi"
+
 #: src/client/admin/extras.tsx
 msgid "Subscribed. Waiting for events…"
 msgstr "Abone olundu. Etkinlikler bekleniyor…"
@@ -17195,6 +17346,10 @@ msgstr "Hizmet Şartları URL'si"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Test"
 msgstr "Test"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Test a channel name"
+msgstr "Bir kanal adını dene"
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Test a token"
@@ -18577,6 +18732,10 @@ msgstr "desteklenmiyor"
 msgid "unsupported pk type: {0}"
 msgstr "desteklenmeyen pk türü: {0}"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Until one exists, every application-owned channel is refused. Add a rule to open one."
+msgstr "Bir kural olana kadar uygulamaya ait her kanal reddedilir. Bir kanalı açmak için kural ekleyin."
+
 #: src/client/pages/sign-up.tsx
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "E-postanızı onaylayana kadar giriş çalışmaz. Almadınız mı? Spam'i kontrol edin veya bir dakika bekleyip giriş yapmayı deneyin — talep üzerine yeniden göndeririz."
@@ -19351,9 +19510,17 @@ msgstr "Kim"
 msgid "Who can answer, and until when"
 msgstr "Kim, ne zamana kadar yanıtlayabilir"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Who may publish"
+msgstr "Kim yayınlayabilir"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Who may still sign in with an email and password. Pick \"Workspace end-users only\" once your team is on SSO or passkeys — staff go through the identity provider, your app's customers keep the login they signed up with. Saving is refused while the password is the only way into the dashboard."
 msgstr "E-posta ve parolayla kimlerin giriş yapabileceği. Ekibiniz SSO veya passkey'e geçtiğinde \"Yalnızca çalışma alanı son kullanıcıları\" seçin — personel kimlik sağlayıcıdan geçer, uygulamanızın müşterileri kaydolduğu girişi kullanmaya devam eder. Panele giden tek yol parolayken kayıt reddedilir."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Who may subscribe"
+msgstr "Kim abone olabilir"
 
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Who was asked, who answered, and why."

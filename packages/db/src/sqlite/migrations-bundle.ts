@@ -112,6 +112,7 @@ import m105 from "../../drizzle/sqlite/20260808170000_role_org_assignable/migrat
 import m106 from "../../drizzle/sqlite/20260809080000_webhook_payload_fields/migration.sql" with { type: "text" };
 import m107 from "../../drizzle/sqlite/20260809140000_third_party_auth/migration.sql" with { type: "text" };
 import m108 from "../../drizzle/sqlite/20260809180000_auth_hooks/migration.sql" with { type: "text" };
+import m109 from "../../drizzle/sqlite/20260810090000_broadcast_channels/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -228,4 +229,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260809080000_webhook_payload_fields", sql: m106 },
   { name: "20260809140000_third_party_auth", sql: m107 },
   { name: "20260809180000_auth_hooks", sql: m108 },
+  { name: "20260810090000_broadcast_channels", sql: m109 },
 ];

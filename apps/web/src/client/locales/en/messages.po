@@ -1233,6 +1233,10 @@ msgstr "A quorum — N of them"
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "A read-only view of one record from <0>{collection}</0>."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "A reconnect aid, not an event store — 25 per page, 72 hours at most. Write rows to a collection for real history."
+msgstr "A reconnect aid, not an event store — 25 per page, 72 hours at most. Write rows to a collection for real history."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 msgstr "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
@@ -1756,6 +1760,7 @@ msgstr "Add question"
 msgid "Add role"
 msgstr "Add role"
 
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Add rule"
 msgstr "Add rule"
@@ -2326,9 +2331,17 @@ msgstr "any provider/model id"
 msgid "any signed-in"
 msgstr "any signed-in"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Any signed-in user"
+msgstr "Any signed-in user"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Anyone — the first approval wins"
 msgstr "Anyone — the first approval wins"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "anyone can publish"
+msgstr "anyone can publish"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Anyone with the URL can fetch this file."
@@ -2341,6 +2354,10 @@ msgstr "Anyone with this link can view the record — copy it now, the token is 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Anyone, any time"
 msgstr "Anyone, any time"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Anyone, even signed out"
+msgstr "Anyone, even signed out"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "API docs"
@@ -3097,6 +3114,10 @@ msgstr "Break starts at"
 msgid "Bring Contentful entries into a collection. One-way."
 msgstr "Bring Contentful entries into a collection. One-way."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Broadcast channels"
+msgstr "Broadcast channels"
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Buffer after"
 msgstr "Buffer after"
@@ -3217,6 +3238,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
@@ -3319,6 +3341,10 @@ msgstr "canvas · what visitors see"
 msgid "Capacity"
 msgstr "Capacity"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Capped at 72."
+msgstr "Capped at 72."
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Caps the number of grouped rows returned (default 50, max 200)."
@@ -3408,6 +3434,10 @@ msgstr "Channel"
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "Channels refreshed."
 msgstr "Channels refreshed."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Channels your own application invents — a chat room, a cursor feed, a notification bus. A channel with no matching rule is refused in both directions."
+msgstr "Channels your own application invents — a chat room, a cursor feed, a notification bus. A channel with no matching rule is refused in both directions."
 
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/ui.tsx
@@ -3810,6 +3840,14 @@ msgstr "Collections you archive will show up here."
 #: src/client/admin/pages/access/role-mcp-guards.tsx
 msgid "collections.read, schema.describe_collection"
 msgstr "collections.read, schema.describe_collection"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+#~ msgid "Colon-separated segments: a literal, * (one segment), ** (the rest, last only), or {name} (one segment, captured for the condition)."
+#~ msgstr "Colon-separated segments: a literal, * (one segment), ** (the rest, last only), or {name} (one segment, captured for the condition)."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Colon-separated segments: a literal, a single-segment wildcard, a rest wildcard, or a named capture the condition can read."
+msgstr "Colon-separated segments: a literal, a single-segment wildcard, a rest wildcard, or a named capture the condition can read."
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Color"
@@ -4539,6 +4577,7 @@ msgid "Covering message"
 msgstr "Covering message"
 
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -5130,6 +5169,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
@@ -5906,6 +5946,7 @@ msgstr "edit"
 #: src/client/admin/collections/item-form.tsx
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
@@ -5943,6 +5984,10 @@ msgstr "Edit args"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Edit auth hook"
 msgstr "Edit auth hook"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Edit channel rule"
+msgstr "Edit channel rule"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "edit choices on the field in <0>{collection}</0>"
@@ -6770,6 +6815,10 @@ msgstr "Expires in (hours)"
 #: src/client/admin/collections/item-editor.tsx
 msgid "Expiry cleared."
 msgstr "Expiry cleared."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Explain"
+msgstr "Explain"
 
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/observability/translations.tsx
@@ -7807,6 +7856,10 @@ msgstr "Height"
 msgid "Held"
 msgstr "Held"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "hello / ping / bye frames with a small state object. The roster is derived by each client, so it works on every transport. Never retained."
+msgstr "hello / ping / bye frames with a small state object. The roster is derived by each client, so it works on every transport. Never retained."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Help text"
 msgstr "Help text"
@@ -8696,6 +8749,10 @@ msgstr "Keep HubSpot contacts in step with a collection. Receives record content
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Keep it"
 msgstr "Keep it"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Keep recent messages for replay"
+msgstr "Keep recent messages for replay"
 
 #: src/client/pages/sign-document.tsx
 msgid "Keep reviewing"
@@ -9694,6 +9751,10 @@ msgstr "members"
 msgid "Members"
 msgstr "Members"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Members may announce themselves"
+msgstr "Members may announce themselves"
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "memory"
 msgstr "memory"
@@ -10092,6 +10153,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -10233,6 +10295,10 @@ msgstr "New bookable resource"
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "New branch"
 msgstr "New branch"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "New channel rule"
+msgstr "New channel rule"
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "New chat"
@@ -10567,6 +10633,10 @@ msgstr "No branches yet"
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
 msgstr "No bulk-editable fields on this collection."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "No channel rules"
+msgstr "No channel rules"
 
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "No channels — create a collection to get one."
@@ -11296,6 +11366,7 @@ msgstr "No workspace locales configured — add them under Settings → Localiza
 msgid "No-show"
 msgstr "No-show"
 
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Nobody"
 msgstr "Nobody"
@@ -11795,6 +11866,10 @@ msgstr "One per line. <0>Content-Type</0> and <1>X-Backlex-*</1> are reserved."
 msgid "One row per \"{0}\" — bars / donut / table show the breakdown; counter shows only the first."
 msgstr "One row per \"{0}\" — bars / donut / table show the breakdown; counter shows only the first."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "One rule authorizes every channel its pattern matches — you never enumerate rooms."
+msgstr "One rule authorizes every channel its pattern matches — you never enumerate rooms."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "One URL per line — saved when you click away."
 msgstr "One URL per line — saved when you click away."
@@ -11866,6 +11941,10 @@ msgstr "Only the moves you allow are accepted — on the API, in flows, everywhe
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Only the selected types are accepted — enforced server-side."
 msgstr "Only the selected types are accepted — enforced server-side."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Only these roles"
+msgstr "Only these roles"
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "Only these roles may make this move"
@@ -12361,6 +12440,7 @@ msgid "Paths"
 msgstr "Paths"
 
 #: src/client/admin/fields/field-sequence-editor.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 msgid "Pattern"
 msgstr "Pattern"
 
@@ -13101,6 +13181,10 @@ msgstr "Prefix + year + number"
 msgid "Prefix + year, month + number"
 msgstr "Prefix + year, month + number"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "presence"
+msgstr "presence"
+
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Presets"
 msgstr "Presets"
@@ -13352,6 +13436,10 @@ msgstr "Public, embeddable forms that write straight into a collection — share
 #~ msgid "Public, embeddable forms that write submissions into a collection — share a link or drop the iframe into any site."
 #~ msgstr "Public, embeddable forms that write submissions into a collection — share a link or drop the iframe into any site."
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "publish"
+msgstr "publish"
+
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/sheet.tsx
@@ -13382,6 +13470,14 @@ msgstr "Publish scheduled."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
 msgstr "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "publish: allowed"
+msgstr "publish: allowed"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "publish: refused"
+msgstr "publish: refused"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "published"
@@ -14190,6 +14286,11 @@ msgstr "Reopen"
 msgid "Replace"
 msgstr "Replace"
 
+#. placeholder {0}: row.retentionHours
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "replay {0}h"
+msgstr "replay {0}h"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Report"
 msgstr "Report"
@@ -14512,6 +14613,10 @@ msgstr "Retain (auto)"
 msgid "Retention"
 msgstr "Retention"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Retention (hours)"
+msgstr "Retention (hours)"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Retention needs visitors whose first-ever day falls inside the selected window. Widen the window or come back after a few days of traffic."
 msgstr "Retention needs visitors whose first-ever day falls inside the selected window. Widen the window or come back after a few days of traffic."
@@ -14833,7 +14938,24 @@ msgstr "rows out"
 msgid "RRF fusion of both"
 msgstr "RRF fusion of both"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "rule"
+msgstr "rule"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Rule created."
+msgstr "Rule created."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Rule removed — channels it matched are no longer reachable."
+msgstr "Rule removed — channels it matched are no longer reachable."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Rule updated."
+msgstr "Rule updated."
+
 #: src/client/admin/pages/access/condition-editor.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 msgid "rules"
 msgstr "rules"
 
@@ -14940,6 +15062,14 @@ msgstr "runs"
 msgid "Runs"
 msgstr "Runs"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Runs against the pattern's captures, not against a row — so a capture is readable as a plain field name."
+msgstr "Runs against the pattern's captures, not against a row — so a capture is readable as a plain field name."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+#~ msgid "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
+#~ msgstr "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
 msgstr "runs daily at 09:00 UTC"
@@ -14963,6 +15093,14 @@ msgstr "Same as the current values — nothing to revert."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Variables: <3>$user.id</3>, <4>$now</4>, …"
 msgstr "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Variables: <3>$user.id</3>, <4>$now</4>, …"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+#~ msgid "Same DSL. Leave publish at \"nobody\" for a feed only your server writes to."
+#~ msgstr "Same DSL. Leave publish at \"nobody\" for a feed only your server writes to."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Same DSL. Leave this at \"nobody\" for a feed only your own server writes to."
+msgstr "Same DSL. Leave this at \"nobody\" for a feed only your own server writes to."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -15033,6 +15171,7 @@ msgstr "Sat"
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database.tsx
@@ -16912,6 +17051,18 @@ msgstr "Submitted"
 msgid "Submitting…"
 msgstr "Submitting…"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "subscribe"
+msgstr "subscribe"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "subscribe: allowed"
+msgstr "subscribe: allowed"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "subscribe: refused"
+msgstr "subscribe: refused"
+
 #: src/client/admin/extras.tsx
 msgid "Subscribed. Waiting for events…"
 msgstr "Subscribed. Waiting for events…"
@@ -17195,6 +17346,10 @@ msgstr "Terms of Service URL"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Test"
 msgstr "Test"
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Test a channel name"
+msgstr "Test a channel name"
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Test a token"
@@ -18577,6 +18732,10 @@ msgstr "unsupported"
 msgid "unsupported pk type: {0}"
 msgstr "unsupported pk type: {0}"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Until one exists, every application-owned channel is refused. Add a rule to open one."
+msgstr "Until one exists, every application-owned channel is refused. Add a rule to open one."
+
 #: src/client/pages/sign-up.tsx
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
@@ -19351,9 +19510,17 @@ msgstr "Who"
 msgid "Who can answer, and until when"
 msgstr "Who can answer, and until when"
 
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Who may publish"
+msgstr "Who may publish"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Who may still sign in with an email and password. Pick \"Workspace end-users only\" once your team is on SSO or passkeys — staff go through the identity provider, your app's customers keep the login they signed up with. Saving is refused while the password is the only way into the dashboard."
 msgstr "Who may still sign in with an email and password. Pick \"Workspace end-users only\" once your team is on SSO or passkeys — staff go through the identity provider, your app's customers keep the login they signed up with. Saving is refused while the password is the only way into the dashboard."
+
+#: src/client/admin/pages/automation/channels-card.tsx
+msgid "Who may subscribe"
+msgstr "Who may subscribe"
 
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Who was asked, who answered, and why."

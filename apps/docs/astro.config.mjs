@@ -169,6 +169,7 @@ export default defineConfig({
             { slug: "sync-hooks" },
             { slug: "auth-hooks" },
             { slug: "broadcast-channels" },
+            { slug: "rls" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

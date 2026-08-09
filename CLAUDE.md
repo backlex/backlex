@@ -199,6 +199,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Service map (route + service inventory) | `docs/service-map.md` |
 | Schema templates (catalog + groups + bundles + extract) | `docs/templates.md` |
 | Permissions DSL | `docs/permissions.md` |
+| Row-level security (DSL → Postgres policies) | `docs/rls.md` |
 | Audit logs + sensitive-read auditing | `docs/audit-logs.md` |
 | Data-subject erasure (GDPR) | `docs/erasure.md` |
 | Distributed tracing (traceparent + Traces panel) | `docs/tracing.md` |

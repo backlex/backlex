@@ -521,6 +521,12 @@ export interface Env {
    *  depends on the old behaviour: it restores anonymous subscribe AND
    *  anonymous publish on every channel name the managed gates don't own. */
   REALTIME_OPEN_CHANNELS?: string;
+  /** Database role the compiled row-level security policies apply to. Defaults
+   *  to `PUBLIC`, which is the STRICT choice: a policy bound to one named role
+   *  leaves every other role unfiltered, so the next connection somebody
+   *  creates would be a hole. backlex itself is unaffected either way — it
+   *  connects as the table owner, which row security exempts. */
+  RLS_APP_ROLE?: string;
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,
@@ -734,6 +740,7 @@ export const STRING_ENV_KEYS = [
   "ABLY_API_KEY",
   "REALTIME_SIGNAL_SCOPE",
   "REALTIME_OPEN_CHANNELS",
+  "RLS_APP_ROLE",
   "S3_BUCKET",
   "S3_REGION",
   "S3_ENDPOINT",

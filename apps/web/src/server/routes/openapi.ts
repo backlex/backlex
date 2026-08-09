@@ -41,6 +41,7 @@ import { scimAdminRoutes } from "./scim-admin";
 import { syncHooksRoutes } from "./sync-hooks";
 import { authHooksRoutes } from "./auth-hooks";
 import { realtimeChannelsRoutes } from "./realtime-channels";
+import { rlsRoutes } from "./rls";
 import { erasureRoutes } from "./erasure";
 import { integrationsRoutes } from "./integrations";
 import { ldapAdminRoutes } from "./ldap-admin";
@@ -99,6 +100,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/sync-hooks", syncHooksRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/auth-hooks", authHooksRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/realtime-channels", realtimeChannelsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/rls", rlsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/erasure", erasureRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/integrations", integrationsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/ldap-config", ldapAdminRoutes as unknown as OpenAPIHono<any>],

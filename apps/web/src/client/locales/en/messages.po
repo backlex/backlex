@@ -563,6 +563,22 @@ msgstr "{0} of lists"
 msgid "{0} patterns"
 msgstr "{0} patterns"
 
+#. placeholder {0}: status.installed.length
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "{0} policies"
+msgstr "{0} policies"
+
+#. placeholder {0}: res.applied
+#. placeholder {1}: res.tables.length
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "{0} policies installed across {1} tables."
+msgstr "{0} policies installed across {1} tables."
+
+#. placeholder {0}: res.dropped
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "{0} policies removed."
+msgstr "{0} policies removed."
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
@@ -2417,7 +2433,12 @@ msgstr "Applied to members who haven't set a personal time zone in their account
 msgid "Applied to users with no local override yet."
 msgstr "Applied to users with no local override yet."
 
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Applies to"
+msgstr "Applies to"
+
 #: src/client/admin/collections/adopt-wizard.tsx
+#: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -2444,6 +2465,7 @@ msgstr "Applying is additive: collections that already exist are skipped, new on
 
 #: src/client/admin/collections/adopt-wizard.tsx
 #: src/client/admin/collections/bulk-edit.tsx
+#: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/observability/advisor.tsx
@@ -2858,6 +2880,10 @@ msgstr "back to the starting number"
 #: src/client/admin/pages/data/database.tsx
 msgid "Back up now"
 msgstr "Back up now"
+
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
+msgstr "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
 
 #: src/client/admin/collections/item-form.tsx
 msgid "backlex fills this in when you save. It cannot be edited afterwards."
@@ -8327,6 +8353,10 @@ msgstr "Install extension"
 msgid "Installable add-ons — sandboxed panels, field editors, and hooks from npm packages."
 msgstr "Installable add-ons — sandboxed panels, field editors, and hooks from npm packages."
 
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Installed"
+msgstr "Installed"
+
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Installing…"
 msgstr "Installing…"
@@ -11503,6 +11533,10 @@ msgstr "Not stated"
 msgid "Not used"
 msgstr "Not used"
 
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Not yet applied"
+msgstr "Not yet applied"
+
 #: src/client/admin/collections/item-form.tsx
 msgid "not your role"
 msgstr "not your role"
@@ -12183,6 +12217,14 @@ msgstr "Other"
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
 msgstr "Other locales stay empty until filled in the matrix."
+
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "out of date"
+msgstr "out of date"
+
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Out of date"
+msgstr "Out of date"
 
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Outcome reason"
@@ -13031,6 +13073,7 @@ msgstr "Plane"
 msgid "Planning the tool call…"
 msgstr "Planning the tool call…"
 
+#: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Planning…"
 msgstr "Planning…"
@@ -13143,6 +13186,10 @@ msgstr "Post saved."
 msgid "POST to any HTTPS endpoint when collection events fire."
 msgstr "POST to any HTTPS endpoint when collection events fire."
 
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Postgres only"
+msgstr "Postgres only"
+
 #: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx
 msgid "Powered by backlex"
@@ -13200,6 +13247,7 @@ msgstr "preview"
 #: src/client/admin/collections/item-editor.tsx
 #: src/client/admin/collections/item-form.tsx
 #: src/client/admin/pages/access/erasure-card.tsx
+#: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "Preview"
@@ -14112,6 +14160,7 @@ msgstr "reminded {0}"
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/access/members-panel.tsx
+#: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -14227,6 +14276,7 @@ msgid "Removed {0} sample rows"
 msgstr "Removed {0} sample rows"
 
 #: src/client/admin/collections/collections-index.tsx
+#: src/client/admin/pages/access/rls-card.tsx
 msgid "Removing…"
 msgstr "Removing…"
 
@@ -14877,6 +14927,10 @@ msgstr "Row data must be valid JSON."
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Row id"
 msgstr "Row id"
+
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Row-level security"
+msgstr "Row-level security"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
@@ -16836,6 +16890,10 @@ msgstr "State"
 msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
 msgstr "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
 
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Statements"
+msgstr "Statements"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "static panels render their config object verbatim — set it from the API once the panel exists."
 msgstr "static panels render their config object verbatim — set it from the API once the panel exists."
@@ -17792,6 +17850,10 @@ msgstr "Theme"
 msgid "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
 msgstr "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
 
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "These parts of your rules cannot be carried by a policy — a direct database reader sees a coarser view than the API here."
+msgstr "These parts of your rules cannot be carried by a policy — a direct database reader sees a coarser view than the API here."
+
 #: src/client/admin/app.tsx
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 msgstr "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
@@ -17936,6 +17998,10 @@ msgstr "This form is paused"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "This governs sign-up for <0>{0}</0>'s end-user apps. Admin-dashboard sign-up is controlled from the <1>Default workspace</1>'s Auth Settings."
 msgstr "This governs sign-up for <0>{0}</0>'s end-user apps. Admin-dashboard sign-up is controlled from the <1>Default workspace</1>'s Auth Settings."
+
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "This instance runs on SQLite/D1, where there is nothing to compile policies into. The API remains the only enforcement point."
+msgstr "This instance runs on SQLite/D1, where there is nothing to compile policies into. The API remains the only enforcement point."
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
@@ -19884,6 +19950,10 @@ msgstr "Your own preference — stored locally, not synced."
 #: src/client/admin/pages/account-page.tsx
 msgid "Your password"
 msgstr "Your password"
+
+#: src/client/admin/pages/access/rls-card.tsx
+msgid "Your permission rules are enforced by the API. A BI tool, psql or a warehouse connector reads the tables directly and sees none of them. Applying compiles the same rules into Postgres policies — it cannot change anything the API does, because row security exempts the table owner and backlex is the owner."
+msgstr "Your permission rules are enforced by the API. A BI tool, psql or a warehouse connector reads the tables directly and sees none of them. Applying compiles the same rules into Postgres policies — it cannot change anything the API does, because row security exempts the table owner and backlex is the owner."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."

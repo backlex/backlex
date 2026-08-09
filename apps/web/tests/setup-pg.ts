@@ -29,6 +29,11 @@ export interface PgTestHarness {
   app: ReturnType<typeof createApp>;
   fetch: (input: string, init?: RequestInit) => Promise<Response>;
   cookies: () => Record<string, string>;
+  /** Raw SQL against the same in-process Postgres the app is using. Exposed so
+   *  a spec can assert what the DATABASE holds — `pg_policies`, `pg_class`, or
+   *  what a second identity sees after `SET ROLE`. Simple protocol, like the
+   *  migration runner above, so DDL and `SET` behave. */
+  exec: (sql: string) => Promise<Array<Record<string, unknown>>>;
   cleanup: () => Promise<void>;
 }
 
@@ -149,6 +154,11 @@ export const makeHarnessPg = async (
     app,
     fetch: fetchWithCookies,
     cookies: () => Object.fromEntries(cookieJar),
+    exec: async (text: string) => {
+      const res = await pg.exec(text);
+      const last = res[res.length - 1];
+      return (last?.rows ?? []) as Array<Record<string, unknown>>;
+    },
     cleanup: async () => {
       try {
         await pg.close();

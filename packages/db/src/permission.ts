@@ -37,6 +37,20 @@ export type Dialect = "pg" | "sqlite";
 export interface EvalOpts {
   now?: number;
   dialect?: Dialect;
+  /**
+   * Compile a DSL variable to a SQL EXPRESSION instead of resolving it to this
+   * request's value.
+   *
+   * Everything that compiles a condition today does so per request, so
+   * `$user.id` becomes a bound parameter holding the caller's id. A row-level
+   * security policy is compiled ONCE and evaluated by Postgres for whoever is
+   * connected, so the same variable has to stay symbolic — `backlex.uid()`
+   * rather than a literal. Returning `null` falls back to the value.
+   *
+   * This is a seam rather than a second compiler on purpose: the operator
+   * dispatch below is the part that would drift if it were written twice.
+   */
+  varSql?: (v: string) => SQL | null;
 }
 
 const isAnd = (c: Condition): c is { $and: Condition[] } =>
@@ -115,8 +129,14 @@ const resolve = (
   ctx: AuthSubject,
   now: number,
   dialect?: Dialect,
+  varSql?: (v: string) => SQL | null,
 ): unknown => {
-  if (isVar(v)) return resolveVar(v, ctx, now, dialect);
+  if (isVar(v)) {
+    // A symbolic mapping wins over this request's value — see EvalOpts.varSql.
+    const asSql = varSql?.(v);
+    if (asSql) return asSql;
+    return resolveVar(v, ctx, now, dialect);
+  }
   if (isRelativeNow(v)) return resolveRelativeNow(v, now, dialect);
   return v;
 };
@@ -253,13 +273,20 @@ const compileComparison = (
   dialect: Dialect | undefined,
   colRef: ColRefResolver = defaultColRef,
   leaf?: LeafCompiler,
+  varSql?: (v: string) => SQL | null,
 ): SQL => {
   if (leaf) {
     const override = leaf(field, cmp, ctx);
     if (override) return override;
   }
   const id = colRef(field);
-  const r = (v: unknown) => resolve(v, ctx, now, dialect);
+  const r = (v: unknown) => resolve(v, ctx, now, dialect, varSql);
+  /** A bare variable that maps to a SQL ARRAY expression (`$user.roles` →
+   *  `backlex.roles()`). `resolveList` cannot help here: it expects a JS array
+   *  and yields `[]` for anything else, which the callers read as "matches
+   *  nothing" — so without this branch an RLS policy would silently deny. */
+  const varArray = (raw: unknown): SQL | null =>
+    varSql && isVar(raw) ? varSql(raw) : null;
   const parts: SQL[] = [];
   if (cmp._eq !== undefined) {
     const v = r(cmp._eq);
@@ -271,14 +298,24 @@ const compileComparison = (
     parts.push(v === null || v === undefined ? sql`${id} IS NOT NULL` : sql`${id} <> ${v}`);
   }
   if (cmp._in !== undefined) {
-    const arr = resolveList(cmp._in, r);
-    if (arr.length === 0) return FALSE;
-    parts.push(sql`${id} IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
+    const asArray = varArray(cmp._in);
+    if (asArray) {
+      parts.push(sql`${id} = ANY(${asArray})`);
+    } else {
+      const arr = resolveList(cmp._in, r);
+      if (arr.length === 0) return FALSE;
+      parts.push(sql`${id} IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
+    }
   }
   if (cmp._nin !== undefined) {
-    const arr = resolveList(cmp._nin, r);
-    if (arr.length === 0) return TRUE;
-    parts.push(sql`${id} NOT IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
+    const asArray = varArray(cmp._nin);
+    if (asArray) {
+      parts.push(sql`NOT (${id} = ANY(${asArray}))`);
+    } else {
+      const arr = resolveList(cmp._nin, r);
+      if (arr.length === 0) return TRUE;
+      parts.push(sql`${id} NOT IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
+    }
   }
   if (cmp._gt !== undefined) parts.push(sql`${id} > ${r(cmp._gt)}`);
   if (cmp._gte !== undefined) parts.push(sql`${id} >= ${r(cmp._gte)}`);
@@ -331,25 +368,26 @@ const compileInner = (
   dialect: Dialect | undefined,
   colRef: ColRefResolver,
   leaf?: LeafCompiler,
+  varSql?: (v: string) => SQL | null,
 ): SQL => {
   if (isAnd(cond)) {
-    const parts = cond.$and.map((c) => compileInner(c, ctx, now, dialect, colRef, leaf));
+    const parts = cond.$and.map((c) => compileInner(c, ctx, now, dialect, colRef, leaf, varSql));
     if (parts.length === 0) return TRUE;
     return sql`(${sql.join(parts, sql` AND `)})`;
   }
   if (isOr(cond)) {
-    const parts = cond.$or.map((c) => compileInner(c, ctx, now, dialect, colRef, leaf));
+    const parts = cond.$or.map((c) => compileInner(c, ctx, now, dialect, colRef, leaf, varSql));
     if (parts.length === 0) return FALSE;
     return sql`(${sql.join(parts, sql` OR `)})`;
   }
   if (isNot(cond)) {
-    return sql`NOT (${compileInner(cond.$not, ctx, now, dialect, colRef, leaf)})`;
+    return sql`NOT (${compileInner(cond.$not, ctx, now, dialect, colRef, leaf, varSql)})`;
   }
   const fieldMap = cond as Record<string, ComparisonObj>;
   const keys = Object.keys(fieldMap);
   if (keys.length === 0) return TRUE;
   const parts = keys.map((k) =>
-    compileComparison(k, fieldMap[k]!, ctx, now, dialect, colRef, leaf),
+    compileComparison(k, fieldMap[k]!, ctx, now, dialect, colRef, leaf, varSql),
   );
   return sql`(${sql.join(parts, sql` AND `)})`;
 };
@@ -361,7 +399,7 @@ export const compileCondition = (
   leaf?: LeafCompiler,
   opts: EvalOpts = {},
 ): SQL =>
-  compileInner(cond, ctx, opts.now ?? Date.now(), opts.dialect, colRef, leaf);
+  compileInner(cond, ctx, opts.now ?? Date.now(), opts.dialect, colRef, leaf, opts.varSql);
 
 /**
  * Combine multiple conditions with OR (most permissive across roles).
@@ -382,7 +420,7 @@ export const combineConditions = (
   // Capture one clock for the whole combined predicate.
   const now = opts.now ?? Date.now();
   const compiled = conds.map((c) =>
-    compileInner(c as Condition, ctx, now, opts.dialect, colRef, leaf),
+    compileInner(c as Condition, ctx, now, opts.dialect, colRef, leaf, opts.varSql),
   );
   if (compiled.length === 1) return compiled[0]!;
   return sql`(${sql.join(compiled, sql` OR `)})`;

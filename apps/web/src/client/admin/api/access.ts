@@ -301,3 +301,53 @@ export const accountApi = {
       body: JSON.stringify({ listColumns }),
     }),
 };
+
+/* ── row-level security ── */
+
+export interface RlsOmission {
+  collection: string;
+  role: string;
+  action: string;
+  reason: string;
+}
+
+export interface RlsStatusResult {
+  /** False on SQLite/D1 — there is nothing to compile policies into. */
+  supported: boolean;
+  appliesTo: string;
+  installed: Array<{ table: string; name: string; command: string }>;
+  expected: Array<{ table: string; name: string }>;
+  /** Installed but no longer expected — a rule changed since the last apply. */
+  stale: Array<{ table: string; name: string; command: string }>;
+  /** Expected but not installed — a rule was added since. */
+  missing: Array<{ table: string; name: string }>;
+  omissions: RlsOmission[];
+  notOwned: string[];
+}
+
+export interface RlsPlanResult {
+  helpers: string[];
+  enables: string[];
+  policies: Array<{
+    collection: string;
+    table: string;
+    role: string;
+    action: string;
+    name: string;
+    statements: string[];
+  }>;
+  omissions: RlsOmission[];
+  notOwned: string[];
+}
+
+export const rlsApi = {
+  status: () => api<RlsStatusResult>(`/api/admin/rls/status`),
+  plan: () => api<RlsPlanResult>(`/api/admin/rls/plan`),
+  apply: () =>
+    api<{ applied: number; tables: string[]; statements: number; omissions: RlsOmission[] }>(
+      `/api/admin/rls/apply`,
+      { method: "POST" },
+    ),
+  disable: () =>
+    api<{ dropped: number; disabled: string[] }>(`/api/admin/rls/disable`, { method: "POST" }),
+};

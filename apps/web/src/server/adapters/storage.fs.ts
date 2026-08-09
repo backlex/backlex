@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
-import { join, dirname, resolve, sep } from "node:path";
+import { join, dirname, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
@@ -83,7 +83,15 @@ export const fsStorage = (root: string): StorageAdapter => {
       for (const e of entries) {
         if (!e.isFile()) continue;
         if (e.name.endsWith(".uploading")) continue; // skip in-progress parts
-        const rel = join(prefix, e.name);
+        // A recursive `readdir` reports `name` as the BASENAME and the
+        // directory separately, so joining prefix+name flattens `a/b/c.txt`
+        // to `a/c.txt` — a key that does not exist, which then made `stat`
+        // throw and took the whole listing down. Rebuild the key from the
+        // entry's own directory instead.
+        const parent = (e as { parentPath?: string; path?: string }).parentPath
+          ?? (e as { path?: string }).path
+          ?? dir;
+        const rel = join(prefix, relative(dir, join(parent, e.name)));
         const s = await stat(path(rel));
         out.push({ key: rel, size: s.size, uploadedAt: new Date(s.mtimeMs) });
       }

@@ -13,6 +13,7 @@ import { syncHooksTools } from "./sync-hooks";
 import { authHooksTools } from "./auth-hooks";
 import { channelsTools } from "./channels";
 import { rlsTools } from "./rls";
+import { s3Tools } from "./s3";
 import { documentsTools } from "./documents";
 import { geoTools } from "./geo";
 import { emailTools } from "./email";
@@ -82,6 +83,7 @@ export const allTools: McpTool[] = [
   ...authHooksTools,
   ...channelsTools,
   ...rlsTools,
+  ...s3Tools,
   ...documentsTools,
   ...geoTools,
   ...orderTools,

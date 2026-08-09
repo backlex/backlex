@@ -3281,6 +3281,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/developers/extensions.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -4399,6 +4400,10 @@ msgstr "Copy link"
 msgid "Copy order:"
 msgstr "Copy order:"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Copy the secret now — it is not shown again"
+msgstr "Copy the secret now — it is not shown again"
+
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Copy these into your IdP now"
 msgstr "Copy these into your IdP now"
@@ -4606,6 +4611,7 @@ msgstr "Covering message"
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -4814,6 +4820,18 @@ msgstr "Creating key"
 #: src/client/pages/api-keys.tsx
 msgid "Creating…"
 msgstr "Creating…"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "credential"
+msgstr "credential"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Credential deleted — anything using it stops working now."
+msgstr "Credential deleted — anything using it stops working now."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "credentials"
+msgstr "credentials"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Credentials are encrypted at rest and never shown again."
@@ -5208,6 +5226,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -5707,6 +5726,7 @@ msgstr "Don't write it back"
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/database-import.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Done"
@@ -8839,6 +8859,10 @@ msgstr "Key must be 120 characters or fewer."
 msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
 msgstr "Key must be 2–40 chars (letters, digits, dash, underscore)."
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Key prefix"
+msgstr "Key prefix"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Key set"
 msgstr "Key set"
@@ -9133,6 +9157,10 @@ msgstr "LDAP URL"
 #: src/client/components/platform-sso.tsx
 msgid "LDAP username"
 msgstr "LDAP username"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Leave blank for the whole workspace. A scoped credential cannot see or write outside its prefix, listings included."
+msgstr "Leave blank for the whole workspace. A scoped credential cannot see or write outside its prefix, listings included."
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Leave blank only when this issuer serves this workspace alone. One IdP shared by several apps needs it set."
@@ -9910,6 +9938,10 @@ msgstr "Mint it"
 msgid "Mint key"
 msgstr "Mint key"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Mint one to use this workspace as a bucket from any S3 tool."
+msgstr "Mint one to use this workspace as a bucket from any S3 tool."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Minting a new key immediately invalidates the old one."
 msgstr "Minting a new key immediately invalidates the old one."
@@ -10193,6 +10225,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -10343,6 +10376,10 @@ msgstr "New collection"
 #~ msgid "New conversation"
 #~ msgstr "New conversation"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "New credential"
+msgstr "New credential"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "New dashboard"
 msgstr "New dashboard"
@@ -10469,6 +10506,10 @@ msgstr "New row"
 #: src/client/admin/collections/item-form.tsx
 msgid "New rows go to the end of the list. Drag them in the list view to move."
 msgstr "New rows go to the end of the list. Drag them in the list view to move."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "New S3 credential"
+msgstr "New S3 credential"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "New slug"
@@ -11248,6 +11289,10 @@ msgstr "No runs yet"
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "No runs yet — your tool calls will show up here."
 #~ msgstr "No runs yet — your tool calls will show up here."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "No S3 credentials"
+msgstr "No S3 credentials"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
@@ -13144,6 +13189,10 @@ msgstr "PNG, JPG, SVG or WebP — square images display best. Replaces any previ
 msgid "Point a connected source at a collection and pick how often it should run."
 msgstr "Point a connected source at a collection and pick how often it should run."
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Point rclone, aws-cli, mc or any backup tool at this workspace's objects. The bucket name is the workspace slug, and objects written this way appear in the browser above."
+msgstr "Point rclone, aws-cli, mc or any backup tool at this workspace's objects. The bucket name is the workspace slug, and objects written this way appear in the browser above."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Policy"
 msgstr "Policy"
@@ -13742,10 +13791,12 @@ msgstr "Read-leaning tools auto-run. Writes wait for a click to confirm."
 
 #: src/client/admin/collections/item-collaboration.tsx
 #: src/client/admin/pages/data/database.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/pages/shared-record.tsx
 msgid "read-only"
 msgstr "read-only"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Read-only"
 msgstr "Read-only"
@@ -13770,6 +13821,10 @@ msgstr "Read-only over MCP"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "read-only SELECT against the workspace database"
 msgstr "read-only SELECT against the workspace database"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "read-write"
+msgstr "read-write"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Reading files…"
@@ -14022,6 +14077,10 @@ msgstr "Refused if it matches more than one payment — a row can be billed more
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Refused in {0}ms: {1}"
 msgstr "Refused in {0}ms: {1}"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Refuses every write and delete. What a backup tool should hold."
+msgstr "Refuses every write and delete. What a backup tool should hold."
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
@@ -15139,6 +15198,10 @@ msgstr "runs only when you ask"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Runtime"
 msgstr "Runtime"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "S3-compatible access"
+msgstr "S3-compatible access"
 
 #: src/client/admin/collections/item-editor.tsx
 msgid "Same as the current values — nothing to revert."
@@ -17759,6 +17822,10 @@ msgstr "The same for every row"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
 msgstr "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "The secret is shown once and cannot be read back. Unlike an API key it has to be stored rather than hashed, so scope it as narrowly as the tool allows."
+msgstr "The secret is shown once and cannot be read back. Unlike an API key it has to be stored rather than hashed, so scope it as narrowly as the tool allows."
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx

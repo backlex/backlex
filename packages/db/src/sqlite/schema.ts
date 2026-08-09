@@ -3452,3 +3452,33 @@ export const broadcastMessages = sqliteTable(
     index("broadcast_messages_day_idx").on(t.day),
   ],
 );
+
+/**
+ * A credential for the S3-compatible endpoint — see packages/db/src/pg/schema.ts
+ * for why the secret is stored (encrypted) rather than hashed: SigV4 needs the
+ * server to derive the same signing key the client did, which a digest cannot
+ * do. SQLite twin: booleans are 0/1, timestamps epoch-ms.
+ */
+export const s3Credentials = sqliteTable(
+  "s3_credentials",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    accessKeyId: text("access_key_id").notNull(),
+    secretKey: text("secret_key").notNull(),
+    prefix: text("prefix"),
+    readOnly: integer("read_only", { mode: "boolean" }).notNull().default(false),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("s3_credentials_akid_idx").on(t.accessKeyId),
+    index("s3_credentials_tenant_idx").on(t.tenantId),
+  ],
+);

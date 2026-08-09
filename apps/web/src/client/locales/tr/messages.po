@@ -3281,6 +3281,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/developers/extensions.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -4399,6 +4400,10 @@ msgstr "Linki kopyala"
 msgid "Copy order:"
 msgstr "Kopyalama sırası:"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Copy the secret now — it is not shown again"
+msgstr "Gizli anahtarı şimdi kopyalayın — bir daha gösterilmez"
+
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Copy these into your IdP now"
 msgstr "Bunları şimdi IdP'nize kopyalayın"
@@ -4606,6 +4611,7 @@ msgstr "Üst yazı"
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -4814,6 +4820,18 @@ msgstr "Anahtar oluşturuluyor"
 #: src/client/pages/api-keys.tsx
 msgid "Creating…"
 msgstr "Oluşturuluyor…"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "credential"
+msgstr "kimlik bilgisi"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Credential deleted — anything using it stops working now."
+msgstr "Kimlik bilgisi silindi — onu kullanan her şey şu andan itibaren çalışmaz."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "credentials"
+msgstr "kimlik bilgisi"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Credentials are encrypted at rest and never shown again."
@@ -5208,6 +5226,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/index.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -5707,6 +5726,7 @@ msgstr "Geri yazma"
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/database-import.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Done"
@@ -8839,6 +8859,10 @@ msgstr "Anahtar en fazla 120 karakter olmalıdır."
 msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
 msgstr "Anahtar 2–40 karakter olmalıdır (harf, rakam, tire, alt çizgi)."
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Key prefix"
+msgstr "Anahtar öneki"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Key set"
 msgstr "Anahtar tanımlı"
@@ -9133,6 +9157,10 @@ msgstr "LDAP URL'si"
 #: src/client/components/platform-sso.tsx
 msgid "LDAP username"
 msgstr "LDAP kullanıcı adı"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Leave blank for the whole workspace. A scoped credential cannot see or write outside its prefix, listings included."
+msgstr "Tüm çalışma alanı için boş bırakın. Kapsamlı bir kimlik bilgisi, listeleme dahil, öneki dışını göremez ve yazamaz."
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Leave blank only when this issuer serves this workspace alone. One IdP shared by several apps needs it set."
@@ -9910,6 +9938,10 @@ msgstr "Üret"
 msgid "Mint key"
 msgstr "Anahtar oluştur"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Mint one to use this workspace as a bucket from any S3 tool."
+msgstr "Bu çalışma alanını herhangi bir S3 aracından kova olarak kullanmak için bir tane oluşturun."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Minting a new key immediately invalidates the old one."
 msgstr "Yeni anahtar oluşturmak eskisini anında geçersiz kılar."
@@ -10193,6 +10225,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -10343,6 +10376,10 @@ msgstr "Yeni koleksiyon"
 #~ msgid "New conversation"
 #~ msgstr "Yeni konuşma"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "New credential"
+msgstr "Yeni kimlik bilgisi"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "New dashboard"
 msgstr "Yeni pano"
@@ -10469,6 +10506,10 @@ msgstr "Yeni satır"
 #: src/client/admin/collections/item-form.tsx
 msgid "New rows go to the end of the list. Drag them in the list view to move."
 msgstr "Yeni satırlar listenin sonuna eklenir. Taşımak için liste görünümünde sürükleyin."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "New S3 credential"
+msgstr "Yeni S3 kimlik bilgisi"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "New slug"
@@ -11248,6 +11289,10 @@ msgstr "Henüz çalıştırma yok"
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "No runs yet — your tool calls will show up here."
 #~ msgstr "Henüz çalışma yok — araç çağrıların burada görünecek."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "No S3 credentials"
+msgstr "S3 kimlik bilgisi yok"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
@@ -13144,6 +13189,10 @@ msgstr "PNG, JPG, SVG veya WebP — kare görseller en iyi görüntülenir. Önc
 msgid "Point a connected source at a collection and pick how often it should run."
 msgstr "Bağlı bir kaynağı bir koleksiyona yöneltin ve ne sıklıkla çalışacağını seçin."
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Point rclone, aws-cli, mc or any backup tool at this workspace's objects. The bucket name is the workspace slug, and objects written this way appear in the browser above."
+msgstr "rclone, aws-cli, mc veya herhangi bir yedekleme aracını bu çalışma alanının nesnelerine yönlendirin. Kova adı çalışma alanının kısa adıdır ve bu yolla yazılan nesneler yukarıdaki tarayıcıda görünür."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Policy"
 msgstr "Politika"
@@ -13742,10 +13791,12 @@ msgstr "Okuma ağırlıklı araçlar otomatik çalışır. Yazma işlemleri onay
 
 #: src/client/admin/collections/item-collaboration.tsx
 #: src/client/admin/pages/data/database.tsx
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/pages/shared-record.tsx
 msgid "read-only"
 msgstr "salt okunur"
 
+#: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Read-only"
 msgstr "Salt okunur"
@@ -13770,6 +13821,10 @@ msgstr "MCP üzerinde salt okunur"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "read-write"
+msgstr "okuma-yazma"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Reading files…"
@@ -14022,6 +14077,10 @@ msgstr "Birden fazla ödemeyle eşleşirse reddedilir — bir satır birden çok
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Refused in {0}ms: {1}"
 msgstr "{0}ms içinde reddetti: {1}"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "Refuses every write and delete. What a backup tool should hold."
+msgstr "Her yazma ve silmeyi reddeder. Bir yedekleme aracının taşıması gereken budur."
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
@@ -15139,6 +15198,10 @@ msgstr "yalnızca istediğinizde çalışır"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Runtime"
 msgstr "Çalışma zamanı"
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "S3-compatible access"
+msgstr "S3 uyumlu erişim"
 
 #: src/client/admin/collections/item-editor.tsx
 msgid "Same as the current values — nothing to revert."
@@ -17759,6 +17822,10 @@ msgstr "Her satır için aynı"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
 msgstr "Aynı bağlantı bir iframe içinde. Sayfa bilerek iframe’lenebilir — rezervasyon aracı sizin sitenize aittir — bu yüzden takip edilecek ikinci bir adres yok."
+
+#: src/client/admin/pages/data/storage/s3-card.tsx
+msgid "The secret is shown once and cannot be read back. Unlike an API key it has to be stored rather than hashed, so scope it as narrowly as the tool allows."
+msgstr "Gizli anahtar bir kez gösterilir ve geri okunamaz. Bir API anahtarının aksine karma yerine saklanması gerekir, bu yüzden kapsamını aracın izin verdiği kadar dar tutun."
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx

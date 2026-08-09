@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { Button as ShadButton } from "@backlex/ui/components/button";
+import { S3Card } from "./s3-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { api } from "@/lib/api";
 import { useUrlState } from "@/lib/use-url-state";
@@ -1105,6 +1106,11 @@ export function StoragePage({ pushToast }: { pushToast: PushToast }) {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* The same objects, reachable by the protocol every storage tool
+          already speaks. Below the browser because it is a way IN, not a
+          different set of files. */}
+      <S3Card pushToast={pushToast} />
     </div>
   );
 }

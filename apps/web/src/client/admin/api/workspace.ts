@@ -130,3 +130,39 @@ export const settingsApi = {
     }),
   runtime: () => api<Envelope<ApiRuntime>>(`/api/admin/settings/runtime`),
 };
+
+/* ── S3-compatible endpoint credentials ── */
+
+export interface ApiS3Credential {
+  id: string;
+  name: string;
+  accessKeyId: string;
+  /** Restricts the credential to keys under one prefix. */
+  prefix: string | null;
+  /** Refuses every mutating verb. */
+  readOnly: boolean;
+  enabled: boolean;
+  expiresAt: number | null;
+  lastUsedAt: number | null;
+  createdAt: number | null;
+}
+
+export const s3Api = {
+  list: () => api<Envelope<ApiS3Credential[]>>(`/api/admin/s3-credentials`),
+  /** The secret comes back once — there is no read-back path. */
+  create: (body: { name: string; prefix?: string | null; readOnly?: boolean }) =>
+    api<Envelope<ApiS3Credential> & { secretAccessKey: string }>(`/api/admin/s3-credentials`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (
+    id: string,
+    body: { name?: string; prefix?: string | null; readOnly?: boolean; enabled?: boolean },
+  ) =>
+    api<Envelope<ApiS3Credential>>(`/api/admin/s3-credentials/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/s3-credentials/${id}`, { method: "DELETE" }),
+};

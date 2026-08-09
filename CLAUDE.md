@@ -219,6 +219,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Approvals (a flow waits on a person) | `docs/approvals.md` |
 | Availability & booking (public booking page) | `docs/booking.md` |
 | Storage + transforms | `docs/storage.md` |
+| S3-compatible endpoint (rclone / aws-cli / mc) | `docs/s3.md` |
 | Resumable uploads (TUS) | `docs/resumable-uploads.md` |
 | Functions sandbox | `docs/sandbox.md` |
 | Extensions (installable panels/field editors/hooks) | `docs/extensions.md` |

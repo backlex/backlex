@@ -27,6 +27,7 @@ import { runSyncHooks } from "../src/sync-hooks";
 import { runAuthHooks } from "../src/auth-hooks";
 import { runChannels } from "../src/channels";
 import { runRls } from "../src/rls";
+import { runS3 } from "../src/s3";
 import { runDocuments } from "../src/documents";
 import { runApprovals } from "../src/approvals";
 import { runSignatures } from "../src/signatures";
@@ -156,6 +157,10 @@ Usage:
   backlex rls <status|plan|apply|disable>
       Compile this workspace's permission rules into Postgres row-level
       security, so psql and BI tools are filtered the way the API is.
+
+  backlex s3 <list|create|update|delete>
+      Credentials for the S3-compatible endpoint, so rclone, aws-cli, mc and
+      any backup tool can read and write this workspace's objects.
 
   backlex documents <list|save|delete|render>
       HTML templates rendered to PDF — contracts, quotes, invoices.
@@ -361,6 +366,9 @@ const run = async () => {
       return;
     case "rls":
       await runRls(rest);
+      return;
+    case "s3":
+      await runS3(rest);
       return;
     case "documents":
     case "document":

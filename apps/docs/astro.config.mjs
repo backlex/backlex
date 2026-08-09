@@ -170,6 +170,7 @@ export default defineConfig({
             { slug: "auth-hooks" },
             { slug: "broadcast-channels" },
             { slug: "rls" },
+            { slug: "s3" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

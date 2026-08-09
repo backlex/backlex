@@ -57,6 +57,7 @@ import type { SyncHooksClient } from "./clients/sync-hooks";
 import type { AuthHooksClient } from "./clients/auth-hooks";
 import type { ChannelsClient } from "./clients/channels";
 import type { RlsClient } from "./clients/rls";
+import type { S3Client } from "./clients/s3";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
 import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
@@ -143,6 +144,7 @@ export * from "./clients/sync-hooks";
 export * from "./clients/auth-hooks";
 export * from "./clients/channels";
 export * from "./clients/rls";
+export * from "./clients/s3";
 export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
@@ -174,6 +176,7 @@ import { makeSyncHooks } from "./clients/sync-hooks";
 import { makeAuthHooks } from "./clients/auth-hooks";
 import { makeChannels } from "./clients/channels";
 import { makeRls } from "./clients/rls";
+import { makeS3 } from "./clients/s3";
 import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
@@ -289,6 +292,9 @@ export interface BacklexClient {
   /** Postgres row-level security compiled from this workspace's permission
    *  rules, so a direct database connection is filtered too. */
   rls: RlsClient;
+  /** Credentials for the S3-compatible endpoint, so any S3 tool can read and
+   *  write this workspace's objects. */
+  s3: S3Client;
   extensions: ExtensionsClient;
   /** Named KPIs — the shared definition layer every surface reads a figure from. */
   kpis: KpisClient;
@@ -857,6 +863,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const authHooks = makeAuthHooks(core);
   const channels = makeChannels(core);
   const rls = makeRls(core);
+  const s3 = makeS3(core);
   const payments = makePayments(core);
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
@@ -914,6 +921,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     authHooks,
     channels,
     rls,
+    s3,
     extensions,
     kpis,
     dashboards,

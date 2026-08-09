@@ -3895,3 +3895,56 @@ export const broadcastMessages = pgTable(
     index("broadcast_messages_day_idx").on(t.day),
   ],
 );
+
+/**
+ * A credential for the S3-compatible endpoint.
+ *
+ * ## Why the secret is stored, when every other credential here is hashed
+ *
+ * `api_keys` stores a scrypt digest and can, because a bearer token is checked
+ * by hashing what arrived. SigV4 is not a bearer scheme: the client derives a
+ * signing key from the secret and signs the request with it, and the server has
+ * to derive the SAME key to check the signature. A digest cannot do that. This
+ * is the trade AWS itself makes, and the only honest options are to store the
+ * secret or to have no S3 endpoint.
+ *
+ * So it is stored ENCRYPTED with the deployment's `AUTH_SECRET` (AES-GCM, the
+ * same `encryptSecret` the auth-config secrets use), which is real protection
+ * against a database dump and none at all against an attacker who already has
+ * the application's environment. The docs say exactly that rather than implying
+ * the credential is as safe as an API key.
+ *
+ * A credential is deliberately narrower than an API key: it reaches storage and
+ * nothing else, it can be pinned to a key `prefix`, and it can be read-only.
+ */
+export const s3Credentials = pgTable(
+  "s3_credentials",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** The SigV4 `Credential=` access key id. Unique instance-wide: a request
+     *  carries no workspace header, so this is the only thing that can name
+     *  the workspace it belongs to. */
+    accessKeyId: text("access_key_id").notNull(),
+    /** `enc:v1:…` — see the note above about why this is not a digest. */
+    secretKey: text("secret_key").notNull(),
+    /** Restrict this credential to keys under one prefix. NULL = the whole
+     *  workspace bucket. */
+    prefix: text("prefix"),
+    /** Refuse every mutating verb. A backup tool that only reads should hold
+     *  a credential that cannot delete. */
+    readOnly: boolean("read_only").notNull().default(false),
+    enabled: boolean("enabled").notNull().default(true),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("s3_credentials_akid_idx").on(t.accessKeyId),
+    index("s3_credentials_tenant_idx").on(t.tenantId),
+  ],
+);

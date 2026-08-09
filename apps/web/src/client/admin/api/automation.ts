@@ -77,6 +77,19 @@ export interface ApiExtensionFieldEditor {
   entry: string;
 }
 
+/** Where a widget renders. Mirrors `WIDGET_MOUNTS` in services/extensions.ts. */
+export type ApiExtensionWidgetMount = "item-detail" | "item-list" | "home";
+
+export interface ApiExtensionWidget {
+  id: string;
+  title: string;
+  icon?: string;
+  mount: ApiExtensionWidgetMount;
+  /** Collections it appears on; absent/empty = all. Ignored for `home`. */
+  collections?: string[];
+  entry: string;
+}
+
 export interface ApiExtensionHook {
   id: string;
   trigger: "event" | "manual";
@@ -93,6 +106,7 @@ export interface ApiExtensionManifest {
   contributes: {
     panels?: ApiExtensionPanel[];
     fieldEditors?: ApiExtensionFieldEditor[];
+    widgets?: ApiExtensionWidget[];
     hooks?: ApiExtensionHook[];
   };
   /** API allow-list for the iframe bridge, e.g. `"GET /api/items/posts"`,

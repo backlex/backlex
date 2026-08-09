@@ -343,6 +343,51 @@ their REST routes through the same service layer (gate:
 - **Backups** — `backups`, `backupConfig`; `runBackup(label)`,
   `restoreBackup(id, confirm: true)`, `setBackupConfig(data)`.
 
+## Query budget
+
+The schema is generated from *your* collection metadata, so nothing about it
+bounds how deep a relation chain a caller may walk or how large a `limit` they
+may put on each hop. `{ orders(limit: 1000) { lines(limit: 1000) { parts(limit:
+1000) { id } } } }` is a legal document asking for a billion rows. REST can't
+express that shape; GraphQL can, so the endpoint measures every document
+**before execution** — before the tenant schema is even built — and refuses one
+it can't afford with `422`.
+
+Three axes, each reported with the limit that rejected it:
+
+| Axis | Default | What it counts |
+|---|---|---|
+| Depth | 12 | Selection-set nesting, fragments included |
+| Cost | 50 000 | Estimated rows: each field costs its enclosing `limit` chain, multiplied |
+| Aliases | 40 | Aliases pointing at one field name |
+
+```
+{"error":{"code":"VALIDATION","message":"Query cost 1000000 exceeds the maximum of 50000 — lower a \"limit\" or select fewer nested fields"}}
+```
+
+Notes on the estimate:
+
+- **Nested limits multiply.** `orders(limit: 10) { lines(limit: 10) }` costs
+  ~100, not 20 — that product is the thing worth bounding.
+- **A variable `limit` is charged an assumed page size**, so moving the number
+  into a variable is not a way around the budget.
+- **Introspection is free.** A document whose root fields are all `__`
+  meta-fields is measured against nothing, so GraphiQL keeps working.
+- **A syntax error is still yoga's**, reported in the normal GraphQL error
+  shape rather than as a `422`.
+- A batched (array) payload is measured per operation; one over-budget member
+  refuses the whole request.
+- **Every request shape is measured** — `GET ?query=`, JSON, a raw
+  `application/graphql` body, form-url-encoded, and multipart with an
+  `operations` field. A shape the budget didn't recognise would be the way
+  around it, so each has its own test.
+
+Raise the ceilings per deployment with `GRAPHQL_MAX_DEPTH`, `GRAPHQL_MAX_COST`
+and `GRAPHQL_MAX_ALIASES`. A non-numeric or non-positive value is ignored and
+the default applies — a typo in a deploy variable must not reject every query.
+Only raise them on a trusted single-tenant deploy; the defaults exist because a
+shared workspace pays for its neighbours' queries.
+
 ## What's not in the schema
 
 - **Subscriptions over WebSocket** — subscriptions ship over SSE (see

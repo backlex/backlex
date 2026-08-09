@@ -18,6 +18,7 @@ import {
   type ApiMetrics,
   type ApiRuntime,
 } from "../api";
+import { ExtensionWidgets } from "../extension-widgets";
 import { OverviewSkeleton } from "../page-skeletons";
 import { TemplateOnboarding } from "./data/template-onboarding";
 // The one sparkline — shared with the KPI tiles so the two draw the same shape.
@@ -449,6 +450,9 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
           </Card>
         </div>
       </div>
+      {/* Workspace-wide extension widgets. No collection context here — the
+          home screen isn't about one. Renders nothing when none contribute. */}
+      <ExtensionWidgets mount="home" />
     </div>
   );
 }

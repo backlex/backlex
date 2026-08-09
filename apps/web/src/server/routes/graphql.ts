@@ -5,8 +5,63 @@ import type { Context, Hono } from "hono";
 import type { AppBindings } from "../app";
 import { getRequestPermCache } from "../middleware/permission";
 import { getSchema } from "../services/graphql";
+import { budgetFromEnv, overBudget } from "../services/graphql/cost";
 import { loadCollection } from "../services/items/collection-loader";
 import { openRealtimeSubscribe } from "./realtime";
+
+/** `{query}` / `[{query}, …]` → the query strings it carries. */
+const queriesOfPayload = (body: unknown): string[] => {
+  const one = (v: unknown): string[] =>
+    v && typeof v === "object" && typeof (v as { query?: unknown }).query === "string"
+      ? [(v as { query: string }).query]
+      : [];
+  return Array.isArray(body) ? body.flatMap(one) : one(body);
+};
+
+/**
+ * Every GraphQL document carried by a request, for the cost guard to measure.
+ *
+ * Read off a **clone** so the original body is still intact for yoga; a batched
+ * (array) payload contributes one entry per operation.
+ *
+ * This must recognise every request shape yoga itself parses, or the shape it
+ * misses becomes the way around the budget: yoga accepts a GET query string,
+ * JSON, a raw `application/graphql` body, form-url-encoded, and multipart with
+ * an `operations` field (the file-upload spec). Reading only JSON would leave
+ * four open doors. `isContentTypeMatch` in yoga does a prefix test on the
+ * header, so the checks here are prefix tests too — `application/json;
+ * charset=utf-8` has to match the same way it does there.
+ *
+ * A body that cannot be read at all yields an empty list: a malformed request
+ * is yoga's to reject in the standard GraphQL error shape, not the guard's to
+ * turn into a 422.
+ */
+const queriesOf = async (req: Request): Promise<string[]> => {
+  if (req.method === "GET") {
+    const q = new URL(req.url).searchParams.get("query");
+    return q ? [q] : [];
+  }
+  if (req.method !== "POST") return [];
+  const ct = (req.headers.get("content-type") ?? "").toLowerCase();
+  const clone = req.clone();
+  try {
+    if (ct.startsWith("application/graphql") && !ct.startsWith("application/graphql+json")) {
+      // The body IS the document.
+      return [await clone.text()];
+    }
+    if (ct.startsWith("application/x-www-form-urlencoded")) {
+      const q = new URLSearchParams(await clone.text()).get("query");
+      return q ? [q] : [];
+    }
+    if (ct.startsWith("multipart/form-data")) {
+      const ops = (await clone.formData()).get("operations");
+      return typeof ops === "string" ? queriesOfPayload(JSON.parse(ops)) : [];
+    }
+    return queriesOfPayload(await clone.json());
+  } catch {
+    return [];
+  }
+};
 
 /**
  * GraphQL request handler. app.ts mounts this via a **dynamic import** so the
@@ -22,6 +77,20 @@ export const handleGraphql = async (
   const auth = c.get("auth");
   if (!auth.tenantId) {
     throw new AppError("UNAUTHORIZED", "Active tenant required");
+  }
+  // Cost/depth/alias budget, BEFORE the schema is built and long before a row
+  // is read — a document that cannot be afforded should not even pay for
+  // schema generation. See services/graphql/cost.ts.
+  const budget = budgetFromEnv(ctx.env);
+  for (const query of await queriesOf(c.req.raw)) {
+    let doc;
+    try {
+      doc = parse(query);
+    } catch {
+      continue; // yoga reports the syntax error in its own shape
+    }
+    const reason = overBudget(doc, budget);
+    if (reason) throw new AppError("VALIDATION", reason);
   }
   const schema = await getSchema(ctx, auth.tenantId);
   const permCache = getRequestPermCache(c);

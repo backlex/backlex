@@ -12,6 +12,7 @@ of things:
 |---|---|---|
 | `panels` | New pages in the admin sidebar | Sandboxed iframe (opaque origin) |
 | `fieldEditors` | Custom editors for item-form fields, keyed by interface id | Sandboxed iframe per field |
+| `widgets` | Panels mounted *inside* an existing screen, given its context | Sandboxed iframe per mount |
 | `hooks` | Server-side code on item events or on demand | Functions sandbox (`docs/sandbox.md`) |
 
 Extensions are workspace-scoped and admin-managed: **Settings → Extensions**
@@ -36,6 +37,9 @@ An extension is a plain npm package (or directory) containing
     ],
     "fieldEditors": [
       { "interface": "color-swatch", "title": "Color Swatch", "types": ["text"], "entry": "editor.html" }
+    ],
+    "widgets": [
+      { "id": "shipping", "title": "Shipping", "mount": "item-detail", "collections": ["orders"], "entry": "widget.html" }
     ],
     "hooks": [
       { "id": "normalize", "trigger": "event", "pattern": "items:products", "entry": "hooks/normalize.js", "timeoutMs": 5000 },
@@ -70,6 +74,41 @@ Rules:
   per minute — same window semantics as cron functions); `manual` hooks run
   via the invoke endpoint/CLI/SDK/MCP or the page's Run-hook dialog.
 
+## Widgets — where the work already is
+
+A `panel` is a *destination*: the operator leaves the order they were looking
+at to go read about it somewhere else. A **widget** renders inside the screen
+they are already on and is handed that screen's context, which is the only way
+an extension can be about *this* row rather than about the workspace in
+general.
+
+| `mount` | Renders | Context it receives |
+|---|---|---|
+| `item-detail` | In the record editor's sidebar, under the KPI card | `{ collection, itemId }` |
+| `item-list` | Under the items table | `{ collection, selectedIds }` |
+| `home` | At the bottom of the overview page | `{}` |
+
+```json
+{ "id": "shipping", "title": "Shipping", "mount": "item-detail",
+  "collections": ["orders"], "entry": "widget.html" }
+```
+
+- **`collections` scopes it.** A widget that names collections appears only on
+  those; one that names none is workspace-wide and appears on every collection
+  — the right default for something like notes or an audit trail. `home` has no
+  collection, so the list is ignored there.
+- **`item-detail` renders only while editing an existing record.** A record
+  being created has no id, and a widget whose context is a row must not be
+  handed a blank one.
+- **Context is ids, never rows.** It crosses a postMessage boundary into an
+  opaque origin, so everything in it is disclosed to the extension. A widget
+  that wants the record fetches it over the bridge, where `permissions.api`
+  still applies — a widget is not more privileged than a panel.
+- The frame re-inits whenever the context changes (a different record opened,
+  the selection changed), so the widget re-renders against it.
+- Nothing is drawn when no extension contributes to a mount: no empty section,
+  no reserved space.
+
 ## Installing
 
 ```bash
@@ -96,16 +135,16 @@ downloads are refused if they resolve to a different host than the registry.
 
 ## The iframe bridge
 
-Panels and field editors are iframed with `sandbox="allow-scripts"` and **no**
+Panels, field editors and widgets are iframed with `sandbox="allow-scripts"` and **no**
 `allow-same-origin` — the document gets an opaque origin and can never read
 the admin's cookies or DOM. All communication is `postMessage`:
 
 | Direction | Message | Meaning |
 |---|---|---|
 | ext → admin | `{type:"backlex-ext:ready"}` | Handshake; admin replies with `init` |
-| admin → ext | `{type:"backlex-ext:init", value, field, ctx}` | Current field value + field def (field editors) |
+| admin → ext | `{type:"backlex-ext:init", value, field, ctx}` | Current field value + field def (field editors); `ctx` carries `{mode}` plus the host screen's context for widgets |
 | ext → admin | `{type:"backlex-ext:value", value}` | Field editors: propagate a new value |
-| ext → admin | `{type:"backlex-ext:resize", height}` | Field editors: fit the iframe to content |
+| ext → admin | `{type:"backlex-ext:resize", height}` | Field editors + widgets: fit the iframe to content |
 | ext → admin | `{type:"backlex-ext:api", id, method, path, body}` | Proxied API call |
 | admin → ext | `{type:"backlex-ext:api-result", id, ok, status, data}` | API call result |
 

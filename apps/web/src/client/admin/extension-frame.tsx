@@ -1,5 +1,6 @@
-// Sandboxed iframe host for extension-contributed UI (admin panels + item-form
-// field editors) plus the postMessage bridge the extension talks over.
+// Sandboxed iframe host for extension-contributed UI (admin panels, item-form
+// field editors, and in-screen widgets) plus the postMessage bridge the
+// extension talks over.
 //
 // Security model: the iframe is sandboxed with `allow-scripts` ONLY — no
 // `allow-same-origin` — so the extension document runs under an opaque origin
@@ -11,6 +12,8 @@
 // Bridge protocol (iframe → parent unless noted):
 //   {type:"backlex-ext:ready"}                     → parent replies with init
 //   {type:"backlex-ext:init", value, field, ctx}   (parent → iframe)
+//     ctx = {mode} plus, in widget mode, the host screen's context:
+//     {collection, itemId, selectedIds} — see ExtensionWidgetContext
 //   {type:"backlex-ext:resize", height}            → set iframe height (40–2000)
 //   {type:"backlex-ext:value", value}              → onValueChange (field-editor)
 //   {type:"backlex-ext:api", id, method, path, body?}
@@ -45,15 +48,32 @@ export const apiPermits = (
   });
 };
 
+/**
+ * What the host screen tells a widget about itself. Plain, serializable data
+ * only — it crosses a postMessage boundary into an opaque origin, so anything
+ * here is disclosed to the extension. Ids, never rows: a widget that wants the
+ * row fetches it through the bridge, where `permissions.api` still applies.
+ */
+export interface ExtensionWidgetContext {
+  /** Collection slug the screen is about (absent on `home`). */
+  collection?: string;
+  /** The row being edited (`item-detail`); absent while creating a new one. */
+  itemId?: string;
+  /** Rows the operator has ticked (`item-list`); empty when none are. */
+  selectedIds?: string[];
+}
+
 export interface ExtensionFrameProps {
   extension: ApiExtension;
   /** Entry file path within the extension's assets (from the manifest). */
   entry: string;
-  mode: "panel" | "field-editor";
+  mode: "panel" | "field-editor" | "widget";
   /** Current field value (field-editor mode). */
   value?: unknown;
   /** The schema field definition (field-editor mode) — plain data only. */
   field?: unknown;
+  /** Host-screen context (widget mode). Re-inits the iframe when it changes. */
+  context?: ExtensionWidgetContext;
   onValueChange?: (v: unknown) => void;
   className?: string;
 }
@@ -67,6 +87,7 @@ export function ExtensionFrame({
   mode,
   value,
   field,
+  context,
   onValueChange,
   className,
 }: ExtensionFrameProps) {
@@ -79,6 +100,8 @@ export function ExtensionFrame({
   valueRef.current = value;
   const fieldRef = useRef(field);
   fieldRef.current = field;
+  const contextRef = useRef(context);
+  contextRef.current = context;
   const onValueChangeRef = useRef(onValueChange);
   onValueChangeRef.current = onValueChange;
   const extRef = useRef(extension);
@@ -97,7 +120,7 @@ export function ExtensionFrame({
       type: "backlex-ext:init",
       value: valueRef.current,
       field: fieldRef.current,
-      ctx: { mode },
+      ctx: { mode, ...(contextRef.current ?? {}) },
     });
   }, [post, mode]);
 
@@ -145,9 +168,9 @@ export function ExtensionFrame({
         readyRef.current = true;
         postInit();
       } else if (msg.type === "backlex-ext:resize") {
-        // Panels fill the space their className gives them; only the
-        // field-editor embed sizes itself to the extension's content.
-        if (mode !== "field-editor") return;
+        // Panels fill the space their className gives them; the embedded modes
+        // (field editor, widget) size themselves to the extension's content.
+        if (mode === "panel") return;
         const h = Number((msg as { height?: unknown }).height);
         if (Number.isFinite(h) && iframeRef.current) {
           iframeRef.current.style.height = `${Math.min(MAX_H, Math.max(MIN_H, Math.round(h)))}px`;
@@ -174,6 +197,16 @@ export function ExtensionFrame({
     postInit();
   }, [value, postInit]);
 
+  // The host screen's context changing (a different row opened, the selection
+  // changed) is the widget's whole input — re-init so it re-renders against it.
+  // Keyed on the serialized value: `selectedIds` is a fresh array each render,
+  // and re-initing on identity would reset the widget on every parent render.
+  const contextKey = context ? JSON.stringify(context) : "";
+  useEffect(() => {
+    if (!readyRef.current) return;
+    postInit();
+  }, [contextKey, postInit]);
+
   return (
     <iframe
       ref={iframeRef}
@@ -186,7 +219,7 @@ export function ExtensionFrame({
         mode === "panel" && "min-h-[420px] flex-1",
         className,
       )}
-      style={mode === "field-editor" ? { height: 120 } : undefined}
+      style={mode === "panel" ? undefined : { height: 120 }}
     />
   );
 }

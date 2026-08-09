@@ -18677,6 +18677,11 @@ msgstr "sürümlü"
 msgid "Versioned (draft / published)"
 msgstr "Sürümlü (taslak / yayınlandı)"
 
+#. placeholder {0}: m.extension.manifest.title
+#: src/client/admin/extension-widgets.tsx
+msgid "via {0}"
+msgstr "{0} eklentisinden"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Video"
 msgstr "Video"

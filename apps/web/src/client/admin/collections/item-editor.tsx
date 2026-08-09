@@ -55,6 +55,7 @@ export interface ItemEditorPageProps {
 }
 
 import { CollectionKpisPanel } from "./collection-kpis";
+import { ExtensionWidgets } from "../extension-widgets";
 
 const SECTION_TITLE_CLS =
   "flex items-center gap-2 border-b border-border px-4 py-3 text-[12.5px] font-medium";
@@ -684,6 +685,15 @@ export function ItemEditorPage({
                 />
               </div>
             </Card>
+          )}
+
+          {/* Extension widgets for this record. Only in edit mode: a widget's
+              context is the row's id, and a record being created has none. */}
+          {mode === "edit" && item && (
+            <ExtensionWidgets
+              mount="item-detail"
+              context={{ collection: slug, itemId: item.id }}
+            />
           )}
 
           {/* Revision history */}

@@ -462,6 +462,14 @@ export interface Env {
    *  https://registry.npmjs.org; point at a private registry mirror to gate
    *  which packages `POST /api/extensions/install` may pull. */
   EXTENSIONS_NPM_REGISTRY?: string;
+  /** `/api/graphql` document budget — max selection-set nesting, max estimated
+   *  row cost, and max aliases of one field. A document over any of them is
+   *  refused with 422 before execution. Defaults live in
+   *  `services/graphql/cost.ts`; raise them only for a trusted single-tenant
+   *  deploy. Non-numeric values are ignored, not treated as zero. */
+  GRAPHQL_MAX_DEPTH?: string;
+  GRAPHQL_MAX_COST?: string;
+  GRAPHQL_MAX_ALIASES?: string;
   /** Shared secret authenticating executor → main Worker RPC calls
    *  (`/api/_internal/sandbox-rpc`). Required for the `remote-http`
    *  provider's ctx.* host bridge. Generate with `openssl rand -hex 32`. */
@@ -708,6 +716,9 @@ export const STRING_ENV_KEYS = [
   "FUNCTIONS_FETCH_ALLOW",
   "FUNCTIONS_EXEC_URL",
   "EXTENSIONS_NPM_REGISTRY",
+  "GRAPHQL_MAX_DEPTH",
+  "GRAPHQL_MAX_COST",
+  "GRAPHQL_MAX_ALIASES",
   "SANDBOX_RPC_TOKEN",
   "SELF_URL",
   "R2_PUBLIC_BASE",

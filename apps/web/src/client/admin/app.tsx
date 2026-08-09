@@ -81,6 +81,7 @@ import {
 } from "./queries";
 import { evaluateTransition } from "@backlex/db/transitions";
 import { ExtensionFrame } from "./extension-frame";
+import { ExtensionWidgets } from "./extension-widgets";
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
@@ -1594,6 +1595,16 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                       )}
                     </Card>
                   </div>
+                  {/* Extension widgets mounted under the list, told which
+                      collection is open and which rows are ticked. Renders
+                      nothing when no extension contributes here. */}
+                  <ExtensionWidgets
+                    mount="item-list"
+                    context={{
+                      collection: activeCollection ?? undefined,
+                      selectedIds: [...selected],
+                    }}
+                  />
                   {tweaks.showRealtime && (
                     <RealtimeTail events={events} channel={`items:${activeCollection ?? ""}`} connected />
                   )}

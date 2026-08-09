@@ -18677,6 +18677,11 @@ msgstr "versioned"
 msgid "Versioned (draft / published)"
 msgstr "Versioned (draft / published)"
 
+#. placeholder {0}: m.extension.manifest.title
+#: src/client/admin/extension-widgets.tsx
+msgid "via {0}"
+msgstr "via {0}"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Video"
 msgstr "Video"

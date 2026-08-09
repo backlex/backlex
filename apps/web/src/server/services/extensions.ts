@@ -13,6 +13,9 @@ import type { DbCtx } from "./seed";
  * points:
  *   - panels       — admin pages rendered in a sandboxed iframe
  *   - fieldEditors — per-interface field editors for the item form (iframe)
+ *   - widgets      — iframes mounted INSIDE an existing admin screen, handed
+ *                    that screen's context (which collection, which row, which
+ *                    rows are selected) — see WidgetSchema
  *   - hooks        — server-side code run in the functions sandbox on item
  *                    events (`trigger: "event"`) or on demand (`"manual"`)
  * UI entries talk to the admin through a postMessage bridge whose API access
@@ -39,6 +42,28 @@ const FieldEditorSchema = z.object({
   interface: z.string().regex(SLUG_RE),
   title: z.string().min(1).max(80),
   types: z.array(z.string().max(40)).max(20).optional(),
+  entry: entryPath,
+});
+
+/**
+ * Where a widget mounts. A panel is a *destination* — the operator has to leave
+ * what they were doing to reach it. A widget renders where the work already is,
+ * which is the only way an extension can be about the row on screen.
+ *
+ * Each mount hands the iframe a different context, and the context is the whole
+ * point: a shipping widget on `item-detail` is useless without the order id.
+ */
+export const WIDGET_MOUNTS = ["item-detail", "item-list", "home"] as const;
+export type WidgetMount = (typeof WIDGET_MOUNTS)[number];
+
+const WidgetSchema = z.object({
+  id: z.string().regex(SLUG_RE),
+  title: z.string().min(1).max(80),
+  icon: z.string().max(40).optional(),
+  mount: z.enum(WIDGET_MOUNTS),
+  /** Collections this widget appears on; absent/empty = every collection.
+   *  Ignored for `home`, which has no collection. */
+  collections: z.array(z.string().regex(SLUG_RE)).max(50).optional(),
   entry: entryPath,
 });
 
@@ -69,6 +94,7 @@ export const ManifestSchema = z.object({
     .object({
       panels: z.array(PanelSchema).max(20).optional(),
       fieldEditors: z.array(FieldEditorSchema).max(20).optional(),
+      widgets: z.array(WidgetSchema).max(20).optional(),
       hooks: z.array(HookSchema).max(20).optional(),
     })
     .default({}),
@@ -289,6 +315,7 @@ export const validatePackage = (
   const entries = new Set<string>([
     ...(c.panels ?? []).map((p) => p.entry),
     ...(c.fieldEditors ?? []).map((f) => f.entry),
+    ...(c.widgets ?? []).map((w) => w.entry),
     ...(c.hooks ?? []).map((h) => h.entry),
   ]);
   const assets: Record<string, string> = {};

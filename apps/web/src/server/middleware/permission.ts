@@ -51,6 +51,17 @@ export const requirePermission =
           : "Sign in required",
       );
     }
+    // A read-only impersonation may see everything the subject sees and change
+    // none of it. Enforced HERE rather than in each write handler, because
+    // this is the one place every collection action already passes through —
+    // and a gate that has to be remembered per route is a gate that is missed.
+    if (auth.impersonationReadOnly && action !== "read") {
+      throw new AppError(
+        "FORBIDDEN",
+        `This is a read-only impersonation — "${action}" on "${slug}" is refused. ` +
+          "Start one with `readOnly: false` if acting on the customer's behalf is intended.",
+      );
+    }
     c.set("permission", result);
     await next();
   };

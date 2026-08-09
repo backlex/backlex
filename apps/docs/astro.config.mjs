@@ -171,6 +171,7 @@ export default defineConfig({
             { slug: "broadcast-channels" },
             { slug: "rls" },
             { slug: "s3" },
+            { slug: "captcha-impersonation" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

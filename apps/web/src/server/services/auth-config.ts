@@ -9,6 +9,7 @@ import {
   loadSignInBranding,
   type PasswordLoginMode,
 } from "./settings";
+import { readCaptchaConfig } from "./captcha";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { isEdgeRuntime } from "../lib/runtime";
 
@@ -105,6 +106,11 @@ export interface ResolvedAuthSurface {
    *  instance (the `PLATFORM_SSO_ENABLED` gate). Lets the admin client show or
    *  hide the "Platform SSO" settings page. Absent on the workspace surface. */
   platformSso?: boolean;
+  /** The captcha's public half, when the workspace has one enabled — a sign-in
+   *  screen cannot render the widget without the site key, and there is nowhere
+   *  else it could come from. The secret and the `onError` choice never appear
+   *  here. */
+  captcha?: { provider: string; siteKey: string; protect: string[] };
   /** Playground (DEMO_MODE) only: the shared demo-admin credentials, published
    *  so the sign-in screen can offer a one-click "enter the playground" button.
    *  Public by design — never present outside demo mode. */
@@ -399,6 +405,9 @@ export const resolveAuthSurface = async (
   }
 
   const policy = (stored?.policy ?? {}) as Record<string, unknown>;
+  // Read from the same stored row rather than a second query.
+  const captcha = tenantId ? readCaptchaConfig((stored as { captcha?: unknown })?.captcha) : null;
+  const activeCaptcha = captcha?.enabled ? captcha : null;
   // The user count drives `firstUserMode`. Treat read failures (table not
   // migrated yet on a brand-new instance) as "yes, first user" so the bootstrap
   // flow still works — the server-side `onBeforeUserCreated` hook is the
@@ -422,6 +431,20 @@ export const resolveAuthSurface = async (
     // mode) so the claim screen can prefill + lock the email. Empty otherwise.
     ownerEmail: firstUserMode ? (env.OWNER_EMAIL?.trim() ?? "") : "",
     branding,
+    // The captcha's PUBLIC half. A sign-in screen cannot render the widget
+    // without the site key, and there is nowhere else it could get it — the
+    // whole config is per workspace. The secret never appears here; neither
+    // does `onError`, which is an operator's decision and not the browser's
+    // business.
+    ...(activeCaptcha
+      ? {
+          captcha: {
+            provider: activeCaptcha.provider,
+            siteKey: activeCaptcha.siteKey,
+            protect: activeCaptcha.protect,
+          },
+        }
+      : {}),
     ...(isDemoMode(env) ? { demo: demoCredentials(env) } : {}),
   };
 };

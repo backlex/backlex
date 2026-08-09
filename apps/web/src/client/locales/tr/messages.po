@@ -1457,6 +1457,16 @@ msgstr "https://acme.com/ yerine acme.com. Bir CRM'in şirketi eşleştirdiği k
 msgid "ACS URL"
 msgstr "ACS URL"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Act as a user"
+msgstr "Bir kullanıcı olarak davran"
+
+#. placeholder {0}: issued.row.subjectEmail ?? issued.row.subjectUserId
+#. placeholder {1}: new Date(issued.row.expiresAt).toLocaleTimeString()
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Acting as {0} until {1}."
+msgstr "{1} saatine kadar {0} olarak davranılıyor."
+
 #: src/client/admin/pages/access/permission-tester.tsx
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Action"
@@ -3259,6 +3269,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/erasure-card.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/role-editor.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -3375,6 +3386,18 @@ msgstr "En fazla 72."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Döndürülen gruplanmış satır sayısını sınırlar (varsayılan 50, maksimum 200)."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Captcha"
+msgstr "Captcha"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Captcha removed — gated endpoints stop asking now."
+msgstr "Captcha kaldırıldı — korunan uç noktalar artık sormuyor."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Captcha saved."
+msgstr "Captcha kaydedildi."
 
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "Capture"
@@ -3547,6 +3570,7 @@ msgstr "Birini seçin"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/pages/book.tsx
 msgid "Choose…"
 msgstr "Seçin…"
@@ -5722,6 +5746,7 @@ msgstr "Geri yazma"
 
 #: src/client/admin/collections/collections-index.tsx
 #: src/client/admin/fields/field-transitions-editor.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -6358,6 +6383,14 @@ msgstr "Etkinleştiriliyor…"
 msgid "Encrypted at rest; it is never returned by the API."
 msgstr "Saklanırken şifrelenir; API tarafından hiçbir zaman döndürülmez."
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "End"
+msgstr "Bitir"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "End-user id"
+msgstr "Son kullanıcı kimliği"
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "End-user ID"
 msgstr "Son kullanıcı kimliği"
@@ -6381,6 +6414,10 @@ msgstr "Bu workspace üstüne kurulan uygulamanın son kullanıcıları — pane
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
 msgstr "Bu yolla giriş yapmış son kullanıcılar hesaplarını korur, ancak bu giriş yolunu kaybeder."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Ended — the token stops working on its next request."
+msgstr "Bitirildi — jeton bir sonraki istekte çalışmayı durdurur."
 
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "ending"
@@ -7560,6 +7597,10 @@ msgstr "Mevcut tablodan"
 msgid "From template"
 msgstr "Şablondan"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "From the App users page. Operators cannot be impersonated."
+msgstr "Uygulama kullanıcıları sayfasından. Operatörlerin kimliğine bürünülemez."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Frontend SDK"
 msgstr "Frontend SDK"
@@ -8173,6 +8214,10 @@ msgstr "Tarih sütunu olmayan KPI bunu yok sayar — yürüyen toplam gösterir.
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Images"
 msgstr "Görseller"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Impersonation"
+msgstr "Kimliğe bürünme"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
@@ -9191,6 +9236,10 @@ msgstr "Mevcut sırrı korumak için boş bırakın."
 msgid "Leave blank to keep the stored cert."
 msgstr "Saklanan sertifikayı korumak için boş bırakın."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Leave blank to keep the stored one. It is never shown again."
+msgstr "Kayıtlı olanı korumak için boş bırakın. Bir daha gösterilmez."
+
 #: src/client/admin/pages/settings/ai-card.tsx
 #~ msgid "Leave blank to use the built-in default. Callers may still override per request."
 #~ msgstr "Yerleşik varsayılanı kullanmak için boş bırakın. Çağıranlar yine de istek bazında değiştirebilir."
@@ -9254,6 +9303,10 @@ msgstr "Editörlerin \"{0}\" bölümünü katlamasına izin ver. Tüm bölüme u
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Let it through (allow)"
 msgstr "Geçmesine izin ver (allow)"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Let it through unverified (allow)"
+msgstr "Doğrulanmadan geçir (allow)"
 
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
@@ -9370,6 +9423,7 @@ msgstr "Liste kolonları"
 msgid "Lists"
 msgstr "Liste"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/booking/parts.tsx
@@ -10822,6 +10876,10 @@ msgstr "Varsayılan yok — +ülke kodu zorunlu"
 msgid "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
 msgstr "Bilerek varsayılan yok: \"allow\" bu hook'un sağladığı garantiyi düşürür, \"deny\" uygulamanızın kesintisini müşterinizinkine çevirir."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "No default on purpose: \"allow\" means the gate stops working exactly when the provider is having a bad day, which an attacker can arrange. \"deny\" turns their outage into yours."
+msgstr "Kasıtlı olarak varsayılanı yok: \"allow\", sağlayıcının kötü bir gün geçirdiği anda kapının çalışmayı bırakması demektir ve bunu bir saldırgan ayarlayabilir. \"deny\" ise onların kesintisini sizinkine çevirir."
+
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "No default on purpose: \"proceed\" can mint a token missing the claim your authorizer reads, and \"fail\" turns your outage into a sign-in outage."
 msgstr "Bilerek varsayılanı yok: \"devam et\" yetkilendiricinizin okuduğu talebi taşımayan bir token üretebilir, \"başarısız kıl\" ise sizin kesintinizi bir giriş kesintisine çevirir."
@@ -11449,6 +11507,10 @@ msgstr "Hiç kimse"
 #: src/client/admin/pages/automation/_agents-shared.tsx
 msgid "Nobody answers"
 msgstr "Kimse cevaplamaz"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Nobody has been impersonated"
+msgstr "Kimsenin kimliğine bürünülmedi"
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Nobody invited yet."
@@ -12467,6 +12529,10 @@ msgstr "Parola en az 8 karakter olmalıdır"
 msgid "Password must be at least 8 characters."
 msgstr "Parola en az 8 karakter olmalı."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Password reset"
+msgstr "Parola sıfırlama"
+
 #: src/client/pages/forgot.tsx
 #: src/client/pages/reset-password.tsx
 msgid "Password reset is not enabled on this instance"
@@ -13418,6 +13484,10 @@ msgstr "Profil kaydedildi."
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "destekleyici {0} · nötr {1} · eleştiren {2}"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Protect"
+msgstr "Koru"
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Protected minutes before each booking."
 msgstr "Her rezervasyondan önce korunan dakika."
@@ -13430,6 +13500,7 @@ msgstr "sağlayıcı"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Provider"
@@ -13500,6 +13571,10 @@ msgstr "Herkese açık gömme kapatıldı."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Public embed enabled."
 msgstr "Herkese açık gömme etkinleştirildi."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Public form submissions"
+msgstr "Herkese açık form gönderimleri"
 
 #: src/client/pages/shared-record.tsx
 msgid "public link"
@@ -13703,6 +13778,10 @@ msgstr "Hız limiti"
 msgid "Rate limit (per email / minute)"
 msgstr "Hız sınırı (e-posta başına / dakika)"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Rate limiting bounds how fast an attacker goes. A captcha asks whether there is a person there at all — which is what a public sign-up, a password reset that mails a real person, and a public form submission each need."
+msgstr "Hız sınırı, bir saldırganın ne kadar hızlı gideceğini sınırlar. Captcha ise karşıda bir insan olup olmadığını sorar — herkese açık kayıt, gerçek bir kişiye posta gönderen parola sıfırlama ve herkese açık form gönderiminin ihtiyacı olan da budur."
+
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Rate/min"
 msgstr "İstek/dk"
@@ -13796,6 +13875,7 @@ msgstr "Okuma ağırlıklı araçlar otomatik çalışır. Yazma işlemleri onay
 msgid "read-only"
 msgstr "salt okunur"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Read-only"
@@ -13822,6 +13902,7 @@ msgstr "MCP üzerinde salt okunur"
 msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "read-write"
 msgstr "okuma-yazma"
@@ -13860,6 +13941,7 @@ msgstr "Kaydetmeye hazır."
 msgid "Realtime"
 msgstr "Gerçek zamanlı"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -14068,6 +14150,10 @@ msgstr "İade ediliyor…"
 msgid "Refuse a row whose end is before its start"
 msgstr "Bitişi başlangıcından önce olan satırı reddet"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Refuse the request (deny)"
+msgstr "İsteği reddet (deny)"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Refused if it matches more than one payment — a row can be billed more than once."
 msgstr "Birden fazla ödemeyle eşleşirse reddedilir — bir satır birden çok kez faturalandırılabilir."
@@ -14223,6 +14309,7 @@ msgstr "hatırlatıldı {0}"
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "Remove"
@@ -14508,6 +14595,10 @@ msgstr "Toplam/ortalama/minimum/maksimum için zorunlu."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Required."
 msgstr "Zorunlu."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Required. A record of who acted as whom, with no why, answers half the question."
+msgstr "Zorunlu. Kimin kim olarak davrandığını gösteren ama nedenini içermeyen bir kayıt sorunun yarısını yanıtlar."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Requires a password on your account. Social-only users should set one above first."
@@ -15298,6 +15389,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -15473,6 +15565,7 @@ msgstr "kaydediliyor…"
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -15721,6 +15814,10 @@ msgstr "Aranıyor…"
 msgid "secret"
 msgstr "gizli"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Secret key"
+msgstr "Gizli anahtar"
+
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Secret rotated."
 msgstr "Gizli anahtar döndürüldü."
@@ -15739,6 +15836,10 @@ msgstr "Bölüm: {grp}"
 msgid "Security"
 msgstr "Güvenlik"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "See what one of this workspace's end-users sees — their org, their rows, their empty states. Read-only unless you say otherwise, capped at an hour, and every one is recorded here with the reason given."
+msgstr "Bu çalışma alanındaki bir son kullanıcının gördüğünü görün — organizasyonu, satırları, boş durumları. Aksini söylemedikçe salt okunur, en fazla bir saat ve her biri verilen gerekçeyle birlikte burada kaydedilir."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "See your email address"
 msgstr "E-posta adresinizi görme"
@@ -15754,6 +15855,10 @@ msgstr "Kullanım senaryonuza göre hazır bir koleksiyon seti oluşturun — gr
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "Seed an owner now, or leave it empty and add members once it exists."
 msgstr "Şimdi bir sahip belirleyin ya da boş bırakıp organizasyon oluştuktan sonra üye ekleyin."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Seeing what they see needs reads. Changing their data on their behalf is a different act — turn this off only when that is what you mean."
+msgstr "Gördüklerini görmek okuma gerektirir. Verilerini onlar adına değiştirmek başka bir eylemdir — bunu yalnızca gerçekten bunu kastediyorsanız kapatın."
 
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Select"
@@ -15922,6 +16027,10 @@ msgstr "Test push gönder"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Send test SMS"
 msgstr "Test SMS gönder"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Send this as an Authorization: Bearer header"
+msgstr "Bunu Authorization: Bearer başlığı olarak gönderin"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Send to"
@@ -16532,6 +16641,10 @@ msgstr "Kayıt ol"
 msgid "Sign URL"
 msgstr "URL'yi imzala"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Sign-in"
+msgstr "Oturum açma"
+
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Sign-in failed"
@@ -16544,6 +16657,10 @@ msgstr "Giriş başarısız"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Sign-in screen saved."
 msgstr "Giriş ekranı kaydedildi."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Sign-up (password, magic link and OTP)"
+msgstr "Kayıt (parola, sihirli bağlantı ve OTP)"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Sign-up / sign-in / get-session / sign-out"
@@ -16652,6 +16769,10 @@ msgstr "Tekil"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Singular"
 msgstr "Tekil ad"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Site key"
+msgstr "Site anahtarı"
 
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/data/storage/index.tsx
@@ -16893,6 +17014,10 @@ msgstr "Yıldızlı puan"
 #~ msgid "Star rating (1–5)"
 #~ msgstr "Yıldız puanı (1–5)"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Start"
+msgstr "Başlat"
+
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "Start at"
 msgstr "Başlangıç numarası"
@@ -17056,6 +17181,10 @@ msgstr "HTML olarak saklanır. Tam WYSIWYG düzenleyici henüz bağlı değil �
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Stored as typed — keep personal data out of it."
 msgstr "Yazdığınız gibi saklanır — içine kişisel veri koymayın."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Stored encrypted. It has no read-back path."
+msgstr "Şifrelenmiş saklanır. Geri okuma yolu yoktur."
 
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
@@ -17778,6 +17907,10 @@ msgstr "Herkese açık rezervasyon bağlantısı"
 msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 msgstr "Herkese açık gömme aktif. Bağlantı oluşturulduğunda yalnızca bir kez gösterildi — URL’ye tekrar ihtiyacınız olursa aşağıdan yenileyin."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "The public half. Published on your workspace's auth surface so a sign-in screen can render the widget."
+msgstr "Genel yarısı. Bir oturum açma ekranının widget'ı çizebilmesi için çalışma alanınızın kimlik doğrulama yüzeyinde yayımlanır."
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "The public link stops working immediately. Submitted rows stay in the collection."
 msgstr "Herkese açık bağlantı anında devre dışı kalır. Gönderilen kayıtlar koleksiyonda kalır."
@@ -18100,6 +18233,10 @@ msgstr "Bu zaten mevcut durum"
 msgid "This is the first user on this instance."
 msgstr "Bu örneğin ilk kullanıcısı bu."
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "This issues a working credential for their account. It is recorded with your name and the reason you give."
+msgstr "Bu, hesapları için çalışan bir kimlik bilgisi verir. Adınız ve verdiğiniz gerekçeyle birlikte kaydedilir."
+
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "Bu bağlantı artık kullanılamıyor"
@@ -18219,6 +18356,10 @@ msgstr "Per"
 #: src/client/admin/fields/field-money-editor.tsx
 msgid "Tick this when the existing column stores 19.99 rather than 1999. backlex reads and writes it as it is, so other systems writing to the same table keep working — at the cost of the exactness whole numbers give."
 msgstr "Mevcut sütun 1999 yerine 19.99 saklıyorsa bunu işaretleyin. backlex sütunu olduğu gibi okur ve yazar; böylece aynı tabloya yazan diğer sistemler çalışmaya devam eder — tam sayıların verdiği kesinlik pahasına."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "ticket #4821 — invoices list is empty"
+msgstr "kayıt #4821 — fatura listesi boş"
 
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/observability/logs.tsx
@@ -19560,6 +19701,10 @@ msgstr "Ayarlandığında, gövde çalışma zamanında depolanan şablondan iş
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "Ayarlandığında, bu anahtarla yapılan istekler yalnızca bu rolün izinlerini alır — ve yalnızca sahip bu role hâlâ sahip olduğu sürece."
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "When somebody is, it is recorded here — including why."
+msgstr "Biri bürünüldüğünde, nedeniyle birlikte burada kaydedilir."
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "When someone asks to be removed, start here — the preview shows everything that would go."
 msgstr "Biri kaldırılmayı talep ettiğinde buradan başlayın — önizleme gidecek her şeyi gösterir."
@@ -19568,6 +19713,10 @@ msgstr "Biri kaldırılmayı talep ettiğinde buradan başlayın — önizleme g
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "When the hook cannot answer"
 msgstr "Hook cevap veremediğinde"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "When the provider cannot answer"
+msgstr "Sağlayıcı yanıt veremediğinde"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx

@@ -110,6 +110,9 @@ import { realtimeChannelsRoutes } from "./routes/realtime-channels";
 import { rlsRoutes } from "./routes/rls";
 import { s3Routes } from "./routes/s3";
 import { s3CredentialsRoutes } from "./routes/s3-credentials";
+import { captchaRoutes } from "./routes/captcha";
+import { impersonationRoutes } from "./routes/impersonation";
+import { captchaMiddleware } from "./lib/captcha-middleware";
 import { erasureRoutes } from "./routes/erasure";
 import { scimRoutes } from "./routes/scim";
 import { platformSamlAdminRoutes } from "./routes/platform-saml-admin";
@@ -208,6 +211,14 @@ export type AppBindings = {
        *  Carries the OAuth client id for auditing; guard behavior rides the
        *  `apiKeyMcp*` fields (readOnly derives from the token's scopes). */
       oauthClientId?: string | null;
+      /** Set by sessionMiddleware when the request is an operator ACTING AS one
+       *  of the workspace's end-users. The identity is genuinely the subject's;
+       *  these fields carry who is behind it so the audit trail names both, and
+       *  `impersonationReadOnly` is what the write gate reads. See
+       *  `services/impersonation.ts` and docs/impersonation.md. */
+      impersonatedBy?: string | null;
+      impersonationId?: string | null;
+      impersonationReadOnly?: boolean;
     };
     /** Correlation id for this request. Taken from an inbound `x-request-id`
      *  (trusted proxy / client), else `cf-ray` on Workers, else a generated
@@ -855,6 +866,10 @@ export const createApp = (env: Env) => {
   // only; a refusal revokes the session better-auth already issued (see
   // lib/auth-hook-middleware.ts).
   app.use("/api/t/*", passwordVerificationHookMiddleware);
+  // The captcha gate, in front of better-auth's router — a failed challenge
+  // must cost nothing downstream, so it runs before the lockout counter and
+  // before any row is written. See lib/captcha-middleware.ts.
+  app.use("/api/t/*", captchaMiddleware);
 
   // Public auth-surface discovery — must be registered before the better-auth
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.
@@ -908,6 +923,8 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/realtime-channels", realtimeChannelsRoutes);
   app.route("/api/admin/rls", rlsRoutes);
   app.route("/api/admin/s3-credentials", s3CredentialsRoutes);
+  app.route("/api/admin/captcha", captchaRoutes);
+  app.route("/api/admin/impersonation", impersonationRoutes);
   // The S3-compatible endpoint. Mounted OUTSIDE `/api` and before the session
   // middleware chain on purpose: a SigV4 request carries no cookie, no bearer
   // token and no workspace header, and running it through a gate built for

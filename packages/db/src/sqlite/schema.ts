@@ -1215,9 +1215,13 @@ export const activity = sqliteTable(
     payload: text("payload", { mode: "json" }).$type<unknown | null>(),
     response: text("response", { mode: "json" }).$type<unknown | null>(),
     durationMs: integer("duration_ms"),
+    /** The operator behind an impersonated request — see the pg twin for why
+     *  this is a column and not a payload key. */
+    impersonatedBy: text("impersonated_by"),
     createdAt: ts("created_at"),
   },
   (t) => [
+    index("activity_impersonated_idx").on(t.impersonatedBy),
     index("activity_collection_item_idx").on(t.collection, t.itemId),
     index("activity_user_idx").on(t.userId),
     index("activity_created_idx").on(t.createdAt),
@@ -2390,6 +2394,10 @@ export const authConfig = sqliteTable(
     policy: text("policy", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
     sessionLifetime: text("session_lifetime").notNull().default("30d"),
     redirectUrls: text("redirect_urls", { mode: "json" }).$type<string[]>().notNull().default([]),
+    /** Captcha configuration — see the pg twin. Plain TEXT (not `mode: "json"`)
+     *  so an unreadable value degrades to "no captcha" in one function rather
+     *  than throwing inside the row mapper, where no default can be applied. */
+    captcha: text("captcha"),
     updatedAt: ts("updated_at"),
   },
 );
@@ -3480,5 +3488,35 @@ export const s3Credentials = sqliteTable(
   (t) => [
     uniqueIndex("s3_credentials_akid_idx").on(t.accessKeyId),
     index("s3_credentials_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * An impersonation — see packages/db/src/pg/schema.ts for why this is a row
+ * that every impersonated request re-reads rather than a self-contained token:
+ * instant revocation, and a record that exists whether or not the operator
+ * cooperates. SQLite twin: booleans are 0/1, timestamps epoch-ms.
+ */
+export const impersonations = sqliteTable(
+  "impersonations",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    actorUserId: text("actor_user_id").notNull(),
+    actorEmail: text("actor_email"),
+    subjectUserId: text("subject_user_id").notNull(),
+    subjectEmail: text("subject_email"),
+    reason: text("reason").notNull(),
+    readOnly: integer("read_only", { mode: "boolean" }).notNull().default(true),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+    endedBy: text("ended_by"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("impersonations_tenant_idx").on(t.tenantId, t.createdAt),
+    index("impersonations_subject_idx").on(t.subjectUserId),
   ],
 );

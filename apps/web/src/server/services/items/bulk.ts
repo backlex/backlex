@@ -106,6 +106,8 @@ export const runBulkUpdate = async (params: RunBulkUpdateParams): Promise<BulkUp
     tenantId: auth.tenantId,
     roles: auth.roles,
     meta: params.meta,
+    impersonatedBy: params.auth.impersonatedBy ?? null,
+    impersonationReadOnly: params.auth.impersonationReadOnly ?? false,
     durationMs: params.durationMs,
     locale: params.locale,
     readFields,

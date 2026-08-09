@@ -5,6 +5,7 @@ import type { MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
 import { verifyAccessToken, verifyAgentRunToken } from "../lib/jwt";
+import { resolveImpersonation } from "../services/impersonation";
 import { verifyThirdPartyToken } from "../lib/third-party-jwt";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
 import { resolveThirdPartyUser } from "../services/third-party-auth";
@@ -271,6 +272,12 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // similarly pin the request to the workspace that issued the session — the
   // app's frontend doesn't send a tenant header, it just uses its token.
   let appSessionTenantId: string | null = null;
+  /** Set when the bearer token carries an `imp` claim AND the impersonation it
+   *  names is still live — see services/impersonation.ts for why the row, not
+   *  the token, is the authority. */
+  let impersonatedBy: string | null = null;
+  let impersonationId: string | null = null;
+  let impersonationReadOnly = false;
   // `app_sessions.id` behind an app-plane request. Carried so the org layer can
   // read back the session's pinned `active_org_id` without a token lookup — the
   // stateless access JWT names it in `sid`, and both DB-backed paths know the
@@ -372,11 +379,38 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
       } else {
         const claims = await verifyAccessToken(ctx.env, token);
         if (claims) {
-          plane = "app";
-          userId = claims.sub;
-          email = claims.email;
-          appSessionTenantId = claims.tid;
-          appSessionId = claims.sid ?? null;
+          const impId = typeof claims.imp === "string" ? claims.imp : null;
+          if (impId) {
+            // An impersonation token is only as valid as its row. Ended,
+            // expired or deleted all mean the same thing here — the token
+            // stops working, which is what makes "end this now" instant.
+            const live = await resolveImpersonation(
+              { db: ctx.db, dialect: ctx.dialect },
+              impId,
+            );
+            if (!live || live.subjectUserId !== claims.sub || live.tenantId !== claims.tid) {
+              // Nothing is assigned: the request stays unauthenticated. It also
+              // does not fall through to the other token shapes — this branch
+              // is inside `if (claims)`, so a token that verified as ours is
+              // never re-probed against the third-party issuers below, which
+              // would mean a network call per retry on a dead credential.
+            } else {
+              plane = "app";
+              userId = claims.sub;
+              email = claims.email;
+              appSessionTenantId = claims.tid;
+              appSessionId = claims.sid ?? null;
+              impersonatedBy = live.actorUserId;
+              impersonationId = live.id;
+              impersonationReadOnly = Boolean(live.readOnly);
+            }
+          } else {
+            plane = "app";
+            userId = claims.sub;
+            email = claims.email;
+            appSessionTenantId = claims.tid;
+            appSessionId = claims.sid ?? null;
+          }
         } else {
           const appSess = await findAppSession(
             { db: ctx.db, dialect: ctx.dialect },
@@ -484,6 +518,9 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     appSessionTenantId,
     appSessionId,
     oauthClientId,
+    impersonatedBy,
+    impersonationId,
+    impersonationReadOnly,
   });
   await next();
 };

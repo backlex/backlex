@@ -108,6 +108,7 @@ import { RoleEditor, type RoleData } from "./pages/access/role-editor";
 import { MembersPanel } from "./pages/access/members-panel";
 import { PermissionsMatrix } from "./pages/access/permissions-matrix";
 import { RlsCard } from "./pages/access/rls-card";
+import { ImpersonationCard } from "./pages/access/impersonation-card";
 import { PermissionTesterPanel } from "./pages/access/permission-tester";
 // Each admin page is split into its own chunk so the initial admin bundle
 // stays small. The shared `<Suspense>` boundary inside the page switch below
@@ -2049,6 +2050,8 @@ function PermissionsPanel({ pushToast }: { pushToast: PushToast }) {
       {/* The same rules, pushed into the database — so a connection that never
           touches the API is filtered too. */}
       <RlsCard pushToast={pushToast} />
+      {/* Seeing what one of those roles actually sees, for one real person. */}
+      <ImpersonationCard pushToast={pushToast} />
       <RoleEditor open={editing !== null || isNew} role={editing} isNew={isNew} onClose={close} onSave={save} />
     </div>
   );

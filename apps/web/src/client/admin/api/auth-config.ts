@@ -547,3 +547,68 @@ export const authHooksApi = {
   test: (id: string) =>
     api<AuthHookTestResult>(`/api/admin/auth-hooks/${id}/test`, { method: "POST" }),
 };
+
+/* ── captcha ── */
+
+export type CaptchaTarget = "sign-up" | "sign-in" | "password-reset" | "forms";
+
+export interface ApiCaptchaConfig {
+  provider: "turnstile" | "hcaptcha" | "recaptcha" | null;
+  /** The public half — what a browser needs to render the widget. */
+  siteKey: string;
+  protect: CaptchaTarget[];
+  /** No safe default exists; see the card's copy. */
+  onError: "allow" | "deny";
+  enabled: boolean;
+  /** Presence only — the secret has no read-back path. */
+  hasSecret: boolean;
+}
+
+export const captchaApi = {
+  get: () => api<{ data: ApiCaptchaConfig }>(`/api/admin/captcha`),
+  set: (body: {
+    provider: string;
+    siteKey: string;
+    secretKey?: string;
+    protect: CaptchaTarget[];
+    onError: "allow" | "deny";
+    enabled?: boolean;
+  }) =>
+    api<{ data: ApiCaptchaConfig }>(`/api/admin/captcha`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  remove: () => api<{ ok: true }>(`/api/admin/captcha`, { method: "DELETE" }),
+};
+
+/* ── impersonation ── */
+
+export interface ApiImpersonation {
+  id: string;
+  actorUserId: string;
+  actorEmail: string | null;
+  subjectUserId: string;
+  subjectEmail: string | null;
+  reason: string;
+  readOnly: boolean;
+  expiresAt: number;
+  endedAt: number | null;
+  endedBy: string | null;
+  createdAt: number | null;
+  active: boolean;
+}
+
+export const impersonationApi = {
+  list: (activeOnly = false) =>
+    api<{ data: ApiImpersonation[] }>(
+      `/api/admin/impersonation${activeOnly ? "?activeOnly=true" : ""}`,
+    ),
+  /** Returns a working access token for the subject — treat it as a credential. */
+  start: (body: { subjectUserId: string; reason: string; readOnly?: boolean; minutes?: number }) =>
+    api<{ data: ApiImpersonation; token: string; expiresAt: number }>(
+      `/api/admin/impersonation`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  end: (id: string) =>
+    api<{ data: ApiImpersonation }>(`/api/admin/impersonation/${id}/end`, { method: "POST" }),
+};

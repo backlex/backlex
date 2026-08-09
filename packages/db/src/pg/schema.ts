@@ -1439,9 +1439,21 @@ export const activity = pgTable(
      *  via a per-request timer. Lets the metrics endpoint compute p95
      *  without a separate analytics pipeline. */
     durationMs: integer("duration_ms"),
+    /**
+     * The operator behind an impersonated request, when there is one.
+     *
+     * A COLUMN rather than a key in `payload`, because the question it answers
+     * — "what did support do while acting as a customer" — is a query, and a
+     * JSON grep over every activity row is not one. `user_id` stays the
+     * SUBJECT's: an impersonated write genuinely is theirs, which is what makes
+     * it a faithful reproduction, and a log that recorded only one of the two
+     * parties would answer the wrong half of the question.
+     */
+    impersonatedBy: text("impersonated_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    index("activity_impersonated_idx").on(t.impersonatedBy),
     index("activity_collection_item_idx").on(t.collection, t.itemId),
     index("activity_user_idx").on(t.userId),
     index("activity_created_idx").on(t.createdAt),
@@ -2647,6 +2659,11 @@ export const authConfig = pgTable(
     policy: jsonb("policy").$type<Record<string, unknown>>().notNull().default({}),
     sessionLifetime: text("session_lifetime").notNull().default("30d"),
     redirectUrls: jsonb("redirect_urls").$type<string[]>().notNull().default([]),
+    /** Captcha configuration: `{ provider, siteKey, secretKey (enc:v1:…),
+     *  protect: [...], onError }`. Its own column rather than another key under
+     *  `providers`, because a captcha is not a way to sign in — it gates the
+     *  ones that are. NULL = no captcha. */
+    captcha: jsonb("captcha").$type<Record<string, unknown> | null>(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
 );
@@ -3946,5 +3963,54 @@ export const s3Credentials = pgTable(
   (t) => [
     uniqueIndex("s3_credentials_akid_idx").on(t.accessKeyId),
     index("s3_credentials_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * An impersonation — an operator acting as one of the workspace's end-users.
+ *
+ * ## Why a row, and not just a token
+ *
+ * The point of impersonation is that support can reproduce what a customer
+ * sees. The point of AUDITING it is that nobody can do so unobserved, and a
+ * signed token alone cannot deliver that: it is valid until it expires, so
+ * "end this session now" would have no meaning and the record of what happened
+ * would live only in whatever the operator chose to write down.
+ *
+ * So the token carries the impersonation's ID and every request it
+ * authenticates re-reads THIS row. That costs one indexed lookup per
+ * impersonated request — paid only while somebody is impersonating — and buys
+ * instant revocation plus a record that exists whether or not the operator
+ * cooperates.
+ *
+ * `reason` is NOT NULL and rejected when blank. An audit trail of who acted as
+ * whom, with no why, answers the easy half of the question.
+ */
+export const impersonations = pgTable(
+  "impersonations",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** The operator. A platform-plane user id. */
+    actorUserId: text("actor_user_id").notNull(),
+    actorEmail: text("actor_email"),
+    /** The end-user being acted as. An `app_users` id — never a platform user;
+     *  one operator impersonating another is a privilege move, not support. */
+    subjectUserId: text("subject_user_id").notNull(),
+    subjectEmail: text("subject_email"),
+    reason: text("reason").notNull(),
+    /** Default TRUE. Reproducing what a customer sees needs reads; changing
+     *  their data on their behalf is a different act and has to be asked for. */
+    readOnly: boolean("read_only").notNull().default(true),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endedBy: text("ended_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("impersonations_tenant_idx").on(t.tenantId, t.createdAt),
+    index("impersonations_subject_idx").on(t.subjectUserId),
   ],
 );

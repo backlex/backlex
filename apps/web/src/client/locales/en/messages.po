@@ -1457,6 +1457,16 @@ msgstr "acme.com rather than https://acme.com/. For the column a CRM matches a c
 msgid "ACS URL"
 msgstr "ACS URL"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Act as a user"
+msgstr "Act as a user"
+
+#. placeholder {0}: issued.row.subjectEmail ?? issued.row.subjectUserId
+#. placeholder {1}: new Date(issued.row.expiresAt).toLocaleTimeString()
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Acting as {0} until {1}."
+msgstr "Acting as {0} until {1}."
+
 #: src/client/admin/pages/access/permission-tester.tsx
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Action"
@@ -3259,6 +3269,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/erasure-card.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/role-editor.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -3375,6 +3386,18 @@ msgstr "Capped at 72."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Caps the number of grouped rows returned (default 50, max 200)."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Captcha"
+msgstr "Captcha"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Captcha removed — gated endpoints stop asking now."
+msgstr "Captcha removed — gated endpoints stop asking now."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Captcha saved."
+msgstr "Captcha saved."
 
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "Capture"
@@ -3547,6 +3570,7 @@ msgstr "Choose one"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/pages/book.tsx
 msgid "Choose…"
 msgstr "Choose…"
@@ -5722,6 +5746,7 @@ msgstr "Don't write it back"
 
 #: src/client/admin/collections/collections-index.tsx
 #: src/client/admin/fields/field-transitions-editor.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -6358,6 +6383,14 @@ msgstr "Enabling…"
 msgid "Encrypted at rest; it is never returned by the API."
 msgstr "Encrypted at rest; it is never returned by the API."
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "End"
+msgstr "End"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "End-user id"
+msgstr "End-user id"
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "End-user ID"
 msgstr "End-user ID"
@@ -6381,6 +6414,10 @@ msgstr "End-users of the application built on this workspace — a pool separate
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
 msgstr "End-users who signed in through it keep their accounts, but lose this sign-in route."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Ended — the token stops working on its next request."
+msgstr "Ended — the token stops working on its next request."
 
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "ending"
@@ -7560,6 +7597,10 @@ msgstr "From existing table"
 msgid "From template"
 msgstr "From template"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "From the App users page. Operators cannot be impersonated."
+msgstr "From the App users page. Operators cannot be impersonated."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Frontend SDK"
 msgstr "Frontend SDK"
@@ -8173,6 +8214,10 @@ msgstr "Ignored by a KPI with no date column — it reports a running total."
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Images"
 msgstr "Images"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Impersonation"
+msgstr "Impersonation"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
@@ -9191,6 +9236,10 @@ msgstr "Leave blank to keep the current secret."
 msgid "Leave blank to keep the stored cert."
 msgstr "Leave blank to keep the stored cert."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Leave blank to keep the stored one. It is never shown again."
+msgstr "Leave blank to keep the stored one. It is never shown again."
+
 #: src/client/admin/pages/settings/ai-card.tsx
 #~ msgid "Leave blank to use the built-in default. Callers may still override per request."
 #~ msgstr "Leave blank to use the built-in default. Callers may still override per request."
@@ -9254,6 +9303,10 @@ msgstr "Let editors fold the \"{0}\" section. Applies to the whole section."
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Let it through (allow)"
 msgstr "Let it through (allow)"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Let it through unverified (allow)"
+msgstr "Let it through unverified (allow)"
 
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
@@ -9370,6 +9423,7 @@ msgstr "List columns"
 msgid "Lists"
 msgstr "Lists"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/booking/parts.tsx
@@ -10822,6 +10876,10 @@ msgstr "No default — require +country code"
 msgid "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
 msgstr "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "No default on purpose: \"allow\" means the gate stops working exactly when the provider is having a bad day, which an attacker can arrange. \"deny\" turns their outage into yours."
+msgstr "No default on purpose: \"allow\" means the gate stops working exactly when the provider is having a bad day, which an attacker can arrange. \"deny\" turns their outage into yours."
+
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "No default on purpose: \"proceed\" can mint a token missing the claim your authorizer reads, and \"fail\" turns your outage into a sign-in outage."
 msgstr "No default on purpose: \"proceed\" can mint a token missing the claim your authorizer reads, and \"fail\" turns your outage into a sign-in outage."
@@ -11449,6 +11507,10 @@ msgstr "Nobody"
 #: src/client/admin/pages/automation/_agents-shared.tsx
 msgid "Nobody answers"
 msgstr "Nobody answers"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Nobody has been impersonated"
+msgstr "Nobody has been impersonated"
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Nobody invited yet."
@@ -12467,6 +12529,10 @@ msgstr "Password must be at least 8 characters"
 msgid "Password must be at least 8 characters."
 msgstr "Password must be at least 8 characters."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Password reset"
+msgstr "Password reset"
+
 #: src/client/pages/forgot.tsx
 #: src/client/pages/reset-password.tsx
 msgid "Password reset is not enabled on this instance"
@@ -13418,6 +13484,10 @@ msgstr "Profile saved."
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "promoters {0} · passives {1} · detractors {2}"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Protect"
+msgstr "Protect"
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Protected minutes before each booking."
 msgstr "Protected minutes before each booking."
@@ -13430,6 +13500,7 @@ msgstr "provider"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Provider"
@@ -13500,6 +13571,10 @@ msgstr "Public embed disabled."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Public embed enabled."
 msgstr "Public embed enabled."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Public form submissions"
+msgstr "Public form submissions"
 
 #: src/client/pages/shared-record.tsx
 msgid "public link"
@@ -13703,6 +13778,10 @@ msgstr "Rate limit"
 msgid "Rate limit (per email / minute)"
 msgstr "Rate limit (per email / minute)"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Rate limiting bounds how fast an attacker goes. A captcha asks whether there is a person there at all — which is what a public sign-up, a password reset that mails a real person, and a public form submission each need."
+msgstr "Rate limiting bounds how fast an attacker goes. A captcha asks whether there is a person there at all — which is what a public sign-up, a password reset that mails a real person, and a public form submission each need."
+
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Rate/min"
 msgstr "Rate/min"
@@ -13796,6 +13875,7 @@ msgstr "Read-leaning tools auto-run. Writes wait for a click to confirm."
 msgid "read-only"
 msgstr "read-only"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Read-only"
@@ -13822,6 +13902,7 @@ msgstr "Read-only over MCP"
 msgid "read-only SELECT against the workspace database"
 msgstr "read-only SELECT against the workspace database"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "read-write"
 msgstr "read-write"
@@ -13860,6 +13941,7 @@ msgstr "Ready to save."
 msgid "Realtime"
 msgstr "Realtime"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -14068,6 +14150,10 @@ msgstr "Refunding…"
 msgid "Refuse a row whose end is before its start"
 msgstr "Refuse a row whose end is before its start"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Refuse the request (deny)"
+msgstr "Refuse the request (deny)"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Refused if it matches more than one payment — a row can be billed more than once."
 msgstr "Refused if it matches more than one payment — a row can be billed more than once."
@@ -14223,6 +14309,7 @@ msgstr "reminded {0}"
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "Remove"
@@ -14508,6 +14595,10 @@ msgstr "Required for sum/avg/min/max."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Required."
 msgstr "Required."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Required. A record of who acted as whom, with no why, answers half the question."
+msgstr "Required. A record of who acted as whom, with no why, answers half the question."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Requires a password on your account. Social-only users should set one above first."
@@ -15298,6 +15389,7 @@ msgstr "Sat"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -15473,6 +15565,7 @@ msgstr "saving…"
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -15721,6 +15814,10 @@ msgstr "Searching…"
 msgid "secret"
 msgstr "secret"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Secret key"
+msgstr "Secret key"
+
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Secret rotated."
 msgstr "Secret rotated."
@@ -15739,6 +15836,10 @@ msgstr "Section: {grp}"
 msgid "Security"
 msgstr "Security"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "See what one of this workspace's end-users sees — their org, their rows, their empty states. Read-only unless you say otherwise, capped at an hour, and every one is recorded here with the reason given."
+msgstr "See what one of this workspace's end-users sees — their org, their rows, their empty states. Read-only unless you say otherwise, capped at an hour, and every one is recorded here with the reason given."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "See your email address"
 msgstr "See your email address"
@@ -15754,6 +15855,10 @@ msgstr "Seed a ready-made set of collections — grouped, with sample data — f
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "Seed an owner now, or leave it empty and add members once it exists."
 msgstr "Seed an owner now, or leave it empty and add members once it exists."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Seeing what they see needs reads. Changing their data on their behalf is a different act — turn this off only when that is what you mean."
+msgstr "Seeing what they see needs reads. Changing their data on their behalf is a different act — turn this off only when that is what you mean."
 
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Select"
@@ -15922,6 +16027,10 @@ msgstr "Send test push"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Send test SMS"
 msgstr "Send test SMS"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Send this as an Authorization: Bearer header"
+msgstr "Send this as an Authorization: Bearer header"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Send to"
@@ -16532,6 +16641,10 @@ msgstr "Sign up"
 msgid "Sign URL"
 msgstr "Sign URL"
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Sign-in"
+msgstr "Sign-in"
+
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Sign-in failed"
@@ -16544,6 +16657,10 @@ msgstr "Sign-in failed"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Sign-in screen saved."
 msgstr "Sign-in screen saved."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Sign-up (password, magic link and OTP)"
+msgstr "Sign-up (password, magic link and OTP)"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Sign-up / sign-in / get-session / sign-out"
@@ -16652,6 +16769,10 @@ msgstr "Singleton"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Singular"
 msgstr "Singular"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Site key"
+msgstr "Site key"
 
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/data/storage/index.tsx
@@ -16893,6 +17014,10 @@ msgstr "Star rating"
 #~ msgid "Star rating (1–5)"
 #~ msgstr "Star rating (1–5)"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Start"
+msgstr "Start"
+
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "Start at"
 msgstr "Start at"
@@ -17056,6 +17181,10 @@ msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-fo
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Stored as typed — keep personal data out of it."
 msgstr "Stored as typed — keep personal data out of it."
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "Stored encrypted. It has no read-back path."
+msgstr "Stored encrypted. It has no read-back path."
 
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
@@ -17778,6 +17907,10 @@ msgstr "The public booking link"
 msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 msgstr "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "The public half. Published on your workspace's auth surface so a sign-in screen can render the widget."
+msgstr "The public half. Published on your workspace's auth surface so a sign-in screen can render the widget."
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "The public link stops working immediately. Submitted rows stay in the collection."
 msgstr "The public link stops working immediately. Submitted rows stay in the collection."
@@ -18100,6 +18233,10 @@ msgstr "This is already the current state"
 msgid "This is the first user on this instance."
 msgstr "This is the first user on this instance."
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "This issues a working credential for their account. It is recorded with your name and the reason you give."
+msgstr "This issues a working credential for their account. It is recorded with your name and the reason you give."
+
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "This link is no longer available"
@@ -18219,6 +18356,10 @@ msgstr "Thu"
 #: src/client/admin/fields/field-money-editor.tsx
 msgid "Tick this when the existing column stores 19.99 rather than 1999. backlex reads and writes it as it is, so other systems writing to the same table keep working — at the cost of the exactness whole numbers give."
 msgstr "Tick this when the existing column stores 19.99 rather than 1999. backlex reads and writes it as it is, so other systems writing to the same table keep working — at the cost of the exactness whole numbers give."
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "ticket #4821 — invoices list is empty"
+msgstr "ticket #4821 — invoices list is empty"
 
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/observability/logs.tsx
@@ -19560,6 +19701,10 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "When somebody is, it is recorded here — including why."
+msgstr "When somebody is, it is recorded here — including why."
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "When someone asks to be removed, start here — the preview shows everything that would go."
 msgstr "When someone asks to be removed, start here — the preview shows everything that would go."
@@ -19568,6 +19713,10 @@ msgstr "When someone asks to be removed, start here — the preview shows everyt
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "When the hook cannot answer"
 msgstr "When the hook cannot answer"
+
+#: src/client/admin/pages/settings/captcha-card.tsx
+msgid "When the provider cannot answer"
+msgstr "When the provider cannot answer"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx

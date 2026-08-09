@@ -28,6 +28,7 @@ import {
   verifyTurnstile,
   type FormRow,
 } from "../services/forms";
+import { enforceCaptcha, loadCaptchaConfig } from "../services/captcha";
 import {
   checkFormInvite,
   consumeFormInvite,
@@ -149,6 +150,11 @@ const SubmitBody = z
     data: z.record(z.string(), z.unknown()),
     /** Turnstile widget response — required when the form has turnstile on. */
     turnstileToken: z.string().optional(),
+    /** Captcha widget response, for a workspace-configured captcha (any of the
+     *  three providers). Kept separate from `turnstileToken` so a page serving
+     *  both a legacy deployment-Turnstile form and a workspace-captcha form
+     *  does not have to guess which one the server will check. */
+    captchaToken: z.string().optional(),
     /** Honeypot — rendered invisibly by the form page; any non-empty value
      *  marks the submission as bot traffic and it is silently dropped. */
     website: z.string().optional(),
@@ -730,7 +736,30 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         );
       }
 
-      if (settings.turnstile) {
+      // The workspace's own captcha config (any of three providers, its own
+      // encrypted secret) SUPERSEDES the deployment-level Turnstile keys when
+      // it covers forms — running both would put two challenges in front of
+      // one submit. `enforceCaptcha` is a no-op when the workspace has not
+      // configured one, so the legacy path below still runs for everyone else.
+      const workspaceCaptcha = form.tenantId
+        ? await loadCaptchaConfig(ctx, form.tenantId)
+        : null;
+      const captchaCoversForms =
+        Boolean(workspaceCaptcha?.enabled) && Boolean(workspaceCaptcha?.protect.includes("forms"));
+      if (captchaCoversForms) {
+        try {
+          await enforceCaptcha(
+            ctx,
+            form.tenantId,
+            "forms",
+            body.captchaToken ?? body.turnstileToken ?? null,
+            meta.ip,
+          );
+        } catch (e) {
+          await recordFormBlocked(ctx, form.id);
+          throw e;
+        }
+      } else if (settings.turnstile) {
         try {
           await verifyTurnstile(
             ctx.env.TURNSTILE_SECRET_KEY,

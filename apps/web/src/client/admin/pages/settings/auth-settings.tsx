@@ -38,6 +38,7 @@ import { OidcProviderDialog } from "./oidc-provider-dialog";
 import { ScimCard } from "./scim-card";
 import { ThirdPartyAuthCard } from "./third-party-auth-card";
 import { AuthHooksCard } from "./auth-hooks-card";
+import { CaptchaCard } from "./captcha-card";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
 import { AuthSettingsSkeleton } from "../../page-skeletons";
@@ -645,6 +646,9 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
 
       <ThirdPartyAuthCard availableRoles={availableRoles} pushToast={pushToast} />
 
+      {/* The gate in front of the endpoints above — sits after them because it
+          is about who may REACH them, not about how they work. */}
+      <CaptchaCard pushToast={pushToast} />
       <AuthHooksCard pushToast={pushToast} />
 
       <ScimCard availableRoles={availableRoles} pushToast={pushToast} />

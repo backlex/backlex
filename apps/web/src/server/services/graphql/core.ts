@@ -1303,6 +1303,11 @@ const writeEnvOf = async (
     // request metadata would be a guess. The activity row records the surface
     // instead of inventing an IP for it.
     meta: { surface: "graphql" },
+    // Impersonation rides the write env on every surface. GraphQL never sees
+    // the permission middleware, so the write core's own gate is the only one
+    // standing between a read-only impersonation and a mutation here.
+    impersonatedBy: gqlCtx.auth.impersonatedBy ?? null,
+    impersonationReadOnly: gqlCtx.auth.impersonationReadOnly ?? false,
     durationMs: () => Date.now() - started,
     // `?locale=` is a REST query parameter; a GraphQL mutation always writes the
     // full `{locale: value}` map form, which is what `null` selects.

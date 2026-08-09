@@ -100,6 +100,17 @@ export interface WriteEnv {
   email?: string | null;
   /** requestMeta(c.req.raw) — ip/ua/etc. for the activity row. */
   meta: Record<string, unknown>;
+  /** The operator behind an impersonated write. Threaded onto the activity row
+   *  so "what did support do while acting as a customer" stays a query. */
+  impersonatedBy?: string | null;
+  /** True for a read-only impersonation. Checked HERE as well as at the
+   *  permission middleware, and the division of labour is deliberate rather
+   *  than duplicated: the middleware covers every REST route that declares a
+   *  collection action (storage included), while this covers every path that
+   *  reaches a row write — GraphQL, batch, bulk and CSV import — none of which
+   *  passes through that middleware. GraphQL in particular hand-builds its own
+   *  resolvers and has repeatedly been the surface a guard was missing from. */
+  impersonationReadOnly?: boolean;
   durationMs: () => number;
   /** ?locale= write target for `localized` (sidecar) fields. */
   locale: string | null;
@@ -222,11 +233,24 @@ const authSubjectOf = (env: WriteEnv): AuthSubject => ({
   tenantId: env.tenantId ?? null,
 });
 
+/** Refuse a write made by a read-only impersonation. See
+ *  `WriteEnv.impersonationReadOnly` for why this lives here as well as at the
+ *  permission middleware. */
+const assertNotReadOnlyImpersonation = (env: WriteEnv, action: string): void => {
+  if (!env.impersonationReadOnly) return;
+  throw new AppError(
+    "FORBIDDEN",
+    `This is a read-only impersonation — "${action}" on "${env.collection.slug}" is refused. ` +
+      "Start one with `readOnly: false` if acting on the customer's behalf is intended.",
+  );
+};
+
 export const performCreate = async (
   env: WriteEnv,
   dataIn: Record<string, unknown>,
   perm: ResolvedPerm,
 ): Promise<WriteResult> => {
+  assertNotReadOnlyImpersonation(env, "create");
   let data = dataIn;
   const { ctx, collection } = env;
   const table = collection.physicalTable;
@@ -516,6 +540,7 @@ export const performCreate = async (
           payload: data,
           response: { data: projected },
           durationMs: env.durationMs(),
+          impersonatedBy: env.impersonatedBy ?? null,
         },
       ),
   ];
@@ -538,6 +563,7 @@ export const performUpdate = async (
     live?: boolean;
   },
 ): Promise<WriteResult> => {
+  assertNotReadOnlyImpersonation(env, "update");
   let patch = patchIn;
   const { ctx, collection } = env;
   const table = collection.physicalTable;
@@ -731,6 +757,7 @@ export const performUpdate = async (
             payload: { ...auditPatch, _staged: true },
             response: { data: projectedPreview },
             durationMs: env.durationMs(),
+            impersonatedBy: env.impersonatedBy ?? null,
           },
         ),
     ];
@@ -883,6 +910,7 @@ export const performUpdate = async (
           payload: patch,
           response: { data: projected },
           durationMs: env.durationMs(),
+          impersonatedBy: env.impersonatedBy ?? null,
         },
       ),
     () =>
@@ -930,6 +958,7 @@ export const performDelete = async (
   id: string,
   perm: ResolvedPerm,
 ): Promise<WriteResult> => {
+  assertNotReadOnlyImpersonation(env, "delete");
   const { ctx, collection } = env;
   const table = collection.physicalTable;
   const tenantWhere = tenantFilter(collection, authOf(env));
@@ -1038,6 +1067,7 @@ export const performDelete = async (
           payload: oldRow,
           response: { ok: true },
           durationMs: env.durationMs(),
+          impersonatedBy: env.impersonatedBy ?? null,
         },
       ),
     () =>

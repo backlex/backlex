@@ -345,6 +345,8 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId: auth.tenantId,
         roles: auth.roles,
         meta: requestMeta(c.req.raw),
+        impersonatedBy: auth.impersonatedBy ?? null,
+        impersonationReadOnly: auth.impersonationReadOnly ?? false,
         durationMs: () => elapsedMs(c),
         locale: null,
         // The import answers with a per-row summary, never a row. Empty rather

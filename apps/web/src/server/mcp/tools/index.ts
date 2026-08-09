@@ -14,6 +14,7 @@ import { authHooksTools } from "./auth-hooks";
 import { channelsTools } from "./channels";
 import { rlsTools } from "./rls";
 import { s3Tools } from "./s3";
+import { supportTools } from "./support";
 import { documentsTools } from "./documents";
 import { geoTools } from "./geo";
 import { emailTools } from "./email";
@@ -84,6 +85,7 @@ export const allTools: McpTool[] = [
   ...channelsTools,
   ...rlsTools,
   ...s3Tools,
+  ...supportTools,
   ...documentsTools,
   ...geoTools,
   ...orderTools,

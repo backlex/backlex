@@ -129,6 +129,21 @@ export interface AuthSubject {
   orgId?: string | null;
   orgRole?: OrgRole | null;
   orgIds?: string[];
+  /**
+   * Set when this request is an operator ACTING AS one of the workspace's
+   * end-users. The identity is genuinely the subject's — permissions, org
+   * context and row conditions all resolve as they would for them, which is
+   * the whole point — but everything the request writes carries the
+   * impersonator so the audit trail names both.
+   *
+   * See `services/impersonation.ts`: the token names a row, and that row is
+   * re-read on every request, so ending an impersonation is instant.
+   */
+  impersonatedBy?: string | null;
+  impersonationId?: string | null;
+  /** Default for an impersonation. Reproducing what a customer sees needs
+   *  reads; changing their data on their behalf is a different act. */
+  impersonationReadOnly?: boolean;
 }
 
 export const SYSTEM_ROLES = {

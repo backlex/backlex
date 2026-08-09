@@ -109,6 +109,7 @@ import m102 from "../../drizzle/pg/20260809140000_third_party_auth/migration.sql
 import m103 from "../../drizzle/pg/20260809180000_auth_hooks/migration.sql" with { type: "text" };
 import m104 from "../../drizzle/pg/20260810090000_broadcast_channels/migration.sql" with { type: "text" };
 import m105 from "../../drizzle/pg/20260810140000_s3_credentials/migration.sql" with { type: "text" };
+import m106 from "../../drizzle/pg/20260811090000_captcha_impersonation/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -222,4 +223,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260809180000_auth_hooks", sql: m103 },
   { name: "20260810090000_broadcast_channels", sql: m104 },
   { name: "20260810140000_s3_credentials", sql: m105 },
+  { name: "20260811090000_captcha_impersonation", sql: m106 },
 ];

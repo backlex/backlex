@@ -527,6 +527,11 @@ export interface Env {
    *  creates would be a hole. backlex itself is unaffected either way — it
    *  connects as the table owner, which row security exempts. */
   RLS_APP_ROLE?: string;
+  /** Set to `1` to remove impersonation from this deployment entirely. The
+   *  feature is admin-gated, audited and time-capped, but an operator who
+   *  wants it gone should not have to trust that nobody grants themselves the
+   *  admin role. */
+  IMPERSONATION_DISABLED?: string;
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,
@@ -741,6 +746,7 @@ export const STRING_ENV_KEYS = [
   "REALTIME_SIGNAL_SCOPE",
   "REALTIME_OPEN_CHANNELS",
   "RLS_APP_ROLE",
+  "IMPERSONATION_DISABLED",
   "S3_BUCKET",
   "S3_REGION",
   "S3_ENDPOINT",

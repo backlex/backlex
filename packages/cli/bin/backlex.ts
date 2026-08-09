@@ -28,6 +28,7 @@ import { runAuthHooks } from "../src/auth-hooks";
 import { runChannels } from "../src/channels";
 import { runRls } from "../src/rls";
 import { runS3 } from "../src/s3";
+import { runSupport } from "../src/support";
 import { runDocuments } from "../src/documents";
 import { runApprovals } from "../src/approvals";
 import { runSignatures } from "../src/signatures";
@@ -161,6 +162,10 @@ Usage:
   backlex s3 <list|create|update|delete>
       Credentials for the S3-compatible endpoint, so rclone, aws-cli, mc and
       any backup tool can read and write this workspace's objects.
+
+  backlex support <captcha|impersonate|impersonations|end>
+      The captcha in front of your public auth endpoints, and audited
+      impersonation of an end-user (read-only by default, always recorded).
 
   backlex documents <list|save|delete|render>
       HTML templates rendered to PDF — contracts, quotes, invoices.
@@ -369,6 +374,9 @@ const run = async () => {
       return;
     case "s3":
       await runS3(rest);
+      return;
+    case "support":
+      await runSupport(rest);
       return;
     case "documents":
     case "document":

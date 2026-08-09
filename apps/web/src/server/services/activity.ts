@@ -42,6 +42,9 @@ export interface ActivityInput {
    *  this row. Populated by route handlers via `Date.now() - start` so the
    *  metrics endpoint can compute p95 latency without a separate pipeline. */
   durationMs?: number | null;
+  /** The operator behind an impersonated request. `userId` stays the SUBJECT's
+   *  — see the column's comment in the schema for why both are recorded. */
+  impersonatedBy?: string | null;
 }
 
 /** Keys that should never reach the audit log verbatim. Match is
@@ -86,6 +89,7 @@ export const recordActivity = async (
       payload: input.payload === undefined ? null : redact(input.payload),
       response: input.response === undefined ? null : redact(input.response),
       durationMs: input.durationMs ?? null,
+      impersonatedBy: input.impersonatedBy ?? null,
     });
   } catch (e) {
     console.error("[activity] failed to record", e);
@@ -220,6 +224,10 @@ export const logActivity = async (
       itemId: input.itemId ?? null,
       ...meta,
       payload: input.payload ?? null,
+      // An impersonated write is genuinely the SUBJECT's — that is what makes
+      // it a faithful reproduction — so `userId` stays theirs and the operator
+      // rides in its own column.
+      impersonatedBy: auth?.impersonatedBy ?? null,
       response: input.response ?? null,
       durationMs: elapsedMs(c),
     },

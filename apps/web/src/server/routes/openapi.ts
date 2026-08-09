@@ -43,6 +43,8 @@ import { authHooksRoutes } from "./auth-hooks";
 import { realtimeChannelsRoutes } from "./realtime-channels";
 import { rlsRoutes } from "./rls";
 import { s3CredentialsRoutes } from "./s3-credentials";
+import { captchaRoutes } from "./captcha";
+import { impersonationRoutes } from "./impersonation";
 import { erasureRoutes } from "./erasure";
 import { integrationsRoutes } from "./integrations";
 import { ldapAdminRoutes } from "./ldap-admin";
@@ -103,6 +105,8 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/realtime-channels", realtimeChannelsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/rls", rlsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/s3-credentials", s3CredentialsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/captcha", captchaRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/impersonation", impersonationRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/erasure", erasureRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/integrations", integrationsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/ldap-config", ldapAdminRoutes as unknown as OpenAPIHono<any>],

@@ -58,6 +58,7 @@ import type { AuthHooksClient } from "./clients/auth-hooks";
 import type { ChannelsClient } from "./clients/channels";
 import type { RlsClient } from "./clients/rls";
 import type { S3Client } from "./clients/s3";
+import type { SupportClient } from "./clients/support";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
 import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
@@ -145,6 +146,7 @@ export * from "./clients/auth-hooks";
 export * from "./clients/channels";
 export * from "./clients/rls";
 export * from "./clients/s3";
+export * from "./clients/support";
 export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
@@ -177,6 +179,7 @@ import { makeAuthHooks } from "./clients/auth-hooks";
 import { makeChannels } from "./clients/channels";
 import { makeRls } from "./clients/rls";
 import { makeS3 } from "./clients/s3";
+import { makeSupport } from "./clients/support";
 import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
@@ -295,6 +298,8 @@ export interface BacklexClient {
   /** Credentials for the S3-compatible endpoint, so any S3 tool can read and
    *  write this workspace's objects. */
   s3: S3Client;
+  /** Captcha configuration, and audited impersonation of an end-user. */
+  support: SupportClient;
   extensions: ExtensionsClient;
   /** Named KPIs — the shared definition layer every surface reads a figure from. */
   kpis: KpisClient;
@@ -864,6 +869,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const channels = makeChannels(core);
   const rls = makeRls(core);
   const s3 = makeS3(core);
+  const support = makeSupport(core);
   const payments = makePayments(core);
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
@@ -922,6 +928,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     channels,
     rls,
     s3,
+    support,
     extensions,
     kpis,
     dashboards,

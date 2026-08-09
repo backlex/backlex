@@ -5,7 +5,7 @@ import {
   type OAuthProviderConfig,
   type AuthPlugin,
 } from "@backlex/auth";
-import type { EmailAdapter } from "@backlex/core";
+import { isAppError, type EmailAdapter } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Env } from "../env";
@@ -16,6 +16,7 @@ import { resolveEmailAdapter } from "./email-config";
 import { envExtraOrigins, redirectUrlOrigins } from "./cors-origins";
 import { autoLinkAppUser } from "./portal-links";
 import { loadOidcProvidersForAuth } from "./oidc-providers";
+import { runBeforeUserCreatedHook, runSendEmailHook } from "./auth-hooks";
 
 /** Parse a session-lifetime string like `30d` / `24h` / `90m` / `3600s` into
  *  seconds. Returns `undefined` for unrecognised input so callers fall back to
@@ -202,26 +203,49 @@ export const getTenantAuth = async (
     emailAndPasswordEnabled: emailEnabled,
     sessionExpiresInSeconds,
     email: tenantEmail,
+    // The workspace's `send-email` auth hook gets first refusal on every auth
+    // mail. Read inside the closure, like the admission gate above, so turning
+    // it on doesn't wait out this instance's five-minute cache.
+    authEmail: (msg) =>
+      runSendEmailHook({ db: ctx.db, dialect: ctx.dialect, env }, tenant.id, msg),
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
     oidcProviders: oidcProviders.length > 0 ? oidcProviders : undefined,
     plugins: pluginList,
     hooks: {
-      // Workspace end-user sign-up gate. Only an EXPLICIT
-      // `policy.openSignup === false` closes self-signup — an absent flag
-      // keeps the historical default (open), so existing app planes don't
-      // break when this ships. Invited end-users are unaffected: the invite
-      // accept endpoint writes the credential directly and never runs this
-      // hook. Covers every better-auth creation path (email+password,
-      // social, magic-link, OTP).
-      ...(((storedRow?.policy as Record<string, unknown> | null)?.openSignup ===
-        false)
-        ? {
-            onBeforeUserCreated: () => ({
-              allow: false,
-              reason: "Sign-up is disabled",
-            }),
-          }
-        : {}),
+      // Workspace end-user sign-up gate, in two layers.
+      //
+      // 1. The workspace's own switch. Only an EXPLICIT
+      //    `policy.openSignup === false` closes self-signup — an absent flag
+      //    keeps the historical default (open), so existing app planes don't
+      //    break. Invited end-users are unaffected: the invite accept endpoint
+      //    writes the credential directly and never runs this hook.
+      // 2. The workspace's `before-user-created` auth hook, if it has one.
+      //
+      // Always installed, and the hook row is read INSIDE the closure rather
+      // than captured here: this auth instance is cached for five minutes, and
+      // an admission gate that took that long to take effect would be a gate
+      // nobody could trust. Covers every better-auth creation path
+      // (email+password, social, magic-link, OTP); the federated paths run the
+      // same check inside `provisionAppUser`.
+      onBeforeUserCreated: async (user) => {
+        if ((storedRow?.policy as Record<string, unknown> | null)?.openSignup === false) {
+          return { allow: false, reason: "Sign-up is disabled" };
+        }
+        try {
+          await runBeforeUserCreatedHook(
+            { db: ctx.db, dialect: ctx.dialect, env },
+            tenant.id,
+            { email: user.email, name: user.name ?? null, via: "password" },
+          );
+        } catch (e) {
+          // better-auth's database hook can only say yes or no, so a hook the
+          // operator configured to `deny` and that could not be reached
+          // becomes a refusal that NAMES the cause rather than a bare 500.
+          if (isAppError(e)) return { allow: false, reason: e.message };
+          throw e;
+        }
+        return { allow: true };
+      },
       // Auto-link portal person rows (employees/members/…) whose email
       // matches the new end-user, per the workspace's portalLinks setting.
       // Covers every better-auth creation path (email+password, social,

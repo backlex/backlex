@@ -38,7 +38,9 @@ import type { SqliteDb } from "@backlex/db/sqlite";
 import { assignAppUserRoleByName, ensureSystemRoles } from "./seed";
 import { invalidateUserRoles } from "./permissions-cache";
 import { autoLinkAppUser } from "./portal-links";
+import { runBeforeUserCreatedHook } from "./auth-hooks";
 import { SYSTEM_ROLES } from "@backlex/core";
+import type { Env } from "../env";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 
@@ -79,6 +81,15 @@ export interface ProvisionAppUserArgs {
   linkByVerifiedEmail: boolean;
   ipAddress?: string;
   authnContext?: string;
+  /**
+   * Runtime env, supplied when the caller wants the workspace's
+   * `before-user-created` auth hook consulted before a NEW `app_users` row is
+   * created. Optional rather than required because the hook needs an outbound
+   * fetch and this function is also reached from paths that have no request
+   * env to hand; absent means "no admission gate", which is the behaviour
+   * every caller had before auth hooks existed.
+   */
+  hookEnv?: Env;
 }
 
 export interface ProvisionAppUserResult {
@@ -323,6 +334,21 @@ export const provisionAppUser = async (
   // 3. Provision a new app_user.
   if (!appUserId) {
     const fullName = composeName(firstName, lastName);
+    // The workspace's `before-user-created` auth hook — the SAME admission
+    // gate the better-auth sign-up paths run, applied here so it cannot be
+    // routed around by arriving over SAML, LDAP or a trusted third-party JWT.
+    // Deliberately only on the CREATE branch: an existing person signing in
+    // again is not a new user, and asking the app to re-admit them on every
+    // login would make an unreachable hook an outage for people it already
+    // approved. Throws `FORBIDDEN` (or `UNAVAILABLE` under `onError: deny`),
+    // which each caller already turns into a failed sign-in.
+    if (args.hookEnv) {
+      await runBeforeUserCreatedHook(
+        { db: ctx.db, dialect: ctx.dialect, env: args.hookEnv },
+        tenantId,
+        { email, name: fullName, via: providerType, subject },
+      );
+    }
     appUserId = await insertAppUser(ctx, tenantId, email, fullName);
     isNew = true;
   }

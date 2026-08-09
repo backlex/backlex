@@ -96,6 +96,10 @@ msgstr "— yok —"
 msgid "— None (root) —"
 msgstr "— Yok (kök) —"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "— this auth step is failing for your end-users."
+msgstr "— bu kimlik doğrulama adımı son kullanıcılarınız için başarısız oluyor."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "— writes to matching collections are being blocked."
 msgstr "— eşleşen koleksiyonlara yazmalar bloklanıyor."
@@ -336,6 +340,7 @@ msgstr "{0} bağlandı."
 #. placeholder {0}: row.consecutiveFailures
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "{0} consecutive failures"
 msgstr "{0} ardışık başarısızlık"
 
@@ -1292,6 +1297,10 @@ msgstr "Bu satırın iki harfli ülke kodunu tutan metin sütunu — kişileri f
 msgid "A URL field replaces any regex you had on the column — validation runs before the value is folded, so a pattern demanding https:// would reject the bare acme.com this field exists to accept. The fold is the stricter check."
 msgstr "URL alanı, kolonda tuttuğunuz regex'in yerine geçer — doğrulama, değer katlanmadan ÖNCE çalışır; bu yüzden https:// dayatan bir desen, bu alanın kabul etmek için var olduğu yalın acme.com değerini reddeder. Katlama zaten daha katı bir denetimdir."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "A URL is called over HTTPS with Standard Webhooks headers. A function runs in the sandbox with no network hop — the cheaper choice for token claims."
+msgstr "URL, Standard Webhooks başlıklarıyla HTTPS üzerinden çağrılır. Fonksiyon ise ağ turu olmadan sandbox içinde çalışır — token talepleri için daha ucuz seçenek."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "A user's registered numbers"
 msgstr "Bir kullanıcının kayıtlı numaraları"
@@ -1377,6 +1386,10 @@ msgstr "ISO tarih, epoch-ms veya <0>$now</0> kabul eder."
 #: src/client/admin/ui.tsx
 msgid "Access"
 msgstr "Erişim"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Access token claims"
+msgstr "Erişim token'ı talepleri"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/ui.tsx
@@ -1696,6 +1709,7 @@ msgid "Add from template"
 msgstr "Şablondan ekle"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Add hook"
 msgstr "Hook ekle"
 
@@ -1715,6 +1729,10 @@ msgstr "OIDC ekle"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Add OIDC provider"
 msgstr "OIDC sağlayıcı ekle"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Add one to gate sign-ups on your own rules or put your plan and role claims into the access token."
+msgstr "Kayıtları kendi kurallarınızla denetlemek ya da plan ve rol taleplerinizi erişim token'ına koymak için bir tane ekleyin."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Add one to let your own service validate, enrich or reject writes."
@@ -1808,6 +1826,10 @@ msgstr "Döngü gövdesine ekle"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Add to true branch"
 msgstr "Doğru dalına ekle"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Add your own claims (plan, org, entitlements) to the access token. Reserved claims are always dropped."
+msgstr "Erişim token'ına kendi taleplerinizi (plan, organizasyon, yetkiler) ekleyin. Ayrılmış talepler her zaman düşürülür."
 
 #. placeholder {0}: formatRelative(p.createdAt)
 #: src/client/admin/pages/account-page.tsx
@@ -2251,6 +2273,11 @@ msgstr "yanıtladı"
 msgid "Answered"
 msgstr "Yanıtlayan"
 
+#. placeholder {0}: result.res.ms
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Answered in {0}ms"
+msgstr "{0}ms içinde yanıtladı"
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Any audience accepted"
 msgstr "Her audience kabul ediliyor"
@@ -2423,6 +2450,10 @@ msgstr "Onayla"
 msgid "Approve & run"
 msgstr "Onayla ve çalıştır"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Approve or reject a new end-user, whatever they signed up with — password, social, SAML, LDAP or a trusted third-party token."
+msgstr "Yeni bir son kullanıcıyı — parola, sosyal, SAML, LDAP veya güvenilen üçüncü taraf token'ı, hangisiyle kaydolursa olsun — onaylayın ya da reddedin."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Approve the authorization screen — the connector inherits your roles."
 msgstr "Yetkilendirme ekranını onaylayın — bağlayıcı rollerinizi devralır."
@@ -2588,6 +2619,10 @@ msgstr "Ağustos"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Auth base URL"
 msgstr "Auth temel URL"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Auth hooks"
+msgstr "Kimlik doğrulama kancaları"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Authenticating…"
@@ -2811,6 +2846,10 @@ msgstr "Şimdi yedekle"
 msgid "backlex fills this in when you save. It cannot be edited afterwards."
 msgstr "backlex bunu siz kaydederken doldurur. Sonradan düzenlenemez."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "backlex function"
+msgstr "backlex fonksiyonu"
+
 #: src/client/admin/fields/add-field.tsx
 msgid "backlex issues this value on create — set the shape in the <0>Numbering</0> tab. Leave <1>Unique</1> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number."
 msgstr "backlex bu değeri kayıt oluşturulurken verir — biçimi <0>Numaralandırma</0> sekmesinde ayarlayın. <1>Benzersiz</1> açık kalsın: numaralandırma hatasını, iki belgenin aynı numarayı paylaşması yerine reddedilen bir yazma işlemine çeviren şey budur."
@@ -2896,6 +2935,10 @@ msgstr "Bearer token"
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "before"
 msgstr "önce"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Before a user is created"
+msgstr "Kullanıcı oluşturulmadan önce"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -3143,6 +3186,10 @@ msgstr "Takvim saat dilimi"
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 msgstr "Yakalanmamış hataları ve işlenmemiş reddetmeleri otomatik iletmek için uygulamanızda client.analytics.captureErrors() çağırın."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Called after every password sign-in with the result — including failures. Return allow: false to refuse one."
+msgstr "Her parola girişinden sonra sonucuyla birlikte çağrılır — başarısızlıklar dahil. Reddetmek için allow: false döndürün."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "can patch"
 msgstr "yamalayabilir"
@@ -3192,6 +3239,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -3441,6 +3489,7 @@ msgid "Choose one"
 msgstr "Birini seçin"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/pages/book.tsx
 msgid "Choose…"
 msgstr "Seçin…"
@@ -4492,6 +4541,7 @@ msgstr "Üst yazı"
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Create"
@@ -5095,6 +5145,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
@@ -5264,6 +5315,10 @@ msgstr "silindi."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Deleted."
 msgstr "Silindi."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Deliver magic-link and one-time-code mail through your own transport and templates."
+msgstr "Sihirli bağlantı ve tek kullanımlık kod postalarını kendi taşıyıcınız ve şablonlarınızla gönderin."
 
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "deliver one webhook"
@@ -5736,6 +5791,11 @@ msgstr "Herhangi bir siteye ekleyin — form kendi temasını korur."
 msgid "Drop the MCP URL in as the server address — no token, no config file."
 msgstr "MCP URL'sini sunucu adresi olarak girin — token yok, yapılandırma dosyası yok."
 
+#. placeholder {0}: result.res.droppedClaims.join(", ")
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Dropped as reserved, never reaches the token: {0}"
+msgstr "Ayrılmış olduğu için düşürüldü, token'a hiç ulaşmaz: {0}"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
 msgstr "Fiziksel tabloyu ve tüm satırları siler. Slug'a bağlı izinler ve sürümler de kaldırılır. Bu işlem geri alınamaz."
@@ -5851,6 +5911,7 @@ msgstr "düzenle"
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Edit"
 msgstr "Düzenle"
 
@@ -5878,6 +5939,10 @@ msgstr "Ajanı düzenle"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Edit args"
 msgstr "Argümanları düzenle"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Edit auth hook"
+msgstr "Kimlik doğrulama kancasını düzenle"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "edit choices on the field in <0>{collection}</0>"
@@ -6812,6 +6877,10 @@ msgstr "Kesinlikle"
 msgid "Fail flow"
 msgstr "Akışı hata ile sonlandır"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Fail the auth action (deny)"
+msgstr "Kimlik doğrulama işlemini başarısız kıl (deny)"
+
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/data/database-import.tsx
@@ -6845,6 +6914,10 @@ msgstr "Sıfırlama bağlantısı gönderilemedi"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "failing"
 msgstr "başarısız"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "fails auth on error"
+msgstr "hatada girişi başarısız kılar"
 
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Failures (24h)"
@@ -7426,6 +7499,10 @@ msgstr "Tam metin"
 msgid "Full-text search"
 msgstr "Tam metin arama"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "function"
+msgstr "fonksiyon"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Function"
 msgstr "Fonksiyon"
@@ -7448,6 +7525,7 @@ msgid "Function failed"
 msgstr "Fonksiyon başarısız oldu"
 
 #: src/client/admin/pages/automation/jobs.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Function name"
 msgstr "Fonksiyon adı"
 
@@ -7801,6 +7879,7 @@ msgid "Honeypot"
 msgstr "Honeypot"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "hook"
 msgstr "hook"
 
@@ -7810,19 +7889,23 @@ msgid "Hook"
 msgstr "Hook"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Hook created."
 msgstr "Hook oluşturuldu."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Hook removed."
 msgstr "Hook kaldırıldı."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Hook updated."
 msgstr "Hook güncellendi."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "hooks"
 msgstr "kanca"
 
@@ -7858,6 +7941,10 @@ msgstr "Ne kadar"
 msgid "How long a write may block on this hook. Max 10000."
 msgstr "Bir yazmanın bu hook üzerinde ne kadar bloklanabileceği. En fazla 10000."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "How long the sign-in may block on this hook. Max 5000."
+msgstr "Girişin bu kancada ne kadar bekleyebileceği. En fazla 5000."
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "How many days ahead the calendar is open."
 msgstr "Takvimin kaç gün ilerisi açık."
@@ -7881,6 +7968,10 @@ msgstr "bu koleksiyonun gezinti ve listelerde nasıl görüneceği"
 #: src/client/admin/pages/overview.tsx
 msgid "http · event · cron"
 msgstr "http · olay · cron"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "HTTPS endpoint"
+msgstr "HTTPS uç noktası"
 
 #: src/client/admin/fields/field-url-input.tsx
 msgid "https://acme.com"
@@ -8977,6 +9068,7 @@ msgid "leave blank to keep the current secret"
 msgstr "mevcut gizli anahtarı korumak için boş bırakın"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Leave blank to keep the current secret."
 msgstr "Mevcut sırrı korumak için boş bırakın."
 
@@ -9803,6 +9895,10 @@ msgstr "Mod"
 msgid "Model"
 msgstr "Model"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Moment"
+msgstr "An"
+
 #: src/client/admin/collections/item-views.tsx
 msgid "Mon"
 msgstr "Pzt"
@@ -9892,6 +9988,10 @@ msgstr "çoklu seçim tamam"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Must accept the chosen HTTP method and respond with 2xx within 10s."
 msgstr "Seçilen HTTP yöntemini kabul etmeli ve 10 saniye içinde 2xx yanıtı vermelidir."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Must already exist in this workspace."
+msgstr "Bu çalışma alanında halihazırda var olmalı."
 
 #: src/client/admin/fields/field-url-input.tsx
 msgid "Must be a"
@@ -10117,6 +10217,10 @@ msgstr "Yeni ajan"
 #: src/client/pages/api-keys.tsx
 msgid "New API key"
 msgstr "Yeni API anahtarı"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "New auth hook"
+msgstr "Yeni kimlik doğrulama kancası"
 
 #: src/client/admin/pages/account-page.tsx
 msgid "New backup codes generated. Old codes no longer work."
@@ -10436,6 +10540,10 @@ msgstr "Henüz API anahtarı yok"
 msgid "No archived collections"
 msgstr "Arşivlenmiş koleksiyon yok"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "No auth hooks"
+msgstr "Kimlik doğrulama kancası yok"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "No auth on the visitor's side — the token in the URL is the credential."
 #~ msgstr "Ziyaretçi tarafında oturum yok — URL'deki token kimlik bilgisidir."
@@ -10572,6 +10680,10 @@ msgstr "Varsayılan yok — +ülke kodu zorunlu"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
 msgstr "Bilerek varsayılan yok: \"allow\" bu hook'un sağladığı garantiyi düşürür, \"deny\" uygulamanızın kesintisini müşterinizinkine çevirir."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "No default on purpose: \"proceed\" can mint a token missing the claim your authorizer reads, and \"fail\" turns your outage into a sign-in outage."
+msgstr "Bilerek varsayılanı yok: \"devam et\" yetkilendiricinizin okuduğu talebi taşımayan bir token üretebilir, \"başarısız kıl\" ise sizin kesintinizi bir giriş kesintisine çevirir."
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
@@ -11925,6 +12037,10 @@ msgstr "İsteğe bağlı. Hangi {0} satırlarının dahil edileceğini süzer. S
 msgid "Optional. Signs each call so your service can verify it came from backlex."
 msgstr "İsteğe bağlı. Her çağrıyı imzalar, böylece servisiniz backlex'ten geldiğini doğrulayabilir."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Optional. Signs each call with Standard Webhooks headers, so any off-the-shelf verifier can confirm it came from backlex."
+msgstr "İsteğe bağlı. Her çağrıyı Standard Webhooks başlıklarıyla imzalar; böylece hazır herhangi bir doğrulayıcı çağrının backlex'ten geldiğini teyit edebilir."
+
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "or"
 msgstr "veya"
@@ -12198,6 +12314,10 @@ msgstr "Parola ayarlandı."
 msgid "Password sign-in"
 msgstr "Parola ile giriş"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Password verification"
+msgstr "Parola doğrulama"
+
 #: src/client/pages/reset-password.tsx
 msgid "Passwords do not match"
 msgstr "Parolalar eşleşmiyor"
@@ -12264,6 +12384,7 @@ msgstr "duraklatıldı"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Paused"
 msgstr "Duraklatıldı"
 
@@ -13070,6 +13191,14 @@ msgstr "Gizlilik Politikası URL'si"
 msgid "Private"
 msgstr "Özel"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Proceed without it (allow)"
+msgstr "Onsuz devam et (allow)"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "proceeds on error"
+msgstr "hatada devam eder"
+
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Produce signed copy"
 msgstr "İmzalı kopyayı üret"
@@ -13743,6 +13872,12 @@ msgstr "Bitişi başlangıcından önce olan satırı reddet"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Refused if it matches more than one payment — a row can be billed more than once."
 msgstr "Birden fazla ödemeyle eşleşirse reddedilir — bir satır birden çok kez faturalandırılabilir."
+
+#. placeholder {0}: result.res.ms
+#. placeholder {1}: result.res.verdict?.reason ?? "—"
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Refused in {0}ms: {1}"
+msgstr "{0}ms içinde reddetti: {1}"
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
@@ -14905,6 +15040,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
@@ -15484,6 +15620,10 @@ msgstr "Sohbeti başlatmak için bir mesaj gönderin. Bir agent'a seslenmek içi
 #: src/client/admin/pages/access/users.tsx
 msgid "Send an email invite. The user finishes signup themselves."
 msgstr "E-posta daveti gönderin. Kullanıcı kaydı kendisi tamamlar."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Send auth email"
+msgstr "Kimlik doğrulama e-postası gönder"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Send data events to a Telegram chat."
@@ -16204,6 +16344,7 @@ msgstr "İmza sırası"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Signing secret"
 msgstr "İmzalama gizli anahtarı"
 
@@ -16983,6 +17124,7 @@ msgid "Taken over the phone, so it is not limited to the published times — but
 msgstr "Telefonla alındığı için yayınlanan saatlerle sınırlı değil — ama dolu bir saat yine de reddedilir."
 
 #: src/client/admin/collections/item-form.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Target"
 msgstr "Hedef"
 
@@ -17050,6 +17192,7 @@ msgstr "Hizmet Şartları URL'si"
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database-import.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Test"
 msgstr "Test"
 
@@ -17129,6 +17272,7 @@ msgstr "Test aracı"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Testing…"
 msgstr "Test ediliyor…"
 
@@ -17752,6 +17896,10 @@ msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalışt�
 msgid "This runs on the write path — a slow or failing hook affects live writes."
 msgstr "Bu yazma yolunda çalışır — yavaş veya hatalı bir hook canlı yazmaları etkiler."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "This runs while someone is waiting to sign in — a slow or failing hook is felt live."
+msgstr "Bu, biri giriş yapmayı beklerken çalışır — yavaş ya da bozuk bir kanca anında hissedilir."
+
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
 msgstr "Bu metinde URL üretilecek Latin harfi yok — Latin alfabesiyle bir adres yazın."
@@ -17809,6 +17957,7 @@ msgstr "Zaman çizelgesi"
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Timeout (ms)"
 msgstr "Zaman aşımı (ms)"
 
@@ -18389,6 +18538,7 @@ msgstr "Kaldırma tarihi"
 
 #. placeholder {0}: result.res.error ?? "—"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Unreachable: {0}"
 msgstr "Erişilemedi: {0}"
 
@@ -18535,6 +18685,7 @@ msgstr "Depolanan bayt bu değere ulaşınca yüklemeler reddedilir. 1 GB = 1073
 #: src/client/admin/fields/field-validation-editor.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "URL"
 msgstr "URL"
 
@@ -19122,6 +19273,7 @@ msgid "When someone asks to be removed, start here — the preview shows everyth
 msgstr "Biri kaldırılmayı talep ettiğinde buradan başlayın — önizleme gidecek her şeyi gösterir."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "When the hook cannot answer"
 msgstr "Hook cevap veremediğinde"
 
@@ -19553,6 +19705,10 @@ msgstr "E-postanız henüz doğrulanmadı. Doğrulama bağlantısı için gelen 
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"
 msgstr "Adınız ve soyadınız"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Your own code at four moments in your end-users' sign-in: admit a new user, put your claims in their access token, judge a password attempt, or send the mail yourself. One hook per moment. These never apply to the people who administer this workspace."
+msgstr "Son kullanıcılarınızın girişindeki dört anda kendi kodunuz: yeni bir kullanıcıyı kabul edin, taleplerinizi erişim token'ına koyun, bir parola denemesine karar verin ya da postayı kendiniz gönderin. Her an için bir kanca. Bunlar bu çalışma alanını yöneten kişilere asla uygulanmaz."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Your own preference — stored locally, not synced."

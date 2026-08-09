@@ -37,6 +37,7 @@ import { SamlProviderDialog } from "./saml-provider-dialog";
 import { OidcProviderDialog } from "./oidc-provider-dialog";
 import { ScimCard } from "./scim-card";
 import { ThirdPartyAuthCard } from "./third-party-auth-card";
+import { AuthHooksCard } from "./auth-hooks-card";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
 import { AuthSettingsSkeleton } from "../../page-skeletons";
@@ -643,6 +644,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
       </Card>
 
       <ThirdPartyAuthCard availableRoles={availableRoles} pushToast={pushToast} />
+
+      <AuthHooksCard pushToast={pushToast} />
 
       <ScimCard availableRoles={availableRoles} pushToast={pushToast} />
 

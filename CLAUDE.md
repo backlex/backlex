@@ -226,6 +226,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Outbound webhooks (signing + retry + auto-disable) | `docs/webhooks.md` |
 | Integrations (provider registry + durable delivery + flow op) | `docs/integrations.md` |
 | Sync hooks (an app participates in a write) | `docs/sync-hooks.md` |
+| Auth hooks (an app participates in its end-users' auth) | `docs/auth-hooks.md` |
 | Payments (Stripe / Polar / Lemon Squeezy sync) | `docs/payments.md` |
 | Backup / restore + per-collection export-import | `docs/backup-restore.md` |
 | Draft / publish + scheduled publishing | `docs/draft-publish.md` |

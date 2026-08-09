@@ -2647,6 +2647,39 @@ export const syncHooks = sqliteTable(
 );
 
 /**
+ * An auth hook — see packages/db/src/pg/schema.ts for the full rationale
+ * (workspace plane only, at most one hook per event, why `on_error` has no
+ * default). SQLite twin: booleans are 0/1, timestamps epoch-ms, JSON is text.
+ */
+export const authHooks = sqliteTable(
+  "auth_hooks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    targetType: text("target_type").notNull(),
+    url: text("url"),
+    functionName: text("function_name"),
+    secret: text("secret"),
+    headers: text("headers", { mode: "json" }).$type<Record<string, string> | null>(),
+    timeoutMs: integer("timeout_ms").notNull().default(2000),
+    onError: text("on_error").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    lastFailureAt: integer("last_failure_at", { mode: "timestamp_ms" }),
+    disabledReason: text("disabled_reason"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("auth_hooks_tenant_event_idx").on(t.tenantId, t.event),
+    index("auth_hooks_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
  * Federated identity link — see packages/db/src/pg/schema.ts for full docs.
  * `plane` is `'platform' | 'app'`; `user_id` references the matching pool.
  */

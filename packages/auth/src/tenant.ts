@@ -51,6 +51,26 @@ export interface TenantAuthConfig {
     apple?: OAuthProviderConfig;
   };
   email?: EmailAdapter;
+  /**
+   * Intercept an auth mail before it reaches {@link email}.
+   *
+   * The host uses this to offer the workspace's `send-email` auth hook the
+   * message first, so an app can deliver sign-in mail through its own
+   * transport and templates. It receives the message's MEANING (which auth
+   * mail, and the link or code it carries) rather than the rendered body —
+   * re-templating is the point, and a hook handed a finished subject line
+   * could only re-send ours.
+   *
+   * Returns true when the interceptor delivered the message, in which case
+   * `email` is not called. Throwing propagates: a hook the operator configured
+   * to `deny` must fail the auth action, not silently fall back.
+   */
+  authEmail?: (msg: {
+    type: "magic-link" | "email-otp";
+    to: string;
+    url?: string;
+    otp?: string;
+  }) => Promise<boolean>;
   plugins?: ReadonlyArray<AuthPlugin>;
   /** Workspace-defined OIDC / OAuth2 providers — the app-plane SSO path.
    *  Absent/empty keeps the `genericOAuth` plugin out of the instance. */
@@ -64,6 +84,7 @@ const buildPlugins = (config: TenantAuthConfig) => {
     out.push(
       magicLink({
         sendMagicLink: async ({ email, url }: { email: string; url: string }) => {
+          if (await config.authEmail?.({ type: "magic-link", to: email, url })) return;
           await config.email!.send({
             to: email,
             subject: "Your sign-in link",
@@ -96,6 +117,7 @@ const buildPlugins = (config: TenantAuthConfig) => {
     out.push(
       emailOTP({
         sendVerificationOTP: async ({ email, otp }: { email: string; otp: string }) => {
+          if (await config.authEmail?.({ type: "email-otp", to: email, otp })) return;
           await config.email!.send({
             to: email,
             subject: "Your verification code",

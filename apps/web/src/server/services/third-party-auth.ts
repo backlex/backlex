@@ -20,8 +20,13 @@ import { clearJwksCache, type JwksFetchEnv, resolveJwksUrl } from "../lib/jwks-c
 import { log } from "../lib/log";
 import type { ThirdPartyIdentity, ThirdPartyProvider } from "../lib/third-party-jwt";
 import { provisionAppUser } from "./sso-provisioning";
+import type { Env } from "../env";
 
-type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite"; env: JwksFetchEnv };
+// The full runtime `Env`, not the narrow `JwksFetchEnv` this file used to
+// take: provisioning a first-sight user runs the workspace's
+// `before-user-created` auth hook, which needs the same outbound-fetch guard
+// every other admin-supplied URL goes through. Every caller already has one.
+type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite"; env: Env };
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -393,6 +398,11 @@ export const resolveThirdPartyUser = async (
       linkByVerifiedEmail: provider.linkByVerifiedEmail,
       ipAddress,
       authnContext: `jwt:${provider.slug}`,
+      // A trusted third-party token is a sign-up path like any other. Without
+      // this, an app on Clerk would be the one way into a workspace that the
+      // admission gate could not see — exactly the "route around the gate"
+      // hole the hook exists to close.
+      hookEnv: ctx.env,
     });
     return { appUserId: result.appUserId, tenantId: provider.tenantId };
   } catch (err) {

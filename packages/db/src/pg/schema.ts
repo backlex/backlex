@@ -2928,6 +2928,70 @@ export const syncHooks = pgTable(
 );
 
 /**
+ * An AUTH hook — the app participating in its own end-users' authentication.
+ *
+ * `sync_hooks` above lets an app take part in an item write; flow triggers see
+ * item / cron / manual / webhook events. Neither can reach the four moments
+ * that decide who an end-user *is*: nothing could put `plan` or `tenant` into
+ * an access token, veto a sign-up on the app's own rules, react to a password
+ * check, or deliver an auth mail through the app's own transport.
+ *
+ * Scoped to the **workspace (app) plane** — the `app_users` pool behind
+ * `/api/t/<slug>/auth/*`. The platform plane (the operators who administer
+ * backlex itself) is deliberately not hookable: a workspace admin is a customer
+ * on managed cloud, and a hook there would let one customer observe and veto
+ * the operator sign-ins of the instance they live on.
+ *
+ * At most ONE hook per (workspace, event). Each event carries a different
+ * payload and a different verdict, so a hook subscribing to several would have
+ * to implement four contracts; and two hooks answering `custom-access-token`
+ * would fight over the same claim. Chaining belongs in the app's own endpoint.
+ */
+export const authHooks = pgTable(
+  "auth_hooks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** `before-user-created` | `custom-access-token` | `password-verification`
+     *  | `send-email`. One row per event per workspace. */
+    event: text("event").notNull(),
+    /** `url` — an HTTPS endpoint, called with Standard Webhooks headers.
+     *  `function` — a backlex function, run in the sandbox with no network hop.
+     *  The latter exists for `custom-access-token`, which sits on the token
+     *  mint path where a round trip is the dominant cost. */
+    targetType: text("target_type").notNull(),
+    url: text("url"),
+    functionName: text("function_name"),
+    /** Standard Webhooks signing secret (`whsec_<base64>`), so the app can
+     *  prove the call came from us. Write-only — never read back. */
+    secret: text("secret"),
+    headers: jsonb("headers").$type<Record<string, string> | null>(),
+    /** Hard ceiling on how long an auth request may block on this hook. */
+    timeoutMs: integer("timeout_ms").notNull().default(2000),
+    /**
+     * What happens when the hook cannot answer. No default, for the same
+     * reason `sync_hooks.on_error` has none — and the stakes here are higher:
+     * a `custom-access-token` hook failing open mints a token MISSING the
+     * claim a downstream authorizer reads, and an absent `plan` claim is the
+     * shape most apps treat as "free tier" rather than "unknown".
+     */
+    onError: text("on_error").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    lastFailureAt: timestamp("last_failure_at", { withTimezone: true }),
+    disabledReason: text("disabled_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("auth_hooks_tenant_event_idx").on(t.tenantId, t.event),
+    index("auth_hooks_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
  * Federated identity link between a workspace user (or platform user) and an
  * external IdP. `plane` decides which pool `user_id` references:
  *   - `platform` → `users.id` (the admin app's identity pool)

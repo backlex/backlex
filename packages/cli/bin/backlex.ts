@@ -24,6 +24,7 @@ import { runPayments } from "../src/payments";
 import { runWebhooks } from "../src/webhooks";
 import { runIntegrations } from "../src/integrations";
 import { runSyncHooks } from "../src/sync-hooks";
+import { runAuthHooks } from "../src/auth-hooks";
 import { runDocuments } from "../src/documents";
 import { runApprovals } from "../src/approvals";
 import { runSignatures } from "../src/signatures";
@@ -141,6 +142,10 @@ Usage:
   backlex sync-hooks <list|create|update|test|delete>
       Services that run BEFORE a write and decide whether it happens.
       \`--on-error\` is required on create and has no safe default.
+
+  backlex auth-hooks <list|create|update|test|delete>
+      Your own code at four moments in END-USER auth: sign-up admission,
+      access-token claims, password verification, auth-mail delivery.
 
   backlex documents <list|save|delete|render>
       HTML templates rendered to PDF — contracts, quotes, invoices.
@@ -335,6 +340,10 @@ const run = async () => {
     case "sync-hooks":
     case "sync-hook":
       await runSyncHooks(rest);
+      return;
+    case "auth-hooks":
+    case "auth-hook":
+      await runAuthHooks(rest);
       return;
     case "documents":
     case "document":

@@ -96,6 +96,10 @@ msgstr "— none —"
 msgid "— None (root) —"
 msgstr "— None (root) —"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "— this auth step is failing for your end-users."
+msgstr "— this auth step is failing for your end-users."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "— writes to matching collections are being blocked."
 msgstr "— writes to matching collections are being blocked."
@@ -336,6 +340,7 @@ msgstr "{0} connected."
 #. placeholder {0}: row.consecutiveFailures
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "{0} consecutive failures"
 msgstr "{0} consecutive failures"
 
@@ -1292,6 +1297,10 @@ msgstr "A text column holding this row's two-letter country code, for a list of 
 msgid "A URL field replaces any regex you had on the column — validation runs before the value is folded, so a pattern demanding https:// would reject the bare acme.com this field exists to accept. The fold is the stricter check."
 msgstr "A URL field replaces any regex you had on the column — validation runs before the value is folded, so a pattern demanding https:// would reject the bare acme.com this field exists to accept. The fold is the stricter check."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "A URL is called over HTTPS with Standard Webhooks headers. A function runs in the sandbox with no network hop — the cheaper choice for token claims."
+msgstr "A URL is called over HTTPS with Standard Webhooks headers. A function runs in the sandbox with no network hop — the cheaper choice for token claims."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "A user's registered numbers"
 msgstr "A user's registered numbers"
@@ -1377,6 +1386,10 @@ msgstr "Accepts an ISO date, epoch-ms, or <0>$now</0>."
 #: src/client/admin/ui.tsx
 msgid "Access"
 msgstr "Access"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Access token claims"
+msgstr "Access token claims"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/ui.tsx
@@ -1696,6 +1709,7 @@ msgid "Add from template"
 msgstr "Add from template"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Add hook"
 msgstr "Add hook"
 
@@ -1715,6 +1729,10 @@ msgstr "Add OIDC"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Add OIDC provider"
 msgstr "Add OIDC provider"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Add one to gate sign-ups on your own rules or put your plan and role claims into the access token."
+msgstr "Add one to gate sign-ups on your own rules or put your plan and role claims into the access token."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Add one to let your own service validate, enrich or reject writes."
@@ -1808,6 +1826,10 @@ msgstr "Add to the loop body"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Add to true branch"
 msgstr "Add to true branch"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Add your own claims (plan, org, entitlements) to the access token. Reserved claims are always dropped."
+msgstr "Add your own claims (plan, org, entitlements) to the access token. Reserved claims are always dropped."
 
 #. placeholder {0}: formatRelative(p.createdAt)
 #: src/client/admin/pages/account-page.tsx
@@ -2251,6 +2273,11 @@ msgstr "answered"
 msgid "Answered"
 msgstr "Answered"
 
+#. placeholder {0}: result.res.ms
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Answered in {0}ms"
+msgstr "Answered in {0}ms"
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Any audience accepted"
 msgstr "Any audience accepted"
@@ -2423,6 +2450,10 @@ msgstr "Approve"
 msgid "Approve & run"
 msgstr "Approve & run"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Approve or reject a new end-user, whatever they signed up with — password, social, SAML, LDAP or a trusted third-party token."
+msgstr "Approve or reject a new end-user, whatever they signed up with — password, social, SAML, LDAP or a trusted third-party token."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Approve the authorization screen — the connector inherits your roles."
 msgstr "Approve the authorization screen — the connector inherits your roles."
@@ -2588,6 +2619,10 @@ msgstr "August"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Auth base URL"
 msgstr "Auth base URL"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Auth hooks"
+msgstr "Auth hooks"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Authenticating…"
@@ -2811,6 +2846,10 @@ msgstr "Back up now"
 msgid "backlex fills this in when you save. It cannot be edited afterwards."
 msgstr "backlex fills this in when you save. It cannot be edited afterwards."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "backlex function"
+msgstr "backlex function"
+
 #: src/client/admin/fields/add-field.tsx
 msgid "backlex issues this value on create — set the shape in the <0>Numbering</0> tab. Leave <1>Unique</1> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number."
 msgstr "backlex issues this value on create — set the shape in the <0>Numbering</0> tab. Leave <1>Unique</1> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number."
@@ -2896,6 +2935,10 @@ msgstr "Bearer token"
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "before"
 msgstr "before"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Before a user is created"
+msgstr "Before a user is created"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -3143,6 +3186,10 @@ msgstr "Calendar time zone"
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 msgstr "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Called after every password sign-in with the result — including failures. Return allow: false to refuse one."
+msgstr "Called after every password sign-in with the result — including failures. Return allow: false to refuse one."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "can patch"
 msgstr "can patch"
@@ -3192,6 +3239,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -3441,6 +3489,7 @@ msgid "Choose one"
 msgstr "Choose one"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/pages/book.tsx
 msgid "Choose…"
 msgstr "Choose…"
@@ -4492,6 +4541,7 @@ msgstr "Covering message"
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Create"
@@ -5095,6 +5145,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
@@ -5264,6 +5315,10 @@ msgstr "deleted."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Deleted."
 msgstr "Deleted."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Deliver magic-link and one-time-code mail through your own transport and templates."
+msgstr "Deliver magic-link and one-time-code mail through your own transport and templates."
 
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "deliver one webhook"
@@ -5736,6 +5791,11 @@ msgstr "Drop it into any site — the form keeps its own theme."
 msgid "Drop the MCP URL in as the server address — no token, no config file."
 msgstr "Drop the MCP URL in as the server address — no token, no config file."
 
+#. placeholder {0}: result.res.droppedClaims.join(", ")
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Dropped as reserved, never reaches the token: {0}"
+msgstr "Dropped as reserved, never reaches the token: {0}"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
 msgstr "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
@@ -5851,6 +5911,7 @@ msgstr "edit"
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Edit"
 msgstr "Edit"
 
@@ -5878,6 +5939,10 @@ msgstr "Edit agent"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Edit args"
 msgstr "Edit args"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Edit auth hook"
+msgstr "Edit auth hook"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "edit choices on the field in <0>{collection}</0>"
@@ -6812,6 +6877,10 @@ msgstr "Extremely"
 msgid "Fail flow"
 msgstr "Fail flow"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Fail the auth action (deny)"
+msgstr "Fail the auth action (deny)"
+
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/data/database-import.tsx
@@ -6845,6 +6914,10 @@ msgstr "Failed to send reset link"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "failing"
 msgstr "failing"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "fails auth on error"
+msgstr "fails auth on error"
 
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Failures (24h)"
@@ -7426,6 +7499,10 @@ msgstr "Full-text"
 msgid "Full-text search"
 msgstr "Full-text search"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "function"
+msgstr "function"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Function"
 msgstr "Function"
@@ -7448,6 +7525,7 @@ msgid "Function failed"
 msgstr "Function failed"
 
 #: src/client/admin/pages/automation/jobs.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Function name"
 msgstr "Function name"
 
@@ -7801,6 +7879,7 @@ msgid "Honeypot"
 msgstr "Honeypot"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "hook"
 msgstr "hook"
 
@@ -7810,19 +7889,23 @@ msgid "Hook"
 msgstr "Hook"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Hook created."
 msgstr "Hook created."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Hook removed."
 msgstr "Hook removed."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Hook updated."
 msgstr "Hook updated."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "hooks"
 msgstr "hooks"
 
@@ -7858,6 +7941,10 @@ msgstr "How long"
 msgid "How long a write may block on this hook. Max 10000."
 msgstr "How long a write may block on this hook. Max 10000."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "How long the sign-in may block on this hook. Max 5000."
+msgstr "How long the sign-in may block on this hook. Max 5000."
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "How many days ahead the calendar is open."
 msgstr "How many days ahead the calendar is open."
@@ -7881,6 +7968,10 @@ msgstr "how this collection shows up in nav and lists"
 #: src/client/admin/pages/overview.tsx
 msgid "http · event · cron"
 msgstr "http · event · cron"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "HTTPS endpoint"
+msgstr "HTTPS endpoint"
 
 #: src/client/admin/fields/field-url-input.tsx
 msgid "https://acme.com"
@@ -8977,6 +9068,7 @@ msgid "leave blank to keep the current secret"
 msgstr "leave blank to keep the current secret"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Leave blank to keep the current secret."
 msgstr "Leave blank to keep the current secret."
 
@@ -9803,6 +9895,10 @@ msgstr "Mode"
 msgid "Model"
 msgstr "Model"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Moment"
+msgstr "Moment"
+
 #: src/client/admin/collections/item-views.tsx
 msgid "Mon"
 msgstr "Mon"
@@ -9892,6 +9988,10 @@ msgstr "multiple ok"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Must accept the chosen HTTP method and respond with 2xx within 10s."
 msgstr "Must accept the chosen HTTP method and respond with 2xx within 10s."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Must already exist in this workspace."
+msgstr "Must already exist in this workspace."
 
 #: src/client/admin/fields/field-url-input.tsx
 msgid "Must be a"
@@ -10117,6 +10217,10 @@ msgstr "New agent"
 #: src/client/pages/api-keys.tsx
 msgid "New API key"
 msgstr "New API key"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "New auth hook"
+msgstr "New auth hook"
 
 #: src/client/admin/pages/account-page.tsx
 msgid "New backup codes generated. Old codes no longer work."
@@ -10436,6 +10540,10 @@ msgstr "No API keys yet"
 msgid "No archived collections"
 msgstr "No archived collections"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "No auth hooks"
+msgstr "No auth hooks"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "No auth on the visitor's side — the token in the URL is the credential."
 #~ msgstr "No auth on the visitor's side — the token in the URL is the credential."
@@ -10572,6 +10680,10 @@ msgstr "No default — require +country code"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
 msgstr "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "No default on purpose: \"proceed\" can mint a token missing the claim your authorizer reads, and \"fail\" turns your outage into a sign-in outage."
+msgstr "No default on purpose: \"proceed\" can mint a token missing the claim your authorizer reads, and \"fail\" turns your outage into a sign-in outage."
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
@@ -11925,6 +12037,10 @@ msgstr "Optional. Filters which {0} rows are included. Deleted rows are always e
 msgid "Optional. Signs each call so your service can verify it came from backlex."
 msgstr "Optional. Signs each call so your service can verify it came from backlex."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Optional. Signs each call with Standard Webhooks headers, so any off-the-shelf verifier can confirm it came from backlex."
+msgstr "Optional. Signs each call with Standard Webhooks headers, so any off-the-shelf verifier can confirm it came from backlex."
+
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "or"
 msgstr "or"
@@ -12198,6 +12314,10 @@ msgstr "Password set."
 msgid "Password sign-in"
 msgstr "Password sign-in"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Password verification"
+msgstr "Password verification"
+
 #: src/client/pages/reset-password.tsx
 msgid "Passwords do not match"
 msgstr "Passwords do not match"
@@ -12264,6 +12384,7 @@ msgstr "paused"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Paused"
 msgstr "Paused"
 
@@ -13070,6 +13191,14 @@ msgstr "Privacy Policy URL"
 msgid "Private"
 msgstr "Private"
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Proceed without it (allow)"
+msgstr "Proceed without it (allow)"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "proceeds on error"
+msgstr "proceeds on error"
+
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Produce signed copy"
 msgstr "Produce signed copy"
@@ -13743,6 +13872,12 @@ msgstr "Refuse a row whose end is before its start"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Refused if it matches more than one payment — a row can be billed more than once."
 msgstr "Refused if it matches more than one payment — a row can be billed more than once."
+
+#. placeholder {0}: result.res.ms
+#. placeholder {1}: result.res.verdict?.reason ?? "—"
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Refused in {0}ms: {1}"
+msgstr "Refused in {0}ms: {1}"
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
@@ -14905,6 +15040,7 @@ msgstr "Sat"
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
@@ -15484,6 +15620,10 @@ msgstr "Send a message to start the conversation. Type @ to address an agent."
 #: src/client/admin/pages/access/users.tsx
 msgid "Send an email invite. The user finishes signup themselves."
 msgstr "Send an email invite. The user finishes signup themselves."
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Send auth email"
+msgstr "Send auth email"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Send data events to a Telegram chat."
@@ -16204,6 +16344,7 @@ msgstr "Signing order"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Signing secret"
 msgstr "Signing secret"
 
@@ -16983,6 +17124,7 @@ msgid "Taken over the phone, so it is not limited to the published times — but
 msgstr "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
 
 #: src/client/admin/collections/item-form.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Target"
 msgstr "Target"
 
@@ -17050,6 +17192,7 @@ msgstr "Terms of Service URL"
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database-import.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Test"
 msgstr "Test"
 
@@ -17129,6 +17272,7 @@ msgstr "Tester"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Testing…"
 msgstr "Testing…"
 
@@ -17752,6 +17896,10 @@ msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The co
 msgid "This runs on the write path — a slow or failing hook affects live writes."
 msgstr "This runs on the write path — a slow or failing hook affects live writes."
 
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "This runs while someone is waiting to sign in — a slow or failing hook is felt live."
+msgstr "This runs while someone is waiting to sign in — a slow or failing hook is felt live."
+
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
 msgstr "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
@@ -17809,6 +17957,7 @@ msgstr "Timeline"
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Timeout (ms)"
 msgstr "Timeout (ms)"
 
@@ -18389,6 +18538,7 @@ msgstr "Unpublish on"
 
 #. placeholder {0}: result.res.error ?? "—"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Unreachable: {0}"
 msgstr "Unreachable: {0}"
 
@@ -18535,6 +18685,7 @@ msgstr "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
 #: src/client/admin/fields/field-validation-editor.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "URL"
 msgstr "URL"
 
@@ -19122,6 +19273,7 @@ msgid "When someone asks to be removed, start here — the preview shows everyth
 msgstr "When someone asks to be removed, start here — the preview shows everything that would go."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "When the hook cannot answer"
 msgstr "When the hook cannot answer"
 
@@ -19553,6 +19705,10 @@ msgstr "Your email isn't verified yet. Check your inbox for the verification lin
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"
 msgstr "Your full name"
+
+#: src/client/admin/pages/settings/auth-hooks-card.tsx
+msgid "Your own code at four moments in your end-users' sign-in: admit a new user, put your claims in their access token, judge a password attempt, or send the mail yourself. One hook per moment. These never apply to the people who administer this workspace."
+msgstr "Your own code at four moments in your end-users' sign-in: admit a new user, put your claims in their access token, judge a password attempt, or send the mail yourself. One hook per moment. These never apply to the people who administer this workspace."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Your own preference — stored locally, not synced."

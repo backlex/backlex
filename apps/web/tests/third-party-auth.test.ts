@@ -373,6 +373,42 @@ describe("identity resolution", () => {
     expect(users[0]?.email).toBe("someone@acme.test");
   });
 
+  test("a first sight goes through the workspace's before-user-created auth hook", async () => {
+    // The admission gate has to cover THIS path too. An app already running on
+    // Clerk is exactly the case where a workspace closes self sign-up and
+    // still gets new users, so a gate that only covered the better-auth flows
+    // would be one an attacker routes around by holding an issuer token.
+    // Found in the pre-commit security review of the auth-hooks branch.
+    await makeProvider();
+    client
+      .query(
+        `insert into auth_hooks (id, tenant_id, event, target_type, url, on_error, timeout_ms,
+          enabled, consecutive_failures, created_at, updated_at)
+         values (?, 't1', 'before-user-created', 'url', 'https://hook.test/gate', 'deny', 2000, 1, 0, ?, ?)`,
+      )
+      .run(crypto.randomUUID(), Date.now(), Date.now());
+
+    const inner = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.startsWith("https://hook.test/")) {
+        return new Response(JSON.stringify({ allow: false, reason: "not on the allow-list" }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return inner(input as never, init as never);
+    }) as typeof fetch;
+
+    const identity = await verifyThirdPartyToken(ctx, await sign(validPayload()));
+    // `resolveThirdPartyUser` logs and returns null when provisioning throws,
+    // which is the right shape here: the token was genuine, the workspace said
+    // no.
+    expect(await resolveThirdPartyUser(ctx, identity!)).toBeNull();
+    expect(
+      client.query("select count(*) as n from app_users").get() as { n: number },
+    ).toEqual({ n: 0 });
+  });
+
   test("autoProvision off refuses an unknown subject", async () => {
     await makeProvider({ autoProvision: false });
     const identity = await verifyThirdPartyToken(ctx, await sign(validPayload()));

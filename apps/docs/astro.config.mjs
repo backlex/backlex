@@ -157,6 +157,7 @@ export default defineConfig({
           items: [
             { slug: "auth-planes" },
             { slug: "sso" },
+            { slug: "third-party-auth" },
             { slug: "api-keys-and-email" },
           ],
         },
@@ -166,6 +167,7 @@ export default defineConfig({
             { slug: "graphql" },
             { slug: "webhooks" },
             { slug: "sync-hooks" },
+            { slug: "auth-hooks" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

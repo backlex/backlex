@@ -21,6 +21,9 @@ import { assignAppUserRoleByName, ensureSystemRoles } from "../services/seed";
 import { invalidateUserRoles } from "../services/permissions-cache";
 import { rateLimitOk } from "../lib/rate-limit";
 import { type JwtEnv, signAccessToken } from "../lib/jwt";
+import { runCustomAccessTokenHook } from "../services/auth-hooks";
+import { loadRolesForUser } from "../services/permissions";
+import type { Env } from "../env";
 
 /**
  * Workspace end-user auth surface — the "auth as a service" router. Mounted
@@ -199,12 +202,41 @@ const issueAppSession = async (
 };
 
 /**
+ * The workspace's `custom-access-token` hook, resolved for one about-to-be
+ * minted token. Returns `{}` when no hook is configured — which is the case
+ * for nearly every workspace, and why the role lookup is a thunk rather than a
+ * value (see `runCustomAccessTokenHook`).
+ */
+const customClaimsFor = async (
+  ctx: { db: any; dialect: "pg" | "sqlite"; env: JwtEnv },
+  args: { tenantId: string; userId: string; email: string | null; sessionId: string },
+): Promise<Record<string, unknown>> =>
+  runCustomAccessTokenHook(
+    // Passed whole rather than sliced to `{db, dialect, env}`: every caller
+    // here holds the request `Ctx`, and a function-target hook then runs with
+    // the real host bindings instead of a stub.
+    ctx as unknown as { db: any; dialect: "pg" | "sqlite"; env: Env },
+    args.tenantId,
+    { userId: args.userId, email: args.email, sessionId: args.sessionId },
+    async () =>
+      (
+        await loadRolesForUser(
+          { db: ctx.db, dialect: ctx.dialect },
+          args.userId,
+          args.tenantId,
+          null,
+          "app",
+        )
+      ).map((r) => r.name),
+  );
+
+/**
  * Issue a sign-in token pair: the `app_sessions` row doubles as the
  * long-lived, revocable *refresh* token; the HS256 JWT is the short-lived
  * stateless *access* token verified without a DB round-trip on every request.
  */
 const issueTokenPair = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: JwtEnv },
+  ctx: { db: any; dialect: "pg" | "sqlite"; env: JwtEnv },
   args: AppSessionArgs & { email: string | null },
 ): Promise<{
   accessToken: string;
@@ -213,12 +245,22 @@ const issueTokenPair = async (
   refreshExpiresAt: Date;
 }> => {
   const session = await issueAppSession(ctx, args);
-  const access = await signAccessToken(ctx.env, {
-    sub: args.userId,
-    tid: args.tenantId,
-    sid: session.id,
-    email: args.email,
-  });
+  const access = await signAccessToken(
+    ctx.env,
+    {
+      sub: args.userId,
+      tid: args.tenantId,
+      sid: session.id,
+      email: args.email,
+    },
+    undefined,
+    await customClaimsFor(ctx, {
+      tenantId: args.tenantId,
+      userId: args.userId,
+      email: args.email,
+      sessionId: session.id,
+    }),
+  );
   return {
     accessToken: access.token,
     refreshToken: session.token,
@@ -463,6 +505,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
     // 5. Provision the app-user + role sync.
     const { appUserId } = await provisionAppUser({
       ctx: { db: ctx.db, dialect: ctx.dialect },
+      hookEnv: ctx.env,
       tenantId: tenant.id,
       providerType: "saml",
       providerId: resolved.row.id,
@@ -656,6 +699,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
     // happens to share their email locally.
     const { appUserId } = await provisionAppUser({
       ctx: { db: ctx.db, dialect: ctx.dialect },
+      hookEnv: ctx.env,
       tenantId: tenant.id,
       providerType: "ldap",
       providerId: "ldap",
@@ -740,12 +784,29 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       throw new AppError("UNAUTHORIZED", "Invalid or expired refresh token");
     }
 
-    const access = await signAccessToken(ctx.env, {
-      sub: session.userId,
-      tid: tenant.id,
-      sid: session.id,
-      email: session.email,
-    });
+    const access = await signAccessToken(
+      ctx.env,
+      {
+        sub: session.userId,
+        tid: tenant.id,
+        sid: session.id,
+        email: session.email,
+      },
+      undefined,
+      // Re-run on every refresh rather than copying the claims off the old
+      // token: the whole point of a 15-minute access token is that a plan
+      // change or a role demotion is felt within the window, and claims
+      // carried forward would outlive both.
+      await customClaimsFor(
+        { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+        {
+          tenantId: tenant.id,
+          userId: session.userId,
+          email: session.email,
+          sessionId: session.id,
+        },
+      ),
+    );
     return c.json({
       accessToken: access.token,
       refreshToken,

@@ -51,6 +51,10 @@ export interface AccessTokenClaims {
   iat: number;
   /** expiry (epoch seconds) */
   exp: number;
+  /** Extra claims a workspace's `custom-access-token` auth hook asked for.
+   *  backlex never reads them — they exist for the app's own authorizer, and
+   *  the named claims above always win a collision (see `signAccessToken`). */
+  [claim: string]: unknown;
 }
 
 const enc = new TextEncoder();
@@ -97,16 +101,28 @@ const importKey = (secret: string): Promise<CryptoKey> => {
 
 const HEADER = base64urlFromString(JSON.stringify({ alg: "HS256", typ: "JWT" }));
 
-/** Mint an access token for a workspace end-user session. Signed with the
- *  configured key pair when there is one, otherwise HS256 off `AUTH_SECRET`. */
+/**
+ * Mint an access token for a workspace end-user session. Signed with the
+ * configured key pair when there is one, otherwise HS256 off `AUTH_SECRET`.
+ *
+ * `extraClaims` carries whatever a workspace's `custom-access-token` auth hook
+ * asked for (`plan`, `org`, whatever its API authorizes on). They are spread
+ * FIRST and every identity claim is written over the top, so a hook that
+ * returns `tid` — or any future reserved name the hook service's filter does
+ * not yet know about — still cannot decide who the token is for. The filter in
+ * `services/auth-hooks.ts::sanitizeCustomClaims` is the first line of defence;
+ * this ordering is the one that cannot be forgotten.
+ */
 export const signAccessToken = async (
   env: JwtEnv,
   claims: { sub: string; tid: string; sid: string; email: string | null },
   expiresInSeconds: number = ACCESS_TOKEN_TTL_SECONDS,
+  extraClaims?: Record<string, unknown>,
 ): Promise<{ token: string; expiresIn: number; expiresAt: number }> => {
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + expiresInSeconds;
   const payload: AccessTokenClaims = {
+    ...(extraClaims as Partial<AccessTokenClaims> | undefined),
     sub: claims.sub,
     tid: claims.tid,
     plane: "app",

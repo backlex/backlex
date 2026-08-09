@@ -39,6 +39,7 @@ import { oidcAdminRoutes } from "./oidc-admin";
 import { thirdPartyAuthAdminRoutes } from "./third-party-auth-admin";
 import { scimAdminRoutes } from "./scim-admin";
 import { syncHooksRoutes } from "./sync-hooks";
+import { authHooksRoutes } from "./auth-hooks";
 import { erasureRoutes } from "./erasure";
 import { integrationsRoutes } from "./integrations";
 import { ldapAdminRoutes } from "./ldap-admin";
@@ -95,6 +96,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/third-party-auth", thirdPartyAuthAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/scim", scimAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/sync-hooks", syncHooksRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/auth-hooks", authHooksRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/erasure", erasureRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/integrations", integrationsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/ldap-config", ldapAdminRoutes as unknown as OpenAPIHono<any>],

@@ -10,6 +10,7 @@ import { itemsPublishTools } from "./items-publish";
 import { featureFlagsTools } from "./feature-flags";
 import { integrationsTools } from "./integrations";
 import { syncHooksTools } from "./sync-hooks";
+import { authHooksTools } from "./auth-hooks";
 import { documentsTools } from "./documents";
 import { geoTools } from "./geo";
 import { emailTools } from "./email";
@@ -76,6 +77,7 @@ export const allTools: McpTool[] = [
   ...featureFlagsTools,
   ...integrationsTools,
   ...syncHooksTools,
+  ...authHooksTools,
   ...documentsTools,
   ...geoTools,
   ...orderTools,

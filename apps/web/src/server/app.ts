@@ -9,6 +9,7 @@ import type { Env } from "./env";
 import { apiRateLimitMiddleware } from "./lib/api-rate-limit";
 import { usageMeterMiddleware } from "./lib/usage-meter";
 import { authLockoutMiddleware, authRateLimitMiddleware } from "./lib/auth-rate-limit";
+import { passwordVerificationHookMiddleware } from "./lib/auth-hook-middleware";
 import { configureLogBuffer, configureLogLevel, levelForStatus, log } from "./lib/log";
 import {
   type TraceContext,
@@ -104,6 +105,7 @@ import { thirdPartyAuthAdminRoutes } from "./routes/third-party-auth-admin";
 import { oidcAdminRoutes } from "./routes/oidc-admin";
 import { scimAdminRoutes } from "./routes/scim-admin";
 import { syncHooksRoutes } from "./routes/sync-hooks";
+import { authHooksRoutes } from "./routes/auth-hooks";
 import { erasureRoutes } from "./routes/erasure";
 import { scimRoutes } from "./routes/scim";
 import { platformSamlAdminRoutes } from "./routes/platform-saml-admin";
@@ -844,6 +846,11 @@ export const createApp = (env: Env) => {
   // same auth surfaces. Only password sign-in is gated (see auth-lockout.ts).
   app.use("/api/auth/*", authLockoutMiddleware);
   app.use("/api/t/*", authLockoutMiddleware);
+  // The workspace's `password-verification` auth hook — the app's own say on a
+  // password sign-in, after our built-in lockout has had its. Workspace plane
+  // only; a refusal revokes the session better-auth already issued (see
+  // lib/auth-hook-middleware.ts).
+  app.use("/api/t/*", passwordVerificationHookMiddleware);
 
   // Public auth-surface discovery — must be registered before the better-auth
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.
@@ -893,6 +900,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/third-party-auth", thirdPartyAuthAdminRoutes);
   app.route("/api/admin/scim", scimAdminRoutes);
   app.route("/api/admin/sync-hooks", syncHooksRoutes);
+  app.route("/api/admin/auth-hooks", authHooksRoutes);
   app.route("/api/admin/erasure", erasureRoutes);
   // SCIM itself is NOT session/api-key authenticated — the IdP presents the
   // workspace's SCIM bearer token and every handler resolves the tenant from it.

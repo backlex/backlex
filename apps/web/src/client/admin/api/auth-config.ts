@@ -478,3 +478,72 @@ export const platformLdapAdminApi = {
       body: JSON.stringify({ username, password }),
     }),
 };
+
+/* ── auth hooks ── */
+
+/** The four moments a workspace can hook in its END-USER authentication. */
+export type ApiAuthHookEvent =
+  | "before-user-created"
+  | "custom-access-token"
+  | "password-verification"
+  | "send-email";
+
+export interface ApiAuthHook {
+  id: string;
+  event: ApiAuthHookEvent;
+  targetType: "url" | "function";
+  url: string | null;
+  functionName: string | null;
+  headers: Record<string, string> | null;
+  timeoutMs: number;
+  onError: "allow" | "deny";
+  enabled: boolean;
+  /** Presence only — the signing secret has no read-back path. */
+  hasSecret: boolean;
+  consecutiveFailures: number;
+  lastFailureAt: string | number | null;
+  disabledReason: string | null;
+}
+
+export interface AuthHookInput {
+  event: ApiAuthHookEvent;
+  targetType: "url" | "function";
+  url?: string;
+  functionName?: string;
+  onError: "allow" | "deny";
+  secret?: string;
+  timeoutMs?: number;
+  enabled?: boolean;
+}
+
+export interface AuthHookTestResult {
+  ok: boolean;
+  ms: number;
+  error?: string;
+  /** `custom-access-token` only — claims the hook returned that would be
+   *  dropped as reserved, which is the usual reason one never appears. */
+  droppedClaims?: string[];
+  verdict?: {
+    allow?: boolean;
+    reason?: string;
+    claims?: Record<string, unknown>;
+    handled?: boolean;
+  };
+}
+
+export const authHooksApi = {
+  list: () => api<Envelope<ApiAuthHook[]>>(`/api/admin/auth-hooks`),
+  create: (body: AuthHookInput) =>
+    api<Envelope<ApiAuthHook>>(`/api/admin/auth-hooks`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<AuthHookInput>) =>
+    api<Envelope<ApiAuthHook>>(`/api/admin/auth-hooks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) => api<{ ok: true }>(`/api/admin/auth-hooks/${id}`, { method: "DELETE" }),
+  test: (id: string) =>
+    api<AuthHookTestResult>(`/api/admin/auth-hooks/${id}/test`, { method: "POST" }),
+};

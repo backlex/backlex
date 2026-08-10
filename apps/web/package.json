@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "deploy": "bun scripts/gen-openapi-static.ts && vite build && wrangler deploy",
     "typecheck": "tsc --noEmit -p tsconfig.client.json && NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit -p tsconfig.server.json",
-    "test": "bun test tests/"
+    "test": "bun test --timeout 30000 tests/"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.79",

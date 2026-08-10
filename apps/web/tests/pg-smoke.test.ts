@@ -7,7 +7,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 /** Set when harness setup fails — pglite's pgvector extension load is
  *  environment-sensitive (its WASM .tar.gz needs to be fetched at boot,
@@ -59,4 +59,4 @@ test("pg: sign-up + list collections", async () => {
   expect(collections.ok).toBe(true);
   const body = (await collections.json()) as { data: unknown[] };
   expect(Array.isArray(body.data)).toBe(true);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

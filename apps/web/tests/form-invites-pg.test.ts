@@ -15,7 +15,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -128,4 +128,4 @@ test("pg: a reminder's link resolves to the invite, and spends the same turn", a
     expect(row.reminderCount).toBe(1);
     expect(row.remindedAt).not.toBeNull();
   }
-});
+}, PGLITE_TEST_TIMEOUT_MS);

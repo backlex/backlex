@@ -21,7 +21,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 import { BOOKING_COLLECTION_SLUG } from "../src/server/services/booking-collection";
 
 let setupError: Error | undefined;
@@ -127,7 +127,7 @@ test("pg: the collection is provisioned and a booking lands in it", async () => 
   // The timestamp round-trips. A number written into a `timestamptz` is the
   // failure this assertion exists for.
   expect(new Date(rows[0].starts_at as string).toISOString()).toBe(mondayAt(9));
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: cancelling updates the row in place", async () => {
   if (skipped()) return;
@@ -143,7 +143,7 @@ test("pg: cancelling updates the row in place", async () => {
   expect(row.status).toBe("cancelled");
   // Updated, not appended — one booking is one record.
   expect(rows.filter((r) => r.booking_id === out.data.booking.id)).toHaveLength(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: a lost pointer is recovered by looking the booking id up", async () => {
   if (skipped()) return;
@@ -170,4 +170,4 @@ test("pg: a lost pointer is recovered by looking the booking id up", async () =>
   expect(again.data.mirrorItemId).toBe(before);
   const rows = await records();
   expect(rows.filter((r) => r.booking_id === out.data.booking.id)).toHaveLength(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

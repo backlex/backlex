@@ -14,7 +14,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -111,7 +111,7 @@ test("pg: a second save replaces the draft rather than forking it", async () => 
   const back = await definition(cookie);
   expect(back.data?.draft?.data).toEqual({ answer: "two" });
   expect(back.data?.draft?.step).toBe(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: the stale sweep's timestamp comparison parses", async () => {
   if (skipped()) return;
@@ -126,4 +126,4 @@ test("pg: the stale sweep's timestamp comparison parses", async () => {
   const cookie = (fresh.headers.get("set-cookie") ?? "").split(";")[0]!;
   await sweepStaleFormDrafts(ctx);
   expect((await definition(cookie)).data?.draft?.data).toEqual({ answer: "kept" });
-});
+}, PGLITE_TEST_TIMEOUT_MS);

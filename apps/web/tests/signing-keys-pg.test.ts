@@ -12,7 +12,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -86,7 +86,7 @@ test("the life cycle round-trips, and each transition stamps its timestamp", asy
   // decidable because `activated_at` survived the round trip.
   expect(rows[0]!.status).toBe("previously_used");
   expect(rows[0]!.revoked_at).toBeNull();
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("exactly one key is ever in use", async () => {
   if (!harness) return;
@@ -94,7 +94,7 @@ test("exactly one key is ever in use", async () => {
     `SELECT count(*)::int AS n FROM signing_keys WHERE status = 'in_use'`,
   );
   expect(rows[0]!.n).toBe(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("the private half is stored encrypted, never in the clear", async () => {
   if (!harness) return;
@@ -102,7 +102,7 @@ test("the private half is stored encrypted, never in the clear", async () => {
   const stored = String(rows[0]!.private_key);
   expect(stored.startsWith("enc:v1:")).toBe(true);
   expect(stored).not.toContain("PRIVATE KEY");
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("the kid is unique — the same key cannot be stored twice", async () => {
   if (!harness) return;
@@ -110,4 +110,4 @@ test("the kid is unique — the same key cannot be stored twice", async () => {
     `SELECT indexname FROM pg_indexes WHERE tablename = 'signing_keys' AND indexname = 'signing_keys_kid_idx'`,
   );
   expect(rows.length).toBe(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

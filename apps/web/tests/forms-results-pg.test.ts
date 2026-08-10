@@ -13,7 +13,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -91,7 +91,7 @@ test("pg: an array-valued json column round-trips", async () => {
   const rows = ((await res.json()) as { data: { score: number; channels: unknown }[] }).data;
   expect(rows[0]?.channels).toEqual(["search", "friend"]);
   expect(rows.find((r) => r.score === 1)?.channels).toEqual([]);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: count grouped by a multi-select counts each chosen value", async () => {
   if (skipped()) return;
@@ -108,7 +108,7 @@ test("pg: count grouped by a multi-select counts each chosen value", async () =>
   // not to a null one, and not to a bucket named after the raw array.
   expect(byLabel.has("ads")).toBe(false);
   expect([...byLabel.keys()].some((k) => k.includes("["))).toBe(false);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: an avg over another column groups by each chosen value", async () => {
   if (skipped()) return;
@@ -122,7 +122,7 @@ test("pg: an avg over another column groups by each chosen value", async () => {
   const byLabel = new Map(data.map((r) => [r.label, Number(r.value)]));
   expect(byLabel.get("search")).toBeCloseTo(4, 5); // 5 and 3
   expect(byLabel.get("friend")).toBeCloseTo(5, 5);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: a filter still applies before the explode", async () => {
   if (skipped()) return;
@@ -136,4 +136,4 @@ test("pg: a filter still applies before the explode", async () => {
   const byLabel = new Map(data.map((r) => [r.label, Number(r.value)]));
   expect(byLabel.get("search")).toBe(1);
   expect(byLabel.get("friend")).toBe(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

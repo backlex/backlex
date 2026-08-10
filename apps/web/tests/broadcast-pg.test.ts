@@ -20,7 +20,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -83,7 +83,7 @@ test("a rule round-trips on Postgres, booleans and all", async () => {
     await harness.fetch("/api/realtime/room%3Asecret/explain")
   ).json()) as any;
   expect(other.canSubscribe).toBe(false);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("publish → replay reads back through the timestamptz cursor", async () => {
   if (!harness) return;
@@ -113,7 +113,7 @@ test("publish → replay reads back through the timestamptz cursor", async () =>
     )
   ).json()) as { data: Array<{ data: { n: number } }> };
   expect(second.data.map((m) => m.data.n)).toEqual([2]);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("a duplicate pattern is refused by the unique index too", async () => {
   if (!harness) return;
@@ -127,4 +127,4 @@ test("a duplicate pattern is refused by the unique index too", async () => {
   // The service checks first (422); a divergent index would let a race write a
   // second row that `resolveChannelRule` would then pick between arbitrarily.
   expect((await post(ADMIN, { ...body, name: "Twice" })).status).toBe(422);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

@@ -21,7 +21,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -113,7 +113,7 @@ test("the plan names the policy it would install", async () => {
   expect(policy).toBeTruthy();
   expect(policy.table).toBe(table);
   expect(policy.statements.join("\n")).toContain("backlex.uid()");
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("applying installs the policies and enables row security", async () => {
   if (!harness) return;
@@ -133,13 +133,13 @@ test("applying installs the policies and enables row security", async () => {
   // NOT forced — forcing would put backlex's own queries behind rules meant
   // for a reporting tool.
   expect(rls[0].relforcerowsecurity).toBe(false);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("backlex's own reads are unchanged, because the owner is exempt", async () => {
   if (!harness) return;
   const list = (await (await harness.fetch("/api/items/notes")).json()) as any;
   expect(list.data.length).toBe(2);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("a direct connection with no identity set sees NOTHING", async () => {
   if (!harness) return;
@@ -155,7 +155,7 @@ test("a direct connection with no identity set sees NOTHING", async () => {
   // an ERROR either: the helper schema is granted to PUBLIC precisely so a
   // reporting tool gets a narrower result rather than a failed query.
   expect(anonymous[0].n).toBe(0);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("a direct connection that names an identity sees only its own rows", async () => {
   if (!harness) return;
@@ -168,7 +168,7 @@ test("a direct connection that names an identity sees only its own rows", async 
     () => raw(`SELECT title FROM "${table}" ORDER BY title`),
   );
   expect(mine.map((r: any) => r.title)).toEqual(["mine"]);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("a role the session does not hold grants nothing", async () => {
   if (!harness) return;
@@ -183,7 +183,7 @@ test("a role the session does not hold grants nothing", async () => {
     () => raw(`SELECT count(*)::int AS n FROM "${table}"`),
   );
   expect(none[0].n).toBe(0);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("status reports drift after a rule changes", async () => {
   if (!harness) return;
@@ -196,7 +196,7 @@ test("status reports drift after a rule changes", async () => {
   // The new rule exists in the API and not in the database — which is exactly
   // the state an operator needs to be told about.
   expect(status.missing.length).toBeGreaterThan(0);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("disable removes the policies and turns row security back off", async () => {
   if (!harness) return;
@@ -206,4 +206,4 @@ test("disable removes the policies and turns row security back off", async () =>
   expect(policies.length).toBe(0);
   const rls = await raw(`SELECT relrowsecurity FROM pg_class WHERE relname = '${table}'`);
   expect(rls[0].relrowsecurity).toBe(false);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

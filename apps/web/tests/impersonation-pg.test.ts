@@ -12,7 +12,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -79,7 +79,7 @@ test("the captcha column round-trips a config on Postgres", async () => {
   expect(read.data.protect).toEqual(["sign-up", "forms"]);
   expect(read.data.hasSecret).toBe(true);
   expect(JSON.stringify(read)).not.toContain("pg-secret");
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("an impersonation round-trips, and its expiry is compared correctly", async () => {
   if (!harness) return;
@@ -103,7 +103,7 @@ test("an impersonation round-trips, and its expiry is compared correctly", async
   );
   const after = (await (await harness.fetch("/api/admin/impersonation")).json()) as any;
   expect(after.data[0].active).toBe(false);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("ending one writes `ended_at` as a timestamptz", async () => {
   if (!harness) return;
@@ -119,7 +119,7 @@ test("ending one writes `ended_at` as a timestamptz", async () => {
     `SELECT ended_at FROM impersonations WHERE id = '${started.data.id}'`,
   );
   expect(rows[0]!.ended_at).not.toBeNull();
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("the activity audit column exists and is indexed", async () => {
   if (!harness) return;
@@ -134,4 +134,4 @@ test("the activity audit column exists and is indexed", async () => {
   // The column exists so the question can be QUERIED; the index is what keeps
   // that query from scanning the whole audit log.
   expect(idx.length).toBe(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

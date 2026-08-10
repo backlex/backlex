@@ -42,8 +42,24 @@ const DEFAULT_APP_URL = "http://localhost:5173";
  * builds, so on a loaded machine the boot lost the race and the hook timed out
  * — a red gate that said nothing about the code under test. The assertions
  * themselves are unaffected; only the door they walk through is wider.
+ *
+ * Raised from 60s once the suite reached fourteen pglite specs: each boots its
+ * own WASM Postgres and replays the whole migration bundle, and late in a run
+ * one of them took 68 seconds to do it. The number tracks how many of these
+ * specs exist, so expect to revisit it rather than to have found the answer.
  */
-export const PGLITE_BOOT_TIMEOUT_MS = 60_000;
+export const PGLITE_BOOT_TIMEOUT_MS = 120_000;
+
+/**
+ * Per-test budget for an assertion that talks to PGlite.
+ *
+ * Same cause as the boot budget, one step further in. A body that signs a user
+ * up runs a deliberately slow password hash on top of WASM Postgres, and with
+ * several pglite specs resident at once that crossed bun's five-second default
+ * — while passing comfortably when the spec ran alone. A test that only fails
+ * when its neighbours are busy is reporting the machine, not the code.
+ */
+export const PGLITE_TEST_TIMEOUT_MS = 30_000;
 
 export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
   // Per-isolate caches (roles/perms/membership/session/tenant-resolve) are

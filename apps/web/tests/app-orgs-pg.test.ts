@@ -16,7 +16,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 const json = (method: string, body?: unknown): RequestInit => ({
@@ -139,7 +139,7 @@ test("pg: the flag round-trips as a real boolean", async () => {
   // Roles that predate the column start closed — the migration adds it with a
   // false default and deliberately backfills nothing.
   expect(data.find((r) => r.name === "authenticated")!.orgAssignable).toBe(false);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: an org owner is held to the flag, the control plane is not", async () => {
   if (skipped()) return;
@@ -161,7 +161,7 @@ test("pg: an org owner is held to the flag, the control plane is not", async () 
     json("PATCH", { roleIds: [staffRoleId] }),
   );
   expect(operator.status).toBe(200);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: PATCH /api/roles flips the flag", async () => {
   if (skipped()) return;
@@ -176,4 +176,4 @@ test("pg: PATCH /api/roles flips the flag", async () => {
     json("PATCH", { roleIds: [staffRoleId] }),
   );
   expect(now.status).toBe(200);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

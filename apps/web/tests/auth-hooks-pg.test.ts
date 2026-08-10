@@ -15,7 +15,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -82,7 +82,7 @@ test("the auth_hooks table exists and round-trips a hook on Postgres", async () 
 
   const disabled = await post(`${BASE}/${row.id}`, { enabled: false }, "PATCH");
   expect(((await disabled.json()) as any).data.enabled).toBe(false);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("the unique index refuses a second hook for the same event", async () => {
   if (!harness) return;
@@ -97,7 +97,7 @@ test("the unique index refuses a second hook for the same event", async () => {
   };
   expect((await post(BASE, body)).status).toBe(201);
   expect((await post(BASE, body)).status).toBe(409);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("a failing hook records its breaker state as a timestamptz", async () => {
   if (!harness) return;
@@ -121,4 +121,4 @@ test("a failing hook records its breaker state as a timestamptz", async () => {
   const row = listed.find((h) => h.id === id);
   expect(row.consecutiveFailures).toBe(0);
   expect(row.lastFailureAt).toBeNull();
-});
+}, PGLITE_TEST_TIMEOUT_MS);

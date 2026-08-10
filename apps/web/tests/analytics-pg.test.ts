@@ -13,7 +13,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 const DAY = 86_400_000;
 const STACK =
@@ -94,7 +94,7 @@ test("pg: overview counts and zero-fills like sqlite", async () => {
   expect(data.series.length).toBe(8);
   expect(data.topEvents.find((e: any) => e.name === "page_view").count).toBe(4);
   expect(data.topPaths[0].path).toBe("/pricing");
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: the funnel interval window matches the sqlite integer window", async () => {
   if (skipped()) return;
@@ -131,7 +131,7 @@ test("pg: the funnel interval window matches the sqlite integer window", async (
   };
   expect(await windowed(1)).toBe(0);
   expect(await windowed(7)).toBe(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: retention cohorts key on the first-ever day", async () => {
   if (skipped()) return;
@@ -146,7 +146,7 @@ test("pg: retention cohorts key on the first-ever day", async () => {
   expect(cohort).toBeDefined();
   expect(cohort.values[1]).toBe(2);
   expect(cohort.values[2]).toBe(1);
-});
+}, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: error groups fold, reopen and delete", async () => {
   if (skipped()) return;
@@ -190,4 +190,4 @@ test("pg: error groups fold, reopen and delete", async () => {
     method: "DELETE",
   });
   expect(del.status).toBe(200);
-});
+}, PGLITE_TEST_TIMEOUT_MS);

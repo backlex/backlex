@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { Switch } from "../../ui";
-import { impersonationApi, type ApiImpersonation } from "../../api";
+import { appUsersApi, impersonationApi, type ApiAppUser, type ApiImpersonation } from "../../api";
 import { fetchSafely } from "../_shared";
 
 export function ImpersonationCard({ pushToast }: { pushToast: PushToast }) {
@@ -204,17 +204,7 @@ function StartDialog({
 
         <DialogBody>
           <div className="flex flex-col gap-3.5 px-5 py-4">
-            <label className="block">
-              <span className="mb-1 block text-[11.5px] font-medium">{t`End-user id`}</span>
-              <Input
-                className="font-mono"
-                value={subjectUserId}
-                onChange={(e) => setSubjectUserId(e.target.value)}
-              />
-              <span className="mt-1 block text-[11px] text-muted-foreground">
-                <Trans>From the App users page. Operators cannot be impersonated.</Trans>
-              </span>
-            </label>
+            <SubjectPicker value={subjectUserId} onChange={setSubjectUserId} />
             <label className="block">
               <span className="mb-1 block text-[11.5px] font-medium">{t`Reason`}</span>
               <Input
@@ -260,5 +250,117 @@ function StartDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Who to act as, chosen by searching for them.
+ *
+ * This asked for the raw `app_users.id` and its own hint said "from the App
+ * users page" — which is an admission that the one field the whole dialog is
+ * about could not be filled in from the dialog. `/api/app-users?q=` already
+ * exists and already does email/name substring search (it backs the `user`
+ * field interface), so the picker is that endpoint rather than a second way to
+ * find a person.
+ *
+ * The id is still what gets submitted; it is just never typed. It stays visible
+ * under the chosen name because an operator reading the audit log afterwards
+ * sees ids, and matching the two up is the point.
+ */
+function SubjectPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const { t } = useLingui();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<ApiAppUser[]>([]);
+  const [chosen, setChosen] = useState<ApiAppUser | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (chosen) return;
+    const q = query.trim();
+    // Debounced: this fires on every keystroke otherwise, and the endpoint is
+    // a LIKE over the workspace's whole end-user pool.
+    const timer = setTimeout(() => {
+      setSearching(true);
+      void appUsersApi
+        .list(q ? { q } : undefined)
+        .then((r) => setResults(r.data.slice(0, 8)))
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query, chosen]);
+
+  if (chosen) {
+    return (
+      <label className="block">
+        <span className="mb-1 block text-[11.5px] font-medium">{t`Acting as`}</span>
+        <div className="flex items-center gap-2 rounded-surface border border-border px-3 py-2">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12.5px] font-medium">
+              {chosen.name || chosen.email}
+            </div>
+            <div className="truncate font-mono text-[11px] text-muted-foreground">{value}</div>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setChosen(null);
+              onChange("");
+            }}
+          >
+            <Trans>Change</Trans>
+          </Button>
+        </div>
+      </label>
+    );
+  }
+
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11.5px] font-medium">{t`End-user`}</span>
+      <Input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={t`Search by email or name`}
+      />
+      <div className="mt-1.5 flex flex-col gap-1">
+        {searching && results.length === 0 ? (
+          <Skeleton className="h-8 w-full" />
+        ) : results.length === 0 ? (
+          <span className="text-[11px] text-muted-foreground">
+            <Trans>No end-user matches that. Operators cannot be impersonated.</Trans>
+          </span>
+        ) : (
+          results.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              className="flex items-center gap-2 rounded-surface px-2.5 py-1.5 text-left hover:bg-muted"
+              onClick={() => {
+                setChosen(u);
+                onChange(u.id);
+              }}
+            >
+              <span className="min-w-0 flex-1 truncate text-[12.5px]">
+                {u.name ? `${u.name} · ` : ""}
+                {u.email}
+              </span>
+              {u.status === "suspended" && (
+                <Badge variant="outline">
+                  <Trans>suspended</Trans>
+                </Badge>
+              )}
+            </button>
+          ))
+        )}
+      </div>
+    </label>
   );
 }

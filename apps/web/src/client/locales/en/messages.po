@@ -1467,6 +1467,10 @@ msgstr "ACS URL"
 msgid "Act as a user"
 msgstr "Act as a user"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Acting as"
+msgstr "Acting as"
+
 #. placeholder {0}: issued.row.subjectEmail ?? issued.row.subjectUserId
 #. placeholder {1}: new Date(issued.row.expiresAt).toLocaleTimeString()
 #: src/client/admin/pages/access/impersonation-card.tsx
@@ -3457,6 +3461,7 @@ msgstr "caught up"
 
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/fields/add-field.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/pages/book.tsx
 msgid "Change"
 msgstr "Change"
@@ -6460,8 +6465,12 @@ msgid "End"
 msgstr "End"
 
 #: src/client/admin/pages/access/impersonation-card.tsx
-msgid "End-user id"
-msgstr "End-user id"
+msgid "End-user"
+msgstr "End-user"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+#~ msgid "End-user id"
+#~ msgstr "End-user id"
 
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "End-user ID"
@@ -7670,8 +7679,8 @@ msgid "From template"
 msgstr "From template"
 
 #: src/client/admin/pages/access/impersonation-card.tsx
-msgid "From the App users page. Operators cannot be impersonated."
-msgstr "From the App users page. Operators cannot be impersonated."
+#~ msgid "From the App users page. Operators cannot be impersonated."
+#~ msgstr "From the App users page. Operators cannot be impersonated."
 
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "from the start"
@@ -11023,6 +11032,10 @@ msgstr "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFA
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "No end"
 msgstr "No end"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "No end-user matches that. Operators cannot be impersonated."
+msgstr "No end-user matches that. Operators cannot be impersonated."
 
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "No end-user selected"
@@ -15886,6 +15899,10 @@ msgstr "Search a collection"
 msgid "Search blocks…"
 msgstr "Search blocks…"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Search by email or name"
+msgstr "Search by email or name"
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Search by email or name…"
 msgstr "Search by email or name…"
@@ -17600,6 +17617,7 @@ msgstr "Suspend end-user"
 
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/pages/access/app-users.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/users.tsx
 msgid "suspended"
 msgstr "suspended"

@@ -30,7 +30,10 @@ interface Delivery {
   headers: Record<string, string>;
 }
 let deliveries: Delivery[] = [];
-let destinationMode: "ok" | "fail" = "ok";
+// "fail" is a destination that answers badly; "unreachable" is one that cannot
+// be reached at all. They take different branches and produce different
+// messages, and the second is the one an operator actually hits first.
+let destinationMode: "ok" | "fail" | "unreachable" = "ok";
 
 const stubDestination = () => {
   globalThis.fetch = (async (url: any, init: any) => {
@@ -42,6 +45,12 @@ const stubDestination = () => {
         Object.entries((init?.headers ?? {}) as Record<string, string>),
       ),
     });
+    if (destinationMode === "unreachable") {
+      // What workerd throws for a host that does not resolve. Deliberately the
+      // real string: it names no host, no operation and no cause, which is
+      // exactly why the delivery path has to add them.
+      throw new Error("internal error; reference = bi75mfrpaqrb6ae9bc6f248m");
+    }
     return destinationMode === "ok"
       ? new Response("ok")
       : new Response("nope", { status: 500 });
@@ -172,6 +181,32 @@ describe("the cursor is the acknowledgement", () => {
       .get(sink.id) as { cursor: string | null; consecutive_failures: number };
     expect(after.cursor).not.toBeNull();
     expect(after.consecutive_failures).toBe(0);
+  });
+
+  test("an unreachable destination says so, and does not leak the URL's secret", async () => {
+    await addOrder("undeliverable");
+    // The token in the path is the point: `lastError` is returned by the list
+    // endpoint and rendered in the admin, so a message built from the URL would
+    // publish it to anyone who can read the sink list.
+    const created = await createSink({
+      config: { url: "https://sink.test/ingest/tok_SUPERSECRET" },
+    });
+    const sink = ((await created.json()) as { data: { id: string } }).data;
+
+    destinationMode = "unreachable";
+    const res = (await (await run(sink.id)).json()) as { error?: string };
+    // The runtime's own words are kept — they are all the detail there is —
+    // but they are no longer the WHOLE message.
+    expect(res.error).toContain("internal error; reference =");
+    expect(res.error).toContain("POST to sink.test:");
+    expect(res.error).not.toContain("tok_SUPERSECRET");
+
+    const stored = (await (await h.fetch(BASE)).json()) as {
+      data: Array<{ lastError: string | null }>;
+    };
+    const errors = stored.data.map((s) => s.lastError).join(" ");
+    expect(errors).toContain("POST to sink.test:");
+    expect(errors).not.toContain("tok_SUPERSECRET");
   });
 
   test("resetting the cursor replays from the beginning", async () => {

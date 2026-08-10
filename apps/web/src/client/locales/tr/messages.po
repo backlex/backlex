@@ -1467,6 +1467,10 @@ msgstr "ACS URL"
 msgid "Act as a user"
 msgstr "Bir kullanıcı olarak davran"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Acting as"
+msgstr "Şu kişi adına"
+
 #. placeholder {0}: issued.row.subjectEmail ?? issued.row.subjectUserId
 #. placeholder {1}: new Date(issued.row.expiresAt).toLocaleTimeString()
 #: src/client/admin/pages/access/impersonation-card.tsx
@@ -3457,6 +3461,7 @@ msgstr "güncel"
 
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/fields/add-field.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/pages/book.tsx
 msgid "Change"
 msgstr "Değiştir"
@@ -6460,8 +6465,12 @@ msgid "End"
 msgstr "Bitir"
 
 #: src/client/admin/pages/access/impersonation-card.tsx
-msgid "End-user id"
-msgstr "Son kullanıcı kimliği"
+msgid "End-user"
+msgstr "Son kullanıcı"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+#~ msgid "End-user id"
+#~ msgstr "Son kullanıcı kimliği"
 
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "End-user ID"
@@ -7670,8 +7679,8 @@ msgid "From template"
 msgstr "Şablondan"
 
 #: src/client/admin/pages/access/impersonation-card.tsx
-msgid "From the App users page. Operators cannot be impersonated."
-msgstr "Uygulama kullanıcıları sayfasından. Operatörlerin kimliğine bürünülemez."
+#~ msgid "From the App users page. Operators cannot be impersonated."
+#~ msgstr "Uygulama kullanıcıları sayfasından. Operatörlerin kimliğine bürünülemez."
 
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "from the start"
@@ -11023,6 +11032,10 @@ msgstr "Seçili embedding modeli yok ve dağıtımda<0> EMBEDDING_DEFAULT_MODEL<
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "No end"
 msgstr "Bitiş yok"
+
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "No end-user matches that. Operators cannot be impersonated."
+msgstr "Bununla eşleşen son kullanıcı yok. Operatörlerin kimliğine bürünülemez."
 
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "No end-user selected"
@@ -15886,6 +15899,10 @@ msgstr "Bir koleksiyonda arayın"
 msgid "Search blocks…"
 msgstr "Blok ara…"
 
+#: src/client/admin/pages/access/impersonation-card.tsx
+msgid "Search by email or name"
+msgstr "E-posta veya isimle ara"
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Search by email or name…"
 msgstr "E-posta veya ada göre ara…"
@@ -17600,6 +17617,7 @@ msgstr "Son kullanıcıyı askıya al"
 
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/pages/access/app-users.tsx
+#: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/users.tsx
 msgid "suspended"
 msgstr "askıya alındı"

@@ -424,14 +424,39 @@ const deliverWebhook = async (
   // Through `fetchOutbound`, like every other admin-supplied URL in this
   // codebase: a sink URL is customer-controlled on managed cloud, where the
   // SSRF guard is deliberately on.
-  const res = await fetchOutbound(ctx.env, url, {
-    method: "POST",
-    headers,
-    body,
-    signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
-  });
+  let res: Response;
+  try {
+    res = await fetchOutbound(ctx.env, url, {
+      method: "POST",
+      headers,
+      body,
+      signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+    });
+  } catch (err) {
+    // A transport failure — DNS, TLS, a reset, the timeout — surfaces as
+    // whatever the RUNTIME chose to say, and on workerd that is
+    // "internal error; reference = <id>", which reads like a bug in this
+    // product rather than an unreachable destination. `lastError` is the whole
+    // diagnostic an operator gets, so it names the operation and the host they
+    // would go and check. The HOST and not the URL: a sink URL routinely
+    // carries a token in its path or query, and this string is returned by the
+    // list endpoint and rendered in the admin.
+    const message = err instanceof Error ? err.message : String(err);
+    // No "failed" here: the admin renders this behind a "Delivery failed:"
+    // prefix, and the row shows it on its own. One word, either way round.
+    throw new Error(`POST to ${hostOf(url)}: ${message}`);
+  }
   if (!res.ok) {
     throw new Error(`destination responded ${res.status}`);
+  }
+};
+
+/** The host alone, so an error string never carries a URL's credentials. */
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "the destination";
   }
 };
 

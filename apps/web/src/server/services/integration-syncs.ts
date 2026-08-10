@@ -29,6 +29,7 @@ import {
   destinationColumnsFor,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
+  isRateLimited,
   OAUTH_SCOPE_KEY,
   providerFor,
   pullFromSource,
@@ -457,11 +458,23 @@ const toRow = (
   return row;
 };
 
-/** Fold one run's outcome into the breaker, mirroring the delivery path. */
+/**
+ * Fold one run's outcome into the breaker, mirroring the delivery path.
+ *
+ * `rateLimited` is the one failure that does NOT advance the counter. The
+ * breaker exists to pause a sync pointed at something broken — a deleted
+ * spreadsheet, a revoked grant — and a provider answering "too fast" is neither.
+ * A marketplace with a per-second quota would otherwise pause a healthy
+ * connection after five busy runs, and the operator's only clue would be a
+ * paused row blaming an HTTP status that means the opposite of broken. The
+ * cursor is held either way, so the rows are re-read rather than skipped.
+ */
 const applyRunOutcome = async (
   ctx: Ctx,
   row: SyncRow,
-  outcome: { ok: true; written: number; cursor: string | null } | { ok: false; error: string },
+  outcome:
+    | { ok: true; written: number; cursor: string | null }
+    | { ok: false; error: string; rateLimited?: boolean },
 ): Promise<void> => {
   const t = syncsTableFor(ctx.dialect);
   const now = new Date();
@@ -480,8 +493,9 @@ const applyRunOutcome = async (
       .where(eq(t.id, row.id));
     return;
   }
-  const next = (row.consecutiveFailures ?? 0) + 1;
-  const paused = next >= SYNC_AUTODISABLE_THRESHOLD;
+  const held = outcome.rateLimited === true;
+  const next = held ? (row.consecutiveFailures ?? 0) : (row.consecutiveFailures ?? 0) + 1;
+  const paused = !held && next >= SYNC_AUTODISABLE_THRESHOLD;
   await (ctx.db as AnyDb)
     .update(t)
     .set({
@@ -548,6 +562,7 @@ export async function runSync(
       await applyRunOutcome(ctx, row, {
         ok: false,
         error: e instanceof Error ? e.message : String(e),
+        rateLimited: isRateLimited(e),
       });
       throw e;
     }
@@ -563,7 +578,13 @@ export async function runSync(
     for (; pages < MAX_PAGES && written < MAX_ROWS_PER_RUN; pages++) {
       const page = await pullFromSource(
         integration.kind,
-        { config, settings: row.settings ?? {}, cursor, limit: PAGE_SIZE },
+        {
+          config,
+          settings: row.settings ?? {},
+          cursor,
+          limit: PAGE_SIZE,
+          connectionKey: integration.id,
+        },
         fetchImpl,
       );
       const rows = page.records.map((r) => toRow(integration.kind, row.id, row.mapping ?? {}, r));
@@ -591,7 +612,7 @@ export async function runSync(
     }
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
-    await applyRunOutcome(ctx, row, { ok: false, error });
+    await applyRunOutcome(ctx, row, { ok: false, error, rateLimited: isRateLimited(e) });
     throw e;
   }
 
@@ -746,7 +767,14 @@ async function pushCollection(
 
     await pushToDestination(
       integration.kind,
-      { config, settings: row.settings ?? {}, rows: out, columns, syncKey: row.id },
+      {
+        config,
+        settings: row.settings ?? {},
+        rows: out,
+        columns,
+        syncKey: row.id,
+        connectionKey: integration.id,
+      },
       fetchImpl,
     );
 

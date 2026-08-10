@@ -447,11 +447,17 @@ async function deliverOne(
   // Re-applied here because the queue handler reconstructs the message from a
   // stored payload: a job written before this rule existed, or hand-enqueued,
   // must not be able to hand a record to a provider that never asked for one.
-  const out = await deliverToIntegration(row.kind, cfg, messageFor(row.kind, message), fetchImpl);
+  const out = await deliverToIntegration(row.kind, cfg, messageFor(row.kind, message), fetchImpl, row.id);
   const ms = Date.now() - started;
   // status 0 is the adapters' "misconfigured or the request threw" sentinel —
   // there is no response to quote, so say so rather than logging a bare 0.
-  const error = out.ok ? null : out.status === 0 ? "provider misconfigured or unreachable" : `HTTP ${out.status}`;
+  const error = out.ok
+    ? null
+    : out.status === 0
+      ? "provider misconfigured or unreachable"
+      : out.status === 429
+        ? "rate limited by provider — will retry"
+        : `HTTP ${out.status}`;
 
   await recordDelivery(ctx, {
     integrationId: row.id,
@@ -465,7 +471,13 @@ async function deliverOne(
   if (out.ok) {
     await (ctx.db as AnyDb).update(t).set({ lastEventAt: new Date() }).where(eq(t.id, row.id));
   }
-  await applyDeliveryOutcome(ctx, row, out.ok, error ?? String(out.status));
+  // A 429 is logged like any other failure but deliberately kept out of the
+  // breaker: it means the provider is busy, not broken, and disabling a healthy
+  // connection for being throttled is the opposite of what an operator wants.
+  // The queue's own backoff is what spaces the retry out.
+  if (out.status !== 429) {
+    await applyDeliveryOutcome(ctx, row, out.ok, error ?? String(out.status));
+  }
   return out;
 }
 

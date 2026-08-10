@@ -26,6 +26,26 @@ export interface IntegrationConfigField {
   options?: readonly { value: string; label: string }[];
 }
 
+/**
+ * What a provider declares about the pace it will accept.
+ *
+ * Lives here rather than in `./throttle` so the descriptor type stays free of
+ * a dependency on the implementation that consumes it — throttle imports this,
+ * not the other way round.
+ */
+export interface RateLimit {
+  /** Sustained requests per second. Must be > 0. */
+  rps: number;
+  /**
+   * How many requests may go at once before pacing kicks in.
+   *
+   * Defaults to one second's worth. Raising it buys a faster start on a
+   * provider that tolerates a burst; lowering it to 1 makes every request wait
+   * its full interval, which is what a strict per-second quota wants.
+   */
+  burst?: number;
+}
+
 /** Grouping for the connect UI's catalog. */
 export type IntegrationCategory =
   | "chat"
@@ -360,6 +380,15 @@ export interface IntegrationProvider<Id extends string = string> {
   category: IntegrationCategory;
   capabilities: readonly IntegrationCapability[];
   configFields: readonly IntegrationConfigField[];
+  /**
+   * The pace this provider will accept, when it publishes one.
+   *
+   * Declared rather than hand-rolled per provider so the engine can space
+   * requests out at the one place every provider's `fetch` comes from. Absent
+   * for the providers whose quotas are generous enough that a page walk never
+   * approaches them — those still get 429 classification, just no pacing.
+   */
+  limits?: RateLimit;
   /**
    * This provider needs the ROW, not just the fact that it changed.
    *

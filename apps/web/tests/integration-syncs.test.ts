@@ -346,6 +346,42 @@ describe("running a sync", () => {
     expect(row.reason).toContain("consecutive failed runs");
   });
 
+  test("a 429 holds the cursor but does NOT count toward the breaker", async () => {
+    // The contrast with the 500 test above is the whole point: five 500s pause
+    // the sync, five 429s must not. A marketplace with a per-second quota
+    // answers a page walk with 429s, and pausing a healthy connection for being
+    // busy would leave an operator staring at a paused row blaming a status
+    // that means the opposite of broken.
+    const sync = await makeSync();
+    const throttling = async () =>
+      new Response("slow down", { status: 429, headers: { "retry-after": "1" } });
+
+    for (let i = 0; i < 5; i++) {
+      await expect(runInline(sync.id, throttling)).rejects.toThrow();
+    }
+
+    const row = client
+      .query(
+        "select enabled, cursor, consecutive_failures as failures, disabled_reason as reason, last_error as lastError from integration_syncs where id = ?",
+      )
+      .get(sync.id) as {
+      enabled: number;
+      cursor: string | null;
+      failures: number;
+      reason: string | null;
+      lastError: string | null;
+    };
+
+    expect(row.enabled).toBe(1);
+    expect(row.failures).toBe(0);
+    expect(row.reason).toBeNull();
+    // Still recorded, so the run is not silently clean — an operator can see
+    // why nothing landed.
+    expect(row.lastError).toMatch(/429|rate limit/i);
+    // And the rows are re-read rather than skipped, exactly as for a 500.
+    expect(row.cursor).toBeNull();
+  });
+
   test("a successful run clears the failure state", async () => {
     const sync = await makeSync();
     await expect(runInline(sync.id, async () => new Response("nope", { status: 500 }))).rejects.toThrow();

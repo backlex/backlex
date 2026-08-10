@@ -32,6 +32,25 @@ import {
   secretKeysOf,
 } from "./provider";
 import { INTEGRATION_KINDS, type IntegrationKind, PROVIDERS, providerFor } from "./providers";
+import { isRateLimited, throttled } from "./throttle";
+
+/**
+ * Wrap the caller's fetch (or the global one) with this provider's pacing and
+ * 429 classification.
+ *
+ * `connectionKey` namespaces the bucket per connected account, because two
+ * workspaces holding two sellers' credentials have two independent quotas at
+ * the provider — pacing them against each other would halve the throughput each
+ * of them is entitled to. It falls back to the kind when a caller has no
+ * connection in hand, which is the safe direction: over-pacing costs latency,
+ * under-pacing costs 429s.
+ */
+const engineFetch = (kind: string, connectionKey: string | undefined, fetchImpl?: FetchLike): FetchLike =>
+  throttled(
+    `${kind}:${connectionKey ?? "-"}`,
+    providerFor(kind)?.limits,
+    fetchImpl ?? ((i, init) => fetch(i, init)),
+  );
 
 export type {
   DeliverContext,
@@ -48,10 +67,12 @@ export type {
   IntegrationSource,
   DestinationPushContext,
   DestinationRow,
+  RateLimit,
   SourcePullContext,
   SourcePullPage,
   SourceRecord,
 } from "./provider";
+export { isRateLimited, parseRetryAfter, RateLimitedError, resetThrottleState, takeToken, throttled } from "./throttle";
 export {
   columnsForSettings,
   defineProvider,
@@ -161,13 +182,15 @@ export async function pushToDestination(
     columns: Record<string, string>;
     /** Identifies the sync, for a provider that has to mint ids elsewhere. */
     syncKey: string;
+    /** The connected account, so pacing is per-credential. See `engineFetch`. */
+    connectionKey?: string;
   },
   fetchImpl?: FetchLike,
 ): Promise<void> {
   const provider = providerFor(kind);
   if (!provider?.destination) throw new Error(`${kind} cannot be used as a destination`);
   if (args.rows.length === 0) return;
-  const doFetch: FetchLike = fetchImpl ?? ((i, init) => fetch(i, init));
+  const doFetch = engineFetch(kind, args.connectionKey, fetchImpl);
   const pick = (bag: Record<string, unknown>, key: string) => {
     const v = bag[key];
     return typeof v === "string" && v ? v : null;
@@ -203,12 +226,14 @@ export async function pullFromSource(
     settings: Record<string, unknown>;
     cursor: string | null;
     limit: number;
+    /** The connected account, so pacing is per-credential. See `engineFetch`. */
+    connectionKey?: string;
   },
   fetchImpl?: FetchLike,
 ): Promise<SourcePullPage> {
   const provider = providerFor(kind);
   if (!provider?.source) throw new Error(`${kind} cannot be used as a source`);
-  const doFetch: FetchLike = fetchImpl ?? ((i, init) => fetch(i, init));
+  const doFetch = engineFetch(kind, args.connectionKey, fetchImpl);
   const pick = (bag: Record<string, unknown>, key: string) => {
     const v = bag[key];
     return typeof v === "string" && v ? v : null;
@@ -265,18 +290,25 @@ export function matchesEventFilter(subscribed: readonly string[] | null | undefi
  * provider, or any thrown error returns `{ ok: false, status: 0 }` and never
  * throws — a broken integration must not break the write path that fired the
  * event.
+ *
+ * The one error given its own answer is a 429, which comes back as
+ * `{ ok: false, status: 429 }` rather than the catch-all `0`. The distinction
+ * is what lets the caller keep a throttled provider out of the breaker: `0`
+ * means "misconfigured or unreachable", and pausing a connection for being
+ * busy is the opposite of what an operator wants.
  */
 export async function deliverToIntegration(
   kind: string,
   config: Record<string, unknown>,
   evt: IntegrationEvent,
   fetchImpl?: FetchLike,
+  connectionKey?: string,
 ): Promise<DeliveryOutcome> {
   const fail: DeliveryOutcome = { ok: false, status: 0 };
   const provider = providerFor(kind);
   if (!provider?.deliver) return fail;
 
-  const doFetch: FetchLike = fetchImpl ?? ((i, init) => fetch(i, init));
+  const doFetch = engineFetch(kind, connectionKey, fetchImpl);
   try {
     const outcome = await provider.deliver({
       config,
@@ -296,7 +328,7 @@ export async function deliverToIntegration(
       },
     });
     return outcome ?? fail;
-  } catch {
-    return fail;
+  } catch (e) {
+    return isRateLimited(e) ? { ok: false, status: 429 } : fail;
   }
 }

@@ -51,9 +51,19 @@ describe("sdk — one module per domain", () => {
         ),
       );
       expect(owner, `${type} is declared by no clients/*.ts`).toBeDefined();
+      // The factory's name follows its file's, but only up to case: the module
+      // is `oauth-clients.ts` and the export is `makeOAuthClients`, because the
+      // acronym is spelled the way the rest of the file spells it. What has to
+      // hold is that the name is derivable and the import points at the domain
+      // module — not that an acronym gets miscapitalized to satisfy a regex.
       const factory = `make${owner!.replace(/(^|-)(.)/g, (_, __, c: string) => c.toUpperCase())}`;
-      expect(index).toContain(`import { ${factory} } from "./clients/${owner}";`);
-      expect(index).toMatch(new RegExp(`= ${factory}\\(core\\);`));
+      const imported = index.match(
+        new RegExp(`^import \\{ (\\w+) \\} from "\\./clients/${owner}";$`, "m"),
+      );
+      expect(imported, `no import of ./clients/${owner} in index.ts`).not.toBeNull();
+      const name = imported![1]!;
+      expect(name.toLowerCase()).toBe(factory.toLowerCase());
+      expect(index).toMatch(new RegExp(`= ${name}\\(core\\);`));
     }
   });
 

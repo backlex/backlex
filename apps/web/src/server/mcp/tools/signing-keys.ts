@@ -14,13 +14,20 @@ const textResult = (value: unknown): ToolResult => ({
 });
 
 const BASE = "/api/admin/signing-keys";
-const none = { type: "object", properties: {}, additionalProperties: false } as const;
-const byId = {
+// Typed as the field they fill rather than `as const`: `as const` makes
+// `required` a `readonly ["id"]`, which is not assignable to the mutable
+// `string[]` the descriptor declares.
+const none: McpTool["inputSchema"] = {
+  type: "object",
+  properties: {},
+  additionalProperties: false,
+};
+const byId: McpTool["inputSchema"] = {
   type: "object",
   properties: { id: { type: "string" } },
   required: ["id"],
   additionalProperties: false,
-} as const;
+};
 
 const post = async (ctx: any, path: string, body?: unknown) =>
   textResult(

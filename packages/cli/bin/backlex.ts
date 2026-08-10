@@ -29,6 +29,7 @@ import { runChannels } from "../src/channels";
 import { runRls } from "../src/rls";
 import { runS3 } from "../src/s3";
 import { runSupport } from "../src/support";
+import { runSigningKeys } from "../src/signing-keys";
 import { runDocuments } from "../src/documents";
 import { runApprovals } from "../src/approvals";
 import { runSignatures } from "../src/signatures";
@@ -166,6 +167,10 @@ Usage:
   backlex support <captcha|impersonate|impersonations|end>
       The captcha in front of your public auth endpoints, and audited
       impersonation of an end-user (read-only by default, always recorded).
+
+  backlex signing-keys <list|generate|import|promote|revoke|restore|delete>
+      JWT signing keys with a life cycle — rotate by promoting a standby key
+      instead of editing a secret and redeploying twice.
 
   backlex documents <list|save|delete|render>
       HTML templates rendered to PDF — contracts, quotes, invoices.
@@ -377,6 +382,10 @@ const run = async () => {
       return;
     case "support":
       await runSupport(rest);
+      return;
+    case "signing-keys":
+    case "signing-key":
+      await runSigningKeys(rest);
       return;
     case "documents":
     case "document":

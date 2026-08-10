@@ -5257,6 +5257,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Delete"
 msgstr "Delete"
@@ -7718,6 +7719,7 @@ msgid "General"
 msgstr "General"
 
 #: src/client/admin/pages/account-page.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Generate"
 msgstr "Generate"
 
@@ -7742,6 +7744,7 @@ msgstr "Generated DSL — saved to <0>role_permissions</0> on save."
 #~ msgstr "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
 
 #: src/client/admin/pages/account-page.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Generating…"
 msgstr "Generating…"
 
@@ -8887,6 +8890,10 @@ msgstr "Key \"{key}\" added with {base} value."
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Key \"{key}\" added."
 msgstr "Key \"{key}\" added."
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Key generated — it is published and signing nothing. Promote it once verifiers have picked up the JWKS."
+msgstr "Key generated — it is published and signing nothing. Promote it once verifiers have picked up the JWKS."
 
 #: src/client/admin/pages/automation/feature-flags.tsx
 msgid "Key is required."
@@ -11393,6 +11400,10 @@ msgstr "No sources yet"
 msgid "No spans recorded for this trace."
 msgstr "No spans recorded for this trace."
 
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "No stored keys"
+msgstr "No stored keys"
+
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "No submissions yet"
 msgstr "No submissions yet"
@@ -11567,6 +11578,10 @@ msgstr "not configured"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Not enough history yet"
 msgstr "Not enough history yet"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "not in JWKS"
+msgstr "not in JWKS"
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "not indexed"
@@ -13477,6 +13492,10 @@ msgstr "Profile saved for {0}."
 msgid "Profile saved."
 msgstr "Profile saved."
 
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Promote"
+msgstr "Promote"
+
 #. placeholder {0}: b.nps.promoters
 #. placeholder {1}: b.nps.passives
 #. placeholder {2}: b.nps.detractors
@@ -14724,6 +14743,7 @@ msgstr "Restart the count"
 
 #: src/client/admin/collections/collections-index.tsx
 #: src/client/admin/pages/data/database.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Restore"
 msgstr "Restore"
 
@@ -14915,6 +14935,7 @@ msgstr "revocable anytime"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Revoke"
 msgstr "Revoke"
@@ -15035,6 +15056,10 @@ msgstr "root"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Rotate"
 msgstr "Rotate"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Rotate by promoting a standby key, not by editing a secret and redeploying. A new key is published in the JWKS immediately and signs nothing — verifiers cache that document, so a key has to be visible before it signs. Promote it once they have picked it up."
+msgstr "Rotate by promoting a standby key, not by editing a secret and redeploying. A new key is published in the JWKS immediately and signs nothing — verifiers cache that document, so a key has to be visible before it signs. Promote it once they have picked it up."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Rotate key"
@@ -16710,6 +16735,10 @@ msgstr "Signing as {who}"
 #: src/client/pages/sign-in.tsx
 msgid "Signing in…"
 msgstr "Signing in…"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Signing keys"
+msgstr "Signing keys"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Signing order"
@@ -18491,6 +18520,10 @@ msgstr "Token URL"
 #: src/client/admin/pages/automation/chat.tsx
 msgid "tokens"
 msgstr "tokens"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Tokens are signed with whatever the environment configures. Generate a key to rotate from here instead — nothing changes until you promote one."
+msgstr "Tokens are signed with whatever the environment configures. Generate a key to rotate from here instead — nothing changes until you promote one."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Tokens without the <0>mcp:write</0> scope run read-only."

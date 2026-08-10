@@ -3520,3 +3520,30 @@ export const impersonations = sqliteTable(
     index("impersonations_subject_idx").on(t.subjectUserId),
   ],
 );
+
+/**
+ * A JWT signing key and its state — see packages/db/src/pg/schema.ts for the
+ * four states, why `standby` exists (a verifier's JWKS cache means a key has to
+ * be visible before it signs), and why the private half is encrypted rather
+ * than hashed. SQLite twin: timestamps epoch-ms.
+ */
+export const signingKeys = sqliteTable(
+  "signing_keys",
+  {
+    id: text("id").primaryKey(),
+    kid: text("kid").notNull(),
+    alg: text("alg").notNull(),
+    privateKey: text("private_key").notNull(),
+    publicKey: text("public_key").notNull(),
+    status: text("status").notNull().default("standby"),
+    note: text("note"),
+    createdAt: ts("created_at"),
+    activatedAt: integer("activated_at", { mode: "timestamp_ms" }),
+    retiredAt: integer("retired_at", { mode: "timestamp_ms" }),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    uniqueIndex("signing_keys_kid_idx").on(t.kid),
+    index("signing_keys_status_idx").on(t.status),
+  ],
+);

@@ -612,3 +612,39 @@ export const impersonationApi = {
   end: (id: string) =>
     api<{ data: ApiImpersonation }>(`/api/admin/impersonation/${id}/end`, { method: "POST" }),
 };
+
+/* ── signing keys ── */
+
+export interface ApiSigningKey {
+  id: string;
+  /** RFC 7638 thumbprint — derived from the key, never chosen. */
+  kid: string;
+  alg: "ES256" | "RS256";
+  status: "standby" | "in_use" | "previously_used" | "revoked";
+  note: string | null;
+  createdAt: number | null;
+  activatedAt: number | null;
+  retiredAt: number | null;
+  revokedAt: number | null;
+  /** Whether the public half is currently in `/.well-known/jwks.json`. */
+  published: boolean;
+}
+
+export const signingKeysApi = {
+  list: () => api<Envelope<ApiSigningKey[]>>(`/api/admin/signing-keys`),
+  /** Always lands in `standby` — a verifier caches the JWKS, so a key has to be
+   *  visible before it signs. */
+  generate: (body: { alg?: string; note?: string }) =>
+    api<Envelope<ApiSigningKey>>(`/api/admin/signing-keys`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  promote: (id: string) =>
+    api<Envelope<ApiSigningKey>>(`/api/admin/signing-keys/${id}/promote`, { method: "POST" }),
+  revoke: (id: string) =>
+    api<Envelope<ApiSigningKey>>(`/api/admin/signing-keys/${id}/revoke`, { method: "POST" }),
+  restore: (id: string) =>
+    api<Envelope<ApiSigningKey>>(`/api/admin/signing-keys/${id}/restore`, { method: "POST" }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/signing-keys/${id}`, { method: "DELETE" }),
+};

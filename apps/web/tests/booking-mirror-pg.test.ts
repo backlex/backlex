@@ -21,6 +21,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 import { BOOKING_COLLECTION_SLUG } from "../src/server/services/booking-collection";
 
 let setupError: Error | undefined;
@@ -97,7 +98,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await harness?.cleanup();
-});
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 const skipped = (): boolean => {
   if (setupError || !harness) {

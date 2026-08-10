@@ -242,6 +242,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Advisor rules | `docs/advisor.md` |
 | Auth planes (admin vs workspace end-users) | `docs/auth-planes.md` |
 | Captcha + audited impersonation | `docs/captcha-impersonation.md` |
+| JWT signing keys (standby → in use → revoked) | `docs/signing-keys.md` |
 | Organizations / teams (app-plane B2B grouping) | `docs/app-organizations.md` |
 | SSO (SAML / LDAP) | `docs/sso.md` |
 | Third-party auth (trust an external JWT issuer) | `docs/third-party-auth.md` |

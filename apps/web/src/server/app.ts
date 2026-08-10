@@ -112,6 +112,7 @@ import { s3Routes } from "./routes/s3";
 import { s3CredentialsRoutes } from "./routes/s3-credentials";
 import { captchaRoutes } from "./routes/captcha";
 import { impersonationRoutes } from "./routes/impersonation";
+import { signingKeysRoutes } from "./routes/signing-keys";
 import { captchaMiddleware } from "./lib/captcha-middleware";
 import { erasureRoutes } from "./routes/erasure";
 import { scimRoutes } from "./routes/scim";
@@ -925,6 +926,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/s3-credentials", s3CredentialsRoutes);
   app.route("/api/admin/captcha", captchaRoutes);
   app.route("/api/admin/impersonation", impersonationRoutes);
+  app.route("/api/admin/signing-keys", signingKeysRoutes);
   // The S3-compatible endpoint. Mounted OUTSIDE `/api` and before the session
   // middleware chain on purpose: a SigV4 request carries no cookie, no bearer
   // token and no workspace header, and running it through a gate built for

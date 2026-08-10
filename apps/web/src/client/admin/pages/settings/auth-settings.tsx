@@ -39,6 +39,7 @@ import { ScimCard } from "./scim-card";
 import { ThirdPartyAuthCard } from "./third-party-auth-card";
 import { AuthHooksCard } from "./auth-hooks-card";
 import { CaptchaCard } from "./captcha-card";
+import { SigningKeysCard } from "./signing-keys-card";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
 import { AuthSettingsSkeleton } from "../../page-skeletons";
@@ -649,6 +650,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
       {/* The gate in front of the endpoints above — sits after them because it
           is about who may REACH them, not about how they work. */}
       <CaptchaCard pushToast={pushToast} />
+      {/* What signs the tokens those endpoints hand out. */}
+      <SigningKeysCard pushToast={pushToast} />
       <AuthHooksCard pushToast={pushToast} />
 
       <ScimCard availableRoles={availableRoles} pushToast={pushToast} />

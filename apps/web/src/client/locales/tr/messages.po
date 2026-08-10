@@ -5257,6 +5257,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Delete"
 msgstr "Sil"
@@ -7718,6 +7719,7 @@ msgid "General"
 msgstr "Genel"
 
 #: src/client/admin/pages/account-page.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Generate"
 msgstr "Oluştur"
 
@@ -7742,6 +7744,7 @@ msgstr "Oluşturulan DSL — kayıt sırasında <0>role_permissions</0> tablosun
 #~ msgstr "Yeni bir token üretir ve mevcut bağlantıyı anında geçersiz kılar. Eski bağlantının gömülü olduğu her yer güncellenmelidir — yeni bağlantı yalnızca bir kez gösterilir."
 
 #: src/client/admin/pages/account-page.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Generating…"
 msgstr "Oluşturuluyor…"
 
@@ -8887,6 +8890,10 @@ msgstr "\"{key}\" anahtarı {base} değeriyle eklendi."
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Key \"{key}\" added."
 msgstr "\"{key}\" anahtarı eklendi."
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Key generated — it is published and signing nothing. Promote it once verifiers have picked up the JWKS."
+msgstr "Anahtar oluşturuldu — yayımlandı ve hiçbir şey imzalamıyor. Doğrulayıcılar JWKS'i aldıktan sonra yükseltin."
 
 #: src/client/admin/pages/automation/feature-flags.tsx
 msgid "Key is required."
@@ -11393,6 +11400,10 @@ msgstr "Henüz kaynak yok"
 msgid "No spans recorded for this trace."
 msgstr "Bu iz için kayıtlı span yok."
 
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "No stored keys"
+msgstr "Kayıtlı anahtar yok"
+
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "No submissions yet"
 msgstr "Henüz gönderim yok"
@@ -11567,6 +11578,10 @@ msgstr "yapılandırılmamış"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Not enough history yet"
 msgstr "Henüz yeterli geçmiş yok"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "not in JWKS"
+msgstr "JWKS'te değil"
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "not indexed"
@@ -13477,6 +13492,10 @@ msgstr "{0} için profil kaydedildi."
 msgid "Profile saved."
 msgstr "Profil kaydedildi."
 
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Promote"
+msgstr "Yükselt"
+
 #. placeholder {0}: b.nps.promoters
 #. placeholder {1}: b.nps.passives
 #. placeholder {2}: b.nps.detractors
@@ -14724,6 +14743,7 @@ msgstr "Sayacı sıfırla"
 
 #: src/client/admin/collections/collections-index.tsx
 #: src/client/admin/pages/data/database.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Restore"
 msgstr "Geri yükle"
 
@@ -14915,6 +14935,7 @@ msgstr "istediğiniz zaman iptal edilebilir"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/signing-keys-card.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Revoke"
 msgstr "İptal et"
@@ -15035,6 +15056,10 @@ msgstr "kök"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Rotate"
 msgstr "Döndür"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Rotate by promoting a standby key, not by editing a secret and redeploying. A new key is published in the JWKS immediately and signs nothing — verifiers cache that document, so a key has to be visible before it signs. Promote it once they have picked it up."
+msgstr "Bir gizli anahtarı düzenleyip yeniden dağıtarak değil, beklemedeki bir anahtarı yükselterek döndürün. Yeni anahtar JWKS'te hemen yayımlanır ve hiçbir şey imzalamaz — doğrulayıcılar bu belgeyi önbelleğe alır, bu yüzden bir anahtarın imzalamadan önce görünür olması gerekir. Aldıklarında yükseltin."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Rotate key"
@@ -16710,6 +16735,10 @@ msgstr "İmzalayan: {who}"
 #: src/client/pages/sign-in.tsx
 msgid "Signing in…"
 msgstr "Giriş yapılıyor…"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Signing keys"
+msgstr "İmzalama anahtarları"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Signing order"
@@ -18491,6 +18520,10 @@ msgstr "Token URL’si"
 #: src/client/admin/pages/automation/chat.tsx
 msgid "tokens"
 msgstr "token"
+
+#: src/client/admin/pages/settings/signing-keys-card.tsx
+msgid "Tokens are signed with whatever the environment configures. Generate a key to rotate from here instead — nothing changes until you promote one."
+msgstr "Jetonlar, ortamın yapılandırdığı neyse onunla imzalanır. Bunun yerine buradan döndürmek için bir anahtar oluşturun — siz birini yükseltene kadar hiçbir şey değişmez."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Tokens without the <0>mcp:write</0> scope run read-only."

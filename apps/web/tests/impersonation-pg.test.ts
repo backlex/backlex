@@ -12,6 +12,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -51,7 +52,7 @@ beforeAll(async () => {
     `SELECT id FROM app_users WHERE email = 'pg-subject@example.test'`,
   );
   subjectId = rows[0]!.id as string;
-});
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

@@ -347,6 +347,8 @@ export const buildContext = (env: Env): Promise<Ctx> => {
   return p;
 };
 
+import { bindSigningKeysToDatabase } from "./services/signing-keys";
+
 const assembleContext = async (env: Env): Promise<Ctx> => {
   const override = testDbOverrides.get(env as unknown as object);
 
@@ -961,6 +963,12 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // Late-bind so the `onUserCreated` closure can publish events through the
   // fully assembled Ctx (runFlows + webhook dispatch need `fullCtx`).
   fullCtx = ctx;
+  // Point token signing/verification at the `signing_keys` rows. Registered
+  // here because `signAccessToken` takes only an `Env`; the source falls back
+  // to the env keys whenever there are no rows, so an instance that never uses
+  // the feature behaves exactly as it did before it existed. See
+  // `services/signing-keys.ts`.
+  bindSigningKeysToDatabase(ctx);
   ctxCache.set(env as unknown as object, ctx);
   return ctx;
 };

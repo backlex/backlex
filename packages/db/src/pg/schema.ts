@@ -4014,3 +4014,64 @@ export const impersonations = pgTable(
     index("impersonations_subject_idx").on(t.subjectUserId),
   ],
 );
+
+/**
+ * A JWT signing key, and where it is in its life.
+ *
+ * ## Why the database, when env vars already work
+ *
+ * `AUTH_JWT_PRIVATE_KEY` signs tokens today and that is fine until you have to
+ * ROTATE. Rotation by env var means editing a secret and redeploying, twice —
+ * once to publish the new public key so verifiers learn it, once more to start
+ * signing with it — and there is no way back except a third deploy. Every one
+ * of those steps is a deploy, in an incident, under time pressure.
+ *
+ * A row has states instead, and every transition is reversible:
+ *
+ *   standby          generated, PUBLISHED in the JWKS, signing nothing yet.
+ *                    That is the whole point of the state: verifiers cache the
+ *                    JWKS, so a key has to be visible BEFORE it signs anything.
+ *   in_use           exactly one; new tokens are signed with it.
+ *   previously_used  no longer signs; still verifies, because tokens it signed
+ *                    are still in the wild.
+ *   revoked          removed from the JWKS; tokens it signed stop verifying.
+ *
+ * Promoting a standby key demotes the current one to `previously_used`, which
+ * is what makes a rollback a promotion in the other direction rather than a
+ * restore from somewhere.
+ *
+ * `private_key` is encrypted with the deployment's `AUTH_SECRET` — the same
+ * `encryptSecret` the auth-config secrets use. That protects a database dump
+ * and nothing beyond it, which is the honest description; the alternative is
+ * keys that can only ever live in env.
+ *
+ * INSTANCE-level, not per workspace: the JWKS is one document at one URL and a
+ * token's `iss` names the instance. A per-workspace key would need a
+ * per-workspace JWKS URL, which is a different feature.
+ */
+export const signingKeys = pgTable(
+  "signing_keys",
+  {
+    id: text("id").primaryKey(),
+    /** RFC 7638 thumbprint of the public key — derived, never chosen, so it is
+     *  stable for a key and changes exactly when the key does. */
+    kid: text("kid").notNull(),
+    /** `ES256` | `RS256`. */
+    alg: text("alg").notNull(),
+    /** `enc:v1:…` over the PKCS#8 PEM. */
+    privateKey: text("private_key").notNull(),
+    /** SPKI PEM. Public by definition — this is what the JWKS publishes. */
+    publicKey: text("public_key").notNull(),
+    /** `standby` | `in_use` | `previously_used` | `revoked`. */
+    status: text("status").notNull().default("standby"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    retiredAt: timestamp("retired_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("signing_keys_kid_idx").on(t.kid),
+    index("signing_keys_status_idx").on(t.status),
+  ],
+);

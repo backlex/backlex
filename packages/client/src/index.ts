@@ -59,6 +59,7 @@ import type { ChannelsClient } from "./clients/channels";
 import type { RlsClient } from "./clients/rls";
 import type { S3Client } from "./clients/s3";
 import type { SupportClient } from "./clients/support";
+import type { SigningKeysClient } from "./clients/signing-keys";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
 import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
@@ -147,6 +148,7 @@ export * from "./clients/channels";
 export * from "./clients/rls";
 export * from "./clients/s3";
 export * from "./clients/support";
+export * from "./clients/signing-keys";
 export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
@@ -180,6 +182,7 @@ import { makeChannels } from "./clients/channels";
 import { makeRls } from "./clients/rls";
 import { makeS3 } from "./clients/s3";
 import { makeSupport } from "./clients/support";
+import { makeSigningKeys } from "./clients/signing-keys";
 import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
@@ -300,6 +303,9 @@ export interface BacklexClient {
   s3: S3Client;
   /** Captcha configuration, and audited impersonation of an end-user. */
   support: SupportClient;
+  /** JWT signing keys and their life cycle, so rotation is a state change
+   *  rather than two deploys. */
+  signingKeys: SigningKeysClient;
   extensions: ExtensionsClient;
   /** Named KPIs — the shared definition layer every surface reads a figure from. */
   kpis: KpisClient;
@@ -870,6 +876,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const rls = makeRls(core);
   const s3 = makeS3(core);
   const support = makeSupport(core);
+  const signingKeys = makeSigningKeys(core);
   const payments = makePayments(core);
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
@@ -929,6 +936,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     rls,
     s3,
     support,
+    signingKeys,
     extensions,
     kpis,
     dashboards,

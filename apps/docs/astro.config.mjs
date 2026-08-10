@@ -172,6 +172,7 @@ export default defineConfig({
             { slug: "rls" },
             { slug: "s3" },
             { slug: "captcha-impersonation" },
+            { slug: "signing-keys" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

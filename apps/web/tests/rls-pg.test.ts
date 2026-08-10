@@ -21,6 +21,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -99,7 +100,7 @@ beforeAll(async () => {
   await post("/api/items/notes", { title: "theirs", holder: "u2" });
 
   tenantId = (await raw(`SELECT id FROM tenants LIMIT 1`))[0].id as string;
-});
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

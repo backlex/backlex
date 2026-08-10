@@ -15,6 +15,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
@@ -47,7 +48,7 @@ beforeAll(async () => {
     name: "A",
   });
   if (!signUp.ok) throw new Error(`sign-up failed: ${signUp.status}`);
-});
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

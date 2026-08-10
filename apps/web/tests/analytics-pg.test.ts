@@ -13,6 +13,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 
 const DAY = 86_400_000;
 const STACK =
@@ -68,7 +69,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await harness?.cleanup();
-});
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 /** Assert the sentinel when pglite couldn't boot, so bun-test still sees an
  *  expect() call and the run stays green (mirrors `pg-smoke.test.ts`). */

@@ -16,6 +16,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 
 const DAY = 86_400_000;
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -70,7 +71,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await harness?.cleanup();
-});
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 test("series buckets land in the right slices on Postgres", async () => {
   if (!harness) return;

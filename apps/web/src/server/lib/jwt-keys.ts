@@ -169,7 +169,10 @@ const importPublic = async (
   }
 };
 
-const describe = async (
+/** The `kid` and public JWK for a key. Exported because the signing-key store
+ *  derives a row's `kid` the same way, and two implementations of a thumbprint
+ *  would eventually disagree about which key a token names. */
+export const describePublicKey = async (
   alg: JwtAlg,
   key: CryptoKey,
 ): Promise<{ kid: string; jwk: PublicJwk }> => {
@@ -181,7 +184,7 @@ const describe = async (
 
 /** Re-import a public JWK for verification. The signing key itself can't verify
  *  (private keys are imported with `["sign"]` only). */
-const verifierFor = async (jwk: PublicJwk): Promise<CryptoKey> =>
+export const verifierForJwk = async (jwk: PublicJwk): Promise<CryptoKey> =>
   crypto.subtle.importKey(
     "jwk",
     { ...jwk, key_ops: ["verify"], ext: true } as JsonWebKey,
@@ -189,6 +192,39 @@ const verifierFor = async (jwk: PublicJwk): Promise<CryptoKey> =>
     true,
     ["verify"],
   );
+
+/** Import a PKCS#8 PEM. Exported for the signing-key store, which holds PEMs
+ *  in rows rather than in env. */
+export const importPrivatePem = async (
+  pem: string,
+): Promise<{ alg: JwtAlg; key: CryptoKey }> => {
+  const [bytes] = pemBlocks(pem);
+  if (!bytes) throw new Error("No PEM block found — expected a PKCS#8 private key");
+  return importPrivate(bytes);
+};
+
+/** Import an SPKI PEM. */
+export const importPublicPem = async (
+  pem: string,
+): Promise<{ alg: JwtAlg; key: CryptoKey }> => {
+  const [bytes] = pemBlocks(pem);
+  if (!bytes) throw new Error("No PEM block found — expected an SPKI public key");
+  return importPublic(bytes);
+};
+
+/** Export a CryptoKey back to PEM. The inverse of the parsing above, needed
+ *  because a generated key has to be STORED as text. */
+export const pemFromKey = async (
+  key: CryptoKey,
+  format: "pkcs8" | "spki",
+): Promise<string> => {
+  const bytes = new Uint8Array(await crypto.subtle.exportKey(format, key));
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  const body = btoa(bin).replace(/(.{64})/g, "$1\n").trim();
+  const label = format === "pkcs8" ? "PRIVATE KEY" : "PUBLIC KEY";
+  return `-----BEGIN ${label}-----\n${body}\n-----END ${label}-----\n`;
+};
 
 const load = async (env: JwtKeyEnv): Promise<KeyMaterial> => {
   const material: KeyMaterial = { signing: null, verify: new Map(), jwks: [] };
@@ -202,17 +238,17 @@ const load = async (env: JwtKeyEnv): Promise<KeyMaterial> => {
       );
     }
     const { alg, key } = await importPrivate(bytes);
-    const { kid, jwk } = await describe(alg, key);
+    const { kid, jwk } = await describePublicKey(alg, key);
     material.signing = { alg, kid, key };
     material.jwks.push(jwk);
-    material.verify.set(kid, { alg, key: await verifierFor(jwk) });
+    material.verify.set(kid, { alg, key: await verifierForJwk(jwk) });
   }
 
   const publicPem = env.AUTH_JWT_PUBLIC_KEYS?.trim();
   if (publicPem) {
     for (const bytes of pemBlocks(publicPem)) {
       const { alg, key } = await importPublic(bytes);
-      const { kid, jwk } = await describe(alg, key);
+      const { kid, jwk } = await describePublicKey(alg, key);
       // The current signing key may legitimately also be listed here.
       if (material.verify.has(kid)) continue;
       material.jwks.push(jwk);
@@ -236,7 +272,42 @@ let cached: { fingerprint: string; material: Promise<KeyMaterial> } | null = nul
  * asymmetric when they aren't, and the failure is immediate and obvious at
  * deploy time instead.
  */
-export const jwtKeyMaterial = (env: JwtKeyEnv): Promise<KeyMaterial> => {
+export const jwtKeyMaterial = async (env: JwtKeyEnv): Promise<KeyMaterial> => {
+  // Stored keys win, when there are any. An instance that has never used them
+  // gets exactly the behaviour it had before this existed — which is the point
+  // of returning `null` rather than an empty material from the source.
+  const stored = await keySource?.();
+  if (stored) return mergeEnvVerifiers(stored, await envKeyMaterial(env));
+
+  return envKeyMaterial(env);
+};
+
+/**
+ * Keep the env key VERIFYING once stored keys take over signing.
+ *
+ * The moment a row is promoted, every token minted from `AUTH_JWT_PRIVATE_KEY`
+ * is still in somebody's hands and its `exp` is the only thing that ends it.
+ * Dropping the env key from the verify set the instant the first row appears
+ * would sign every one of them out — during the very migration the feature
+ * exists to make safe.
+ *
+ * Signing is NOT merged: a stored `in_use` key is the answer, and falling back
+ * to env when no row is promoted would mean a workspace with only standby keys
+ * silently kept signing with the old one.
+ */
+const mergeEnvVerifiers = (stored: KeyMaterial, env: KeyMaterial): KeyMaterial => {
+  const verify = new Map(stored.verify);
+  const jwks = [...stored.jwks];
+  for (const [kid, entry] of env.verify) {
+    if (verify.has(kid)) continue;
+    verify.set(kid, entry);
+    const jwk = env.jwks.find((j) => j.kid === kid);
+    if (jwk) jwks.push(jwk);
+  }
+  return { signing: stored.signing, verify, jwks };
+};
+
+const envKeyMaterial = (env: JwtKeyEnv): Promise<KeyMaterial> => {
   const fingerprint = `${env.AUTH_JWT_PRIVATE_KEY ?? ""}\0${env.AUTH_JWT_PUBLIC_KEYS ?? ""}`;
   if (cached && cached.fingerprint === fingerprint) return cached.material;
   const material = load(env).catch((e) => {
@@ -247,9 +318,29 @@ export const jwtKeyMaterial = (env: JwtKeyEnv): Promise<KeyMaterial> => {
   return material;
 };
 
-/** Test seam — drops the memoized key material. */
+/**
+ * Where stored (database-backed) keys come from.
+ *
+ * A module-level registration rather than a parameter, because
+ * `signAccessToken` takes only an `Env` and threading a database handle through
+ * every caller of a function that signs a token would touch a great deal of
+ * code to say one thing. `services/signing-keys.ts` registers it from
+ * `buildContext`; unregistered (tests, the JWKS route on a fresh isolate) means
+ * env keys, which is the pre-feature behaviour.
+ */
+let keySource: (() => Promise<KeyMaterial | null>) | null = null;
+
+export const registerSigningKeySource = (
+  source: (() => Promise<KeyMaterial | null>) | null,
+): void => {
+  keySource = source;
+};
+
+/** Test seam — drops the memoized key material AND any registered stored-key
+ *  source, so a spec starts from the env-only behaviour. */
 export const resetJwtKeyCache = (): void => {
   cached = null;
+  keySource = null;
 };
 
 /** The `/.well-known/jwks.json` body. `{ keys: [] }` (not a 404) when no

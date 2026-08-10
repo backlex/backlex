@@ -34,6 +34,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { sql, type SQL } from "drizzle-orm";
 import { ensureMigrations, type AutoMigrateDb } from "@backlex/db";
 import { MIGRATIONS as PG_MIGRATIONS } from "@backlex/db/pg/migrations-bundle";
+import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 1 — error classifier + per-migration loop, no pglite
@@ -270,7 +271,11 @@ describe("auto-migrate (pg) — end-to-end pglite", () => {
     } finally {
       await pg.close();
     }
-  });
+    // Booting a WASM Postgres and replaying the WHOLE bundle is seconds of CPU
+    // that grows with every migration added, and the suite runs it alongside
+    // several other pglite specs. The default 5s budget was a fuse: it went off
+    // the first time the bundle got long enough, saying nothing about the code.
+  }, PGLITE_BOOT_TIMEOUT_MS);
 });
 
 afterAll(() => {

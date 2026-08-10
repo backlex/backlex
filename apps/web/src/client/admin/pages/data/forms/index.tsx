@@ -177,16 +177,23 @@ function FormCards({
 
 /* ── canvas ────────────────────────────────────────────────────────── */
 
-type BuilderTab = "edit" | "share" | "results" | "submissions";
+const BUILDER_TABS = ["edit", "share", "results", "submissions"] as const;
+type BuilderTab = (typeof BUILDER_TABS)[number];
 
 type Selection = { kind: "block"; id: string } | { kind: "ending" } | null;
 
 export function FormsPage({
   pushToast,
   setActiveNav,
+  activeForm,
+  activeTab,
+  openFormAt,
 }: {
   pushToast: PushToast;
   setActiveNav?: (nav: string) => void;
+  activeForm?: string | null;
+  activeTab?: string | null;
+  openFormAt?: (id: string | null, tab?: string) => void;
 }) {
   const { t } = useLingui();
   const [forms, setForms] = useState<ApiForm[]>([]);
@@ -195,7 +202,25 @@ export function FormsPage({
 
   // Builder state — `form` is the working copy; edits autosave.
   const [form, setForm] = useState<ApiForm | null>(null);
-  const [tab, setTab] = useState<BuilderTab>("edit");
+  /**
+   * Which form is open and which of its tabs — both from the path
+   * (`/forms/:id/:tab`), not from state.
+   *
+   * Submissions is a tab people sit on, watching for answers to land, and
+   * asking for them used to mean reloading the admin — which closed the form
+   * and came back on Edit. An unknown tab reads as the first one, so a
+   * hand-typed or truncated URL still opens the builder.
+   */
+  const openId = activeForm ?? null;
+  const tab: BuilderTab = (BUILDER_TABS as readonly string[]).includes(activeTab ?? "")
+    ? (activeTab as BuilderTab)
+    : "edit";
+  const setTab = useCallback(
+    (next: BuilderTab) => {
+      if (openId) openFormAt?.(openId, next);
+    },
+    [openId, openFormAt],
+  );
   const [sel, setSel] = useState<Selection>(null);
   const [locale, setLocale] = useState("en");
   const [eligible, setEligible] = useState<ApiFormEligibleField[]>([]);
@@ -244,6 +269,38 @@ export function FormsPage({
         .catch(() => setCollections([])),
     ]).finally(() => setLoaded(true));
   }, [reload]);
+
+  /**
+   * Re-read the open form's tallies — how many answers arrived, how many were
+   * turned away, when the last one landed.
+   *
+   * They are the server's count rather than part of the draft, so replacing
+   * them under an edit in progress loses nothing the operator typed; only the
+   * three counters are copied across for that reason, and the autosave is left
+   * alone because it fires on `scheduleSave` and not on `form` changing.
+   * Without this the numbers above the submissions list stayed at whatever they
+   * were when the form was opened.
+   */
+  const refreshCounts = useCallback(async () => {
+    const open = formRef.current;
+    if (!open) return;
+    const r = await formsApi.list();
+    const fresh = (r.data ?? []).find((f) => f.id === open.id);
+    if (!fresh) return;
+    setForms((prev) =>
+      prev.map((f) => (f.id === fresh.id ? { ...fresh, fields: withIds(fresh.fields) } : f)),
+    );
+    setForm((cur) =>
+      cur && cur.id === fresh.id
+        ? {
+            ...cur,
+            submissionCount: fresh.submissionCount,
+            blockedCount: fresh.blockedCount,
+            lastSubmissionAt: fresh.lastSubmissionAt,
+          }
+        : cur,
+    );
+  }, []);
 
   // Eligible fields for the open form's collection.
   useEffect(() => {
@@ -464,16 +521,40 @@ export function FormsPage({
   );
 
   const openForm = (f: ApiForm) => {
-    setForm({ ...f, fields: withIds(f.fields) });
-    setTab("edit");
-    setSel(null);
-    setLocale((f.settings?.languages?.[0] ?? "en"));
-    setSaveState("saved");
+    openFormAt?.(f.id, "edit");
   };
+
+  /**
+   * Fill the working copy whenever the path names a form it does not already
+   * hold.
+   *
+   * Keyed on the id, so switching tabs — which changes the path but not which
+   * form is open — leaves the draft alone, and so do the `setForms` calls the
+   * autosave and the submission-count refresh make.
+   */
+  useEffect(() => {
+    if (!openId) {
+      setForm(null);
+      return;
+    }
+    if (formRef.current?.id === openId) return;
+    const f = forms.find((x) => x.id === openId);
+    if (!f) return;
+    setForm({ ...f, fields: withIds(f.fields) });
+    setSel(null);
+    setLocale(f.settings?.languages?.[0] ?? "en");
+    setSaveState("saved");
+  }, [openId, forms]);
+
+  /** An id that outlived the form it named points at nothing; the list is the
+   *  honest answer, and the path should say so too. */
+  useEffect(() => {
+    if (loaded && openId && !forms.some((f) => f.id === openId)) openFormAt?.(null);
+  }, [loaded, openId, forms, openFormAt]);
 
   const closeBuilder = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    setForm(null);
+    openFormAt?.(null);
     void reload();
   };
 
@@ -495,7 +576,10 @@ export function FormsPage({
     if (!form) return;
     setConfirm(null);
     const id = form.id;
-    setForm(null);
+    // Leave the builder first: the row is about to stop existing, and the
+    // not-found effect would otherwise send the page to the list a beat later
+    // for a reason that reads like a failure.
+    openFormAt?.(null);
     setForms((prev) => prev.filter((f) => f.id !== id));
     try {
       await formsApi.remove(id);
@@ -519,7 +603,15 @@ export function FormsPage({
             </Button>
           }
         />
-        <FormCards forms={forms} loaded={loaded} onOpen={openForm} onNew={() => setNewOpen(true)} />
+        {/* A deep link names a form whose row has landed but whose working copy
+            is filled one render later. Cards under it would flash the list on
+            the way to the builder, so the skeleton stays up until it opens. */}
+        <FormCards
+          forms={forms}
+          loaded={loaded && !(openId && forms.some((f) => f.id === openId))}
+          onOpen={openForm}
+          onNew={() => setNewOpen(true)}
+        />
         <NewFormDialog
           open={newOpen}
           onClose={() => setNewOpen(false)}
@@ -1079,6 +1171,7 @@ export function FormsPage({
           fieldBlocks={fieldBlocks}
           efByName={efByName}
           pushToast={pushToast}
+          refreshCounts={refreshCounts}
           onOpenCollection={() => setActiveNav?.("collections/" + form.collection)}
         />
       )}

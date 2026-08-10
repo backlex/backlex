@@ -67,16 +67,43 @@ import { COMMON_ZONES, DAY_SETS, DaySet, HORIZON_DAYS, WINDOWS, WindowKey, inZon
  *   page, and for the same reason.
  */
 
-export function BookingPage({ pushToast }: { pushToast: PushToast }) {
+export function BookingPage({
+  pushToast,
+  activeResource,
+  activeTab,
+  openResourceAt,
+}: {
+  pushToast: PushToast;
+  activeResource?: string | null;
+  activeTab?: string | null;
+  openResourceAt?: (key: string | null, tab?: string) => void;
+}) {
   const { t } = useLingui();
   const [resources, setResources] = useState<ApiBookingResource[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  /** Which resource is open, or null for the list. The whole page turns on it. */
-  const [openKey, setOpenKey] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("hours");
+  /**
+   * Which resource is open and which of its tabs — both from the path
+   * (`/booking/:key/:tab`), not from state.
+   *
+   * This page is watched as much as it is edited: an operator sits on Bookings
+   * waiting for one to come in. Held in state, every refresh closed the
+   * resource and went back to Hours — and refreshing used to be the only way to
+   * see what had arrived. An unknown tab reads as the first one rather than
+   * rendering nothing, so a hand-typed or truncated URL still opens.
+   */
+  const openKey = activeResource ?? null;
+  const tab: Tab = (TABS as readonly string[]).includes(activeTab ?? "")
+    ? (activeTab as Tab)
+    : "hours";
+  const setTab = useCallback(
+    (at: Tab) => {
+      if (openKey) openResourceAt?.(openKey, at);
+    },
+    [openKey, openResourceAt],
+  );
 
   const [statusFilter, setStatusFilter] = useState("");
   const [windowKey, setWindowKey] = useState<WindowKey>("upcoming");
@@ -294,6 +321,11 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
    * refuse unless the two agree.
    */
   const hydratedKey = useRef<string | null>(null);
+  /** The same answer, in state — the ref is read synchronously by the save
+   *  timer, and the render needs to know not to paint an empty form over a
+   *  resource whose row has landed but whose working copy has not been filled
+   *  from it yet. */
+  const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   /** The one place a problem code becomes a sentence — inside the component,
    *  where the `t` macro is the real one. */
@@ -309,7 +341,9 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
         case "rule-range":
           return t`A date range has to end on or after the day it starts.`;
         case "question-label":
-          return t`Give every question a label.`;
+          return p.label
+            ? t`"${p.label}" needs a letter or a digit in it — that is what the answer is stored under.`
+            : t`Give every question a label.`;
         case "question-duplicate":
           return t`Two questions share the stored name "${p.name}". Names have to be unique.`;
         case "mirror-map":
@@ -479,7 +513,14 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
 
   /* ── opening and closing a resource ──────────────────────────────────── */
 
-  const openResource = (r: ApiBookingResource, at: Tab = "hours") => {
+  /**
+   * Fill the working copy from a resource row.
+   *
+   * Separate from navigating to it, because the two no longer happen together:
+   * a deep link arrives with the key already in the path and the row still in
+   * flight, so hydration is what the effect below does once the list lands.
+   */
+  const hydrate = (r: ApiBookingResource) => {
     setForm({
       key: r.key,
       name: r.name,
@@ -519,17 +560,47 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
     setTotal(0);
     setOffset(0);
     hydratedKey.current = r.key;
-    setOpenKey(r.key);
-    setTab(at);
+    setHydratedFor(r.key);
     void loadPlan(r.key);
     void loadBookings(r.key).catch(() => {});
+  };
+
+  /**
+   * Fill the working copy whenever the path names a resource it does not
+   * already hold.
+   *
+   * Guarded on the key rather than on the row so that switching tabs — which
+   * changes the path but not which resource is open — does not throw away
+   * edits that have not been saved yet.
+   */
+  useEffect(() => {
+    if (!openKey) {
+      hydratedKey.current = null;
+      setHydratedFor(null);
+      return;
+    }
+    if (hydratedKey.current === openKey) return;
+    const r = resources.find((x) => x.key === openKey);
+    if (r) hydrate(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openKey, resources]);
+
+  /** A key that survived a rename or a delete elsewhere points at nothing; the
+   *  list is the honest answer, and the path should say so too. */
+  useEffect(() => {
+    if (loaded && openKey && !resources.some((x) => x.key === openKey)) openResourceAt?.(null);
+  }, [loaded, openKey, resources, openResourceAt]);
+
+  const openResource = (r: ApiBookingResource, at: Tab = "hours") => {
+    openResourceAt?.(r.key, at);
   };
 
   const closeResource = () => {
     // Whatever is pending goes now rather than on a timer nobody is watching.
     flushSave();
     hydratedKey.current = null;
-    setOpenKey(null);
+    setHydratedFor(null);
+    openResourceAt?.(null);
     setDetail(null);
   };
 
@@ -569,6 +640,63 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
     void loadPlan(openKey);
     void loadBookings(openKey, statusFilter || undefined, windowKey, offset).catch(() => {});
   };
+
+  /**
+   * Re-read the open resource's bookings and its week, on demand.
+   *
+   * The list is a snapshot of the moment the tab was opened, and the rows that
+   * matter most arrive from somewhere this page never hears about — the public
+   * booking page, while the operator is looking at this one. Without a way to
+   * ask again, the only way to see a booking that has just come in was to
+   * reload the whole admin, which also threw away which resource was open and
+   * which tab was on screen.
+   */
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshBookings = async () => {
+    const key = openKeyRef.current;
+    if (!key) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        loadPlan(key),
+        loadBookings(key, statusFilter || undefined, windowKey, offset),
+      ]);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  const refreshBookingsRef = useRef(refreshBookings);
+  refreshBookingsRef.current = refreshBookings;
+
+  /**
+   * Coming back to the window re-reads the list.
+   *
+   * Taking a test booking, or watching one arrive, means leaving this window
+   * and returning to it — which is exactly the moment the list on screen is
+   * known to be behind. Only while the Bookings tab is the one being looked at;
+   * the other four show the resource's own settings, which nobody else edits.
+   */
+  useEffect(() => {
+    if (tab !== "bookings" || !openKey) return;
+    // `focus` and `visibilitychange` both fire on a single return to the tab,
+    // so the second one within a moment of the first is the same event twice.
+    let last = 0;
+    const onBack = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - last < 1000) return;
+      last = now;
+      void refreshBookingsRef.current();
+    };
+    window.addEventListener("focus", onBack);
+    document.addEventListener("visibilitychange", onBack);
+    return () => {
+      window.removeEventListener("focus", onBack);
+      document.removeEventListener("visibilitychange", onBack);
+    };
+  }, [tab, openKey]);
 
   /* ── create / rotate / delete ────────────────────────────────────────── */
 
@@ -631,8 +759,15 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
 
   const onDelete = async (r: ApiBookingResource) => {
     const snapshot = resources;
+    // Leave the detail first: the row is about to stop existing, and the
+    // not-found effect would otherwise send the page to the list a beat later
+    // for a reason that reads like a failure.
+    if (openKey === r.key) {
+      hydratedKey.current = null;
+      setHydratedFor(null);
+      openResourceAt?.(null);
+    }
     setResources((arr) => arr.filter((x) => x.key !== r.key));
-    if (openKey === r.key) setOpenKey(null);
     try {
       await bookingApi.deleteResource(r.key);
       tokenCache.delete(r.key);
@@ -766,6 +901,10 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
   const link = current ? tokenCache.get(current.key) : undefined;
 
   if (!loaded) return <BookingSkeleton />;
+  // The row is in hand but the working copy has not been filled from it yet —
+  // one render, on a deep link. Painting the detail now would show an empty
+  // form over a real resource.
+  if (openKey && current && hydratedFor !== openKey) return <BookingSkeleton />;
 
   /* ── the create dialog, shared by both views ─────────────────────────── */
 
@@ -1161,7 +1300,20 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
               <span className="text-sm font-medium">
                 <Trans>Bookings</Trans>
               </span>
-              <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
+              {/* `ml-auto` stops meaning anything once this row is wide enough
+                  to wrap — it is already the full width — so the wrapped lines
+                  are held to the right edge explicitly. */}
+              <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  disabled={refreshing}
+                  onClick={() => void refreshBookings()}
+                >
+                  <I.Refresh className={cn("size-4", refreshing && "animate-spin")} />
+                  <span className="max-sm:sr-only">
+                    <Trans>Refresh</Trans>
+                  </span>
+                </Button>
                 <Button variant="outline" onClick={() => setBookOpen(true)}>
                   <I.Plus className="size-4" />
                   <span className="max-sm:sr-only">

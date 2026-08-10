@@ -6,6 +6,7 @@ import {
 import {
   type PublicAppearance,
 } from "@/lib/public-theme";
+import { isBlankQuestion } from "./questions";
 
 export const DEFAULT_FORM = {
   key: "",
@@ -84,7 +85,8 @@ export const bodyOf = (d: {
   })),
   // Options only travel with a choice: a question that was a dropdown and is
   // now free text would otherwise keep clamping its own answers server-side.
-  questions: d.questions.map((q) => ({
+  // A row nobody has typed into yet is not sent at all — see `isBlankQuestion`.
+  questions: d.questions.filter((q) => !isBlankQuestion(q)).map((q) => ({
     name: q.name,
     label: q.label?.trim() || q.name,
     type: q.type ?? "text",
@@ -116,7 +118,7 @@ export type Problem =
   | { code: "rule-order" }
   | { code: "rule-dates" }
   | { code: "rule-range" }
-  | { code: "question-label" }
+  | { code: "question-label"; label: string }
   | { code: "question-duplicate"; name: string }
   | { code: "question-options"; label: string }
   | { code: "mirror-map"; collection: string };
@@ -140,7 +142,11 @@ export const problemWith = (d: {
   // one would silently overwrite each other on every booking.
   const seen = new Set<string>();
   for (const q of d.questions) {
-    if (!q.name) return { code: "question-label" };
+    // An untouched row is not yet a question, so it is not yet wrong either.
+    if (isBlankQuestion(q)) continue;
+    // Past the blank check, a missing name means the label is there but has
+    // nothing `questionName` can keep — punctuation, or emoji alone.
+    if (!q.name) return { code: "question-label", label: (q.label ?? "").trim() };
     if (seen.has(q.name)) return { code: "question-duplicate", name: q.name };
     seen.add(q.name);
     if (q.type === "select" && (q.options ?? []).filter((o) => o.trim() !== "").length === 0)

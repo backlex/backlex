@@ -1,5 +1,5 @@
 import type { PushToast } from "../../../types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../../icons";
 import {
@@ -189,42 +189,98 @@ export function SubmissionsTab({
   fieldBlocks,
   efByName,
   pushToast,
+  refreshCounts,
   onOpenCollection,
 }: {
   form: ApiForm;
   fieldBlocks: ApiFormBlock[];
   efByName: Map<string, ApiFormEligibleField>;
   pushToast: PushToast;
+  refreshCounts: () => Promise<void>;
   onOpenCollection: () => void;
 }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
   const [total, setTotal] = useState<number | null>(null);
   const [selRow, setSelRow] = useState<Record<string, unknown> | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Row lifecycle (draft/published) is the COLLECTION's concern, not the
   // form's — moderate it in the collection view. This tab only shows what
   // arrived. The form's own status (live/paused) lives on the list cards.
   const cols = fieldBlocks.slice(0, 4).map((b) => b.name!).filter(Boolean);
 
-  useEffect(() => {
-    let cancelled = false;
-    setRows(null);
-    const query: Record<string, string | number> = { limit: 50, sort: "-created_at", meta: "filter_count" };
-    itemsApi
-      .list(form.collection, query)
-      .then((r) => {
-        if (cancelled) return;
-        setRows(r.data);
-        setTotal(r.meta?.filter_count ?? r.meta?.total_count ?? r.data.length);
-      })
-      .catch(() => {
-        if (!cancelled) setRows([]);
+  const collection = form.collection;
+
+  /** Only the newest read may write. Two are in flight whenever a refresh
+   *  overlaps the open of another form, and the slower one is the wrong
+   *  answer whichever order they land in. */
+  const reqRef = useRef(0);
+
+  /** What arrived, newest first. `quiet` leaves the rows on screen while it
+   *  re-reads — asking again should not blink the table back to skeletons. */
+  const load = useCallback(
+    async (quiet = false) => {
+      const gen = ++reqRef.current;
+      if (!quiet) setRows(null);
+      const r = await itemsApi.list(collection, {
+        limit: 50,
+        sort: "-created_at",
+        meta: "filter_count",
       });
-    return () => {
-      cancelled = true;
+      if (gen !== reqRef.current) return;
+      setRows(r.data);
+      setTotal(r.meta?.filter_count ?? r.meta?.total_count ?? r.data.length);
+    },
+    [collection],
+  );
+
+  useEffect(() => {
+    void load().catch(() => setRows((cur) => (cur === null ? [] : cur)));
+  }, [load]);
+
+  /**
+   * Ask again for what has come in.
+   *
+   * The list is read once when the tab opens, and every row in it is written by
+   * somebody this page never hears from. Without this the only way to see an
+   * answer that has just arrived was to reload the admin outright — which also
+   * closed the form and dropped the operator back on the Edit tab.
+   */
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([load(true), refreshCounts()]);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load, refreshCounts, pushToast]);
+
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+
+  /** Answering the form to try it out means leaving this window and coming
+   *  back, which is exactly when the table on screen is known to be behind. */
+  useEffect(() => {
+    // `focus` and `visibilitychange` both fire on a single return to the tab,
+    // so the second one within a moment of the first is the same event twice.
+    let last = 0;
+    const onBack = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - last < 1000) return;
+      last = now;
+      void refreshRef.current();
     };
-  }, [form.collection]);
+    window.addEventListener("focus", onBack);
+    document.addEventListener("visibilitychange", onBack);
+    return () => {
+      window.removeEventListener("focus", onBack);
+      document.removeEventListener("visibilitychange", onBack);
+    };
+  }, []);
 
   return (
     <div className="flex flex-col gap-4">
@@ -248,10 +304,21 @@ export function SubmissionsTab({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          className="ml-auto"
+          disabled={refreshing}
+          onClick={() => void refresh()}
+        >
+          <I.Refresh size={14} className={refreshing ? "animate-spin" : undefined} />
+          <span className="max-sm:sr-only">
+            <Trans>Refresh</Trans>
+          </span>
+        </Button>
         <button
           type="button"
           onClick={() => window.open(`/api/items/${form.collection}/export?format=csv`, "_blank")}
-          className="ml-auto flex items-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.03] px-4 py-2 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/15 hover:text-foreground"
+          className="flex items-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.03] px-4 py-2 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/15 hover:text-foreground"
         >
           <I.Download size={14} />
           <Trans>Export CSV</Trans>

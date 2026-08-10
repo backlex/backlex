@@ -144,6 +144,11 @@ msgstr "\"{0}\" is a choice with nothing to choose from."
 msgid "\"{0}\" is not a column on this collection."
 msgstr "\"{0}\" is not a column on this collection."
 
+#. placeholder {0}: p.label
+#: src/client/admin/pages/data/booking/index.tsx
+msgid "\"{0}\" needs a letter or a digit in it — that is what the answer is stored under."
+msgstr "\"{0}\" needs a letter or a digit in it — that is what the answer is stored under."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "\"{bad}\" isn't a valid URL — use e.g. https://app.example.com/auth/callback."
 msgstr "\"{bad}\" isn't a valid URL — use e.g. https://app.example.com/auth/callback."
@@ -14273,7 +14278,9 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/automation/realtime.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
+#: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/database-import.tsx
+#: src/client/admin/pages/data/forms/submissions-tab.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/traces.tsx

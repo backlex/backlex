@@ -468,6 +468,28 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     (id: string) => { navigate("/authentication/" + id); },
     [navigate],
   );
+  // Booking + forms both open one record over several tabs, and both are
+  // watched rather than only edited: an operator sits on Bookings or
+  // Submissions waiting for something to arrive. Holding the open record and
+  // the open tab in state alone meant every refresh — the one move that used to
+  // be the only way to see what had arrived — closed the record and went back
+  // to the first tab. So both live in the path: /booking/:key/:tab, /forms/:id/:tab.
+  const activeBooking = activeNav === "booking" && segs[1] ? segs[1] : null;
+  const activeBookingTab = activeNav === "booking" && segs[2] ? segs[2] : null;
+  const openBooking = useCallback(
+    (key: string | null, tab?: string) => {
+      navigate(key ? `/booking/${encodeURIComponent(key)}/${tab ?? "hours"}` : "/booking");
+    },
+    [navigate],
+  );
+  const activeFormId = activeNav === "forms" && segs[1] ? segs[1] : null;
+  const activeFormTab = activeNav === "forms" && segs[2] ? segs[2] : null;
+  const openFormAt = useCallback(
+    (id: string | null, tab?: string) => {
+      navigate(id ? `/forms/${encodeURIComponent(id)}/${tab ?? "edit"}` : "/forms");
+    },
+    [navigate],
+  );
   const [newCollectionOpen, setNewCollectionOpen] = useState(false);
 
   // Debounced server-side search. The admin used to filter `posts` purely
@@ -1151,7 +1173,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "jobs" && <JobsPage pushToast={pushToast} />}
             {activeNav === "feature-flags" && <FeatureFlagsPage pushToast={pushToast} />}
-            {activeNav === "forms" && <FormsPage pushToast={pushToast} setActiveNav={setActiveNav} />}
+            {activeNav === "forms" && <FormsPage pushToast={pushToast} setActiveNav={setActiveNav} activeForm={activeFormId} activeTab={activeFormTab} openFormAt={openFormAt} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "integrations" && <IntegrationsPage pushToast={pushToast} />}
             {activeNav === "payments" && <PaymentsPage pushToast={pushToast} />}
@@ -1182,7 +1204,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "documents" && <DocumentsPage pushToast={pushToast} />}
             {activeNav === "approvals" && <ApprovalsPage pushToast={pushToast} />}
             {activeNav === "signatures" && <SignaturesPage pushToast={pushToast} />}
-            {activeNav === "booking" && <BookingPage pushToast={pushToast} />}
+            {activeNav === "booking" && <BookingPage pushToast={pushToast} activeResource={activeBooking} activeTab={activeBookingTab} openResourceAt={openBooking} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
             {activeNav === "extensions" && <ExtensionsPage pushToast={pushToast} />}
             {/* Extension-contributed panel pages — a sandboxed iframe host per

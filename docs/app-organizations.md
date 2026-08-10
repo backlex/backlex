@@ -72,12 +72,35 @@ The permission layer needs exactly one answer per request. It's resolved in
 3. **The sole membership**, when the caller belongs to exactly one org. A
    single-org end-user never has to select anything.
 4. **Nothing.** `$org.id` resolves to null, and an org-scoped rule matches no
-   rows. This fails closed on purpose: with several orgs and no selection,
-   picking one for the caller would leak whichever happened to sort first.
+   rows. Two different callers land here: one who belongs to no organization at
+   all, and one with several who has selected none. Both fail closed on
+   purpose — for the second, picking one would leak whichever happened to sort
+   first; for the first, there is nothing to pick.
 
 The membership list rides a per-isolate cache (the same TTL/LRU as the role and
 tenant caches), so this costs one cached lookup per app-plane request. A
 workspace with no organizations caches an empty list and is effectively free.
+
+## Membership is optional
+
+Nothing about an end-user's account depends on an organization. `app_users`
+carries no org column; membership is a separate row in `app_org_members`. So an
+end-user who belongs to nothing isn't a half-provisioned account — they sign in
+normally, hold `authenticated` plus whatever `app_user_roles` grants them, and
+read and write exactly what those roles allow.
+
+What they don't get is the org layer. `$org.id` is null, so an org-scoped rule
+matches no rows, and `app_org_member_roles` grants only fold in once there's an
+active org — an org-scoped role is invisible outside its org. Note which
+direction that runs: belonging to no organization narrows what a caller reaches
+and never widens it, which is why the state needs no guard of its own.
+
+It isn't a tolerated edge case either, it's the ordinary one. Orgs are a layer
+over the end-user pool, not the unit a workspace is built from — a B2C
+workspace never creates one and the feature stays inert. And every member of
+every org passed through the state on the way in: an invitation grants a
+membership, it doesn't create an account, so an invitee is an org-less end-user
+right up until they accept.
 
 ## Permission rules
 

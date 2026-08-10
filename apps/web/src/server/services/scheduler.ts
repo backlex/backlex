@@ -39,6 +39,7 @@ import { pruneBroadcastMessages } from "./broadcast";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
 import { processMigrationRuns } from "./migrate";
+import { processCdcSinks } from "./cdc";
 import { flushUsage, sweepUsageGauges } from "./usage";
 import { invokeExtensionHook, listCronExtensionHooks } from "./extensions";
 import { isDemoMode, maybeResetDemo } from "./demo";
@@ -480,6 +481,15 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     } catch (e) {
       console.error("[usage-gauges] sweep failed", e);
     }
+  }
+
+  // CDC sinks: advance each enabled sink by at most one page. Not throttled
+  // beyond the tick itself — a replica people watch should be seconds behind,
+  // not minutes, and an idle sweep is one indexed SELECT that returns nothing.
+  try {
+    await processCdcSinks(ctx);
+  } catch (e) {
+    console.error("[cdc] sweep failed", e);
   }
 
   // External-DB migration runs: advance at most one due run by one bounded

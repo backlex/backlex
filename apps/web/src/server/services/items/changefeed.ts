@@ -59,6 +59,37 @@ export interface ChangefeedPage {
   shape?: string;
 }
 
+/**
+ * Epoch ms for a row's `updated_at`, whatever the driver handed back.
+ *
+ * SQLite stores it as an integer and drizzle returns a number or a `Date`.
+ * Postgres returns a `timestamptz`, and depending on the driver that arrives as
+ * a `Date` OR as the string `2026-08-10 00:45:25.406+00` — which is not ISO
+ * 8601 (a space instead of `T`, a two-digit offset), so neither `Number()` nor
+ * a bare `Date.parse` reads it.
+ *
+ * The previous `Number(raw)` produced `NaN` for that string, so every Postgres
+ * deployment emitted the cursor `NaN.<id>`; the client stored it, sent it back,
+ * and its next sync was refused as an invalid cursor — for good, since there is
+ * nothing else to send. Found by a CDC sink, which is the first caller that
+ * PERSISTS a cursor and hands it back on a later request.
+ */
+const updatedAtMs = (raw: unknown): number | null => {
+  if (raw instanceof Date) return raw.getTime();
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw !== "string") return null;
+  const asNumber = Number(raw);
+  if (raw.trim() !== "" && Number.isFinite(asNumber)) return asNumber;
+  // Normalize the Postgres text form into something `Date.parse` accepts on
+  // every engine: `T` between date and time, and a two-digit offset widened to
+  // `+00:00`.
+  const iso = raw
+    .replace(" ", "T")
+    .replace(/([+-]\d{2})$/, "$1:00");
+  const parsed = Date.parse(iso);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 export const runChangefeed = async (params: ChangefeedParams): Promise<ChangefeedPage> => {
   const { ctx, auth, collection, perm } = params;
   const updatedCol = physicalSystemCol(collection, "updated_at");
@@ -116,9 +147,14 @@ export const runChangefeed = async (params: ChangefeedParams): Promise<Changefee
   const last = page[page.length - 1];
   let cursor: string | null = null;
   if (last) {
-    const rawUpdated = last[updatedCol];
-    const ms = rawUpdated instanceof Date ? rawUpdated.getTime() : Number(rawUpdated);
-    cursor = Buffer.from(`${ms}.${String(last[collection.pkColumn])}`, "utf8").toString("base64url");
+    const ms = updatedAtMs(last[updatedCol]);
+    // A cursor that cannot be decoded is worse than no cursor: the client
+    // stores it, sends it back, and every subsequent sync 422s with nothing to
+    // fall back to. `null` means "start over", which is recoverable.
+    cursor =
+      ms === null
+        ? null
+        : Buffer.from(`${ms}.${String(last[collection.pkColumn])}`, "utf8").toString("base64url");
   }
 
   // Projection: `fields` narrows what travels over the wire. `id` and

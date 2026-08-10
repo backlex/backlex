@@ -174,6 +174,7 @@ export default defineConfig({
             { slug: "captcha-impersonation" },
             { slug: "signing-keys" },
             { slug: "oauth-provider" },
+            { slug: "cdc" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

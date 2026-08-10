@@ -31,6 +31,7 @@ import { runS3 } from "../src/s3";
 import { runSupport } from "../src/support";
 import { runSigningKeys } from "../src/signing-keys";
 import { runOAuth } from "../src/oauth";
+import { runCdc } from "../src/cdc";
 import { runDocuments } from "../src/documents";
 import { runApprovals } from "../src/approvals";
 import { runSignatures } from "../src/signatures";
@@ -176,6 +177,10 @@ Usage:
   backlex oauth <clients|register|enable|disable|delete|grants|revoke>
       The client registry for the authorization server this instance runs, and
       the consents people have given those clients.
+
+  backlex cdc <list|create|update|run|delete>
+      Deliver a collection's changefeed — deletes included — to a webhook or
+      to this workspace's own bucket, at-least-once with a saved watermark.
 
   backlex documents <list|save|delete|render>
       HTML templates rendered to PDF — contracts, quotes, invoices.
@@ -394,6 +399,9 @@ const run = async () => {
       return;
     case "oauth":
       await runOAuth(rest);
+      return;
+    case "cdc":
+      await runCdc(rest);
       return;
     case "documents":
     case "document":

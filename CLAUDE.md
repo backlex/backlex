@@ -212,6 +212,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Broadcast channels (application-owned pub/sub) | `docs/broadcast-channels.md` |
 | Reactive / live queries (SDK + React `useLiveQuery`) | `docs/reactive-queries.md` |
 | Offline-first sync (changefeed + client store) | `docs/offline-sync.md` |
+| Change data capture (changefeed → webhook / bucket) | `docs/cdc.md` |
 | Push messaging (FCM / APNs / Web Push) | `docs/push-messaging.md` |
 | SMS messaging (Twilio / Amazon SNS) | `docs/sms-messaging.md` |
 | Document generation (PDF) | `docs/documents.md` |

@@ -4075,3 +4075,54 @@ export const signingKeys = pgTable(
     index("signing_keys_status_idx").on(t.status),
   ],
 );
+
+/**
+ * A CDC sink — the changefeed, delivered somewhere.
+ *
+ * `/{slug}/changes` already produces the hard part: an incremental feed with
+ * delete tombstones and shape move-out markers, keyset-paginated so a reader
+ * can resume exactly. What it had was no consumer other than a client that
+ * polls it. This row is the consumer: a destination, and a WATERMARK.
+ *
+ * `cursor` is the whole design. It is the changefeed's own cursor, and it
+ * advances only after a delivery is acknowledged — so a sink is at-least-once
+ * and never at-most-once. Duplicates on retry are the honest trade, and the
+ * payload carries a stable key so a destination can deduplicate; the
+ * alternative (advance first, deliver after) loses rows on any failure and
+ * nobody can tell which.
+ */
+export const cdcSinks = pgTable(
+  "cdc_sinks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Collection slug this sink replicates. */
+    collection: text("collection").notNull(),
+    /** `webhook` — POST each batch to a URL. `storage` — write NDJSON objects
+     *  into this workspace's own bucket, where the S3 endpoint can read them. */
+    destination: text("destination").notNull(),
+    /** Destination-specific: `{ url, secret, headers }` or `{ prefix }`. */
+    config: jsonb("config").notNull(),
+    /** Optional shape (a flat filter) and projection, passed to the changefeed
+     *  verbatim — a sink narrows what it replicates the same way a client does. */
+    shape: text("shape"),
+    fields: text("fields"),
+    batchSize: integer("batch_size").notNull().default(100),
+    enabled: boolean("enabled").notNull().default(true),
+    /** The changefeed cursor. Advanced only after a delivery is acknowledged. */
+    cursor: text("cursor"),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    disabledReason: text("disabled_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("cdc_sinks_tenant_idx").on(t.tenantId),
+    index("cdc_sinks_enabled_idx").on(t.enabled),
+  ],
+);

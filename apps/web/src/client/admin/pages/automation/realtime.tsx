@@ -8,6 +8,7 @@ import { Card } from "@backlex/ui/components/card";
 import { RealtimeTail, type RealtimeEvent } from "../../extras";
 import { RealtimeSkeleton } from "../../page-skeletons";
 import { ChannelsCard } from "./channels-card";
+import { CdcCard } from "./cdc-card";
 
 /** Auto-refresh cadence for live subscriber counts. Cheap on Bun (in-process
  *  map read); on Workers it's one DO fetch per channel — keep it loose. */
@@ -127,6 +128,8 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
           the workspace's own application invents, which exist only because a
           rule says they may. */}
       <ChannelsCard pushToast={pushToast} />
+      {/* The same change stream, but leaving the building. */}
+      <CdcCard pushToast={pushToast} />
     </div>
   );
 }

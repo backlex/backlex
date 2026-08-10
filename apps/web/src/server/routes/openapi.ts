@@ -47,6 +47,7 @@ import { captchaRoutes } from "./captcha";
 import { impersonationRoutes } from "./impersonation";
 import { signingKeysRoutes } from "./signing-keys";
 import { oauthClientsRoutes } from "./oauth-clients";
+import { cdcRoutes } from "./cdc";
 import { erasureRoutes } from "./erasure";
 import { integrationsRoutes } from "./integrations";
 import { ldapAdminRoutes } from "./ldap-admin";
@@ -111,6 +112,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/impersonation", impersonationRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/signing-keys", signingKeysRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/oauth-clients", oauthClientsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/cdc-sinks", cdcRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/erasure", erasureRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/integrations", integrationsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/ldap-config", ldapAdminRoutes as unknown as OpenAPIHono<any>],

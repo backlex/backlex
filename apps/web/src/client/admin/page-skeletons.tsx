@@ -572,7 +572,8 @@ function RealtimeSkeletonImpl() {
         <ListCardSkeleton rows={5} header={false} />
         <Skeleton className="h-[440px] w-full rounded-surface" />
       </div>
-      {/* Broadcast channel rules sit below the derived-channel grid. */}
+      {/* Broadcast channel rules, then the CDC sinks, below the grid. */}
+      <ListCardSkeleton rows={2} />
       <ListCardSkeleton rows={2} />
     </div>
   );

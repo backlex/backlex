@@ -325,3 +325,46 @@ export const channelsApi = {
   explain: (channel: string) =>
     api<ChannelExplainResult>(`/api/realtime/${encodeURIComponent(channel)}/explain`),
 };
+
+/* ── CDC sinks ── */
+
+export interface ApiCdcSink {
+  id: string;
+  name: string;
+  collection: string;
+  destination: "webhook" | "storage";
+  /** Without the signing secret; `hasSecret` reports presence. */
+  config: Record<string, unknown>;
+  shape: string | null;
+  fields: string | null;
+  batchSize: number;
+  enabled: boolean;
+  /** Opaque — the changefeed's own cursor, advanced only after a batch is
+   *  acknowledged. */
+  cursor: string | null;
+  lastRunAt: number | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  disabledReason: string | null;
+}
+
+export const cdcApi = {
+  list: () => api<Envelope<ApiCdcSink[]>>(`/api/admin/cdc-sinks`),
+  create: (body: Record<string, unknown>) =>
+    api<Envelope<ApiCdcSink>>(`/api/admin/cdc-sinks`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Record<string, unknown>) =>
+    api<Envelope<ApiCdcSink>>(`/api/admin/cdc-sinks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  /** One page, through the same code the cron runs. */
+  run: (id: string) =>
+    api<{ delivered: number; cursor: string | null; hasMore: boolean; error?: string }>(
+      `/api/admin/cdc-sinks/${id}/run`,
+      { method: "POST" },
+    ),
+  remove: (id: string) => api<{ ok: true }>(`/api/admin/cdc-sinks/${id}`, { method: "DELETE" }),
+};

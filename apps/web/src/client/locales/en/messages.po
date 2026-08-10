@@ -338,6 +338,7 @@ msgstr "{0} connected."
 
 #. placeholder {0}: h.consecutiveFailures
 #. placeholder {0}: row.consecutiveFailures
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -1773,6 +1774,10 @@ msgstr "Add one to gate sign-ups on your own rules or put your plan and role cla
 msgid "Add one to let your own service validate, enrich or reject writes."
 msgstr "Add one to let your own service validate, enrich or reject writes."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Add one to replicate a collection into a warehouse, a queue or an archive."
+msgstr "Add one to replicate a collection into a warehouse, a queue or an archive."
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Add passkey"
 msgstr "Add passkey"
@@ -1805,6 +1810,10 @@ msgstr "Add SAML"
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "Add SAML provider"
 msgstr "Add SAML provider"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Add sink"
+msgstr "Add sink"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Add sort"
@@ -3288,6 +3297,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
@@ -3441,6 +3451,10 @@ msgstr "Cardinality"
 msgid "Carried out"
 msgstr "Carried out"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "caught up"
+msgstr "caught up"
+
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/fields/add-field.tsx
 #: src/client/pages/book.tsx
@@ -3450,6 +3464,10 @@ msgstr "Change"
 #: src/client/admin/collections/item-editor.tsx
 msgid "Change auto-unpublish"
 msgstr "Change auto-unpublish"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Change data capture"
+msgstr "Change data capture"
 
 #: src/client/pages/book.tsx
 msgid "Change or cancel"
@@ -3827,6 +3845,7 @@ msgid "colleague@example.com"
 msgstr "colleague@example.com"
 
 #: src/client/admin/pages/access/permission-tester.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
@@ -4662,6 +4681,7 @@ msgid "Covering message"
 msgstr "Covering message"
 
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -5267,6 +5287,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
@@ -5457,6 +5478,10 @@ msgstr "deleted."
 msgid "Deleted."
 msgstr "Deleted."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Deliver a collection's changes — deletes included — to a webhook or to this workspace's own bucket. Delivery is at-least-once: a batch that fails is retried, and every record carries a stable key so the destination can deduplicate."
+msgstr "Deliver a collection's changes — deletes included — to a webhook or to this workspace's own bucket. Delivery is at-least-once: a batch that fails is retried, and every record carries a stable key so the destination can deduplicate."
+
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Deliver magic-link and one-time-code mail through your own transport and templates."
 msgstr "Deliver magic-link and one-time-code mail through your own transport and templates."
@@ -5464,6 +5489,11 @@ msgstr "Deliver magic-link and one-time-code mail through your own transport and
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "deliver one webhook"
 msgstr "deliver one webhook"
+
+#. placeholder {0}: res.delivered
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Delivered {0} record(s)."
+msgstr "Delivered {0} record(s)."
 
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
@@ -5477,6 +5507,11 @@ msgstr "Deliveries pause immediately when off; queued events are dropped after 2
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Delivery"
 msgstr "Delivery"
+
+#. placeholder {0}: res.error
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Delivery failed: {0}. The batch will be retried."
+msgstr "Delivery failed: {0}. The batch will be retried."
 
 #: src/client/admin/pages/access/permissions-matrix.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
@@ -5549,6 +5584,10 @@ msgstr "Description"
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "Deselect"
 msgstr "Deselect"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Destination"
+msgstr "Destination"
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Destination column"
@@ -7634,6 +7673,10 @@ msgstr "From template"
 msgid "From the App users page. Operators cannot be impersonated."
 msgstr "From the App users page. Operators cannot be impersonated."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "from the start"
+msgstr "from the start"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Frontend SDK"
 msgstr "Frontend SDK"
@@ -8714,6 +8757,10 @@ msgstr "It may have been replaced, or the calendar may be closed."
 msgid "It may have been withdrawn, already used, or replaced by a newer one."
 msgstr "It may have been withdrawn, already used, or replaced by a newer one."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "It starts from the beginning of the collection and catches up one page per tick."
+msgstr "It starts from the beginning of the collection and catches up one page per tick."
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "Item archived."
 msgstr "Item archived."
@@ -8943,6 +8990,7 @@ msgstr "Key must be 120 characters or fewer."
 msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
 msgstr "Key must be 2–40 chars (letters, digits, dash, underscore)."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "Key prefix"
 msgstr "Key prefix"
@@ -10308,6 +10356,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/functions.tsx
@@ -10452,6 +10501,10 @@ msgstr "New bookable resource"
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "New branch"
 msgstr "New branch"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "New CDC sink"
+msgstr "New CDC sink"
 
 #: src/client/admin/pages/automation/channels-card.tsx
 msgid "New channel rule"
@@ -11417,6 +11470,10 @@ msgstr "No selection — any file type is accepted."
 msgid "No signing cert stored — login will fail."
 msgstr "No signing cert stored — login will fail."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "No sinks"
+msgstr "No sinks"
+
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "No snapshots yet"
 msgstr "No snapshots yet"
@@ -11808,6 +11865,10 @@ msgstr "Nothing to export — the current view is empty."
 msgid "Nothing to paste."
 msgstr "Nothing to paste."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Nothing to send — this sink is caught up."
+msgstr "Nothing to send — this sink is caught up."
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Nothing was found for this person. There is nothing to carry out."
 msgstr "Nothing was found for this person. There is nothing to carry out."
@@ -11910,6 +11971,10 @@ msgstr "OAuth redirect URI to register with {0}"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
 #~ msgstr "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Objects land in this workspace's bucket, where the S3 endpoint can read them."
+msgstr "Objects land in this workspace's bucket, where the S3 endpoint can read them."
 
 #: src/client/admin/ui.tsx
 msgid "Observability"
@@ -12304,6 +12369,10 @@ msgstr "Optional — a timestamped name is generated if you leave this blank."
 msgid "Optional — the key stops working after this time."
 msgstr "Optional — the key stops working after this time."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
+msgstr "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
+
 #: src/client/admin/parity/booking.tsx
 #~ msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
 #~ msgstr "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
@@ -12312,6 +12381,10 @@ msgstr "Optional — the key stops working after this time."
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Optional. Filters which {0} rows are included. Deleted rows are always excluded. The rule can only read that collection's own columns — a total is one stored number shared by every reader, so it cannot depend on who is looking."
 msgstr "Optional. Filters which {0} rows are included. Deleted rows are always excluded. The rule can only read that collection's own columns — a total is one stored number shared by every reader, so it cannot depend on who is looking."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Optional. Signs each batch with Standard Webhooks headers, so a verifier you already have for our auth hooks works here too."
+msgstr "Optional. Signs each batch with Standard Webhooks headers, so a verifier you already have for our auth hooks works here too."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Optional. Signs each call so your service can verify it came from backlex."
@@ -12674,6 +12747,7 @@ msgstr "Pause"
 msgid "paused"
 msgstr "paused"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -15262,6 +15336,7 @@ msgid "Rules"
 msgstr "Rules"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
@@ -15342,6 +15417,7 @@ msgid "Running total"
 msgstr "Running total"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/data/database.tsx
@@ -16400,6 +16476,14 @@ msgstr "Several questions on one shared set of columns"
 msgid "Severity"
 msgstr "Severity"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Shape"
+msgstr "Shape"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "shaped"
+msgstr "shaped"
+
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -16821,6 +16905,7 @@ msgstr "Signing keys"
 msgid "Signing order"
 msgstr "Signing order"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -16875,6 +16960,22 @@ msgstr "Singleton"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Singular"
 msgstr "Singular"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "sink"
+msgstr "sink"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Sink created — it starts from the beginning of the collection."
+msgstr "Sink created — it starts from the beginning of the collection."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Sink deleted — the destination keeps what it already received."
+msgstr "Sink deleted — the destination keeps what it already received."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "sinks"
+msgstr "sinks"
 
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Site key"
@@ -17259,6 +17360,10 @@ msgstr "Stop trusting this issuer?"
 #: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr "Storage"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Storage — NDJSON in this workspace's bucket"
+msgstr "Storage — NDJSON in this workspace's bucket"
 
 #: src/client/admin/fields/field-url-editor.tsx
 msgid "Store a bare domain instead of a whole address"
@@ -19226,6 +19331,7 @@ msgstr "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/fields/field-validation-editor.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -19648,6 +19754,10 @@ msgstr "We'll email a reset link. Until you click it, your existing password sti
 #: src/client/pages/magic-link.tsx
 msgid "We'll email a single-use sign-in link. No password needed."
 msgstr "We'll email a single-use sign-in link. No password needed."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Webhook — POST each batch to a URL"
+msgstr "Webhook — POST each batch to a URL"
 
 #. placeholder {0}: data.name
 #: src/client/admin/pages/automation/webhooks.tsx

@@ -338,6 +338,7 @@ msgstr "{0} bağlandı."
 
 #. placeholder {0}: h.consecutiveFailures
 #. placeholder {0}: row.consecutiveFailures
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -1773,6 +1774,10 @@ msgstr "Kayıtları kendi kurallarınızla denetlemek ya da plan ve rol talepler
 msgid "Add one to let your own service validate, enrich or reject writes."
 msgstr "Kendi servisinizin yazmaları doğrulaması, zenginleştirmesi veya reddetmesi için bir tane ekleyin."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Add one to replicate a collection into a warehouse, a queue or an archive."
+msgstr "Bir koleksiyonu veri ambarına, kuyruğa veya arşive kopyalamak için bir tane ekleyin."
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Add passkey"
 msgstr "Geçiş anahtarı ekle"
@@ -1805,6 +1810,10 @@ msgstr "SAML ekle"
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "Add SAML provider"
 msgstr "SAML sağlayıcı ekle"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Add sink"
+msgstr "Hedef ekle"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Add sort"
@@ -3288,6 +3297,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
@@ -3441,6 +3451,10 @@ msgstr "Kardinalite"
 msgid "Carried out"
 msgstr "Uygulandı"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "caught up"
+msgstr "güncel"
+
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/fields/add-field.tsx
 #: src/client/pages/book.tsx
@@ -3450,6 +3464,10 @@ msgstr "Değiştir"
 #: src/client/admin/collections/item-editor.tsx
 msgid "Change auto-unpublish"
 msgstr "Otomatik kaldırmayı değiştir"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Change data capture"
+msgstr "Değişiklik yakalama"
 
 #: src/client/pages/book.tsx
 msgid "Change or cancel"
@@ -3827,6 +3845,7 @@ msgid "colleague@example.com"
 msgstr "meslektas@ornek.com"
 
 #: src/client/admin/pages/access/permission-tester.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
@@ -4662,6 +4681,7 @@ msgid "Covering message"
 msgstr "Üst yazı"
 
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -5267,6 +5287,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
@@ -5457,6 +5478,10 @@ msgstr "silindi."
 msgid "Deleted."
 msgstr "Silindi."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Deliver a collection's changes — deletes included — to a webhook or to this workspace's own bucket. Delivery is at-least-once: a batch that fails is retried, and every record carries a stable key so the destination can deduplicate."
+msgstr "Bir koleksiyonun değişikliklerini — silmeler dahil — bir webhook'a veya bu çalışma alanının kendi kovasına gönderin. Teslimat en-az-bir-kez: başarısız olan bir yığın yeniden denenir ve her kayıt, hedefin yinelenenleri ayıklayabilmesi için sabit bir anahtar taşır."
+
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Deliver magic-link and one-time-code mail through your own transport and templates."
 msgstr "Sihirli bağlantı ve tek kullanımlık kod postalarını kendi taşıyıcınız ve şablonlarınızla gönderin."
@@ -5464,6 +5489,11 @@ msgstr "Sihirli bağlantı ve tek kullanımlık kod postalarını kendi taşıy�
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "deliver one webhook"
 msgstr "tek bir webhook gönder"
+
+#. placeholder {0}: res.delivered
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Delivered {0} record(s)."
+msgstr "{0} kayıt gönderildi."
 
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
@@ -5477,6 +5507,11 @@ msgstr "Devre dışı bırakıldığında teslimatlar hemen duraklar; kuyruktaki
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Delivery"
 msgstr "Teslimat"
+
+#. placeholder {0}: res.error
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Delivery failed: {0}. The batch will be retried."
+msgstr "Teslimat başarısız: {0}. Yığın yeniden denenecek."
 
 #: src/client/admin/pages/access/permissions-matrix.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
@@ -5549,6 +5584,10 @@ msgstr "Açıklama"
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "Deselect"
 msgstr "Seçimi bırak"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Destination"
+msgstr "Hedef"
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Destination column"
@@ -7634,6 +7673,10 @@ msgstr "Şablondan"
 msgid "From the App users page. Operators cannot be impersonated."
 msgstr "Uygulama kullanıcıları sayfasından. Operatörlerin kimliğine bürünülemez."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "from the start"
+msgstr "baştan"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Frontend SDK"
 msgstr "Frontend SDK"
@@ -8714,6 +8757,10 @@ msgstr "Yerini yenisi almış ya da takvim kapatılmış olabilir."
 msgid "It may have been withdrawn, already used, or replaced by a newer one."
 msgstr "Geri çekilmiş, daha önce kullanılmış ya da yenisiyle değiştirilmiş olabilir."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "It starts from the beginning of the collection and catches up one page per tick."
+msgstr "Koleksiyonun başından başlar ve her turda bir sayfa ilerler."
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "Item archived."
 msgstr "Öğe arşivlendi."
@@ -8943,6 +8990,7 @@ msgstr "Anahtar en fazla 120 karakter olmalıdır."
 msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
 msgstr "Anahtar 2–40 karakter olmalıdır (harf, rakam, tire, alt çizgi)."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "Key prefix"
 msgstr "Anahtar öneki"
@@ -10308,6 +10356,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/automation/functions.tsx
@@ -10452,6 +10501,10 @@ msgstr "Yeni rezerve edilebilir kaynak"
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "New branch"
 msgstr "Yeni dal"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "New CDC sink"
+msgstr "Yeni CDC hedefi"
 
 #: src/client/admin/pages/automation/channels-card.tsx
 msgid "New channel rule"
@@ -11417,6 +11470,10 @@ msgstr "Seçim yok — her dosya türü kabul edilir."
 msgid "No signing cert stored — login will fail."
 msgstr "İmza sertifikası saklanmamış — giriş başarısız olacak."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "No sinks"
+msgstr "Hedef yok"
+
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "No snapshots yet"
 msgstr "Henüz anlık görüntü yok"
@@ -11808,6 +11865,10 @@ msgstr "Dışa aktarılacak şey yok — mevcut görünüm boş."
 msgid "Nothing to paste."
 msgstr "Yapıştırılacak bir şey yok."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Nothing to send — this sink is caught up."
+msgstr "Gönderilecek bir şey yok — bu hedef güncel."
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Nothing was found for this person. There is nothing to carry out."
 msgstr "Bu kişi için hiçbir şey bulunamadı. Uygulanacak bir işlem yok."
@@ -11910,6 +11971,10 @@ msgstr "{0} ile kaydedilecek OAuth yönlendirme URI'si"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
 #~ msgstr "Barındırılan Claude için OAuth akışı (anahtar yapıştırma adımı olmadan) ayrı bir epik olarak takip ediliyor."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Objects land in this workspace's bucket, where the S3 endpoint can read them."
+msgstr "Nesneler bu çalışma alanının kovasına düşer; S3 uç noktası oradan okuyabilir."
 
 #: src/client/admin/ui.tsx
 msgid "Observability"
@@ -12304,6 +12369,10 @@ msgstr "İsteğe bağlı — boş bırakırsanız zaman damgalı bir ad oluştur
 msgid "Optional — the key stops working after this time."
 msgstr "İsteğe bağlı — anahtar bu sürenin ardından çalışmayı durdurur."
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
+msgstr "Kopyalanacak alt kümeyi belirten isteğe bağlı filtre. Eşleşmeyi bırakan bir satır çıkış işareti olarak gönderilir, böylece hedef onu düşürmesi gerektiğini bilir."
+
 #: src/client/admin/parity/booking.tsx
 #~ msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
 #~ msgstr "İsteğe bağlı. Her rezervasyon oraya bir satır olarak da yazılır; böylece izinler, akışlar ve dışa aktarmalar her zamanki gibi işler."
@@ -12312,6 +12381,10 @@ msgstr "İsteğe bağlı — anahtar bu sürenin ardından çalışmayı durduru
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Optional. Filters which {0} rows are included. Deleted rows are always excluded. The rule can only read that collection's own columns — a total is one stored number shared by every reader, so it cannot depend on who is looking."
 msgstr "İsteğe bağlı. Hangi {0} satırlarının dahil edileceğini süzer. Silinmiş satırlar her zaman hariç tutulur. Kural yalnızca o koleksiyonun kendi sütunlarını okuyabilir — toplam, her okuyucunun paylaştığı tek bir saklı sayıdır, dolayısıyla kimin baktığına bağlı olamaz."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Optional. Signs each batch with Standard Webhooks headers, so a verifier you already have for our auth hooks works here too."
+msgstr "İsteğe bağlı. Her yığını Standard Webhooks başlıklarıyla imzalar; auth hook'larımız için zaten sahip olduğunuz doğrulayıcı burada da çalışır."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Optional. Signs each call so your service can verify it came from backlex."
@@ -12674,6 +12747,7 @@ msgstr "Duraklat"
 msgid "paused"
 msgstr "duraklatıldı"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -15262,6 +15336,7 @@ msgid "Rules"
 msgstr "Kurallar"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
@@ -15342,6 +15417,7 @@ msgid "Running total"
 msgstr "Yürüyen toplam"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/data/database.tsx
@@ -16400,6 +16476,14 @@ msgstr "Birkaç soru, ortak bir sütun kümesi üzerinde"
 msgid "Severity"
 msgstr "Önem düzeyi"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Shape"
+msgstr "Şekil"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "shaped"
+msgstr "şekilli"
+
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -16821,6 +16905,7 @@ msgstr "İmzalama anahtarları"
 msgid "Signing order"
 msgstr "İmza sırası"
 
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -16875,6 +16960,22 @@ msgstr "Tekil"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Singular"
 msgstr "Tekil ad"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "sink"
+msgstr "hedef"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Sink created — it starts from the beginning of the collection."
+msgstr "Hedef oluşturuldu — koleksiyonun başından başlar."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Sink deleted — the destination keeps what it already received."
+msgstr "Hedef silindi — karşı taraf aldıklarını saklar."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "sinks"
+msgstr "hedef"
 
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Site key"
@@ -17259,6 +17360,10 @@ msgstr "Bu sağlayıcıya güvenmeyi bırakılsın mı?"
 #: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr "Depolama"
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Storage — NDJSON in this workspace's bucket"
+msgstr "Depolama — bu çalışma alanının kovasında NDJSON"
 
 #: src/client/admin/fields/field-url-editor.tsx
 msgid "Store a bare domain instead of a whole address"
@@ -19226,6 +19331,7 @@ msgstr "Depolanan bayt bu değere ulaşınca yüklemeler reddedilir. 1 GB = 1073
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/fields/field-validation-editor.tsx
+#: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -19648,6 +19754,10 @@ msgstr "Bir sıfırlama bağlantısı e-postalaştıracağız. Tıklayana kadar 
 #: src/client/pages/magic-link.tsx
 msgid "We'll email a single-use sign-in link. No password needed."
 msgstr "Tek kullanımlık giriş bağlantısı e-postayla gönderilecek. Parola gerekmez."
+
+#: src/client/admin/pages/automation/cdc-card.tsx
+msgid "Webhook — POST each batch to a URL"
+msgstr "Webhook — her yığını bir URL'ye POST et"
 
 #. placeholder {0}: data.name
 #: src/client/admin/pages/automation/webhooks.tsx

@@ -3547,3 +3547,37 @@ export const signingKeys = sqliteTable(
     index("signing_keys_status_idx").on(t.status),
   ],
 );
+
+/**
+ * A CDC sink — see packages/db/src/pg/schema.ts for why `cursor` advances only
+ * after a delivery is acknowledged (at-least-once, never at-most-once).
+ * SQLite twin: booleans are 0/1, timestamps epoch-ms, JSON is text.
+ */
+export const cdcSinks = sqliteTable(
+  "cdc_sinks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    collection: text("collection").notNull(),
+    destination: text("destination").notNull(),
+    config: text("config").notNull(),
+    shape: text("shape"),
+    fields: text("fields"),
+    batchSize: integer("batch_size").notNull().default(100),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    cursor: text("cursor"),
+    lastRunAt: integer("last_run_at", { mode: "timestamp_ms" }),
+    lastError: text("last_error"),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    disabledReason: text("disabled_reason"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("cdc_sinks_tenant_idx").on(t.tenantId),
+    index("cdc_sinks_enabled_idx").on(t.enabled),
+  ],
+);

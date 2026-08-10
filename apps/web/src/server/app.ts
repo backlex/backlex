@@ -113,6 +113,8 @@ import { s3CredentialsRoutes } from "./routes/s3-credentials";
 import { captchaRoutes } from "./routes/captcha";
 import { impersonationRoutes } from "./routes/impersonation";
 import { signingKeysRoutes } from "./routes/signing-keys";
+import { oauthClientsRoutes } from "./routes/oauth-clients";
+import { dynamicRegistrationGate } from "./lib/oauth-registration-gate";
 import { captchaMiddleware } from "./lib/captcha-middleware";
 import { erasureRoutes } from "./routes/erasure";
 import { scimRoutes } from "./routes/scim";
@@ -861,6 +863,11 @@ export const createApp = (env: Env) => {
   // Per-account failed-login lockout, layered after the per-IP limiter on the
   // same auth surfaces. Only password sign-in is gated (see auth-lockout.ts).
   app.use("/api/auth/*", authLockoutMiddleware);
+  // The switch that closes open dynamic client registration. In front of the
+  // better-auth mount, where the lockout gate is, because the plugin owns
+  // `/api/auth/mcp/register` and has no option for this. See
+  // lib/oauth-registration-gate.ts.
+  app.use("/api/auth/*", dynamicRegistrationGate);
   app.use("/api/t/*", authLockoutMiddleware);
   // The workspace's `password-verification` auth hook — the app's own say on a
   // password sign-in, after our built-in lockout has had its. Workspace plane
@@ -927,6 +934,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/captcha", captchaRoutes);
   app.route("/api/admin/impersonation", impersonationRoutes);
   app.route("/api/admin/signing-keys", signingKeysRoutes);
+  app.route("/api/admin/oauth-clients", oauthClientsRoutes);
   // The S3-compatible endpoint. Mounted OUTSIDE `/api` and before the session
   // middleware chain on purpose: a SigV4 request carries no cookie, no bearer
   // token and no workspace header, and running it through a gate built for

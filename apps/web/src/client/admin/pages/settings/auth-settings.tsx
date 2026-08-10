@@ -40,6 +40,7 @@ import { ThirdPartyAuthCard } from "./third-party-auth-card";
 import { AuthHooksCard } from "./auth-hooks-card";
 import { CaptchaCard } from "./captcha-card";
 import { SigningKeysCard } from "./signing-keys-card";
+import { OAuthClientsCard } from "./oauth-clients-card";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
 import { AuthSettingsSkeleton } from "../../page-skeletons";
@@ -652,6 +653,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
       <CaptchaCard pushToast={pushToast} />
       {/* What signs the tokens those endpoints hand out. */}
       <SigningKeysCard pushToast={pushToast} />
+      {/* And who those tokens are minted FOR. */}
+      <OAuthClientsCard pushToast={pushToast} />
       <AuthHooksCard pushToast={pushToast} />
 
       <ScimCard availableRoles={availableRoles} pushToast={pushToast} />

@@ -30,6 +30,7 @@ import { runRls } from "../src/rls";
 import { runS3 } from "../src/s3";
 import { runSupport } from "../src/support";
 import { runSigningKeys } from "../src/signing-keys";
+import { runOAuth } from "../src/oauth";
 import { runDocuments } from "../src/documents";
 import { runApprovals } from "../src/approvals";
 import { runSignatures } from "../src/signatures";
@@ -171,6 +172,10 @@ Usage:
   backlex signing-keys <list|generate|import|promote|revoke|restore|delete>
       JWT signing keys with a life cycle — rotate by promoting a standby key
       instead of editing a secret and redeploying twice.
+
+  backlex oauth <clients|register|enable|disable|delete|grants|revoke>
+      The client registry for the authorization server this instance runs, and
+      the consents people have given those clients.
 
   backlex documents <list|save|delete|render>
       HTML templates rendered to PDF — contracts, quotes, invoices.
@@ -386,6 +391,9 @@ const run = async () => {
     case "signing-keys":
     case "signing-key":
       await runSigningKeys(rest);
+      return;
+    case "oauth":
+      await runOAuth(rest);
       return;
     case "documents":
     case "document":

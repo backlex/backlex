@@ -532,6 +532,12 @@ export interface Env {
    *  wants it gone should not have to trust that nobody grants themselves the
    *  admin role. */
   IMPERSONATION_DISABLED?: string;
+  /** Set to `off` to refuse OAuth dynamic client registration. On by default,
+   *  because the hosted MCP connectors this authorization server exists for
+   *  register dynamically — turning it off by default would break the one
+   *  client everybody actually uses. An instance run as a company IdP wants
+   *  the opposite: with it off, the client registry is the only way in. */
+  OAUTH_DYNAMIC_REGISTRATION?: string;
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,
@@ -747,6 +753,7 @@ export const STRING_ENV_KEYS = [
   "REALTIME_OPEN_CHANNELS",
   "RLS_APP_ROLE",
   "IMPERSONATION_DISABLED",
+  "OAUTH_DYNAMIC_REGISTRATION",
   "S3_BUCKET",
   "S3_REGION",
   "S3_ENDPOINT",

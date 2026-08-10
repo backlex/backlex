@@ -716,6 +716,11 @@ msgstr "{0} takım arkadaşı yazıyor…"
 msgid "{0} to fix"
 msgstr "{0} düzeltilecek"
 
+#. placeholder {0}: row.activeTokens
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "{0} tokens"
+msgstr "{0} jeton"
+
 #. placeholder {0}: mcpAllowlist.size
 #: src/client/pages/api-keys.tsx
 msgid "{0} tool(s)"
@@ -2422,6 +2427,14 @@ msgstr "Veri olaylarını bir Notion sayfasına ekler ya da bir veritabanını k
 #~ msgid "Append data events to a Notion page. Connected with OAuth."
 #~ msgstr "Veri olaylarını bir Notion sayfasına ekler. OAuth ile bağlanır."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Applications that can sign a person in through this instance. Open registration is closed, so this list is the only way a client gets in."
+msgstr "Bu örnek üzerinden bir kişinin oturum açmasını sağlayabilen uygulamalar. Açık kayıt kapalı, bu yüzden bir istemcinin girebileceği tek yol bu liste."
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Applications that can sign a person in through this instance. Open registration is on, so a client can introduce itself — those are marked, because nobody vetted them. Set OAUTH_DYNAMIC_REGISTRATION=off to make this list the only way in."
+msgstr "Bu örnek üzerinden bir kişinin oturum açmasını sağlayabilen uygulamalar. Açık kayıt açık, yani bir istemci kendini tanıtabilir — kimse onları incelemediği için işaretlenirler. Bu listeyi tek giriş yolu yapmak için OAUTH_DYNAMIC_REGISTRATION=off ayarlayın."
+
 #: src/client/admin/pages/data/database.tsx
 msgid "applied"
 msgstr "uygulandı"
@@ -3301,6 +3314,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
@@ -3705,6 +3719,10 @@ msgstr "Düzenlemek için tıklayın"
 msgid "Client credentials saved. Finish by authorizing the account — nothing is delivered until you do."
 msgstr "İstemci bilgileri kaydedildi. Hesabı yetkilendirerek tamamlayın — bunu yapana kadar hiçbir olay iletilmez."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Client deleted — its tokens and consents went with it."
+msgstr "İstemci silindi — jetonları ve onayları da onunla gitti."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Client ID"
@@ -3713,6 +3731,10 @@ msgstr "Client ID"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Client ID <0>(optional)</0>"
 msgstr "Client ID <0>(isteğe bağlı)</0>"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Client registered. A public client has no secret — PKCE protects it."
+msgstr "İstemci kaydedildi. Genel bir istemcinin gizli anahtarı yoktur — onu PKCE korur."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Client secret"
@@ -4077,6 +4099,10 @@ msgstr "koşullu erişim"
 msgid "Conditions"
 msgstr "Koşullar"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Confidential client"
+msgstr "Gizli istemci"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "config-only panel rendered from props"
 msgstr "props'tan render edilen yalnızca yapılandırma paneli"
@@ -4423,6 +4449,10 @@ msgstr "Linki kopyala"
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Copy order:"
 msgstr "Kopyalama sırası:"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Copy the client secret now — it is not shown again"
+msgstr "İstemci gizli anahtarını şimdi kopyalayın — bir daha gösterilmez"
 
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "Copy the secret now — it is not shown again"
@@ -5256,6 +5286,7 @@ msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/signing-keys-card.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
@@ -5754,6 +5785,7 @@ msgstr "Geri yazma"
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/observability/insights.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Done"
 msgstr "Tamam"
@@ -10293,6 +10325,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/api-keys.tsx
@@ -11217,6 +11250,10 @@ msgstr "Mutasyon yok."
 msgid "No numeric columns"
 msgstr "Sayısal sütun yok"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "No OAuth clients"
+msgstr "OAuth istemcisi yok"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
 msgstr "Yapılandırılmış OIDC sağlayıcısı yok. Bu çalışma alanının son kullanıcıları Okta, Auth0, Keycloak, Entra ID ve benzerleriyle giriş yapabilsin diye bir tane ekleyin."
@@ -11853,6 +11890,10 @@ msgstr "Yalnızca sayısal sütunlar"
 msgid "OAuth 2.0 / OIDC sign-in provider."
 msgstr "OAuth 2.0 / OIDC giriş sağlayıcısı."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "OAuth clients"
+msgstr "OAuth istemcileri"
+
 #. placeholder {0}: AUTH_PROVIDER_NAMES[id] ?? id
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "OAuth redirect URI to register with {0}"
@@ -12053,6 +12094,10 @@ msgstr "Yalnızca şu ülkelerden numara kabul et <0>(isteğe bağlı)</0>"
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Only count rows matching"
 msgstr "Yalnızca şu koşula uyan satırlar"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Only for a client that runs on a server. A browser app or a CLI is public: PKCE protects it, and a secret shipped to a user is not a secret."
+msgstr "Yalnızca sunucuda çalışan bir istemci için. Tarayıcı uygulaması veya CLI geneldir: onu PKCE korur ve kullanıcıya gönderilen bir gizli anahtar gizli değildir."
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
@@ -14080,6 +14125,14 @@ msgstr "Yönlendirme URI’si"
 msgid "Redirect URI to register"
 msgstr "Kaydedilecek yönlendirme adresi"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Redirect URIs"
+msgstr "Yönlendirme URI'leri"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Redirect URIs must be https, or http on loopback for a native app — the authorization code is delivered to them."
+msgstr "Yönlendirme URI'leri https olmalı; yerel bir uygulama için loopback üzerinde http olabilir — yetkilendirme kodu onlara teslim edilir."
+
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "Redirect URL"
 msgstr "Yönlendirme URL'si"
@@ -14199,6 +14252,10 @@ msgstr "http:// adreslerini reddeder ve biri yalın bir host yazdığında https
 msgid "Regenerate backup codes"
 msgstr "Yedek kodları yeniden oluştur"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Register"
+msgstr "Kaydet"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Register a custom OpenID Connect identity provider."
 msgstr "Özel bir OpenID Connect kimlik sağlayıcısı kaydet."
@@ -14211,6 +14268,14 @@ msgstr "Fiziksel bir tabloyu backlex koleksiyonu olarak kaydet. Tabloda hiç DDL
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — backlex yalnızca kendi meta verilerini yazar."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Register an OAuth client"
+msgstr "Bir OAuth istemcisi kaydet"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Register one to let an application sign people in through this instance."
+msgstr "Bir uygulamanın bu örnek üzerinden kişilerin oturumunu açmasına izin vermek için bir tane kaydedin."
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "register this with the IdP"
 msgstr "bunu IdP tarafına kaydedin"
@@ -14218,6 +14283,10 @@ msgstr "bunu IdP tarafına kaydedin"
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Register your own OAuth app with {name}, then save its client ID and secret here. Saving does not connect the account — you authorize it in the next step."
 msgstr "{name} tarafında kendi OAuth uygulamanızı oluşturun, ardından istemci kimliğini ve gizli anahtarını buraya kaydedin. Kaydetmek hesabı bağlamaz — bir sonraki adımda yetkilendirirsiniz."
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "registration closed"
+msgstr "kayıt kapalı"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Reinstall / upgrade"
@@ -15971,6 +16040,10 @@ msgstr "Cloudflare Workers üzerinde öz barındırılan. Yapılandırmanın bü
 msgid "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
 msgstr "Cloudflare Workers üzerinde öz barındırılan. Telemetri yok, fatura yok — sadece klonla, dağıt, çalıştır."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "self-registered"
+msgstr "kendi kaydolmuş"
+
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "semantic embeddings"
 msgstr "anlamsal embedding'ler"
@@ -16103,6 +16176,10 @@ msgstr "gönderildi"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Sent"
 msgstr "Gönderildi"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Separate several with a space."
+msgstr "Birden fazlasını boşlukla ayırın."
 
 #: src/client/admin/collections/item-views.tsx
 msgid "September"

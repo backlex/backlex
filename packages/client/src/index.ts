@@ -60,6 +60,7 @@ import type { RlsClient } from "./clients/rls";
 import type { S3Client } from "./clients/s3";
 import type { SupportClient } from "./clients/support";
 import type { SigningKeysClient } from "./clients/signing-keys";
+import type { OAuthClientsClient } from "./clients/oauth-clients";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
 import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
@@ -149,6 +150,7 @@ export * from "./clients/rls";
 export * from "./clients/s3";
 export * from "./clients/support";
 export * from "./clients/signing-keys";
+export * from "./clients/oauth-clients";
 export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
@@ -183,6 +185,7 @@ import { makeRls } from "./clients/rls";
 import { makeS3 } from "./clients/s3";
 import { makeSupport } from "./clients/support";
 import { makeSigningKeys } from "./clients/signing-keys";
+import { makeOAuthClients } from "./clients/oauth-clients";
 import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
@@ -306,6 +309,9 @@ export interface BacklexClient {
   /** JWT signing keys and their life cycle, so rotation is a state change
    *  rather than two deploys. */
   signingKeys: SigningKeysClient;
+  /** The OAuth clients this instance's authorization server knows, and the
+   *  consents people have given them. */
+  oauth: OAuthClientsClient;
   extensions: ExtensionsClient;
   /** Named KPIs — the shared definition layer every surface reads a figure from. */
   kpis: KpisClient;
@@ -877,6 +883,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const s3 = makeS3(core);
   const support = makeSupport(core);
   const signingKeys = makeSigningKeys(core);
+  const oauth = makeOAuthClients(core);
   const payments = makePayments(core);
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
@@ -937,6 +944,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     s3,
     support,
     signingKeys,
+    oauth,
     extensions,
     kpis,
     dashboards,

@@ -716,6 +716,11 @@ msgstr "{0} teammates are typing…"
 msgid "{0} to fix"
 msgstr "{0} to fix"
 
+#. placeholder {0}: row.activeTokens
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "{0} tokens"
+msgstr "{0} tokens"
+
 #. placeholder {0}: mcpAllowlist.size
 #: src/client/pages/api-keys.tsx
 msgid "{0} tool(s)"
@@ -2422,6 +2427,14 @@ msgstr "Append data events to a Notion page, or pull a database into a collectio
 #~ msgid "Append data events to a Notion page. Connected with OAuth."
 #~ msgstr "Append data events to a Notion page. Connected with OAuth."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Applications that can sign a person in through this instance. Open registration is closed, so this list is the only way a client gets in."
+msgstr "Applications that can sign a person in through this instance. Open registration is closed, so this list is the only way a client gets in."
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Applications that can sign a person in through this instance. Open registration is on, so a client can introduce itself — those are marked, because nobody vetted them. Set OAUTH_DYNAMIC_REGISTRATION=off to make this list the only way in."
+msgstr "Applications that can sign a person in through this instance. Open registration is on, so a client can introduce itself — those are marked, because nobody vetted them. Set OAUTH_DYNAMIC_REGISTRATION=off to make this list the only way in."
+
 #: src/client/admin/pages/data/database.tsx
 msgid "applied"
 msgstr "applied"
@@ -3301,6 +3314,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
@@ -3705,6 +3719,10 @@ msgstr "Click to edit"
 msgid "Client credentials saved. Finish by authorizing the account — nothing is delivered until you do."
 msgstr "Client credentials saved. Finish by authorizing the account — nothing is delivered until you do."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Client deleted — its tokens and consents went with it."
+msgstr "Client deleted — its tokens and consents went with it."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Client ID"
@@ -3713,6 +3731,10 @@ msgstr "Client ID"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Client ID <0>(optional)</0>"
 msgstr "Client ID <0>(optional)</0>"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Client registered. A public client has no secret — PKCE protects it."
+msgstr "Client registered. A public client has no secret — PKCE protects it."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Client secret"
@@ -4077,6 +4099,10 @@ msgstr "conditional access"
 msgid "Conditions"
 msgstr "Conditions"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Confidential client"
+msgstr "Confidential client"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "config-only panel rendered from props"
 msgstr "config-only panel rendered from props"
@@ -4423,6 +4449,10 @@ msgstr "Copy link"
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Copy order:"
 msgstr "Copy order:"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Copy the client secret now — it is not shown again"
+msgstr "Copy the client secret now — it is not shown again"
 
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "Copy the secret now — it is not shown again"
@@ -5256,6 +5286,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/signing-keys-card.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
@@ -5754,6 +5785,7 @@ msgstr "Don't write it back"
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/observability/insights.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Done"
 msgstr "Done"
@@ -10293,6 +10325,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/api-keys.tsx
@@ -11217,6 +11250,10 @@ msgstr "No mutations."
 msgid "No numeric columns"
 msgstr "No numeric columns"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "No OAuth clients"
+msgstr "No OAuth clients"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
 msgstr "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
@@ -11853,6 +11890,10 @@ msgstr "Numeric columns only"
 msgid "OAuth 2.0 / OIDC sign-in provider."
 msgstr "OAuth 2.0 / OIDC sign-in provider."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "OAuth clients"
+msgstr "OAuth clients"
+
 #. placeholder {0}: AUTH_PROVIDER_NAMES[id] ?? id
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "OAuth redirect URI to register with {0}"
@@ -12053,6 +12094,10 @@ msgstr "Only accept numbers from <0>(optional)</0>"
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Only count rows matching"
 msgstr "Only count rows matching"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Only for a client that runs on a server. A browser app or a CLI is public: PKCE protects it, and a secret shipped to a user is not a secret."
+msgstr "Only for a client that runs on a server. A browser app or a CLI is public: PKCE protects it, and a secret shipped to a user is not a secret."
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
@@ -14080,6 +14125,14 @@ msgstr "Redirect URI"
 msgid "Redirect URI to register"
 msgstr "Redirect URI to register"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Redirect URIs"
+msgstr "Redirect URIs"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Redirect URIs must be https, or http on loopback for a native app — the authorization code is delivered to them."
+msgstr "Redirect URIs must be https, or http on loopback for a native app — the authorization code is delivered to them."
+
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "Redirect URL"
 msgstr "Redirect URL"
@@ -14199,6 +14252,10 @@ msgstr "Refuses http:// and supplies https:// when someone types a bare host. Of
 msgid "Regenerate backup codes"
 msgstr "Regenerate backup codes"
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Register"
+msgstr "Register"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Register a custom OpenID Connect identity provider."
 msgstr "Register a custom OpenID Connect identity provider."
@@ -14211,6 +14268,14 @@ msgstr "Register a physical table as a backlex collection. No DDL is run on the 
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Register an OAuth client"
+msgstr "Register an OAuth client"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Register one to let an application sign people in through this instance."
+msgstr "Register one to let an application sign people in through this instance."
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "register this with the IdP"
 msgstr "register this with the IdP"
@@ -14218,6 +14283,10 @@ msgstr "register this with the IdP"
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Register your own OAuth app with {name}, then save its client ID and secret here. Saving does not connect the account — you authorize it in the next step."
 msgstr "Register your own OAuth app with {name}, then save its client ID and secret here. Saving does not connect the account — you authorize it in the next step."
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "registration closed"
+msgstr "registration closed"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Reinstall / upgrade"
@@ -15971,6 +16040,10 @@ msgstr "Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; t
 msgid "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
 msgstr "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
 
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "self-registered"
+msgstr "self-registered"
+
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "semantic embeddings"
 msgstr "semantic embeddings"
@@ -16103,6 +16176,10 @@ msgstr "sent"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Sent"
 msgstr "Sent"
+
+#: src/client/admin/pages/settings/oauth-clients-card.tsx
+msgid "Separate several with a space."
+msgstr "Separate several with a space."
 
 #: src/client/admin/collections/item-views.tsx
 msgid "September"

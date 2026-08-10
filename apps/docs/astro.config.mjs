@@ -173,6 +173,7 @@ export default defineConfig({
             { slug: "s3" },
             { slug: "captcha-impersonation" },
             { slug: "signing-keys" },
+            { slug: "oauth-provider" },
             { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },

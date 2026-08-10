@@ -16,6 +16,7 @@ import { rlsTools } from "./rls";
 import { s3Tools } from "./s3";
 import { supportTools } from "./support";
 import { signingKeysTools } from "./signing-keys";
+import { oauthTools } from "./oauth";
 import { documentsTools } from "./documents";
 import { geoTools } from "./geo";
 import { emailTools } from "./email";
@@ -88,6 +89,7 @@ export const allTools: McpTool[] = [
   ...s3Tools,
   ...supportTools,
   ...signingKeysTools,
+  ...oauthTools,
   ...documentsTools,
   ...geoTools,
   ...orderTools,

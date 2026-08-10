@@ -648,3 +648,56 @@ export const signingKeysApi = {
   remove: (id: string) =>
     api<{ ok: true }>(`/api/admin/signing-keys/${id}`, { method: "DELETE" }),
 };
+
+/* ── OAuth clients ── */
+
+export interface ApiOAuthClient {
+  id: string;
+  clientId: string;
+  name: string;
+  /** `public` — PKCE, no secret. `confidential` — holds a secret. */
+  type: string;
+  redirectUrls: string[];
+  disabled: boolean;
+  /** True when the client registered itself — nobody vetted it. */
+  dynamic: boolean;
+  hasSecret: boolean;
+  activeTokens: number;
+  createdAt: number | null;
+}
+
+export interface ApiOAuthGrant {
+  id: string;
+  clientId: string;
+  clientName: string;
+  userId: string;
+  scopes: string[];
+  createdAt: number | null;
+}
+
+export const oauthClientsApi = {
+  list: () =>
+    api<Envelope<ApiOAuthClient[]> & { dynamicRegistration: boolean }>(
+      `/api/admin/oauth-clients`,
+    ),
+  /** The secret comes back once, and only for a confidential client. */
+  register: (body: { name: string; redirectUrls: string[]; type?: string }) =>
+    api<Envelope<ApiOAuthClient> & { clientSecret: string | null }>(
+      `/api/admin/oauth-clients`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  setDisabled: (clientId: string, disabled: boolean) =>
+    api<{ ok: true }>(`/api/admin/oauth-clients/${clientId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ disabled }),
+    }),
+  remove: (clientId: string) =>
+    api<{ ok: true }>(`/api/admin/oauth-clients/${clientId}`, { method: "DELETE" }),
+  grants: (query = "") =>
+    api<Envelope<ApiOAuthGrant[]>>(`/api/admin/oauth-clients/grants${query}`),
+  revokeGrant: (clientId: string, userId: string) =>
+    api<{ ok: true; tokensRevoked: number }>(`/api/admin/oauth-clients/grants/revoke`, {
+      method: "POST",
+      body: JSON.stringify({ clientId, userId }),
+    }),
+};

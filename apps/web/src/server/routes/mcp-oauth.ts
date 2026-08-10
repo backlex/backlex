@@ -61,6 +61,11 @@ export const mcpOAuthWellKnownRoutes = () => {
     };
     return wellKnownJson(await api.getMCPProtectedResource({}));
   };
+  // OIDC clients look for `openid-configuration`; OAuth 2.1 clients look for
+  // `oauth-authorization-server`. The plugin is an OIDC provider underneath, so
+  // both documents are the same one — and serving only the second meant a
+  // library that speaks OIDC could not discover this server at all.
+  router.get("/openid-configuration", authServer);
   router.get("/oauth-authorization-server", authServer);
   // Issuer-with-path variant (RFC 8414 §3.1): issuer is `<origin>/api/auth`.
   router.get("/oauth-authorization-server/api/auth", authServer);

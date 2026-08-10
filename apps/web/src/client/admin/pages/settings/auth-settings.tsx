@@ -5,6 +5,7 @@ import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Card } from "@backlex/ui/components/card";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { I } from "../../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../../ui";
 import { Select } from "../../select";
@@ -43,7 +44,7 @@ import { SigningKeysCard } from "./signing-keys-card";
 import { OAuthClientsCard } from "./oauth-clients-card";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
-import { AuthSettingsSkeleton } from "../../page-skeletons";
+import { AuthSessionsTabSkeleton, AuthSettingsSkeleton, AuthSsoTabSkeleton } from "../../page-skeletons";
 
 type AuthProviderRow = {
   id: string;
@@ -78,6 +79,20 @@ const POLICY_ROWS: { key: string; label: string; desc: string; fallback: boolean
   { key: "openSignup", label: "Open sign-up", desc: "Anyone can create an account. When off, only the first user and invited addresses can sign up.", fallback: false },
 ];
 
+/**
+ * The page is five panels, not one scroll. Grouped by the question the admin
+ * came to answer rather than by which table backs the card:
+ *
+ *  - sign-in   how somebody proves who they are, and who is allowed to try
+ *  - sso       the enterprise directories that answer that for us
+ *  - tokens    the JWT story — who signs ours, who we mint for, whose we trust
+ *  - api       how an application talks to any of it
+ *  - sessions  who is signed in right now
+ */
+const AUTH_TABS = ["sign-in", "sso", "tokens", "api", "sessions"] as const;
+type AuthTab = (typeof AUTH_TABS)[number];
+const isAuthTab = (v: string | null): v is AuthTab => !!v && (AUTH_TABS as readonly string[]).includes(v);
+
 const isHttpUrl = (s: string) => {
   try {
     const u = new URL(s);
@@ -109,8 +124,15 @@ const mapAuthProviders = (map: Record<string, any> | undefined): AuthProviderRow
   return rows;
 };
 
-export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
+export function AuthSettingsPage({ pushToast, tab, setTab }: {
+  pushToast: PushToast;
+  /** Sub-tab from the URL (`/authentication/:tab`), or null on the bare path. */
+  tab: string | null;
+  setTab: (id: string) => void;
+}) {
   const { t } = useLingui();
+  // An unknown segment lands on the first panel rather than an empty page.
+  const active: AuthTab = isAuthTab(tab) ? tab : "sign-in";
   const [providers, setProviders] = useState<AuthProviderRow[]>([]);
   const [policy, setPolicy] = useState<Record<string, boolean>>({});
   const [sessionLifetime, setSessionLifetime] = useState("30d");
@@ -137,9 +159,12 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
   // Pending "enable a 2FA-bypassing provider" confirmation (magic / emailOtp).
   const [confirmBypass, setConfirmBypass] = useState<{ id: string } | null>(null);
   const [availableRoles, setAvailableRoles] = useState<{ id: string; name: string }[]>([]);
-  // First-load gate — drives the page skeleton until the auth config +
-  // sessions + providers have all been fetched.
+  // First-load gate — drives the page skeleton until the auth config and the
+  // active workspace have been fetched. Everything else is per-tab (below).
   const [loaded, setLoaded] = useState(false);
+  // Per-tab gates for the fetches that only one panel needs.
+  const [ssoLoaded, setSsoLoaded] = useState(false);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
 
   const loadConfig = async () => {
     const cfg = await authAdminApi.config();
@@ -200,6 +225,9 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
     }
   };
 
+  // Eager: the two fetches more than one panel reads. The auth config backs the
+  // Sign-in panel and the redirect URIs on the API panel; the workspace backs
+  // the sign-up note, both SSO dialogs, and every URL on the API panel.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -211,23 +239,48 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
       if (cancelled) return;
       try {
         const ts = await tenantsApi.list();
-        const active = ts.data.find((t) => t.id === ts.active) ?? ts.data[0] ?? null;
-        if (!cancelled) setWorkspace(active);
+        const current = ts.data.find((t) => t.id === ts.active) ?? ts.data[0] ?? null;
+        if (!cancelled) setWorkspace(current);
       } catch {
         /* workspace endpoints panel just shows a placeholder slug */
       }
-      if (cancelled) return;
-      try {
-        await loadSessions();
-      } catch (e) {
-        pushToast?.((e as Error).message);
-      }
-      if (cancelled) return;
-      await Promise.allSettled([loadSamlProviders(), loadOidcProviders(), loadAvailableRoles()]);
       if (!cancelled) setLoaded(true);
     })();
     return () => { cancelled = true; };
-  }, [pushToast]);
+  }, []);
+
+  // Lazy: everything a single panel needs is fetched the first time that panel
+  // opens. Opening Authentication used to cost ~13 requests, almost all of them
+  // for cards the admin never scrolled to. `fetched` keeps a tab revisit — and
+  // StrictMode's double-invoke — from firing the same request twice.
+  const fetched = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!loaded) return;
+    const once = (key: string, run: () => Promise<void>) => {
+      if (fetched.current.has(key)) return;
+      fetched.current.add(key);
+      void run();
+    };
+    if (active === "sso") {
+      once("sso", async () => {
+        await Promise.allSettled([loadSamlProviders(), loadOidcProviders()]);
+        setSsoLoaded(true);
+      });
+    }
+    // The role picker is shared by the SSO dialogs, SCIM, LDAP and the
+    // third-party issuers on Tokens — fetched once, for whichever opens first.
+    if (active === "sso" || active === "tokens") once("roles", loadAvailableRoles);
+    if (active === "sessions") {
+      once("sessions", async () => {
+        try {
+          await loadSessions();
+        } catch (e) {
+          pushToast?.((e as Error).message);
+        }
+        setSessionsLoaded(true);
+      });
+    }
+  }, [active, loaded, pushToast]);
 
   const removeSamlProvider = (id: string) => {
     setConfirmRemoveSaml({ id });
@@ -436,12 +489,31 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
 
   const userCount = new Set(sessions.map((s) => s.user)).size;
 
-  // First whole-page fetch — auth config + sessions + providers still loading.
+  // First whole-page fetch — auth config + workspace still loading.
   if (!loaded) return <AuthSettingsSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Authentication`} description={<><Trans>Configure sign-in methods, MFA, and session policy. Tokens are signed with <span className="font-mono">$AUTH_SECRET</span>.</Trans></>} />
+      <Tabs value={active} onValueChange={setTab}>
+        <TabsList>
+          {[
+            { id: "sign-in", label: t`Sign-in` },
+            { id: "sso", label: t`SSO` },
+            { id: "tokens", label: t`Tokens` },
+            // "API", not "API & hooks": the longer label pushes the strip to
+            // 397px against a 362px viewport at 390 wide, so the last tab
+            // scrolls out of sight with nothing to say it is there. Both cards
+            // inside name themselves anyway.
+            { id: "api", label: t`API` },
+            { id: "sessions", label: t`Sessions` },
+          ].map((item) => (
+            <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {active === "sign-in" && (<>
       <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
         <Card className="gap-0 py-0">
           <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
@@ -510,7 +582,12 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
           </div>
         </Card>
       </div>
+      {/* The gate in front of the sign-in endpoints — it is about who may
+          REACH them, not about how they work, so it trails the pair above. */}
+      <CaptchaCard pushToast={pushToast} />
+      </>)}
 
+      {active === "sso" && (ssoLoaded ? (<>
       <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Shield size={13} />
@@ -646,21 +723,21 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
         ))}
       </Card>
 
-      <ThirdPartyAuthCard availableRoles={availableRoles} pushToast={pushToast} />
-
-      {/* The gate in front of the endpoints above — sits after them because it
-          is about who may REACH them, not about how they work. */}
-      <CaptchaCard pushToast={pushToast} />
-      {/* What signs the tokens those endpoints hand out. */}
-      <SigningKeysCard pushToast={pushToast} />
-      {/* And who those tokens are minted FOR. */}
-      <OAuthClientsCard pushToast={pushToast} />
-      <AuthHooksCard pushToast={pushToast} />
-
       <ScimCard availableRoles={availableRoles} pushToast={pushToast} />
 
       <LdapConfigCard availableRoles={availableRoles} pushToast={pushToast} />
+      </>) : <AuthSsoTabSkeleton />)}
 
+      {active === "tokens" && (<>
+      {/* What signs the tokens the auth endpoints hand out. */}
+      <SigningKeysCard pushToast={pushToast} />
+      {/* Who those tokens are minted FOR. */}
+      <OAuthClientsCard pushToast={pushToast} />
+      {/* And whose tokens we accept without having minted them. */}
+      <ThirdPartyAuthCard availableRoles={availableRoles} pushToast={pushToast} />
+      </>)}
+
+      {active === "api" && (<>
       {(() => {
         const slug = workspace?.slug ?? "<workspace>";
         const base = apiOrigin();
@@ -730,7 +807,11 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           </Card>
         );
       })()}
+      {/* Where an application steps INTO those endpoints. */}
+      <AuthHooksCard pushToast={pushToast} />
+      </>)}
 
+      {active === "sessions" && (sessionsLoaded ? (
       <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Activity size={13} />
@@ -766,6 +847,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           </div>
         )}
       </Card>
+      ) : <AuthSessionsTabSkeleton />)}
 
       {configuring && (
         <ProviderConfigDialog

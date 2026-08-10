@@ -460,6 +460,14 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     (id: string | null) => { navigate(id ? "/flows/" + id : "/flows"); },
     [navigate],
   );
+  // Auth settings sub-tab, also segs[1]. The page is five panels deep; without
+  // the segment a link (advisor fix, docs, a colleague) can only point at the
+  // page and leave the reader to find the panel.
+  const activeAuthTab = activeNav === "authentication" && segs[1] ? segs[1] : null;
+  const setActiveAuthTab = useCallback(
+    (id: string) => { navigate("/authentication/" + id); },
+    [navigate],
+  );
   const [newCollectionOpen, setNewCollectionOpen] = useState(false);
 
   // Debounced server-side search. The admin used to filter `posts` purely
@@ -1164,7 +1172,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "kpis" && <KpisPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
-            {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
+            {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} tab={activeAuthTab} setTab={setActiveAuthTab} />}
             {activeNav === "platform-sso" && <PlatformSsoSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}
             {activeNav === "app-users" && <AppUsersPage pushToast={pushToast} />}

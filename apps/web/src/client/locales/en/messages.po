@@ -2403,6 +2403,14 @@ msgstr "Anyone, any time"
 msgid "Anyone, even signed out"
 msgstr "Anyone, even signed out"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "API"
+msgstr "API"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+#~ msgid "API & hooks"
+#~ msgstr "API & hooks"
+
 #: src/client/admin/collections/collections-index.tsx
 msgid "API docs"
 msgstr "API docs"
@@ -16351,6 +16359,7 @@ msgstr "sessions"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Sessions"
 msgstr "Sessions"
 
@@ -16844,6 +16853,7 @@ msgstr "Sign up"
 msgid "Sign URL"
 msgstr "Sign URL"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Sign-in"
 msgstr "Sign-in"
@@ -17205,6 +17215,10 @@ msgstr "SQL"
 #: src/client/admin/pages/data/database.tsx
 msgid "SQL editor"
 msgstr "SQL editor"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "SSO"
+msgstr "SSO"
 
 #: src/client/admin/collections/items.tsx
 msgid "Staged"
@@ -18720,6 +18734,10 @@ msgstr "Token URL"
 #: src/client/admin/pages/automation/chat.tsx
 msgid "tokens"
 msgstr "tokens"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Tokens"
+msgstr "Tokens"
 
 #: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Tokens are signed with whatever the environment configures. Generate a key to rotate from here instead — nothing changes until you promote one."

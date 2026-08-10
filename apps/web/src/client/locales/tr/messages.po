@@ -2403,6 +2403,14 @@ msgstr "Herkes, istediği zaman"
 msgid "Anyone, even signed out"
 msgstr "Herkes, oturum açmamış olsa bile"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "API"
+msgstr "API"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+#~ msgid "API & hooks"
+#~ msgstr "API ve kancalar"
+
 #: src/client/admin/collections/collections-index.tsx
 msgid "API docs"
 msgstr "API belgeleri"
@@ -16351,6 +16359,7 @@ msgstr "oturumlar"
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Sessions"
 msgstr "Oturumlar"
 
@@ -16844,6 +16853,7 @@ msgstr "Kayıt ol"
 msgid "Sign URL"
 msgstr "URL'yi imzala"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Sign-in"
 msgstr "Oturum açma"
@@ -17205,6 +17215,10 @@ msgstr "SQL"
 #: src/client/admin/pages/data/database.tsx
 msgid "SQL editor"
 msgstr "SQL editörü"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "SSO"
+msgstr "SSO"
 
 #: src/client/admin/collections/items.tsx
 msgid "Staged"
@@ -18720,6 +18734,10 @@ msgstr "Token URL’si"
 #: src/client/admin/pages/automation/chat.tsx
 msgid "tokens"
 msgstr "token"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Tokens"
+msgstr "Token'lar"
 
 #: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Tokens are signed with whatever the environment configures. Generate a key to rotate from here instead — nothing changes until you promote one."

@@ -818,27 +818,40 @@ function SignaturesSkeletonImpl() {
   );
 }
 
-/** Authentication — header, a Providers / Policy two-column split, then the
- *  full-width SAML and LDAP cards stacked below. */
+/** Authentication — header, the five-tab strip, then the Sign-in panel it
+ *  opens on: a Providers / Policy two-column split above the captcha card. */
 function AuthSettingsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
+      <TabStripSkeleton tabs={5} />
       {/* Providers list (left) + Policy settings form (right). */}
       <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
         <ListCardSkeleton rows={5} />
         <CardSkeleton lines={7} />
       </div>
-      {/* Full-width cards, in page order: SAML 2.0 SSO, OIDC / OAuth2 SSO,
-          third-party token issuers, auth hooks, SCIM, LDAP. */}
-      <ListCardSkeleton rows={3} />
-      <ListCardSkeleton rows={3} />
-      <ListCardSkeleton rows={3} />
-      <ListCardSkeleton rows={3} />
-      <ListCardSkeleton rows={3} />
-      <ListCardSkeleton rows={3} />
+      <ListCardSkeleton rows={2} />
     </div>
   );
+}
+
+/** Authentication › SSO — SAML, OIDC, SCIM and LDAP, fetched when the tab is
+ *  first opened rather than on page load. Rendered under the live header and
+ *  tab strip, so it carries neither. */
+function AuthSsoTabSkeletonImpl() {
+  return (
+    <>
+      <ListCardSkeleton rows={3} />
+      <ListCardSkeleton rows={3} />
+      <ListCardSkeleton rows={2} />
+      <ListCardSkeleton rows={4} />
+    </>
+  );
+}
+
+/** Authentication › Sessions — the one signed-in-right-now table. */
+function AuthSessionsTabSkeletonImpl() {
+  return <TableCardSkeleton rows={8} cols={6} />;
 }
 
 /** Users — header (1 action), a 4-up stat-card row, a filter bar, then a
@@ -1150,6 +1163,8 @@ export const ApprovalsSkeleton = withSkeletonDelay(ApprovalsSkeletonImpl);
 export const SignaturesSkeleton = withSkeletonDelay(SignaturesSkeletonImpl);
 export const BookingSkeleton = withSkeletonDelay(BookingSkeletonImpl);
 export const AuthSettingsSkeleton = withSkeletonDelay(AuthSettingsSkeletonImpl);
+export const AuthSsoTabSkeleton = withSkeletonDelay(AuthSsoTabSkeletonImpl);
+export const AuthSessionsTabSkeleton = withSkeletonDelay(AuthSessionsTabSkeletonImpl);
 export const UsersSkeleton = withSkeletonDelay(UsersSkeletonImpl);
 export const AppUsersSkeleton = withSkeletonDelay(AppUsersSkeletonImpl);
 export const AppOrgsSkeleton = withSkeletonDelay(AppOrgsSkeletonImpl);

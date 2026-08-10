@@ -75,7 +75,7 @@ beforeAll(async () => {
   const body = (await form.json()) as { data: { form: { id: string }; token: string } };
   formId = body.data.form.id;
   formToken = body.data.token;
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

@@ -29,7 +29,7 @@ beforeAll(async () => {
     setupError = err instanceof Error ? err : new Error(String(err));
     console.warn("[pg-smoke] harness setup failed — skipping pg path tests:", setupError.message);
   }
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

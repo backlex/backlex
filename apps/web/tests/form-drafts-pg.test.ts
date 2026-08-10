@@ -82,7 +82,7 @@ beforeAll(async () => {
   });
   if (form.status !== 201) throw new Error(`form failed: ${form.status}`);
   formToken = ((await form.json()) as { data: { token: string } }).data.token;
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

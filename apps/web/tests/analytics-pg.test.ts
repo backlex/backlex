@@ -65,7 +65,7 @@ beforeAll(async () => {
     body: JSON.stringify({ events }),
   });
   if (ingest.status !== 202) throw new Error(`ingest failed: ${ingest.status}`);
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

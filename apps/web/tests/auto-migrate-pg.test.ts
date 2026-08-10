@@ -233,7 +233,7 @@ beforeAll(async () => {
   } catch (err) {
     setupErr = err instanceof Error ? err : new Error(String(err));
   }
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 describe("auto-migrate (pg) — end-to-end pglite", () => {
   test("real PG bundle replays against pglite without throwing", async () => {

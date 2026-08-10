@@ -16,7 +16,7 @@
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
-import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 const DAY = 86_400_000;
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -67,7 +67,7 @@ beforeAll(async () => {
     field: "total",
     dateField: "at",
   });
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();
@@ -93,4 +93,4 @@ test("series buckets land in the right slices on Postgres", async () => {
   expect(series[3]!.value).toBe(7);
   // …and the buckets still add up to the headline number.
   expect(series.reduce((a, s) => a + (s.value ?? 0), 0)).toBe(Number(body.data.point.value));
-}, 60_000);
+}, PGLITE_TEST_TIMEOUT_MS);

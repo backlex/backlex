@@ -66,7 +66,7 @@ beforeAll(async () => {
     const res = await post(`/api/items/${slug}`, row);
     if (res.status !== 201) throw new Error(`insert failed: ${res.status}`);
   }
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

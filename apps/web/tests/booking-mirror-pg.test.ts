@@ -94,7 +94,7 @@ beforeAll(async () => {
     rules: [{ kind: "open", weekday: 1, startMinute: 540, endMinute: 720 }],
   });
   if (!resource.ok) throw new Error(`resource failed: ${resource.status}`);
-}, 60_000);
+}, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
   await harness?.cleanup();

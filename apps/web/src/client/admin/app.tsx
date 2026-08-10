@@ -39,6 +39,7 @@ import {
   Topbar,
   useToasts,
 } from "./ui";
+import { useUrlTab } from "./use-url-tab";
 import {
   BulkBar,
   FilterBar,
@@ -143,6 +144,9 @@ import { PageSkeleton, CollectionItemsSkeleton } from "./page-skeletons";
 
 const TAB_COUNT_CLS =
   "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
+
+/** The panels an open collection is looked at through. */
+const COLLECTION_TABS = ["items", "kpis", "schema", "settings"] as const;
 import { AccountPage } from "./pages/account-page";
 import { PreferencesProvider } from "./preferences";
 import { AdminLocaleSync } from "./i18n";
@@ -296,7 +300,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   }, [segs[0], navigate]);
 
   const navTo = useCallback((id: string) => { vNav("/" + id); }, [vNav]);
-  const [activeTab, setActiveTab] = useState<"items" | "kpis" | "schema" | "settings">("items");
+  // `/collections/:slug/:tab` — the tab sits under the open collection, so
+  // depth 2. `items` doubles as the item-detail route's own segment, but that
+  // route needs an id after it (`/collections/posts/items/abc`), so the two
+  // never mean the same URL.
+  const [activeTab, setActiveTab] = useUrlTab(COLLECTION_TABS, "items", 2);
   // The item list is React Query state (`itemsQuery` below, derived from
   // `activeCollection` + `itemsParams`). `posts` is just its current rows —
   // mutations patch the cache through the `useItem*` hooks, never a setter.
@@ -437,8 +445,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // in-flight state — count 0 because nothing has loaded — doesn't bounce
   // someone off the tab they just opened.
   useEffect(() => {
-    if (kpisData && activeTab === "kpis" && collectionKpiCount === 0) setActiveTab("items");
-  }, [kpisData, activeTab, collectionKpiCount]);
+    if (kpisData && activeTab === "kpis" && collectionKpiCount === 0)
+      setActiveTab("items", { replace: true });
+  }, [kpisData, activeTab, collectionKpiCount, setActiveTab]);
   const setActiveCollection = useCallback(
     (slug: string | null) => { vNav(slug ? "/collections/" + slug : "/collections", slug ? "forward" : "back"); },
     [vNav],
@@ -460,14 +469,6 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     (id: string | null) => { navigate(id ? "/flows/" + id : "/flows"); },
     [navigate],
   );
-  // Auth settings sub-tab, also segs[1]. The page is five panels deep; without
-  // the segment a link (advisor fix, docs, a colleague) can only point at the
-  // page and leave the reader to find the panel.
-  const activeAuthTab = activeNav === "authentication" && segs[1] ? segs[1] : null;
-  const setActiveAuthTab = useCallback(
-    (id: string) => { navigate("/authentication/" + id); },
-    [navigate],
-  );
   // Booking + forms both open one record over several tabs, and both are
   // watched rather than only edited: an operator sits on Bookings or
   // Submissions waiting for something to arrive. Holding the open record and
@@ -475,7 +476,6 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // be the only way to see what had arrived — closed the record and went back
   // to the first tab. So both live in the path: /booking/:key/:tab, /forms/:id/:tab.
   const activeBooking = activeNav === "booking" && segs[1] ? segs[1] : null;
-  const activeBookingTab = activeNav === "booking" && segs[2] ? segs[2] : null;
   const openBooking = useCallback(
     (key: string | null, tab?: string) => {
       navigate(key ? `/booking/${encodeURIComponent(key)}/${tab ?? "hours"}` : "/booking");
@@ -483,7 +483,6 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     [navigate],
   );
   const activeFormId = activeNav === "forms" && segs[1] ? segs[1] : null;
-  const activeFormTab = activeNav === "forms" && segs[2] ? segs[2] : null;
   const openFormAt = useCallback(
     (id: string | null, tab?: string) => {
       navigate(id ? `/forms/${encodeURIComponent(id)}/${tab ?? "edit"}` : "/forms");
@@ -1173,7 +1172,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "jobs" && <JobsPage pushToast={pushToast} />}
             {activeNav === "feature-flags" && <FeatureFlagsPage pushToast={pushToast} />}
-            {activeNav === "forms" && <FormsPage pushToast={pushToast} setActiveNav={setActiveNav} activeForm={activeFormId} activeTab={activeFormTab} openFormAt={openFormAt} />}
+            {activeNav === "forms" && <FormsPage pushToast={pushToast} setActiveNav={setActiveNav} activeForm={activeFormId} openFormAt={openFormAt} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "integrations" && <IntegrationsPage pushToast={pushToast} />}
             {activeNav === "payments" && <PaymentsPage pushToast={pushToast} />}
@@ -1194,7 +1193,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "kpis" && <KpisPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
-            {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} tab={activeAuthTab} setTab={setActiveAuthTab} />}
+            {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
             {activeNav === "platform-sso" && <PlatformSsoSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}
             {activeNav === "app-users" && <AppUsersPage pushToast={pushToast} />}
@@ -1204,7 +1203,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "documents" && <DocumentsPage pushToast={pushToast} />}
             {activeNav === "approvals" && <ApprovalsPage pushToast={pushToast} />}
             {activeNav === "signatures" && <SignaturesPage pushToast={pushToast} />}
-            {activeNav === "booking" && <BookingPage pushToast={pushToast} activeResource={activeBooking} activeTab={activeBookingTab} openResourceAt={openBooking} />}
+            {activeNav === "booking" && <BookingPage pushToast={pushToast} activeResource={activeBooking} openResourceAt={openBooking} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
             {activeNav === "extensions" && <ExtensionsPage pushToast={pushToast} />}
             {/* Extension-contributed panel pages — a sandboxed iframe host per
@@ -1418,7 +1417,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "items" | "kpis" | "schema" | "settings")}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as (typeof COLLECTION_TABS)[number])}>
                 <TabsList>
                   <TabsTrigger value="items">
                     <I.Inbox size={13} /><Trans>Items</Trans> <span className={TAB_COUNT_CLS}>{posts.length}</span>
@@ -1922,12 +1921,14 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   );
 }
 
+const ACCESS_TABS = ["members", "roles", "tester"] as const;
+
 function RolesPageWithMembers({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
-  const [tab, setTab] = useState<"members" | "roles" | "tester">("members");
+  const [tab, setTab] = useUrlTab(ACCESS_TABS, "members");
   return (
     <div className="flex flex-col gap-3.5">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "members" | "roles" | "tester")}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof ACCESS_TABS)[number])}>
         <TabsList>
           {[
             { id: "members" as const, label: t`Members`, icon: I.Users },

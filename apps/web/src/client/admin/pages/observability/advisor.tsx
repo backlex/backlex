@@ -19,6 +19,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../../icons";
 import { Button, PageHeader } from "../../ui";
+import { useUrlTab } from "../../use-url-tab";
 import { useAdvisor, useAdvisorInsights, queryKeys } from "../../queries";
 import { advisorApi, type ApiAdvisorInsights } from "../../api";
 import { Card } from "@backlex/ui/components/card";
@@ -36,7 +37,8 @@ import { Skeleton } from "@backlex/ui/components/skeleton";
 import { AdvisorSkeleton } from "../../page-skeletons";
 
 type CheckKind = "security" | "performance";
-type TabKey = CheckKind | "insights";
+const TABS = ["security", "performance", "insights"] as const;
+type TabKey = (typeof TABS)[number];
 type CheckLevel = "error" | "warn" | "info";
 
 interface AdvisorAction {
@@ -115,7 +117,7 @@ function formatGeneratedAt(iso: string): string {
 
 export function AdvisorPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
-  const [tab, setTab] = useState<TabKey>("security");
+  const [tab, setTab] = useUrlTab(TABS, "security");
   const [days, setDays] = useState<number>(7);
   const [dismissed, setDismissed] = useState<Set<string>>(loadDismissed);
   const navigate = useNavigate();

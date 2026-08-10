@@ -14,6 +14,7 @@ import {
 import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { SettingsSkeleton } from "../../page-skeletons";
+import { useUrlTab } from "../../use-url-tab";
 
 
 import { EmailSettingsCard, PushSettingsCard, SmsSettingsCard } from "./messaging-cards";
@@ -21,9 +22,21 @@ import { AiSettingsCard } from "./ai-card";
 import { AppearanceSettingsCard, SignInBrandingCard } from "./appearance-cards";
 import { WorkspaceLocaleCard } from "./locale-card";
 
+const SETTINGS_TABS = [
+  "general",
+  "appearance",
+  "email",
+  "push",
+  "sms",
+  "ai",
+  "bindings",
+  "env",
+  "about",
+] as const;
+
 export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: PushToast }) {
   const { t } = useLingui();
-  const [tab, setTab] = useState("general");
+  const [tab, setTab] = useUrlTab(SETTINGS_TABS, "general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
   const [from, setFrom] = useState("hello@example.com");
   // First-load gate — drives the page skeleton until the General-tab settings
@@ -93,7 +106,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Settings`} description={t`Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values.`} />
-      <Tabs value={tab} onValueChange={(v) => setTab(v)}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof SETTINGS_TABS)[number])}>
         <TabsList>
           {[
             { id: "general", label: t`General` },

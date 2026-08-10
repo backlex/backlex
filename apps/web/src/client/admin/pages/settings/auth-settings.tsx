@@ -8,6 +8,7 @@ import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { I } from "../../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../../ui";
+import { useUrlTab } from "../../use-url-tab";
 import { Select } from "../../select";
 import {
   Dialog,
@@ -91,7 +92,6 @@ const POLICY_ROWS: { key: string; label: string; desc: string; fallback: boolean
  */
 const AUTH_TABS = ["sign-in", "sso", "tokens", "api", "sessions"] as const;
 type AuthTab = (typeof AUTH_TABS)[number];
-const isAuthTab = (v: string | null): v is AuthTab => !!v && (AUTH_TABS as readonly string[]).includes(v);
 
 const isHttpUrl = (s: string) => {
   try {
@@ -124,15 +124,11 @@ const mapAuthProviders = (map: Record<string, any> | undefined): AuthProviderRow
   return rows;
 };
 
-export function AuthSettingsPage({ pushToast, tab, setTab }: {
-  pushToast: PushToast;
-  /** Sub-tab from the URL (`/authentication/:tab`), or null on the bare path. */
-  tab: string | null;
-  setTab: (id: string) => void;
-}) {
+export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
-  // An unknown segment lands on the first panel rather than an empty page.
-  const active: AuthTab = isAuthTab(tab) ? tab : "sign-in";
+  // `/authentication/:tab`. An unknown segment lands on the first panel rather
+  // than an empty page — see `useUrlTab`.
+  const [active, setTab] = useUrlTab(AUTH_TABS, "sign-in");
   const [providers, setProviders] = useState<AuthProviderRow[]>([]);
   const [policy, setPolicy] = useState<Record<string, boolean>>({});
   const [sessionLifetime, setSessionLifetime] = useState("30d");
@@ -495,7 +491,7 @@ export function AuthSettingsPage({ pushToast, tab, setTab }: {
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Authentication`} description={<><Trans>Configure sign-in methods, MFA, and session policy. Tokens are signed with <span className="font-mono">$AUTH_SECRET</span>.</Trans></>} />
-      <Tabs value={active} onValueChange={setTab}>
+      <Tabs value={active} onValueChange={(v) => setTab(v as AuthTab)}>
         <TabsList>
           {[
             { id: "sign-in", label: t`Sign-in` },

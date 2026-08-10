@@ -17,6 +17,7 @@ import {
   PageHeader,
   Switch,
 } from "../../../ui";
+import { useUrlTab } from "../../../use-url-tab";
 import { Select } from "../../../select";
 import { Input } from "@backlex/ui/components/input";
 import {
@@ -186,13 +187,11 @@ export function FormsPage({
   pushToast,
   setActiveNav,
   activeForm,
-  activeTab,
   openFormAt,
 }: {
   pushToast: PushToast;
   setActiveNav?: (nav: string) => void;
   activeForm?: string | null;
-  activeTab?: string | null;
   openFormAt?: (id: string | null, tab?: string) => void;
 }) {
   const { t } = useLingui();
@@ -208,19 +207,10 @@ export function FormsPage({
    *
    * Submissions is a tab people sit on, watching for answers to land, and
    * asking for them used to mean reloading the admin — which closed the form
-   * and came back on Edit. An unknown tab reads as the first one, so a
-   * hand-typed or truncated URL still opens the builder.
+   * and came back on Edit.
    */
   const openId = activeForm ?? null;
-  const tab: BuilderTab = (BUILDER_TABS as readonly string[]).includes(activeTab ?? "")
-    ? (activeTab as BuilderTab)
-    : "edit";
-  const setTab = useCallback(
-    (next: BuilderTab) => {
-      if (openId) openFormAt?.(openId, next);
-    },
-    [openId, openFormAt],
-  );
+  const [tab, setTab] = useUrlTab(BUILDER_TABS, "edit", 2);
   const [sel, setSel] = useState<Selection>(null);
   const [locale, setLocale] = useState("en");
   const [eligible, setEligible] = useState<ApiFormEligibleField[]>([]);

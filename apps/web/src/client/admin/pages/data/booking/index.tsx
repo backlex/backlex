@@ -30,6 +30,7 @@ import {
   type ApiBookingRule,
 } from "../../../api";
 import { BookingSkeleton } from "../../../page-skeletons";
+import { useUrlTab } from "../../../use-url-tab";
 import { DatePicker } from "@/components/date-picker";
 import { ConfirmAction } from "@/components/confirm-action";
 import {
@@ -70,12 +71,10 @@ import { COMMON_ZONES, DAY_SETS, DaySet, HORIZON_DAYS, WINDOWS, WindowKey, inZon
 export function BookingPage({
   pushToast,
   activeResource,
-  activeTab,
   openResourceAt,
 }: {
   pushToast: PushToast;
   activeResource?: string | null;
-  activeTab?: string | null;
   openResourceAt?: (key: string | null, tab?: string) => void;
 }) {
   const { t } = useLingui();
@@ -91,19 +90,10 @@ export function BookingPage({
    * This page is watched as much as it is edited: an operator sits on Bookings
    * waiting for one to come in. Held in state, every refresh closed the
    * resource and went back to Hours — and refreshing used to be the only way to
-   * see what had arrived. An unknown tab reads as the first one rather than
-   * rendering nothing, so a hand-typed or truncated URL still opens.
+   * see what had arrived.
    */
   const openKey = activeResource ?? null;
-  const tab: Tab = (TABS as readonly string[]).includes(activeTab ?? "")
-    ? (activeTab as Tab)
-    : "hours";
-  const setTab = useCallback(
-    (at: Tab) => {
-      if (openKey) openResourceAt?.(openKey, at);
-    },
-    [openKey, openResourceAt],
-  );
+  const [tab, setTab] = useUrlTab(TABS, "hours", 2);
 
   const [statusFilter, setStatusFilter] = useState("");
   const [windowKey, setWindowKey] = useState<WindowKey>("upcoming");

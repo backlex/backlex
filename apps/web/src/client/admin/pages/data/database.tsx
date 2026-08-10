@@ -4,6 +4,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../../config";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
+import { useUrlTab } from "../../use-url-tab";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
@@ -16,9 +17,11 @@ import { dbAdminApi, type BackupConfig } from "../../api";
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
+const DATABASE_TABS = ["sql", "migrations", "backups"] as const;
+
 export function DatabasePage({ pushToast, adapter }: { pushToast: PushToast; adapter: AdapterId }) {
   const { t } = useLingui();
-  const [tab, setTab] = useState("sql");
+  const [tab, setTab] = useUrlTab(DATABASE_TABS, "sql");
   const [migCount, setMigCount] = useState<number | null>(null);
   const [backupCount, setBackupCount] = useState<number | null>(null);
   useEffect(() => {
@@ -43,7 +46,7 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: PushToast; ada
         description={<><Trans>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</Trans></>}
         badges={<Badge variant="outline" mono>{ADAPTER_PROFILES[adapter].db}</Badge>}
       />
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof DATABASE_TABS)[number])}>
         <TabsList>
           <TabsTrigger value="sql"><I.Code size={13} /><Trans>SQL editor</Trans></TabsTrigger>
           <TabsTrigger value="migrations">

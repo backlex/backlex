@@ -328,6 +328,9 @@ describe("admin UI conventions", () => {
       "i18n.ts",
       "queries.ts",
       "types.ts",
+      // Where a tabbed page's open panel lives — the path, not state. Read by
+      // twelve pages across five folders, owned by none of them.
+      "use-url-tab.ts",
       // Design layer — what every page draws itself with.
       "extras.tsx",
       "icons.tsx",

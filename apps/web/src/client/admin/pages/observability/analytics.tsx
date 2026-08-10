@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { Badge, Button, EmptyState, PageHeader } from "../../ui";
+import { useUrlTab } from "../../use-url-tab";
 import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -181,7 +182,7 @@ export function AnalyticsPage({
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useUrlTab(TABS, "overview");
   const [days, setDays] = useState(30);
   const [keyOpen, setKeyOpen] = useState(false);
 

@@ -22,6 +22,7 @@ import { api } from "@/lib/api";
 import { activityApi, collectionsApi, type ApiCollection } from "../../api";
 import { I } from "../../icons";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
+import { useUrlTab } from "../../use-url-tab";
 import { Card } from "@backlex/ui/components/card";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
@@ -61,6 +62,8 @@ import {
 // button. Resolves from the `--primary` token so it tracks light + dark.
 const PRIMARY_GRADIENT =
   "bg-[linear-gradient(135deg,var(--color-primary),color-mix(in_oklch,var(--color-primary)_78%,black))] text-primary-foreground";
+
+const ASK_AI_TABS = ["ask", "tools", "runs", "connect"] as const;
 
 export function AskAiPage({
   pushToast,
@@ -223,7 +226,7 @@ export function AskAiPage({
   const [model, setModel] = useState(() => readModelPref(DEFAULT_MODEL));
   const [result, setResult] = useState<RunResponse | null>(null);
   const [recent, setRecent] = useState<RunRow[]>([]);
-  const [tab, setTab] = useState<"ask" | "tools" | "runs" | "connect">("ask");
+  const [tab, setTab] = useUrlTab(ASK_AI_TABS, "ask");
   // pak_* keys are fetched once at the page level so Tools (right rail
   // editor) and Connect (snippet picker) can share the selection — flipping
   // tabs doesn't refetch or reset which key is active.

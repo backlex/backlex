@@ -93,7 +93,10 @@ describe("OIDC providers admin UI", () => {
 
   test("lists provider rows with name, slug and issuer", async () => {
     mockAuthSettings({ rows: [PROVIDER] });
-    renderWithProviders(<AuthSettingsPage pushToast={() => {}} tab="sso" setTab={() => {}} />);
+    renderWithProviders(<AuthSettingsPage pushToast={() => {}} />, {
+      // The open panel comes from the path now — see `useUrlTab`.
+      route: "/authentication/sso",
+    });
 
     await waitFor(() => expect(screen.getByText("Acme Okta")).toBeTruthy());
     // slug + discovery URL share one mono line under the name.
@@ -103,7 +106,10 @@ describe("OIDC providers admin UI", () => {
 
   test("a row with no stored client secret is called out as broken", async () => {
     mockAuthSettings({ rows: [SECRETLESS_PROVIDER] });
-    renderWithProviders(<AuthSettingsPage pushToast={() => {}} tab="sso" setTab={() => {}} />);
+    renderWithProviders(<AuthSettingsPage pushToast={() => {}} />, {
+      // The open panel comes from the path now — see `useUrlTab`.
+      route: "/authentication/sso",
+    });
 
     await waitFor(() => expect(screen.getByText("Keycloak dev")).toBeTruthy());
     expect(screen.getByText("No client secret stored — login will fail.")).toBeTruthy();
@@ -111,7 +117,10 @@ describe("OIDC providers admin UI", () => {
 
   test("a failing list (table not migrated) renders as empty, not as a crash", async () => {
     mockAuthSettings({ fail: true });
-    renderWithProviders(<AuthSettingsPage pushToast={() => {}} tab="sso" setTab={() => {}} />);
+    renderWithProviders(<AuthSettingsPage pushToast={() => {}} />, {
+      // The open panel comes from the path now — see `useUrlTab`.
+      route: "/authentication/sso",
+    });
 
     // The rest of the page still loads, and the OIDC card shows its empty state.
     await waitFor(() => expect(screen.getByText("OIDC / OAuth2 SSO")).toBeTruthy());

@@ -13,6 +13,7 @@ import {
   ShieldIcon,
 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useUrlTab } from "../use-url-tab";
 import { Button } from "@backlex/ui/components/button";
 import { Badge } from "@backlex/ui/components/badge";
 import { Input } from "@backlex/ui/components/input";
@@ -87,12 +88,14 @@ const unwrap = <T,>(res: { data?: T | null; error?: { message?: string } | null 
   return (res?.data ?? null) as T;
 };
 
-type AccountTab =
-  | "profile"
-  | "preferences"
-  | "security"
-  | "sessions"
-  | "connected";
+const ACCOUNT_TABS = [
+  "profile",
+  "preferences",
+  "security",
+  "sessions",
+  "connected",
+] as const;
+type AccountTab = (typeof ACCOUNT_TABS)[number];
 
 export function AccountPage({ pushToast }: { pushToast: PushToast }) {
   const session = auth.useSession();
@@ -102,7 +105,7 @@ export function AccountPage({ pushToast }: { pushToast: PushToast }) {
   const currentSessionToken =
     (session.data as { session?: { token?: string } } | null)?.session?.token ?? null;
 
-  const [tab, setTab] = useState<AccountTab>("profile");
+  const [tab, setTab] = useUrlTab(ACCOUNT_TABS, "profile");
 
   return (
     <div className="flex flex-col gap-5">

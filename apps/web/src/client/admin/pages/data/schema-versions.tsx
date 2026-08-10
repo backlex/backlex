@@ -47,11 +47,12 @@ import { SchemaVersionsSkeleton } from "../../page-skeletons";
 import { Select } from "../../select";
 import { ConfirmDialog } from "../../sheet";
 import { Badge, Button, EmptyState, IconButton, PageHeader } from "../../ui";
+import { useUrlTab } from "../../use-url-tab";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
-type Tab = "snapshots" | "branches";
+const TABS = ["snapshots", "branches"] as const;
 
 /** A ref + a human label, the unit the diff dialog operates on. */
 interface RefTarget {
@@ -71,7 +72,7 @@ export function SchemaVersionsPage({
   pushToast: PushToast;
 }) {
   const { t } = useLingui();
-  const [tab, setTab] = useState<Tab>("snapshots");
+  const [tab, setTab] = useUrlTab(TABS, "snapshots");
   const [loading, setLoading] = useState(true);
   const [snapshots, setSnapshots] = useState<ApiSchemaSnapshot[]>([]);
   const [branches, setBranches] = useState<ApiSchemaBranch[]>([]);

@@ -65,6 +65,9 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|
               --set k=v [...]          provider settings (see catalog)
               --map External=field [...]
                                        push: --map field=DestinationColumn
+              [--children <json|@file|->]
+                                       pull only: where child rows land, keyed
+                                       by provider group — see docs
               [--every <minutes>]      0 = manual only, default 60
   sync-run <id>                        run now and report what landed
   sync-update <id> [--every N] [--enable|--disable]
@@ -262,12 +265,20 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
           process.stderr.write("--direction must be pull or push\n");
           process.exit(1);
         }
+        // JSON rather than a repeated flag: a child group is four values deep
+        // (group, collection, parent column, field map) and every flag syntax
+        // that flattens it turns into a punctuation puzzle at the shell.
+        const childrenFlag = flag(args, "--children");
+        const childMappings = childrenFlag
+          ? (JSON.parse(await resolvePayload(childrenFlag)) as Record<string, unknown>)
+          : undefined;
         const { data } = await client.request<{ data: SyncRow }>("POST", `${BASE}/syncs`, {
           integrationId,
           collection,
           ...(direction === undefined ? {} : { direction }),
           settings: collectSet(args),
           mapping,
+          ...(childMappings === undefined ? {} : { childMappings }),
           ...(every === undefined ? {} : { intervalMinutes: Number(every) }),
         });
         if (json) printJson(data);

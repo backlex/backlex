@@ -207,6 +207,24 @@ export const createIntegrationSyncTool: McpTool = {
         description:
           "Pull: external field → collection field. Push: collection field → destination column. At least one entry.",
       },
+      childMappings: {
+        type: "object",
+        description:
+          "Pull only. Where a record's CHILD rows land, keyed by the group name the provider returns " +
+          "(e.g. `items` for an order's lines). Each value is `{ collection, parentField, mapping }`: the " +
+          "managed collection the lines go in, the relation column pointing back at the header (filled from " +
+          "the parent's own id, never from provider data), and an external → field mapping. Children are " +
+          "upserted, never reconciled — a line removed at the provider stays in the collection.",
+        additionalProperties: {
+          type: "object",
+          properties: {
+            collection: { type: "string" },
+            parentField: { type: "string" },
+            mapping: { type: "object", additionalProperties: { type: "string" } },
+          },
+          required: ["collection", "parentField", "mapping"],
+        },
+      },
       intervalMinutes: { type: "number", description: "0 = manual only. Default 60. Max 10080." },
       enabled: { type: "boolean" },
     },
@@ -234,6 +252,24 @@ export const updateIntegrationSyncTool: McpTool = {
       id: { type: "string" },
       settings: { type: "object", additionalProperties: true },
       mapping: { type: "object", additionalProperties: { type: "string" } },
+      childMappings: {
+        type: "object",
+        description:
+          "Pull only. Where a record's CHILD rows land, keyed by the group name the provider returns " +
+          "(e.g. `items` for an order's lines). Each value is `{ collection, parentField, mapping }`: the " +
+          "managed collection the lines go in, the relation column pointing back at the header (filled from " +
+          "the parent's own id, never from provider data), and an external → field mapping. Children are " +
+          "upserted, never reconciled — a line removed at the provider stays in the collection.",
+        additionalProperties: {
+          type: "object",
+          properties: {
+            collection: { type: "string" },
+            parentField: { type: "string" },
+            mapping: { type: "object", additionalProperties: { type: "string" } },
+          },
+          required: ["collection", "parentField", "mapping"],
+        },
+      },
       intervalMinutes: { type: "number" },
       enabled: { type: "boolean" },
     },

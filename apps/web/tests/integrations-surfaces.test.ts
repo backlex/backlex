@@ -246,3 +246,79 @@ describe("integrations — direction reaches every surface", () => {
     expect(direction.enum).toEqual(["pull", "push"]);
   });
 });
+
+describe("integrations — child mappings reach every surface", () => {
+  let h: TestHarness;
+  let client: ReturnType<typeof createClient>;
+  let integrationId: string;
+
+  const gql = async (query: string, variables?: unknown) =>
+    (await (await h.fetch("/api/graphql", json({ query, variables }))).json()) as {
+      data?: Record<string, any>;
+      errors?: { message: string }[];
+    };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    client = createClient({ url: "http://localhost", fetch: h.fetch as typeof fetch });
+    await h.fetch(
+      "/api/collections",
+      json({ slug: "orders", fields: [{ name: "number", type: "text" }] }),
+    );
+    await h.fetch(
+      "/api/collections",
+      json({
+        slug: "order_lines",
+        fields: [
+          { name: "order", type: "text" },
+          { name: "sku", type: "text" },
+        ],
+      }),
+    );
+    const made = await client.integrations.connect({
+      kind: "google-sheets",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    integrationId = made.data.id;
+  });
+  afterAll(() => h.cleanup());
+
+  const PULL = {
+    collection: "orders",
+    settings: { spreadsheetId: "s1", sheetName: "Sheet1" },
+    mapping: { Number: "number" },
+    childMappings: {
+      items: { collection: "order_lines", parentField: "order", mapping: { SKU: "sku" } },
+    },
+  };
+
+  test("the SDK round-trips a child group", async () => {
+    const made = await client.integrations.createSync({ integrationId, ...PULL });
+    expect(made.data.childMappings.items?.collection).toBe("order_lines");
+    expect(made.data.childMappings.items?.parentField).toBe("order");
+  });
+
+  test("GraphQL does too", async () => {
+    const res = await gql(
+      `mutation($d:IntegrationSyncInput!){ createIntegrationSync(data:$d){ id childMappings } }`,
+      { d: { integrationId, ...PULL } },
+    );
+    expect(res.errors).toBeUndefined();
+    expect(res.data?.createIntegrationSync.childMappings.items.collection).toBe("order_lines");
+  });
+
+  test("MCP declares the field, so an agent can actually send it", () => {
+    // `additionalProperties: false` on this tool means an undeclared field is
+    // REJECTED, not ignored — leaving it out of the schema would make the
+    // capability unreachable from MCP while looking present everywhere else.
+    const tool = integrationsTools.find((t) => t.name === "integrations.create_sync");
+    const props = tool?.inputSchema.properties as Record<string, any>;
+    expect(props.childMappings).toBeDefined();
+    expect(props.childMappings.additionalProperties.required).toEqual([
+      "collection",
+      "parentField",
+      "mapping",
+    ]);
+  });
+});

@@ -166,6 +166,19 @@ export interface IntegrationOAuth {
   keepFromCallbackQuery?: readonly string[];
 }
 
+/**
+ * One row belonging to a {@link SourceRecord} — an order's line, say.
+ *
+ * `externalId` only has to be unique WITHIN its parent. The engine qualifies it
+ * with the parent's id before it becomes a primary key, which is what lets a
+ * provider hand back line numbers starting at 1 on every order without two
+ * orders' first lines colliding.
+ */
+export interface SourceChildRecord {
+  externalId: string;
+  data: Record<string, unknown>;
+}
+
 /** One external record, as a source provider hands it over. */
 export interface SourceRecord {
   /**
@@ -176,6 +189,22 @@ export interface SourceRecord {
   externalId: string;
   /** Raw external field names → values. Mapped to collection fields by config. */
   data: Record<string, unknown>;
+  /**
+   * Rows that belong to this one, grouped by a name the provider chooses
+   * (`"items"`, `"discounts"`). Absent for the flat sources — a spreadsheet row
+   * has no children.
+   *
+   * The group name is what the sync's `childMappings` is keyed by, so it is
+   * part of the provider's contract: renaming a group orphans an existing
+   * sync's mapping the same way renaming an external field would.
+   *
+   * **Children are upserted, never reconciled.** A line removed at the provider
+   * stays in the collection, exactly as a deleted row does everywhere else in
+   * this engine — a page walk only ever sees what still exists. Marketplace
+   * orders cancel rather than lose lines, so the trade is stated here rather
+   * than paid for with a delete-then-insert that would churn ids on every pull.
+   */
+  children?: Record<string, SourceChildRecord[]>;
 }
 
 /** One page of a pull. */

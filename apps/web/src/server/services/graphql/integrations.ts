@@ -15,7 +15,14 @@ import {
 import { JSONScalar, type GqlCtx } from "./core";
 import { requireFlowAdmin } from "./flows";
 import { beginOAuth } from "../integrations-oauth";
-import { createSync, deleteSync, listSyncs, runSync, updateSync } from "../integration-syncs";
+import {
+  createSync,
+  deleteSync,
+  listSyncs,
+  runSync,
+  updateSync,
+  type CreateSyncInput,
+} from "../integration-syncs";
 import {
   connectIntegration,
   disconnectIntegration,
@@ -86,6 +93,8 @@ const SyncType = new GraphQLObjectType({
     direction: { type: new GraphQLNonNull(GraphQLString) },
     settings: { type: JSONScalar },
     mapping: { type: JSONScalar },
+    /** Pull only: where a record's child rows land, keyed by provider group. */
+    childMappings: { type: JSONScalar },
     intervalMinutes: { type: new GraphQLNonNull(GraphQLInt) },
     enabled: { type: new GraphQLNonNull(GraphQLBoolean) },
     /** Whether more pages are pending — never the provider's resume token. */
@@ -108,6 +117,8 @@ const SyncInputType = new GraphQLInputObjectType({
     direction: { type: GraphQLString },
     settings: { type: JSONScalar },
     mapping: { type: JSONScalar },
+    /** Pull only: `{ group: { collection, parentField, mapping } }`. */
+    childMappings: { type: JSONScalar },
     intervalMinutes: { type: GraphQLInt },
     enabled: { type: GraphQLBoolean },
   },
@@ -281,6 +292,7 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
           direction: d.direction as "pull" | "push" | undefined,
           settings: (d.settings ?? {}) as Record<string, unknown>,
           mapping: (d.mapping ?? {}) as Record<string, string>,
+          childMappings: d.childMappings as CreateSyncInput["childMappings"],
           intervalMinutes: d.intervalMinutes as number | undefined,
           enabled: d.enabled as boolean | undefined,
         });
@@ -308,6 +320,7 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
         return updateSync(gqlCtx.ctx, tenantId, a.id, {
           settings: a.data.settings as Record<string, unknown> | undefined,
           mapping: a.data.mapping as Record<string, string> | undefined,
+          childMappings: a.data.childMappings as CreateSyncInput["childMappings"],
           intervalMinutes: a.data.intervalMinutes as number | undefined,
           enabled: a.data.enabled as boolean | undefined,
         });

@@ -160,6 +160,46 @@ give every record a stable id, so a row that moves stays the same record. Sheets
 has no row id, so the **row number** is the identity — moving a row there reads
 as a different record.
 
+### Records that have lines
+
+Every source above pulls a **flat** record: a spreadsheet row, an Airtable
+record, a calendar event. An order is not that shape — it is a header plus its
+lines, and those belong in two collections.
+
+`childMappings` says where the lines go, keyed by the group name the provider
+hands them back under:
+
+```bash
+backlex integrations sync-create --integration <id> --collection orders \
+  --set … --map orderNumber=number --map grandTotal=total \
+  --children '{"items":{"collection":"order_items","parentField":"order",
+                        "mapping":{"sku":"sku","quantity":"qty"}}}' \
+  --every 15
+```
+
+- `collection` must be **managed**, same as the parent's.
+- `parentField` is the relation column on the *child* collection pointing back
+  at the header. The engine fills it from the parent's own namespaced id —
+  never from provider data, so a line cannot be pointed at a row in another
+  workspace.
+- `mapping` is `external → child field`, exactly like the parent's.
+- A group the sync has no mapping for is **ignored**. A provider may return more
+  groups than you kept, and refusing those would make adding a group to a
+  provider a breaking change for every existing sync.
+
+A child's primary key is qualified by its parent's:
+`<provider>_<sync-prefix>_<order-id>:<line-id>`. That is what lets a provider
+number an order's lines from 1 without every order's first line colliding on one
+key.
+
+**Children are upserted, never reconciled.** A line removed at the provider
+stays in the collection, exactly as [a delete does everywhere else](#what-a-push-cannot-do)
+— a page walk only ever sees what still exists. Marketplace orders cancel rather
+than lose lines, so this is stated rather than paid for with a delete-then-insert
+that would churn ids on every pull.
+
+Pull only. A push walks one collection's watermark and has no notion of a child.
+
 ### Accounting sources
 
 QuickBooks and Xero each need one thing beyond an access token, and they get it
@@ -561,6 +601,28 @@ backlex integrations deliveries <id> --limit 20
 Response bodies are deliberately **not** stored. Unlike a webhook receiver you
 own, these are credentialed third-party APIs whose error bodies routinely echo
 the token back.
+
+### Being rate limited is not being broken
+
+A provider with a published quota answers a page walk with `429`, and that is
+deliberately **not** a breaker failure:
+
+| | |
+|---|---|
+| The counter | does not advance — five throttled runs never pause a sync |
+| The cursor | is held, exactly as for any other failure, so rows are re-read rather than skipped |
+| The row | still records the reason, so a run that landed nothing is never silently clean |
+| The retry | is the queue's own backoff, spaced by the provider's `Retry-After` when it sent one |
+
+Providers that publish a quota also declare it, and the engine spaces requests
+out ahead of time so the common case never earns a 429 at all. That pacing is
+**per-isolate and best-effort**: it keeps one run's twenty pages polite, and two
+isolates running two syncs cannot see each other. The 429 handling above is what
+makes the system correct; the pacing only makes it quiet.
+
+Buckets are keyed per **connected account**, not per provider — two workspaces
+holding two sellers' credentials have independent quotas at the far end, and
+pacing them against each other would halve what each of them is entitled to.
 
 ### The circuit breaker
 

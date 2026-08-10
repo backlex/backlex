@@ -3646,6 +3646,19 @@ export const integrationSyncs = pgTable(
     /** Field mapping. Read in the direction of travel: `external → field` on a
      *  pull, `field → external column` on a push. Unmapped keys are dropped. */
     mapping: jsonb("mapping").$type<Record<string, string>>().notNull().default({}),
+    /**
+     * Where a source record's CHILD rows land. Pull only.
+     *
+     * A marketplace order is a header plus its lines, and a flat mapping can
+     * only describe the header — the lines would have to be flattened into
+     * numbered columns or dropped. Keyed by the group name the provider hands
+     * back on `SourceRecord.children`, so one order can fan out to more than
+     * one child collection.
+     */
+    childMappings: jsonb("child_mappings")
+      .$type<Record<string, { collection: string; parentField: string; mapping: Record<string, string> }>>()
+      .notNull()
+      .default({}),
     /** How often the scheduler runs it. 0 = manual only. */
     intervalMinutes: integer("interval_minutes").notNull().default(60),
     enabled: boolean("enabled").notNull().default(true),

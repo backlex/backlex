@@ -71,6 +71,19 @@ const MAX_ROWS_PER_RUN = 2000;
 export type SyncDirection = "pull" | "push";
 export const SYNC_DIRECTIONS: readonly SyncDirection[] = ["pull", "push"];
 
+/**
+ * Where one group of a source record's children lands.
+ *
+ * `parentField` is the relation column on the CHILD collection pointing back at
+ * the header — the engine fills it from the parent's own namespaced id, so it
+ * is never taken from provider data.
+ */
+export interface ChildMappingSpec {
+  collection: string;
+  parentField: string;
+  mapping: Record<string, string>;
+}
+
 export interface SyncRow {
   id: string;
   integrationId: string;
@@ -79,6 +92,7 @@ export interface SyncRow {
   direction: string;
   settings: Record<string, unknown>;
   mapping: Record<string, string>;
+  childMappings: Record<string, ChildMappingSpec>;
   intervalMinutes: number;
   enabled: boolean;
   cursor: string | null;
@@ -99,6 +113,7 @@ export const toPublicSync = (row: SyncRow) => ({
   direction: row.direction,
   settings: row.settings ?? {},
   mapping: row.mapping ?? {},
+  childMappings: row.childMappings ?? {},
   intervalMinutes: row.intervalMinutes,
   enabled: row.enabled,
   /** Whether a run is in progress from a cursor, not the token itself — the
@@ -208,6 +223,8 @@ export interface CreateSyncInput {
   direction?: SyncDirection;
   settings?: Record<string, unknown>;
   mapping?: Record<string, string>;
+  /** Pull only. Where the record's child rows land — see {@link ChildMappingSpec}. */
+  childMappings?: Record<string, ChildMappingSpec>;
   intervalMinutes?: number;
   enabled?: boolean;
 }
@@ -239,6 +256,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   }
   const settings = validateSettings(integration.kind, input.settings ?? {}, direction);
   const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind, settings);
+  const childMappings = await validateChildMappings(ctx, tenantId, direction, input.childMappings ?? {});
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -250,6 +268,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
     direction,
     settings,
     mapping,
+    childMappings,
     intervalMinutes: clampInterval(input.intervalMinutes),
     enabled: input.enabled ?? true,
     createdAt: now,
@@ -259,6 +278,85 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   if (!row) throw new Error("sync row missing after insert");
   return row;
 }
+
+/**
+ * Check every child group against the collection it claims to write into.
+ *
+ * The same argument as {@link validateMapping}, one level down: an unknown
+ * target field is dropped by `ingestRows` and the run reports a clean import
+ * having lost a column off every order line.
+ *
+ * Two things here are load-bearing beyond that:
+ *
+ *   - **Each child collection is resolved through `loadCollection` with the
+ *     caller's tenant**, so a sync cannot be pointed at another workspace's
+ *     table by naming its slug. This is the same guard the parent collection
+ *     gets, and it has to be repeated because a child names its own collection.
+ *   - **`parentField` must be a writable field**, because the engine fills it
+ *     from the parent's namespaced id. A group naming a computed column would
+ *     silently lose the link and leave orphan lines.
+ */
+const validateChildMappings = async (
+  ctx: Ctx,
+  tenantId: string,
+  direction: SyncDirection,
+  childMappings: Record<string, ChildMappingSpec>,
+): Promise<Record<string, ChildMappingSpec>> => {
+  const entries = Object.entries(childMappings);
+  if (entries.length === 0) return {};
+  if (direction !== "pull") {
+    // A push walks one collection's watermark. There is no second collection in
+    // that direction, so accepting the field would store something inert.
+    throw new AppError("VALIDATION", "childMappings apply to a pull sync only");
+  }
+
+  const out: Record<string, ChildMappingSpec> = {};
+  for (const [group, spec] of entries) {
+    if (!spec || typeof spec !== "object") {
+      throw new AppError("VALIDATION", `Child group "${group}" must be an object`);
+    }
+    if (typeof spec.collection !== "string" || !spec.collection.trim()) {
+      throw new AppError("VALIDATION", `Child group "${group}" must name a collection`);
+    }
+    const collection = await loadCollection(ctx, tenantId, spec.collection.trim());
+    if (collection.adopted) {
+      throw new AppError(
+        "VALIDATION",
+        `Collection "${collection.slug}" is adopted — a sync only writes to managed collections`,
+      );
+    }
+    const writable = new Set(collection.fields.filter((f) => !f.computed).map((f) => f.name));
+
+    const parentField = typeof spec.parentField === "string" ? spec.parentField.trim() : "";
+    if (!parentField || !writable.has(parentField)) {
+      throw new AppError(
+        "VALIDATION",
+        `Child group "${group}" needs a writable parentField on "${collection.slug}"`,
+      );
+    }
+
+    const mapping: Record<string, string> = {};
+    for (const [external, target] of Object.entries(spec.mapping ?? {})) {
+      if (typeof target !== "string" || !target.trim()) {
+        throw new AppError("VALIDATION", `Child mapping for "${external}" must name a column`);
+      }
+      const field = target.trim();
+      if (!writable.has(field)) {
+        throw new AppError(
+          "VALIDATION",
+          `Collection "${collection.slug}" has no writable field "${field}"`,
+        );
+      }
+      mapping[external] = field;
+    }
+    if (Object.keys(mapping).length === 0) {
+      throw new AppError("VALIDATION", `Child group "${group}" needs at least one field mapping`);
+    }
+
+    out[group] = { collection: collection.slug, parentField, mapping };
+  }
+  return out;
+};
 
 const clampInterval = (v: number | undefined): number => {
   if (v === undefined) return 60;
@@ -352,6 +450,7 @@ const getSyncRow = async (ctx: Ctx, tenantId: string, id: string): Promise<SyncR
 export interface UpdateSyncInput {
   settings?: Record<string, unknown>;
   mapping?: Record<string, string>;
+  childMappings?: Record<string, ChildMappingSpec>;
   intervalMinutes?: number;
   enabled?: boolean;
 }
@@ -388,6 +487,13 @@ export async function updateSync(
       integration.kind,
       settings,
     );
+  }
+  // Re-validated on its own trigger rather than alongside the parent mapping: a
+  // child group names its own collection, so nothing about the parent's
+  // settings can invalidate it, and re-checking it on every settings edit would
+  // re-read those collections for no reason.
+  if (patch.childMappings !== undefined) {
+    set.childMappings = await validateChildMappings(ctx, tenantId, direction, patch.childMappings);
   }
   if (patch.intervalMinutes !== undefined) set.intervalMinutes = clampInterval(patch.intervalMinutes);
   if (patch.enabled !== undefined) {
@@ -456,6 +562,106 @@ const toRow = (
     if (record.data[external] !== undefined) row[target] = record.data[external];
   }
   return row;
+};
+
+/**
+ * The primary key a CHILD row gets.
+ *
+ * Qualified by the parent's external id, because a child's id is only unique
+ * within its parent: a provider that numbers an order's lines from 1 would
+ * otherwise have every order's first line collide on one primary key, and each
+ * pulled order would overwrite the previous one's lines.
+ *
+ * The separator is not escaped, so a provider whose ids contain `:` could in
+ * principle fold two pairs onto one key. That is the same ambiguity `rowIdFor`
+ * already carries between its own segments, and escaping here alone would
+ * change every existing child key without closing the class — left as it is
+ * deliberately rather than half-fixed.
+ */
+const childIdFor = (kind: string, syncId: string, parentExternalId: string, childExternalId: string): string =>
+  rowIdFor(kind, syncId, `${parentExternalId}:${childExternalId}`);
+
+/** One child group, resolved: the mapping plus the collection it writes into. */
+interface ChildTarget {
+  parentField: string;
+  mapping: Record<string, string>;
+  collection: Awaited<ReturnType<typeof loadCollection>>;
+}
+
+/**
+ * Resolve every child group this sync declares into a loaded collection.
+ *
+ * Done once per run. A group naming a collection that has since been dropped
+ * fails the run rather than being skipped: silently importing orders without
+ * their lines is the failure this whole feature exists to prevent, and it would
+ * report a clean run while doing it.
+ */
+const loadChildCollections = async (
+  ctx: Ctx,
+  tenantId: string,
+  row: SyncRow,
+): Promise<Map<string, ChildTarget>> => {
+  const out = new Map<string, ChildTarget>();
+  for (const [group, spec] of Object.entries(row.childMappings ?? {})) {
+    out.set(group, {
+      parentField: spec.parentField,
+      mapping: spec.mapping ?? {},
+      collection: await loadCollection(ctx, tenantId, spec.collection),
+    });
+  }
+  return out;
+};
+
+/**
+ * Write the child rows of one page's records.
+ *
+ * Returns how many landed, so a run's row count reflects everything it wrote
+ * rather than only the headers.
+ *
+ * A group the sync has no mapping for is ignored — a provider may hand back
+ * more groups than an operator chose to keep, and refusing those would make
+ * adding a group to a provider a breaking change for every existing sync.
+ */
+const ingestChildren = async (
+  ctx: Ctx,
+  tenantId: string,
+  row: SyncRow,
+  kind: string,
+  records: readonly { externalId: string; children?: Record<string, { externalId: string; data: Record<string, unknown> }[]> }[],
+  targets: Map<string, ChildTarget>,
+): Promise<number> => {
+  if (targets.size === 0) return 0;
+  let written = 0;
+
+  for (const [group, target] of targets) {
+    const rows: Record<string, unknown>[] = [];
+    for (const parent of records) {
+      for (const child of parent.children?.[group] ?? []) {
+        const mapped: Record<string, unknown> = {
+          id: childIdFor(kind, row.id, parent.externalId, child.externalId),
+          // The link back to the header. Always written from the parent's own
+          // namespaced id rather than from the payload, so a provider cannot
+          // point a line at a row in another workspace's collection.
+          [target.parentField]: rowIdFor(kind, row.id, parent.externalId),
+        };
+        for (const [external, field] of Object.entries(target.mapping)) {
+          if (child.data[external] !== undefined) mapped[field] = child.data[external];
+        }
+        rows.push(mapped);
+      }
+    }
+    if (rows.length === 0) continue;
+
+    const out = await ingestRows(ctx, target.collection, tenantId, rows, { mode: "upsert" });
+    if (out.failed.length > 0) {
+      throw new AppError(
+        "VALIDATION",
+        `${out.failed.length} "${group}" row(s) rejected by "${target.collection.slug}": ${out.failed[0]?.error ?? "unknown"}`,
+      );
+    }
+    written += out.inserted + out.updated;
+  }
+  return written;
 };
 
 /**
@@ -569,6 +775,9 @@ export async function runSync(
   }
 
   const collection = await loadCollection(ctx, tenantId, row.collection);
+  // Loaded once for the whole run rather than per page: a 20-page order import
+  // would otherwise re-read the same two collection definitions 20 times.
+  const childCollections = await loadChildCollections(ctx, tenantId, row);
   let cursor = row.cursor;
   let resumeToken: string | null = null;
   let written = 0;
@@ -599,6 +808,11 @@ export async function runSync(
           );
         }
         written += out.inserted + out.updated;
+        // Children go in AFTER their parents, in the same page, so a line never
+        // references an order that is not there yet. A child failure throws for
+        // the same reason a parent failure does: the cursor must not advance
+        // past an order whose lines nobody stored.
+        written += await ingestChildren(ctx, tenantId, row, integration.kind, page.records, childCollections);
       }
       cursor = page.cursor;
       if (cursor === null) {
@@ -704,7 +918,10 @@ async function pushCollection(
   ctx: Ctx,
   tenantId: string,
   row: SyncRow,
-  integration: { kind: string; config: Record<string, unknown> },
+  // `id` is here for the pacing bucket, which is keyed per connected account —
+  // two workspaces pushing with two sellers' credentials have independent
+  // quotas at the far end.
+  integration: { id: string; kind: string; config: Record<string, unknown> },
   config: Record<string, unknown>,
   fetchImpl?: FetchLike,
 ): Promise<SyncRunResult> {

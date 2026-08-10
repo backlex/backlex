@@ -1,0 +1,21 @@
+-- Child mappings on a source sync — where an external record's LINES land.
+--
+-- Every source so far pulls a flat record: a spreadsheet row, an Airtable
+-- record, a calendar event. A marketplace order is not that shape. It is a
+-- header plus its lines, and the two belong in two collections that the
+-- ecommerce template already ships as `orders` and `order_items`.
+--
+-- Without this the lines have nowhere to go. Flattening them into numbered
+-- columns (`item_1_sku`, `item_2_sku`) caps the order at whatever number the
+-- mapping guessed and makes them unqueryable; dropping them reports a clean
+-- run having imported an order with nothing in it.
+--
+-- Keyed by the group name the provider returns on `SourceRecord.children`, so
+-- one record can fan out to more than one child collection (lines and
+-- discounts, say) rather than being limited to a single child table.
+--
+-- Pull only. A push walks one collection's watermark and has no notion of a
+-- child; mirroring a parent and its lines out is a separate problem with a
+-- separate answer.
+
+ALTER TABLE "integration_syncs" ADD COLUMN "child_mappings" jsonb DEFAULT '{}'::jsonb NOT NULL;

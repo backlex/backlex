@@ -53,6 +53,23 @@ export interface IntegrationProvider {
   oauth: boolean;
 }
 
+/**
+ * Where one group of a source record's children lands.
+ *
+ * A marketplace order is a header plus its lines, and a flat mapping can only
+ * describe the header. `parentField` is the relation column on the child
+ * collection pointing back at the header — filled from the parent's own id,
+ * never from provider data.
+ */
+export interface IntegrationChildMapping {
+  /** Managed collection the child rows land in (e.g. `order_items`). */
+  collection: string;
+  /** Relation column on the child collection pointing at the header. */
+  parentField: string;
+  /** External field name → child collection field name. */
+  mapping: Record<string, string>;
+}
+
 /** A scheduled sync between an integration and a collection, either way. */
 export interface IntegrationSync {
   id: string;
@@ -64,6 +81,8 @@ export interface IntegrationSync {
   settings: Record<string, unknown>;
   /** External field name → collection field name. */
   mapping: Record<string, string>;
+  /** Pull only. Where child rows land, keyed by the provider's group name. */
+  childMappings: Record<string, IntegrationChildMapping>;
   /** 0 = manual only. */
   intervalMinutes: number;
   enabled: boolean;
@@ -92,6 +111,14 @@ export interface IntegrationSyncInput {
   settings?: Record<string, unknown>;
   /** At least one entry; every target must be a writable field. */
   mapping: Record<string, string>;
+  /**
+   * Pull only. Where a record's CHILD rows land, keyed by the group name the
+   * provider returns (`items` for an order's lines).
+   *
+   * Children are upserted, never reconciled — a line removed at the provider
+   * stays in the collection, exactly as a deleted row does everywhere else.
+   */
+  childMappings?: Record<string, IntegrationChildMapping>;
   intervalMinutes?: number;
   enabled?: boolean;
 }

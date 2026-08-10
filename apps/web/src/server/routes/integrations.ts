@@ -89,6 +89,22 @@ const CatalogView = z
   })
   .openapi("IntegrationCatalog");
 
+const ChildMapping = z
+  .object({
+    collection: z.string().min(1).openapi({
+      description: "Managed collection the child rows land in (e.g. `order_items`).",
+    }),
+    parentField: z.string().min(1).openapi({
+      description:
+        "Relation column on the child collection pointing back at the header. " +
+        "Filled from the parent's own id — never from provider data.",
+    }),
+    mapping: z.record(z.string(), z.string()).openapi({
+      description: "`external field → child collection field`, same shape as the parent mapping.",
+    }),
+  })
+  .openapi("IntegrationSyncChildMapping");
+
 const SyncView = z
   .object({
     id: z.string(),
@@ -97,6 +113,7 @@ const SyncView = z
     direction: z.string(),
     settings: z.record(z.string(), z.unknown()),
     mapping: z.record(z.string(), z.string()),
+    childMappings: z.record(z.string(), ChildMapping),
     intervalMinutes: z.number(),
     enabled: z.boolean(),
     resuming: z.boolean(),
@@ -127,6 +144,15 @@ const SyncInput = z
         "Read in the direction of travel: `external field → collection field` on a pull, " +
         "`collection field → external column` on a push. Unmapped keys are dropped.",
     }),
+    childMappings: z
+      .record(z.string(), ChildMapping)
+      .optional()
+      .openapi({
+        description:
+          "Pull only. Where a record's child rows land, keyed by the group name the provider " +
+          "returns (e.g. `items` for an order's lines). Children are upserted, never reconciled — " +
+          "a line removed at the provider stays in the collection.",
+      }),
     intervalMinutes: z.number().int().min(0).max(10_080).optional().openapi({
       description: "How often the scheduler runs it. 0 = manual only. Default 60.",
     }),

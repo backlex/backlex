@@ -68,6 +68,7 @@ export type {
   DestinationPushContext,
   DestinationRow,
   RateLimit,
+  SourceChildRecord,
   SourcePullContext,
   SourcePullPage,
   SourceRecord,

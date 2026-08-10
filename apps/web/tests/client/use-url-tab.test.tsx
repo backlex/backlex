@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { fireEvent, screen } from "@testing-library/react";
+import { afterEach, describe, expect, test } from "bun:test";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { useLocation } from "react-router";
 import { useUrlTab } from "../../src/client/admin/use-url-tab";
 import { renderWithProviders } from "./render";
@@ -7,6 +7,14 @@ import { renderWithProviders } from "./render";
 // The shared tab-in-the-path hook every tabbed admin page reads its open panel
 // from. Driven through a probe component so the assertions are about what a
 // page sees, not about the hook's internals.
+//
+// Every test here mounts a probe at its own route, and `screen` queries the
+// whole document — so without an explicit teardown the second mount finds two
+// of everything. Auto-cleanup is not something to rely on under `bun test`:
+// this file passed locally without it and failed in CI, which is the same
+// teardown every other render spec in this folder writes out by hand.
+
+afterEach(() => cleanup());
 
 const TABS = ["items", "kpis", "schema", "settings"] as const;
 

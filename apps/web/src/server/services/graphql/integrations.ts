@@ -23,6 +23,7 @@ import {
   updateSync,
   type CreateSyncInput,
 } from "../integration-syncs";
+import { listTaskRuns, runTask } from "../integration-tasks";
 import {
   connectIntegration,
   disconnectIntegration,
@@ -124,6 +125,33 @@ const SyncInputType = new GraphQLInputObjectType({
   },
 });
 
+const TaskRunResultType = new GraphQLObjectType({
+  name: "IntegrationTaskRunResult",
+  fields: {
+    /** `skipped` means a previous run's answer, not a fresh call. */
+    status: { type: new GraphQLNonNull(GraphQLString) },
+    outputs: { type: JSONScalar },
+    /** Storage key of the file the task produced, if it produced one. */
+    artifactKey: { type: GraphQLString },
+    reused: { type: new GraphQLNonNull(GraphQLBoolean) },
+  },
+});
+
+const TaskRunType = new GraphQLObjectType({
+  name: "IntegrationTaskRunRecord",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    integrationId: { type: new GraphQLNonNull(GraphQLString) },
+    task: { type: new GraphQLNonNull(GraphQLString) },
+    status: { type: new GraphQLNonNull(GraphQLString) },
+    outputs: { type: JSONScalar },
+    artifactKey: { type: GraphQLString },
+    error: { type: GraphQLString },
+    attempts: { type: new GraphQLNonNull(GraphQLInt) },
+    updatedAt: { type: JSONScalar },
+  },
+});
+
 const SyncRunType = new GraphQLObjectType({
   name: "IntegrationSyncRun",
   fields: {
@@ -173,6 +201,20 @@ export const integrationQueryFields: Record<string, GraphQLFieldConfig<unknown, 
       surfacing(async () => {
         const tenantId = requireFlowAdmin(gqlCtx);
         return listIntegrations(gqlCtx.ctx, tenantId);
+      }),
+  },
+  integrationTaskRuns: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(TaskRunType))),
+    description: "What has already been done to one row, and what it produced (admin-only).",
+    args: {
+      collection: { type: new GraphQLNonNull(GraphQLString) },
+      itemId: { type: new GraphQLNonNull(GraphQLString) },
+    },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const a = args as { collection: string; itemId: string };
+        return listTaskRuns(gqlCtx.ctx, tenantId, a);
       }),
   },
   integrationSyncs: {
@@ -347,6 +389,35 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
       surfacing(async () =>
         runSync(gqlCtx.ctx, requireFlowAdmin(gqlCtx), (args as { id: string }).id),
       ),
+  },
+  runIntegrationTask: {
+    type: new GraphQLNonNull(TaskRunResultType),
+    description:
+      "Run a task against one row (admin-only). Runs at most ONCE per row: a second call returns the " +
+      "first run's outputs rather than acting again, because the effect at the provider costs money. " +
+      "`force: true` deliberately re-runs one that succeeded.",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLString) },
+      task: { type: new GraphQLNonNull(GraphQLString) },
+      data: { type: new GraphQLNonNull(JSONScalar) },
+    },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const a = args as { id: string; task: string; data: Record<string, unknown> };
+        const d = a.data ?? {};
+        if (typeof d.collection !== "string" || !d.collection) invalid("collection is required");
+        if (typeof d.itemId !== "string" || !d.itemId) invalid("itemId is required");
+        return runTask(gqlCtx.ctx, tenantId, {
+          integrationId: a.id,
+          task: a.task,
+          collection: d.collection as string,
+          itemId: d.itemId as string,
+          settings: d.settings as Record<string, unknown> | undefined,
+          outputMapping: d.outputMapping as Record<string, string> | undefined,
+          force: d.force as boolean | undefined,
+        });
+      }),
   },
   startIntegrationOAuth: {
     type: new GraphQLNonNull(OAuthStartType),

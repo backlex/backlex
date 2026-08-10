@@ -3250,6 +3250,57 @@ export const integrationOauthStates = sqliteTable(
  * request, so it is treated as untrusted on the way out, not just on the way
  * in. Mirror of the PG table.
  */
+/**
+ * One run of one task against one row — the engine's once-only guard.
+ *
+ * A task books a shipment: it has a real effect at the far end that a retry
+ * must not repeat. The queue retries on backoff and an operator can click twice,
+ * so "did this already happen" cannot live in the provider's answer. It lives
+ * here, in a row the unique index makes it impossible to write twice.
+ *
+ * The outputs are kept alongside, so a re-invocation of an already-succeeded
+ * task hands back what the first one produced rather than either failing or
+ * booking a second shipment. That is also what makes this an operational record
+ * in its own right: which orders have a label, and which are still waiting.
+ */
+export const integrationTaskRuns = sqliteTable(
+  "integration_task_runs",
+  {
+    id: text("id").primaryKey(),
+    /** Never null: a task writes into a workspace's collection. */
+    tenantId: text("tenant_id").notNull(),
+    integrationId: text("integration_id").notNull(),
+    /** Provider-declared task id, e.g. `create_shipment`. */
+    task: text("task").notNull(),
+    /** Collection slug and primary key of the row acted on. */
+    collection: text("collection").notNull(),
+    itemId: text("item_id").notNull(),
+    /** `succeeded` rows are the ones that make a re-run a no-op. */
+    status: text("status").notNull(),
+    /** Declared output key → value, as the provider returned them. */
+    outputs: text("outputs", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    /** Storage key of the artifact this run produced, when it produced one. */
+    artifactKey: text("artifact_key"),
+    error: text("error"),
+    attempts: integer("attempts").notNull().default(1),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    // The guard itself. A second run for the same row cannot be inserted, so
+    // two concurrent callers cannot both book a shipment.
+    uniqueIndex("integration_task_runs_once_idx").on(
+      t.tenantId,
+      t.integrationId,
+      t.task,
+      t.collection,
+      t.itemId,
+    ),
+    index("integration_task_runs_tenant_idx").on(t.tenantId),
+    index("integration_task_runs_item_idx").on(t.collection, t.itemId),
+  ],
+);
+
 export const integrationSyncs = sqliteTable(
   "integration_syncs",
   {

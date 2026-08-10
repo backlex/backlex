@@ -415,11 +415,10 @@ const readError = async (res: Response, what: string): Promise<Error> => {
   if (res.status === 404) {
     return new Error(`Mailchimp has no such audience — check the audience id`);
   }
-  if (res.status === 429) {
-    // Mailchimp allows ten simultaneous connections and answers 429 past that,
-    // which is a wait rather than anything an admin should go and change.
-    return new Error("Mailchimp rate-limited the request — it will be retried");
-  }
+  // 429 is not handled here on purpose: the engine's fetch wrapper classifies
+  // it as RateLimitedError before a provider ever sees the response, so it can
+  // hold the cursor without feeding the breaker. A branch here would be
+  // unreachable and would read as though it still decided something.
   return new Error(
     `Mailchimp responded ${res.status} and could not ${what}${detail ? `: ${detail.slice(0, 160)}` : ""}`,
   );

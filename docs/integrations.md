@@ -539,6 +539,60 @@ that difference is visible rather than smoothed over.
 - **Deletes are invisible**, exactly as everywhere else. Removing a row does not
   remove the contact — unsubscribe them through a mapped `status` column instead.
 
+## Doing one thing to one row
+
+A **task** is the fourth shape, and the one the first three cannot express. A
+sink is told a row changed. A source reads rows in on a schedule. A destination
+mirrors a collection out on a watermark. None of them can do *take this row, act
+on it at the provider, and write what came back onto it* — which is exactly what
+booking a shipment is: one row in, a tracking number and a label out, both
+belonging on the row that asked.
+
+```bash
+backlex integrations task-run <integration-id> create_shipment \
+  --collection fulfillments --item ful_123 \
+  --set service=standard \
+  --out trackingNumber=tracking_number --out labelKey=label_key
+```
+
+`--out` maps the task's **declared** outputs onto your columns. Read what a task
+declares from the catalog; an output the provider never declared, or a target
+that is not a writable field, is refused when you invoke it rather than dropped
+on the floor.
+
+### It runs once
+
+This is the part that makes a task different from everything else in this
+engine. A lost sink delivery is a duplicate notification. A re-read page is
+free. A re-sent batch is collapsed on merge. **A second shipment costs money and
+confuses a courier.**
+
+So a task runs at most once per row, and the guard is a database row under a
+unique index rather than a check the code performs:
+
+| | |
+|---|---|
+| A second call | returns the **first run's outputs**, and reports `reused` — an operator who clicked twice wants the label, not an error |
+| Two concurrent calls | race to insert; exactly one reaches the provider |
+| A **failed** run | is retried, because the alternative is a shipment nobody can ever record |
+| `--force` | is the only way past it, for a consignment genuinely cancelled at the carrier and rebooked |
+
+The engine also hands the provider an idempotency key, stable across every retry
+of the same row. Carriers that honour it refuse the duplicate at their end too,
+which is strictly better than us noticing afterwards.
+
+### What a task produced
+
+`backlex integrations task-runs --collection fulfillments --item ful_123` is the
+operational answer to *which orders have a label and which are still waiting*.
+
+A task that produces a **file** — a carrier's label PDF — has it stored before
+anything references it, and the declared artifact output receives its **storage
+key**, not a URL. A signed URL expires, and a column full of dead links is worse
+than one the reader signs on demand. The key is derived from the run and scoped
+under the workspace; a filename a third party supplied is never used to build a
+path.
+
 ## What a sink receives
 
 By default a sink is told that something **changed**, not what it **said**:
@@ -668,10 +722,10 @@ dropdown lists what the workspace has connected.
 
 | Surface | Entry point |
 |---|---|
-| REST | `/api/admin/integrations` (+ `/catalog`, `/syncs`, `/{id}/deliveries`, `/{id}/resume`, `/{id}/oauth/authorize`) |
+| REST | `/api/admin/integrations` (+ `/catalog`, `/syncs`, `/task-runs`, `/{id}/deliveries`, `/{id}/resume`, `/{id}/tasks/{task}`, `/{id}/oauth/authorize`) |
 | SDK | `client.integrations.*` |
-| GraphQL | `integrationCatalog`, `integrations`, `integrationSyncs`, `integrationDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration`, `startIntegrationOAuth`, `createIntegrationSync`, `updateIntegrationSync`, `deleteIntegrationSync`, `runIntegrationSync` |
-| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` / `.oauth_authorize` / `.syncs` / `.create_sync` / `.update_sync` / `.delete_sync` / `.run_sync` |
+| GraphQL | `integrationCatalog`, `integrations`, `integrationSyncs`, `integrationDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration`, `startIntegrationOAuth`, `createIntegrationSync`, `updateIntegrationSync`, `deleteIntegrationSync`, `runIntegrationSync`, `integrationTaskRuns`, `runIntegrationTask` |
+| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` / `.oauth_authorize` / `.syncs` / `.create_sync` / `.update_sync` / `.delete_sync` / `.run_sync` / `.run_task` / `.task_runs` |
 | CLI | `backlex integrations …` |
 
 `/api/admin/integrations/oauth/callback` is the provider's redirect target. It

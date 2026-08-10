@@ -13,6 +13,7 @@ import {
   OAUTH_KINDS,
   SOURCE_KINDS,
   SOURCE_SETTING_FIELDS,
+  TASK_KINDS,
   DESTINATION_KINDS,
   DESTINATION_SETTING_FIELDS,
   OAUTH_SECRET_KEYS,
@@ -51,6 +52,10 @@ describe("provider registry", () => {
       if (p.capabilities.includes("source")) expect(typeof p.source?.pull).toBe("function");
       if (p.capabilities.includes("destination")) {
         expect(typeof p.destination?.push).toBe("function");
+      }
+      if (p.capabilities.includes("task")) {
+        expect(p.tasks?.length).toBeGreaterThan(0);
+        for (const t of p.tasks ?? []) expect(typeof t.run).toBe("function");
       }
     }
   });
@@ -161,6 +166,30 @@ describe("SOURCE_KINDS is derived, not hand-listed", () => {
 
   test("it names exactly the providers that can pull", () => {
     expect([...SOURCE_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].source).sort());
+  });
+
+  test("tasks agree the same way, in both directions", () => {
+    for (const kind of KINDS) {
+      const p = PROVIDERS[kind];
+      expect(Boolean(p.tasks?.length)).toBe(p.capabilities.includes("task"));
+    }
+  });
+
+  test("TASK_KINDS names exactly the providers that declare a task", () => {
+    expect([...TASK_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].tasks?.length).sort());
+  });
+
+  test("a task's outputs are unique, and at most one is the artifact slot", () => {
+    // Two outputs under one key would make the engine's declared-output check
+    // pass while the caller's mapping silently picked whichever came second.
+    // Two artifact slots would leave "which one gets the file" undefined.
+    for (const kind of KINDS) {
+      for (const t of PROVIDERS[kind].tasks ?? []) {
+        const keys = t.outputs.map((o) => o.key);
+        expect(new Set(keys).size).toBe(keys.length);
+        expect(t.outputs.filter((o) => o.artifact).length).toBeLessThanOrEqual(1);
+      }
+    }
   });
 
   test("destinations agree the same way, in both directions", () => {

@@ -481,8 +481,8 @@ const assertColumns = (entity: string, columns: Readonly<Record<string, string>>
 };
 
 /** Turn a failed call into something an operator can act on. Intuit answers
- *  every failure with the same envelope, and the status alone is not enough:
- *  a 401 means reconnect, a 429 means wait, and they read identically. */
+ *  every failure with the same envelope, so the status is what separates
+ *  "reconnect" from "something went wrong". */
 const failure = async (res: Response): Promise<Error> => {
   const body = (await res.json().catch(() => ({}))) as {
     Fault?: { Error?: { Message?: string; Detail?: string }[] };
@@ -492,7 +492,10 @@ const failure = async (res: Response): Promise<Error> => {
   if (res.status === 401) {
     return new Error("QuickBooks rejected the credentials — reauthorize the connection");
   }
-  if (res.status === 429) return new Error("QuickBooks rate-limited the write — it will be retried");
+  // 429 is not handled here on purpose: the engine's fetch wrapper classifies
+  // it as RateLimitedError before a provider ever sees the response, so it can
+  // hold the cursor without feeding the breaker. A branch here would be
+  // unreachable and would read as though it still decided something.
   return new Error(`QuickBooks responded ${res.status}${detail ? `: ${detail}` : ""}`);
 };
 

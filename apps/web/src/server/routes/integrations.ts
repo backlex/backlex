@@ -7,6 +7,7 @@ import {
   INTEGRATION_KINDS,
   DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
+  INTEGRATION_TASKS,
   SOURCE_SETTING_FIELDS,
 } from "@backlex/integrations";
 import type { AppBindings } from "../app";
@@ -27,6 +28,7 @@ import {
   runSync,
   updateSync,
 } from "../services/integration-syncs";
+import { listTaskRuns, runTask } from "../services/integration-tasks";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -86,8 +88,43 @@ const CatalogView = z
     /** Mapping targets for destinations with a closed column set, keyed by
      *  kind. A kind that is absent takes any column name. */
     destinationColumns: z.record(z.string(), z.unknown()),
+    /** Tasks each provider declares, with their settings and declared outputs.
+     *  A caller has to map the outputs onto its own columns before it can
+     *  invoke anything, so they travel with the catalog rather than in a
+     *  second list somebody has to keep in step. */
+    tasks: z.record(z.string(), z.unknown()),
   })
   .openapi("IntegrationCatalog");
+
+const TaskRunInputSchema = z
+  .object({
+    collection: z.string().min(1).openapi({ description: "Managed collection the row lives in." }),
+    itemId: z.string().min(1).openapi({ description: "Primary key of the row to act on." }),
+    settings: z.record(z.string(), z.unknown()).optional().openapi({
+      description: "Per-invocation settings. Keys come from the task's declared fields; anything else is refused.",
+    }),
+    outputMapping: z.record(z.string(), z.string()).optional().openapi({
+      description: "Task output key → collection field. Undeclared outputs and non-writable targets are refused.",
+    }),
+    force: z.boolean().optional().openapi({
+      description: "Re-run a task that already succeeded. Off by default — a repeat has a cost at the provider.",
+    }),
+  })
+  .openapi("IntegrationTaskRunInput");
+
+const TaskRunView = z
+  .object({
+    id: z.string(),
+    integrationId: z.string(),
+    task: z.string(),
+    status: z.string(),
+    outputs: z.record(z.string(), z.unknown()),
+    artifactKey: z.string().nullable(),
+    error: z.string().nullable(),
+    attempts: z.number(),
+    updatedAt: z.union([z.number(), z.date()]).nullable(),
+  })
+  .openapi("IntegrationTaskRun");
 
 const ChildMapping = z
   .object({
@@ -232,6 +269,7 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           // Only for the destinations with a closed column set. Absent means
           // "free text" — a warehouse's columns are the operator's DDL.
           destinationColumns: DESTINATION_COLUMNS,
+          tasks: INTEGRATION_TASKS,
         },
       }),
   )
@@ -529,6 +567,101 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         itemId: id,
         payload: { ran: true, written: data.written },
       });
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/tasks/{task}",
+      tags,
+      summary: "Run a task against one row",
+      description:
+        "Admin-only. A task acts on a SINGLE row at the provider and writes what came back onto it — " +
+        "booking a shipment and receiving a tracking number and a label is the shape. Unlike a sync this is " +
+        "invoked deliberately, never scheduled, and runs at most ONCE per row: a second call returns the " +
+        "first run's outputs rather than acting again, because the effect at the provider costs money. Pass " +
+        "`force: true` to deliberately re-run one that already succeeded. `outputMapping` says which of the " +
+        "task's declared outputs land on which collection fields; an undeclared output or a non-writable " +
+        "target is refused rather than silently dropped.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        params: z.object({ id: z.string(), task: z.string() }),
+        body: {
+          content: { "application/json": { schema: TaskRunInputSchema } },
+        },
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  status: z.enum(["succeeded", "skipped"]),
+                  outputs: z.record(z.string(), z.unknown()),
+                  artifactKey: z.string().nullable(),
+                  reused: z.boolean(),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id, task } = c.req.valid("param");
+      const body = c.req.valid("json");
+      let data: Awaited<ReturnType<typeof runTask>>;
+      try {
+        data = await runTask(c.get("ctx"), tenantId, { integrationId: id, task, ...body });
+      } catch (e) {
+        // Same reasoning as running a sync by hand: an operator invoking a task
+        // is doing it to see why it fails, and a provider's refusal reported as
+        // an internal error buries the only message worth reading.
+        if (isAppError(e)) throw e;
+        throw new AppError("UNAVAILABLE", e instanceof Error ? e.message : String(e));
+      }
+      await logActivity(c, {
+        action: "update",
+        collection: "system_integration_tasks",
+        itemId: `${id}:${task}:${body.itemId}`,
+        payload: { status: data.status, reused: data.reused },
+      });
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/task-runs",
+      tags,
+      summary: "Task runs for one row",
+      description:
+        "Admin-only. What has already been done to this row and what it produced — which orders have a " +
+        "label, and which are still waiting.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        query: z.object({ collection: z.string().min(1), itemId: z.string().min(1) }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(TaskRunView) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { collection, itemId } = c.req.valid("query");
+      const data = await listTaskRuns(c.get("ctx"), tenantId, { collection, itemId });
       return c.json({ data });
     },
   )

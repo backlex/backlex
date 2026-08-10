@@ -66,7 +66,7 @@ export type IntegrationCategory =
  * declared here so the catalog and the routes can branch on capability before
  * the first provider implements them.
  */
-export type IntegrationCapability = "sink" | "action" | "source" | "destination";
+export type IntegrationCapability = "sink" | "action" | "source" | "destination" | "task";
 
 /** An event to fan out: machine name, one-line human text, and a machine payload. */
 export interface IntegrationEvent {
@@ -397,6 +397,104 @@ export interface IntegrationDestination {
   push(ctx: DestinationPushContext): Promise<void>;
 }
 
+// ── Tasks ────────────────────────────────────────────────────────────────────
+
+/**
+ * One field a task writes back onto the row it acted on.
+ *
+ * A closed set, for the same reason a destination declares its columns: the
+ * engine refuses an output the provider never declared, so a typo in a provider
+ * fails loudly instead of writing a column nobody reads.
+ */
+export interface TaskOutput {
+  key: string;
+  label: string;
+   /**
+   * This output receives the STORED ARTIFACT's storage key rather than a value
+   * the provider returned. Exactly one output may claim it, and the task must
+   * return an `artifact` when it does.
+   *
+   * A key rather than a URL, matching how every other stored file in the
+   * platform is held: a signed URL expires, and a column full of dead links is
+   * worse than one the reader signs on demand.
+   */
+  artifact?: boolean;
+}
+
+/** What a task's `run` receives. */
+export interface TaskRunContext {
+  /** Connection config — credentials, already decrypted. */
+  config: Record<string, unknown>;
+  /** Per-invocation settings (which service, which warehouse). Never secret. */
+  settings: Record<string, unknown>;
+  /**
+   * The row this task acts on, as stored. Read-only — a task reports what it
+   * did through {@link TaskResult.outputs} and never writes directly, so the
+   * engine stays the only thing that touches a collection.
+   */
+  row: Readonly<Record<string, unknown>>;
+  /**
+   * Stable for this (integration, task, row) triple, and the same across every
+   * retry of it.
+   *
+   * Pass it to providers that accept an idempotency key. The engine's own
+   * once-only guard is the task-run row, which is what protects providers that
+   * do not — but a carrier that honours the header refuses the duplicate at
+   * its end, which is strictly better than us noticing afterwards.
+   */
+  idempotencyKey: string;
+  fetch: FetchLike;
+  str(key: string): string | null;
+  setting(key: string): string | null;
+}
+
+/** A file a task produced — a carrier's shipping label, typically. */
+export interface TaskArtifact {
+  /** Which declared output receives the storage key. Must be `artifact: true`. */
+  outputKey: string;
+  filename: string;
+  contentType: string;
+  bytes: Uint8Array;
+}
+
+/** What a task hands back. */
+export interface TaskResult {
+  /**
+   * Declared output key → value, written onto the row through the caller's
+   * mapping. An undeclared key is refused rather than dropped.
+   */
+  outputs: Record<string, unknown>;
+  /** Present when the task produced a file. Stored before anything is written. */
+  artifact?: TaskArtifact;
+}
+
+/**
+ * One thing a provider can be asked to do TO a row.
+ *
+ * The fourth shape, and the one the first three could not express. A `sink` is
+ * told a row changed and answers nothing. A `source` reads rows in on a
+ * schedule. A `destination` mirrors a collection out on a watermark. None of
+ * them can do "take THIS row, act on it at the provider, and write what came
+ * back onto it" — which is what booking a shipment is: one row in, a tracking
+ * number and a label PDF out, both belonging on the row that asked.
+ *
+ * A task is invoked deliberately (from a flow, an admin action, the API), never
+ * on a schedule, and runs at most once per row unless it is explicitly re-run.
+ */
+export interface IntegrationTask {
+  id: string;
+  label: string;
+  /** Per-invocation config the caller supplies. */
+  settingFields?: readonly IntegrationConfigField[];
+  /** The closed set of fields this task may write back. */
+  outputs: readonly TaskOutput[];
+  /**
+   * Do the thing. Throwing fails the run and the queue retries it with backoff;
+   * the engine's task-run row is what stops a retry booking a second shipment.
+   */
+  run(ctx: TaskRunContext): Promise<TaskResult>;
+}
+
 /**
  * A single integration provider. `deliver` returns `null` when the stored
  * config is missing/invalid; the dispatcher turns that (and any thrown error)
@@ -435,6 +533,9 @@ export interface IntegrationProvider<Id extends string = string> {
   /** Present only on providers that can receive rows. Implies `destination`
    *  in `capabilities`; the registry test enforces the two agree. */
   destination?: IntegrationDestination;
+  /** Present only on providers that act on a single row. Implies `task` in
+   *  `capabilities`; the registry test enforces the two agree. */
+  tasks?: readonly IntegrationTask[];
   deliver?(ctx: DeliverContext): Promise<DeliveryOutcome | null>;
 }
 

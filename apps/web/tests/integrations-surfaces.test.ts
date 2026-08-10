@@ -167,7 +167,9 @@ describe("integrations — MCP surface", () => {
       "integrations.oauth_authorize",
       "integrations.resume",
       "integrations.run_sync",
+      "integrations.run_task",
       "integrations.syncs",
+      "integrations.task_runs",
       "integrations.update_sync",
     ]);
   });
@@ -320,5 +322,58 @@ describe("integrations — child mappings reach every surface", () => {
       "parentField",
       "mapping",
     ]);
+  });
+});
+
+describe("integrations — the task capability reaches every surface", () => {
+  // The provider half needs no mock here: these assert that each surface
+  // DECLARES the capability, which is the half that silently rots. MCP is the
+  // sharp one — `additionalProperties: false` rejects an undeclared field, so a
+  // tool missing `force` would make the escape hatch unreachable from an agent
+  // while looking present everywhere else.
+  test("MCP exposes run_task and task_runs with the fields the REST body takes", () => {
+    const run = integrationsTools.find((t) => t.name === "integrations.run_task");
+    expect(run).toBeDefined();
+    const props = run?.inputSchema.properties as Record<string, any>;
+    for (const key of ["integrationId", "task", "collection", "itemId", "outputMapping", "force"]) {
+      expect(props[key]).toBeDefined();
+    }
+    expect(run?.inputSchema.required).toEqual(["integrationId", "task", "collection", "itemId"]);
+
+    const runs = integrationsTools.find((t) => t.name === "integrations.task_runs");
+    expect(runs).toBeDefined();
+  });
+
+  test("the SDK declares both entry points", async () => {
+    const h = makeHarness();
+    try {
+      await seedAdmin(h);
+      const client = createClient({ url: "http://localhost", fetch: h.fetch as typeof fetch });
+      expect(typeof client.integrations.runTask).toBe("function");
+      expect(typeof client.integrations.taskRuns).toBe("function");
+    } finally {
+      h.cleanup();
+    }
+  });
+
+  test("GraphQL declares the mutation and the query", async () => {
+    const h = makeHarness();
+    try {
+      await seedAdmin(h);
+      const res = (await (
+        await h.fetch(
+          "/api/graphql",
+          json({
+            query: `{ __schema { mutationType { fields { name } } queryType { fields { name } } } }`,
+          }),
+        )
+      ).json()) as any;
+      const mutations = res.data.__schema.mutationType.fields.map((f: any) => f.name);
+      const queries = res.data.__schema.queryType.fields.map((f: any) => f.name);
+      expect(mutations).toContain("runIntegrationTask");
+      expect(queries).toContain("integrationTaskRuns");
+    } finally {
+      h.cleanup();
+    }
   });
 });

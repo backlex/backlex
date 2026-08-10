@@ -490,7 +490,10 @@ const failure = async (res: Response): Promise<Error> => {
       "Xero refused the write — reconnect this integration so it also grants write access",
     );
   }
-  if (res.status === 429) return new Error("Xero rate-limited the write — it will be retried");
+  // 429 is not handled here on purpose: the engine's fetch wrapper classifies
+  // it as RateLimitedError before a provider ever sees the response, so it can
+  // hold the cursor without feeding the breaker. A branch here would be
+  // unreachable and would read as though it still decided something.
   const body = (await res.json().catch(() => ({}))) as {
     Message?: string;
     Elements?: { ValidationErrors?: { Message?: string }[] }[];

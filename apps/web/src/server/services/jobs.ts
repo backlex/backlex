@@ -11,6 +11,7 @@ import { runFunction } from "./sandbox";
 import { deliverWebhookById } from "./webhooks";
 import { deliverIntegrationById } from "./integrations";
 import { runSync } from "./integration-syncs";
+import { runTask } from "./integration-tasks";
 import { reconcileProvider } from "./payments";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
@@ -29,6 +30,7 @@ export type JobType =
   | "webhook.deliver"
   | "integration.deliver"
   | "integration.sync"
+  | "integration.task"
   | "agent.turn"
   | "payments.reconcile"
   | "agent.distill_memory";
@@ -298,6 +300,35 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     // breaker in deliverOne independently pauses a target that stays dead.
     if (!out.ok) throw new Error(`integration responded ${out.status}`);
     return { status: out.status, skipped: out.skipped ?? false };
+  }
+  if (job.type === "integration.task") {
+    const p = job.payload as {
+      integrationId?: string;
+      task?: string;
+      collection?: string;
+      itemId?: string;
+      settings?: Record<string, unknown>;
+      outputMapping?: Record<string, string>;
+    };
+    if (!p.integrationId || !p.task || !p.collection || !p.itemId) {
+      throw new Error("integration.task job has an invalid payload");
+    }
+    // Every query in runTask is scoped by this, so a job without a tenant has
+    // nothing to scope by and must not fall through to "global".
+    if (!job.tenantId) throw new Error("integration.task job missing tenantId");
+    // `force` is deliberately NOT accepted from the payload. A retry of a
+    // queued task must never be the thing that books a second shipment —
+    // re-running one that succeeded is an explicit human decision, not
+    // something a backoff can take on its own.
+    const out = await runTask(ctx, job.tenantId, {
+      integrationId: p.integrationId,
+      task: p.task,
+      collection: p.collection,
+      itemId: p.itemId,
+      settings: p.settings,
+      outputMapping: p.outputMapping,
+    });
+    return { status: out.status, reused: out.reused };
   }
   if (job.type === "integration.sync") {
     const p = job.payload as { syncId?: string };

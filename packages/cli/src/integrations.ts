@@ -70,6 +70,12 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|
                                        by provider group — see docs
               [--every <minutes>]      0 = manual only, default 60
   sync-run <id>                        run now and report what landed
+  task-run <integration-id> <task> --collection <slug> --item <id>
+              [--set k=v ...]          task settings (see catalog)
+              [--out Output=field ...] where the task's outputs land
+              [--force]                re-run one that already succeeded
+  task-runs --collection <slug> --item <id>
+                                       what was already done to a row
   sync-update <id> [--every N] [--enable|--disable]
   sync-delete <id>
   deliveries <id> [--limit N]          recent attempts, newest first
@@ -289,6 +295,64 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
             direction: data.direction ?? "pull",
             every: `${data.intervalMinutes}m`,
           });
+        return;
+      }
+      case "task-run": {
+        const integrationId = rest[0];
+        const task = rest[1];
+        const collection = flag(args, "--collection");
+        const itemId = flag(args, "--item");
+        if (!integrationId || !task || integrationId.startsWith("--") || !collection || !itemId) {
+          process.stderr.write(
+            "Usage: backlex integrations task-run <integration-id> <task> --collection <slug> --item <id>\n",
+          );
+          process.exit(1);
+        }
+        const { data } = await client.request<{
+          data: { status: string; outputs: Record<string, unknown>; artifactKey: string | null; reused: boolean };
+        }>("POST", `${BASE}/${encodeURIComponent(integrationId)}/tasks/${encodeURIComponent(task)}`, {
+          collection,
+          itemId,
+          settings: collectSet(args),
+          outputMapping: collectSet(args, "--out"),
+          ...(args.includes("--force") ? { force: true } : {}),
+        });
+        if (json) printJson(data);
+        else
+          printKeyValues({
+            status: data.status,
+            // Says plainly that nothing was called, which is the whole point of
+            // the guard — an operator seeing "succeeded" twice would assume two
+            // shipments exist.
+            reused: data.reused ? "yes (previous run's result)" : "no",
+            ...data.outputs,
+            ...(data.artifactKey ? { artifact: data.artifactKey } : {}),
+          });
+        return;
+      }
+      case "task-runs": {
+        const collection = flag(args, "--collection");
+        const itemId = flag(args, "--item");
+        if (!collection || !itemId) {
+          process.stderr.write("Usage: backlex integrations task-runs --collection <slug> --item <id>\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{
+          data: { task: string; status: string; attempts: number; error?: string | null }[];
+        }>(
+          "GET",
+          `${BASE}/task-runs?collection=${encodeURIComponent(collection)}&itemId=${encodeURIComponent(itemId)}`,
+        );
+        if (json) printJson(data);
+        else
+          printTable(
+            data.map((r) => ({
+              task: r.task,
+              status: r.status,
+              attempts: String(r.attempts),
+              error: r.error ?? "",
+            })),
+          );
         return;
       }
       case "sync-run": {

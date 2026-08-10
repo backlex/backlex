@@ -113,6 +113,7 @@ import m106 from "../../drizzle/pg/20260811090000_captcha_impersonation/migratio
 import m107 from "../../drizzle/pg/20260811140000_signing_keys/migration.sql" with { type: "text" };
 import m108 from "../../drizzle/pg/20260812090000_cdc_sinks/migration.sql" with { type: "text" };
 import m109 from "../../drizzle/pg/20260813090000_integration_child_mappings/migration.sql" with { type: "text" };
+import m110 from "../../drizzle/pg/20260813100000_integration_task_runs/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -230,4 +231,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260811140000_signing_keys", sql: m107 },
   { name: "20260812090000_cdc_sinks", sql: m108 },
   { name: "20260813090000_integration_child_mappings", sql: m109 },
+  { name: "20260813100000_integration_task_runs", sql: m110 },
 ];

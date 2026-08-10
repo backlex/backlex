@@ -160,6 +160,7 @@ export const startIntegrationOAuthTool: McpTool = {
 };
 
 const SYNCS = "/api/admin/integrations/syncs";
+const BASE = "/api/admin/integrations";
 
 export const listIntegrationSyncsTool: McpTool = {
   name: "integrations.syncs",
@@ -237,6 +238,79 @@ export const createIntegrationSyncTool: McpTool = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(args),
     });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const runIntegrationTaskTool: McpTool = {
+  name: "integrations.run_task",
+  description:
+    "Run a provider TASK against one row — booking a shipment and receiving a tracking number and a label " +
+    "is the shape. Unlike a sync this is invoked deliberately, never scheduled, and runs at most ONCE per " +
+    "row: a second call returns the first run's outputs instead of acting again, because the effect at the " +
+    "provider costs money. Only pass `force: true` when a human has decided the action genuinely has to " +
+    "happen a second time. `outputMapping` says which of the task's declared outputs land on which " +
+    "collection fields — read `integrations.catalog` for what a task declares.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      integrationId: { type: "string" },
+      task: { type: "string", description: "Provider-declared task id, e.g. `create_shipment`." },
+      collection: { type: "string", description: "Managed collection the row lives in." },
+      itemId: { type: "string", description: "Primary key of the row to act on." },
+      settings: { type: "object", additionalProperties: true },
+      outputMapping: {
+        type: "object",
+        additionalProperties: { type: "string" },
+        description: "Task output key → collection field. Undeclared outputs are refused.",
+      },
+      force: {
+        type: "boolean",
+        description:
+          "Re-run a task that already succeeded. Off by default — a repeat has a real cost at the provider.",
+      },
+    },
+    required: ["integrationId", "task", "collection", "itemId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { integrationId, task, ...body } = args as {
+      integrationId?: string;
+      task?: string;
+    } & Record<string, unknown>;
+    if (!integrationId || !task) throw new Error("VALIDATION: integrationId and task are required");
+    const res = await ctx.fetchInternal(
+      `${BASE}/${encodeURIComponent(integrationId)}/tasks/${encodeURIComponent(task)}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const integrationTaskRunsTool: McpTool = {
+  name: "integrations.task_runs",
+  description:
+    "What has already been done to one row and what it produced — which orders have a label, and which " +
+    "are still waiting. Read this before running a task if you need to know whether it already happened.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string" },
+      itemId: { type: "string" },
+    },
+    required: ["collection", "itemId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const a = args as { collection?: string; itemId?: string };
+    if (!a.collection || !a.itemId) throw new Error("VALIDATION: collection and itemId are required");
+    const res = await ctx.fetchInternal(
+      `${BASE}/task-runs?collection=${encodeURIComponent(a.collection)}&itemId=${encodeURIComponent(a.itemId)}`,
+    );
     return textResult(await readJson<unknown>(res));
   },
 };
@@ -338,4 +412,6 @@ export const integrationsTools: McpTool[] = [
   updateIntegrationSyncTool,
   deleteIntegrationSyncTool,
   runIntegrationSyncTool,
+  runIntegrationTaskTool,
+  integrationTaskRunsTool,
 ];

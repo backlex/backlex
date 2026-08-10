@@ -298,9 +298,10 @@ const readError = async (res: Response, what: string): Promise<Error> => {
     );
   }
   if (res.status === 404) return new Error("Klaviyo has no such list — check the list id");
-  if (res.status === 429) {
-    return new Error("Klaviyo rate-limited the request — it will be retried");
-  }
+  // 429 is not handled here on purpose: the engine's fetch wrapper classifies
+  // it as RateLimitedError before a provider ever sees the response, so it can
+  // hold the cursor without feeding the breaker. A branch here would be
+  // unreachable and would read as though it still decided something.
   return new Error(
     `Klaviyo responded ${res.status} and could not ${what}${detail ? `: ${detail.slice(0, 160)}` : ""}`,
   );

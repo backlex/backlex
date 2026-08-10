@@ -153,13 +153,22 @@ export function resetThrottleState(): void {
  * classification — every provider benefits from that half, including the
  * thirty-odd that predate this.
  */
-export function throttled(key: string, limit: RateLimit | undefined, inner: FetchLike): FetchLike {
+export function throttled(
+  key: string,
+  limit: RateLimit | undefined,
+  inner: FetchLike,
+  label?: string,
+): FetchLike {
   return async (input, init) => {
     if (limit) await takeToken(key, limit);
     const res = await inner(input, init);
     if (res.status === 429) {
+      // Named, because this replaced per-provider 429 handling and an operator
+      // reading a paused row needs to know WHICH provider is asking them to
+      // wait. "It will be retried" is the other half: a 429 is not something to
+      // go and change, and the sync row would otherwise read like a fault.
       throw new RateLimitedError(
-        "Provider rate limit reached (HTTP 429)",
+        `${label ?? "Provider"} rate-limited this request (HTTP 429) — it will be retried`,
         parseRetryAfter(res.headers.get("retry-after"), Date.now()),
       );
     }

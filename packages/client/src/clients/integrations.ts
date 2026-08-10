@@ -123,6 +123,46 @@ export interface IntegrationSyncInput {
   enabled?: boolean;
 }
 
+/** One thing a provider can be asked to do TO a row. */
+export interface IntegrationTaskRunInput {
+  /** Managed collection the row lives in. */
+  collection: string;
+  /** Primary key of the row to act on. */
+  itemId: string;
+  /** Per-invocation settings. Keys come from the task's declared fields. */
+  settings?: Record<string, unknown>;
+  /** Task output key → collection field. Undeclared outputs are refused. */
+  outputMapping?: Record<string, string>;
+  /**
+   * Re-run a task that already succeeded.
+   *
+   * Off by default. A task has a real effect at the provider — booking a
+   * shipment twice costs money — so a repeat is an explicit decision.
+   */
+  force?: boolean;
+}
+
+export interface IntegrationTaskRunResult {
+  /** `skipped` means a previous run's answer came back instead of a new call. */
+  status: "succeeded" | "skipped";
+  outputs: Record<string, unknown>;
+  /** Storage key of the file the task produced, if it produced one. */
+  artifactKey: string | null;
+  reused: boolean;
+}
+
+export interface IntegrationTaskRun {
+  id: string;
+  integrationId: string;
+  task: string;
+  status: string;
+  outputs: Record<string, unknown>;
+  artifactKey: string | null;
+  error: string | null;
+  attempts: number;
+  updatedAt: number | string | null;
+}
+
 export interface IntegrationsClient {
   /** Providers available to connect, with their config field schema. */
   catalog: () => Promise<{
@@ -160,6 +200,17 @@ export interface IntegrationsClient {
   syncs: (opts?: { integrationId?: string }) => Promise<{ data: IntegrationSync[] }>;
   /** Create a scheduled pull into a collection. */
   createSync: (input: IntegrationSyncInput) => Promise<{ data: IntegrationSync }>;
+  /**
+   * Run a task against one row. Runs at most ONCE per row: a second call
+   * returns the first run's outputs rather than acting again.
+   */
+  runTask: (
+    integrationId: string,
+    task: string,
+    input: IntegrationTaskRunInput,
+  ) => Promise<{ data: IntegrationTaskRunResult }>;
+  /** What has already been done to one row, and what it produced. */
+  taskRuns: (collection: string, itemId: string) => Promise<{ data: IntegrationTaskRun[] }>;
   /** Patch a sync. Changing `settings` resets the resume cursor. */
   updateSync: (
     id: string,
@@ -197,6 +248,17 @@ export const makeIntegrations = (core: ClientCore): IntegrationsClient => {
       const qs = opts?.integrationId ? `?integrationId=${encodeURIComponent(opts.integrationId)}` : "";
       return core.request<{ data: IntegrationSync[] }>("GET", `/api/admin/integrations/syncs${qs}`);
     },
+    runTask: (integrationId, task, input) =>
+      core.request(
+        "POST",
+        `${integ(integrationId)}/tasks/${encodeURIComponent(task)}`,
+        input,
+      ),
+    taskRuns: (collection, itemId) =>
+      core.request(
+        "GET",
+        `/api/admin/integrations/task-runs?collection=${encodeURIComponent(collection)}&itemId=${encodeURIComponent(itemId)}`,
+      ),
     createSync: (input) =>
       core.request<{ data: IntegrationSync }>("POST", "/api/admin/integrations/syncs", input),
     updateSync: (id, patch) =>

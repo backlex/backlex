@@ -24,9 +24,12 @@ import {
   type DestinationColumn,
   type FetchLike,
   type IntegrationConfigField,
+  type IntegrationTask,
   type SourcePullPage,
   type IntegrationEvent,
   type IntegrationProvider,
+  type TaskOutput,
+  type TaskResult,
   columnsForSettings,
   OAUTH_CONFIG_KEYS,
   secretKeysOf,
@@ -50,6 +53,7 @@ const engineFetch = (kind: string, connectionKey: string | undefined, fetchImpl?
     `${kind}:${connectionKey ?? "-"}`,
     providerFor(kind)?.limits,
     fetchImpl ?? ((i, init) => fetch(i, init)),
+    providerFor(kind)?.label ?? kind,
   );
 
 export type {
@@ -67,11 +71,16 @@ export type {
   IntegrationSource,
   DestinationPushContext,
   DestinationRow,
+  IntegrationTask,
   RateLimit,
   SourceChildRecord,
   SourcePullContext,
   SourcePullPage,
   SourceRecord,
+  TaskArtifact,
+  TaskOutput,
+  TaskResult,
+  TaskRunContext,
 } from "./provider";
 export { isRateLimited, parseRetryAfter, RateLimitedError, resetThrottleState, takeToken, throttled } from "./throttle";
 export {
@@ -206,6 +215,91 @@ export async function pushToDestination(
     str: (key) => pick(args.config, key),
     setting: (key) => pick(args.settings, key),
   });
+}
+
+/** Kinds that can act on a single row. Derived, like SOURCE_KINDS. */
+export const TASK_KINDS = entries.filter(([, p]) => p.tasks?.length).map(([id]) => id);
+
+/**
+ * Every task a provider declares, flattened for the catalog.
+ *
+ * `outputs` travels with each one because a caller has to map them onto its own
+ * columns before it can invoke anything — the admin form and the flow step both
+ * build their pickers from this rather than from a second, hand-kept list.
+ */
+export const INTEGRATION_TASKS = Object.fromEntries(
+  entries
+    .filter(([, p]) => p.tasks?.length)
+    .map(([id, p]) => [
+      id,
+      p.tasks!.map((t) => ({
+        id: t.id,
+        label: t.label,
+        settingFields: [...(t.settingFields ?? [])],
+        outputs: [...t.outputs],
+      })),
+    ]),
+) as Record<string, { id: string; label: string; settingFields: IntegrationConfigField[]; outputs: TaskOutput[] }[]>;
+
+/** Look one task up. `undefined` for an unknown kind or an unknown task id. */
+export const taskFor = (kind: string, taskId: string): IntegrationTask | undefined =>
+  providerFor(kind)?.tasks?.find((t) => t.id === taskId);
+
+/**
+ * Run one task against one row.
+ *
+ * Like `pullFromSource` and unlike `deliverToIntegration`, this does NOT swallow
+ * errors: a task that reported success having failed would leave the engine
+ * recording a shipment nobody booked, and the row would never be retried.
+ *
+ * The engine validates the result rather than trusting it — an output the
+ * provider never declared is refused here, at the boundary, instead of being
+ * written into a collection under a name no picker ever offered.
+ */
+export async function runIntegrationTask(
+  kind: string,
+  taskId: string,
+  args: {
+    config: Record<string, unknown>;
+    settings: Record<string, unknown>;
+    row: Record<string, unknown>;
+    idempotencyKey: string;
+    /** The connected account, so pacing is per-credential. See `engineFetch`. */
+    connectionKey?: string;
+  },
+  fetchImpl?: FetchLike,
+): Promise<TaskResult> {
+  const task = taskFor(kind, taskId);
+  if (!task) throw new Error(`${kind} has no task "${taskId}"`);
+  const doFetch = engineFetch(kind, args.connectionKey, fetchImpl);
+  const pick = (bag: Record<string, unknown>, key: string) => {
+    const v = bag[key];
+    return typeof v === "string" && v ? v : null;
+  };
+
+  const result = await task.run({
+    config: args.config,
+    settings: args.settings,
+    row: args.row,
+    idempotencyKey: args.idempotencyKey,
+    fetch: doFetch,
+    str: (key) => pick(args.config, key),
+    setting: (key) => pick(args.settings, key),
+  });
+
+  const declared = new Set(task.outputs.map((o) => o.key));
+  for (const key of Object.keys(result.outputs ?? {})) {
+    if (!declared.has(key)) {
+      throw new Error(`${kind}.${taskId} returned undeclared output "${key}"`);
+    }
+  }
+  if (result.artifact) {
+    const slot = task.outputs.find((o) => o.key === result.artifact!.outputKey);
+    if (!slot?.artifact) {
+      throw new Error(`${kind}.${taskId} returned an artifact for non-artifact output "${result.artifact.outputKey}"`);
+    }
+  }
+  return result;
 }
 
 /** Per-sync settings each source provider asks for, keyed by kind. */

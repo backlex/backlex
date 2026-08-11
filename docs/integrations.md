@@ -587,6 +587,14 @@ The engine also hands the provider an idempotency key, stable across every retry
 of the same row. Carriers that honour it refuse the duplicate at their end too,
 which is strictly better than us noticing afterwards.
 
+### It writes back a patch, not a row
+
+A task hands back the two or three fields it learned. The engine writes **only
+those columns** and leaves the rest of the row exactly as it was — so booking a
+shipment onto a fulfillment sets the tracking number and the label key without
+touching which order it belongs to, which location it ships from, or the status
+somebody set by hand five minutes ago.
+
 ### What a task produced
 
 `backlex integrations task-runs --collection fulfillments --item ful_123` is the

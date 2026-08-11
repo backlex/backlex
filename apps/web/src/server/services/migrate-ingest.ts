@@ -39,10 +39,10 @@ export interface IngestResult {
    *  on both dialects without relying on driver-specific change counts). */
   inserted: number;
   /** insert mode: rows that hit ON CONFLICT (already present — typical on
-   *  resume). Always 0 in upsert mode (conflicts update instead). */
+   *  resume). Always 0 in upsert/patch mode (conflicts update instead). */
   skipped: number;
-  /** upsert mode: rows that matched an existing PK and were overwritten.
-   *  Always 0 in insert mode. */
+  /** upsert/patch mode: rows that matched an existing PK and were written
+   *  over. Always 0 in insert mode. */
   updated: number;
   failed: IngestFailure[];
   /** Tenant-scoped row count in the target table after this call — the
@@ -50,7 +50,23 @@ export interface IngestResult {
   total: number;
 }
 
-export type IngestMode = "insert" | "upsert";
+/**
+ * How a row that is already there is treated.
+ *
+ * - `insert` — leave it alone. A resumed copy re-sends rows it already sent.
+ * - `upsert` — replace it. A delta re-sync and a source pull both hand over the
+ *   WHOLE record, so a column absent from the incoming row is absent at the
+ *   origin too and clearing it is the correct answer.
+ * - `patch` — change only the columns the incoming row names, and leave every
+ *   other one as it was.
+ *
+ * The third exists because the second is a trap for any caller holding a
+ * fragment. A task books a shipment and writes back a tracking number and a
+ * label: under `upsert` that row's order, its location and its shipped-at date
+ * are all "absent from the incoming row", and the write that recorded the
+ * booking would empty the fulfillment it recorded it on.
+ */
+export type IngestMode = "insert" | "upsert" | "patch";
 
 /** Max rows per HTTP call — the CLI chunks larger copies client-side. */
 export const INGEST_MAX_ROWS = 2000;
@@ -150,13 +166,30 @@ export const ingestRows = async (
   // written; everything else gets a slot in the (uniform) column plan.
   const insertableFields = collection.fields.filter((f) => !f.computed);
 
+  /**
+   * Does any incoming row name this column?
+   *
+   * Only asked in `patch` mode, and it is the whole of the difference: every
+   * other mode plans a slot for every field and therefore writes NULL into the
+   * ones the caller left out. A patch plans a slot only for what it was given,
+   * so an unmentioned column is not written at all rather than written blank.
+   *
+   * The union across rows rather than per row, because the statement's column
+   * list has to be one list. A caller mixing key sets in a single patch call
+   * would still null the odd one out, which is why `runTask` — the only caller
+   * that patches today — hands over exactly one row.
+   */
+  const named = (...keys: string[]): boolean =>
+    rows.some((r) => keys.some((k) => r[k] !== undefined));
+  const wanted = (...keys: string[]): boolean => mode !== "patch" || named(...keys);
+
   const plan: ColumnPlan[] = [
     { column: pk, value: (row) => pickRaw(row, pk, "id") ?? null },
   ];
   if (collection.tenantScoped) {
     plan.push({ column: "tenant_id", value: () => tenantId });
   }
-  if (collection.ownerScoped) {
+  if (collection.ownerScoped && wanted("owner_id", "ownerId")) {
     plan.push({
       column: "owner_id",
       value: (row) => {
@@ -179,14 +212,14 @@ export const ingestRows = async (
         serializeTimestamp(pickRaw(row, "updated_at", "updatedAt"), dialect) ?? now,
     });
   }
-  if (collection.softDelete) {
+  if (collection.softDelete && wanted("deleted_at", "deletedAt")) {
     plan.push({
       column: "deleted_at",
       value: (row) =>
         serializeTimestamp(pickRaw(row, "deleted_at", "deletedAt"), dialect),
     });
   }
-  if (collection.versioned) {
+  if (collection.versioned && wanted("_status", "_published_at")) {
     // Migrated rows default to `published` — a draft default would make the
     // entire copied dataset invisible to non-privileged readers.
     plan.push({
@@ -207,6 +240,7 @@ export const ingestRows = async (
     });
   }
   for (const f of insertableFields) {
+    if (!wanted(f.name)) continue;
     plan.push({
       column: f.name,
       value: (row) => serializeField(row[f.name], f.type, dialect),
@@ -232,7 +266,12 @@ export const ingestRows = async (
     "_publish_at",
     ...collection.fields.map((f) => f.name),
   ]);
-  const requiredFields = insertableFields.filter((f) => f.required);
+  // Only the required fields this statement actually writes. A patch that does
+  // not mention a required column is not clearing it — the value already in the
+  // row stands — so demanding one would refuse every partial write to a
+  // collection that has any required field at all.
+  const plannedColumns = new Set(plan.map((p) => p.column));
+  const requiredFields = insertableFields.filter((f) => f.required && plannedColumns.has(f.name));
 
   const failed: IngestFailure[] = [];
   const good: { index: number; values: unknown[] }[] = [];
@@ -294,7 +333,7 @@ export const ingestRows = async (
         c !== (collection.createdAtColumn ?? "created_at"),
     );
   const conflictSql =
-    mode === "upsert" && updatableCols.length > 0
+    mode !== "insert" && updatableCols.length > 0
       ? sql`ON CONFLICT (${sql.identifier(pk)}) DO UPDATE SET ${sql.join(
           updatableCols.map(
             (c) => sql`${sql.identifier(c)} = excluded.${sql.identifier(c)}`,
@@ -333,8 +372,8 @@ export const ingestRows = async (
   return {
     received: rows.length,
     inserted,
-    skipped: mode === "upsert" ? 0 : conflicted,
-    updated: mode === "upsert" ? conflicted : 0,
+    skipped: mode === "insert" ? conflicted : 0,
+    updated: mode === "insert" ? 0 : conflicted,
     failed: failed.sort((a, b) => a.index - b.index),
     total,
   };

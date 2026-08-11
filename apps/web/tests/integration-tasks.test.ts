@@ -91,6 +91,10 @@ beforeAll(async () => {
     fields: [
       { name: "tracking", type: "text" },
       { name: "label", type: "text" },
+      // Nothing maps an output onto this one. It is here to be left alone —
+      // see "a write-back leaves the columns it was not given". A collection
+      // whose only columns are the ones the task writes cannot fail that.
+      { name: "order_ref", type: "text" },
     ],
   });
   shipmentsTable = (
@@ -136,7 +140,7 @@ beforeEach(() => {
   const now = Date.now();
   client
     .query(
-      `insert into "${shipmentsTable}" (id, tracking, label, created_at, updated_at) values ('ship-1', null, null, ?, ?)`,
+      `insert into "${shipmentsTable}" (id, tracking, label, order_ref, created_at, updated_at) values ('ship-1', null, null, 'ORD-1001', ?, ?)`,
     )
     .run(now, now);
   calls = 0;
@@ -152,6 +156,19 @@ describe("running a task", () => {
     const rows = shipmentRows();
     expect(rows[0]!.tracking).toBe("TRK-1");
     expect(calls).toBe(1);
+  });
+
+  test("a write-back leaves the columns it was not given", async () => {
+    // A task hands back the two or three fields it learned, never the row. The
+    // write therefore has to be a PATCH: under a whole-row upsert every column
+    // outside the mapping is "absent from the incoming row", and booking a
+    // shipment would empty the fulfillment it was booked for — which order,
+    // which location, which date — while reporting a clean success.
+    await ok("POST", runUrl(), BODY);
+
+    const row = shipmentRows()[0]!;
+    expect(row.tracking).toBe("TRK-1");
+    expect(row.order_ref).toBe("ORD-1001");
   });
 
   test("a second invocation returns the first answer WITHOUT acting again", async () => {

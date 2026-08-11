@@ -331,7 +331,11 @@ export async function runTask(
     if (values[key] !== undefined) patch[field] = values[key];
   }
   if (Object.keys(patch).length > 1) {
-    const out = await ingestRows(ctx, collection, tenantId, [patch], { mode: "upsert" });
+    // `patch`, not `upsert`. A task hands back the two or three fields it
+    // learned, not the row — and an upsert plans a column for every field the
+    // collection has, so the write that recorded a booking would blank the
+    // fulfillment's order, location and shipped-at date on its way past.
+    const out = await ingestRows(ctx, collection, tenantId, [patch], { mode: "patch" });
     if (out.failed.length > 0) {
       const error = `writing outputs to "${input.collection}" failed: ${out.failed[0]?.error ?? "unknown"}`;
       await settle(ctx, runId, { status: "failed", error });

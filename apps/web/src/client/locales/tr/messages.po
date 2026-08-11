@@ -14006,6 +14006,10 @@ msgstr "Pazar yeri siparişlerini kalemleriyle çeker, stok ve fiyatı gönderir
 #~ msgstr "Bağlı bir kaynaktan satırları zamanlanmış olarak bir koleksiyona çeker. Çekilen satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine asla yazmaz."
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
+msgstr "Selling Partner siparişlerini kalemleri ve adresleriyle içeri çekin, kargo çıkışını geri bildirin."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
 msgstr "Kargo paketlerini kalemleriyle içeri çekin, stok ve fiyatı dışarı gönderin, paketleri onaylayın."
 

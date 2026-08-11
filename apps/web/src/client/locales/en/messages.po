@@ -14006,6 +14006,10 @@ msgstr "Pull marketplace orders in with their lines, push stock and price out, a
 #~ msgstr "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
+msgstr "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
 msgstr "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
 

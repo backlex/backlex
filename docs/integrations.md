@@ -22,7 +22,7 @@ backlex signs what it sends.
 
 ## Providers
 
-Thirty-eight providers ship in the registry, grouped by category:
+Thirty-nine providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -36,7 +36,7 @@ Thirty-eight providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source and a task |
 | carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
@@ -896,6 +896,61 @@ synonym for shipping: an order going out on Çiçeksepeti's own service vehicle 
 `mark_shipped` requires the courier and the tracking number, because
 Çiçeksepeti emails and texts the customer from exactly those fields — the
 courier is picked from a list of the ids it publishes, not typed.
+
+### Amazon, and what it proved
+
+The fifth marketplace and the first outside Türkiye — which is the point. Four
+providers fitting one shape could have meant the shape was Turkish. Amazon fits
+it too, so the shape is marketplace-sized: an order is a header with lines, a
+confirmation is a task, and neither the engine nor the record model needed
+anything new.
+
+It is still the most demanding of the five to connect, because its credential
+is three values and its data is gated twice:
+
+```bash
+backlex integrations connect --kind amazon \
+  --config region=eu --config marketplaceId=A33AVAJ2PDY3EV \
+  --config sellerId=<merchant-token> \
+  --config clientId=… --config clientSecret=… --config refreshToken=…
+```
+
+**Two tokens, not one.** Every request carries an access token minted from the
+long-lived LWA refresh token, and the buyer's name and shipping address need a
+*second*, restricted token minted for that exact path. Both are minted per
+invocation and reused inside it — there is deliberately no cross-invocation
+cache, because it would have to be a module-level map keyed by somebody's
+refresh token.
+
+If your application has not been approved for the PII role, the restricted
+token is refused and the sync **degrades rather than fails**: it runs, and the
+address columns stay empty — exactly what setting *Leave it redacted* would have
+given you. Set that explicitly if you know you have no PII role, and save the
+failing call every run.
+
+**Lines are a second request, per order.** Amazon does not return an order's
+items with the order. That is an N+1, and it is why the page is capped at 25
+rather than the 100 the API allows — a page of 100 is 101 requests against an
+endpoint limited to two a second.
+
+**The rate limits are per operation and span two orders of magnitude:**
+`getOrders` is 0.0167/s (one a minute, burst 20), `getOrderItems` 0.5/s,
+`confirmShipment` 2/s. Each takes its own token, so confirming a shipment never
+queues behind an order walk. Plan a first sync accordingly: a backfill advances
+one 30-day window per run.
+
+`confirm_shipment` needs an id and a quantity per line, so it reads the order's
+items itself. Its `packageReferenceId` is derived from the engine's idempotency
+key, which is stable across retries — so a retried run declares the *same*
+package rather than a second one.
+
+**There is no destination.** Price and quantity go through the Listings Items
+API as JSON-patch operations against attributes whose exact value shapes are
+defined per product type by the Product Type Definitions API, and are not stated
+in the operation's own reference. Writing a seller's prices from a guessed
+payload is the one failure worse than not shipping the feature — it reports a
+clean run and changes nothing, or changes the wrong thing. It belongs in a
+follow-up that reads the product type definition first.
 
 ## Parcels out to a carrier
 

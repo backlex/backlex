@@ -12,6 +12,7 @@ import type { IntegrationProvider } from "../provider";
 import { airtable } from "./airtable";
 import { bigquery } from "./bigquery";
 import { algolia } from "./algolia";
+import { amazon } from "./amazon";
 import { amplitude } from "./amplitude";
 import { ciceksepeti } from "./ciceksepeti";
 import { clickhouse } from "./clickhouse";
@@ -97,6 +98,7 @@ export const INTEGRATION_KINDS = [
   "hepsiburada",
   "n11",
   "ciceksepeti",
+  "amazon",
   // carriers (book a shipment, read where it is, cancel it)
   "easypost",
 ] as const;
@@ -141,6 +143,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   hepsiburada,
   n11,
   ciceksepeti,
+  amazon,
   easypost,
 };
 

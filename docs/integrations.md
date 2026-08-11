@@ -22,7 +22,7 @@ backlex signs what it sends.
 
 ## Providers
 
-Thirty-nine providers ship in the registry, grouped by category:
+Forty providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -37,7 +37,7 @@ Thirty-nine providers ship in the registry, grouped by category:
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 | marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source and a task |
-| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -1042,6 +1042,75 @@ row. Writing `refunded` on the strength of having asked would not be true. The
 one answer that is a refusal rather than a delay, `not_applicable`, is an error:
 a row quietly reading it while an operator believes the consignment is cancelled
 is worse than being told.
+
+### A national courier, over SOAP
+
+**Yurtiçi Kargo** is the second carrier and the first provider in this engine to
+speak SOAP. It is the same three tasks — book, ask, cancel — because the
+`carrier` category was defined as that contract rather than as a company,
+which is what let a national courier arrive as one more file.
+
+Its whole surface comes from the **published WSDL**, which is readable without
+credentials. The credentials themselves still come from a branch application;
+the contract does not.
+
+```bash
+backlex integrations connect --kind yurtici \
+  --config wsUserName=… --config wsPassword=… --config language=TR
+```
+
+Four things differ from EasyPost and are worth knowing before you wire a flow:
+
+**You choose the consignment key, and everything else addresses it.**
+`book_shipment` derives `cargoKey` from the engine's idempotency key — stable
+for this *(integration, task, row)* and identical across every retry — so a
+retried booking re-books the *same* consignment instead of putting a second one
+on a courier's manifest. There is no idempotency header here to fall back on,
+which makes this the guard that matters. Map the output onto the column
+`refresh_tracking` and `cancel_shipment` read.
+
+**The credentials travel in the body**, not in a header: every operation's first
+arguments are `wsUserName` and `wsPassword`. That is Yurtiçi's design.
+
+**A refusal is a field inside a 200.** The service answers success at the HTTP
+level and puts `errCode` in the payload, so a run that only checked the status
+would report every refusal as a clean booking. Non-zero fails the run with the
+courier's own `errMessage`.
+
+**The address is il / ilçe by name** (`cityName`, `townName`) — which is exactly
+what the marketplace sources in this engine already carry, so an order pulled
+from Trendyol or Hepsiburada books without a lookup table in between.
+
+`refresh_tracking` is [repeatable](#except-when-asking-again-is-the-point) and
+writes Yurtiçi's own vocabulary rather than a remapped one — a second status
+list would be a second thing to keep in step, and the operator's panel shows
+these words. Its `keyType` is free text with a default of `0`, unusually for
+this codebase: the WSDL types it as an integer and does not enumerate it, and a
+picker built from a guess would be worse than a field you fill in from your own
+contract documentation.
+
+#### The SOAP helper
+
+`@backlex/integrations/soap` is the shared piece — envelope building, XML
+parsing, fault handling — added when the second SOAP courier made writing it
+twice the alternative. It is deliberately **not** a SOAP client: no WSDL
+parsing, no schema validation, no codegen. A provider knows the operation it
+wants; this turns that into a request and the answer into something it can read
+fields off.
+
+The parser refuses to be clever, and each refusal is the point:
+
+- **No DOCTYPE processing** — it is skipped as an opaque token, which makes XXE
+  structurally impossible rather than merely unlikely.
+- **No custom entities** — only the five XML predefines and numeric references
+  expand, so an entity-expansion bomb has nothing to recurse through.
+- **No external anything** — no schema fetch, no import, no include.
+
+An unknown entity is left exactly as it arrived rather than dropped or expanded:
+dropping corrupts a value, expanding is the vulnerability, and leaving it
+visible is neither. Namespace prefixes are stripped, so a courier's choice of
+`soap:` or `s:` is not part of your contract, and an element occurring once
+reads the same as one occurring twice via `nodeList`.
 
 ## When the provider calls you
 

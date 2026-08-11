@@ -47,6 +47,7 @@ import { teams } from "./teams";
 import { telegram } from "./telegram";
 import { trendyol } from "./trendyol";
 import { xero } from "./xero";
+import { yurtici } from "./yurtici";
 import { typesense } from "./typesense";
 
 export const INTEGRATION_KINDS = [
@@ -101,6 +102,7 @@ export const INTEGRATION_KINDS = [
   "amazon",
   // carriers (book a shipment, read where it is, cancel it)
   "easypost",
+  "yurtici",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -145,6 +147,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   ciceksepeti,
   amazon,
   easypost,
+  yurtici,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

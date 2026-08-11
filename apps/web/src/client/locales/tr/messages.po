@@ -3193,6 +3193,10 @@ msgstr "Gönderi oluşturun, yazdırılabilir etiketini alın, kargonun nerede o
 msgid "Book a shipment and store its label, read where the parcel is, and cancel it."
 msgstr "Gönderi oluşturup etiketini saklar, kargonun nerede olduğunu okur ve iptal eder."
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a shipment and store its label, read where the parcel is, and void it."
+msgstr "Gönderi oluşturup etiketini saklayın, kargonun nerede olduğunu okuyun ve iptal edin."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Booked"
 msgstr "Rezervasyon alındı"

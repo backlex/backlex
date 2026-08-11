@@ -37,7 +37,7 @@ Forty-one providers ship in the registry, grouped by category:
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 | marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source and a task |
-| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -1113,6 +1113,73 @@ from somebody else's DataSet is how a row ends up permanently empty while the
 run reports success. Those names *are* in the integration document Aras hands
 over with the credentials; with that document in front of you the task is a
 short addition, because the helper already reads an arbitrary tree by name.
+
+#### UPS, and the shape that got lifted
+
+**UPS** books a shipment with its label, reads where the parcel is, and voids
+it. Two things about it are firsts for this engine.
+
+**It is the first provider that mints its own token.** Every OAuth provider here
+so far (Notion, Google, QuickBooks, Xero) uses the *authorization-code* grant,
+which the engine drives: an admin is redirected, consents, and the engine stores
+and refreshes the tokens. UPS uses *client-credentials* — no user to redirect,
+no refresh token, just the credentials exchanged for a short-lived bearer at
+`POST /security/v1/oauth/token`. That does not fit `IntegrationOAuth`, and
+pretending it did would mean an authorize screen nobody can consent on. So the
+exchange lives in the provider and the token is cached **keyed by the credential
+pair**, not by client id alone: a rotated secret must not keep serving a token
+minted from the old one. The cache is per-isolate and best-effort, like the
+rate-limit buckets — a cold isolate mints a fresh token, which costs one request.
+
+**It is the second user of the shared address shape, and the reason that shape
+exists.** `@backlex/integrations/address` was lifted out of EasyPost when UPS
+turned out to want the same fifteen settings under the same names — the rule
+this repo already follows for `./soap`: two examples is when a shape stops being
+one provider's business.
+
+What is shared is the **international** postal shape (street, city,
+state/province, postcode, ISO country) plus the parcel's weight and dimensions.
+What is emphatically *not* shared is the Turkish couriers' shape — Yurtiçi, Aras
+and PTT want il and ilçe **by name**, with no postcode and no country at all.
+They are not a third example, and an abstraction that made a TR courier describe
+Kadıköy as a "state/province" would be worse than the duplication it removed.
+
+The keys in that module — `fromName`, `toNameField`, `weightField` and the rest
+— are **frozen**. They are not names chosen there; they are names already stored
+in live connections and flow steps, so renaming one would silently blank a
+configured field on somebody's running flow. Each provider still owns its own
+*translation*: UPS nests the street as an `AddressLine` array and spells the
+postcode `PostalCode`, EasyPost calls the same two `street1` and `zip`. Keeping
+that in the providers is what lets the shared module stay a description of a
+postal address rather than a union of two carriers' wire formats.
+
+What UPS adds on top of the shape is **units**: every weight and dimension
+carries a `UnitOfMeasurement`, so the operator picks KGS/LBS and CM/IN on the
+connection. EasyPost fixes ounces and inches instead, which is why the shared
+placeholders take the unit as a parameter — a placeholder saying "ounces" over a
+KGS connection is how a 5 kg parcel gets booked as 5 lb.
+
+Three smaller things worth knowing:
+
+- **`transId` and `transactionSrc` are required on every endpoint.** `transId`
+  is a correlation id rather than an idempotency key (UPS publishes none), so it
+  is derived from the engine's idempotency key — a support conversation about a
+  retried booking then cites one reference instead of three. The engine's
+  task-run row is the only guard against a retry buying a second label.
+- **UPS answers with an object for one and an array for several**, throughout —
+  `PackageResults`, `shipment`, `package`, `activity`, `deliveryDate`. A provider
+  that indexed `[0]` on the object form would read `undefined` and report a
+  successful booking with no tracking number.
+- **The label arrives as base64 inside the response**, not as a URL to fetch —
+  better than EasyPost's arrangement, where a separate host has to be
+  allow-listed. It is stored under the extension of the format that was *asked
+  for* rather than sniffed from the bytes: ZPL and EPL look like plain text, and
+  a stored `.txt` a warehouse cannot send to its printer is a label nobody can
+  use. A label that cannot be decoded is skipped rather than failing the run —
+  by then the shipment is booked, and a retry would buy a second one.
+
+Activities are documented most-recent-first, so unlike DHL the order is part of
+the contract and the newest is simply the head.
 
 #### PTT Kargo, the complete one
 

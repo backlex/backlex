@@ -10,11 +10,14 @@
     ".": "./src/index.ts",
     "./provider": "./src/provider.ts",
     "./soap": "./src/soap.ts",
+    "./address": "./src/address.ts",
     "./payments": "./src/payments.ts",
     "./checkout": "./src/checkout.ts",
     "./refunds": "./src/refunds.ts"
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "publishConfig": {
     "access": "public"
   },

@@ -94,6 +94,14 @@ export type {
   WebhookVerifyContext,
 } from "./provider";
 export { isRateLimited, parseRetryAfter, RateLimitedError, resetThrottleState, takeToken, throttled } from "./throttle";
+/**
+ * UPS is the one provider that mints and caches its own bearer token — the
+ * client-credentials grant has no user to redirect, so `IntegrationOAuth`
+ * cannot drive it. Its cache is per-isolate and would otherwise leak a token
+ * between specs, so the reset is exported for the tests exactly as the
+ * throttle's is.
+ */
+export { resetUpsTokens } from "./providers/ups";
 export {
   columnsForSettings,
   defineProvider,

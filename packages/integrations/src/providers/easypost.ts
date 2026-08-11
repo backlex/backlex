@@ -1,3 +1,13 @@
+import {
+  parcelSettingFields,
+  readParcel,
+  readShipFrom,
+  readShipTo,
+  shipFromConfigFields,
+  shipToSettingFields,
+  type Parcel,
+  type PostalAddress,
+} from "../address";
 import { defineProvider } from "../provider";
 
 /**
@@ -101,22 +111,10 @@ export const easypost = defineProvider({
       placeholder: "EZTK… for test, EZAK… to buy real postage",
     },
     // The ship-FROM address is the workspace's own and is the same on every
-    // consignment, so it belongs to the connection. Putting it on the task
-    // would mean re-typing a warehouse address onto every flow step that books
-    // anything.
-    { key: "fromName", label: "Ship-from name" },
-    { key: "fromCompany", label: "Ship-from company (optional)" },
-    { key: "fromStreet1", label: "Ship-from street" },
-    { key: "fromStreet2", label: "Ship-from street 2 (optional)" },
-    { key: "fromCity", label: "Ship-from city" },
-    { key: "fromState", label: "Ship-from state/province (optional)" },
-    { key: "fromZip", label: "Ship-from postcode" },
-    {
-      key: "fromCountry",
-      label: "Ship-from country",
-      placeholder: "ISO 3166-1 alpha-2, e.g. US or TR",
-    },
-    { key: "fromPhone", label: "Ship-from phone (optional)" },
+    // consignment, so it belongs to the connection. Shared with UPS through
+    // `../address` — same nine keys, and they are a contract because live
+    // connections already store them.
+    ...shipFromConfigFields(),
   ],
   tasks: [
     {
@@ -136,18 +134,10 @@ export const easypost = defineProvider({
       settingFields: [
         { key: "carrierAccount", label: "Carrier account", placeholder: "ca_… from your EasyPost account" },
         { key: "service", label: "Service", placeholder: "the carrier's service level, e.g. Priority" },
-        { key: "toNameField", label: "Recipient name field", placeholder: "e.g. ship_to_name" },
-        { key: "toStreet1Field", label: "Recipient street field", placeholder: "e.g. ship_to_street" },
-        { key: "toStreet2Field", label: "Recipient street 2 field (optional)" },
-        { key: "toCityField", label: "Recipient city field" },
-        { key: "toStateField", label: "Recipient state/province field (optional)" },
-        { key: "toZipField", label: "Recipient postcode field" },
-        { key: "toCountryField", label: "Recipient country field", placeholder: "holds an ISO alpha-2 code" },
-        { key: "toPhoneField", label: "Recipient phone field (optional)" },
-        { key: "weightField", label: "Weight field", placeholder: "the row field holding weight in ounces" },
-        { key: "lengthField", label: "Length field, inches (optional)" },
-        { key: "widthField", label: "Width field, inches (optional)" },
-        { key: "heightField", label: "Height field, inches (optional)" },
+        ...shipToSettingFields(),
+        // EasyPost fixes the units; UPS carries them in the request. That is
+        // why the hint is a parameter rather than baked into the shared shape.
+        ...parcelSettingFields({ weight: "ounces", length: "inches" }),
         {
           key: "predefinedPackage",
           label: "Predefined package (optional)",
@@ -176,9 +166,9 @@ export const easypost = defineProvider({
         }
 
         const shipment: Record<string, unknown> = {
-          to_address: toAddress(ctx),
-          from_address: fromAddress(ctx),
-          parcel: parcel(ctx),
+          to_address: wireAddress(readShipTo(ctx, "EasyPost")),
+          from_address: wireAddress(readShipFrom(ctx, "EasyPost")),
+          parcel: wireParcel(readParcel(ctx, "ounces"), ctx.setting("predefinedPackage")),
           service,
           carrier_accounts: [carrierAccount],
         };
@@ -487,126 +477,44 @@ const readShipmentId = (ctx: {
 
 // ── Building the shipment ────────────────────────────────────────────────────
 
-interface FieldReader {
-  row: Readonly<Record<string, unknown>>;
-  str(k: string): string | null;
-  setting(k: string): string | null;
-}
-
 /**
- * Read the row column a setting points at, RAW. Absent setting → nothing.
+ * A shared {@link PostalAddress} in EasyPost's own field names.
  *
- * Raw rather than stringified because the caller knows which shape it wants and
- * this does not: a weight column holds a number, and coercing everything
- * through the string reader here would drop it silently and report the row as
- * having no weight at all.
+ * The only thing this file still owns about an address: `street1` / `zip` are
+ * EasyPost's spelling of the shape `../address` describes neutrally, and UPS
+ * spells the same two `AddressLine[0]` / `PostalCode`. Keeping the translation
+ * here rather than in the shared module is what lets the module stay a
+ * description of a postal address rather than a union of two carriers' wires.
  */
-const fromRow = (ctx: FieldReader, setting: string): unknown => {
-  const field = ctx.setting(setting);
-  return field ? ctx.row[field] : null;
-};
-
-/**
- * Where it is going.
- *
- * Only the destination is validated up front, and only for the two parts every
- * carrier needs — a name to hand it to and a street to take it to. Everything
- * else EasyPost judges against the country's own rules, and it knows those far
- * better than a check here could.
- */
-const toAddress = (ctx: FieldReader): Record<string, unknown> => {
-  const name = text(fromRow(ctx, "toNameField"));
-  const street1 = text(fromRow(ctx, "toStreet1Field"));
-  if (!name || !street1) {
-    throw new Error(
-      "The row has no recipient name and street — point the task's recipient fields at the columns that hold them",
-    );
-  }
-  return prune({
-    name,
-    street1,
-    street2: text(fromRow(ctx, "toStreet2Field")),
-    city: text(fromRow(ctx, "toCityField")),
-    state: text(fromRow(ctx, "toStateField")),
-    // A postcode column is often numeric, and a leading zero survives only as
-    // text — so this is stringified rather than read as one.
-    zip: scalar(fromRow(ctx, "toZipField")),
-    country: country(text(fromRow(ctx, "toCountryField"))),
-    phone: scalar(fromRow(ctx, "toPhoneField")),
+const wireAddress = (a: PostalAddress): Record<string, unknown> =>
+  prune({
+    name: a.name,
+    company: a.company,
+    street1: a.street1,
+    street2: a.street2,
+    city: a.city,
+    state: a.state,
+    zip: a.postcode,
+    country: a.country,
+    phone: a.phone,
   });
-};
 
-/** Where it is coming from — the connection's own address. */
-const fromAddress = (ctx: FieldReader): Record<string, unknown> => {
-  const name = ctx.str("fromName");
-  const street1 = ctx.str("fromStreet1");
-  if (!name || !street1) {
-    throw new Error("The EasyPost connection has no ship-from name and street — add them to the connection");
-  }
-  return prune({
-    name,
-    company: ctx.str("fromCompany"),
-    street1,
-    street2: ctx.str("fromStreet2"),
-    city: ctx.str("fromCity"),
-    state: ctx.str("fromState"),
-    zip: ctx.str("fromZip"),
-    country: country(ctx.str("fromCountry")),
-    phone: ctx.str("fromPhone"),
+/**
+ * What is in the box, in EasyPost's names.
+ *
+ * `predefined_package` stays here rather than in the shared shape: it is an
+ * EasyPost concept — a flat-rate envelope that REPLACES the dimensions — and
+ * UPS spells the same idea `Packaging.Code` with an entirely different code
+ * list.
+ */
+const wireParcel = (p: Parcel, predefinedPackage: string | null): Record<string, unknown> =>
+  prune({
+    weight: p.weight,
+    length: p.length,
+    width: p.width,
+    height: p.height,
+    predefined_package: predefinedPackage,
   });
-};
-
-/**
- * What is in the box.
- *
- * Weight is the one thing no carrier will quote without. Dimensions are
- * optional because `predefined_package` replaces them — a flat-rate envelope
- * has no dimensions to give.
- */
-const parcel = (ctx: FieldReader): Record<string, unknown> => {
-  const weight = numeric(fromRow(ctx, "weightField"));
-  if (weight === null || weight <= 0) {
-    throw new Error(
-      "The row has no parcel weight — point the task's weight field at a column holding ounces",
-    );
-  }
-  return prune({
-    weight,
-    length: numeric(fromRow(ctx, "lengthField")),
-    width: numeric(fromRow(ctx, "widthField")),
-    height: numeric(fromRow(ctx, "heightField")),
-    predefined_package: ctx.setting("predefinedPackage"),
-  });
-};
-
-/**
- * An ISO 3166-1 alpha-2 code, upper-cased, or nothing.
- *
- * A country column holding "United States" is a mapping pointed at the display
- * name, and sending it would have EasyPost reject the address with a message
- * about the country field rather than about the column that filled it.
- */
-const country = (raw: string | null): string | null => {
-  if (!raw) return null;
-  const code = raw.trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) {
-    throw new Error(`"${raw}" is not a country code — EasyPost wants ISO alpha-2, like US or TR`);
-  }
-  return code;
-};
-
-/**
- * A scalar column as the string EasyPost wants, without losing its shape.
- *
- * A postcode stored as a number is still a postcode, and `String(90277)` is the
- * right answer — but a JSON or relation column reaching here would stringify to
- * `[object Object]` and be sent as an address line, so anything non-scalar is
- * nothing.
- */
-const scalar = (v: unknown): string | null => {
-  if (typeof v === "number") return Number.isFinite(v) ? String(v) : null;
-  return text(v);
-};
 
 /** Drop the keys with nothing in them: EasyPost validates empty strings. */
 const prune = (o: Record<string, unknown>): Record<string, unknown> =>

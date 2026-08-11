@@ -186,6 +186,7 @@ const BRANDS: Record<string, Brand> = {
   // white-on-brand and white on yellow is unreadable. The navy their logo pairs
   // it with is the other half of the same identity.
   ptt: { name: "PTT Kargo", mark: "PTT", markBg: "#0B3B75" },
+  ups: { name: "UPS", mark: "UPS", markBg: "#351C15" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -355,6 +356,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo).`;
       case "ptt":
         return t`Book a consignment, fetch its printable label, ask where the parcel is, and cancel it.`;
+      case "ups":
+        return t`Book a shipment and store its label, read where the parcel is, and void it.`;
       default:
         return "";
     }

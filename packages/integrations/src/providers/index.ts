@@ -52,6 +52,7 @@ import { trendyol } from "./trendyol";
 import { xero } from "./xero";
 import { yurtici } from "./yurtici";
 import { typesense } from "./typesense";
+import { ups } from "./ups";
 
 export const INTEGRATION_KINDS = [
   // chat
@@ -109,6 +110,7 @@ export const INTEGRATION_KINDS = [
   "aras",
   "dhl",
   "ptt",
+  "ups",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -157,6 +159,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   aras,
   dhl,
   ptt,
+  ups,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

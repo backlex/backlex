@@ -22,7 +22,7 @@ backlex signs what it sends.
 
 ## Providers
 
-Forty providers ship in the registry, grouped by category:
+Forty-one providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -37,7 +37,7 @@ Forty providers ship in the registry, grouped by category:
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 | marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source and a task |
-| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -1088,6 +1088,31 @@ these words. Its `keyType` is free text with a default of `0`, unusually for
 this codebase: the WSDL types it as an integer and does not enumerate it, and a
 picker built from a guess would be worse than a field you fill in from your own
 contract documentation.
+
+#### Aras Kargo, and a task that is missing on purpose
+
+**Aras Kargo** is the second SOAP courier, and it is what the helper was written
+for: the file is a translation, not a design. `book_shipment` and
+`cancel_shipment` work the same way Yurtiçi's do, down to deriving the
+consignment key (`IntegrationCode` here) from the engine's idempotency key so a
+retry re-books the same consignment.
+
+Two quirks are Aras's own. It wants the **credentials twice** — as arguments
+*and* inside every order — and spells the username `userName` on the operations
+this provider uses but `username` on its query operations; that is its WSDL, not
+a transcription error. And the **cash-on-delivery flag and amount travel
+together or not at all**: an amount with no flag is silently not collected,
+which is the one failure here that costs the seller money.
+
+**There is no tracking task**, deliberately. Aras's tracking operations
+(`GetCargoTransaction`, `GetCargoInfo`, `GetSortedCargoInfo`) all return an
+untyped .NET DataSet — the WSDL declares the response as `<s:any>` carrying a
+diffgram, so the column names inside are not part of the published contract at
+all. A task must declare the fields it writes back, and declaring names guessed
+from somebody else's DataSet is how a row ends up permanently empty while the
+run reports success. Those names *are* in the integration document Aras hands
+over with the credentials; with that document in front of you the task is a
+short addition, because the helper already reads an arbitrary tree by name.
 
 #### The SOAP helper
 

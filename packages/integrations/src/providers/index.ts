@@ -14,6 +14,7 @@ import { bigquery } from "./bigquery";
 import { algolia } from "./algolia";
 import { amazon } from "./amazon";
 import { amplitude } from "./amplitude";
+import { aras } from "./aras";
 import { ciceksepeti } from "./ciceksepeti";
 import { clickhouse } from "./clickhouse";
 import { contentful } from "./contentful";
@@ -103,6 +104,7 @@ export const INTEGRATION_KINDS = [
   // carriers (book a shipment, read where it is, cancel it)
   "easypost",
   "yurtici",
+  "aras",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -148,6 +150,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   amazon,
   easypost,
   yurtici,
+  aras,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

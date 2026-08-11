@@ -3178,6 +3178,10 @@ msgid "Book"
 msgstr "Book"
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a consignment and cancel it."
+msgstr "Book a consignment and cancel it."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Book a consignment, ask where the parcel is, and cancel it."
 msgstr "Book a consignment, ask where the parcel is, and cancel it."
 

@@ -177,6 +177,7 @@ const BRANDS: Record<string, Brand> = {
   amazon: { name: "Amazon", mark: "Az", markBg: "#232F3E" },
   easypost: { name: "EasyPost", mark: "Ep", markBg: "#164DFF" },
   yurtici: { name: "Yurtiçi Kargo", mark: "YK", markBg: "#004B93" },
+  aras: { name: "Aras Kargo", mark: "AK", markBg: "#00539F" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -340,6 +341,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Book a shipment and store its label, read where the parcel is, and cancel it.`;
       case "yurtici":
         return t`Book a consignment, ask where the parcel is, and cancel it.`;
+      case "aras":
+        return t`Book a consignment and cancel it.`;
       default:
         return "";
     }

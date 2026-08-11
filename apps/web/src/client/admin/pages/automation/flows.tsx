@@ -255,6 +255,11 @@ function describeOpShort(op: any): string {
     // summary rather than a blank where a figure would go.
     case "payment.refund": return `refund ${op.amount ? String(op.amount).slice(0, 16) : "all"}`;
     case "function": return `fn:${(op.name ?? "").toString().slice(0, 18)}`;
+    case "integration": return `→ ${(op.kind ?? "").toString().slice(0, 20)}`;
+    // The pair, not either half: two steps reading `trendyol` are
+    // indistinguishable when one marks a package picking and the other
+    // invoices it — which is the shape a shipping flow actually has.
+    case "integration.task": return `${op.kind ?? ""}.${(op.task ?? "").toString().slice(0, 18)}`;
     case "item.create": return `+${op.collection ?? ""}`;
     case "item.update": return `~${op.collection ?? ""}`;
     case "delay": return `wait ${op.durationMs}ms`;

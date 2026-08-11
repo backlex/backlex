@@ -199,6 +199,10 @@ msgid "(none — no collections)"
 msgstr "(none — no collections)"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+msgid "(none — no connected provider does tasks)"
+msgstr "(none — no connected provider does tasks)"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "(none — no functions yet)"
 msgstr "(none — no functions yet)"
 
@@ -230,6 +234,14 @@ msgstr "(none)"
 #: src/client/admin/pages/settings/index.tsx
 msgid "(not set)"
 msgstr "(not set)"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "(pick a collection first)"
+msgstr "(pick a collection first)"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "(pick a provider first)"
+msgstr "(pick a provider first)"
 
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
@@ -2266,6 +2278,10 @@ msgstr "An address with no account still counts — it may appear in a collectio
 #: src/client/pages/sign-up.tsx
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
+msgstr "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
 
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "An end-user who can administer the org from your app. You can add one later."
@@ -5832,6 +5848,10 @@ msgstr "Documents"
 #: src/client/pages/sign-in.tsx
 msgid "Don't have an account?"
 msgstr "Don't have an account?"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Don't store it"
+msgstr "Don't store it"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Don't store the reference"
@@ -11773,6 +11793,10 @@ msgstr "not sent"
 msgid "not set"
 msgstr "not set"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Not set"
+msgstr "Not set"
+
 #. placeholder {0}: result.note || t`the provider has not decided this refund`
 #: src/client/admin/pages/automation/payments.tsx
 msgid "Not settled yet: {0}."
@@ -12075,6 +12099,10 @@ msgstr "Off for a hook that only validates — otherwise returning `data` would 
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Off keeps the provider configured but hidden from sign-in."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
+msgstr "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "OIDC / OAuth2 SSO"
 msgstr "OIDC / OAuth2 SSO"
@@ -12213,6 +12241,10 @@ msgstr "Only needed for self-signed LDAPS; the system trust store handles public
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Only needed when the issuer publishes no discovery document."
 msgstr "Only needed when the issuer publishes no discovery document."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Only providers that can act on a row. A paused one fails the run rather than skipping it."
+msgstr "Only providers that can act on a row. A paused one fails the run rather than skipping it."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Only rows matching (optional)"
@@ -15278,6 +15310,7 @@ msgstr "Rotate the form link?"
 msgid "Rotate token"
 msgstr "Rotate token"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Row"
 msgstr "Row"
@@ -15421,6 +15454,10 @@ msgstr "Run cancelled. Progress is kept — resume any time."
 msgid "Run hook"
 msgstr "Run hook"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Run it again"
+msgstr "Run it again"
+
 #: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Run now"
@@ -15495,6 +15532,10 @@ msgstr "Runs against the pattern's captures, not against a row — so a capture 
 #: src/client/admin/pages/automation/channels-card.tsx
 #~ msgid "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
 #~ msgstr "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Runs at most once per row. A flow that fires again reads the first answer back."
+msgstr "Runs at most once per row. A flow that fires again reads the first answer back."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
@@ -16125,6 +16166,10 @@ msgstr "Select a function…"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Select a provider…"
 msgstr "Select a provider…"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Select a task…"
+msgstr "Select a task…"
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Select all"
@@ -17816,6 +17861,10 @@ msgstr "Target unavailable"
 msgid "Target:"
 msgstr "Target:"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Task"
+msgstr "Task"
+
 #: src/client/admin/collections/collections-index.tsx
 msgid "Taxonomy"
 msgstr "Taxonomy"
@@ -18091,6 +18140,10 @@ msgstr "The full secret is shown once after creation — copy it somewhere safe.
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
 msgstr "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the row that triggered the flow."
+msgstr "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the row that triggered the flow."
 
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "The insights endpoint returned an error. Re-run to try again."
@@ -20034,6 +20087,10 @@ msgstr "Where bookings are recorded"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Where submissions are stored."
 #~ msgstr "Where submissions are stored."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Where the answers land"
+msgstr "Where the answers land"
 
 #: src/client/pages/book.tsx
 msgid "Where the confirmation and the cancel link go."

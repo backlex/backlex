@@ -147,6 +147,8 @@ are nested operation arrays run after the op succeeds / throws.
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
 | `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |
 | `run-script` | Runs inline code in the same sandbox | `code`, `timeoutMs?` (≤30s) |
+| `integration` | Sends a message through a connected [provider](/integrations/#calling-an-integration-from-a-flow), addressed by kind. A provider nobody connected is skipped, not failed | `kind`, `text`, `event?`, `payload?` |
+| `integration.task` | Asks a connected provider to [act on ONE row](/integrations/#asking-a-provider-to-act-on-a-row) and writes the answer back — books a shipment, notifies a marketplace. Runs at most once per row; a missing connection **fails** the run | `kind`, `task`, `collection`, `itemId`, `settings?`, `outputMapping?`, `force?` |
 | `item.create` | Inserts a row into a collection (permissions bypassed) | `collection`, `data` (object or a template string parsed at run time) |
 | `item.update` | Patches a row by id (permissions bypassed) | `collection`, `id`, `data` |
 | `condition` | Branches: runs `then` / `else` based on a [permissions-DSL condition](/permissions/) over `data` | `filter`, `then?`, `else?` |

@@ -199,6 +199,10 @@ msgid "(none — no collections)"
 msgstr "(yok — koleksiyon yok)"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+msgid "(none — no connected provider does tasks)"
+msgstr "(yok — görev yapabilen bağlı sağlayıcı yok)"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "(none — no functions yet)"
 msgstr "(yok — henüz fonksiyon yok)"
 
@@ -230,6 +234,14 @@ msgstr "(yok)"
 #: src/client/admin/pages/settings/index.tsx
 msgid "(not set)"
 msgstr "(ayarlanmadı)"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "(pick a collection first)"
+msgstr "(önce bir koleksiyon seçin)"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "(pick a provider first)"
+msgstr "(önce bir sağlayıcı seçin)"
 
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
@@ -2266,6 +2278,10 @@ msgstr "Hesabı olmayan bir adres de sayılır — bir koleksiyonda geçiyor ola
 #: src/client/pages/sign-up.tsx
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "Bir admin bu örnek için genel kayıt kapatmış. Davet isteyin veya zaten bir hesabınız varsa giriş yapın."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
+msgstr "Yazılacak alanı olmayan yanıt yine de akışa döner — yalnızca satıra işlenmez."
 
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "An end-user who can administer the org from your app. You can add one later."
@@ -5832,6 +5848,10 @@ msgstr "Belgeler"
 #: src/client/pages/sign-in.tsx
 msgid "Don't have an account?"
 msgstr "Hesabınız yok mu?"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Don't store it"
+msgstr "Saklama"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Don't store the reference"
@@ -11773,6 +11793,10 @@ msgstr "gönderilmedi"
 msgid "not set"
 msgstr "tanımlı değil"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Not set"
+msgstr "Belirtilmedi"
+
 #. placeholder {0}: result.note || t`the provider has not decided this refund`
 #: src/client/admin/pages/automation/payments.tsx
 msgid "Not settled yet: {0}."
@@ -12075,6 +12099,10 @@ msgstr "Yalnızca doğrulama yapan bir hook için kapalı olmalı — aksi halde
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Kapalı, sağlayıcıyı yapılandırılmış tutar ancak girişte gizler."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
+msgstr "Kapalıyken satır başına yalnızca bir kez çalışır. Açıkken, sağlayıcıda iptal edilmiş bir gönderiyi yeniden oluşturur."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "OIDC / OAuth2 SSO"
 msgstr "OIDC / OAuth2 SSO"
@@ -12213,6 +12241,10 @@ msgstr "Yalnızca öz imzalı LDAPS için gereklidir; sistem güven deposu kamuy
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Only needed when the issuer publishes no discovery document."
 msgstr "Yalnızca sağlayıcı bir discovery belgesi yayınlamıyorsa gereklidir."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Only providers that can act on a row. A paused one fails the run rather than skipping it."
+msgstr "Yalnızca bir satır üzerinde işlem yapabilen sağlayıcılar. Duraklatılmış olan, adımı atlamak yerine çalışmayı başarısız kılar."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Only rows matching (optional)"
@@ -15278,6 +15310,7 @@ msgstr "Form bağlantısı yenilensin mi?"
 msgid "Rotate token"
 msgstr "Token'ı yenile"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Row"
 msgstr "Satır"
@@ -15421,6 +15454,10 @@ msgstr "Çalıştırma iptal edildi. İlerleme korunur — istediğiniz zaman de
 msgid "Run hook"
 msgstr "Kanca çalıştır"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Run it again"
+msgstr "Yeniden çalıştır"
+
 #: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Run now"
@@ -15495,6 +15532,10 @@ msgstr "Bir satıra karşı değil, desenin yakalamalarına karşı çalışır 
 #: src/client/admin/pages/automation/channels-card.tsx
 #~ msgid "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
 #~ msgstr ""
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Runs at most once per row. A flow that fires again reads the first answer back."
+msgstr "Satır başına en fazla bir kez çalışır. Yeniden tetiklenen bir akış ilk yanıtı geri okur."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
@@ -16125,6 +16166,10 @@ msgstr "Bir fonksiyon seçin…"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Select a provider…"
 msgstr "Bir sağlayıcı seçin…"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Select a task…"
+msgstr "Bir görev seçin…"
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Select all"
@@ -17816,6 +17861,10 @@ msgstr "Hedef kullanılamıyor"
 msgid "Target:"
 msgstr "Hedef:"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Task"
+msgstr "Görev"
+
 #: src/client/admin/collections/collections-index.tsx
 msgid "Taxonomy"
 msgstr "Taksonomi"
@@ -18091,6 +18140,10 @@ msgstr "Tam gizli anahtar oluşturulduktan sonra yalnızca bir kez gösterilir �
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
 msgstr "Paneller ve AI araç çağrıları tanıtıcıya referans verir — görünen adı değiştirmek güvenlidir, tanıtıcıyı değiştirmek değildir."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the row that triggered the flow."
+msgstr "İşlem yapılacak satırın kimliği. <0>{itemIdInterpolationExample}</0> akışı tetikleyen satırdır."
 
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "The insights endpoint returned an error. Re-run to try again."
@@ -20034,6 +20087,10 @@ msgstr "Rezervasyonların kaydedildiği yer"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Where submissions are stored."
 #~ msgstr "Gönderimlerin kaydedileceği yer."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Where the answers land"
+msgstr "Yanıtların yazılacağı alanlar"
 
 #: src/client/pages/book.tsx
 msgid "Where the confirmation and the cancel link go."

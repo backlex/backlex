@@ -37,6 +37,8 @@ import {
   runIntegrationTask,
   SECRET_KEYS,
   taskFor,
+  taskOutputsProblem,
+  taskSettingsProblem,
   type FetchLike,
   type TaskResult,
 } from "@backlex/integrations";
@@ -120,17 +122,9 @@ const validateTaskSettings = (
 ): Record<string, unknown> => {
   const task = taskFor(kind, taskId);
   if (!task) throw new AppError("BAD_REQUEST", `${kind} has no task "${taskId}"`);
-  const declared = new Map((task.settingFields ?? []).map((f) => [f.key, f]));
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(settings)) {
-    const field = declared.get(k);
-    if (!field) throw new AppError("VALIDATION", `${kind}.${taskId} has no setting "${k}"`);
-    if (field.options && !field.options.some((o) => o.value === v)) {
-      throw new AppError("VALIDATION", `"${k}" must be one of: ${field.options.map((o) => o.value).join(", ")}`);
-    }
-    out[k] = v;
-  }
-  return out;
+  const problem = taskSettingsProblem(kind, task, settings);
+  if (problem) throw new AppError("VALIDATION", problem);
+  return { ...settings };
 };
 
 /**
@@ -149,13 +143,11 @@ const validateOutputMapping = (
   collection: Awaited<ReturnType<typeof loadCollection>>,
 ): Record<string, string> => {
   const task = taskFor(kind, taskId)!;
-  const declared = new Set(task.outputs.map((o) => o.key));
+  const undeclared = taskOutputsProblem(kind, task, Object.keys(mapping));
+  if (undeclared) throw new AppError("VALIDATION", undeclared);
   const writable = new Set(collection.fields.filter((f) => !f.computed).map((f) => f.name));
   const out: Record<string, string> = {};
   for (const [key, target] of Object.entries(mapping)) {
-    if (!declared.has(key)) {
-      throw new AppError("VALIDATION", `${kind}.${taskId} has no output "${key}"`);
-    }
     if (typeof target !== "string" || !writable.has(target)) {
       throw new AppError("VALIDATION", `Collection "${collection.slug}" has no writable field "${target}"`);
     }

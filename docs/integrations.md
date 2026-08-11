@@ -844,6 +844,49 @@ step, so `onError` runs.
 In the flow builder this is the **Integration message** action; the provider
 dropdown lists what the workspace has connected.
 
+### Asking a provider to act on a row
+
+`integration.task` is the other half: it does not tell a provider that something
+happened, it asks one to *do* something and waits for the answer.
+
+```json
+{
+  "type": "integration.task",
+  "kind": "trendyol",
+  "task": "mark_invoiced",
+  "collection": "orders",
+  "itemId": "{{ data.id }}",
+  "settings": { "service": "standard" },
+  "outputMapping": { "trackingNumber": "tracking_number" }
+}
+```
+
+`outputMapping` lives on the step rather than in stored config because the same
+task serves collections that name their columns differently — you say once, in
+the step, where a tracking number lands. An output you map nowhere is still
+returned to the flow; it is simply not written onto the row.
+
+Three things differ from the message step, and each follows from a task having a
+real-world effect:
+
+- **A missing connection fails the run.** A chat notification nobody received is
+  a notification. A shipment nobody booked is an order the next step marks as
+  shipped, so a provider that is not connected — or is paused — is an error here
+  rather than a skip.
+- **It runs [once per row](#it-runs-once).** A flow that re-fires reads the first
+  run's answer back instead of booking a second shipment, and the step reports
+  `reused: true` so a following `condition` can tell the two apart. `force: true`
+  is the escape hatch for a consignment genuinely cancelled at the carrier.
+- **The step is checked when the flow is saved.** A task the provider does not
+  declare, a setting outside its option set, or an output key it never returns
+  is refused at save time. At run time all three present the same way: a step
+  that failed on a real order, with nothing in the flow that looks wrong.
+
+In the flow builder this is the **Integration task** action. Every picker in it
+is built from the provider's own declaration — only providers that *have* tasks
+are offered, the settings are the ones that task declares, and an output can
+only be pointed at a writable field of the chosen collection.
+
 ## Surfaces
 
 | Surface | Entry point |

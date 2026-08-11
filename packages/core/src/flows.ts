@@ -432,6 +432,40 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
+  /**
+   * Ask a connected provider to act on ONE row, and write what it answers back
+   * onto that row — book a shipment, notify a marketplace, cancel a booking.
+   *
+   * The step above tells a provider that something happened. This one asks it
+   * to do something and waits for the answer, so the two differ in every way
+   * that matters: it names a row rather than a message, it has outputs, and it
+   * runs AT MOST ONCE per (integration, task, row) unless `force` says
+   * otherwise. A flow that re-fires reads the first run's answer back instead
+   * of booking a second shipment.
+   *
+   * `outputMapping` lives on the step rather than in stored config because the
+   * same task serves collections that name their columns differently — the
+   * author says once, here, where a tracking number lands.
+   */
+  | {
+      type: "integration.task";
+      /** Provider kind, resolved to this workspace's connected row at run time. */
+      kind: string;
+      /** Task id the provider declares (`create_shipment`, `mark_invoiced`). */
+      task: string;
+      /** The collection holding the row to act on. */
+      collection: string;
+      /** Which row. Usually a template — `{{ data.id }}`. */
+      itemId: string;
+      /** Per-invocation settings. Keys are checked against the task's own. */
+      settings?: Record<string, unknown>;
+      /** Declared output key → the field on `collection` that receives it. */
+      outputMapping?: Record<string, string>;
+      /** Re-run a task that already succeeded. Off by default — a repeat costs. */
+      force?: boolean;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
   /** Insert a row into a dynamic collection. Tenant-scoped via the running
    *  flow's auth context. Permission checks are bypassed — flows are
    *  admin-authored, so the trust boundary lives at flow creation time. */
@@ -505,6 +539,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "payment.refund",
   "function",
   "integration",
+  "integration.task",
   "item.create",
   "item.update",
   "delay",
@@ -872,6 +907,22 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       text: z.string().min(1),
       event: z.string().min(1).optional(),
       payload: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z.object({
+      type: z.literal("integration.task"),
+      kind: z.string().min(1),
+      task: z.string().min(1),
+      collection: z.string().min(1),
+      itemId: z.string().min(1),
+      settings: z.record(z.string(), z.unknown()).optional(),
+      // A mapping to an empty field name is refused here rather than at run
+      // time, where it presents as outputs that quietly went nowhere: the
+      // engine skips a target it cannot write and the step still reports a
+      // booked shipment.
+      outputMapping: z.record(z.string(), z.string().min(1)).optional(),
+      force: z.boolean().optional(),
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),

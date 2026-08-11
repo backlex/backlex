@@ -63,6 +63,7 @@ const SUPPORTED_ACTIONS = new Set([
   "item.create",
   "item.update",
   "integration",
+  "integration.task",
   "delay",
 ]);
 
@@ -744,6 +745,40 @@ const compileAction = (node: GraphNode): Operation => {
           : {}),
       };
     }
+    case "integration.task": {
+      const kind = String(c.kind ?? "").trim();
+      const task = String(c.task ?? "").trim();
+      const collection = String(c.collection ?? "").trim();
+      const itemId = String(c.itemId ?? "").trim();
+      if (!kind) throw new FlowCompileError("Task step needs a provider");
+      if (!task) throw new FlowCompileError("Task step needs a task");
+      if (!collection) throw new FlowCompileError("Task step needs a collection");
+      if (!itemId) throw new FlowCompileError("Task step needs the row to act on");
+      // A half-filled picker leaves blanks behind. Dropping them is not the
+      // same as sending them: the server refuses a setting it cannot read and
+      // an empty mapping target, so a blank left in would fail the save with a
+      // message about a field the author never filled in on purpose.
+      const kept = (bag: unknown): Record<string, string> => {
+        const out: Record<string, string> = {};
+        for (const [k, v] of Object.entries((bag ?? {}) as Record<string, unknown>)) {
+          const s = String(v ?? "").trim();
+          if (s) out[k] = s;
+        }
+        return out;
+      };
+      const settings = kept(c.settings);
+      const outputMapping = kept(c.outputMapping);
+      return {
+        type: "integration.task",
+        kind,
+        task,
+        collection,
+        itemId,
+        ...(Object.keys(settings).length ? { settings } : {}),
+        ...(Object.keys(outputMapping).length ? { outputMapping } : {}),
+        ...(c.force ? { force: true } : {}),
+      };
+    }
     case "item.create": {
       const collection = String(c.collection ?? "").trim();
       if (!collection)
@@ -1143,6 +1178,18 @@ const opToConfig = (op: Operation): Record<string, any> => {
             : typeof op.payload === "string"
               ? op.payload
               : JSON.stringify(op.payload, null, 2),
+      };
+    case "integration.task":
+      return {
+        kind: op.kind,
+        task: op.task,
+        collection: op.collection,
+        itemId: op.itemId,
+        // Objects, not JSON text: the inspector renders one control per
+        // declared setting and output, so it binds to the bag directly.
+        settings: op.settings ?? {},
+        outputMapping: op.outputMapping ?? {},
+        force: Boolean(op.force),
       };
     case "item.create":
       return {

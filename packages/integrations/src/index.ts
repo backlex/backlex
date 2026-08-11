@@ -246,6 +246,51 @@ export const taskFor = (kind: string, taskId: string): IntegrationTask | undefin
   providerFor(kind)?.tasks?.find((t) => t.id === taskId);
 
 /**
+ * What is wrong with these per-invocation settings, described, or null.
+ *
+ * Registry-only and pure, so the two places that ask can share one answer. The
+ * engine asks at RUN time, where this is the guard — an unrecognised key would
+ * otherwise reach a provider's URLs and request bodies. A flow asks at SAVE
+ * time, where it is the difference between the author hearing about a typo
+ * while they are looking at the step and a run failing three weeks later.
+ */
+export const taskSettingsProblem = (
+  kind: string,
+  task: IntegrationTask,
+  settings: Record<string, unknown>,
+): string | null => {
+  const declared = new Map((task.settingFields ?? []).map((f) => [f.key, f]));
+  for (const [key, value] of Object.entries(settings)) {
+    const field = declared.get(key);
+    if (!field) return `${kind}.${task.id} has no setting "${key}"`;
+    if (field.options && !field.options.some((o) => o.value === value)) {
+      return `"${key}" must be one of: ${field.options.map((o) => o.value).join(", ")}`;
+    }
+  }
+  return null;
+};
+
+/**
+ * What is wrong with mapping these output keys, described, or null.
+ *
+ * Only the half the registry can answer — that the provider declares each key.
+ * Whether the TARGET column can be written to needs the collection, so the
+ * engine checks that on top of this one. Both halves matter: an undeclared key
+ * means a column that stays empty with nothing to say why.
+ */
+export const taskOutputsProblem = (
+  kind: string,
+  task: IntegrationTask,
+  keys: Iterable<string>,
+): string | null => {
+  const declared = new Set(task.outputs.map((o) => o.key));
+  for (const key of keys) {
+    if (!declared.has(key)) return `${kind}.${task.id} has no output "${key}"`;
+  }
+  return null;
+};
+
+/**
  * Run one task against one row.
  *
  * Like `pullFromSource` and unlike `deliverToIntegration`, this does NOT swallow

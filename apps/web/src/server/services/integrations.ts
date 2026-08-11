@@ -490,6 +490,29 @@ async function deliverOne(
  * failing the flow, so a paused integration doesn't take the automation with
  * it. Credentials never leave this module.
  */
+/**
+ * This workspace's CONNECTED row for a provider kind, or null.
+ *
+ * There is one row per (workspace, kind), which is what lets a flow name a
+ * provider rather than a connection id — the same flow definition then works in
+ * a workspace that reconnected its account, and nothing workspace-specific is
+ * baked into a step. Paused rows are not returned: an integration an admin
+ * turned off is not one to act through.
+ */
+export async function connectedIntegrationIdByKind(
+  ctx: DbCtx,
+  tenantId: string | null,
+  kind: string,
+): Promise<string | null> {
+  if (!isIntegrationKind(kind)) return null;
+  const t = tableFor(ctx.dialect);
+  const [row] = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(tenantEq(t, tenantId), eq(t.kind, kind), eq(t.status, "connected")))) as IntegrationRow[];
+  return row?.id ?? null;
+}
+
 export async function deliverIntegrationByKind(
   env: Env,
   ctx: DbCtx,

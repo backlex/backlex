@@ -16,11 +16,27 @@ import { timezoneOptions } from "../../preferences";
 /** Just what the payment-link step needs off `/api/admin/payments/providers`. */
 type PaymentProviderOption = { id: string; provider: string; status: string };
 
+/**
+ * One task a provider declares, as the catalog hands it over.
+ *
+ * The task step builds every picker from this rather than from a list kept here
+ * — a settings key or an output the admin could type but the provider never
+ * declared is refused by the server, so offering one would be offering a step
+ * that cannot be saved.
+ */
+type TaskDef = {
+  id: string;
+  label: string;
+  settingFields: { key: string; label: string; placeholder?: string; options?: { value: string; label: string }[] }[];
+  outputs: { key: string; label: string; artifact?: boolean }[];
+};
+
 const dataInterpolationExample = "{{ data.* }}";
 // Held as a const for the same reason as the one above: a literal `{{ }}` left
 // inside a <Trans> is parsed as ICU and takes the whole admin SPA down with a
 // blank page, so the braces have to reach the message as a placeholder VALUE.
 const itemInterpolationExample = "{{ $item.* }}";
+const itemIdInterpolationExample = "{{ data.id }}";
 const smsBodyExample = "Reminder: your appointment is at {{ data.starts_at }}.";
 
 // `pending` marks steps the runtime doesn't execute yet. The compiler will
@@ -56,6 +72,7 @@ const ACTIONS = [
   { id: "item.create", label: "Create item", desc: "Insert into a collection", icon: "Plus" },
   { id: "item.update", label: "Update item", desc: "Patch an existing row", icon: "Pencil" },
   { id: "integration", label: "Integration message", desc: "Send through a connected provider", icon: "Webhook" },
+  { id: "integration.task", label: "Integration task", desc: "Ask a provider to act on one row — book a shipment", icon: "Package" },
   { id: "delay", label: "Delay", desc: "Wait inline (≤ 30s) or persist to scheduler", icon: "Clock" },
 ];
 const CONTROLS = [
@@ -71,6 +88,38 @@ const STARTER_NODES = [
   { id: "n1", kind: "trigger", type: "item.updated", x: 60, y: 160, config: { collection: "posts", when: "" } },
 ];
 const STARTER_EDGES: any[] = [];
+
+/**
+ * The connections a task step can actually be aimed at.
+ *
+ * Most providers have no tasks at all — a chat sink cannot be asked to book
+ * anything — and offering one would be offering a step the server refuses on
+ * save. Paused rows stay on the list: an admin editing a flow around a
+ * connection they turned off for the afternoon should still be able to finish
+ * the step, and the label says which ones those are.
+ */
+function taskWorthyIntegrations(
+  integrations: ApiIntegration[],
+  taskCatalog: Record<string, TaskDef[]>,
+): ApiIntegration[] {
+  return integrations.filter((i) => (taskCatalog[i.kind] ?? []).length > 0);
+}
+
+/**
+ * The one line under a step's name in the rail — what it is pointed AT.
+ *
+ * A task's target is the pair, not either half: two steps reading `trendyol`
+ * are indistinguishable when one marks a package picking and the other invoices
+ * it, which is exactly the shape a shipping flow has.
+ */
+function railSubtitle(n: any): string {
+  if (n.kind === "trigger") return n.config?.collection ?? "—";
+  if (n.kind === "control") return n.config?.test ?? "—";
+  if (n.type === "integration.task") {
+    return n.config?.task ? `${n.config?.kind || "?"}.${n.config.task}` : "—";
+  }
+  return n.config?.fn || n.config?.to || n.config?.url || "—";
+}
 
 function nodeMeta(n: any) {
   if (n.kind === "trigger") return TRIGGERS.find((t) => t.id === n.type);
@@ -112,6 +161,10 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   // would only be found wrong when the first scheduled run failed.
   const [dashboards, setDashboards] = useState<ApiDashboard[]>([]);
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
+  // Provider kind → its declared tasks. Same catalog the Integrations page
+  // builds its sync dialog from, so the two never disagree about what a
+  // provider can be asked to do.
+  const [taskCatalog, setTaskCatalog] = useState<Record<string, TaskDef[]>>({});
   // Connected payment providers, so the payment-link step offers the ones this
   // workspace actually has rather than a free-text provider name.
   const [paymentProviders, setPaymentProviders] = useState<PaymentProviderOption[]>([]);
@@ -119,7 +172,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     let cancelled = false;
     void (async () => {
       try {
-        const [tpls, funcs, cols, docs, ints, pays, dashes] = await Promise.all([
+        const [tpls, funcs, cols, docs, ints, pays, dashes, cat] = await Promise.all([
           emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
           functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
           collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
@@ -129,6 +182,9 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             data: [] as PaymentProviderOption[],
           })),
           dashboardsApi.list().catch(() => ({ data: [] as ApiDashboard[] })),
+          api<{ data: { tasks?: Record<string, TaskDef[]> } }>(
+            "/api/admin/integrations/catalog",
+          ).catch(() => ({ data: {} as { tasks?: Record<string, TaskDef[]> } })),
         ]);
         if (cancelled) return;
         if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
@@ -137,6 +193,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         if (Array.isArray(docs.data)) setDocTemplates(docs.data);
         if (Array.isArray(ints.data)) setIntegrations(ints.data);
         if (Array.isArray(dashes.data)) setDashboards(dashes.data);
+        if (cat.data?.tasks) setTaskCatalog(cat.data.tasks);
         if (Array.isArray(pays.data)) {
           setPaymentProviders(pays.data.filter((p) => p.status === "connected"));
         }
@@ -342,7 +399,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                       <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
                         <span style={{ fontSize: 12.5, fontWeight: 500 }}>{m?.label || n.type}</span>
                         <span className="truncate font-mono text-[11px] text-muted-foreground">
-                          {n.kind === "trigger" ? n.config?.collection : n.kind === "control" ? n.config?.test : n.config?.fn || n.config?.to || n.config?.url || "—"}
+                          {railSubtitle(n)}
                         </span>
                       </div>
                     </div>
@@ -495,6 +552,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             fns={fns}
             collections={collections}
             integrations={integrations}
+            taskCatalog={taskCatalog}
             paymentProviders={paymentProviders}
             docTemplates={docTemplates}
             dashboards={dashboards}
@@ -745,10 +803,14 @@ function defaultConfigFor(kind: string, type: string) {
   if (kind === "action" && type === "item.create") return { collection: "", data: "{{ data }}" };
   if (kind === "action" && type === "item.update") return { collection: "", id: "{{ data.id }}", data: "{{ data }}" };
   if (kind === "action" && type === "integration") return { kind: "", text: "New event", event: "", payload: "" };
+  // The row the flow is about is the row a task acts on, so `{{ data.id }}` is
+  // right far more often than blank — an item trigger puts the row on `data`.
+  if (kind === "action" && type === "integration.task")
+    return { kind: "", task: "", collection: "", itemId: "{{ data.id }}", settings: {}, outputMapping: {}, force: false };
   return {};
 }
 
-function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], paymentProviders = [], docTemplates = [], dashboards = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[] }) {
+function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], taskCatalog = {}, paymentProviders = [], docTemplates = [], dashboards = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; taskCatalog?: Record<string, TaskDef[]>; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[] }) {
   const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
@@ -777,6 +839,25 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
     : node.config?.externalId
       ? "externalId"
       : "reference";
+  // Everything the task step offers comes from the provider's own declaration,
+  // so nothing on offer here can be refused when the flow is saved.
+  const tasksForKind = taskCatalog[node.config?.kind ?? ""] ?? [];
+  const chosenTask = tasksForKind.find((x) => x.id === node.config?.task);
+  // Only writable fields can receive an output — a computed column regenerates
+  // itself and the server refuses it as a target anyway.
+  const taskTargetFields = (
+    (collections.find((c) => c.slug === node.config?.collection) as
+      | { fields?: { name: string; computed?: boolean }[] }
+      | undefined)?.fields ?? []
+  )
+    .filter((f) => !f.computed)
+    .map((f) => ({ value: f.name, label: f.name }));
+  const patchBag = (bag: "settings" | "outputMapping", key: string, value: string) => {
+    const next = { ...((node.config?.[bag] ?? {}) as Record<string, string>) };
+    if (value) next[key] = value;
+    else delete next[key];
+    onChange({ config: { [bag]: next } });
+  };
   return (
     <div className="fb-inspector">
       <div className="fb-inspector-head">
@@ -989,6 +1070,116 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Payload</Trans></label>
               <Textarea className="font-mono" rows={3} value={node.config.payload || ""} onChange={(e) => onChange({ config: { payload: e.target.value } })} placeholder='{ "id": "{{ data.id }}" }' />
               <span className="text-[11.5px] text-muted-foreground"><Trans>JSON or template string — used by structured providers (GitHub, Algolia).</Trans></span>
+            </div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "integration.task" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
+              <Select
+                value={node.config.kind || ""}
+                onChange={(v) => onChange({ config: { kind: v, task: "", settings: {}, outputMapping: {} } })}
+                className="min-w-0"
+                options={[
+                  {
+                    value: "",
+                    label:
+                      taskWorthyIntegrations(integrations, taskCatalog).length === 0
+                        ? t`(none — no connected provider does tasks)`
+                        : t`Select a provider…`,
+                  },
+                  ...taskWorthyIntegrations(integrations, taskCatalog).map((i) => ({
+                    value: i.kind,
+                    label: `${i.kind}${i.status === "connected" ? "" : t` (paused)`}`,
+                  })),
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Only providers that can act on a row. A paused one fails the run rather than skipping it.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Task</Trans></label>
+              <Select
+                value={node.config.task || ""}
+                // Settings and outputs belong to the task that declared them,
+                // so switching task drops both rather than carrying keys the
+                // new one has never heard of into a step that then won't save.
+                onChange={(v) => onChange({ config: { task: v, settings: {}, outputMapping: {} } })}
+                className="min-w-0"
+                options={[
+                  { value: "", label: tasksForKind.length === 0 ? t`(pick a provider first)` : t`Select a task…` },
+                  ...tasksForKind.map((x) => ({ value: x.id, label: x.label })),
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Runs at most once per row. A flow that fires again reads the first answer back.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans></label>
+              <Select
+                value={node.config.collection || ""}
+                onChange={(v) => onChange({ config: { collection: v, outputMapping: {} } })}
+                className="min-w-0"
+                options={[
+                  { value: "", label: t`Select a collection…` },
+                  ...collections.map((c) => ({ value: c.slug, label: c.slug })),
+                ]}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Row</Trans></label>
+              <Input value={node.config.itemId || ""} onChange={(e) => onChange({ config: { itemId: e.target.value } })} placeholder="{{ data.id }}" />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>The id of the row to act on. <span className="font-mono">{itemIdInterpolationExample}</span> is the row that triggered the flow.</Trans></span>
+            </div>
+            {(chosenTask?.settingFields ?? []).map((f) => (
+              <div key={f.key} className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{f.label}</label>
+                {f.options ? (
+                  <Select
+                    value={(node.config.settings ?? {})[f.key] || ""}
+                    onChange={(v) => patchBag("settings", f.key, v)}
+                    className="min-w-0"
+                    options={[{ value: "", label: t`Not set` }, ...f.options]}
+                  />
+                ) : (
+                  <Input
+                    value={(node.config.settings ?? {})[f.key] || ""}
+                    onChange={(e) => patchBag("settings", f.key, e.target.value)}
+                    placeholder={f.placeholder ?? ""}
+                  />
+                )}
+              </div>
+            ))}
+            {chosenTask && (
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Where the answers land</Trans></label>
+                {chosenTask.outputs.map((o) => (
+                  <div key={o.key} className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">{o.label}</span>
+                    <div className="min-w-0 flex-1">
+                      <Select
+                        value={(node.config.outputMapping ?? {})[o.key] || ""}
+                        onChange={(v) => patchBag("outputMapping", o.key, v)}
+                        className="min-w-0"
+                        options={[
+                          {
+                            value: "",
+                            label: node.config.collection ? t`Don't store it` : t`(pick a collection first)`,
+                          },
+                          ...taskTargetFields,
+                        ]}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <span className="text-[11.5px] text-muted-foreground"><Trans>An answer with nowhere to land is still returned to the flow — it just isn't written onto the row.</Trans></span>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-col">
+                <span className="text-[12.5px] font-medium text-foreground"><Trans>Run it again</Trans></span>
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Off means once per row, ever. On re-books a shipment that was cancelled at the provider.</Trans></span>
+              </div>
+              <Switch checked={Boolean(node.config.force)} onChange={(v: boolean) => onChange({ config: { force: v } })} />
             </div>
           </>
         )}

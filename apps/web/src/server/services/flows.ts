@@ -22,7 +22,8 @@ import { createApprovalRequest } from "./approvals";
 import { deliverReport } from "./reports";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
-import { deliverIntegrationByKind } from "./integrations";
+import { connectedIntegrationIdByKind, deliverIntegrationByKind } from "./integrations";
+import { runTask } from "./integration-tasks";
 import { createPaymentCheckout, refundPayment } from "./payments";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
@@ -1179,6 +1180,68 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     } catch (e) {
       if (e instanceof FlowOpError) throw e;
       throw new FlowOpError(`integration ${kind} failed: ${(e as Error).message}`);
+    }
+  }
+
+  if (op.type === "integration.task") {
+    const kind = String(interpolate(op.kind, ctx) ?? "").trim();
+    const task = String(interpolate(op.task, ctx) ?? "").trim();
+    const collection = String(interpolate(op.collection, ctx) ?? "").trim();
+    const itemId = String(interpolate(op.itemId, ctx) ?? "").trim();
+    // An unrendered template is the likely cause — `{{ data.id }}` on a trigger
+    // whose payload has no `id`. Saying so beats "row not found", which reads
+    // as a deleted row rather than a step aimed at nothing.
+    if (!itemId) {
+      throw new FlowOpError(
+        `integration.task "${kind}.${task}" has no row to act on — ` +
+          `"${op.itemId}" rendered empty`,
+      );
+    }
+
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    if (tenantId == null) {
+      throw new FlowOpError(
+        `integration.task "${kind}.${task}" requires a tenant — the flow run has no workspace bound`,
+      );
+    }
+
+    const settings = (interpolate(op.settings ?? {}, ctx) ?? {}) as Record<string, unknown>;
+
+    // Unlike the message step above, a missing connection FAILS the run rather
+    // than reporting itself skipped. A chat notification nobody received is a
+    // notification; a shipment nobody booked is an order the rest of the flow
+    // then marks as shipped.
+    const integrationId = await connectedIntegrationIdByKind(ctx.ctx, tenantId, kind);
+    if (!integrationId) {
+      throw new FlowOpError(
+        `no connected "${kind}" integration in this workspace — connect it on Integrations, ` +
+          `or resume it if it is paused`,
+      );
+    }
+
+    try {
+      const out = await runTask(ctx.ctx, tenantId, {
+        integrationId,
+        task,
+        collection,
+        itemId,
+        settings,
+        outputMapping: op.outputMapping,
+        force: op.force,
+      });
+      // `reused` rides along so a following `condition` can tell a shipment
+      // booked by THIS run from one a previous run had already booked.
+      return {
+        status: out.status,
+        outputs: out.outputs,
+        artifactKey: out.artifactKey,
+        reused: out.reused,
+        kind,
+        task,
+      };
+    } catch (e) {
+      if (e instanceof FlowOpError) throw e;
+      throw new FlowOpError(`integration.task ${kind}.${task} failed: ${(e as Error).message}`);
     }
   }
 

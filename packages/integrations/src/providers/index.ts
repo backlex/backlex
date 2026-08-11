@@ -40,6 +40,7 @@ import { sentry } from "./sentry";
 import { slack } from "./slack";
 import { teams } from "./teams";
 import { telegram } from "./telegram";
+import { trendyol } from "./trendyol";
 import { xero } from "./xero";
 import { typesense } from "./typesense";
 
@@ -87,6 +88,8 @@ export const INTEGRATION_KINDS = [
   // warehouse destinations
   "clickhouse",
   "bigquery",
+  // marketplaces (orders in, stock & price out, status back)
+  "trendyol",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -125,6 +128,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   xero,
   clickhouse,
   bigquery,
+  trendyol,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

@@ -57,7 +57,9 @@ export type IntegrationCategory =
   | "accounting"
   | "warehouse"
   | "crm"
-  | "marketing";
+  | "marketing"
+  /** A sales channel a seller's orders arrive from and their stock goes out to. */
+  | "marketplace";
 
 /**
  * What a provider can do. Today every provider is a `sink` (receives events
@@ -261,6 +263,22 @@ export interface SourcePullContext {
 export interface IntegrationSource {
   /** Per-sync config the admin fills in when pointing a sync at a collection. */
   settingFields: readonly IntegrationConfigField[];
+  /**
+   * The child groups this source can hand back, for the providers that have any.
+   *
+   * The same argument as {@link IntegrationDestination.columns}, in the other
+   * direction. A group name is already part of a provider's contract — the
+   * sync's `childMappings` is keyed by it — but until it is DECLARED, the only
+   * way to learn one is to read the provider's source, and a picker has nothing
+   * to offer. Undeclared, a mistyped group is not an error either: it simply
+   * matches nothing, and the sync imports orders without their lines while
+   * reporting a clean run.
+   *
+   * Absent for the flat sources, and it stays absent rather than becoming an
+   * empty list — a spreadsheet row has no children, and "declares none" and
+   * "declares nothing" are the same thing to every consumer.
+   */
+  childGroups?: readonly { key: string; label: string }[];
   /**
    * Fetch one page. Throwing marks the run failed and it is retried with
    * backoff; the cursor is only advanced once a page lands.

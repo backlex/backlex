@@ -8,6 +8,7 @@ import {
   DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
   INTEGRATION_TASKS,
+  SOURCE_CHILD_GROUPS,
   SOURCE_SETTING_FIELDS,
 } from "@backlex/integrations";
 import type { AppBindings } from "../app";
@@ -85,6 +86,9 @@ const CatalogView = z
     sourceSettings: z.record(z.string(), z.unknown()),
     /** Same, for providers that receive rows rather than supply them. */
     destinationSettings: z.record(z.string(), z.unknown()),
+    /** Child groups a source hands back — an order's lines, say — keyed by
+     *  kind. A kind that is absent returns flat records and has none. */
+    sourceChildGroups: z.record(z.string(), z.unknown()),
     /** Mapping targets for destinations with a closed column set, keyed by
      *  kind. A kind that is absent takes any column name. */
     destinationColumns: z.record(z.string(), z.unknown()),
@@ -266,6 +270,9 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           oauthRedirectUri: oauthRedirectUri(c.get("ctx").env.APP_URL),
           sourceSettings: SOURCE_SETTING_FIELDS,
           destinationSettings: DESTINATION_SETTING_FIELDS,
+          // Only for the sources that return children at all. Absent means a
+          // flat record, and the sync dialog offers no line mapping for it.
+          sourceChildGroups: SOURCE_CHILD_GROUPS,
           // Only for the destinations with a closed column set. Absent means
           // "free text" — a warehouse's columns are the operator's DDL.
           destinationColumns: DESTINATION_COLUMNS,

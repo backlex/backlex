@@ -306,6 +306,32 @@ describe("validating child mappings", () => {
     expect(res.status).toBe(422);
   });
 
+  test("a group the provider never returns is refused, once it says which it does", async () => {
+    // The failure this closes is silent: a group nothing hands back matches
+    // nothing at run time, so the sync would import orders without their lines
+    // and report a clean run doing it. Only checkable for a provider that
+    // DECLARES its groups — the mocked source above does not, which is why the
+    // rest of this file can keep calling its group "items".
+    const ty = await ok("POST", BASE, {
+      kind: "trendyol",
+      config: { sellerId: "123", apiKey: "k", apiSecret: "s", storeFrontCode: "TR" },
+    });
+    const body = {
+      integrationId: ty.data.id,
+      collection: "orders",
+      settings: { lookbackDays: "14" },
+      mapping: { orderNumber: "number" },
+    };
+    const child = { collection: "order_lines", parentField: "order", mapping: { sku: "sku" } };
+
+    const wrong = await req("POST", SYNCS, { ...body, childMappings: { items: child } });
+    expect(wrong.status).toBe(422);
+    expect(await wrong.text()).toContain("lines");
+
+    const right = await req("POST", SYNCS, { ...body, childMappings: { lines: child } });
+    expect(right.status).toBe(201);
+  });
+
   test("child mappings are refused on a push sync", async () => {
     // A push walks one collection's watermark; there is no second collection in
     // that direction, so accepting the field would store something inert.

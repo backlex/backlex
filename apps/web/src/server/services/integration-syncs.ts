@@ -27,6 +27,7 @@ import {
   DESTINATION_BATCH_SIZE,
   DESTINATION_SETTING_FIELDS,
   destinationColumnsFor,
+  SOURCE_CHILD_GROUPS,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
   isRateLimited,
@@ -256,7 +257,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   }
   const settings = validateSettings(integration.kind, input.settings ?? {}, direction);
   const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind, settings);
-  const childMappings = await validateChildMappings(ctx, tenantId, direction, input.childMappings ?? {});
+  const childMappings = await validateChildMappings(ctx, tenantId, direction, integration.kind, input.childMappings ?? {});
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -300,6 +301,7 @@ const validateChildMappings = async (
   ctx: Ctx,
   tenantId: string,
   direction: SyncDirection,
+  kind: string,
   childMappings: Record<string, ChildMappingSpec>,
 ): Promise<Record<string, ChildMappingSpec>> => {
   const entries = Object.entries(childMappings);
@@ -308,6 +310,24 @@ const validateChildMappings = async (
     // A push walks one collection's watermark. There is no second collection in
     // that direction, so accepting the field would store something inert.
     throw new AppError("VALIDATION", "childMappings apply to a pull sync only");
+  }
+  // Checked against what the provider says it returns, for the providers that
+  // say. A group nothing hands back is not refused at run time — it simply
+  // matches nothing — so the sync would import orders without their lines and
+  // report a clean run doing it. A provider that declares no groups is left
+  // alone rather than assumed to have none: the check is here to catch a typo,
+  // not to stop a source that predates the declaration.
+  const declared = SOURCE_CHILD_GROUPS[kind];
+  if (declared) {
+    const known = new Set(declared.map((g) => g.key));
+    for (const [group] of entries) {
+      if (!known.has(group)) {
+        throw new AppError(
+          "VALIDATION",
+          `${kind} returns no child group "${group}" — it has: ${declared.map((g) => g.key).join(", ")}`,
+        );
+      }
+    }
   }
 
   const out: Record<string, ChildMappingSpec> = {};
@@ -493,7 +513,7 @@ export async function updateSync(
   // settings can invalidate it, and re-checking it on every settings edit would
   // re-read those collections for no reason.
   if (patch.childMappings !== undefined) {
-    set.childMappings = await validateChildMappings(ctx, tenantId, direction, patch.childMappings);
+    set.childMappings = await validateChildMappings(ctx, tenantId, direction, integration.kind, patch.childMappings);
   }
   if (patch.intervalMinutes !== undefined) set.intervalMinutes = clampInterval(patch.intervalMinutes);
   if (patch.enabled !== undefined) {

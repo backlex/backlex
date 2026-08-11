@@ -466,6 +466,21 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["postgres"],
   },
+  /**
+   * …and again, per environment.
+   *
+   * The block above reaches the CLIENT environment. The boot that dies is the
+   * Worker one — `(backlex_admin)` in the log — and it keeps its own optimizer
+   * with its own exclude list, which the root one does not feed. So the root
+   * setting silenced the trigger everywhere except the one place it fires, and
+   * the symptom came back looking like a fresh bug.
+   *
+   * Named for the Worker in `wrangler.toml`, which is what
+   * `@cloudflare/vite-plugin` calls its environment.
+   */
+  environments: {
+    backlex_admin: { optimizeDeps: { exclude: ["postgres"] } },
+  },
   server: {
     host: true,
     port: 5173,

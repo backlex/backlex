@@ -308,6 +308,20 @@ export const SOURCE_SETTING_FIELDS = Object.fromEntries(
 ) as Record<string, IntegrationConfigField[]>;
 
 /**
+ * Child groups each source can hand back, for the sources that have any.
+ *
+ * A kind missing from this map declares none, which the admin UI reads as "no
+ * lines to map" and the sync service as "nothing to check a group name
+ * against". Both are the right reading for a flat source, and neither needs a
+ * second hand-kept list to say so.
+ */
+export const SOURCE_CHILD_GROUPS = Object.fromEntries(
+  entries
+    .filter(([, p]) => p.source?.childGroups?.length)
+    .map(([id, p]) => [id, [...p.source!.childGroups!]]),
+) as Record<string, { key: string; label: string }[]>;
+
+/**
  * Pull one page from a source provider.
  *
  * Unlike `deliverToIntegration`, this deliberately does NOT swallow errors. A

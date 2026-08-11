@@ -24,7 +24,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import type { DestinationColumn } from "@backlex/integrations/provider";
 import { fetchSafely } from "../_shared";
-import { IntegrationSyncsCard, type SettingField } from "./integration-syncs-card";
+import { IntegrationSyncsCard, type ChildGroup, type SettingField } from "./integration-syncs-card";
 
 type Field = {
   key: string;
@@ -58,6 +58,9 @@ type Catalog = {
    *  The FULL list — a column carrying `when` only applies under some settings,
    *  and the sync dialog narrows it as the operator chooses them. */
   destinationColumns?: Record<string, DestinationColumn[]>;
+  /** Child groups a source returns beneath each record — an order's lines.
+   *  A kind that is absent returns flat records and has none. */
+  sourceChildGroups?: Record<string, ChildGroup[]>;
 };
 
 /** Config key holding the OAuth access token. Present (masked) once authorized,
@@ -540,6 +543,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
           ),
         }}
         destinationColumns={catalog.destinationColumns ?? {}}
+        childGroups={catalog.sourceChildGroups ?? {}}
         pushToast={pushToast}
       />
 

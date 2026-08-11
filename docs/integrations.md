@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Thirty-three providers ship in the registry, grouped by category:
+Thirty-four providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -34,6 +34,7 @@ Thirty-three providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
+| marketplace | Trendyol — a source, a destination **and** tasks |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -177,6 +178,11 @@ backlex integrations sync-create --integration <id> --collection orders \
   --every 15
 ```
 
+- The **group name** is the provider's. A source that returns children declares
+  the groups it can hand back, so the admin's sync dialog offers them by name
+  and a group the provider never returns is refused when the sync is saved —
+  without that, a mistyped group is not an error at all: it matches nothing, and
+  the sync imports orders without their lines while reporting a clean run.
 - `collection` must be **managed**, same as the parent's.
 - `parentField` is the relation column on the *child* collection pointing back
   at the header. The engine fills it from the parent's own namespaced id —
@@ -593,6 +599,126 @@ than one the reader signs on demand. The key is derived from the run and scoped
 under the workspace; a filename a third party supplied is never used to build a
 path.
 
+## Orders in from a marketplace
+
+**Trendyol** is the first provider that uses three capabilities at once, and it
+is what the child mappings and the task shape were built for: orders come **in**
+as a header plus its lines, stock and price go **out**, and the two status
+notifications a seller owes the marketplace go back as tasks.
+
+Connect it with the seller id and the API key pair from **Account → Integration
+Details** in the seller panel. There is no OAuth — Trendyol issues a key per
+supplier, and it is the master user who can see it.
+
+```bash
+backlex integrations connect --kind trendyol \
+  --set sellerId=123456 --set apiKey=… --set apiSecret=… \
+  --set storeFrontCode=TR --set environment=production
+```
+
+`storeFrontCode` is the market this connection addresses (`TR`, `DE`, `RO`, `AE`
+…) and is sent on every request. `environment` picks production or Trendyol's
+stage gateway — the stage one needs a separate test seller and an IP
+authorisation from Trendyol, so it is not a sandbox you can simply switch on.
+
+### Orders and their lines
+
+```bash
+backlex integrations sync-create --integration <id> --collection orders \
+  --set lookbackDays=14 \
+  --map shipmentPackageId=channel_package_id --map orderNumber=number \
+  --map orderDate=placed_at --map totalPrice=total --map currencyCode=currency \
+  --map shipmentCity=ship_city --map shipmentDistrict=ship_district \
+  --children '{"lines":{"collection":"order_items","parentField":"order",
+                        "mapping":{"stockCode":"sku","productName":"title",
+                                   "quantity":"qty","unitPrice":"unit_price"}}}' \
+  --every 15
+```
+
+Three things about this sync are worth knowing before you run it:
+
+**It reads by last-modified date, not by order date.** A package pulled as
+`Created` and shipped an hour later is picked up again, which is what keeps the
+collection agreeing with Trendyol rather than freezing every order at the status
+it had when it first arrived. There is deliberately **no status filter** on the
+sync for the same reason — narrow it in a view over the collection, where
+changing your mind costs nothing.
+
+**A run reads at most a fortnight**, because that is the widest window the API
+accepts. A seller with a long history therefore backfills a window per run,
+walking forward, and the sync's cursor is where the next one starts.
+
+**Pages are five seconds apart.** Trendyol asks for that interval on the order
+stream, and it is enforced here — a first page is immediate, a multi-page
+backfill takes its time. Everything else this provider does runs at the API's
+ordinary pace, so a status notification is never made to wait behind it.
+
+The address is flattened into its parts on the way in — `shipmentCity`,
+`shipmentDistrict`, `shipmentNeighbourhood`, `shipmentPostalCode`,
+`shipmentCountryCode` — because a Turkish address is il / ilçe / mahalle and a
+courier needs all three. Map them onto columns now and the carrier integration
+never has to go back for the order.
+
+:::note
+Map `shipmentPackageId` onto a column of your own. It is what the two tasks
+below act on, and it is not the same thing as the order number — a single order
+can be split into several packages, and each of them ships separately.
+:::
+
+### Stock and price out
+
+The push mirrors a variant collection onto Trendyol's listings, matched by
+barcode:
+
+```bash
+backlex integrations sync-create --integration <id> --collection product_variants \
+  --direction push --set updates=stock \
+  --map barcode=barcode --map inventory_quantity=quantity --every 30
+```
+
+`updates` decides what leaves your instance — `stock`, `price`, or `both` — and
+the column picker narrows with it. That is not decoration: Trendyol reads an
+omitted field as *leave it alone*, so a stock sync that also sent a price would
+quietly overwrite whatever the seller set in their panel. A price sync with no
+list price mapped sends the sale price as both, which is the reading that means
+"no crossed-out price" rather than a batch refused for a column nobody filled in.
+
+Prices and stock land in a queue at Trendyol, so the response is a batch id
+rather than an answer. The push asks what became of it once. A batch where
+**every** item was refused fails the run — that is a barcode mapping pointed at
+the wrong column, and the rows should be re-sent once it is fixed. One bad item
+among two hundred does not, because holding the watermark on an archived listing
+would stop the sync ever reaching the rows behind it.
+
+### Telling Trendyol what you did
+
+Two tasks, one per notification a seller owes:
+
+```bash
+backlex integrations task-run <integration-id> mark_picking \
+  --collection orders --item <row-id> \
+  --set packageIdField=channel_package_id --out status=channel_status
+
+backlex integrations task-run <integration-id> mark_invoiced \
+  --collection orders --item <row-id> \
+  --set packageIdField=channel_package_id --set invoiceNumberField=invoice_number \
+  --out status=channel_status
+```
+
+They are two tasks rather than one with a status setting, and that is forced by
+the [once-only guard](#it-runs-once): it is keyed by *(integration, task, row)*,
+so a single set-status task would mark a package `Picking` and then refuse to
+mark it `Invoiced`, handing back the first run's answer instead of notifying
+anybody. Two tasks means each notification happens exactly once — which is what
+"exactly once" has to mean for a package that legitimately moves twice.
+
+`packageIdField` names the column holding the Trendyol package id, which is why
+the sync above maps it. Neither task sends line numbers: omitting them notifies
+the whole package, which is what shipping it in one piece means. Trendyol
+expects `Picking` before `Invoiced` and says so itself if you get it the wrong
+way round — that order is not second-guessed here, because a package already
+picked from the seller panel would otherwise be un-invoiceable through the API.
+
 ## What a sink receives
 
 By default a sink is told that something **changed**, not what it **said**:
@@ -829,6 +955,21 @@ source: {
   },
 },
 ```
+
+A source whose records have rows beneath them declares the groups it returns, so
+that a picker has something to offer and a mistyped group is refused at save
+time rather than matching nothing at run time:
+
+```ts
+source: {
+  childGroups: [{ key: "lines", label: "Order lines" }],
+  // …and `pull` returns `children: { lines: [{ externalId, data }] }`
+},
+```
+
+Leave it off for a flat source. "Declares none" and "declares nothing" are the
+same thing to every consumer, and an empty list only invites a picker with
+nothing in it.
 
 Treat both the settings and the cursor as untrusted: the first came from an admin
 form, the second from the provider's own previous answer. Unlike `deliver`, a

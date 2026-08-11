@@ -43,12 +43,23 @@ export type SettingField = {
   options?: { value: string; label: string }[];
 };
 
+/** A group of rows a source hands back beneath each record — an order's lines. */
+export type ChildGroup = { key: string; label: string };
+
+/** Where one group's rows land. Mirrors the server's `ChildMappingSpec`. */
+export type ChildMapping = {
+  collection: string;
+  parentField: string;
+  mapping: Record<string, string>;
+};
+
 export type ApiSync = {
   id: string;
   integrationId: string;
   collection: string;
   settings: Record<string, unknown>;
   mapping: Record<string, string>;
+  childMappings?: Record<string, ChildMapping>;
   direction: string;
   intervalMinutes: number;
   enabled: boolean;
@@ -67,6 +78,17 @@ export type SourceOption = { id: string; kind: string; label: string; direction:
  *  appears twice under one id, so the direction has to be part of the key. */
 const keyOf = (s: SourceOption): string => `${s.id}:${s.direction}`;
 
+/** One group's editor state, before it becomes a {@link ChildMapping}. */
+type ChildDraft = {
+  collection: string;
+  parentField: string;
+  pairs: { id: string; external: string; field: string }[];
+};
+
+/** A group nobody has touched yet. Frozen and shared: the editor replaces the
+ *  whole draft on every change rather than mutating one. */
+const EMPTY_CHILD: ChildDraft = Object.freeze({ collection: "", parentField: "", pairs: [] });
+
 /** Cadences worth offering. The labels live at the call site rather than here,
  *  because Lingui extracts `t` only where it is lexically in scope — passing it
  *  in as a parameter compiles and runs, but the string never reaches a catalog
@@ -76,7 +98,8 @@ const INTERVAL_MINUTES = [15, 30, 60, 180, 720, 1440] as const;
 export function IntegrationSyncsCard({
   sources,
   settingFields,
-  destinationColumns,
+  destinationColumns = {},
+  childGroups = {},
   pushToast,
 }: {
   /** Both directions; the dialog reads `direction` off the chosen entry. */
@@ -84,7 +107,9 @@ export function IntegrationSyncsCard({
   /** Keyed `<kind>:<direction>` so one provider can declare both. */
   settingFields: Record<string, SettingField[]>;
   /** Destinations with a closed column set, keyed by kind. Absent = free text. */
-  destinationColumns: Record<string, DestinationColumn[]>;
+  destinationColumns?: Record<string, DestinationColumn[]>;
+  /** Child groups each source returns, keyed by kind. Absent = flat records. */
+  childGroups?: Record<string, ChildGroup[]>;
   pushToast: PushToast;
 }) {
   const { t } = useLingui();
@@ -257,6 +282,14 @@ export function IntegrationSyncsCard({
                       <Trans>More pages pending</Trans>
                     </Badge>
                   )}
+                  {Object.keys(row.childMappings ?? {}).length > 0 && (
+                    // Worth saying on the row: a sync that also writes lines
+                    // touches a second collection, and nothing else here would
+                    // hint at that until somebody opened the other one.
+                    <Badge variant="secondary" className="text-[10px]">
+                      <Trans>+ lines</Trans>
+                    </Badge>
+                  )}
                   {row.enabled && row.intervalMinutes === 0 && (
                     <Badge variant="secondary" className="text-[10px]">
                       <Trans>Manual only</Trans>
@@ -310,6 +343,7 @@ export function IntegrationSyncsCard({
           sources={sources}
           settingFields={settingFields}
           destinationColumns={destinationColumns}
+          childGroups={childGroups}
           onClose={() => setEditing(false)}
           onCreate={(input) => void create(input)}
         />
@@ -318,17 +352,138 @@ export function IntegrationSyncsCard({
   );
 }
 
+/* ── One group of lines beneath each record ─────────────────────────────── */
+/**
+ * Where an order's lines land, for the sources that return any.
+ *
+ * Optional by construction: leaving the collection unset imports headers on
+ * their own, which is a perfectly ordinary thing to want and must not look like
+ * an unfinished form. That is why this is a plain section rather than a
+ * required field — and why the link field only appears once a collection is
+ * chosen, since its options are that collection's own.
+ */
+function ChildGroupEditor({
+  group,
+  draft,
+  collections,
+  fieldsOf,
+  onChange,
+}: {
+  group: ChildGroup;
+  draft: ChildDraft;
+  collections: string[];
+  fieldsOf: (slug: string) => { value: string; label: string }[];
+  onChange: (next: ChildDraft) => void;
+}) {
+  const { t } = useLingui();
+  const childFields = draft.collection ? fieldsOf(draft.collection) : [];
+  const pairs = draft.pairs.length > 0 ? draft.pairs : [{ id: "seed", external: "", field: "" }];
+
+  return (
+    <div className="rounded-md border border-border p-3">
+      <span className="mb-1 block text-[11.5px] font-medium">
+        {group.label}{" "}
+        <span className="font-normal text-muted-foreground">
+          · <Trans>optional — leave empty to import headers only</Trans>
+        </span>
+      </span>
+
+      <div className="flex flex-col gap-2">
+        <Select
+          value={draft.collection || undefined}
+          onChange={(v: string) =>
+            // The link field and every mapping target belong to the collection
+            // that was just replaced, so they go with it rather than staying
+            // behind naming columns the new one may not have.
+            onChange({ collection: v, parentField: "", pairs: [] })
+          }
+          placeholder={t`Into collection`}
+          options={collections.map((slug) => ({ value: slug, label: slug }))}
+          className="min-w-0"
+        />
+
+        {draft.collection && (
+          <>
+            <Select
+              value={draft.parentField || undefined}
+              onChange={(v: string) => onChange({ ...draft, parentField: v })}
+              placeholder={t`Field linking back to the header`}
+              options={childFields}
+              className="min-w-0"
+            />
+
+            {pairs.map((p) => (
+              <div key={p.id} className="flex items-center gap-2">
+                <Input
+                  className="min-w-0 flex-1"
+                  placeholder={t`Line column`}
+                  value={p.external}
+                  onChange={(e) =>
+                    onChange({
+                      ...draft,
+                      pairs: pairs.map((x) => (x.id === p.id ? { ...x, external: e.target.value } : x)),
+                    })
+                  }
+                />
+                <I.ArrowRight size={13} className="shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <Select
+                    value={p.field || undefined}
+                    onChange={(v: string) =>
+                      onChange({
+                        ...draft,
+                        pairs: pairs.map((x) => (x.id === p.id ? { ...x, field: v } : x)),
+                      })
+                    }
+                    placeholder={t`Field`}
+                    options={childFields}
+                    className="min-w-0"
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  className="shrink-0 px-2"
+                  aria-label={t`Remove line column`}
+                  disabled={pairs.length === 1}
+                  onClick={() => onChange({ ...draft, pairs: pairs.filter((x) => x.id !== p.id) })}
+                >
+                  <I.X size={13} />
+                </Button>
+              </div>
+            ))}
+
+            <Button
+              variant="ghost"
+              className="self-start"
+              onClick={() =>
+                onChange({
+                  ...draft,
+                  pairs: [...pairs, { id: crypto.randomUUID(), external: "", field: "" }],
+                })
+              }
+            >
+              <Trans>Add line column</Trans>
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Point a source at a collection ─────────────────────────────────────── */
 function SyncDialog({
   sources,
   settingFields,
   destinationColumns,
+  childGroups,
   onClose,
   onCreate,
 }: {
   sources: SourceOption[];
   settingFields: Record<string, SettingField[]>;
   destinationColumns: Record<string, DestinationColumn[]>;
+  childGroups: Record<string, ChildGroup[]>;
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => void;
 }) {
@@ -349,6 +504,15 @@ function SyncDialog({
   const [pairs, setPairs] = useState<{ id: string; external: string; field: string }[]>([
     { id: crypto.randomUUID(), external: "", field: "" },
   ]);
+  /**
+   * One draft per child group the source declares, keyed by group.
+   *
+   * Kept for every group rather than only the ones in use, so a half-filled
+   * group is still on screen when the operator comes back to it. A group with
+   * no collection chosen is simply not submitted — importing headers without
+   * their lines is a perfectly ordinary thing to want.
+   */
+  const [children, setChildren] = useState<Record<string, ChildDraft>>({});
 
   /** Connections offered in both directions, so the picker can say which. */
   const bothWays = useMemo(() => {
@@ -402,14 +566,19 @@ function SyncDialog({
 
   // Only writable fields can be a mapping target; a computed column regenerates
   // itself and the server would refuse it anyway.
-  const targetOptions = useMemo(() => {
-    const c = collections.find((x) => x.slug === collection) as
+  const fieldsOf = (slug: string) => {
+    const c = collections.find((x) => x.slug === slug) as
       | { fields?: { name: string; computed?: boolean }[] }
       | undefined;
     return (c?.fields ?? [])
       .filter((f) => !f.computed)
       .map((f) => ({ value: f.name, label: f.name }));
-  }, [collections, collection]);
+  };
+  const targetOptions = fieldsOf(collection);
+
+  // Lines are a pull-only idea: a push walks one collection's watermark and has
+  // no second collection to write into, so the server refuses them outright.
+  const groups = direction === "pull" ? (childGroups[chosen?.kind ?? ""] ?? []) : [];
 
   // Written out rather than derived: `Every ${m / 60} hours` renders
   // "Every 1 hours" for the default cadence.
@@ -426,11 +595,26 @@ function SyncDialog({
               ? t`Every 12 hours`
               : t`Daily`;
 
+  /**
+   * A group is either untouched or finished — never half.
+   *
+   * Submitting only the complete ones would be the worst answer available: the
+   * operator chose a collection for the lines, the sync is created without
+   * them, and the first run reports a clean import of orders with nothing in
+   * them. Blocking here is what makes that impossible to do by accident.
+   */
+  const childrenReady = groups.every((g) => {
+    const draft = children[g.key];
+    if (!draft?.collection) return true;
+    return Boolean(draft.parentField) && draft.pairs.some((p) => p.external.trim() && p.field);
+  });
+
   const ready =
     Boolean(integrationId) &&
     Boolean(collection) &&
     fields.every((f) => f.label.toLowerCase().includes("optional") || (settings[f.key] ?? "").trim()) &&
-    pairs.some((p) => p.external.trim() && p.field);
+    pairs.some((p) => p.external.trim() && p.field) &&
+    childrenReady;
 
   const submit = () => {
     const mapping: Record<string, string> = {};
@@ -443,6 +627,26 @@ function SyncDialog({
     }
     const cleaned: Record<string, string> = {};
     for (const [k, v] of Object.entries(settings)) if (v.trim()) cleaned[k] = v.trim();
+
+    // Only the groups actually filled in. A group with a collection but no
+    // link field would be refused by the server, and one with neither is an
+    // operator who decided not to import lines after all.
+    const childMappings: Record<string, ChildMapping> = {};
+    for (const g of groups) {
+      const draft = children[g.key];
+      if (!draft?.collection || !draft.parentField) continue;
+      const childMapping: Record<string, string> = {};
+      for (const p of draft.pairs) {
+        if (p.external.trim() && p.field) childMapping[p.external.trim()] = p.field;
+      }
+      if (Object.keys(childMapping).length === 0) continue;
+      childMappings[g.key] = {
+        collection: draft.collection,
+        parentField: draft.parentField,
+        mapping: childMapping,
+      };
+    }
+
     onCreate({
       integrationId,
       collection,
@@ -450,6 +654,7 @@ function SyncDialog({
       settings: cleaned,
       mapping,
       intervalMinutes: interval,
+      ...(Object.keys(childMappings).length > 0 ? { childMappings } : {}),
     });
   };
 
@@ -483,6 +688,9 @@ function SyncDialog({
                   // calendar id to a pull.
                   setSettings({});
                   setPairs([{ id: crypto.randomUUID(), external: "", field: "" }]);
+                  // The groups themselves are a provider's, so a draft for one
+                  // provider's "lines" means nothing to the next.
+                  setChildren({});
                 }}
                 options={sources.map((s) => ({
                   value: keyOf(s),
@@ -610,6 +818,17 @@ function SyncDialog({
                 <Trans>Add column</Trans>
               </Button>
             </div>
+
+            {groups.map((g) => (
+              <ChildGroupEditor
+                key={g.key}
+                group={g}
+                draft={children[g.key] ?? EMPTY_CHILD}
+                collections={collections.map((c) => c.slug)}
+                fieldsOf={fieldsOf}
+                onChange={(next) => setChildren((prev) => ({ ...prev, [g.key]: next }))}
+              />
+            ))}
 
             <label className="block">
               <span className="mb-1 block text-[11.5px] font-medium">

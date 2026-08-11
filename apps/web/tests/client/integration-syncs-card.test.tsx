@@ -24,6 +24,10 @@ const SETTING_FIELDS = {
   "clickhouse:push": [{ key: "table", label: "Target table" }],
 };
 
+/** A source whose records have lines beneath them, as a marketplace's do. */
+const ORDERS_SOURCE = { id: "i3", kind: "trendyol", label: "Trendyol", direction: "pull" as const };
+const CHILD_GROUPS = { trendyol: [{ key: "lines", label: "Order lines" }] };
+
 const SYNC = {
   id: "s1",
   integrationId: "i1",
@@ -225,6 +229,57 @@ describe("the create dialog cannot build a sync the server would reject", () => 
     // "60" typed into a box invites "0", "5" and "90000", all of which the
     // server refuses; the useful cadences are a short list.
     expect(document.querySelector('input[type="number"]')).toBeNull();
+  });
+});
+
+// A marketplace order is a header plus its lines, and the lines land in a second
+// collection. The editor for that has one job beyond collecting the mapping: it
+// must not make importing headers ALONE look like an unfinished form, because
+// that is a perfectly ordinary thing to want.
+describe("lines beneath each record", () => {
+  const openOrdersDialog = async () => {
+    mockRoutes([]);
+    render({ sources: [ORDERS_SOURCE], settingFields: {}, childGroups: CHILD_GROUPS });
+    await click(await waitFor(() => screen.getByText("Add sync")));
+    await waitFor(() => expect(screen.getByText("New data sync")).toBeDefined());
+  };
+
+  test("a source that returns lines offers somewhere to put them", async () => {
+    await openOrdersDialog();
+    // Named by the provider, not by this file: the group name is part of the
+    // provider's contract and a picker cannot invent it.
+    expect(screen.getByText("Order lines")).toBeDefined();
+    expect(screen.getByText(/leave empty to import headers only/)).toBeDefined();
+  });
+
+  test("the line mapping stays hidden until a collection is chosen", async () => {
+    await openOrdersDialog();
+    // Its targets are that collection's own fields, so offering them first
+    // would be offering a list of nothing.
+    expect(screen.queryByText("Add line column")).toBeNull();
+  });
+
+  test("a source with no lines shows no line editor at all", async () => {
+    mockRoutes([]);
+    render({ childGroups: CHILD_GROUPS });
+    await click(await waitFor(() => screen.getByText("Add sync")));
+    await waitFor(() => expect(screen.getByText("New data sync")).toBeDefined());
+    // Google Sheets hands back flat rows. An empty "lines" box on that form
+    // would be a question with no answer.
+    expect(screen.queryByText("Order lines")).toBeNull();
+  });
+
+  test("a sync that also writes lines says so on the row", async () => {
+    mockRoutes([
+      {
+        ...SYNC,
+        childMappings: { lines: { collection: "order_items", parentField: "order", mapping: { sku: "sku" } } },
+      },
+    ]);
+    render();
+    // It touches a second collection, and nothing else on the row would hint
+    // at that until somebody opened the other one.
+    await waitFor(() => expect(screen.getByText("+ lines")).toBeDefined());
   });
 });
 

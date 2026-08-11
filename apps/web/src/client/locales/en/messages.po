@@ -988,6 +988,10 @@ msgstr "+ condition"
 msgid "+ group"
 msgstr "+ group"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "+ lines"
+msgstr "+ lines"
+
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "+ preset"
 msgstr "+ preset"
@@ -1761,6 +1765,10 @@ msgstr "Add hook"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Add language"
 msgstr "Add language"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Add line column"
+msgstr "Add line column"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Add next step"
@@ -7235,6 +7243,10 @@ msgid "field editors"
 msgstr "field editors"
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Field linking back to the header"
+msgstr "Field linking back to the header"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Field mapping"
 msgstr "Field mapping"
 
@@ -9472,6 +9484,10 @@ msgstr "Limits must be positive numbers (or empty for unlimited)."
 #: src/client/admin/pages/access/role-mcp-guards.tsx
 msgid "Limits which MCP tools an AI agent may call on behalf of members of this role. Narrowing only — it never grants anything the permission rules above already deny."
 msgstr "Limits which MCP tools an AI agent may call on behalf of members of this role. Narrowing only — it never grants anything the permission rules above already deny."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Line column"
+msgstr "Line column"
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Link"
@@ -12391,6 +12407,10 @@ msgstr "Optional — a room with no name is labelled after its first message."
 msgid "Optional — a timestamped name is generated if you leave this blank."
 msgstr "Optional — a timestamped name is generated if you leave this blank."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "optional — leave empty to import headers only"
+msgstr "optional — leave empty to import headers only"
+
 #: src/client/pages/api-keys.tsx
 msgid "Optional — the key stops working after this time."
 msgstr "Optional — the key stops working after this time."
@@ -14569,6 +14589,10 @@ msgstr "Remove it from the list"
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "Remove language"
 msgstr "Remove language"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Remove line column"
+msgstr "Remove line column"
 
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."

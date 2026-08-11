@@ -22,7 +22,7 @@ backlex signs what it sends.
 
 ## Providers
 
-Thirty-five providers ship in the registry, grouped by category:
+Thirty-eight providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -36,7 +36,7 @@ Thirty-five providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks |
 | carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
@@ -754,6 +754,148 @@ the whole package, which is what shipping it in one piece means. Trendyol
 expects `Picking` before `Invoiced` and says so itself if you get it the wrong
 way round — that order is not second-guessed here, because a package already
 picked from the seller panel would otherwise be un-invoiceable through the API.
+
+### A second marketplace: Hepsiburada
+
+**Hepsiburada** is the answer to the question Trendyol left open — is a
+marketplace one file now? Almost. Its source, destination and tasks are built
+entirely out of shapes the engine already had, and no engine change was needed
+for any of them. What is different is worth knowing before you wire one up.
+
+Connect it with the merchant GUID and the API user Hepsiburada issued, and pick
+the environment — it is a pair of hostnames (`-sit` for test), not a flag:
+
+```bash
+backlex integrations connect --kind hepsiburada \
+  --config merchantId=<guid> --config username=<user> \
+  --config password=<pass> --config environment=production
+```
+
+**A sync mirrors one feed, and you choose which.** Hepsiburada has no single
+"everything that changed" endpoint: the lifecycle is split across endpoints that
+each return a different entity. So the `feed` setting picks one —
+
+| feed | what a record is | keyed by |
+|---|---|---|
+| `packages` (default) | a whole package, with address, status and lines | package number |
+| `orders` | line items not yet packed, grouped into one record per order | order number |
+| `cancelled` | cancelled line items, same grouping | order number |
+
+Mirroring two of them into one collection is two syncs, and therefore two id
+namespaces — which is what stops a package number and an order number, different
+value spaces both, from ever colliding on a row.
+
+**The window does not advance between runs**, and that is the one thing to
+understand before tuning `lookbackDays`. Hepsiburada's `begindate` filters on
+when a row was *created*, not last modified. A watermark that marched forward
+would see each package exactly once — in whatever status it was created with —
+and never learn that it shipped. So every run re-reads the same rolling window
+from the top. Re-reading is free (rows are upserted); the window's width is the
+trade between how far back a status change is still noticed and how much work a
+run does.
+
+The `orders` and `cancelled` feeds return a **flat list of line items**, which
+the provider groups into one record per order number with the lines as children.
+An order split across two pages is fine — children are upserted, so the second
+page adds the lines the first did not carry.
+
+Stock and price are two separate uploads on a second host, and both are async:
+the upload answers with an id and whether the listings took it is a second call.
+That call fails the run only when *every* item was refused, which is a mapping
+error worth holding the watermark for — one archived listing among two hundred
+is not, and would otherwise stall the sync for ever. Same asymmetry as
+Trendyol's, for the same reason. A listing is addressed by the HBSKU, the
+merchant's own SKU, or both; a row carrying neither is refused before anything
+is sent.
+
+Six tasks cover fulfilment — `mark_intransit`, `mark_delivered`,
+`mark_undelivered`, `send_invoice_link`, `get_label` and `refresh_package`. They
+are separate tasks for the same reason Trendyol's two are: the once-only guard
+is keyed by *(integration, task, row)*, and a package legitimately moves several
+times. `refresh_package` is the only [repeatable](#except-when-asking-again-is-the-point) one — it is a
+read.
+
+`get_label` hands the barcode payload back **verbatim** rather than storing it
+as a file. Hepsiburada documents the response as `{ data: string[], format }`
+and the *encoding* of those strings is not part of the contract, so calling it a
+PDF and storing it as one would be a guess. Same rule as [EasyPost's label
+host](#a-missing-label-never-undoes-a-booking).
+
+**There is no webhook block, and that is a finding rather than an omission.**
+Hepsiburada does have a push model, but it does not POST to one endpoint you
+give it: it requires the seller to stand up a REST API under a base URL and
+implement a route per event — `POST {base}/orders`, `PUT
+{base}/packages/{no}/intransit`, and so on — secured with credentials shared out
+of band, with no registration API and a manual test sign-off. Supporting that
+means one subscription owning several routed paths and two methods, which is a
+real extension to the webhook contract rather than a quirk a provider can
+absorb. It is deliberately not built on the strength of one example. The poll
+repairs itself in a way a missed delivery never does, and the published
+allowance is a thousand requests a second, so the cost of waiting is low.
+
+### n11 and Çiçeksepeti
+
+Two more, and between them they answer the question phase 4 was asked to
+settle: **a marketplace is one file.** Neither needed an engine change, and
+neither invented a shape — an order is a header with lines, a status
+notification is a task, a price push lands in a queue that gets asked about
+afterwards.
+
+What is worth knowing is where each one differs.
+
+**n11** is Trendyol's shape almost line for line. Connect it with the app key
+and secret from the seller panel — they go in headers (`appkey`, `appsecret`)
+with no Authorization scheme at all:
+
+```bash
+backlex integrations connect --kind n11 --config appKey=… --config appSecret=…
+```
+
+Its one non-obvious decision is `orderByField=true`, which this provider sends
+on every request and does not offer as a setting. By default n11's date window
+bounds order *creation*; that flag re-points it at `lastModifiedDate`. A sync
+that mirrors is the only thing the source is for, so the flag is not optional —
+without it a package would be seen once, in the status it was born with.
+
+Two smaller things it does deliberately: a package with **no package number**
+(location-specific delivery — `KTN`, `EASYPOINT`, `PUP`) lands under its order
+number with an `order-` prefix rather than being dropped, because package
+numbers and order numbers are both long digit strings and sharing an id
+namespace is how one row silently overwrites another. And there is **one** task,
+`approve_package`, because n11 documents exactly one transition today; the rest
+arrive as more tasks when they arrive. It finds its own line ids from the
+package rather than asking you to keep a list of them in a column.
+
+**Çiçeksepeti** is the one to read the pacing notes for. Its rate limits are
+published per endpoint *and per request body*:
+
+| endpoint | same body | different body |
+|---|---|---|
+| `Order/GetOrders` | 1 / minute | 1 / 5 seconds |
+| `Order/statusupdate…` | — | 1 / 5 seconds |
+| `Products/price-and-stock` | 1 / 30 minutes | 1 / second |
+
+A page walk changes the body every page, so five seconds is what binds — paced
+from the same bucket Trendyol's order stream uses, keyed per endpoint and per
+seller so an operator clicking a button never queues behind a page walk. Budget
+for it: a status task reads the order first (to find its sub-order ids) and that
+read takes a token too.
+
+Its window is **re-walked, not advanced** — Çiçeksepeti does not document
+whether its date filter bounds the order date or the modification date, and
+re-reading is the only choice correct under both readings.
+
+A main order splits into **sub-orders**, and every operation — status, cargo
+barcode, delivery — addresses a sub-order. They are grouped into one record per
+order with the sub-orders as lines, and the five status tasks
+(`mark_preparing`, `mark_ready_to_ship`, `mark_shipped`, `mark_in_vehicle`,
+`mark_delivered`) find their own sub-order ids. `mark_in_vehicle` is not a
+synonym for shipping: an order going out on Çiçeksepeti's own service vehicle is
+*refused* the "handed to the carrier" status, so it gets its own word.
+
+`mark_shipped` requires the courier and the tracking number, because
+Çiçeksepeti emails and texts the customer from exactly those fields — the
+courier is picked from a list of the ids it publishes, not typed.
 
 ## Parcels out to a carrier
 

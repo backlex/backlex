@@ -13,6 +13,7 @@ import { airtable } from "./airtable";
 import { bigquery } from "./bigquery";
 import { algolia } from "./algolia";
 import { amplitude } from "./amplitude";
+import { ciceksepeti } from "./ciceksepeti";
 import { clickhouse } from "./clickhouse";
 import { contentful } from "./contentful";
 import { datadog } from "./datadog";
@@ -24,6 +25,7 @@ import { googleCalendar } from "./google-calendar";
 import { googleChat } from "./google-chat";
 import { googleDrive } from "./google-drive";
 import { googleSheets } from "./google-sheets";
+import { hepsiburada } from "./hepsiburada";
 import { hubspot } from "./hubspot";
 import { jira } from "./jira";
 import { klaviyo } from "./klaviyo";
@@ -31,6 +33,7 @@ import { linear } from "./linear";
 import { mailchimp } from "./mailchimp";
 import { meilisearch } from "./meilisearch";
 import { mixpanel } from "./mixpanel";
+import { n11 } from "./n11";
 import { notion } from "./notion";
 import { opsgenie } from "./opsgenie";
 import { pagerduty } from "./pagerduty";
@@ -91,6 +94,9 @@ export const INTEGRATION_KINDS = [
   "bigquery",
   // marketplaces (orders in, stock & price out, status back)
   "trendyol",
+  "hepsiburada",
+  "n11",
+  "ciceksepeti",
   // carriers (book a shipment, read where it is, cancel it)
   "easypost",
 ] as const;
@@ -132,6 +138,9 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   clickhouse,
   bigquery,
   trendyol,
+  hepsiburada,
+  n11,
+  ciceksepeti,
   easypost,
 };
 

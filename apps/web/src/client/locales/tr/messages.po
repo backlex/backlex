@@ -10272,6 +10272,14 @@ msgstr "Müşterileri, abonelikleri, faturaları ve ödemeleri koleksiyonların�
 #~ msgstr "Bir koleksiyona yansıt"
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Mirror marketplace orders and packages in with their lines, push stock and price out, and notify fulfilment back."
+msgstr "Pazar yeri siparişlerini ve paketlerini kalemleriyle içeri yansıtın, stok ve fiyatı dışarı gönderin, karşılama durumunu geri bildirin."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Mirror orders in with their sub-orders, push stock and price out, and drive the customer's status notifications."
+msgstr "Siparişleri alt siparişleriyle içeri yansıtın, stok ve fiyatı dışarı gönderin, müşteriye giden durum bildirimlerini yönetin."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Mirror QuickBooks customers, invoices and payments into a collection."
 msgstr "QuickBooks müşterilerini, faturalarını ve ödemelerini bir koleksiyona yansıtır."
 
@@ -13996,6 +14004,10 @@ msgstr "Pazar yeri siparişlerini kalemleriyle çeker, stok ve fiyatı gönderir
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #~ msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 #~ msgstr "Bağlı bir kaynaktan satırları zamanlanmış olarak bir koleksiyona çeker. Çekilen satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine asla yazmaz."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
+msgstr "Kargo paketlerini kalemleriyle içeri çekin, stok ve fiyatı dışarı gönderin, paketleri onaylayın."
 
 #. placeholder {0}: res.data.written
 #. placeholder {1}: row.collection

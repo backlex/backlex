@@ -10272,6 +10272,14 @@ msgstr "Mirror customers, subscriptions, invoices and payments into your collect
 #~ msgstr "Mirror into a collection"
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Mirror marketplace orders and packages in with their lines, push stock and price out, and notify fulfilment back."
+msgstr "Mirror marketplace orders and packages in with their lines, push stock and price out, and notify fulfilment back."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Mirror orders in with their sub-orders, push stock and price out, and drive the customer's status notifications."
+msgstr "Mirror orders in with their sub-orders, push stock and price out, and drive the customer's status notifications."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Mirror QuickBooks customers, invoices and payments into a collection."
 msgstr "Mirror QuickBooks customers, invoices and payments into a collection."
 
@@ -13996,6 +14004,10 @@ msgstr "Pull marketplace orders in with their lines, push stock and price out, a
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #~ msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 #~ msgstr "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
+msgstr "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
 
 #. placeholder {0}: res.data.written
 #. placeholder {1}: row.collection

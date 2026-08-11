@@ -171,6 +171,9 @@ const BRANDS: Record<string, Brand> = {
   bigquery: { name: "Google BigQuery", mark: "BQ", markBg: "#4285F4" },
   xero: { name: "Xero", mark: <SI d={ICONS.xero!} />, markBg: "#13B5EA" },
   trendyol: { name: "Trendyol", mark: "Ty", markBg: "#F27A1A" },
+  hepsiburada: { name: "Hepsiburada", mark: "Hb", markBg: "#FF6000" },
+  n11: { name: "n11", mark: "n11", markBg: "#6C2C7C" },
+  ciceksepeti: { name: "Çiçeksepeti", mark: "Çs", markBg: "#E5004C" },
   easypost: { name: "EasyPost", mark: "Ep", markBg: "#164DFF" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
@@ -323,6 +326,12 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Sync records to an Elasticsearch or OpenSearch index on data events.`;
       case "trendyol":
         return t`Pull marketplace orders in with their lines, push stock and price out, and notify package status back.`;
+      case "hepsiburada":
+        return t`Mirror marketplace orders and packages in with their lines, push stock and price out, and notify fulfilment back.`;
+      case "n11":
+        return t`Pull shipment packages in with their lines, push stock and price out, and approve packages back.`;
+      case "ciceksepeti":
+        return t`Mirror orders in with their sub-orders, push stock and price out, and drive the customer's status notifications.`;
       case "easypost":
         return t`Book a shipment and store its label, read where the parcel is, and cancel it.`;
       default:

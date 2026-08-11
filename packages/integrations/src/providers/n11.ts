@@ -1,0 +1,711 @@
+import { defineProvider, type DestinationRow } from "../provider";
+
+/**
+ * n11 — a seller's shipment packages in, stock and price out, and the one
+ * status the marketplace currently accepts back.
+ *
+ * The third marketplace, and the one that settles the question: yes, a
+ * marketplace is one file. Nothing here needed an engine change, and the shape
+ * is Trendyol's almost line for line — a package is the record, its lines are
+ * children, the date window is a modification window, and the price push lands
+ * in a queue that has to be asked about afterwards.
+ *
+ * Four facts shape the code, and the first is the important one.
+ *
+ * **The date filter can be made a MODIFICATION filter, and must be.** By
+ * default `startDate`/`endDate` bound the order's creation, which would freeze
+ * every package at the status it was created with — the trap Hepsiburada has no
+ * way out of. n11 does: `orderByField=true` re-points the same two parameters
+ * at `lastModifiedDate`. It is therefore sent on every request, not offered as
+ * a setting, because a sync that mirrors is the only thing this source is for.
+ *
+ * **The credential is a header pair, not an Authorization scheme.** `appkey`
+ * and `appsecret`, with authorization explicitly set to none. There is nothing
+ * to base64 and no bearer token.
+ *
+ * **Only `Picking` can be sent back today.** n11 documents `UpdateOrder` as
+ * supporting exactly one transition for now and says the rest will follow. So
+ * there is one task rather than a status setting that would accept values the
+ * API refuses — and when the others arrive they arrive as more tasks, for the
+ * same reason Trendyol's two are two.
+ *
+ * **A package can have no package number.** Location-specific delivery orders
+ * come back with `id: null`, because their shipping is managed in the seller
+ * panel rather than through this API. They are not dropped — see
+ * {@link recordIdFor}.
+ */
+
+/** Where the API lives. A constant: never built from config. */
+const BASE = "https://api.n11.com";
+
+/** n11's cap on one page of packages, and on one price-and-stock request. */
+const PAGE = 100;
+const MAX_SKUS = 1000;
+
+/**
+ * The widest window the packages feed honours, and the one a first run reads.
+ *
+ * n11 states it three ways — a start alone reads 15 days forward, an end alone
+ * reads 15 days back, and a range wider than that is silently narrowed to the
+ * last 15 days before the end. That last one is why the window is clamped here
+ * rather than left to the API: a backfill asking for two years would be
+ * answered with a fortnight and would never learn it had been ignored.
+ */
+const MAX_WINDOW_DAYS = 15;
+const DAY_MS = 86_400_000;
+
+/**
+ * Mid-run cursor: `c:<windowStart>:<windowEnd>:<page>`. Continues THIS run.
+ *
+ * All three travel together because all three are needed and none can be
+ * recomputed. The end is what the run hands back when it finishes — a cursor
+ * carrying only a page would leave a multi-page run with no resume marker at
+ * all. The start is what page two must send unchanged: n11 pages a result set
+ * that its own date filter defines, and the first request's start came from the
+ * operator's `lookbackDays`, which nothing downstream can rediscover.
+ */
+const CURSOR_PREFIX = "c:";
+/** A finished window's end, in epoch ms. Starts the NEXT run. */
+const RESUME_PREFIX = "t:";
+
+/** How long to wait before asking what became of a submitted task. */
+const TASK_SETTLE_MS = 1000;
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/** Who n11 says despatches the parcel. A closed set: it reaches a query. */
+const SENDERS = ["SELLER", "N11", "ALL"] as const;
+
+export const n11 = defineProvider({
+  id: "n11",
+  label: "n11",
+  category: "marketplace",
+  capabilities: ["source", "destination", "task"],
+  /**
+   * A thousand requests a minute is what the packages feed publishes. Paced
+   * under it: the bucket is per-isolate and best-effort, so two isolates
+   * running two syncs for one seller each believe they have the whole
+   * allowance. The 429 path is the real guarantee either way.
+   */
+  limits: { rps: 10, burst: 20 },
+  configFields: [
+    { key: "appKey", label: "App key", secret: true },
+    { key: "appSecret", label: "App secret", secret: true },
+  ],
+  source: {
+    childGroups: [{ key: "lines", label: "Order lines" }],
+    settingFields: [
+      {
+        key: "sender",
+        label: "Whose parcels",
+        options: [
+          { value: "SELLER", label: "Sent by the seller" },
+          { value: "N11", label: "Sent from an n11 warehouse" },
+          { value: "ALL", label: "Both" },
+        ],
+      },
+      {
+        key: "lookbackDays",
+        label: "First run reads",
+        options: [
+          { value: "1", label: "Last 24 hours" },
+          { value: "7", label: "Last 7 days" },
+          { value: "15", label: "Last 15 days (max)" },
+        ],
+      },
+    ],
+    /**
+     * One page of packages modified inside the current window.
+     *
+     * There is deliberately no status filter, and n11 makes that decision
+     * cheap: `status` takes ONE value per request, so mirroring every status
+     * through a filter would mean seven walks instead of one. Omitting it reads
+     * them all. Narrowing belongs to a view over the collection, where it costs
+     * nothing to change your mind.
+     */
+    async pull(ctx) {
+      const headers = readConnection(ctx, "sync");
+      const cursor = ctx.cursor ?? "";
+
+      // BOTH ends of the window travel with the page, not just the end. n11
+      // pages a result set that its own date filter defines, so widening the
+      // range on page two would page a different set — and the first run's
+      // range is the operator's `lookbackDays`, which page two has no other way
+      // of knowing.
+      const open = readCursor(cursor);
+      if (open) return await walk(ctx, headers, open.start, open.end, open.page);
+
+      const now = Date.now();
+      const resumeFrom = cursor.startsWith(RESUME_PREFIX) ? readEpoch(cursor.slice(RESUME_PREFIX.length)) : null;
+      const start = resumeFrom ?? now - readLookbackDays(ctx.setting("lookbackDays")) * DAY_MS;
+      // Clamped both ways: never wider than n11 will actually honour, and never
+      // past now — an end in the future is a window that can never be finished,
+      // and a resume token that skips whatever lands after it.
+      const end = Math.min(start + MAX_WINDOW_DAYS * DAY_MS, now);
+      return await walk(ctx, headers, start, end, 0);
+    },
+  },
+  destination: {
+    settingFields: [
+      {
+        key: "updates",
+        label: "What to send",
+        options: [
+          { value: "stock", label: "Stock only" },
+          { value: "price", label: "Price only" },
+          { value: "both", label: "Stock and price" },
+        ],
+      },
+    ],
+    /**
+     * Same argument as the other two marketplaces: most sellers mirror one of
+     * the two and manage the other in the panel, and a column that is silently
+     * dropped is worse than one that was never offered.
+     *
+     * `listPrice` and `salePrice` are both offered on a price sync because n11
+     * refuses one without the other — see {@link itemFor}, which fills the gap
+     * rather than letting the request be rejected for a column nobody mapped.
+     */
+    columns: [
+      { value: "stockCode", label: "Seller stock code" },
+      { value: "quantity", label: "Stock quantity", when: { updates: ["stock", "both"] } },
+      { value: "salePrice", label: "Sale price", when: { updates: ["price", "both"] } },
+      { value: "listPrice", label: "List price", when: { updates: ["price", "both"] } },
+      { value: "currencyType", label: "Currency", when: { updates: ["price", "both"] } },
+    ],
+    async push(ctx) {
+      const headers = readConnection(ctx, "write-back");
+      const mode = ctx.setting("updates") ?? "both";
+
+      const skus: Record<string, unknown>[] = [];
+      for (const row of ctx.rows) {
+        const item = itemFor(row, mode);
+        // A row with no stock code addresses no listing. Skipped rather than
+        // sent: n11 keys every update on it.
+        if (item) skus.push(item);
+      }
+      if (skus.length === 0) {
+        throw new Error(
+          "No row in the batch had a stock code and something to update — check the column mapping",
+        );
+      }
+
+      const res = await ctx.fetch(`${BASE}/ms/product/tasks/price-stock-update`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: { integrator: "backlex", skus: skus.slice(0, MAX_SKUS) } }),
+      });
+      if (!res.ok) throw await readError(res, "update stock and price");
+
+      const body = (await res.json().catch(() => ({}))) as { id?: unknown; status?: unknown; reasons?: unknown };
+      // REJECT is n11 refusing the whole data set up front, and it comes with
+      // its own reason. That is not a queue to poll, it is an answer.
+      if (body.status === "REJECT") {
+        const reason = Array.isArray(body.reasons) ? text(body.reasons[0]) : null;
+        throw new Error(`n11 refused the price and stock update${reason ? `: ${reason.slice(0, 160)}` : ""}`);
+      }
+      const taskId = text(body.id);
+      if (taskId) await verifyTask(ctx, headers, taskId);
+    },
+  },
+  /**
+   * One task, because n11 accepts one transition.
+   *
+   * `UpdateOrder` documents `Picking` and says the other statuses will follow.
+   * A single "set status" task with a value setting would therefore offer an
+   * operator four values the API refuses — and when the rest do arrive they
+   * arrive as more tasks, for the same reason Trendyol's two are two: the
+   * once-only guard is keyed by (integration, task, row), so one task per
+   * transition is what lets a package legitimately move twice.
+   */
+  tasks: [
+    {
+      id: "approve_package",
+      label: "Approve package (picking)",
+      settingFields: [
+        {
+          key: "packageIdField",
+          label: "Package ID field",
+          placeholder: "the row field holding the n11 package id, e.g. shipment_package_id",
+        },
+      ],
+      outputs: [
+        { key: "status", label: "Package status" },
+        { key: "approvedLines", label: "Lines approved" },
+        { key: "notifiedAt", label: "Notified at" },
+      ],
+      /**
+       * The row is a package; n11 approves LINES. So the package is read back
+       * first and its line ids collected, rather than asking an operator to
+       * keep a list of line ids in a column — they live in the child
+       * collection, and a task acts on one row.
+       *
+       * Only lines still `Created` are sent. n11 refuses the rest and answers
+       * per line, so filtering here is the difference between "approved four
+       * lines" and a partial-success body nobody reads.
+       */
+      async run(ctx) {
+        const headers = readConnection(ctx, "task");
+        const packageId = readPackageId(ctx);
+
+        const url = new URL(`${BASE}/rest/delivery/v1/shipmentPackages`);
+        url.searchParams.set("packageIds", packageId);
+        url.searchParams.set("page", "0");
+        url.searchParams.set("size", "1");
+        const found = await ctx.fetch(url.toString(), { headers });
+        if (!found.ok) throw await readError(found, "read the package");
+
+        const body = (await found.json()) as { content?: Record<string, unknown>[] };
+        const pkg = body.content?.[0];
+        if (!pkg) throw new Error(`n11 has no package ${packageId} for this seller`);
+
+        const lineIds = (Array.isArray(pkg.lines) ? pkg.lines : [])
+          .map((l) => obj(l))
+          .filter((l) => text(l.orderItemLineItemStatusName) === "Created")
+          .map((l) => num(l.orderLineId))
+          .filter((id): id is number => id !== null);
+        if (lineIds.length === 0) {
+          throw new Error(`No line on package ${packageId} is waiting to be approved`);
+        }
+
+        const res = await ctx.fetch(`${BASE}/rest/order/v1/update`, {
+          method: "PUT",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ lines: lineIds.map((lineId) => ({ lineId })), status: "Picking" }),
+        });
+        if (!res.ok) throw await readError(res, "approve the package");
+
+        const result = (await res.json().catch(() => ({}))) as { content?: { status?: unknown; reasons?: unknown }[] };
+        const answered = result.content ?? [];
+        const ok = answered.filter((l) => text(l.status) === "SUCCESS").length;
+        // Every line refused is not a partial success to report as done: the
+        // package has not moved, and saying it has would leave an order sitting
+        // in `Created` with a row that claims otherwise.
+        if (answered.length > 0 && ok === 0) {
+          const reason = text(answered[0]?.reasons);
+          throw new Error(`n11 approved no line on package ${packageId}${reason ? `: ${reason.slice(0, 160)}` : ""}`);
+        }
+
+        return {
+          outputs: { status: "Picking", approvedLines: ok || lineIds.length, notifiedAt: Date.now() },
+        };
+      },
+    },
+  ],
+});
+
+// ── Connection ───────────────────────────────────────────────────────────────
+
+/**
+ * The credential, as the two headers every call carries.
+ *
+ * n11 documents authorization as "none" and reads the pair from headers
+ * instead. They reach a header verbatim, so a value with a control character
+ * in it is refused here rather than being allowed to shape one.
+ */
+const readConnection = (ctx: { str(k: string): string | null }, what: string): Record<string, string> => {
+  const appKey = ctx.str("appKey");
+  const appSecret = ctx.str("appSecret");
+  if (!appKey || !appSecret) throw new Error(`n11 ${what} has no app key and secret`);
+  if (/[^\x20-\x7E]/.test(`${appKey}${appSecret}`)) {
+    throw new Error("n11 app key and secret must be plain ASCII — check for a bad paste");
+  }
+  return { appkey: appKey, appsecret: appSecret, Accept: "application/json" };
+};
+
+// ── Packages ─────────────────────────────────────────────────────────────────
+
+const readLookbackDays = (raw: string | null): number => {
+  const n = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(n) && n >= 1 && n <= MAX_WINDOW_DAYS ? Math.floor(n) : MAX_WINDOW_DAYS;
+};
+
+const readEpoch = (raw: string): number | null => {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/**
+ * A mid-run cursor, or `null` for anything else.
+ *
+ * The cursor round-trips through the database, so every part of it is re-parsed
+ * rather than trusted. A malformed one is not an error: returning `null` starts
+ * a fresh window, which re-reads rows that are upserted anyway.
+ */
+const readCursor = (cursor: string): { start: number; end: number; page: number } | null => {
+  if (!cursor.startsWith(CURSOR_PREFIX)) return null;
+  const parts = cursor.slice(CURSOR_PREFIX.length).split(":");
+  if (parts.length !== 3) return null;
+  const start = readEpoch(parts[0] ?? "");
+  const end = readEpoch(parts[1] ?? "");
+  const page = Number(parts[2]);
+  if (start === null || end === null || !Number.isFinite(page) || page < 0) return null;
+  return { start, end, page: Math.floor(page) };
+};
+
+const readSender = (raw: string | null): string =>
+  (SENDERS as readonly string[]).includes(raw ?? "") ? (raw as string) : "SELLER";
+
+/** Fetch one page of the window and decide what the run does next. */
+const walk = async (
+  ctx: {
+    fetch: (u: string, i?: RequestInit) => Promise<Response>;
+    limit: number;
+    setting(k: string): string | null;
+  },
+  headers: Record<string, string>,
+  start: number,
+  windowEnd: number,
+  page: number,
+) => {
+  const url = new URL(`${BASE}/rest/delivery/v1/shipmentPackages`);
+  url.searchParams.set("startDate", String(start));
+  url.searchParams.set("endDate", String(windowEnd));
+  // The whole reason this source can mirror rather than snapshot: it re-points
+  // the two dates above at `lastModifiedDate`. Without it the window bounds
+  // creation, and a package would be seen once, in the status it was born with.
+  url.searchParams.set("orderByField", "true");
+  url.searchParams.set("orderByDirection", "ASC");
+  url.searchParams.set("sender", readSender(ctx.setting("sender")));
+  url.searchParams.set("page", String(page));
+  url.searchParams.set("size", String(Math.min(ctx.limit, PAGE)));
+
+  const res = await ctx.fetch(url.toString(), { headers });
+  if (!res.ok) throw await readError(res, "read the packages");
+  const body = (await res.json()) as { content?: Record<string, unknown>[]; totalPages?: unknown };
+
+  const raw = body.content ?? [];
+  const records = raw
+    .map((p) => {
+      const id = recordIdFor(p);
+      return id ? { externalId: id, data: packageData(p), children: { lines: linesOf(p.lines) } } : null;
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+
+  const totalPages = num(body.totalPages);
+  // n11's own advice: page from 0 and treat the first empty `content` as the
+  // end. `totalPages` is honoured too where it is present, so a walk stops one
+  // request earlier than it otherwise would.
+  const more = raw.length > 0 && (totalPages === null || page + 1 < totalPages);
+  if (more) return { records, cursor: `${CURSOR_PREFIX}${start}:${windowEnd}:${page + 1}` };
+
+  // The window is finished. Its END becomes the next run's start — the same
+  // instant on both sides rather than one millisecond later, because a package
+  // modified exactly on the boundary being read twice is free (rows are
+  // upserted) and being skipped is not.
+  return { records, cursor: null, resumeToken: `${RESUME_PREFIX}${windowEnd}` };
+};
+
+/**
+ * The id this package lands under.
+ *
+ * Normally the package number. Location-specific delivery orders (`KTN`,
+ * `EASYPOINT`, `PUP`) come back with `id: null` because n11 manages their
+ * shipping in the seller panel rather than through this API — dropping them
+ * would mean a seller's collection quietly missing a whole delivery type, so
+ * they land under their order number instead.
+ *
+ * The fallback is PREFIXED. Package numbers and order numbers are both long
+ * digit strings, and two different things sharing an id namespace is exactly
+ * how one row silently overwrites another.
+ */
+const recordIdFor = (p: Record<string, unknown>): string | null => {
+  const id = text(p.id);
+  if (id) return id;
+  const orderNumber = text(p.orderNumber);
+  return orderNumber ? `order-${orderNumber}` : null;
+};
+
+/**
+ * One package, flattened for mapping.
+ *
+ * Addresses are spread into their parts rather than handed over as objects: a
+ * mapping targets one column, and an operator wanting the city in a `city`
+ * column cannot get there from a nested blob.
+ *
+ * `neighborhood` is carried alongside `city` and `district` because a Turkish
+ * address is il / ilçe / mahalle and a courier needs all three. Dropping it
+ * here would mean the carrier integration has to go and re-fetch the order.
+ */
+const packageData = (p: Record<string, unknown>): Record<string, unknown> => {
+  const ship = obj(p.shippingAddress);
+  const bill = obj(p.billingAddress);
+  return {
+    shipmentPackageId: p.id ?? null,
+    orderNumber: p.orderNumber ?? null,
+    status: p.shipmentPackageStatus ?? null,
+    lastModifiedDate: p.lastModifiedDate ?? null,
+    agreedDeliveryDate: p.agreedDeliveryDate ?? null,
+    totalAmount: p.totalAmount ?? null,
+    totalDiscountAmount: p.totalDiscountAmount ?? null,
+    installmentCharge: p.installmentChargeWithVATprice ?? null,
+
+    customerId: p.customerId ?? null,
+    // n11's own spelling. Kept rather than corrected: the picker should show
+    // what their documentation shows.
+    customerFullName: p.customerfullName ?? null,
+    customerEmail: p.customerEmail ?? null,
+    tcIdentityNumber: p.tcIdentityNumber ?? null,
+    taxId: p.taxId ?? null,
+    taxOffice: p.taxOffice ?? null,
+
+    cargoProviderName: p.cargoProviderName ?? null,
+    shipmentCompanyId: p.shipmentCompanyId ?? null,
+    cargoTrackingNumber: p.cargoTrackingNumber ?? null,
+    cargoSenderNumber: p.cargoSenderNumber ?? null,
+    cargoTrackingLink: p.cargoTrackingLink ?? null,
+    shipmentMethod: p.shipmentMethod ?? null,
+    // `null` for a domestic order and `true` for an e-export one, which is what
+    // decides whether the invoice has to be an export invoice.
+    micro: p.micro ?? null,
+    deliveryAddressType: p.deliveryAddressType ?? null,
+    invoiceLink: p.invoiceLink ?? null,
+    etgbNo: p.etgbNo ?? null,
+
+    shipmentFullName: ship.fullName ?? null,
+    shipmentAddress: ship.address ?? null,
+    shipmentNeighbourhood: ship.neighborhood ?? null,
+    shipmentDistrict: ship.district ?? null,
+    shipmentCity: ship.city ?? null,
+    shipmentPostalCode: ship.postalCode ?? null,
+    shipmentPhone: ship.gsm ?? null,
+
+    invoiceFullName: bill.fullName ?? null,
+    invoiceAddress: bill.address ?? null,
+    invoiceDistrict: bill.district ?? null,
+    invoiceCity: bill.city ?? null,
+    invoicePostalCode: bill.postalCode ?? null,
+    invoiceCountryCode: bill.countryCode ?? null,
+    // 1 is an individual and 2 a company, and on a company invoice n11 puts the
+    // trading name in the customer's full-name field.
+    invoiceType: bill.invoiceType ?? null,
+    invoiceTaxId: bill.taxId ?? null,
+    invoiceTaxOffice: bill.taxHouse ?? null,
+  };
+};
+
+/**
+ * The package's lines, as child records.
+ *
+ * `orderLineId` is only unique within its package, which is exactly the case
+ * the engine qualifies a child key for — and it is also the id the approve task
+ * sends back, so it is mapped rather than left in the blob.
+ */
+const linesOf = (raw: unknown): { externalId: string; data: Record<string, unknown> }[] => {
+  if (!Array.isArray(raw)) return [];
+  const out: { externalId: string; data: Record<string, unknown> }[] = [];
+  for (const line of raw) {
+    const l = obj(line);
+    const id = text(l.orderLineId);
+    if (!id) continue;
+    out.push({
+      externalId: id,
+      data: {
+        orderLineId: l.orderLineId ?? null,
+        productId: l.productId ?? null,
+        productName: l.productName ?? null,
+        stockCode: l.stockCode ?? null,
+        barcode: l.barcode ?? null,
+        quantity: l.quantity ?? null,
+        status: l.orderItemLineItemStatusName ?? null,
+        unitPrice: l.price ?? null,
+        dueAmount: l.dueAmount ?? null,
+        sellerInvoiceAmount: l.sellerInvoiceAmount ?? null,
+        sellerDiscount: l.sellerDiscount ?? null,
+        sellerCouponDiscount: l.sellerCouponDiscount ?? null,
+        totalSellerDiscount: l.totalSellerDiscountPrice ?? null,
+        mallDiscount: l.mallDiscount ?? null,
+        totalMallDiscount: l.totalMallDiscountPrice ?? null,
+        vatRate: l.vatRate ?? null,
+        commissionRate: l.commissionRate ?? null,
+        sellerCampaignCommissionRate: l.sellerCampaignCommissionRate ?? null,
+        deliveryFeeType: l.deliveryFeeType ?? null,
+        sender: l.sender ?? null,
+        productOrigin: l.productOrigin ?? null,
+        hsCode: l.hsCode ?? null,
+        // A list of `{name, value}` pairs, joined into the one string a column
+        // can hold. "Numara: 45, Renk: Bordo" is what a picking list wants.
+        variants: variants(l.variantAttributes),
+      },
+    });
+  }
+  return out;
+};
+
+const variants = (raw: unknown): string | null => {
+  if (!Array.isArray(raw)) return null;
+  const parts = raw
+    .map((v) => obj(v))
+    .map((v) => {
+      const name = text(v.name);
+      const value = text(v.value);
+      return name && value ? `${name}: ${value}` : (value ?? null);
+    })
+    .filter((p): p is string => p !== null);
+  return parts.length > 0 ? parts.join(", ") : null;
+};
+
+// ── Stock and price ──────────────────────────────────────────────────────────
+
+/**
+ * One mapped row as a SKU update, or `null` when it addresses nothing.
+ *
+ * Only the fields this sync is FOR are sent: n11 leaves an omitted field alone,
+ * so a stock-only sync that also sent a price would overwrite whatever the
+ * seller set in their panel — the exact surprise the `updates` setting exists
+ * to prevent.
+ *
+ * Prices are rounded to two decimals and a list price is never allowed below
+ * the sale price, because n11 REJECTS the whole task for either — and a task
+ * rejected for a rounding artefact is a batch of rows that silently did not
+ * update.
+ */
+const itemFor = (row: DestinationRow, mode: string): Record<string, unknown> | null => {
+  const stockCode = text(row.stockCode);
+  if (!stockCode) return null;
+  const item: Record<string, unknown> = { stockCode };
+
+  if (mode !== "price") {
+    const quantity = num(row.quantity);
+    // Whole units, and a negative stock is a mapping error rather than an
+    // oversell to publish.
+    if (quantity !== null) item.quantity = Math.max(0, Math.floor(quantity));
+  }
+  if (mode !== "stock") {
+    const salePrice = money(row.salePrice);
+    const listPrice = money(row.listPrice);
+    // n11 refuses one without the other, so the pair is sent or neither is.
+    // Defaulting the list price to the sale price is the reading that matches
+    // an unmapped column: no crossed-out price, rather than a rejected task.
+    if (salePrice !== null || listPrice !== null) {
+      const sale = salePrice ?? listPrice ?? 0;
+      item.salePrice = sale;
+      item.listPrice = Math.max(listPrice ?? 0, sale);
+      const currency = text(row.currencyType);
+      if (currency) item.currencyType = currency;
+    }
+  }
+  // A stock code alone updates nothing. Sending it would report a clean run for
+  // a batch that changed nothing at all.
+  return Object.keys(item).length > 1 ? item : null;
+};
+
+/** Two decimals, because anything else is rejected for the whole task. */
+const money = (v: unknown): number | null => {
+  const n = num(v);
+  return n === null ? null : Math.round(n * 100) / 100;
+};
+
+/**
+ * Ask what became of a submitted task, and fail only on the answer that is this
+ * side's fault.
+ *
+ * Every SKU failed means the stock codes do not exist for this seller — a
+ * mapping pointed at the wrong column, or a catalog that was never listed.
+ * Throwing holds the watermark so those rows are re-sent once it is fixed.
+ *
+ * A partial failure does NOT throw, and that asymmetry is deliberate: one
+ * delisted SKU among two hundred would otherwise hold the watermark on its row
+ * for ever and the sync would never reach the rows behind it. Same rule as the
+ * other marketplaces, for the same reason.
+ *
+ * A task still in the queue is not an answer, and is left alone.
+ */
+const verifyTask = async (
+  ctx: { fetch: (u: string, i?: RequestInit) => Promise<Response> },
+  headers: Record<string, string>,
+  taskId: string,
+): Promise<void> => {
+  await sleep(TASK_SETTLE_MS);
+  const res = await ctx.fetch(`${BASE}/ms/product/task-details/page-query`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ taskId: Number(taskId), pageable: { page: 0, size: MAX_SKUS } }),
+  });
+  // The task was accepted; not being able to read its result afterwards is not
+  // grounds to re-send it.
+  if (!res.ok) return;
+
+  const body = (await res.json().catch(() => ({}))) as {
+    skus?: { content?: { status?: unknown; reasons?: unknown }[] };
+  };
+  const rows = body.skus?.content ?? [];
+  if (rows.length === 0) return;
+
+  const failed = rows.filter((r) => text(r.status) !== "SUCCESS");
+  if (failed.length < rows.length) return;
+
+  const reason = Array.isArray(failed[0]?.reasons) ? text(failed[0]?.reasons?.[0]) : text(failed[0]?.reasons);
+  throw new Error(
+    `n11 refused every SKU in the batch — check the stock code mapping${reason ? `: ${reason.slice(0, 160)}` : ""}`,
+  );
+};
+
+// ── Tasks ────────────────────────────────────────────────────────────────────
+
+/**
+ * The package id this task acts on, read off the row.
+ *
+ * Digits-only, because it reaches a query parameter and then a second request
+ * built from what came back. A row that carries something else is a mis-pointed
+ * setting, and saying so beats an empty answer from a query nobody meant.
+ */
+const readPackageId = (ctx: {
+  row: Readonly<Record<string, unknown>>;
+  setting(k: string): string | null;
+}): string => {
+  const field = ctx.setting("packageIdField");
+  if (!field) throw new Error("n11 task needs the row field holding the package id");
+  const value = text(ctx.row[field]);
+  if (!value) throw new Error(`Row field "${field}" holds no n11 package id`);
+  if (!/^\d{1,25}$/.test(value)) {
+    throw new Error(`"${field}" does not hold an n11 package id — it must be numeric`);
+  }
+  return value;
+};
+
+// ── Shared ───────────────────────────────────────────────────────────────────
+
+const text = (v: unknown): string | null => {
+  if (typeof v === "string") return v.trim() || null;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return null;
+};
+
+const num = (v: unknown): number | null => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+const obj = (v: unknown): Record<string, unknown> =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+/**
+ * Turn a failed call into something an operator can act on.
+ *
+ * 429 is deliberately absent: the engine's fetch wrapper classifies it before a
+ * provider sees the response, so a branch here would be unreachable and would
+ * read as though it still decided something.
+ */
+const readError = async (res: Response, what: string): Promise<Error> => {
+  const raw = await res.text().catch(() => "");
+  let detail = raw.slice(0, 160);
+  try {
+    const body = JSON.parse(raw) as { errors?: { message?: string }[]; message?: string; reasons?: unknown };
+    const reasons = Array.isArray(body.reasons) ? text(body.reasons[0]) : null;
+    detail = (body.errors?.[0]?.message ?? body.message ?? reasons ?? detail).slice(0, 160);
+  } catch {
+    // Not JSON — n11's gateway answers HTML on some failures, and the truncated
+    // body is still the most useful thing to show.
+  }
+  if (res.status === 401 || res.status === 403) {
+    return new Error(
+      "n11 rejected the credentials — check the app key and secret from your seller panel's API settings",
+    );
+  }
+  return new Error(`n11 responded ${res.status} and could not ${what}${detail ? `: ${detail}` : ""}`);
+};

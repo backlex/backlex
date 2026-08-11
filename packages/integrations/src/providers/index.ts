@@ -19,6 +19,7 @@ import { ciceksepeti } from "./ciceksepeti";
 import { clickhouse } from "./clickhouse";
 import { contentful } from "./contentful";
 import { datadog } from "./datadog";
+import { dhl } from "./dhl";
 import { discord } from "./discord";
 import { easypost } from "./easypost";
 import { elasticsearch } from "./elasticsearch";
@@ -105,6 +106,7 @@ export const INTEGRATION_KINDS = [
   "easypost",
   "yurtici",
   "aras",
+  "dhl",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -151,6 +153,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   easypost,
   yurtici,
   aras,
+  dhl,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

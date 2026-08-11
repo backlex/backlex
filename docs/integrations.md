@@ -37,7 +37,7 @@ Forty-one providers ship in the registry, grouped by category:
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 | marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source and a task |
-| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo) |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -1113,6 +1113,62 @@ from somebody else's DataSet is how a row ends up permanently empty while the
 run reports success. Those names *are* in the integration document Aras hands
 over with the credentials; with that document in front of you the task is a
 short addition, because the helper already reads an arbitrary tree by name.
+
+#### DHL, and half a carrier on purpose
+
+**DHL** ships one task — `refresh_tracking` — and no booking. That is not an
+oversight, and the shape is worth understanding because it will recur.
+
+A carrier's three tasks are independent contracts, and DHL publishes them at
+very different heights. **Tracking is public and self-serve**: sign up on
+`developer.dhl.com`, take the key, and the task works. **Booking is not.** For
+Türkiye it still lives behind `apizone.mngkargo.com.tr`, an IBM API Connect
+portal whose request bodies are inside a spec ZIP you can only download with an
+account — there is no DHL-branded replacement. A `book_shipment` written from a
+guess at those bodies would fail at a courier rather than at a form. Aras ships
+the mirror image of this (book and cancel, no tracking) for its own reason, so
+"some of a carrier's tasks" is an established answer here.
+
+**Why the provider is `dhl` and not `mng-kargo`.** DHL Group completed its
+acquisition of MNG Kargo in October 2023 and the Turkish brand became **DHL
+eCommerce** on 22 May 2025 — a card reading only "MNG Kargo" would look like an
+integration nobody had touched in two years. But the API is DHL's **Shipment
+Tracking – Unified**, which fronts fifteen-odd divisions behind one endpoint and
+one key; ex-MNG parcels joined it on 21 July 2026 when `service=ecommerce-tr`
+was added. Narrowing the provider to Türkiye would throw away DHL Express, Paket
+in Germany and Parcel in the Netherlands for nothing — the difference is one
+value in one dropdown, whose Turkish entry names MNG so it can still be found.
+
+Three things shape the task:
+
+- **The service is chosen per invocation and is required**, even though DHL
+  treats it as optional. Left out, DHL guesses across every division it fronts —
+  and a tracking number is only unique *within* one, which is what the response's
+  `possibleAdditionalShipmentsUrl` admits. A guess that returns somebody else's
+  shipment would write their delivery date onto your row, a failure nobody would
+  ever look for. Refusing to run is much cheaper.
+- **The answer is a list**, and the provider takes the entry whose id is the
+  number that was asked for, falling back to the first only when DHL echoed
+  nothing recognisable.
+- **Nothing depends on the order of `events`.** The live API returns them
+  newest-first — the opposite of every other carrier here — and the published
+  contract promises neither order. DHL hands back a separate `status` object that
+  *is* the current state, so the provider reads that and treats `events` as an
+  unordered bag it only searches by status code.
+
+**Pacing, and what it does not protect.** The free tier is 250 calls a day at
+one per five seconds. The provider's bucket enforces the pace, not the quota —
+five seconds apart is 17,000 calls a day — so a large enough fleet exhausts the
+allowance first. The 429 is the real guarantee, and the engine classifies it as
+busy rather than broken, so a poll that runs out at 4pm resumes instead of
+tripping the breaker. Put `refresh_tracking` on a cron flow filtered to the
+consignments that are not `delivered` yet: that filter is what keeps the
+allowance spent on parcels still in motion.
+
+There is a push (webhook) version of this API and it does support `ecommerce-tr`,
+but access is granted through a form on the developer portal rather than by a
+subscribe endpoint — there is nothing for `IntegrationWebhook.register` to call,
+so polling is the whole story today.
 
 #### The SOAP helper
 

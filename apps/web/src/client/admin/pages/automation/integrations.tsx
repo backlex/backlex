@@ -178,6 +178,10 @@ const BRANDS: Record<string, Brand> = {
   easypost: { name: "EasyPost", mark: "Ep", markBg: "#164DFF" },
   yurtici: { name: "Yurtiçi Kargo", mark: "YK", markBg: "#004B93" },
   aras: { name: "Aras Kargo", mark: "AK", markBg: "#00539F" },
+  // One card covers every DHL division the unified tracking API fronts — the
+  // Turkish one among them, which is why the description names MNG Kargo: the
+  // brand changed in 2025 and an operator still looks for the old name.
+  dhl: { name: "DHL", mark: "DHL", markBg: "#D40511" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -343,6 +347,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Book a consignment, ask where the parcel is, and cancel it.`;
       case "aras":
         return t`Book a consignment and cancel it.`;
+      case "dhl":
+        return t`Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo).`;
       default:
         return "";
     }

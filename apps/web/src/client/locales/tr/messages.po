@@ -19088,6 +19088,10 @@ msgstr "İstekler geldikçe izler görünür. SDK veya yönetim arayüzüyle bir
 msgid "Traces refreshed."
 msgstr "İzler yenilendi."
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo)."
+msgstr "DHL eCommerce Türkiye (eski adıyla MNG Kargo) dahil, DHL'in tüm birimlerinde bir gönderiyi takip edin."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Track at least two different event names, then come back to measure how visitors move between them."
 msgstr "En az iki farklı olay adı izleyin, sonra ziyaretçilerin bunlar arasında nasıl ilerlediğini ölçmek için geri dönün."

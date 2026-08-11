@@ -19088,6 +19088,10 @@ msgstr "Traces appear as requests come in. Make a call with the SDK or admin UI,
 msgid "Traces refreshed."
 msgstr "Traces refreshed."
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo)."
+msgstr "Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo)."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Track at least two different event names, then come back to measure how visitors move between them."
 msgstr "Track at least two different event names, then come back to measure how visitors move between them."

@@ -2356,6 +2356,10 @@ msgstr "Yanıtlayan"
 msgid "Answered in {0}ms"
 msgstr "{0}ms içinde yanıtladı"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Answers afresh every time — safe to put on a schedule."
+msgstr "Her seferinde yeni bir yanıt verir — zamanlanmış çalıştırmaya uygun."
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Any audience accepted"
 msgstr "Her audience kabul ediliyor"
@@ -3138,6 +3142,10 @@ msgstr "İçerik (metin)"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Book"
 msgstr "Rezerve et"
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a shipment and store its label, read where the parcel is, and cancel it."
+msgstr "Gönderi oluşturup etiketini saklar, kargonun nerede olduğunu okur ve iptal eder."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Booked"
@@ -13896,6 +13904,10 @@ msgstr "Bir e-tabloyu zamanlanmış olarak koleksiyona çeker."
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull an Airtable table into a collection on a schedule."
 msgstr "Bir Airtable tablosunu zamanlanmış olarak koleksiyona çeker."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull marketplace orders in with their lines, push stock and price out, and notify package status back."
+msgstr "Pazar yeri siparişlerini kalemleriyle çeker, stok ve fiyatı gönderir, paket durumunu geri bildirir."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."

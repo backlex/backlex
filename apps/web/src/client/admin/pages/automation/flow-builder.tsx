@@ -29,6 +29,9 @@ type TaskDef = {
   label: string;
   settingFields: { key: string; label: string; placeholder?: string; options?: { value: string; label: string }[] }[];
   outputs: { key: string; label: string; artifact?: boolean }[];
+  /** No side effect at the provider, so it answers afresh every time. Changes
+   *  what this panel says about re-running, and hides the force switch. */
+  repeatable?: boolean;
 };
 
 const dataInterpolationExample = "{{ data.* }}";
@@ -1111,7 +1114,13 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                   ...tasksForKind.map((x) => ({ value: x.id, label: x.label })),
                 ]}
               />
-              <span className="text-[11.5px] text-muted-foreground"><Trans>Runs at most once per row. A flow that fires again reads the first answer back.</Trans></span>
+              <span className="text-[11.5px] text-muted-foreground">
+                {chosenTask?.repeatable ? (
+                  <Trans>Answers afresh every time — safe to put on a schedule.</Trans>
+                ) : (
+                  <Trans>Runs at most once per row. A flow that fires again reads the first answer back.</Trans>
+                )}
+              </span>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans></label>
@@ -1174,13 +1183,18 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 <span className="text-[11.5px] text-muted-foreground"><Trans>An answer with nowhere to land is still returned to the flow — it just isn't written onto the row.</Trans></span>
               </div>
             )}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-col">
-                <span className="text-[12.5px] font-medium text-foreground"><Trans>Run it again</Trans></span>
-                <span className="text-[11.5px] text-muted-foreground"><Trans>Off means once per row, ever. On re-books a shipment that was cancelled at the provider.</Trans></span>
+            {/* Hidden for a repeatable task rather than shown disabled: there is
+                nothing for it to force. A switch that changes nothing is worse
+                than no switch — it reads as a decision the author made. */}
+            {!chosenTask?.repeatable && (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-col">
+                  <span className="text-[12.5px] font-medium text-foreground"><Trans>Run it again</Trans></span>
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Off means once per row, ever. On re-books a shipment that was cancelled at the provider.</Trans></span>
+                </div>
+                <Switch checked={Boolean(node.config.force)} onChange={(v: boolean) => onChange({ config: { force: v } })} />
               </div>
-              <Switch checked={Boolean(node.config.force)} onChange={(v: boolean) => onChange({ config: { force: v } })} />
-            </div>
+            )}
           </>
         )}
         {node.kind === "action" && (node.type === "webhook" || node.type === "request") && (

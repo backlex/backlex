@@ -162,6 +162,8 @@ const BRANDS: Record<string, Brand> = {
   clickhouse: { name: "ClickHouse", mark: "CH", markBg: "#FFCC01" },
   bigquery: { name: "Google BigQuery", mark: "BQ", markBg: "#4285F4" },
   xero: { name: "Xero", mark: <SI d={ICONS.xero!} />, markBg: "#13B5EA" },
+  trendyol: { name: "Trendyol", mark: "Ty", markBg: "#F27A1A" },
+  easypost: { name: "EasyPost", mark: "Ep", markBg: "#164DFF" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -308,6 +310,10 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Sync records to a Typesense collection on data events.`;
       case "elasticsearch":
         return t`Sync records to an Elasticsearch or OpenSearch index on data events.`;
+      case "trendyol":
+        return t`Pull marketplace orders in with their lines, push stock and price out, and notify package status back.`;
+      case "easypost":
+        return t`Book a shipment and store its label, read where the parcel is, and cancel it.`;
       default:
         return "";
     }

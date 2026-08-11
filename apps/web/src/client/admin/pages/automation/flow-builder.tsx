@@ -1190,7 +1190,12 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-col">
                   <span className="text-[12.5px] font-medium text-foreground"><Trans>Run it again</Trans></span>
-                  <span className="text-[11.5px] text-muted-foreground"><Trans>Off means once per row, ever. On re-books a shipment that was cancelled at the provider.</Trans></span>
+                  {/* Deliberately not carrier-worded. This switch was written
+                      when EasyPost was the only provider that had one, so it
+                      said "re-books a shipment" — copy that is simply wrong on
+                      `trendyol.mark_invoiced` or `n11.approve_package`, which
+                      are the majority of once-only tasks now. */}
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Off means once per row, ever. On asks the provider again for a row it has already run on.</Trans></span>
                 </div>
                 <Switch checked={Boolean(node.config.force)} onChange={(v: boolean) => onChange({ config: { force: v } })} />
               </div>

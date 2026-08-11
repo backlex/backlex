@@ -1077,6 +1077,10 @@ msgstr "🔒 Needs your own API key — without one this falls back to {0} on ma
 msgid "0532 111 22 33"
 msgstr "0532 111 22 33"
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "1 failed delivery in a row"
+msgstr "1 failed delivery in a row"
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "1 file"
 msgstr "1 file"
@@ -12208,8 +12212,12 @@ msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Off keeps the provider configured but hidden from sign-in."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
-msgid "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
-msgstr "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
+msgid "Off means once per row, ever. On asks the provider again for a row it has already run on."
+msgstr "Off means once per row, ever. On asks the provider again for a row it has already run on."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+#~ msgid "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
+#~ msgstr "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "OIDC / OAuth2 SSO"

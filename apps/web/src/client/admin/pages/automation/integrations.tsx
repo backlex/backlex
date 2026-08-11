@@ -498,7 +498,15 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
                       ) : null}
                       {isConnected && failures > 0 ? (
                         <div className="text-[11.5px] text-destructive truncate">
-                          <Trans>{failures} failed deliveries in a row</Trans>
+                          {/* Written out per case rather than pluralised, the
+                              same call `integration-syncs-card.tsx` makes: this
+                              codebase has no `<Plural>`, and "1 failed
+                              deliveries" is the slip "Every 1 hours" was. */}
+                          {failures === 1 ? (
+                            <Trans>1 failed delivery in a row</Trans>
+                          ) : (
+                            <Trans>{failures} failed deliveries in a row</Trans>
+                          )}
                         </div>
                       ) : null}
                     </div>
@@ -653,7 +661,7 @@ function DeliveryLogDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="w-full gap-0 p-0 sm:max-w-[560px]">
+      <DialogContent className="w-full gap-0 p-0 [&>*]:min-w-0 sm:max-w-[560px]">
         <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">{t`${name} deliveries`}</DialogTitle>
           <DialogDescription className="text-[12.5px] text-muted-foreground">
@@ -769,7 +777,12 @@ function ConnectDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="w-full gap-0 p-0 sm:max-w-[520px]">
+      {/* `[&>*]:min-w-0`: DialogContent is a grid, so its column is sized from
+          the body's max-content — a long selected Select label (UPS's
+          "Customer Integration Environment (wwwcie.ups.com)") stretched the
+          column past the dialog's own max-width and `overflow-hidden` clipped
+          every field. `min-w-0` on the trigger alone cannot reach the column. */}
+      <DialogContent className="w-full gap-0 p-0 [&>*]:min-w-0 sm:max-w-[520px]">
         <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">{t`Connect ${name}`}</DialogTitle>
           <DialogDescription className="text-[12.5px] text-muted-foreground">

@@ -1077,6 +1077,10 @@ msgstr "🔒 Kendi API anahtarını gerektirir — anahtar yoksa managed cloud'd
 msgid "0532 111 22 33"
 msgstr "0532 111 22 33"
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "1 failed delivery in a row"
+msgstr "üst üste 1 başarısız teslimat"
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "1 file"
 msgstr "1 dosya"
@@ -12208,8 +12212,12 @@ msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Kapalı, sağlayıcıyı yapılandırılmış tutar ancak girişte gizler."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
-msgid "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
-msgstr "Kapalıyken satır başına yalnızca bir kez çalışır. Açıkken, sağlayıcıda iptal edilmiş bir gönderiyi yeniden oluşturur."
+msgid "Off means once per row, ever. On asks the provider again for a row it has already run on."
+msgstr "Kapalı, satır başına yalnızca bir kez demektir. Açık, daha önce çalıştığı bir satır için sağlayıcıya yeniden sorar."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+#~ msgid "Off means once per row, ever. On re-books a shipment that was cancelled at the provider."
+#~ msgstr "Kapalıyken satır başına yalnızca bir kez çalışır. Açıkken, sağlayıcıda iptal edilmiş bir gönderiyi yeniden oluşturur."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "OIDC / OAuth2 SSO"

@@ -20,6 +20,11 @@
  *      recovered from inside an entry chunk first — which is what
  *      `--marker` searching does here automatically.
  *
+ *   3. **That recovery has to be transitive.** Fetching the entries and then
+ *      their direct references is not enough; see `collectChunks`. Getting
+ *      this wrong produces a false FAIL, which is the expensive direction —
+ *      it accuses a deploy that actually landed.
+ *
  * Usage:
  *   bun scripts/verify-deploy.ts --host https://backlex-admin.kinyasfurkan.workers.dev \
  *     --marker adyen --marker 0ABF53
@@ -78,32 +83,46 @@ const checkHealth = async (host: string): Promise<Record<string, unknown> | null
   }
 };
 
+/** Stop expanding after this many chunks — a runaway guard, not a budget. */
+const MAX_CHUNKS = 600;
+
 /**
- * Every JS asset the SPA can reach: the entry chunks named in `index.html`,
- * plus the lazily-imported chunks whose hashed filenames only appear as string
- * literals inside those entries.
+ * Every JS asset the SPA can reach, followed **transitively** from the entries
+ * named in `index.html`.
+ *
+ * This used to walk exactly two levels: the entries, then the chunk names
+ * appearing inside them. That held only while `index.html` pointed at a bundle
+ * that itself named every page chunk. It stopped holding — the entry is now a
+ * ~700-byte preload shim whose only import is `main-<hash>.js`, so the page
+ * chunks sit at level THREE and were never fetched. The script kept reporting
+ * "the live bundle predates them" for markers that were sitting in the
+ * deployed bundle the whole time, which is worse than no check at all: a false
+ * FAIL here reads as a broken deploy and invites a re-push or a rollback.
+ *
+ * So: expand to a fixpoint. Bundlers are free to add another layer of
+ * indirection tomorrow and this keeps working.
  */
 const collectChunks = async (host: string): Promise<Map<string, string>> => {
   const bodies = new Map<string, string>();
   const index = await (await fetch(`${host}/`)).text();
 
-  const entries = [...new Set(index.match(/\/assets\/[A-Za-z0-9._-]+\.js/g) ?? [])];
-  for (const path of entries) {
-    const body = await fetchAsset(`${host}${path}`);
-    if (body) bodies.set(path, body);
-  }
+  let frontier = [...new Set(index.match(/\/assets\/[A-Za-z0-9._-]+\.js/g) ?? [])];
 
-  // Lazy chunks are referenced by bare filename inside the entry bundles.
-  const lazy = new Set<string>();
-  for (const body of bodies.values()) {
-    for (const name of body.match(/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,}\.js/g) ?? []) {
-      const path = `/assets/${name}`;
-      if (!bodies.has(path)) lazy.add(path);
+  while (frontier.length > 0 && bodies.size < MAX_CHUNKS) {
+    const next = new Set<string>();
+    for (const path of frontier) {
+      if (bodies.has(path)) continue;
+      const body = await fetchAsset(`${host}${path}`);
+      if (!body) continue;
+      bodies.set(path, body);
+      // Chunk names appear as bare hashed filenames, whether they are static
+      // imports or the string literal in a dynamic one.
+      for (const name of body.match(/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,}\.js/g) ?? []) {
+        const child = `/assets/${name}`;
+        if (!bodies.has(child)) next.add(child);
+      }
     }
-  }
-  for (const path of lazy) {
-    const body = await fetchAsset(`${host}${path}`);
-    if (body) bodies.set(path, body);
+    frontier = [...next];
   }
 
   return bodies;

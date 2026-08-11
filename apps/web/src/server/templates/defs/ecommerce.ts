@@ -453,7 +453,15 @@ export const ecommerce: SchemaTemplate = {
             select("status", [ch("pending", C.amber), ch("authorized", C.blue), ch("partially_paid", C.amber, "Partially paid"), ch("paid", C.green), ch("partially_refunded", C.purple, "Partially refunded"), ch("refunded", C.gray), ch("voided", C.red)], { default: "pending", label: "Payment status" }),
             select("fulfillment_status", [ch("unfulfilled", C.gray), ch("partial", C.amber), ch("fulfilled", C.green), ch("restocked", C.slate)], { default: "unfulfilled", label: "Fulfillment status" }),
           ),
-          select("channel", [ch("web", C.blue), ch("pos", C.teal), ch("draft", C.gray)], { default: "web" }),
+          ...half(
+            select("channel", [ch("web", C.blue), ch("pos", C.teal), ch("marketplace", C.purple), ch("draft", C.gray)], { default: "web" }),
+            // The marketplace's own handle for this order's shipment package.
+            // A marketplace's status notifications address the PACKAGE, not the
+            // order, so an order pulled in from one has nowhere to be notified
+            // about without this — it is what the Trendyol tasks' package-id
+            // setting is pointed at.
+            text("marketplace_package_id", { indexed: true, label: "Marketplace package ID" }),
+          ),
         ]),
         sec("Delivery", [
           ...half(rel("shipping_address", "addresses", { label: "Ship to" }), rel("billing_address", "addresses", { label: "Bill to" })),
@@ -582,8 +590,48 @@ export const ecommerce: SchemaTemplate = {
           url("tracking_url", { label: "Tracking URL" }),
           ...half(ts("shipped_at", { indexed: true, label: "Shipped at" }), ts("delivered_at", { label: "Delivered at" })),
         ]),
+        // What a carrier integration books and then reads back. Separate from
+        // Tracking above because those four are what a human types when nobody
+        // booked it through here — these are written by the provider and are
+        // the handles it needs to ask again or cancel.
+        sec("Carrier booking", [
+          hint(
+            "fulfillments_carrier",
+            "Filled in by a carrier integration. `Status` above is yours — where the fulfillment is in your process; `Carrier status` is the carrier's own last word, and only it moves on its own.",
+          ),
+          ...half(
+            text("carrier_code", { label: "Booked with", description: "The integration that booked it, e.g. easypost." }),
+            // The handle the carrier knows this consignment by, and the one
+            // that cancels or re-reads it. Carriers that print a barcode make
+            // that barcode the handle; aggregators issue an id instead.
+            text("carrier_shipment_id", { indexed: true, label: "Carrier shipment ID" }),
+          ),
+          ...half(
+            // The vocabulary aggregators normalise every carrier onto, so a
+            // second carrier does not arrive with a second set of words.
+            select(
+              "shipment_status",
+              [
+                ch("pre_transit", C.slate),
+                ch("in_transit", C.blue),
+                ch("out_for_delivery", C.teal),
+                ch("delivered", C.green),
+                ch("available_for_pickup", C.amber),
+                ch("return_to_sender", C.amber),
+                ch("failure", C.red),
+                ch("cancelled", C.gray),
+                ch("unknown", C.gray),
+              ],
+              { label: "Carrier status" },
+            ),
+            ts("estimated_delivery_at", { label: "Estimated delivery" }),
+          ),
+          // A storage key, not a URL: a signed link expires, and a column of
+          // dead links is worse than one the reader signs on demand.
+          text("label_key", { label: "Label (storage key)" }),
+        ]),
       ),
-      samples: [{ order: { ref: "orders:0" }, location: { ref: "locations:0" }, status: "success", tracking_number: "1Z999AA10123456784", tracking_company: "UPS", shipped_at: ms("2026-01-13") }],
+      samples: [{ order: { ref: "orders:0" }, location: { ref: "locations:0" }, status: "success", tracking_number: "1Z999AA10123456784", tracking_company: "UPS", shipment_status: "delivered", shipped_at: ms("2026-01-13") }],
     },
     {
       slug: "reviews", group: "Customers", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",

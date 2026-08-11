@@ -198,8 +198,18 @@ export const createIntegrationSyncTool: McpTool = {
       collection: { type: "string", description: "Managed collection slug." },
       direction: {
         type: "string",
-        enum: ["pull", "push"],
-        description: "Rows in (default) or the collection mirrored out.",
+        enum: ["pull", "push", "inbound"],
+        description:
+          "Rows in (default), the collection mirrored out, or `inbound` — nothing to poll, existing to " +
+          "receive the provider's webhook deliveries. A `pull` sync may ALSO have an endpoint; that is the " +
+          "normal case for a marketplace, and the poll is what repairs the deliveries a webhook loses.",
+      },
+      matchField: {
+        type: "string",
+        description:
+          "The collection field a delivery is matched on, for a provider whose webhook updates rows it did " +
+          "not create (a carrier's tracking events name a shipment id). Read the catalog's `webhooks[kind]`: " +
+          "required when `landing` is `patch`, refused when it is `upsert`.",
       },
       settings: { type: "object", additionalProperties: true },
       mapping: {
@@ -346,6 +356,10 @@ export const updateIntegrationSyncTool: McpTool = {
       },
       intervalMinutes: { type: "number" },
       enabled: { type: "boolean" },
+      matchField: {
+        type: "string",
+        description: "The collection field a patching delivery is matched on.",
+      },
     },
     required: ["id"],
     additionalProperties: false,
@@ -399,6 +413,111 @@ export const runIntegrationSyncTool: McpTool = {
   },
 };
 
+export const enableIntegrationWebhookTool: McpTool = {
+  name: "integrations.enable_webhook",
+  description:
+    "Turn on the endpoint a sync receives the provider's deliveries on, and register it at the provider " +
+    "where that is possible — so a marketplace pushes order status changes instead of being polled, and a " +
+    "carrier pushes tracking scans. The SECRET comes back exactly once and is never readable again: show it " +
+    "to the operator, do not store it elsewhere. Calling this again rotates the secret and keeps the URL. A " +
+    "failed registration does NOT undo the endpoint — `registrationError` says what to retry. Read the " +
+    "catalog's `webhooks[kind]` first: a `patch` provider needs the sync's `matchField` set before this works.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      syncId: { type: "string" },
+      events: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Event keys from the catalog's `webhooks[kind].events`. Empty or absent = every event the " +
+          "provider declares.",
+      },
+    },
+    required: ["syncId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { syncId, ...body } = args as { syncId?: string } & Record<string, unknown>;
+    if (!syncId) throw new Error("VALIDATION: syncId is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(syncId)}/webhook`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const updateIntegrationWebhookEventsTool: McpTool = {
+  name: "integrations.update_webhook_events",
+  description:
+    "Change which events an endpoint accepts. Empty means every event the provider declares. Where the " +
+    "provider filters server-side this re-registers the endpoint, which rotates the secret as a side effect.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      syncId: { type: "string" },
+      events: { type: "array", items: { type: "string" } },
+    },
+    required: ["syncId", "events"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { syncId, events } = args as { syncId?: string; events?: unknown };
+    if (!syncId) throw new Error("VALIDATION: syncId is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(syncId)}/webhook`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ events }),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const disableIntegrationWebhookTool: McpTool = {
+  name: "integrations.disable_webhook",
+  description:
+    "Tear an endpoint down. The provider is asked to stop first, but cannot block it — deliveries to the " +
+    "old URL then resolve to nothing. The sync itself, and every row it already wrote, stay.",
+  inputSchema: {
+    type: "object",
+    properties: { syncId: { type: "string" } },
+    required: ["syncId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const syncId = String(args.syncId ?? "");
+    if (!syncId) throw new Error("VALIDATION: syncId is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(syncId)}/webhook`, {
+      method: "DELETE",
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const integrationInboundDeliveriesTool: McpTool = {
+  name: "integrations.inbound_deliveries",
+  description:
+    "What a provider delivered to one sync's endpoint, newest first — the answer to \"the marketplace says " +
+    "it sent it\". `status` distinguishes what happened: `applied` wrote rows, `unmatched` found no row " +
+    "holding the id the delivery named, `filtered` was an event this endpoint is not subscribed to, " +
+    "`ignored` was a ping or an event kind we do not read, `duplicate` was a retry of something already " +
+    "applied, `rejected` did not present the secret, and `failed` was ours.",
+  inputSchema: {
+    type: "object",
+    properties: { syncId: { type: "string" } },
+    required: ["syncId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const syncId = String(args.syncId ?? "");
+    if (!syncId) throw new Error("VALIDATION: syncId is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(syncId)}/deliveries`);
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const integrationsTools: McpTool[] = [
   integrationCatalogTool,
   listIntegrationsTool,
@@ -414,4 +533,8 @@ export const integrationsTools: McpTool[] = [
   runIntegrationSyncTool,
   runIntegrationTaskTool,
   integrationTaskRunsTool,
+  enableIntegrationWebhookTool,
+  updateIntegrationWebhookEventsTool,
+  disableIntegrationWebhookTool,
+  integrationInboundDeliveriesTool,
 ];

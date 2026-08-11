@@ -3345,6 +3345,40 @@ export const integrationSyncs = sqliteTable(
     /** Drives the same auto-disable breaker the delivery path uses. */
     consecutiveFailures: integer("consecutive_failures").notNull().default(0),
     disabledReason: text("disabled_reason"),
+    /**
+     * The routing key in the URL a provider posts deliveries to.
+     *
+     * Null until an operator turns the endpoint on. It lives on the SYNC rather
+     * than in a table of its own because a delivery has to land exactly where a
+     * pull would: same collection, same mapping, and above all the same id
+     * namespace, which is derived from this row's id. A webhook with its own row
+     * would mint `trendyol_<hookid>_<pkg>` beside the poll's
+     * `trendyol_<syncid>_<pkg>` and every order would exist twice.
+     */
+    webhookToken: text("webhook_token"),
+    /**
+     * The shared secret this endpoint expects, encrypted at rest.
+     *
+     * Per subscription, not per connection: it is handed to a third party, so
+     * rotating it must be able to invalidate one endpoint without touching the
+     * credentials the same connection pulls orders with.
+     */
+    webhookSecret: text("webhook_secret"),
+    /** Event keys this endpoint accepts. Empty means every event the provider
+     *  declares — the same reading the outbound delivery filter uses. */
+    webhookEvents: text("webhook_events", { mode: "json" }).$type<string[]>().notNull().default([]),
+    /** The provider's own id for the registration we created, so it can be
+     *  removed again. Null when the operator registered the URL by hand. */
+    webhookExternalId: text("webhook_external_id"),
+    /**
+     * The collection field a `patch` delivery is matched on.
+     *
+     * A carrier's tracking update is ABOUT a row that already exists — one a
+     * person and a booking task built — so the delivery names a shipment id and
+     * this says which column holds it. Unused by an `upsert` landing, whose
+     * records are addressed by the namespaced id instead.
+     */
+    matchField: text("match_field"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
@@ -3353,6 +3387,60 @@ export const integrationSyncs = sqliteTable(
     index("integration_syncs_integration_idx").on(t.integrationId),
     // The scheduler sweeps "enabled and due", so it reads both together.
     index("integration_syncs_due_idx").on(t.enabled, t.lastRunAt),
+    // The delivery path resolves a token on every inbound request, and the
+    // uniqueness is what makes one token mean one subscription. Partial, so the
+    // many syncs with no endpoint do not collide on null.
+    uniqueIndex("integration_syncs_webhook_token_idx")
+      .on(t.webhookToken)
+      .where(sql`${t.webhookToken} IS NOT NULL`),
+  ],
+);
+
+/**
+ * One inbound webhook delivery, and what became of it.
+ *
+ * The log an operator reads when a marketplace insists it sent something. It is
+ * also the replay guard: `delivery_id` under a unique index means a provider's
+ * retry is recognised as the delivery it already applied rather than applied a
+ * second time. Both providers that ship with this retry — EasyPost six times,
+ * Trendyol every five minutes until it succeeds — so a retry is the normal case,
+ * not an edge one.
+ *
+ * Rows here are what the sync's webhook health is derived from, which is why the
+ * sync row grew no `webhook_last_*` columns: two places recording the same fact
+ * is how they come to disagree.
+ */
+export const integrationWebhookDeliveries = sqliteTable(
+  "integration_webhook_deliveries",
+  {
+    id: text("id").primaryKey(),
+    /** Never null: a delivery writes into a workspace's collection. */
+    tenantId: text("tenant_id").notNull(),
+    /** The subscription that received it — a row in `integration_syncs`. */
+    syncId: text("sync_id").notNull(),
+    integrationId: text("integration_id").notNull(),
+    /** The provider's event key, as parsed. */
+    event: text("event").notNull(),
+    /**
+     * The provider's own id for this delivery, or a digest of the body when it
+     * sends none. Never null, because a guard that is sometimes absent is not a
+     * guard — see the service for what the digest costs.
+     */
+    deliveryId: text("delivery_id").notNull(),
+    /** `applied` | `ignored` | `filtered` | `duplicate` | `rejected` | `failed`. */
+    status: text("status").notNull(),
+    /** Rows written, so "it arrived and changed nothing" is visible. */
+    rowsWritten: integer("rows_written").notNull().default(0),
+    error: text("error"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    // The guard. Scoped to the subscription rather than global: two workspaces
+    // watching two sellers may legitimately be sent the same provider event id.
+    uniqueIndex("integration_webhook_deliveries_once_idx").on(t.syncId, t.deliveryId),
+    index("integration_webhook_deliveries_tenant_idx").on(t.tenantId),
+    // What the admin panel reads: this subscription's deliveries, newest first.
+    index("integration_webhook_deliveries_sync_idx").on(t.syncId, t.createdAt),
   ],
 );
 

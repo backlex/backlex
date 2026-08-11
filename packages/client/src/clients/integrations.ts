@@ -75,8 +75,16 @@ export interface IntegrationSync {
   id: string;
   integrationId: string;
   collection: string;
-  /** `pull` brings rows in; `push` mirrors the collection out. */
-  direction: "pull" | "push";
+  /**
+   * `pull` brings rows in; `push` mirrors the collection out; `inbound` has
+   * nothing to poll and exists to receive the provider's webhook deliveries.
+   *
+   * A `pull` sync may ALSO have an endpoint — the normal case for a marketplace.
+   * Both land through this sync's mapping and id namespace, which is what makes
+   * a delivery about an order the poll already imported update that row instead
+   * of creating a second one.
+   */
+  direction: "pull" | "push" | "inbound";
   /** Which spreadsheet / base / database. Non-secret by contract. */
   settings: Record<string, unknown>;
   /** External field name → collection field name. */
@@ -93,6 +101,49 @@ export interface IntegrationSync {
   lastError: string | null;
   consecutiveFailures: number;
   disabledReason: string | null;
+  /** The collection field a patching delivery is matched on, if any. */
+  matchField: string | null;
+  /** The endpoint, described. Never the secret — that is returned once, by
+   *  `enableWebhook`. Null when this sync receives nothing. */
+  webhook: { path: string; events: string[]; registered: boolean } | null;
+  createdAt: number | string | null;
+}
+
+/** What a provider that CALLS US needs a form to know. From the catalog. */
+export interface IntegrationWebhookInfo {
+  /** `hmac` signs the body; `header` and `basic` present the secret as-is. */
+  auth: "hmac" | "header" | "basic";
+  /** The header the secret or its signature arrives in. */
+  header: string | null;
+  events: { key: string; label: string }[];
+  /** `upsert` — the delivery IS the record. `patch` — it is about a row you
+   *  already have, found through the sync's `matchField`. */
+  landing: "upsert" | "patch";
+  /** What the match field holds, for a form to label. `patch` only. */
+  matchLabel: string | null;
+  /** We can register the endpoint at the provider — nothing to paste. */
+  selfRegistering: boolean;
+}
+
+/** A live endpoint. `secret` is present ONLY on the call that minted it. */
+export interface IntegrationWebhookEndpoint {
+  url: string;
+  secret: string | null;
+  events: string[];
+  registered: boolean;
+  /** The endpoint is live and the provider was not told. Retry by enabling again. */
+  registrationError?: string;
+}
+
+/** One delivery a provider made, and what became of it. */
+export interface IntegrationInboundDelivery {
+  id: string;
+  syncId: string;
+  event: string;
+  /** `applied` | `unmatched` | `filtered` | `ignored` | `duplicate` | `rejected` | `failed`. */
+  status: string;
+  rowsWritten: number;
+  error: string | null;
   createdAt: number | string | null;
 }
 
@@ -107,7 +158,7 @@ export interface IntegrationSyncInput {
    * be a `push` target and vice versa, and the mapping is read in the direction
    * of travel — external → field on a pull, field → external on a push.
    */
-  direction?: "pull" | "push";
+  direction?: "pull" | "push" | "inbound";
   settings?: Record<string, unknown>;
   /** At least one entry; every target must be a writable field. */
   mapping: Record<string, string>;
@@ -121,6 +172,15 @@ export interface IntegrationSyncInput {
   childMappings?: Record<string, IntegrationChildMapping>;
   intervalMinutes?: number;
   enabled?: boolean;
+  /**
+   * The collection field a delivery is matched on.
+   *
+   * Required for a provider whose webhook updates rows it did not create — a
+   * carrier's tracking events name a shipment id, and this says which column
+   * holds it. Refused for a provider that sends whole records, where a record is
+   * addressed by its namespaced id.
+   */
+  matchField?: string | null;
 }
 
 /** One thing a provider can be asked to do TO a row. */
@@ -172,6 +232,9 @@ export interface IntegrationsClient {
       /** Register this exact URI with each OAuth provider. Server-derived, so
        *  it stays right behind a proxy where the browser's origin would not. */
       oauthRedirectUri: string;
+      /** Per-kind endpoint description, for the providers that call us. A kind
+       *  that is absent sends no webhooks. */
+      webhooks: Record<string, IntegrationWebhookInfo>;
     };
   }>;
   /** Connected integrations in the active workspace (secrets masked). */
@@ -222,6 +285,25 @@ export interface IntegrationsClient {
    * a longer import resumes on the schedule.
    */
   runSync: (id: string) => Promise<{ data: { written: number; pages: number; complete: boolean } }>;
+  /**
+   * Turn on the endpoint this sync receives deliveries on, and register it at
+   * the provider where that is possible.
+   *
+   * The secret comes back EXACTLY ONCE. It is a bearer credential a third party
+   * also holds, so nothing hands it back on a later read — call this again to
+   * rotate, which keeps the same URL. A failed registration does not roll the
+   * endpoint back: the URL works, and `registrationError` says what to retry.
+   */
+  enableWebhook: (
+    id: string,
+    input?: { events?: string[] },
+  ) => Promise<{ data: IntegrationWebhookEndpoint }>;
+  /** Change which events the endpoint accepts. Empty = every declared event. */
+  updateWebhookEvents: (id: string, events: string[]) => Promise<{ data: IntegrationSync }>;
+  /** Tear the endpoint down. The provider is asked to stop, but cannot block it. */
+  disableWebhook: (id: string) => Promise<{ ok: boolean }>;
+  /** What arrived on the endpoint, newest first — an endpoint's whole health. */
+  inboundDeliveries: (id: string) => Promise<{ data: IntegrationInboundDelivery[] }>;
 }
 
 export const makeIntegrations = (core: ClientCore): IntegrationsClient => {
@@ -231,10 +313,14 @@ export const makeIntegrations = (core: ClientCore): IntegrationsClient => {
   const integ = (id: string) => `/api/admin/integrations/${encodeURIComponent(id)}`;
   const integrations: IntegrationsClient = {
     catalog: () =>
-      core.request<{ data: { kinds: string[]; providers: IntegrationProvider[]; oauthRedirectUri: string } }>(
-        "GET",
-        "/api/admin/integrations/catalog",
-      ),
+      core.request<{
+        data: {
+          kinds: string[];
+          providers: IntegrationProvider[];
+          oauthRedirectUri: string;
+          webhooks: Record<string, IntegrationWebhookInfo>;
+        };
+      }>("GET", "/api/admin/integrations/catalog"),
     list: () => core.request<{ data: Integration[] }>("GET", "/api/admin/integrations"),
     connect: (input) => core.request<{ data: Integration }>("POST", "/api/admin/integrations", input),
     disconnect: (id) => core.request<{ ok: boolean }>("DELETE", integ(id)),
@@ -274,6 +360,28 @@ export const makeIntegrations = (core: ClientCore): IntegrationsClient => {
         "POST",
         `/api/admin/integrations/syncs/${encodeURIComponent(id)}/run`,
         {},
+      ),
+    enableWebhook: (id, input) =>
+      core.request<{ data: IntegrationWebhookEndpoint }>(
+        "POST",
+        `/api/admin/integrations/syncs/${encodeURIComponent(id)}/webhook`,
+        input ?? {},
+      ),
+    updateWebhookEvents: (id, events) =>
+      core.request<{ data: IntegrationSync }>(
+        "PATCH",
+        `/api/admin/integrations/syncs/${encodeURIComponent(id)}/webhook`,
+        { events },
+      ),
+    disableWebhook: (id) =>
+      core.request<{ ok: boolean }>(
+        "DELETE",
+        `/api/admin/integrations/syncs/${encodeURIComponent(id)}/webhook`,
+      ),
+    inboundDeliveries: (id) =>
+      core.request<{ data: IntegrationInboundDelivery[] }>(
+        "GET",
+        `/api/admin/integrations/syncs/${encodeURIComponent(id)}/deliveries`,
       ),
   };
 

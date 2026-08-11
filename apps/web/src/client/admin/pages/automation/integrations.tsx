@@ -24,7 +24,12 @@ import {
 } from "@backlex/ui/components/dialog";
 import type { DestinationColumn } from "@backlex/integrations/provider";
 import { fetchSafely } from "../_shared";
-import { IntegrationSyncsCard, type ChildGroup, type SettingField } from "./integration-syncs-card";
+import {
+  IntegrationSyncsCard,
+  type ChildGroup,
+  type SettingField,
+  type WebhookInfo,
+} from "./integration-syncs-card";
 
 type Field = {
   key: string;
@@ -61,6 +66,9 @@ type Catalog = {
   /** Child groups a source returns beneath each record — an order's lines.
    *  A kind that is absent returns flat records and has none. */
   sourceChildGroups?: Record<string, ChildGroup[]>;
+  /** How each provider that CALLS US authenticates, what it sends, and whether
+   *  we can register the endpoint ourselves. Absent = sends no webhooks. */
+  webhooks?: Record<string, WebhookInfo>;
 };
 
 /** Config key holding the OAuth access token. Present (masked) once authorized,
@@ -217,6 +225,9 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
   );
   const recordPayloadKinds = new Set(
     (catalog.providers ?? []).filter((p) => p.recordPayload).map((p) => p.id),
+  );
+  const webhookKinds = new Set(
+    (catalog.providers ?? []).filter((p) => p.capabilities.includes("webhook")).map((p) => p.id),
   );
   const destinationKinds = new Set(
     (catalog.providers ?? []).filter((p) => p.capabilities.includes("destination")).map((p) => p.id),
@@ -537,6 +548,22 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
           ...connected
             .filter((i) => destinationKinds.has(i.kind) && !needsAuthorize(i))
             .map((i) => ({ id: i.id, kind: i.kind, label: brandFor(i.kind).name, direction: "push" as const })),
+          // A provider that CALLS US, and has no source to poll, still needs a
+          // row to land its deliveries through — that row is what holds the
+          // collection, the mapping and the endpoint. Offered only where there
+          // is nothing to pull: a marketplace already appears above as a pull,
+          // and its endpoint hangs on that same sync so the two converge on one
+          // row instead of writing two.
+          ...connected
+            .filter(
+              (i) => webhookKinds.has(i.kind) && !sourceKinds.has(i.kind) && !needsAuthorize(i),
+            )
+            .map((i) => ({
+              id: i.id,
+              kind: i.kind,
+              label: brandFor(i.kind).name,
+              direction: "inbound" as const,
+            })),
         ]}
         // Keyed by direction so one provider could declare both without the
         // dialog having to guess which set it is looking at.
@@ -550,6 +577,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         }}
         destinationColumns={catalog.destinationColumns ?? {}}
         childGroups={catalog.sourceChildGroups ?? {}}
+        webhooks={catalog.webhooks ?? {}}
         pushToast={pushToast}
       />
 

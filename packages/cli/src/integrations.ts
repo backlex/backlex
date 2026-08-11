@@ -50,7 +50,7 @@ interface ProviderRow {
   oauth?: boolean;
 }
 
-const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|syncs|deliveries|resume|disconnect>
+const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|syncs|hooks|deliveries|resume|disconnect>
 
   catalog                              providers available to connect
   catalog <kind>                       the config fields one provider needs
@@ -61,7 +61,12 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|
   authorize <id>                       print the OAuth link to open in a browser
   syncs [--integration <id>]           scheduled syncs + health
   sync-create --integration <id> --collection <slug>
-              [--direction pull|push]  rows in (default) or collection out
+              [--direction pull|push|inbound]
+                                       rows in (default), collection out, or
+                                       inbound — nothing to poll, the provider
+                                       calls us
+              [--match <field>]        inbound: the column a delivery is
+                                       matched on (carrier tracking events)
               --set k=v [...]          provider settings (see catalog)
               --map External=field [...]
                                        push: --map field=DestinationColumn
@@ -76,11 +81,21 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|
               [--force]                re-run one that already succeeded
   task-runs --collection <slug> --item <id>
                                        what was already done to a row
-  sync-update <id> [--every N] [--enable|--disable]
+  sync-update <id> [--every N] [--enable|--disable] [--match <field>]
   sync-delete <id>
+  hook-on <sync-id> [--events a,b]     turn the inbound endpoint on; prints the
+                                       URL and the secret ONCE, and registers it
+                                       at the provider where that is possible
+  hook-events <sync-id> --events a,b   change what the endpoint accepts
+  hook-off <sync-id>                   tear the endpoint down
+  hooks <sync-id>                      what the provider delivered, newest first
   deliveries <id> [--limit N]          recent attempts, newest first
   resume <id>                          re-enable a breaker-paused integration
   disconnect <id>
+
+An endpoint's secret is shown by \`hook-on\` and never again — it is a bearer
+credential the provider also holds. Lost means run \`hook-on\` again, which keeps
+the same URL and mints a new secret.
 
 Providers marked oauth=yes in the catalog are connected by redirect, not by a
 pasted key: save clientId + clientSecret with \`connect\`, then open the link
@@ -267,10 +282,16 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
         // otherwise fall through to the default and create a PULL, which fails
         // on its first run with an error about the wrong half of the provider.
         const direction = flag(args, "--direction");
-        if (direction !== undefined && direction !== "pull" && direction !== "push") {
-          process.stderr.write("--direction must be pull or push\n");
+        if (
+          direction !== undefined &&
+          direction !== "pull" &&
+          direction !== "push" &&
+          direction !== "inbound"
+        ) {
+          process.stderr.write("--direction must be pull, push or inbound\n");
           process.exit(1);
         }
+        const matchField = flag(args, "--match");
         // JSON rather than a repeated flag: a child group is four values deep
         // (group, collection, parent column, field map) and every flag syntax
         // that flattens it turns into a punctuation puzzle at the shell.
@@ -286,6 +307,7 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
           mapping,
           ...(childMappings === undefined ? {} : { childMappings }),
           ...(every === undefined ? {} : { intervalMinutes: Number(every) }),
+          ...(matchField === undefined ? {} : { matchField }),
         });
         if (json) printJson(data);
         else
@@ -385,8 +407,10 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
         if (every !== undefined) patch.intervalMinutes = Number(every);
         if (has(args, "--enable")) patch.enabled = true;
         if (has(args, "--disable")) patch.enabled = false;
+        const nextMatch = flag(args, "--match");
+        if (nextMatch !== undefined) patch.matchField = nextMatch;
         if (Object.keys(patch).length === 0) {
-          process.stderr.write("Nothing to change — pass --every, --enable or --disable\n");
+          process.stderr.write("Nothing to change — pass --every, --enable, --disable or --match\n");
           process.exit(1);
         }
         const { data } = await client.request<{ data: SyncRow }>(
@@ -406,6 +430,99 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
         }
         await client.request("DELETE", `${BASE}/syncs/${encodeURIComponent(id)}`);
         process.stdout.write("Deleted. Rows already pulled stay in the collection.\n");
+        return;
+      }
+      case "hook-on": {
+        const id = rest[0];
+        if (!id || id.startsWith("--")) {
+          process.stderr.write("Usage: backlex integrations hook-on <sync-id> [--events a,b]\n");
+          process.exit(1);
+        }
+        const events = csv(flag(rest, "--events"));
+        const { data } = await client.request<{
+          data: {
+            url: string;
+            secret: string | null;
+            events: string[];
+            registered: boolean;
+            registrationError?: string;
+          };
+        }>("POST", `${BASE}/syncs/${encodeURIComponent(id)}/webhook`, {
+          ...(events.length === 0 ? {} : { events }),
+        });
+        if (json) printJson(data);
+        else {
+          printKeyValues({
+            url: data.url,
+            secret: data.secret ?? "(not returned)",
+            events: data.events.length === 0 ? "all" : data.events.join(","),
+            registered: data.registered ? "yes" : "no",
+          });
+          // Said out loud rather than left to the docs: the secret is on screen
+          // exactly once, and the next command that prints this row will not
+          // have it.
+          process.stdout.write(
+            "\nThe secret is shown once. Save it now — nothing reads it back.\n",
+          );
+          if (data.registrationError) {
+            process.stdout.write(
+              `\nThe endpoint is live but ${data.registrationError}\n` +
+                "Run hook-on again to retry, or point the provider at the URL by hand.\n",
+            );
+          } else if (!data.registered) {
+            process.stdout.write("\nGive the URL and secret to the provider — it cannot be registered from here.\n");
+          }
+        }
+        return;
+      }
+      case "hook-events": {
+        const id = rest[0];
+        const events = flag(rest, "--events");
+        if (!id || id.startsWith("--") || events === undefined) {
+          process.stderr.write("Usage: backlex integrations hook-events <sync-id> --events a,b\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{ data: SyncRow }>(
+          "PATCH",
+          `${BASE}/syncs/${encodeURIComponent(id)}/webhook`,
+          { events: csv(events) },
+        );
+        if (json) printJson(data);
+        else printKeyValues({ id: data.id, events: csv(events).join(",") || "all" });
+        return;
+      }
+      case "hook-off": {
+        const id = rest[0];
+        if (!id || id.startsWith("--")) {
+          process.stderr.write("Usage: backlex integrations hook-off <sync-id>\n");
+          process.exit(1);
+        }
+        await client.request("DELETE", `${BASE}/syncs/${encodeURIComponent(id)}/webhook`);
+        process.stdout.write("Endpoint removed. The sync and every row it wrote stay.\n");
+        return;
+      }
+      case "hooks": {
+        const id = rest[0];
+        if (!id || id.startsWith("--")) {
+          process.stderr.write("Usage: backlex integrations hooks <sync-id>\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{
+          data: { event: string; status: string; rowsWritten: number; error: string | null }[];
+        }>("GET", `${BASE}/syncs/${encodeURIComponent(id)}/deliveries`);
+        if (json) printJson(data);
+        else
+          printTable(
+            data.map((d) => ({
+              event: d.event,
+              // The verdict is the column an operator came for: "applied" and
+              // "unmatched" look the same from the provider's side and mean
+              // completely different things here.
+              status: d.status,
+              rows: d.rowsWritten,
+              error: d.error ?? "",
+            })),
+          );
         return;
       }
       case "deliveries": {

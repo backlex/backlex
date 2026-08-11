@@ -109,11 +109,44 @@ const BATCH_SETTLE_MS = 1000;
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * The statuses a shipment package moves through, and the events a webhook can
+ * subscribe to — one list, because at Trendyol they are the same thing.
+ *
+ * Verbatim from the webhook documentation, upper-case as Trendyol sends them.
+ * The same value arrives title-case (`Created`, `Picking`) from the order API,
+ * so {@link packageStatus} normalises before anything compares against this.
+ *
+ * Declared above the provider because the descriptor's `events` list is built
+ * from it while the module loads — below, it would be read before it exists.
+ */
+const PACKAGE_STATUSES = [
+  "AWAITING",
+  "CREATED",
+  "PICKING",
+  "INVOICED",
+  "SHIPPED",
+  "AT_COLLECTION_POINT",
+  "DELIVERED",
+  "UNDELIVERED",
+  "CANCELLED",
+  "UNSUPPLIED",
+  "UNPACKED",
+  "RETURNED",
+  "VERIFIED",
+] as const;
+
+/** `AT_COLLECTION_POINT` → "At collection point". */
+const statusLabel = (s: string): string => {
+  const words = s.toLowerCase().replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
 export const trendyol = defineProvider({
   id: "trendyol",
   label: "Trendyol",
   category: "marketplace",
-  capabilities: ["source", "destination", "task"],
+  capabilities: ["source", "destination", "task", "webhook"],
   /**
    * 1,000 requests a minute is what the order API publishes. Paced under it
    * rather than at it: the bucket is per-isolate and best-effort, so two
@@ -374,7 +407,149 @@ export const trendyol = defineProvider({
       },
     },
   ],
+  /**
+   * The order stream, inverted — and the reason this engine grew a fifth shape.
+   *
+   * The pull above walks a 14-day window to notice that one package was
+   * cancelled. Trendyol will instead POST the package the moment its status
+   * moves, and it posts the SAME envelope the stream returns: `{ content: [...] }`
+   * of shipment packages. That is why `packageData` and `linesOf` are shared
+   * verbatim below rather than reimplemented — a webhook that mapped one field
+   * differently from the poll would have the two fight over the row.
+   *
+   * Four facts about Trendyol's webhooks, all of which the code depends on:
+   *
+   * **There is no signature.** A delivery authenticates itself by presenting a
+   * credential the seller chose: `x-api-key`, or HTTP Basic. So the secret is not
+   * a signing key here, it is a bearer token — which is why it is minted per
+   * subscription and rotatable, and why the endpoint must never be reachable
+   * without it.
+   *
+   * **Its events are the package statuses**, which means the subscription's event
+   * filter and Trendyol's own `subscribedStatuses` are the same list. It is sent
+   * at registration so the narrowing happens at their end too, and re-checked
+   * here because a webhook created before a status was deselected keeps sending.
+   *
+   * **One envelope may carry several packages**, each with its own status — hence
+   * a per-record event rather than one for the delivery.
+   *
+   * **It retries every 5 minutes until it succeeds**, then deactivates the
+   * webhook and emails the seller. A 4xx from us is therefore not a quiet
+   * rejection: it is a countdown to a dead endpoint, which is why an unparseable
+   * body is recorded as ignored and answered 200.
+   */
+  webhook: {
+    auth: "header",
+    header: "x-api-key",
+    landing: "upsert",
+    events: PACKAGE_STATUSES.map((s) => ({ key: s, label: statusLabel(s) })),
+    verify(ctx) {
+      // The whole check. Trendyol sends the key we gave it and nothing else that
+      // is ours, so a constant-time compare against the subscription's secret is
+      // the entire verification — there is no body to sign and no timestamp to
+      // bound. That is Trendyol's design, not a shortcut here.
+      const given = ctx.header("x-api-key");
+      if (given) return ctx.safeEqual(given.trim(), ctx.secret);
+      // Basic is the other authentication type a seller may have configured, and
+      // an existing webhook set up by hand will be using it. The username is not
+      // checked: Trendyol lets the seller choose it, so only the password carries
+      // the secret this endpoint minted.
+      const basic = ctx.header("authorization");
+      if (!basic || !/^basic /i.test(basic.trim())) return false;
+      let decoded: string;
+      try {
+        decoded = atob(basic.trim().slice(6));
+      } catch {
+        return false;
+      }
+      const password = decoded.slice(decoded.indexOf(":") + 1);
+      return decoded.includes(":") && ctx.safeEqual(password, ctx.secret);
+    },
+    parse(ctx) {
+      const body = ctx.json as { content?: unknown } | null;
+      if (!body || typeof body !== "object") return null;
+      // The envelope is the stream's. A bare package object is accepted too:
+      // it costs one branch, and the alternative is a whole subscription that
+      // silently ignores every delivery if Trendyol ever unwraps it.
+      const packages = Array.isArray(body.content)
+        ? (body.content as Record<string, unknown>[])
+        : idOf((body as Record<string, unknown>).shipmentPackageId)
+          ? [body as Record<string, unknown>]
+          : null;
+      if (!packages) return null;
+
+      const records = packages
+        .map((pkg) => {
+          const id = idOf(pkg.shipmentPackageId);
+          if (!id) return null;
+          const status = packageStatus(pkg);
+          return {
+            externalId: id,
+            ...(status ? { event: status } : {}),
+            data: packageData(pkg),
+            children: { lines: linesOf(pkg.lines) },
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+      return {
+        // The delivery's own event is the first package's status: it is what a
+        // log line should say when one package arrived, which is the normal case.
+        // Each record carries its own, and that is what the filter reads.
+        event: records[0]?.event ?? "unknown",
+        records,
+      };
+    },
+    async register(ctx) {
+      const { sellerId, headers, base } = readConnection(ctx, "webhook");
+      const statuses = ctx.events.filter((e) => (PACKAGE_STATUSES as readonly string[]).includes(e));
+      const res = await ctx.fetch(`${base}/integration/webhook/sellers/${sellerId}/webhooks`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: ctx.url,
+          authenticationType: "API_KEY",
+          apiKey: ctx.secret,
+          // Empty means every status, which is Trendyol's own default for the
+          // field — so an operator who narrowed nothing gets everything rather
+          // than a webhook that fires for nothing.
+          subscribedStatuses: statuses,
+        }),
+      });
+      if (!res.ok) throw await readError(res, "register the webhook");
+      const body = (await res.json().catch(() => ({}))) as { id?: unknown };
+      const id = idOf(body.id);
+      if (!id) throw new Error("Trendyol did not return a webhook id");
+      return { id };
+    },
+    async unregister(ctx) {
+      const { sellerId, headers, base } = readConnection(ctx, "webhook");
+      // Interpolated into a path, so it is checked rather than trusted — the id
+      // has round-tripped through our own database, but that is not a reason to
+      // build a URL out of whatever it holds.
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(ctx.id)) return;
+      const res = await ctx.fetch(
+        `${base}/integration/webhook/sellers/${sellerId}/webhooks/${encodeURIComponent(ctx.id)}`,
+        { method: "DELETE", headers },
+      );
+      if (!res.ok && res.status !== 404) throw await readError(res, "remove the webhook");
+    },
+  },
 });
+
+/**
+ * A package's status as one of {@link PACKAGE_STATUSES}, or null.
+ *
+ * Upper-cased because the same value arrives title-case from the order API and
+ * upper-case from a webhook, and an event filter that compared them literally
+ * would drop every delivery for a status the operator had selected.
+ */
+const packageStatus = (pkg: Record<string, unknown>): string | null => {
+  const raw = text(pkg.status) ?? text(pkg.shipmentPackageStatus);
+  if (!raw) return null;
+  const upper = raw.toUpperCase();
+  return (PACKAGE_STATUSES as readonly string[]).includes(upper) ? upper : null;
+};
 
 // ── Connection ───────────────────────────────────────────────────────────────
 

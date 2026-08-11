@@ -662,6 +662,11 @@ msgstr "{0} satır {1}"
 msgid "{0} rows failed — see the API response for details."
 msgstr "{0} satır başarısız — ayrıntılar için API yanıtına bakın."
 
+#. placeholder {0}: d.rowsWritten
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "{0} rows written"
+msgstr "{0} satır yazıldı"
+
 #. placeholder {0}: r.rules.length
 #: src/client/admin/parity/booking.tsx
 #~ msgid "{0} rules"
@@ -931,6 +936,23 @@ msgstr "{provider} ile giriş"
 msgid "{provider} sign-in failed"
 msgstr "{provider} ile giriş başarısız"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "{providerName} has been told to post here. Rows land the moment it sends them; the schedule above stays as the backstop for anything a delivery misses."
+msgstr "{providerName} buraya göndermesi için ayarlandı. Satırlar o gönderdiği anda düşer; yukarıdaki zamanlama, kaçan teslimatlar için yedek olarak kalır."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "{providerName} sends it as the password on every delivery."
+msgstr "{providerName} her teslimatta bunu parola olarak gönderir."
+
+#. placeholder {0}: info.header ?? "x-api-key"
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "{providerName} sends it back in the {0} header on every delivery."
+msgstr "{providerName} her teslimatta bunu {0} başlığında geri gönderir."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "{providerName} signs every delivery with it — nothing is accepted without a matching signature."
+msgstr "{providerName} her teslimatı bununla imzalar — imzası uyuşmayan hiçbir şey kabul edilmez."
+
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "{r} may delete rows matching this rule."
 msgstr "{r} bu kuralla eşleşen satırları silebilir."
@@ -1058,6 +1080,10 @@ msgstr "0532 111 22 33"
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "1 file"
 msgstr "1 dosya"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "1 row"
+msgstr "1 satır"
 
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
@@ -2154,6 +2180,10 @@ msgstr "tüm klasörler"
 msgid "All levels"
 msgstr "Tüm seviyeler"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "all of them"
+msgstr "hepsi"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "All other devices signed out."
 msgstr "Diğer tüm cihazlardan çıkış yapıldı."
@@ -2637,6 +2667,10 @@ msgstr "Argümanlar kopyalandı"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Args updated"
 msgstr "Argümanlar güncellendi"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "arrives when the provider sends it"
+msgstr "sağlayıcı gönderdiğinde gelir"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "asc"
@@ -4407,6 +4441,7 @@ msgstr "kopyalandı"
 
 #: src/client/admin/collections/item-collaboration.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/data/booking/parts.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Copied"
@@ -4445,6 +4480,7 @@ msgstr "kopyala"
 #: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/data/booking/parts.tsx
 #: src/client/admin/pages/data/forms/share-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
@@ -5563,6 +5599,10 @@ msgstr "Teslimat"
 msgid "Delivery failed: {0}. The batch will be retried."
 msgstr "Teslimat başarısız: {0}. Yığın yeniden denenecek."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Delivery URL"
+msgstr "Teslimat adresi"
+
 #: src/client/admin/pages/access/permissions-matrix.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "denied"
@@ -5873,6 +5913,7 @@ msgstr "Geri yazma"
 #: src/client/admin/fields/field-transitions-editor.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/users.tsx
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/database-import.tsx
@@ -6557,10 +6598,15 @@ msgstr "bitiş"
 msgid "Ending"
 msgstr "Bitiş"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Endpoint"
 msgstr "Uç nokta"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Endpoint removed. The sync and every row it wrote stay."
+msgstr "Uç nokta kaldırıldı. Senkronizasyon ve yazdığı satırlar kalır."
 
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Endpoint URL"
@@ -6821,6 +6867,7 @@ msgstr "Olay deseni"
 msgid "Event title"
 msgstr "Etkinlik başlığı"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
@@ -6835,6 +6882,10 @@ msgstr "Olay / ziyaretçi"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Events per day"
 msgstr "Günlük olay sayısı"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Events updated. The provider was re-registered with a new secret."
+msgstr "Olaylar güncellendi. Sağlayıcı yeni bir gizli anahtarla yeniden kaydedildi."
 
 #. placeholder {0}: m / 60
 #: src/client/admin/pages/integration-syncs-card.tsx
@@ -7901,6 +7952,10 @@ msgstr "Her soruya bir etiket verin."
 msgid "Give the resource a name."
 msgstr "Kaynağa bir ad verin."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Give this URL and secret to {providerName}. Rows land the moment it posts; the schedule above stays as the backstop for anything a delivery misses."
+msgstr "Bu adresi ve gizli anahtarı {providerName} tarafına verin. Satırlar o gönderdiği anda düşer; yukarıdaki zamanlama, kaçan teslimatlar için yedek olarak kalır."
+
 #: src/client/admin/pages/automation/payments.tsx
 msgid "Gives money back for a payment already recorded in this workspace. To refund automatically, use the refund step in a flow."
 msgstr "Bu çalışma alanında zaten kayıtlı bir ödemenin parasını geri verir. Otomatik iade için akıştaki iade adımını kullanın."
@@ -8447,6 +8502,10 @@ msgstr "Bun üzerinde süreç içi pub/sub, Workers üzerinde Durable Objects. �
 msgid "inactive"
 msgstr "pasif"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Inbound endpoint"
+msgstr "Gelen uç nokta"
+
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Include"
 msgstr "Dahil et"
@@ -8798,6 +8857,10 @@ msgstr "sağlayıcı"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Istanbul, Turkey"
 msgstr "İstanbul, Türkiye"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "it calls us"
+msgstr "bizi arar"
 
 #: src/client/pages/sign-document.tsx
 msgid "It has already been completed."
@@ -9589,6 +9652,7 @@ msgstr "canlı"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/collections/items.tsx
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/observability/logs.tsx
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Live"
@@ -9884,6 +9948,10 @@ msgstr "Gelmedi olarak işaretlendi."
 #: src/client/admin/rule-builder.tsx
 msgid "match {0} of the following"
 msgstr "aşağıdakilerin {0} ile eşleş"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Matched on"
+msgstr "Eşleşme sütunu"
 
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Matched rules"
@@ -10272,6 +10340,10 @@ msgstr "Aşağı taşı"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Move it"
 msgstr "Taşı"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Move rows between a connected provider and a collection — pulled on a schedule, pushed out on a watermark, or delivered by the provider itself. Rows update in place and never overwrite rows created here."
+msgstr "Satırları bağlı bir sağlayıcı ile bir koleksiyon arasında taşıyın — zamanlamayla çekilir, su işaretiyle gönderilir ya da doğrudan sağlayıcı tarafından teslim edilir. Satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine hiç yazılmaz."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Move to this time"
@@ -11857,6 +11929,10 @@ msgstr "hiçbir yere (son)"
 msgid "nothing found"
 msgstr "bir şey bulunamadı"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Nothing has arrived yet."
+msgstr "Henüz bir şey gelmedi."
+
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Nothing in this period"
 msgstr "Bu dönemde kayıt yok"
@@ -13090,6 +13166,10 @@ msgstr "Bir gün seçin"
 msgid "Pick a document template"
 msgstr "Bir belge şablonu seçin"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Pick a field"
+msgstr "Bir alan seçin"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Pick a field…"
 msgstr "Alan seçin…"
@@ -13762,6 +13842,10 @@ msgstr "Sağlayıcı iade kimliği"
 msgid "Provider saved."
 msgstr "Sağlayıcı kaydedildi."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "provider's id"
+msgstr "sağlayıcının kimliği"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/payments.tsx
 msgid "Provider's payment id"
@@ -13910,8 +13994,8 @@ msgid "Pull marketplace orders in with their lines, push stock and price out, an
 msgstr "Pazar yeri siparişlerini kalemleriyle çeker, stok ve fiyatı gönderir, paket durumunu geri bildirir."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
-msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
-msgstr "Bağlı bir kaynaktan satırları zamanlanmış olarak bir koleksiyona çeker. Çekilen satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine asla yazmaz."
+#~ msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
+#~ msgstr "Bağlı bir kaynaktan satırları zamanlanmış olarak bir koleksiyona çeker. Çekilen satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine asla yazmaz."
 
 #. placeholder {0}: res.data.written
 #. placeholder {1}: row.collection
@@ -14218,6 +14302,7 @@ msgstr "Son {0}"
 msgid "Recent activity"
 msgstr "Son etkinlik"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Recent deliveries"
@@ -15309,6 +15394,10 @@ msgstr "Anahtarı yenile"
 msgid "Rotate link"
 msgstr "Bağlantıyı yenile"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Rotate secret"
+msgstr "Gizli anahtarı yenile"
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Rotate the form link?"
 msgstr "Form bağlantısı yenilensin mi?"
@@ -15736,6 +15825,10 @@ msgstr "Akışı kaydet"
 msgid "Save guards"
 msgstr "Korumaları kaydet"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Save it now — closing this panel is the last time you will see it. Lost means rotating, which keeps the same URL."
+msgstr "Şimdi kaydedin — bu paneli kapattığınızda bir daha göremezsiniz. Kaybederseniz yenilemeniz gerekir; adres aynı kalır."
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Save kanban"
 msgstr "Kanban'ı kaydet"
@@ -16092,6 +16185,10 @@ msgstr "Aranıyor…"
 #: src/client/admin/pages/settings/index.tsx
 msgid "secret"
 msgstr "gizli"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Secret — shown once"
+msgstr "Gizli anahtar — bir kez gösterilir"
 
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Secret key"
@@ -18096,6 +18193,11 @@ msgstr "Sütun her zaman posta sunucusunun çözümlediği kodlanmış biçimi s
 msgid "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 msgstr "Kolon her zaman bir çözümleyicinin yanıt verdiği kodlanmış biçimi saklar. Bu yalnızca GÖRÜNÜMÜ değiştirir — https://xn--rnek-4qa.com/ yerine https://örnek.com/. Çalışma alanında gerçekten böyle host'lar yoksa kapalı bırakın."
 
+#. placeholder {0}: hook?.matchLabel ?? t`provider's id`
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "The column holding the {0}. A delivery updates the row that matches, and only the fields it carries."
+msgstr "{0} değerini tutan sütun. Teslimat eşleşen satırı, yalnızca taşıdığı alanlarla günceller."
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. Eski bağlantının gömülü olduğu her yerin güncellenmesi gerekir."
@@ -18115,6 +18217,11 @@ msgstr "Belge şimdi oluşturulup dondurulur. Şablonda sonradan yapılan düzen
 #: src/client/pages/embed-dashboard.tsx
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir."
+
+#. placeholder {0}: fresh.registrationError
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "The endpoint is live, but {providerName} was not told about it: {0}"
+msgstr "Uç nokta çalışıyor ama {providerName} bundan haberdar edilemedi: {0}"
 
 #. placeholder {0}: value.from
 #: src/client/admin/fields/field-rollup-editor.tsx
@@ -18218,6 +18325,10 @@ msgstr "En eski kayıtlı span bu pencerenin başlangıcından daha yeni — pen
 msgid "The one-line text chat providers render."
 msgstr "Sohbet sağlayıcılarının gösterdiği tek satırlık metin."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "the ones ticked"
+msgstr "işaretlenenler"
+
 #: src/client/admin/parity/booking.tsx
 #~ msgid "The opening hours are written in the resource's own zone, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change."
 #~ msgstr "Çalışma saatleri kaynağın kendi saat diliminde yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada hâlâ sabah dokuz demektir."
@@ -18298,6 +18409,10 @@ msgstr "Aynı bağlantı bir iframe içinde. Sayfa bilerek iframe’lenebilir �
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "The secret is shown once and cannot be read back. Unlike an API key it has to be stored rather than hashed, so scope it as narrowly as the tool allows."
 msgstr "Gizli anahtar bir kez gösterilir ve geri okunamaz. Bir API anahtarının aksine karma yerine saklanması gerekir, bu yüzden kapsamını aracın izin verdiği kadar dar tutun."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "The secret was shown when this endpoint was turned on and is not stored in a readable form. Rotate to get a new one; the URL stays the same."
+msgstr "Gizli anahtar bu uç nokta açıldığında gösterildi ve okunabilir biçimde saklanmıyor. Yenisi için yenileyin; adres aynı kalır."
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
@@ -18388,6 +18503,10 @@ msgstr "Tema"
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
 msgstr "Ulusal biçim bilinçli olarak yok: onu yazdırmak her ülkenin numaralandırma planını gerektirir ve tahmin etmek, doğru görünen ama olmayan numaralar üretir. Saklanan değer her zaman E.164'tür."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "There is no schedule: rows arrive when the provider sends them. Turn the endpoint on from the sync's row once it exists."
+msgstr "Zamanlama yok: satırlar sağlayıcı gönderdiğinde gelir. Senkronizasyon oluştuktan sonra uç noktayı satırındaki düğmeden açın."
 
 #: src/client/admin/pages/access/rls-card.tsx
 msgid "These parts of your rules cannot be carried by a policy — a direct database reader sees a coarser view than the API here."
@@ -19092,6 +19211,7 @@ msgid "Tue"
 msgstr "Sal"
 
 #: src/client/admin/pages/account-page.tsx
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Turn off"
 msgstr "Kapat"
 
@@ -19107,6 +19227,10 @@ msgstr "İki adımlı doğrulamayı kapat."
 msgid "Turn off when SCIM owns the user lifecycle — unknown subjects are then refused."
 msgstr "Kullanıcı yaşam döngüsünü SCIM yönetiyorsa kapatın — bilinmeyen subject’ler o zaman reddedilir."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Turn on endpoint"
+msgstr "Uç noktayı aç"
+
 #: src/client/admin/fields/field-email-editor.tsx
 msgid "Turning an existing text column into an email field changes no storage, so nothing has to be migrated — but the rows already in it are still written however they were typed. Run backlex collections normalize-emails to fold them, with --dry-run first if the column is unique."
 msgstr "Mevcut bir metin sütununu e-posta alanına çevirmek depolamayı değiştirmez, dolayısıyla taşınacak bir şey yoktur — ama içindeki satırlar hâlâ yazıldıkları hâlde durur. Bunları katlamak için backlex collections normalize-emails komutunu çalıştırın; sütun unique ise önce --dry-run ile deneyin."
@@ -19114,6 +19238,10 @@ msgstr "Mevcut bir metin sütununu e-posta alanına çevirmek depolamayı deği�
 #: src/client/admin/pages/account-page.tsx
 msgid "Turning off…"
 msgstr "Kapatılıyor…"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Turning on…"
+msgstr "Açılıyor…"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
@@ -19397,6 +19525,10 @@ msgstr "Parolayı güncelle"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Updated"
 msgstr "Güncellendi"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Updates rows in"
+msgstr "Şu koleksiyondaki satırları günceller"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Updating…"

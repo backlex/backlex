@@ -12,10 +12,12 @@ Management is admin-only and workspace-scoped. The admin lives at
 **Integrations** in the sidebar; the API is under `/api/admin/integrations`.
 
 :::note
-Integrations are *outbound and credentialed*: you paste a provider credential,
-backlex encrypts it at rest, and it is never readable again. That is the
-difference from [outbound webhooks](/docs/webhooks/), where you own the
-receiving endpoint and backlex signs what it sends.
+Integrations are *credentialed*: you paste a provider credential, backlex
+encrypts it at rest, and it is never readable again. Traffic goes both ways —
+events fan out, rows are pulled in, and a provider that declares a
+[webhook](#when-the-provider-calls-you) calls us. That is the difference from
+[outbound webhooks](/docs/webhooks/), where you own the receiving endpoint and
+backlex signs what it sends.
 :::
 
 ## Providers
@@ -34,8 +36,8 @@ Thirty-five providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination **and** tasks |
-| carrier | EasyPost — *tasks only*: book a shipment, read where it is, cancel it |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -844,6 +846,167 @@ one answer that is a refusal rather than a delay, `not_applicable`, is an error:
 a row quietly reading it while an operator believes the consignment is cancelled
 is worse than being told.
 
+## When the provider calls you
+
+Everything above starts on this side: we deliver, we pull, we push, we ask a
+provider to act on a row. Two of those are the wrong instrument for the job.
+Asking a carrier where a parcel is costs one request per parcel per interval and
+is still late by however long the interval is. Noticing that one marketplace
+order was cancelled costs a fourteen-day window walked every few minutes.
+
+A provider that declares a **webhook** calls us instead.
+
+:::note
+The poll stays. Every provider's webhooks are lossy — an endpoint that was down
+for an hour is an hour of events nobody will re-send — and a sync that also polls
+repairs exactly that. Turning the interval down once deliveries are arriving is
+your call; turning it off is rarely the right one.
+:::
+
+### It is not a second pipe
+
+A delivery lands through the **same sync row** a pull would have used: same
+collection, same field mapping, same namespaced ids. That is the whole design
+decision, and it is what makes a delivery about an order the poll already
+imported *update that row* instead of minting a second, emptier copy beside it.
+
+So an endpoint is turned on **on a sync**, not created next to one:
+
+```bash
+# The marketplace sync you already have, now fed by pushes as well as polls
+backlex integrations hook-on <sync-id> --events CREATED,SHIPPED,CANCELLED
+```
+
+A provider with nothing to poll — a carrier has no list of parcels to walk —
+still needs a row to hold the collection, the mapping and the endpoint. That row
+is `direction: inbound`. It has no schedule, and asking it to run is an error
+rather than a no-op.
+
+```bash
+backlex integrations sync-create --integration <easypost-id> \
+  --collection fulfillments --direction inbound \
+  --match carrier_shipment_id \
+  --map shipmentStatus=shipment_status \
+  --map trackingCode=tracking_number \
+  --map trackingUrl=tracking_url
+backlex integrations hook-on <sync-id>
+```
+
+### Two ways a delivery lands
+
+The provider declares which, because it is a fact about what the payload *is*:
+
+| `landing` | The delivery… | Addressed by | Example |
+|---|---|---|---|
+| `upsert` | **is** the record | the namespaced id, exactly as a pull | a marketplace order |
+| `patch` | is **about** a row you already have | the sync's `matchField` | a carrier's tracking scan |
+
+A `patch` writes only the fields it carried. That is not a detail: the row was
+built by a person and a booking task, and an upsert there would blank the
+fulfillment's order, location and shipped-at date on its way past — the same bug
+the [task write-back](#it-writes-back-a-patch-not-a-row) already paid for once.
+
+`matchField` is required for a `patch` provider and refused for an `upsert` one,
+where a match column would be an invitation to write to the wrong row.
+
+### The secret is shown once
+
+Turning an endpoint on mints a URL and a secret. The secret is returned by that
+one call and **never readable again** — it is a bearer credential the provider
+also holds, and a field that kept handing it back would put it in a browser
+cache, a screenshot and an activity log. Lost means rotating, which keeps the
+same URL:
+
+```bash
+backlex integrations hook-on <sync-id>     # again — same URL, new secret
+```
+
+How the provider uses it depends on the provider, and the connect UI says which:
+
+| `auth` | The delivery presents the secret as… |
+|---|---|
+| `hmac` | a signature over the raw body, in a header |
+| `header` | itself, in a header the provider lets you name |
+| `basic` | the password in HTTP Basic |
+
+Verification runs against the **raw bytes**, before anything is parsed and before
+any row is touched.
+
+### We register it where we can
+
+Both providers that ship with this expose an API for it, so nothing has to be
+pasted anywhere: `hook-on` calls the provider with the URL and the secret and
+records the registration id so it can be removed again.
+
+A registration that fails does **not** undo the endpoint. The URL works and the
+secret is real; what failed is one API call. `registrationError` says what to
+retry, and pointing the provider at the URL by hand is always available.
+
+### Status codes are chosen for the provider
+
+Not for a human reading them, and the two shipped providers make the stakes
+concrete. EasyPost retries six times and gives up. Trendyol retries **every five
+minutes until it succeeds**, then deactivates the webhook and emails the seller.
+A 4xx for something we merely did not recognise would therefore cost an operator
+their endpoint.
+
+| Outcome | HTTP | Why |
+|---|---|---|
+| `applied` | 200 | rows landed |
+| `unmatched` | 200 | understood; no row holds the id it named |
+| `filtered` | 200 | a real event this endpoint is not subscribed to |
+| `ignored` | 200 | a ping, or an event kind we do not read |
+| `duplicate` | 200 | the provider is retrying something already applied |
+| `rejected` | 400 | it did not present the secret — never retried, by design |
+| — | 403 | the sync is turned off: stop, do not queue an hour to replay |
+| — | 404 | no such endpoint |
+| `failed` | 500 | ours. Retry is the right answer |
+
+### A retry is a duplicate, not a second write
+
+Retries are the normal case here, so the guard is a unique index on
+`(sync, delivery id)` rather than a check in code — the same shape the [task
+run](#it-runs-once) guard takes. The delivery id is the provider's own event id
+where it sends one, and a digest of the body where it does not. That digest is
+weaker in exactly one way worth stating: two genuinely identical deliveries
+collapse into one. For a status change that is the same write twice, so it costs
+nothing.
+
+A `failed` row is deliberately **not** a claim. The provider is retrying because
+we failed, and refusing it would strand the one delivery that most needs to land.
+
+### What arrived, and what became of it
+
+Every delivery is recorded with its verdict — which is the whole answer to *"the
+marketplace says it sent it"*:
+
+```bash
+backlex integrations hooks <sync-id>
+```
+
+That log is also the endpoint's health: there are no `webhook_last_*` columns on
+the sync, because two places recording the same fact is how they come to
+disagree.
+
+### The two providers that ship with it
+
+**Trendyol** posts the same `{ content: [...] }` envelope its order stream
+returns, so the webhook and the poll share one mapping verbatim. Its events *are*
+the package statuses (`CREATED`, `PICKING`, `INVOICED`, `SHIPPED`, `DELIVERED`,
+`CANCELLED`, …), which means the subscription's event filter and Trendyol's own
+`subscribedStatuses` are one list — sent at registration so the narrowing happens
+at their end too. There is no signature: a delivery authenticates itself with
+`x-api-key` (or HTTP Basic), which is why the secret here is a bearer token
+rather than a signing key.
+
+**EasyPost** signs with `X-Hmac-Signature: hmac-sha256-hex=<hex>` over the raw
+body — and NFKD-normalises the secret first, which appears in its own client
+libraries and nowhere in its docs. Its webhooks are per **account**, not per
+event, so there is no filter to send at registration and the narrowing is ours. A
+tracker event with no `shipment_id` belongs to a parcel this workspace did not
+book: that is recorded as `ignored` rather than matched on a tracking code that
+could sit in any column.
+
 ## What a sink receives
 
 By default a sink is told that something **changed**, not what it **said**:
@@ -1018,15 +1181,19 @@ only be pointed at a writable field of the chosen collection.
 
 | Surface | Entry point |
 |---|---|
-| REST | `/api/admin/integrations` (+ `/catalog`, `/syncs`, `/task-runs`, `/{id}/deliveries`, `/{id}/resume`, `/{id}/tasks/{task}`, `/{id}/oauth/authorize`) |
+| REST | `/api/admin/integrations` (+ `/catalog`, `/syncs`, `/syncs/{id}/webhook`, `/syncs/{id}/deliveries`, `/task-runs`, `/{id}/deliveries`, `/{id}/resume`, `/{id}/tasks/{task}`, `/{id}/oauth/authorize`) |
 | SDK | `client.integrations.*` |
-| GraphQL | `integrationCatalog`, `integrations`, `integrationSyncs`, `integrationDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration`, `startIntegrationOAuth`, `createIntegrationSync`, `updateIntegrationSync`, `deleteIntegrationSync`, `runIntegrationSync`, `integrationTaskRuns`, `runIntegrationTask` |
-| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` / `.oauth_authorize` / `.syncs` / `.create_sync` / `.update_sync` / `.delete_sync` / `.run_sync` / `.run_task` / `.task_runs` |
+| GraphQL | `integrationCatalog`, `integrations`, `integrationSyncs`, `integrationDeliveries`, `integrationInboundDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration`, `startIntegrationOAuth`, `createIntegrationSync`, `updateIntegrationSync`, `deleteIntegrationSync`, `runIntegrationSync`, `integrationTaskRuns`, `runIntegrationTask`, `enableIntegrationWebhook`, `updateIntegrationWebhookEvents`, `disableIntegrationWebhook` |
+| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` / `.oauth_authorize` / `.syncs` / `.create_sync` / `.update_sync` / `.delete_sync` / `.run_sync` / `.run_task` / `.task_runs` / `.enable_webhook` / `.update_webhook_events` / `.disable_webhook` / `.inbound_deliveries` |
 | CLI | `backlex integrations …` |
 
 `/api/admin/integrations/oauth/callback` is the provider's redirect target. It
 is not part of the API you call: it always answers with a redirect into the
 admin UI, because the caller is a browser mid-navigation.
+
+`POST /api/integrations/hooks/{token}` is the one **unauthenticated** endpoint
+here, and it is the provider's, not yours — the token resolves the subscription
+and the endpoint's own secret authenticates the delivery.
 
 All five funnel through one service, so the tenant guards, the encryption at
 rest and the breaker are shared rather than restated per surface — including

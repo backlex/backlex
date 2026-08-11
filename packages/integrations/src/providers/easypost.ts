@@ -86,7 +86,7 @@ export const easypost = defineProvider({
   id: "easypost",
   label: "EasyPost",
   category: "carrier",
-  capabilities: ["task"],
+  capabilities: ["task", "webhook"],
   /**
    * EasyPost publishes no numeric quota, only that it answers 429. Paced at a
    * rate a booking flow never approaches, so the limit is a courtesy rather
@@ -324,6 +324,122 @@ export const easypost = defineProvider({
       },
     },
   ],
+  /**
+   * The tracking poll, inverted.
+   *
+   * `refresh_tracking` above is a request per parcel per run, and it is late by
+   * however long the interval is. EasyPost calls us the moment a carrier scans,
+   * so the same six fields land on the row without asking. The poll stays: a
+   * webhook missed while this instance was redeploying is never re-sent, and a
+   * cron over the parcels that are not `delivered` yet repairs exactly that.
+   *
+   * Two facts about EasyPost's webhooks shape this block.
+   *
+   * **The signature is a documented construction with an undocumented quirk.**
+   * `X-Hmac-Signature: hmac-sha256-hex=<hex>` over the raw body — and the secret
+   * is NFKD-normalised before it becomes the key. That last part appears in
+   * EasyPost's own client libraries and nowhere in the docs; without it every
+   * delivery from a secret containing a composable character is rejected.
+   *
+   * **A webhook is per ACCOUNT, not per event.** There is no subscription
+   * filter to send at registration, so EasyPost delivers everything it has and
+   * the narrowing is ours. `events` is therefore declared for the engine's
+   * filter and deliberately ignored by `register`.
+   */
+  webhook: {
+    auth: "hmac",
+    header: "X-Hmac-Signature",
+    landing: "patch",
+    matchLabel: "Carrier shipment ID (shp_…)",
+    events: [
+      { key: "tracker.updated", label: "Parcel scanned or status changed" },
+      { key: "tracker.created", label: "Tracking started" },
+    ],
+    async verify(ctx) {
+      const given = ctx.header("X-Hmac-Signature");
+      if (!given) return false;
+      // NFKD before the bytes, exactly as EasyPost's own libraries do. A secret
+      // this engine minted is ASCII and normalises to itself, so this matters
+      // only for a secret an operator set by hand at EasyPost — which is
+      // precisely the case that would otherwise fail with nothing to point at.
+      const expected = `hmac-sha256-hex=${await ctx.hmacSha256Hex(ctx.secret.normalize("NFKD"), ctx.rawBody)}`;
+      return ctx.safeEqual(given.trim(), expected);
+    },
+    parse(ctx) {
+      const body = ctx.json as EasyPostEvent | null;
+      if (!body || typeof body !== "object") return null;
+      const event = text(body.description);
+      // Only the tracker events say anything about a row. Everything else — a
+      // batch finishing, a scan form generating — is recorded as ignored rather
+      // than refused: EasyPost sends the whole account's traffic to one URL, and
+      // a 4xx would have it disable an endpoint that is working.
+      if (event !== "tracker.updated" && event !== "tracker.created") return null;
+
+      const tracker = body.result;
+      if (!tracker || typeof tracker !== "object") return null;
+
+      // The shipment id is what this workspace booked and stored, and it is
+      // indexed. A tracker with none belongs to a parcel booked outside this
+      // engine — there is no row to patch, so the delivery is ignored rather
+      // than matched on a tracking code that could sit in any column.
+      const shipmentId = text(tracker.shipment_id);
+      const deliveryId = text(body.id) ?? undefined;
+      if (!shipmentId) return { event, records: [], ...(deliveryId ? { deliveryId } : {}) };
+
+      const details = tracker.tracking_details ?? [];
+      const last = details.length > 0 ? details[details.length - 1] : undefined;
+      const delivered = details.find((d) => d?.status === "delivered");
+
+      return {
+        event,
+        ...(deliveryId ? { deliveryId } : {}),
+        records: [
+          {
+            externalId: shipmentId,
+            // The same six keys `refresh_tracking` writes, under the same names.
+            // An operator who mapped the poll recognises every one of them, and
+            // switching from one to the other is not a re-mapping job.
+            data: {
+              shipmentStatus: status(tracker.status),
+              trackingCode: text(tracker.tracking_code),
+              trackingUrl: text(tracker.public_url),
+              estimatedDeliveryAt: epoch(tracker.est_delivery_date),
+              deliveredAt: epoch(delivered?.datetime),
+              lastEvent: text(last?.message) ?? text(last?.status),
+            },
+          },
+        ],
+      };
+    },
+    async register(ctx) {
+      const { headers } = readConnection(ctx);
+      const res = await ctx.fetch(`${BASE}/webhooks`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ webhook: { url: ctx.url, webhook_secret: ctx.secret } }),
+      });
+      if (!res.ok) throw await readError(res, "register the webhook");
+      const body = (await res.json()) as { id?: unknown };
+      const id = text(body.id);
+      // No id means nothing was created that can ever be removed again. Failing
+      // here is what stops an operator being told the endpoint is live.
+      if (!id) throw new Error("EasyPost did not return a webhook id");
+      return { id };
+    },
+    async unregister(ctx) {
+      const { headers } = readConnection(ctx);
+      // EasyPost's ids are `hook_…`; anything else is not one of ours and is not
+      // worth building a URL out of.
+      if (!/^hook_[A-Za-z0-9]{1,64}$/.test(ctx.id)) return;
+      const res = await ctx.fetch(`${BASE}/webhooks/${encodeURIComponent(ctx.id)}`, {
+        method: "DELETE",
+        headers,
+      });
+      // A 404 is the desired end state reached by another route — somebody
+      // deleted it in the dashboard — so it is not an error.
+      if (!res.ok && res.status !== 404) throw await readError(res, "remove the webhook");
+    },
+  },
 });
 
 // ── Connection ───────────────────────────────────────────────────────────────
@@ -543,6 +659,26 @@ const storeLabel = async (
 };
 
 // ── Reading answers ──────────────────────────────────────────────────────────
+
+/**
+ * One delivery, as EasyPost posts it.
+ *
+ * `result` is the object the event is about — a Tracker on the two events this
+ * provider reads. `description` is the event name, which is EasyPost's word for
+ * what everyone else calls a type.
+ */
+interface EasyPostEvent {
+  id?: unknown;
+  description?: unknown;
+  result?: {
+    shipment_id?: unknown;
+    tracking_code?: unknown;
+    status?: unknown;
+    public_url?: unknown;
+    est_delivery_date?: unknown;
+    tracking_details?: { status?: unknown; message?: unknown; datetime?: unknown }[];
+  };
+}
 
 interface EasyPostShipment {
   id?: unknown;

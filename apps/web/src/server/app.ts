@@ -80,6 +80,7 @@ import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
 import { paymentsRoutes } from "./routes/payments";
 import { paymentsPublicRoutes } from "./routes/payments-public";
+import { integrationsPublicRoutes } from "./routes/integrations-public";
 import { dashboardsRoutes } from "./routes/dashboards";
 import { kpisRoutes } from "./routes/kpis";
 import { schemaVersionsRoutes } from "./routes/schema-versions";
@@ -991,6 +992,10 @@ export const createApp = (env: Env) => {
   // token resolves the workspace and the provider HMAC authenticates the body
   // (see routes/payments-public.ts).
   app.route("/api/payments", paymentsPublicRoutes);
+  // Public integration-webhook receiver — same shape, one level over: the path
+  // token resolves the subscription and the endpoint's own secret authenticates
+  // the delivery (see routes/integrations-public.ts).
+  app.route("/api/integrations", integrationsPublicRoutes);
   // Public flow-trigger endpoint — POST /api/webhook/:flowId fires the
   // matching `webhook`-triggered flow. Distinct path from /api/webhooks
   // (outgoing dispatch admin) by design.

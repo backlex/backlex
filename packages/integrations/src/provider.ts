@@ -72,12 +72,22 @@ export type IntegrationCategory =
 
 /**
  * What a provider can do. Today every provider is a `sink` (receives events
- * fanned out from backlex). `action` (callable from a flow) and `source`
- * (inbound webhook / scheduled pull that writes back into a collection) are
- * declared here so the catalog and the routes can branch on capability before
- * the first provider implements them.
+ * fanned out from backlex). `action` (callable from a flow) is declared here so
+ * the catalog and the routes can branch on capability before the first provider
+ * implements it.
+ *
+ * `webhook` is the one capability that is not something backlex DOES: it says
+ * the provider will call us. It is declared alongside the rest because every
+ * consumer — the catalog, the connect UI, the sync form — has to branch on it
+ * the same way it branches on the others.
  */
-export type IntegrationCapability = "sink" | "action" | "source" | "destination" | "task";
+export type IntegrationCapability =
+  | "sink"
+  | "action"
+  | "source"
+  | "destination"
+  | "task"
+  | "webhook";
 
 /** An event to fan out: machine name, one-line human text, and a machine payload. */
 export interface IntegrationEvent {
@@ -540,6 +550,222 @@ export interface IntegrationTask {
   run(ctx: TaskRunContext): Promise<TaskResult>;
 }
 
+// ── Inbound webhooks ─────────────────────────────────────────────────────────
+
+/**
+ * How a delivery proves it came from the provider.
+ *
+ * Declared rather than inferred because the operator has to be told what to do
+ * with the secret, and the three answers need three different sentences: sign
+ * with it, send it in a header, send it as a password. Getting that wrong is not
+ * a subtle failure — every delivery is rejected — but the reason is invisible
+ * from our side, which is exactly the kind of thing worth naming in the UI.
+ *
+ * The verdict itself is always {@link IntegrationWebhook.verify}: the shape here
+ * is what an operator reads, not what the engine trusts.
+ */
+export type WebhookAuthKind =
+  /** HMAC over the raw body, in a header. EasyPost. */
+  | "hmac"
+  /** The secret itself, in a header the provider lets you name. Trendyol. */
+  | "header"
+  /** HTTP Basic, with the secret as the password. */
+  | "basic";
+
+/** What a webhook verifier receives. Everything it needs and nothing more. */
+export interface WebhookVerifyContext {
+  /**
+   * The exact bytes the provider sent, as text.
+   *
+   * Never re-serialized on the way here: a signature covers the body it was
+   * computed over, and `JSON.parse` → `JSON.stringify` changes key order and
+   * whitespace, which is enough to fail every HMAC.
+   */
+  rawBody: string;
+  /** Case-insensitive header read. `null` when absent. */
+  header(name: string): string | null;
+  /**
+   * The secret backlex minted for THIS subscription.
+   *
+   * Per subscription, not per connection: it is handed to a third party, and a
+   * rotation has to be able to invalidate one endpoint without disturbing the
+   * credentials the same connection uses to pull orders.
+   */
+  secret: string;
+  /** Connection config — credentials, already decrypted. */
+  config: Record<string, unknown>;
+  str(key: string): string | null;
+  /**
+   * HMAC-SHA256 of `message` under `key`, lowercase hex.
+   *
+   * Handed over rather than imported per provider, for the same reason the
+   * payment verifiers share one implementation: two copies of a signing
+   * construction are free to drift, and the failure that follows reads as a
+   * forged delivery rather than as our own bug.
+   */
+  hmacSha256Hex(key: string, message: string): Promise<string>;
+  /** Compare without leaking the answer through timing. Use it for every digest. */
+  safeEqual(a: string, b: string): boolean;
+}
+
+/** One row a delivery carries. The push twin of {@link SourceRecord}. */
+export interface WebhookRecord {
+  /**
+   * This record's own event, when a delivery carries more than one kind.
+   *
+   * Trendyol posts an envelope of packages and each one carries its own status,
+   * so a single event on the delivery would describe the first package and
+   * misdescribe the rest — and the subscription's filter would keep or drop them
+   * together. Falls back to {@link WebhookDelivery.event}, which is what a
+   * one-event-per-delivery provider like EasyPost sends.
+   */
+  event?: string;
+  /**
+   * The provider's own id for the thing this delivery is about.
+   *
+   * On an `upsert` landing it is namespaced exactly as a pulled record's is, so
+   * a webhook and a poll of the same order converge on ONE row instead of
+   * racing to create two. On a `patch` landing it is the value looked for in the
+   * subscription's match field — a tracking code, say — and the row that holds
+   * it is the row that gets written.
+   */
+  externalId: string;
+  /** Raw external field names → values. Mapped to collection fields by config. */
+  data: Record<string, unknown>;
+  /** Lines belonging to this record, for the providers that send them. */
+  children?: Record<string, SourceChildRecord[]>;
+}
+
+/** What one delivery turned out to be. */
+export interface WebhookDelivery {
+  /**
+   * The declared event key this delivery is. Recorded even when it carries no
+   * records, because "the provider is calling and we are ignoring it" is a
+   * different fact from "nothing arrived", and only one of them is a problem.
+   */
+  event: string;
+  /** Empty for a ping, or for an event that says nothing about a row. */
+  records: WebhookRecord[];
+  /**
+   * The provider's own id for this delivery, when it has one.
+   *
+   * It is what makes a retry a duplicate rather than a second write. A provider
+   * that sends none gets a digest of the body instead — see the engine — which
+   * is weaker (two genuine identical deliveries collapse) but never wrong in the
+   * direction that matters: a replay cannot re-apply.
+   */
+  deliveryId?: string;
+}
+
+/** What a webhook parser receives. */
+export interface WebhookParseContext {
+  rawBody: string;
+  header(name: string): string | null;
+  /** Already-verified JSON body, when the body parsed as JSON. Else `null`. */
+  json: unknown;
+  config: Record<string, unknown>;
+  str(key: string): string | null;
+}
+
+/** What a registration call receives. */
+export interface WebhookRegisterContext {
+  config: Record<string, unknown>;
+  /** The public URL the provider must POST deliveries to. */
+  url: string;
+  /** The secret it must sign with, or send back, per {@link WebhookAuthKind}. */
+  secret: string;
+  /** Event keys this subscription wants. Empty means every declared event. */
+  events: readonly string[];
+  fetch: FetchLike;
+  str(key: string): string | null;
+}
+
+/**
+ * A provider that calls US when something changes.
+ *
+ * The fifth shape, and the first one where backlex is the server. It exists
+ * because polling is the wrong instrument for two things this engine already
+ * does: a parcel's progress (a tracker poll is a request per parcel per hour,
+ * and still late), and a marketplace order's status (a 14-day window walked
+ * every few minutes to notice one cancellation).
+ *
+ * It is deliberately NOT a new pipe. A delivery lands through the same sync row
+ * a pull would have used — same collection, same mapping, same id namespace — so
+ * a webhook is a faster way to feed a sync rather than a second, parallel path
+ * that would duplicate every row and every mapping decision. A provider with no
+ * `source` still gets a sync row; it just has nothing to poll.
+ *
+ * The poll is kept even where a webhook exists. Every provider's webhooks are
+ * lossy — an endpoint that was down for an hour is an hour of events nobody will
+ * re-send — and a sync that also polls repairs itself. Turning the interval down
+ * is the operator's call, not ours.
+ */
+export interface IntegrationWebhook {
+  /** What the operator does with the secret, for the UI to explain. */
+  auth: WebhookAuthKind;
+  /**
+   * The header the secret or its signature arrives in.
+   *
+   * Named here so the engine can log a missing one usefully, and so a provider
+   * that lets the operator choose (Trendyol's `x-api-key`) is documented in the
+   * one place a reader looks.
+   */
+  header?: string;
+  /** The event keys this provider will send, for the subscription's filter. */
+  events: readonly { key: string; label: string }[];
+  /**
+   * How a delivery's records land.
+   *
+   * `upsert` — the delivery IS the record, and it lands as a pull would. A
+   * marketplace order webhook.
+   *
+   * `patch` — the delivery is ABOUT a row we already have, and only the fields
+   * it carries are written. A carrier's tracking update: the fulfillment was
+   * created by a person and a booking task, and a webhook that upserted would
+   * mint a second, emptier row beside it.
+   *
+   * One value per provider rather than per event, because no provider yet sends
+   * both. When one does, this moves onto the event and the provider's default
+   * stays here — the engine reads it through one accessor for that reason.
+   */
+  landing: "upsert" | "patch";
+  /**
+   * What the match field holds, for the form to label. `patch` only.
+   *
+   * The operator is choosing a column, and "tracking code" is the difference
+   * between choosing the right one and choosing the shipment id that looks just
+   * like it.
+   */
+  matchLabel?: string;
+  /**
+   * Is this delivery genuinely from the provider?
+   *
+   * Returning false rejects it with a 400 and records the rejection. It must not
+   * throw for a bad signature — a throw is reserved for "we could not decide",
+   * which the engine answers with a 5xx so the provider retries.
+   */
+  verify(ctx: WebhookVerifyContext): Promise<boolean> | boolean;
+  /**
+   * What did it say?
+   *
+   * `null` for a body this provider does not recognise, which is recorded as
+   * ignored rather than failed — providers send pings, and new event kinds
+   * appear without warning.
+   */
+  parse(ctx: WebhookParseContext): WebhookDelivery | null;
+  /**
+   * Tell the provider where to call, using the connection's own credentials.
+   *
+   * Optional, and worth having wherever it is possible: both providers that
+   * ship with this support it, and the alternative is an operator pasting a URL
+   * and a secret into an API neither of them exposes through a UI. Returns the
+   * provider's id for the registration so it can be removed again.
+   */
+  register?(ctx: WebhookRegisterContext): Promise<{ id: string }>;
+  /** Remove a registration this provider made. Best-effort by contract. */
+  unregister?(ctx: WebhookRegisterContext & { id: string }): Promise<void>;
+}
+
 /**
  * A single integration provider. `deliver` returns `null` when the stored
  * config is missing/invalid; the dispatcher turns that (and any thrown error)
@@ -581,6 +807,9 @@ export interface IntegrationProvider<Id extends string = string> {
   /** Present only on providers that act on a single row. Implies `task` in
    *  `capabilities`; the registry test enforces the two agree. */
   tasks?: readonly IntegrationTask[];
+  /** Present only on providers that call us. Implies `webhook` in
+   *  `capabilities`; the registry test enforces the two agree. */
+  webhook?: IntegrationWebhook;
   deliver?(ctx: DeliverContext): Promise<DeliveryOutcome | null>;
 }
 

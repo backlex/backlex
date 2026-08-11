@@ -25,6 +25,12 @@ import {
 } from "../integration-syncs";
 import { listTaskRuns, runTask } from "../integration-tasks";
 import {
+  disableWebhook,
+  enableWebhook,
+  listDeliveries,
+  updateWebhookEvents,
+} from "../integration-webhooks";
+import {
   connectIntegration,
   disconnectIntegration,
   listIntegrationDeliveries,
@@ -90,7 +96,7 @@ const SyncType = new GraphQLObjectType({
     id: { type: new GraphQLNonNull(GraphQLID) },
     integrationId: { type: new GraphQLNonNull(GraphQLString) },
     collection: { type: new GraphQLNonNull(GraphQLString) },
-    /** Which way the rows travel: `pull` in, `push` out. */
+    /** Which way the rows travel: `pull` in, `push` out, `inbound` received. */
     direction: { type: new GraphQLNonNull(GraphQLString) },
     settings: { type: JSONScalar },
     mapping: { type: JSONScalar },
@@ -105,6 +111,39 @@ const SyncType = new GraphQLObjectType({
     lastError: { type: GraphQLString },
     consecutiveFailures: { type: new GraphQLNonNull(GraphQLInt) },
     disabledReason: { type: GraphQLString },
+    /** The collection field a patching delivery is matched on, if any. */
+    matchField: { type: GraphQLString },
+    /** `{ path, events, registered }`, or null when this sync receives nothing.
+     *  Never the secret — that is returned once, by `enableIntegrationWebhook`. */
+    webhook: { type: JSONScalar },
+    createdAt: { type: JSONScalar },
+  },
+});
+
+const WebhookEndpointType = new GraphQLObjectType({
+  name: "IntegrationWebhookEndpoint",
+  fields: {
+    /** Give this to the provider. */
+    url: { type: new GraphQLNonNull(GraphQLString) },
+    /** Present ONLY here, on the call that minted it. Lost means rotate. */
+    secret: { type: GraphQLString },
+    events: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    registered: { type: new GraphQLNonNull(GraphQLBoolean) },
+    /** The endpoint is live and the provider was not told. */
+    registrationError: { type: GraphQLString },
+  },
+});
+
+const InboundDeliveryType = new GraphQLObjectType({
+  name: "IntegrationInboundDelivery",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    syncId: { type: new GraphQLNonNull(GraphQLString) },
+    event: { type: new GraphQLNonNull(GraphQLString) },
+    /** `applied` | `unmatched` | `filtered` | `ignored` | `duplicate` | `rejected` | `failed`. */
+    status: { type: new GraphQLNonNull(GraphQLString) },
+    rowsWritten: { type: new GraphQLNonNull(GraphQLInt) },
+    error: { type: GraphQLString },
     createdAt: { type: JSONScalar },
   },
 });
@@ -114,8 +153,12 @@ const SyncInputType = new GraphQLInputObjectType({
   fields: {
     integrationId: { type: GraphQLString },
     collection: { type: GraphQLString },
-    /** `pull` (default) brings rows in; `push` mirrors the collection out. */
+    /** `pull` (default) brings rows in; `push` mirrors the collection out;
+     *  `inbound` has nothing to poll and receives the provider's deliveries. */
     direction: { type: GraphQLString },
+    /** The collection field a patching delivery is matched on. Required for a
+     *  provider whose webhook updates rows it did not create. */
+    matchField: { type: GraphQLString },
     settings: { type: JSONScalar },
     mapping: { type: JSONScalar },
     /** Pull only: `{ group: { collection, parentField, mapping } }`. */
@@ -227,6 +270,20 @@ export const integrationQueryFields: Record<string, GraphQLFieldConfig<unknown, 
         return listSyncs(gqlCtx.ctx, tenantId, (args as { integrationId?: string }).integrationId);
       }),
   },
+  integrationInboundDeliveries: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(InboundDeliveryType))),
+    description:
+      "What a provider delivered to one sync's endpoint, newest first (admin-only). An endpoint's whole " +
+      "health story: `applied` wrote rows, `unmatched` found no row holding the id the delivery named, " +
+      "`filtered` was an event this endpoint is not subscribed to, `ignored` was a ping, `duplicate` was a " +
+      "retry of something already applied, `rejected` did not present the secret, and `failed` was ours.",
+    args: { syncId: { type: new GraphQLNonNull(GraphQLString) } },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        return listDeliveries(gqlCtx.ctx, tenantId, (args as { syncId: string }).syncId);
+      }),
+  },
   integrationDeliveries: {
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(IntegrationDeliveryType))),
     description: "Recent delivery attempts for one integration, newest first (admin-only).",
@@ -331,12 +388,15 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
           collection: d.collection as string,
           // Left undefined when absent so the service applies its own default
           // rather than this surface inventing a second one.
-          direction: d.direction as "pull" | "push" | undefined,
+          direction: d.direction as "pull" | "push" | "inbound" | undefined,
           settings: (d.settings ?? {}) as Record<string, unknown>,
           mapping: (d.mapping ?? {}) as Record<string, string>,
           childMappings: d.childMappings as CreateSyncInput["childMappings"],
           intervalMinutes: d.intervalMinutes as number | undefined,
           enabled: d.enabled as boolean | undefined,
+          // Type-guarded rather than cast: this surface hands the service raw
+          // input, so a number here would reach a field-name check as a number.
+          matchField: typeof d.matchField === "string" ? d.matchField : undefined,
         });
         await recordActivity(gqlCtx.ctx, {
           userId: gqlCtx.auth.userId ?? null,
@@ -365,6 +425,7 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
           childMappings: a.data.childMappings as CreateSyncInput["childMappings"],
           intervalMinutes: a.data.intervalMinutes as number | undefined,
           enabled: a.data.enabled as boolean | undefined,
+          matchField: typeof a.data.matchField === "string" ? a.data.matchField : undefined,
         });
       }),
   },
@@ -389,6 +450,72 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
       surfacing(async () =>
         runSync(gqlCtx.ctx, requireFlowAdmin(gqlCtx), (args as { id: string }).id),
       ),
+  },
+  enableIntegrationWebhook: {
+    type: new GraphQLNonNull(WebhookEndpointType),
+    description:
+      "Turn on the endpoint a sync receives deliveries on, and register it at the provider where that is " +
+      "possible (admin-only). The secret is returned ONCE and never again — it is a bearer credential a third " +
+      "party also holds. Call this again to rotate it; the URL stays the same. A failed registration does not " +
+      "roll the endpoint back: `registrationError` says what to retry.",
+    args: {
+      syncId: { type: new GraphQLNonNull(GraphQLString) },
+      events: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+    },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const a = args as { syncId: string; events?: unknown };
+        // Guarded, not cast: GraphQL hands the service raw input, and a list
+        // holding a number would reach the event check as a number.
+        const events = Array.isArray(a.events)
+          ? a.events.filter((e): e is string => typeof e === "string")
+          : undefined;
+        const data = await enableWebhook(gqlCtx.ctx, tenantId, a.syncId, { events });
+        await recordActivity(gqlCtx.ctx, {
+          userId: gqlCtx.auth.userId ?? null,
+          tenantId,
+          action: "update",
+          collection: "system_integration_syncs",
+          itemId: a.syncId,
+          // The secret is deliberately not recorded. It travels to the caller
+          // once; an activity row is the last place it should come to rest.
+          payload: { webhook: "enabled", registered: data.registered },
+        });
+        return data;
+      }),
+  },
+  updateIntegrationWebhookEvents: {
+    type: new GraphQLNonNull(SyncType),
+    description:
+      "Change which events an endpoint accepts (admin-only). Empty means every event the provider declares. " +
+      "Where the provider filters server-side this re-registers the endpoint, which rotates the secret.",
+    args: {
+      syncId: { type: new GraphQLNonNull(GraphQLString) },
+      events: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const a = args as { syncId: string; events: unknown };
+        const events = Array.isArray(a.events)
+          ? a.events.filter((e): e is string => typeof e === "string")
+          : invalid("events must be a list of strings");
+        return updateWebhookEvents(gqlCtx.ctx, tenantId, a.syncId, events);
+      }),
+  },
+  disableIntegrationWebhook: {
+    type: new GraphQLNonNull(JSONScalar),
+    description:
+      "Tear an endpoint down (admin-only). The provider is asked to stop first, but cannot block it — " +
+      "deliveries to the old URL then resolve to nothing.",
+    args: { syncId: { type: new GraphQLNonNull(GraphQLString) } },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        await disableWebhook(gqlCtx.ctx, tenantId, (args as { syncId: string }).syncId);
+        return { ok: true };
+      }),
   },
   runIntegrationTask: {
     type: new GraphQLNonNull(TaskRunResultType),

@@ -30,10 +30,14 @@ import {
   type IntegrationProvider,
   type TaskOutput,
   type TaskResult,
+  type IntegrationWebhook,
+  type WebhookAuthKind,
+  type WebhookDelivery,
   columnsForSettings,
   OAUTH_CONFIG_KEYS,
   secretKeysOf,
 } from "./provider";
+import { enc, hmac, timingSafeEqual, toHex } from "./payment-crypto";
 import { INTEGRATION_KINDS, type IntegrationKind, PROVIDERS, providerFor } from "./providers";
 import { isRateLimited, throttled } from "./throttle";
 
@@ -81,6 +85,13 @@ export type {
   TaskOutput,
   TaskResult,
   TaskRunContext,
+  IntegrationWebhook,
+  WebhookAuthKind,
+  WebhookDelivery,
+  WebhookParseContext,
+  WebhookRecord,
+  WebhookRegisterContext,
+  WebhookVerifyContext,
 } from "./provider";
 export { isRateLimited, parseRetryAfter, RateLimitedError, resetThrottleState, takeToken, throttled } from "./throttle";
 export {
@@ -410,6 +421,204 @@ export async function pullFromSource(
     setting: (key) => pick(args.settings, key),
   });
 }
+
+// ── Inbound webhooks ─────────────────────────────────────────────────────────
+
+/** Kinds that call us. Derived, like SOURCE_KINDS. */
+export const WEBHOOK_KINDS = entries.filter(([, p]) => p.webhook).map(([id]) => id);
+
+/**
+ * What each webhook provider needs an operator and a form to know.
+ *
+ * `verify`/`parse` are deliberately absent: this is what crosses the API to the
+ * admin UI, and a function cannot. Everything a form has to render — how the
+ * secret is used, which header carries it, which events exist, whether a
+ * delivery replaces a row or patches one, and whether we can register the
+ * endpoint ourselves — is here, so the UI never has to special-case a kind.
+ */
+export const INTEGRATION_WEBHOOKS = Object.fromEntries(
+  entries
+    .filter(([, p]) => p.webhook)
+    .map(([id, p]) => [
+      id,
+      {
+        auth: p.webhook!.auth,
+        header: p.webhook!.header ?? null,
+        events: [...p.webhook!.events],
+        landing: p.webhook!.landing,
+        matchLabel: p.webhook!.matchLabel ?? null,
+        /** The operator gets an "activate at the provider" button instead of a
+         *  URL to paste into an API that has no UI. */
+        selfRegistering: typeof p.webhook!.register === "function",
+      },
+    ]),
+) as Record<
+  string,
+  {
+    auth: WebhookAuthKind;
+    header: string | null;
+    events: { key: string; label: string }[];
+    landing: "upsert" | "patch";
+    matchLabel: string | null;
+    selfRegistering: boolean;
+  }
+>;
+
+/** Look up a kind's webhook block. `undefined` when it has none. */
+export const webhookFor = (kind: string): IntegrationWebhook | undefined => providerFor(kind)?.webhook;
+
+/**
+ * Is this delivery genuinely from the provider?
+ *
+ * Returns a verdict rather than throwing on rejection, because the two answers
+ * mean opposite things to a caller: a forged or mis-signed delivery must be
+ * refused with a 4xx and never retried, while an error thrown out of a verifier
+ * is our own failure and has to read as a 5xx so the provider tries again.
+ *
+ * An unknown kind, or a kind with no webhook block, is `false` — there is no
+ * secret to check against, so nothing can prove itself.
+ */
+export async function verifyWebhookDelivery(
+  kind: string,
+  args: {
+    rawBody: string;
+    headers: Headers | Record<string, string>;
+    secret: string;
+    config: Record<string, unknown>;
+  },
+): Promise<boolean> {
+  const hook = webhookFor(kind);
+  if (!hook) return false;
+  return hook.verify({
+    rawBody: args.rawBody,
+    header: (name) => readHeader(args.headers, name),
+    secret: args.secret,
+    config: args.config,
+    str: (key) => {
+      const v = args.config[key];
+      return typeof v === "string" && v ? v : null;
+    },
+    hmacSha256Hex: async (key, message) => toHex(await hmac(enc.encode(key), message)),
+    safeEqual: timingSafeEqual,
+  });
+}
+
+/**
+ * Turn a verified delivery into records.
+ *
+ * `null` means "not something this provider recognises" — a ping, or an event
+ * kind that arrived after this code was written. The engine records that as
+ * ignored rather than failed: answering 5xx would make a provider retry a body
+ * it will never send successfully, and answering 4xx would make it disable an
+ * endpoint that is working perfectly.
+ */
+export function parseWebhookDelivery(
+  kind: string,
+  args: { rawBody: string; headers: Headers | Record<string, string>; config: Record<string, unknown> },
+): WebhookDelivery | null {
+  const hook = webhookFor(kind);
+  if (!hook) return null;
+  let json: unknown = null;
+  try {
+    json = JSON.parse(args.rawBody);
+  } catch {
+    // Not every provider sends JSON, and a parser that wants the raw text still
+    // gets it. `null` here is a fact about the body, not a failure.
+  }
+  return hook.parse({
+    rawBody: args.rawBody,
+    header: (name) => readHeader(args.headers, name),
+    json,
+    config: args.config,
+    str: (key) => {
+      const v = args.config[key];
+      return typeof v === "string" && v ? v : null;
+    },
+  });
+}
+
+/**
+ * Ask the provider to start calling `url`.
+ *
+ * Throws on failure, like every other call that has an outside effect here: an
+ * endpoint the operator believes is active but which was never registered is
+ * silence that looks exactly like "nothing has happened yet".
+ */
+export async function registerWebhook(
+  kind: string,
+  args: {
+    config: Record<string, unknown>;
+    url: string;
+    secret: string;
+    events: readonly string[];
+    connectionKey?: string;
+  },
+  fetchImpl?: FetchLike,
+): Promise<{ id: string }> {
+  const hook = webhookFor(kind);
+  if (!hook?.register) throw new Error(`${kind} cannot register a webhook`);
+  return hook.register({
+    config: args.config,
+    url: args.url,
+    secret: args.secret,
+    events: args.events,
+    fetch: engineFetch(kind, args.connectionKey, fetchImpl),
+    str: (key) => {
+      const v = args.config[key];
+      return typeof v === "string" && v ? v : null;
+    },
+  });
+}
+
+/**
+ * Ask the provider to stop calling.
+ *
+ * Best-effort by contract: the caller removes its own subscription either way.
+ * A registration left behind at the provider delivers to an endpoint whose
+ * token no longer resolves, which is a 404 for them and nothing for us — worse
+ * than the alternative only in noise, whereas refusing to disable a subscription
+ * because the provider is unreachable would leave an operator unable to turn off
+ * a firehose.
+ */
+export async function unregisterWebhook(
+  kind: string,
+  args: {
+    config: Record<string, unknown>;
+    url: string;
+    secret: string;
+    events: readonly string[];
+    id: string;
+    connectionKey?: string;
+  },
+  fetchImpl?: FetchLike,
+): Promise<void> {
+  const hook = webhookFor(kind);
+  if (!hook?.unregister) return;
+  await hook.unregister({
+    config: args.config,
+    url: args.url,
+    secret: args.secret,
+    events: args.events,
+    id: args.id,
+    fetch: engineFetch(kind, args.connectionKey, fetchImpl),
+    str: (key) => {
+      const v = args.config[key];
+      return typeof v === "string" && v ? v : null;
+    },
+  });
+}
+
+/** Case-insensitive header read across both shapes a caller may hold. */
+const readHeader = (headers: Headers | Record<string, string>, name: string): string | null => {
+  if (typeof (headers as Headers).get === "function") {
+    return (headers as Headers).get(name) ?? null;
+  }
+  const lower = name.toLowerCase();
+  for (const [k, v] of Object.entries(headers as Record<string, string>)) {
+    if (k.toLowerCase() === lower) return typeof v === "string" ? v : null;
+  }
+  return null;
+};
 
 /**
  * Strip the OAuth-owned keys from caller-supplied config.

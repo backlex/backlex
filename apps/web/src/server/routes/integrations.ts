@@ -8,6 +8,7 @@ import {
   DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
   INTEGRATION_TASKS,
+  INTEGRATION_WEBHOOKS,
   SOURCE_CHILD_GROUPS,
   SOURCE_SETTING_FIELDS,
 } from "@backlex/integrations";
@@ -30,6 +31,12 @@ import {
   updateSync,
 } from "../services/integration-syncs";
 import { listTaskRuns, runTask } from "../services/integration-tasks";
+import {
+  disableWebhook,
+  enableWebhook,
+  listDeliveries,
+  updateWebhookEvents,
+} from "../services/integration-webhooks";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -97,6 +104,11 @@ const CatalogView = z
      *  invoke anything, so they travel with the catalog rather than in a
      *  second list somebody has to keep in step. */
     tasks: z.record(z.string(), z.unknown()),
+    /** What each provider that CALLS US needs a form to know: how the secret is
+     *  used, which header carries it, which events exist, whether a delivery
+     *  replaces a row or patches one, and whether we can register the endpoint
+     *  ourselves. A kind that is absent sends no webhooks. */
+    webhooks: z.record(z.string(), z.unknown()),
   })
   .openapi("IntegrationCatalog");
 
@@ -163,9 +175,55 @@ const SyncView = z
     lastError: z.string().nullable(),
     consecutiveFailures: z.number(),
     disabledReason: z.string().nullable(),
+    matchField: z.string().nullable(),
+    /** The endpoint, described — never the secret. Null when there is none. */
+    webhook: z
+      .object({
+        path: z.string(),
+        events: z.array(z.string()),
+        registered: z.boolean(),
+      })
+      .nullable(),
     createdAt: z.union([z.number(), z.date()]).nullable(),
   })
   .openapi("IntegrationSync");
+
+const WebhookEndpointView = z
+  .object({
+    url: z.string().openapi({ description: "The absolute URL to give the provider." }),
+    secret: z
+      .string()
+      .nullable()
+      .openapi({ description: "Returned ONCE, by the call that minted it. Lost means rotate." }),
+    events: z.array(z.string()),
+    registered: z.boolean().openapi({ description: "True when we told the provider about it ourselves." }),
+    registrationError: z.string().optional().openapi({
+      description: "The endpoint is live and the provider was not told. Retry by calling again.",
+    }),
+  })
+  .openapi("IntegrationWebhookEndpoint");
+
+const InboundDeliveryView = z
+  .object({
+    id: z.string(),
+    syncId: z.string(),
+    event: z.string(),
+    status: z.string(),
+    rowsWritten: z.number(),
+    error: z.string().nullable(),
+    createdAt: z.union([z.number(), z.date()]).nullable(),
+  })
+  .openapi("IntegrationInboundDelivery");
+
+const WebhookEventsInput = z
+  .object({
+    events: z.array(z.string().min(1)).openapi({
+      description: "Event keys from the catalog's `webhooks[kind].events`. Empty = every event.",
+    }),
+  })
+  .openapi("IntegrationWebhookEventsInput");
+
+const WebhookEnableInput = WebhookEventsInput.partial().openapi("IntegrationWebhookEnableInput");
 
 const SyncInput = z
   .object({
@@ -173,10 +231,22 @@ const SyncInput = z
     collection: z.string().min(1).openapi({
       description: "Managed collection slug the rows land in (pull) or come from (push).",
     }),
-    direction: z.enum(["pull", "push"]).optional().openapi({
+    direction: z.enum(["pull", "push", "inbound"]).optional().openapi({
       description:
-        "`pull` draws rows in from a source (default); `push` mirrors the collection out to a warehouse.",
+        "`pull` draws rows in from a source (default); `push` mirrors the collection out to a warehouse; " +
+        "`inbound` has nothing to poll and exists to receive the provider's webhook deliveries. A `pull` sync " +
+        "may ALSO have an endpoint — that is the normal case for a marketplace, and the poll is what repairs " +
+        "the deliveries a webhook loses.",
     }),
+    matchField: z
+      .string()
+      .min(1)
+      .nullish()
+      .openapi({
+        description:
+          "The collection field a delivery is matched on, for a provider whose webhook updates rows it did " +
+          "not create (a carrier's tracking events). Refused for a provider that sends whole records.",
+      }),
     settings: z.record(z.string(), z.unknown()).optional().openapi({
       description: "Which spreadsheet / base / database. Keys come from the catalog's `sourceSettings`.",
     }),
@@ -277,6 +347,10 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           // "free text" — a warehouse's columns are the operator's DDL.
           destinationColumns: DESTINATION_COLUMNS,
           tasks: INTEGRATION_TASKS,
+          // Only the providers that call us. Absent means the sync form offers
+          // no endpoint, which is the right reading for every provider that
+          // only ever answers a request we made.
+          webhooks: INTEGRATION_WEBHOOKS,
         },
       }),
   )
@@ -524,6 +598,144 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await deleteSync(c.get("ctx"), tenantId, id);
       await logActivity(c, { action: "delete", collection: "system_integration_syncs", itemId: id });
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/syncs/{id}/webhook",
+      tags,
+      summary: "Turn on the inbound endpoint",
+      description:
+        "Admin-only. Mints a URL and a secret this sync will accept deliveries on, and — for the providers " +
+        "that have an API for it — registers them at the provider so nothing has to be pasted anywhere. The " +
+        "secret is returned ONCE and never again: it is a bearer credential a third party also holds, so a " +
+        "field that kept handing it back would put it in a cache, a screenshot and an activity log. Call this " +
+        "again to rotate it; the URL stays the same. Registration failing does NOT roll the endpoint back — the " +
+        "URL works, and `registrationError` says what to retry.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        params: z.object({ id: z.string() }),
+        body: { content: { "application/json": { schema: WebhookEnableInput } } },
+      },
+      responses: {
+        200: { description: "OK", content: { "application/json": { schema: z.object({ data: WebhookEndpointView }) } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json") ?? {};
+      const data = await enableWebhook(c.get("ctx"), tenantId, id, { events: body.events });
+      await logActivity(c, {
+        action: "update",
+        collection: "system_integration_syncs",
+        itemId: id,
+        // The secret is deliberately absent from what is logged. `data` carries
+        // it exactly once, to the caller, and an activity row is the last place
+        // a credential a third party also holds should come to rest.
+        payload: { webhook: "enabled", events: data.events, registered: data.registered },
+      });
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/syncs/{id}/webhook",
+      tags,
+      summary: "Change which events the endpoint accepts",
+      description:
+        "Admin-only. An empty list means every event the provider declares. Where the provider filters " +
+        "server-side (Trendyol's `subscribedStatuses`), it is re-registered so a deselected event stops being " +
+        "sent rather than being sent and dropped — which rotates the secret as a side effect, because " +
+        "re-registering is the only way to say so.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        params: z.object({ id: z.string() }),
+        body: { required: true, content: { "application/json": { schema: WebhookEventsInput } } },
+      },
+      responses: {
+        200: { description: "OK", content: { "application/json": { schema: z.object({ data: SyncView }) } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const { events } = c.req.valid("json");
+      const data = await updateWebhookEvents(c.get("ctx"), tenantId, id, events);
+      await logActivity(c, {
+        action: "update",
+        collection: "system_integration_syncs",
+        itemId: id,
+        payload: { webhookEvents: events },
+      });
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/syncs/{id}/webhook",
+      tags,
+      summary: "Turn off the inbound endpoint",
+      description:
+        "Admin-only. Asks the provider to stop first, but its answer decides nothing — the endpoint is torn " +
+        "down either way, because an operator turning off a firehose cannot be blocked by the firehose being " +
+        "unreachable. Deliveries to the old URL then resolve to nothing.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: { description: "OK", content: { "application/json": { schema: OkSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      await disableWebhook(c.get("ctx"), tenantId, id);
+      await logActivity(c, {
+        action: "update",
+        collection: "system_integration_syncs",
+        itemId: id,
+        payload: { webhook: "disabled" },
+      });
+      return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/syncs/{id}/deliveries",
+      tags,
+      summary: "Recent inbound deliveries",
+      description:
+        "Admin-only. Newest first — the whole health story for an endpoint, which is why the sync row records " +
+        "none of it separately. `status` distinguishes what actually happened: `applied` wrote rows, " +
+        "`unmatched` means no row held the id the delivery named, `filtered` means the endpoint is not " +
+        "subscribed to that event, `ignored` was a ping or an event kind we do not read, `duplicate` was a " +
+        "provider retrying something already applied, `rejected` did not present the secret, and `failed` was " +
+        "ours.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: z.array(InboundDeliveryView) }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      return c.json({ data: await listDeliveries(c.get("ctx"), tenantId, id) });
     },
   )
   .openapi(

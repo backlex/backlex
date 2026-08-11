@@ -169,9 +169,13 @@ describe("integrations — MCP surface", () => {
       "integrations.run_sync",
       "integrations.run_task",
       "integrations.syncs",
+      "integrations.disable_webhook",
+      "integrations.enable_webhook",
+      "integrations.inbound_deliveries",
       "integrations.task_runs",
       "integrations.update_sync",
-    ]);
+      "integrations.update_webhook_events",
+    ].sort());
   });
 
   test("every tool declares a closed input schema", () => {
@@ -245,7 +249,7 @@ describe("integrations — direction reaches every surface", () => {
     const direction = (tool?.inputSchema.properties as Record<string, any>).direction;
     // An enum rather than a free string: an agent guessing "outbound" would
     // otherwise create a pull and be told nothing.
-    expect(direction.enum).toEqual(["pull", "push"]);
+    expect(direction.enum).toEqual(["pull", "push", "inbound"]);
   });
 });
 
@@ -375,5 +379,153 @@ describe("integrations — the task capability reaches every surface", () => {
     } finally {
       h.cleanup();
     }
+  });
+});
+
+/**
+ * The inbound-webhook capability reaches every surface.
+ *
+ * The same failure mode `direction` had, one capability later: an endpoint that
+ * exists only over REST leaves an SDK, GraphQL, MCP or CLI caller able to create
+ * the sync and unable to turn on the thing that feeds it. MCP is the sharp one —
+ * `additionalProperties: false` REJECTS an undeclared field, so a tool missing
+ * `events` would make the event filter unreachable from an agent while looking
+ * present everywhere else.
+ */
+describe("integrations — inbound webhooks reach every surface", () => {
+  let h: TestHarness;
+  let client: ReturnType<typeof createClient>;
+  const realFetch = globalThis.fetch;
+
+  const gql = async (query: string, variables?: unknown) =>
+    (await (await h.fetch("/api/graphql", json({ query, variables }))).json()) as {
+      data?: Record<string, any>;
+      errors?: { message: string }[];
+    };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    client = createClient({ url: "http://localhost", fetch: h.fetch as typeof fetch });
+    // Turning an endpoint on asks the provider to start calling. A test suite
+    // must not, so the provider's host is answered here instead of reached.
+    globalThis.fetch = (async (url: any, init: any) =>
+      String(url).startsWith("https://api.easypost.com/")
+        ? new Response(JSON.stringify({ id: "hook_surfaces" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          })
+        : realFetch(url, init)) as typeof fetch;
+  });
+  afterAll(() => {
+    globalThis.fetch = realFetch;
+    h.cleanup();
+  });
+
+  test("the catalog describes each endpoint, from REST and the SDK alike", async () => {
+    const cat = await client.integrations.catalog();
+    // Derived from the registry: what matters is that the shape crosses the API
+    // at all, since a form cannot render a `verify` function.
+    expect(cat.data.webhooks.easypost?.landing).toBe("patch");
+    expect(cat.data.webhooks.easypost?.selfRegistering).toBe(true);
+    expect(cat.data.webhooks.trendyol?.auth).toBe("header");
+    expect(cat.data.webhooks.trendyol?.events.length).toBeGreaterThan(5);
+    // A provider that only ever answers a request we made has no endpoint.
+    expect(cat.data.webhooks.slack).toBeUndefined();
+  });
+
+  test("the SDK declares every entry point", () => {
+    for (const fn of ["enableWebhook", "updateWebhookEvents", "disableWebhook", "inboundDeliveries"]) {
+      expect(typeof (client.integrations as unknown as Record<string, unknown>)[fn]).toBe("function");
+    }
+  });
+
+  test("GraphQL declares the mutations and the query", async () => {
+    const res = (await (
+      await h.fetch(
+        "/api/graphql",
+        json({ query: `{ __schema { mutationType { fields { name } } queryType { fields { name } } } }` }),
+      )
+    ).json()) as any;
+    const mutations = res.data.__schema.mutationType.fields.map((f: any) => f.name);
+    const queries = res.data.__schema.queryType.fields.map((f: any) => f.name);
+    expect(mutations).toContain("enableIntegrationWebhook");
+    expect(mutations).toContain("updateIntegrationWebhookEvents");
+    expect(mutations).toContain("disableIntegrationWebhook");
+    expect(queries).toContain("integrationInboundDeliveries");
+  });
+
+  test("GraphQL takes matchField on a sync, and reports the endpoint back", async () => {
+    // The two fields a webhook adds to a sync. `matchField` is the one that is
+    // useless if it only reaches REST: without it an inbound sync for a carrier
+    // cannot be created from GraphQL at all.
+    const res = await gql(`{ __type(name:"IntegrationSyncInput"){ inputFields { name } } }`);
+    const fields = (res.data?.__type.inputFields as { name: string }[]).map((f) => f.name);
+    expect(fields).toContain("matchField");
+
+    const out = await gql(`{ __type(name:"IntegrationSync"){ fields { name } } }`);
+    const readable = (out.data?.__type.fields as { name: string }[]).map((f) => f.name);
+    expect(readable).toContain("matchField");
+    expect(readable).toContain("webhook");
+  });
+
+  test("MCP declares the fields each call actually needs", () => {
+    const enable = integrationsTools.find((t) => t.name === "integrations.enable_webhook");
+    const props = enable?.inputSchema.properties as Record<string, any>;
+    expect(props.syncId).toBeDefined();
+    expect(props.events).toBeDefined();
+    expect(enable?.inputSchema.required).toEqual(["syncId"]);
+
+    // And `matchField` on create_sync, or an agent cannot set up a carrier
+    // endpoint at all — the enable call refuses a patching provider without one.
+    const create = integrationsTools.find((t) => t.name === "integrations.create_sync");
+    expect((create?.inputSchema.properties as Record<string, any>).matchField).toBeDefined();
+  });
+
+  test("the secret does not appear on any read-back surface", async () => {
+    // The one guard worth asserting across surfaces rather than per-surface: a
+    // bearer credential the provider also holds must be returned once and never
+    // again, and "never again" has to hold for every reader.
+    const made = await client.integrations.connect({
+      kind: "easypost",
+      config: {
+        apiKey: "EZTK_x",
+        fromName: "W",
+        fromStreet1: "1 St",
+        fromCity: "C",
+        fromZip: "1",
+        fromCountry: "TR",
+      },
+    });
+    await h.fetch(
+      "/api/collections",
+      json({
+        slug: "parcels",
+        fields: [
+          { name: "shipment_id", type: "text" },
+          { name: "state", type: "text" },
+        ],
+      }),
+    );
+    const sync = await client.integrations.createSync({
+      integrationId: made.data.id,
+      collection: "parcels",
+      direction: "inbound",
+      matchField: "shipment_id",
+      mapping: { shipmentStatus: "state" },
+    });
+
+    const endpoint = await client.integrations.enableWebhook(sync.data.id);
+    const secret = endpoint.data.secret;
+    expect(secret).toBeTruthy();
+
+    const overRest = await client.integrations.syncs();
+    const overGraphql = await gql(`{ integrationSyncs { id webhook } }`);
+    expect(JSON.stringify(overRest.data)).not.toContain(secret);
+    expect(JSON.stringify(overGraphql.data)).not.toContain(secret);
+    // …and the endpoint is still described on both, so the absence above is the
+    // secret being withheld rather than the whole field being missing.
+    expect(overRest.data[0]!.webhook?.path).toContain("/api/integrations/hooks/");
+    expect(overGraphql.data?.integrationSyncs[0].webhook.registered).toBeDefined();
   });
 });

@@ -46,6 +46,43 @@ export type SettingField = {
 /** A group of rows a source hands back beneath each record — an order's lines. */
 export type ChildGroup = { key: string; label: string };
 
+/**
+ * What a provider that CALLS US needs this form to know.
+ *
+ * Straight from the catalog, so the dialog never special-cases a kind: `auth`
+ * decides which sentence explains the secret, `landing` decides whether a match
+ * field is asked for at all, and `selfRegistering` decides whether the operator
+ * is handed a URL to paste or simply told it is live.
+ */
+export type WebhookInfo = {
+  auth: "hmac" | "header" | "basic";
+  header: string | null;
+  events: { key: string; label: string }[];
+  landing: "upsert" | "patch";
+  matchLabel: string | null;
+  selfRegistering: boolean;
+};
+
+/** A live endpoint, as the enable call describes it. */
+type Endpoint = {
+  url: string;
+  /** Present ONLY on the response that minted it. */
+  secret: string | null;
+  events: string[];
+  registered: boolean;
+  registrationError?: string;
+};
+
+/** One delivery a provider made, and what became of it. */
+type InboundDelivery = {
+  id: string;
+  event: string;
+  status: string;
+  rowsWritten: number;
+  error: string | null;
+  createdAt: number | string | null;
+};
+
 /** Where one group's rows land. Mirrors the server's `ChildMappingSpec`. */
 export type ChildMapping = {
   collection: string;
@@ -69,10 +106,19 @@ export type ApiSync = {
   lastError: string | null;
   consecutiveFailures: number;
   disabledReason: string | null;
+  matchField?: string | null;
+  /** The endpoint, described — never the secret. Null when it receives nothing. */
+  webhook?: { path: string; events: string[]; registered: boolean } | null;
 };
 
 /** A connected integration the picker can offer, with which way it travels. */
-export type SourceOption = { id: string; kind: string; label: string; direction: "pull" | "push" };
+export type SourceOption = {
+  id: string;
+  kind: string;
+  label: string;
+  /** `inbound` is a sync with nothing to poll: the provider does the calling. */
+  direction: "pull" | "push" | "inbound";
+};
 
 /** Identifies one ROW of the picker. A connection that can travel both ways
  *  appears twice under one id, so the direction has to be part of the key. */
@@ -100,9 +146,10 @@ export function IntegrationSyncsCard({
   settingFields,
   destinationColumns = {},
   childGroups = {},
+  webhooks = {},
   pushToast,
 }: {
-  /** Both directions; the dialog reads `direction` off the chosen entry. */
+  /** Every direction; the dialog reads `direction` off the chosen entry. */
   sources: SourceOption[];
   /** Keyed `<kind>:<direction>` so one provider can declare both. */
   settingFields: Record<string, SettingField[]>;
@@ -110,6 +157,8 @@ export function IntegrationSyncsCard({
   destinationColumns?: Record<string, DestinationColumn[]>;
   /** Child groups each source returns, keyed by kind. Absent = flat records. */
   childGroups?: Record<string, ChildGroup[]>;
+  /** How each provider that calls us behaves, keyed by kind. Absent = it does not. */
+  webhooks?: Record<string, WebhookInfo>;
   pushToast: PushToast;
 }) {
   const { t } = useLingui();
@@ -117,6 +166,9 @@ export function IntegrationSyncsCard({
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  /** The sync whose endpoint is open, and the secret if it was just minted. */
+  const [endpointFor, setEndpointFor] = useState<ApiSync | null>(null);
+  const [freshSecret, setFreshSecret] = useState<Endpoint | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -135,6 +187,87 @@ export function IntegrationSyncsCard({
 
   const labelFor = (integrationId: string) =>
     sources.find((s) => s.id === integrationId)?.label ?? t`Disconnected source`;
+
+  const kindOf = (integrationId: string) => sources.find((s) => s.id === integrationId)?.kind ?? "";
+
+  /** The endpoint description for this row's provider, or undefined. */
+  const hookFor = (row: ApiSync): WebhookInfo | undefined => webhooks[kindOf(row.integrationId)];
+
+  /**
+   * Turn the endpoint on — or rotate its secret, which is the same call.
+   *
+   * Optimistic on the row's badge, and the secret is put on screen from the
+   * response rather than re-read: nothing hands it back a second time.
+   */
+  const enableHook = async (row: ApiSync) => {
+    const snapshot = syncs;
+    setBusy(row.id);
+    try {
+      const res = await api<{ data: Endpoint }>(`/api/admin/integrations/syncs/${row.id}/webhook`, {
+        method: "POST",
+        body: JSON.stringify({ events: row.webhook?.events ?? [] }),
+      });
+      setSyncs((prev) =>
+        prev.map((s) =>
+          s.id === row.id
+            ? {
+                ...s,
+                webhook: {
+                  path: new URL(res.data.url).pathname,
+                  events: res.data.events,
+                  registered: res.data.registered,
+                },
+              }
+            : s,
+        ),
+      );
+      setFreshSecret(res.data);
+      setEndpointFor({ ...row, webhook: { path: new URL(res.data.url).pathname, events: res.data.events, registered: res.data.registered } });
+    } catch (e) {
+      setSyncs(snapshot);
+      pushToast((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const disableHook = async (row: ApiSync) => {
+    const snapshot = syncs;
+    setSyncs(snapshot.map((s) => (s.id === row.id ? { ...s, webhook: null } : s)));
+    setEndpointFor(null);
+    setFreshSecret(null);
+    try {
+      await api(`/api/admin/integrations/syncs/${row.id}/webhook`, { method: "DELETE" });
+      pushToast(t`Endpoint removed. The sync and every row it wrote stay.`);
+    } catch (e) {
+      setSyncs(snapshot);
+      pushToast((e as Error).message);
+    }
+  };
+
+  const setHookEvents = async (row: ApiSync, events: string[]) => {
+    const snapshot = syncs;
+    setSyncs(
+      snapshot.map((s) => (s.id === row.id && s.webhook ? { ...s, webhook: { ...s.webhook, events } } : s)),
+    );
+    try {
+      const res = await api<{ data: ApiSync }>(`/api/admin/integrations/syncs/${row.id}/webhook`, {
+        method: "PATCH",
+        body: JSON.stringify({ events }),
+      });
+      setSyncs((prev) => prev.map((s) => (s.id === row.id ? res.data : s)));
+      setEndpointFor((prev) => (prev && prev.id === row.id ? res.data : prev));
+      // Re-registering is how a server-side filter is changed, and that mints a
+      // new secret. Saying so beats an operator discovering it when the provider
+      // starts being refused.
+      if (row.webhook?.registered) {
+        pushToast(t`Events updated. The provider was re-registered with a new secret.`);
+      }
+    } catch (e) {
+      setSyncs(snapshot);
+      pushToast((e as Error).message);
+    }
+  };
 
   const create = async (input: Record<string, unknown>) => {
     const snapshot = syncs;
@@ -218,8 +351,9 @@ export function IntegrationSyncsCard({
           </h2>
           <p className="text-[12.5px] text-muted-foreground">
             <Trans>
-              Pull rows from a connected source into a collection on a schedule. Pulled rows update in place
-              and never overwrite rows created here.
+              Move rows between a connected provider and a collection — pulled on a schedule, pushed out on a
+              watermark, or delivered by the provider itself. Rows update in place and never overwrite rows
+              created here.
             </Trans>
           </p>
         </div>
@@ -290,14 +424,26 @@ export function IntegrationSyncsCard({
                       <Trans>+ lines</Trans>
                     </Badge>
                   )}
-                  {row.enabled && row.intervalMinutes === 0 && (
+                  {row.enabled && row.intervalMinutes === 0 && row.direction !== "inbound" && (
                     <Badge variant="secondary" className="text-[10px]">
                       <Trans>Manual only</Trans>
                     </Badge>
                   )}
+                  {row.webhook && (
+                    // The one badge worth having: a live endpoint is the
+                    // difference between a row that updates within seconds and
+                    // one that waits for the next interval, and nothing else on
+                    // the row would say which.
+                    <Badge variant="secondary" className="text-[10px]">
+                      <I.Zap size={9} className="mr-0.5" />
+                      <Trans>Live</Trans>
+                    </Badge>
+                  )}
                 </div>
                 <div className="mt-0.5 text-[11.5px] text-muted-foreground">
-                  {row.intervalMinutes > 0 ? (
+                  {row.direction === "inbound" ? (
+                    <Trans>arrives when the provider sends it</Trans>
+                  ) : row.intervalMinutes > 0 ? (
                     <Trans>every {row.intervalMinutes} min</Trans>
                   ) : (
                     <Trans>runs only when you ask</Trans>
@@ -309,7 +455,7 @@ export function IntegrationSyncsCard({
                         {row.lastRowCount} rows {relativeTime(row.lastRunAt)}
                       </Trans>
                     </>
-                  ) : (
+                  ) : row.direction === "inbound" ? null : (
                     <>
                       {" · "}
                       <Trans>never run</Trans>
@@ -323,9 +469,27 @@ export function IntegrationSyncsCard({
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                <Button variant="ghost" disabled={busy === row.id} onClick={() => void runNow(row)}>
-                  {busy === row.id ? <Trans>Pulling…</Trans> : <Trans>Run now</Trans>}
-                </Button>
+                {/* An inbound row has nothing to run: the server refuses it, and
+                    offering the button would be a promise it cannot keep. */}
+                {row.direction !== "inbound" && (
+                  <Button variant="ghost" disabled={busy === row.id} onClick={() => void runNow(row)}>
+                    {busy === row.id ? <Trans>Pulling…</Trans> : <Trans>Run now</Trans>}
+                  </Button>
+                )}
+                {hookFor(row) &&
+                  (row.webhook ? (
+                    <Button variant="ghost" onClick={() => setEndpointFor(row)}>
+                      <Trans>Endpoint</Trans>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      disabled={busy === row.id}
+                      onClick={() => void enableHook(row)}
+                    >
+                      {busy === row.id ? <Trans>Turning on…</Trans> : <Trans>Turn on endpoint</Trans>}
+                    </Button>
+                  ))}
                 <Button variant="ghost" onClick={() => void toggle(row)}>
                   {row.enabled ? <Trans>Pause</Trans> : <Trans>Resume</Trans>}
                 </Button>
@@ -344,11 +508,267 @@ export function IntegrationSyncsCard({
           settingFields={settingFields}
           destinationColumns={destinationColumns}
           childGroups={childGroups}
+          webhooks={webhooks}
           onClose={() => setEditing(false)}
           onCreate={(input) => void create(input)}
         />
       )}
+
+      {endpointFor && hookFor(endpointFor) && (
+        <EndpointDialog
+          sync={endpointFor}
+          info={hookFor(endpointFor)!}
+          providerName={labelFor(endpointFor.integrationId)}
+          fresh={freshSecret}
+          onClose={() => {
+            setEndpointFor(null);
+            setFreshSecret(null);
+          }}
+          onRotate={() => void enableHook(endpointFor)}
+          onDisable={() => void disableHook(endpointFor)}
+          onEvents={(events) => void setHookEvents(endpointFor, events)}
+        />
+      )}
     </section>
+  );
+}
+
+/* ── The endpoint a provider delivers to ────────────────────────────────── */
+/**
+ * What an operator needs in front of them once an endpoint is live.
+ *
+ * Three things, in the order they matter. The SECRET, if it was just minted —
+ * on screen once, never again, and said so plainly rather than left for the
+ * operator to discover. Which EVENTS reach it, as checkboxes over the provider's
+ * own declared list. And what has actually ARRIVED, because "the marketplace says
+ * it sent it" is the question this panel exists to answer, and the verdict column
+ * is the answer: `applied` and `unmatched` look identical from the provider's
+ * side and mean completely different things here.
+ */
+function EndpointDialog({
+  sync,
+  info,
+  providerName,
+  fresh,
+  onClose,
+  onRotate,
+  onDisable,
+  onEvents,
+}: {
+  sync: ApiSync;
+  info: WebhookInfo;
+  providerName: string;
+  /** The just-minted endpoint, when this was opened by turning it on. */
+  fresh: Endpoint | null;
+  onClose: () => void;
+  onRotate: () => void;
+  onDisable: () => void;
+  onEvents: (events: string[]) => void;
+}) {
+  const { t } = useLingui();
+  const [deliveries, setDeliveries] = useState<InboundDelivery[] | null>(null);
+  const [copied, setCopied] = useState<"url" | "secret" | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const res = await fetchSafely<{ data: InboundDelivery[] }>(
+        `/api/admin/integrations/syncs/${sync.id}/deliveries`,
+      );
+      if (live) setDeliveries(res?.data ?? []);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [sync.id]);
+
+  const url = fresh?.url ?? `${window.location.origin}${sync.webhook?.path ?? ""}`;
+  const selected = sync.webhook?.events ?? [];
+
+  const copy = async (what: "url" | "secret", value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopied(what);
+    window.setTimeout(() => setCopied(null), 1500);
+  };
+
+  /** How this provider uses the secret. Three providers, three sentences. */
+  const secretUse =
+    info.auth === "hmac"
+      ? t`${providerName} signs every delivery with it — nothing is accepted without a matching signature.`
+      : info.auth === "basic"
+        ? t`${providerName} sends it as the password on every delivery.`
+        : t`${providerName} sends it back in the ${info.header ?? "x-api-key"} header on every delivery.`;
+
+  const toggleEvent = (key: string) => {
+    const next = selected.includes(key) ? selected.filter((e) => e !== key) : [...selected, key];
+    onEvents(next);
+  };
+
+  /** `applied` is the good one; the rest are shades of "nothing happened". */
+  const tone = (status: string): "secondary" | "destructive" | "default" =>
+    status === "applied" ? "default" : status === "rejected" || status === "failed" ? "destructive" : "secondary";
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      {/* `[&>*]:min-w-0` earns its keep here and nowhere else in this file: a URL
+          and a 64-character secret have no break opportunity, so their
+          min-content sets the dialog's implicit grid track and every sibling —
+          the header included — is stretched to it and hangs off a phone screen.
+          The tokens themselves wrap with `break-all` below; this stops the track
+          being sized by them in the first place. */}
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[560px] [&>*]:min-w-0">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
+          <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
+            <Trans>Inbound endpoint</Trans>
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px] text-muted-foreground">
+            {sync.webhook?.registered ? (
+              <Trans>
+                {providerName} has been told to post here. Rows land the moment it sends them; the schedule
+                above stays as the backstop for anything a delivery misses.
+              </Trans>
+            ) : (
+              <Trans>
+                Give this URL and secret to {providerName}. Rows land the moment it posts; the schedule above
+                stays as the backstop for anything a delivery misses.
+              </Trans>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogBody>
+          <div className="flex flex-col gap-4 px-5 py-4">
+            <div>
+              <span className="mb-1 block text-[11.5px] font-medium">
+                <Trans>Delivery URL</Trans>
+              </span>
+              <div className="flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-md bg-muted px-2 py-1.5 text-[11.5px]">
+                  {url}
+                </code>
+                <Button variant="ghost" className="shrink-0" onClick={() => void copy("url", url)}>
+                  {copied === "url" ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
+                </Button>
+              </div>
+            </div>
+
+            {fresh?.secret ? (
+              <div className="rounded-md border border-border p-3">
+                <span className="mb-1 block text-[11.5px] font-medium">
+                  <Trans>Secret — shown once</Trans>
+                </span>
+                <div className="flex items-center gap-2">
+                  <code className="min-w-0 flex-1 break-all rounded-md bg-muted px-2 py-1.5 text-[11.5px]">
+                    {fresh.secret}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    className="shrink-0"
+                    onClick={() => void copy("secret", fresh.secret!)}
+                  >
+                    {copied === "secret" ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
+                  </Button>
+                </div>
+                <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
+                  {secretUse}{" "}
+                  <Trans>
+                    Save it now — closing this panel is the last time you will see it. Lost means rotating,
+                    which keeps the same URL.
+                  </Trans>
+                </p>
+              </div>
+            ) : (
+              <p className="text-[11.5px] leading-snug text-muted-foreground">
+                <Trans>The secret was shown when this endpoint was turned on and is not stored in a readable
+                form. Rotate to get a new one; the URL stays the same.</Trans>
+              </p>
+            )}
+
+            {fresh?.registrationError && (
+              <p className="text-[11.5px] leading-snug text-destructive">
+                <Trans>
+                  The endpoint is live, but {providerName} was not told about it: {fresh.registrationError}
+                </Trans>
+              </p>
+            )}
+
+            <div>
+              <span className="mb-1 block text-[11.5px] font-medium">
+                <Trans>Events</Trans>{" "}
+                <span className="font-normal text-muted-foreground">
+                  · {selected.length === 0 ? <Trans>all of them</Trans> : <Trans>the ones ticked</Trans>}
+                </span>
+              </span>
+              <div className="flex flex-col gap-1">
+                {info.events.map((e) => (
+                  <label key={e.key} className="flex items-center gap-2 text-[12px]">
+                    <input
+                      type="checkbox"
+                      className="size-3.5 shrink-0 accent-primary"
+                      checked={selected.length === 0 || selected.includes(e.key)}
+                      onChange={() => toggleEvent(e.key)}
+                    />
+                    <span className="min-w-0 truncate">{e.label}</span>
+                    <code className="ml-auto shrink-0 text-[10.5px] text-muted-foreground">{e.key}</code>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span className="mb-1 block text-[11.5px] font-medium">
+                <Trans>Recent deliveries</Trans>
+              </span>
+              {deliveries === null ? (
+                <div className="flex flex-col gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <Skeleton key={i} className="h-7 w-full" />
+                  ))}
+                </div>
+              ) : deliveries.length === 0 ? (
+                <p className="text-[11.5px] text-muted-foreground">
+                  <Trans>Nothing has arrived yet.</Trans>
+                </p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {deliveries.slice(0, 12).map((d) => (
+                    <div key={d.id} className="flex items-center gap-2 text-[11.5px]">
+                      <Badge variant={tone(d.status)} className="shrink-0 text-[10px]">
+                        {d.status}
+                      </Badge>
+                      <code className="min-w-0 truncate text-muted-foreground">{d.event}</code>
+                      <span className="ml-auto shrink-0 text-muted-foreground">
+                        {/* Written out per case rather than pluralised: this
+                            codebase has no `<Plural>` anywhere, and "1 rows"
+                            is the same slip "Every 1 hours" was. */}
+                        {d.rowsWritten === 1 ? (
+                          <Trans>1 row</Trans>
+                        ) : d.rowsWritten > 1 ? (
+                          <Trans>{d.rowsWritten} rows written</Trans>
+                        ) : null}
+                        {d.createdAt ? ` · ${relativeTime(d.createdAt)}` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogBody>
+
+        <DialogFooter className="shrink-0 border-t border-border px-5 py-3.5">
+          <Button variant="ghost" onClick={onDisable}>
+            <Trans>Turn off</Trans>
+          </Button>
+          <Button variant="ghost" onClick={onRotate}>
+            <Trans>Rotate secret</Trans>
+          </Button>
+          <Button onClick={onClose}>
+            <Trans>Done</Trans>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -477,6 +897,7 @@ function SyncDialog({
   settingFields,
   destinationColumns,
   childGroups,
+  webhooks,
   onClose,
   onCreate,
 }: {
@@ -484,6 +905,7 @@ function SyncDialog({
   settingFields: Record<string, SettingField[]>;
   destinationColumns: Record<string, DestinationColumn[]>;
   childGroups: Record<string, ChildGroup[]>;
+  webhooks: Record<string, WebhookInfo>;
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => void;
 }) {
@@ -499,6 +921,9 @@ function SyncDialog({
   const [collection, setCollection] = useState("");
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [interval, setInterval] = useState(60);
+  /** The column a patching delivery is matched on. Only asked for when the
+   *  provider's deliveries are ABOUT rows rather than being them. */
+  const [matchField, setMatchField] = useState("");
   // Stable ids rather than the array index: rows can be removed, and an index
   // key would make React reuse the wrong input's state when one disappears.
   const [pairs, setPairs] = useState<{ id: string; external: string; field: string }[]>([
@@ -528,7 +953,13 @@ function SyncDialog({
   const chosen = sources.find((s) => keyOf(s) === selectionKey);
   const integrationId = chosen?.id ?? "";
   const direction = chosen?.direction ?? "pull";
-  const fields = settingFields[`${chosen?.kind ?? ""}:${direction}`] ?? [];
+  // An inbound sync has nothing to configure: the provider decides what it
+  // sends, and the server refuses settings on one.
+  const fields = direction === "inbound" ? [] : settingFields[`${chosen?.kind ?? ""}:${direction}`] ?? [];
+  const hook = webhooks[chosen?.kind ?? ""];
+  /** A patching provider's deliveries name a row; this is the column that holds
+   *  the name. Only meaningful — and only accepted — on an inbound sync. */
+  const needsMatch = direction === "inbound" && hook?.landing === "patch";
   // A destination that writes into a structured object (a calendar event) has a
   // fixed set of targets; a warehouse's are whatever its DDL declared and stay
   // free text. The server refuses an unknown one either way — this is so the
@@ -576,9 +1007,14 @@ function SyncDialog({
   };
   const targetOptions = fieldsOf(collection);
 
-  // Lines are a pull-only idea: a push walks one collection's watermark and has
-  // no second collection to write into, so the server refuses them outright.
-  const groups = direction === "pull" ? (childGroups[chosen?.kind ?? ""] ?? []) : [];
+  // Lines are an inbound idea in either sense: a push walks one collection's
+  // watermark and has no second collection to write into, so the server refuses
+  // them outright. A `patch` landing has none either — it writes onto a row that
+  // already exists rather than building one.
+  const groups =
+    direction === "pull" || (direction === "inbound" && hook?.landing === "upsert")
+      ? (childGroups[chosen?.kind ?? ""] ?? [])
+      : [];
 
   // Written out rather than derived: `Every ${m / 60} hours` renders
   // "Every 1 hours" for the default cadence.
@@ -614,6 +1050,9 @@ function SyncDialog({
     Boolean(collection) &&
     fields.every((f) => f.label.toLowerCase().includes("optional") || (settings[f.key] ?? "").trim()) &&
     pairs.some((p) => p.external.trim() && p.field) &&
+    // The server refuses this one too, but only after the whole form was filled:
+    // without it a delivery would be understood and applied to nothing.
+    (!needsMatch || Boolean(matchField)) &&
     childrenReady;
 
   const submit = () => {
@@ -653,8 +1092,10 @@ function SyncDialog({
       direction,
       settings: cleaned,
       mapping,
-      intervalMinutes: interval,
+      // An inbound sync is never due, and the server refuses an interval on one.
+      ...(direction === "inbound" ? {} : { intervalMinutes: interval }),
       ...(Object.keys(childMappings).length > 0 ? { childMappings } : {}),
+      ...(needsMatch && matchField ? { matchField } : {}),
     });
   };
 
@@ -683,6 +1124,7 @@ function SyncDialog({
                 value={selectionKey}
                 onChange={(v: string) => {
                   setSelectionKey(v);
+                  setMatchField("");
                   // Settings belong to a provider AND a direction; carrying them
                   // across would send a spreadsheet id to Airtable, or a
                   // calendar id to a pull.
@@ -698,7 +1140,9 @@ function SyncDialog({
                   // indistinguishable in the list.
                   label: bothWays.has(s.id)
                     ? `${s.label} · ${s.direction === "push" ? t`rows out` : t`rows in`}`
-                    : s.label,
+                    : s.direction === "inbound"
+                      ? `${s.label} · ${t`it calls us`}`
+                      : s.label,
                 }))}
                 className="min-w-0"
               />
@@ -706,7 +1150,13 @@ function SyncDialog({
 
             <label className="block">
               <span className="mb-1 block text-[11.5px] font-medium">
-                {direction === "push" ? <Trans>From collection</Trans> : <Trans>Into collection</Trans>}
+                {direction === "push" ? (
+                  <Trans>From collection</Trans>
+                ) : needsMatch ? (
+                  <Trans>Updates rows in</Trans>
+                ) : (
+                  <Trans>Into collection</Trans>
+                )}
               </span>
               <Select
                 // `undefined`, not `""`: the shared Select maps "" to a
@@ -716,14 +1166,39 @@ function SyncDialog({
                 onChange={(v: string) => {
                   setCollection(v);
                   // Targets are that collection's fields, so a change invalidates
-                  // whatever was picked.
+                  // whatever was picked — the match column included.
                   setPairs([{ id: crypto.randomUUID(), external: "", field: "" }]);
+                  setMatchField("");
                 }}
                 placeholder={t`Pick a collection`}
                 options={collections.map((c) => ({ value: c.slug, label: c.slug }))}
                 className="min-w-0"
               />
             </label>
+
+            {needsMatch && (
+              <label className="block">
+                <span className="mb-1 block text-[11.5px] font-medium">
+                  <Trans>Matched on</Trans>
+                </span>
+                <Select
+                  value={matchField || undefined}
+                  onChange={(v: string) => setMatchField(v)}
+                  placeholder={collection ? t`Pick a field` : t`Pick a collection first`}
+                  options={targetOptions}
+                  className="min-w-0"
+                />
+                <span className="mt-1 block text-[11.5px] leading-snug text-muted-foreground">
+                  {/* The one field an operator gets wrong by picking the
+                      plausible neighbour — a shipment id and a tracking number
+                      sit next to each other and look alike. */}
+                  <Trans>
+                    The column holding the {hook?.matchLabel ?? t`provider's id`}. A delivery updates the row
+                    that matches, and only the fields it carries.
+                  </Trans>
+                </span>
+              </label>
+            )}
 
             {fields.map((f) => (
               <label key={f.key} className="block">
@@ -830,6 +1305,14 @@ function SyncDialog({
               />
             ))}
 
+            {direction === "inbound" ? (
+              <p className="text-[11.5px] leading-snug text-muted-foreground">
+                <Trans>
+                  There is no schedule: rows arrive when the provider sends them. Turn the endpoint on from
+                  the sync's row once it exists.
+                </Trans>
+              </p>
+            ) : (
             <label className="block">
               <span className="mb-1 block text-[11.5px] font-medium">
                 <Trans>Run</Trans>
@@ -845,6 +1328,7 @@ function SyncDialog({
                 className="min-w-0"
               />
             </label>
+            )}
           </div>
         </DialogBody>
 

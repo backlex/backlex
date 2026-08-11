@@ -37,6 +37,7 @@ import {
   pushToDestination,
   type FetchLike,
   type IntegrationKind,
+  type SourceRecord,
 } from "@backlex/integrations";
 import type { Ctx } from "../context";
 import { decryptSecret, isEncryptedSecret } from "../lib/crypto";
@@ -69,8 +70,21 @@ const PAGE_SIZE = 200;
 /** Hard ceiling on rows one run may write, whatever the provider offers. */
 const MAX_ROWS_PER_RUN = 2000;
 
-export type SyncDirection = "pull" | "push";
-export const SYNC_DIRECTIONS: readonly SyncDirection[] = ["pull", "push"];
+/**
+ * Which way rows travel.
+ *
+ * `inbound` is not a third pipe — it is a sync with nothing to poll. A carrier
+ * tells you where a parcel is, but there is no list of parcels to walk, so the
+ * row exists to hold the endpoint, the mapping and the collection while the
+ * provider does the calling. A `pull` sync may ALSO have an endpoint: that is
+ * the normal case for a marketplace, and it is what makes the poll the repair
+ * mechanism for the deliveries a webhook inevitably loses.
+ */
+export type SyncDirection = "pull" | "push" | "inbound";
+export const SYNC_DIRECTIONS: readonly SyncDirection[] = ["pull", "push", "inbound"];
+
+/** Directions whose mapping reads `external → collection field`. */
+const writesRows = (d: SyncDirection): boolean => d === "pull" || d === "inbound";
 
 /**
  * Where one group of a source record's children lands.
@@ -102,6 +116,13 @@ export interface SyncRow {
   lastError: string | null;
   consecutiveFailures: number;
   disabledReason: string | null;
+  /** Endpoint state. Null token = this sync receives nothing. */
+  webhookToken: string | null;
+  webhookSecret: string | null;
+  webhookEvents: string[];
+  webhookExternalId: string | null;
+  /** The collection field a `patch` delivery is matched on. */
+  matchField: string | null;
   createdAt: Date | number | null;
   updatedAt: Date | number | null;
 }
@@ -125,8 +146,32 @@ export const toPublicSync = (row: SyncRow) => ({
   lastError: row.lastError,
   consecutiveFailures: row.consecutiveFailures,
   disabledReason: row.disabledReason,
+  matchField: row.matchField ?? null,
+  /**
+   * The endpoint, described — never the secret.
+   *
+   * The secret is returned exactly once, by the call that minted it. A field
+   * that keeps handing it back on every read would end up in a browser cache, a
+   * screenshot and an activity log, which for a bearer token that a third party
+   * also holds is three copies too many. An operator who lost it rotates.
+   *
+   * `path` rather than a URL: this row does not know the public origin, and
+   * building one out of a request header would be a URL an operator could
+   * influence. The route layer joins it to `APP_URL`.
+   */
+  webhook: row.webhookToken
+    ? {
+        path: webhookPathFor(row.webhookToken),
+        events: row.webhookEvents ?? [],
+        /** True when the provider was told about this endpoint by us. */
+        registered: Boolean(row.webhookExternalId),
+      }
+    : null,
   createdAt: row.createdAt,
 });
+
+/** The public path a provider posts to. One definition, three consumers. */
+export const webhookPathFor = (token: string): string => `/api/integrations/hooks/${token}`;
 
 export type PublicSync = ReturnType<typeof toPublicSync>;
 
@@ -156,6 +201,16 @@ const validateSettings = (
   settings: Record<string, unknown>,
   direction: SyncDirection,
 ): Record<string, unknown> => {
+  if (direction === "inbound") {
+    // Nothing to configure: the provider decides what it sends and the endpoint
+    // decides nothing. Source settings would demand a lookback window on a sync
+    // that never reads a window, so an unrecognised key here is refused rather
+    // than validated against a list that does not apply.
+    for (const key of Object.keys(settings)) {
+      throw new AppError("VALIDATION", `An inbound sync takes no settings — remove "${key}"`);
+    }
+    return {};
+  }
   const fields =
     (direction === "push" ? DESTINATION_SETTING_FIELDS[kind] : SOURCE_SETTING_FIELDS[kind]) ?? [];
   const allowed = new Set(fields.map((f) => f.key));
@@ -228,6 +283,13 @@ export interface CreateSyncInput {
   childMappings?: Record<string, ChildMappingSpec>;
   intervalMinutes?: number;
   enabled?: boolean;
+  /**
+   * The collection field a `patch` delivery is matched on. Required for a
+   * provider whose webhook patches rather than upserts, refused for one that
+   * upserts — where a record is addressed by its namespaced id and a match field
+   * would be an invitation to write to the wrong row.
+   */
+  matchField?: string | null;
 }
 
 /** Create a sync. `tenantId` is `string`, never nullable: an instance-wide sync
@@ -245,6 +307,9 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   if (direction === "push" && !provider?.destination) {
     throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a destination`);
   }
+  if (direction === "inbound" && !provider?.webhook) {
+    throw new AppError("BAD_REQUEST", `${integration.kind} does not send webhooks`);
+  }
   if (direction === "push") assertScope(integration, provider?.destination?.requiredScope);
   // Resolves within the caller's tenant and throws if the slug is unknown, so a
   // sync can never be aimed at another workspace's collection.
@@ -258,6 +323,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   const settings = validateSettings(integration.kind, input.settings ?? {}, direction);
   const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind, settings);
   const childMappings = await validateChildMappings(ctx, tenantId, direction, integration.kind, input.childMappings ?? {});
+  const matchField = validateMatchField(input.matchField, collection, direction, integration.kind);
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -270,8 +336,11 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
     settings,
     mapping,
     childMappings,
-    intervalMinutes: clampInterval(input.intervalMinutes),
+    // An inbound sync is never due, so an interval on it would be a schedule
+    // that reads as active and does nothing. The scheduler already skips 0.
+    intervalMinutes: direction === "inbound" ? 0 : clampInterval(input.intervalMinutes),
     enabled: input.enabled ?? true,
+    matchField,
     createdAt: now,
     updatedAt: now,
   });
@@ -306,10 +375,10 @@ const validateChildMappings = async (
 ): Promise<Record<string, ChildMappingSpec>> => {
   const entries = Object.entries(childMappings);
   if (entries.length === 0) return {};
-  if (direction !== "pull") {
+  if (!writesRows(direction)) {
     // A push walks one collection's watermark. There is no second collection in
     // that direction, so accepting the field would store something inert.
-    throw new AppError("VALIDATION", "childMappings apply to a pull sync only");
+    throw new AppError("VALIDATION", "childMappings apply to a sync that writes rows in");
   }
   // Checked against what the provider says it returns, for the providers that
   // say. A group nothing hands back is not refused at run time — it simply
@@ -378,6 +447,54 @@ const validateChildMappings = async (
   return out;
 };
 
+/**
+ * Which column a pushed delivery is matched on, checked against both halves.
+ *
+ * The provider decides WHETHER there is one: a webhook that patches is about a
+ * row somebody else created, and one that upserts addresses its own row by the
+ * namespaced id. Offering the field in the wrong case is not cosmetic — a match
+ * field on an upserting sync would sit there implying a lookup that never
+ * happens, and its absence on a patching one leaves the engine with a value and
+ * no column to find it in.
+ *
+ * The column itself must be writable, which is a proxy for "stored". A computed
+ * column is derived from the row on the way out, so matching on it would compare
+ * a delivery's id against an expression — sometimes legal SQL, never the lookup
+ * the operator meant.
+ */
+const validateMatchField = (
+  raw: string | null | undefined,
+  collection: Awaited<ReturnType<typeof loadCollection>>,
+  direction: SyncDirection,
+  kind: string,
+): string | null => {
+  const wants = providerFor(kind)?.webhook?.landing === "patch";
+  const value = typeof raw === "string" ? raw.trim() : "";
+  if (!value) {
+    // Only demanded where the endpoint is the whole point of the row. A pull
+    // sync for a patching provider is a contradiction the provider check above
+    // has already refused, so this cannot silently accept one.
+    if (wants && direction === "inbound") {
+      throw new AppError(
+        "VALIDATION",
+        `${kind} sends updates about existing rows — name the field they are matched on`,
+      );
+    }
+    return null;
+  }
+  if (!wants) {
+    throw new AppError(
+      "VALIDATION",
+      `${kind} deliveries carry whole records, so there is nothing to match on — remove matchField`,
+    );
+  }
+  const writable = new Set(collection.fields.filter((f) => !f.computed).map((f) => f.name));
+  if (!writable.has(value)) {
+    throw new AppError("VALIDATION", `Collection "${collection.slug}" has no stored field "${value}"`);
+  }
+  return value;
+};
+
 const clampInterval = (v: number | undefined): number => {
   if (v === undefined) return 60;
   if (!Number.isFinite(v) || v < 0 || v > 10_080) {
@@ -409,6 +526,9 @@ const validateMapping = (
   // for the whole provider: QuickBooks writes a customer OR an invoice, and
   // `dueDate` on a customer is the same silent drop this check exists to stop.
   const columns = direction === "push" ? destinationColumnsFor(kind, settings) : undefined;
+  // An inbound mapping reads the same way a pull's does — `external → field` —
+  // because it lands through the same ingest with the same targets. What differs
+  // is only who initiates, which the mapping has no opinion about.
   // The mapping is read in the direction of travel. On a pull the collection
   // field is the TARGET and must be writable; on a push it is the SOURCE and
   // may be any field the collection has, computed ones included — reading one
@@ -420,7 +540,7 @@ const validateMapping = (
       throw new AppError("VALIDATION", `Mapping for "${left}" must name a column`);
     }
     const value = right.trim();
-    if (direction === "pull" && !writable.has(value)) {
+    if (writesRows(direction) && !writable.has(value)) {
       throw new AppError(
         "VALIDATION",
         `Collection "${collection.slug}" has no writable field "${value}"`,
@@ -458,7 +578,7 @@ export async function getSync(ctx: Ctx, tenantId: string, id: string): Promise<P
   return row ? toPublicSync(row) : null;
 }
 
-const getSyncRow = async (ctx: Ctx, tenantId: string, id: string): Promise<SyncRow | null> => {
+export const getSyncRow = async (ctx: Ctx, tenantId: string, id: string): Promise<SyncRow | null> => {
   const t = syncsTableFor(ctx.dialect);
   const [row] = (await (ctx.db as AnyDb)
     .select()
@@ -473,6 +593,7 @@ export interface UpdateSyncInput {
   childMappings?: Record<string, ChildMappingSpec>;
   intervalMinutes?: number;
   enabled?: boolean;
+  matchField?: string | null;
 }
 
 export async function updateSync(
@@ -515,7 +636,23 @@ export async function updateSync(
   if (patch.childMappings !== undefined) {
     set.childMappings = await validateChildMappings(ctx, tenantId, direction, integration.kind, patch.childMappings);
   }
-  if (patch.intervalMinutes !== undefined) set.intervalMinutes = clampInterval(patch.intervalMinutes);
+  if (patch.matchField !== undefined) {
+    set.matchField = validateMatchField(
+      patch.matchField,
+      await loadCollection(ctx, tenantId, existing.collection),
+      direction,
+      integration.kind,
+    );
+  }
+  if (patch.intervalMinutes !== undefined) {
+    if (direction === "inbound") {
+      // Refused rather than ignored. A caller who set an interval and was told
+      // nothing would believe this row polls, and would go looking for the runs
+      // it never made.
+      throw new AppError("VALIDATION", "An inbound sync has nothing to poll — it has no interval");
+    }
+    set.intervalMinutes = clampInterval(patch.intervalMinutes);
+  }
   if (patch.enabled !== undefined) {
     set.enabled = patch.enabled;
     if (patch.enabled) {
@@ -550,7 +687,14 @@ export interface SyncRunResult {
   complete: boolean;
 }
 
-const decryptConfig = async (kind: string, config: Record<string, unknown>, secret: string) => {
+/**
+ * Decrypt this kind's secret config fields.
+ *
+ * Exported because the task service and the webhook receiver need exactly this
+ * and nothing else. It was copied into each of them once, which is how three
+ * copies of a decrypt helper come to disagree about which keys are secret.
+ */
+export const decryptConfig = async (kind: string, config: Record<string, unknown>, secret: string) => {
   const keys = new Set(SECRET_KEYS[kind as IntegrationKind] ?? []);
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(config)) {
@@ -601,8 +745,45 @@ const toRow = (
 const childIdFor = (kind: string, syncId: string, parentExternalId: string, childExternalId: string): string =>
   rowIdFor(kind, syncId, `${parentExternalId}:${childExternalId}`);
 
+/**
+ * Write one batch of external records into this sync's collection, children and
+ * all.
+ *
+ * The one place records become rows, shared by the scheduled pull and by an
+ * inbound webhook. That sharing is the point: both land through the same
+ * mapping, the same `rowIdFor` namespace and the same upsert, so a delivery
+ * about an order the poll already imported updates that row instead of minting a
+ * second one beside it. Two implementations could not promise that.
+ *
+ * Throws on a rejected row rather than counting it: for a pull, reporting
+ * success would advance the cursor past data nobody stored, and for a delivery it
+ * would answer 200 to a provider that will never send it again.
+ */
+export async function ingestSourceRecords(
+  ctx: Ctx,
+  tenantId: string,
+  row: SyncRow,
+  kind: string,
+  records: readonly SourceRecord[],
+  collection: Awaited<ReturnType<typeof loadCollection>>,
+  childCollections: Map<string, ChildTarget>,
+): Promise<number> {
+  if (records.length === 0) return 0;
+  const rows = records.map((r) => toRow(kind, row.id, row.mapping ?? {}, r));
+  const out = await ingestRows(ctx, collection, tenantId, rows, { mode: "upsert" });
+  if (out.failed.length > 0) {
+    throw new AppError(
+      "VALIDATION",
+      `${out.failed.length} row(s) rejected by "${row.collection}": ${out.failed[0]?.error ?? "unknown"}`,
+    );
+  }
+  // Children go in AFTER their parents so a line never references an order that
+  // is not there yet.
+  return out.inserted + out.updated + (await ingestChildren(ctx, tenantId, row, kind, records, childCollections));
+}
+
 /** One child group, resolved: the mapping plus the collection it writes into. */
-interface ChildTarget {
+export interface ChildTarget {
   parentField: string;
   mapping: Record<string, string>;
   collection: Awaited<ReturnType<typeof loadCollection>>;
@@ -616,7 +797,7 @@ interface ChildTarget {
  * their lines is the failure this whole feature exists to prevent, and it would
  * report a clean run while doing it.
  */
-const loadChildCollections = async (
+export const loadChildCollections = async (
   ctx: Ctx,
   tenantId: string,
   row: SyncRow,
@@ -759,6 +940,16 @@ export async function runSync(
   const integration = await loadOwnedIntegration(ctx, tenantId, row.integrationId);
   const provider = providerFor(integration.kind);
   const direction = (row.direction ?? "pull") as SyncDirection;
+  if (direction === "inbound") {
+    // Nothing to run. Said plainly here rather than left to fall through to the
+    // pull path, which would report that the provider "cannot be used as a
+    // source" — true, and completely beside the point for a row whose whole
+    // design is that the provider calls us.
+    throw new AppError(
+      "BAD_REQUEST",
+      "This sync receives webhook deliveries — there is nothing to run on a schedule",
+    );
+  }
   if (direction === "pull" && !provider?.source) {
     throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a source`);
   }
@@ -816,24 +1007,17 @@ export async function runSync(
         },
         fetchImpl,
       );
-      const rows = page.records.map((r) => toRow(integration.kind, row.id, row.mapping ?? {}, r));
-      if (rows.length > 0) {
-        const out = await ingestRows(ctx, collection, tenantId, rows, { mode: "upsert" });
-        if (out.failed.length > 0) {
-          // A rejected row is a schema mismatch, not a blip. Reporting success
-          // would advance the cursor past data nobody stored.
-          throw new AppError(
-            "VALIDATION",
-            `${out.failed.length} row(s) rejected by "${row.collection}": ${out.failed[0]?.error ?? "unknown"}`,
-          );
-        }
-        written += out.inserted + out.updated;
-        // Children go in AFTER their parents, in the same page, so a line never
-        // references an order that is not there yet. A child failure throws for
-        // the same reason a parent failure does: the cursor must not advance
-        // past an order whose lines nobody stored.
-        written += await ingestChildren(ctx, tenantId, row, integration.kind, page.records, childCollections);
-      }
+      // A rejected row throws out of here, which is what holds the cursor: it
+      // must not advance past an order — or an order's lines — nobody stored.
+      written += await ingestSourceRecords(
+        ctx,
+        tenantId,
+        row,
+        integration.kind,
+        page.records,
+        collection,
+        childCollections,
+      );
       cursor = page.cursor;
       if (cursor === null) {
         complete = true;

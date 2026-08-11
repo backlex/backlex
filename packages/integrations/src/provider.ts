@@ -59,7 +59,16 @@ export type IntegrationCategory =
   | "crm"
   | "marketing"
   /** A sales channel a seller's orders arrive from and their stock goes out to. */
-  | "marketplace";
+  | "marketplace"
+  /**
+   * Something that moves a parcel: a courier, or an aggregator fronting many.
+   *
+   * The category is the CONTRACT — book a shipment, get a tracking number and a
+   * label; ask where it is; cancel it — rather than a company. An aggregator and
+   * a single courier are the same shape from here, which is what lets a national
+   * carrier arrive later as one more file.
+   */
+  | "carrier";
 
 /**
  * What a provider can do. Today every provider is a `sink` (receives events

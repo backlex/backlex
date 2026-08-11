@@ -17,6 +17,7 @@ import { clickhouse } from "./clickhouse";
 import { contentful } from "./contentful";
 import { datadog } from "./datadog";
 import { discord } from "./discord";
+import { easypost } from "./easypost";
 import { elasticsearch } from "./elasticsearch";
 import { github } from "./github";
 import { googleCalendar } from "./google-calendar";
@@ -90,6 +91,8 @@ export const INTEGRATION_KINDS = [
   "bigquery",
   // marketplaces (orders in, stock & price out, status back)
   "trendyol",
+  // carriers (book a shipment, read where it is, cancel it)
+  "easypost",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -129,6 +132,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   clickhouse,
   bigquery,
   trendyol,
+  easypost,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

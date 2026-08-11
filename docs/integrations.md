@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Thirty-four providers ship in the registry, grouped by category:
+Thirty-five providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -35,6 +35,7 @@ Thirty-four providers ship in the registry, grouped by category:
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 | marketplace | Trendyol — a source, a destination **and** tasks |
+| carrier | EasyPost — *tasks only*: book a shipment, read where it is, cancel it |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -751,6 +752,97 @@ the whole package, which is what shipping it in one piece means. Trendyol
 expects `Picking` before `Invoiced` and says so itself if you get it the wrong
 way round — that order is not second-guessed here, because a package already
 picked from the seller panel would otherwise be un-invoiceable through the API.
+
+## Parcels out to a carrier
+
+A **carrier** provider is three tasks and nothing else, and those three are the
+whole contract: *book this consignment*, *where is it*, *cancel it*. The
+category is that contract rather than a company — a national courier and an
+aggregator fronting thirty of them are the same shape from here, which is what
+lets the next one arrive as one more file.
+
+**EasyPost** is the first, and deliberately an aggregator: public docs, a
+self-serve test key, and a real PDF at the end of it. A test key (`EZTK…`)
+transacts against test carriers and costs nothing; a production key (`EZAK…`)
+buys postage. There is no environment dropdown, because there is nothing for it
+to switch — the key *is* the mode, and offering a picker would imply a
+production key could be made safe by choosing "test".
+
+The **ship-from address lives on the connection**. It is the workspace's own and
+is the same on every consignment, so putting it on the task would mean re-typing
+a warehouse address onto every flow step that books anything. Everything about
+the *destination* is per-row, and named the way [Trendyol's tasks name
+theirs](#telling-trendyol-what-you-did) — a setting per column:
+
+```bash
+backlex integrations task-run <integration-id> book_shipment \
+  --collection fulfillments --item ful_123 \
+  --set carrierAccount=ca_… --set service=Priority \
+  --set toNameField=ship_to_name --set toStreet1Field=ship_to_street \
+  --set toCityField=ship_to_city --set toZipField=ship_to_zip \
+  --set toCountryField=ship_to_country --set weightField=weight_oz \
+  --out shipmentId=carrier_shipment_id --out trackingCode=tracking_number \
+  --out trackingUrl=tracking_url --out shipmentStatus=shipment_status \
+  --out labelKey=label_key
+```
+
+That is a long list, and honestly so: booking a parcel needs a destination and a
+weight, and there is no shorter truthful way to say which columns hold them. The
+[e-commerce template](./templates.md) ships `fulfillments` with the columns
+these outputs land in.
+
+### It buys in one call
+
+EasyPost's usual flow creates a shipment, reads its rates, then buys one.
+Naming `service` and a carrier account on the create call makes it buy
+immediately. A task is one row in and one answer out, and a three-request dance
+with two places to die in the middle is not that.
+
+A shipment that comes back **without a tracking number was not bought** — it
+exists at EasyPost as a draft, which is what naming a service the carrier
+account does not offer produces. That is an error here rather than a success
+with an empty column, because the alternative is an order marked shipped
+against a parcel no courier has heard of.
+
+There is no idempotency header to send. The engine's
+[once-only guard](#it-runs-once) is the *only* thing between a retry and a
+second label, which is why `book_shipment` is not repeatable and `--force` on
+it means what it says.
+
+### A missing label never undoes a booking
+
+The label comes back as a URL on a host EasyPost chose, and which host that is
+has never been part of the documented contract. Fetching whatever a third party
+puts in a JSON field is how a server ends up making requests somebody else
+picked, so the host is checked against an allow-list before anything is fetched.
+
+A label that fails that check — or 404s, or is too big — is **skipped, not
+fatal**. By then postage is paid and a courier is expecting a parcel: failing
+the run would have the queue retry it, and the retry books a second consignment.
+A missing PDF is a nuisance; a second consignment is money and a confused
+courier. The URL is still in the run's outputs either way.
+
+### Where is it, asked on a schedule
+
+`refresh_tracking` is [repeatable](#except-when-asking-again-is-the-point) — it
+changes nothing at EasyPost and its whole value is that the answer moves. Put it
+on a cron flow over the fulfillments that are not `delivered` yet.
+
+It writes EasyPost's own status vocabulary (`pre_transit`, `in_transit`,
+`out_for_delivery`, `delivered`, `available_for_pickup`, `return_to_sender`,
+`failure`, `cancelled`) rather than a set invented here. Normalising thirty
+couriers onto one list is an aggregator's whole job, and a second list would be
+two things to keep in step. Anything outside it becomes `unknown` rather than a
+value the column's picker never offered.
+
+### Cancelling records what was asked, not what was granted
+
+`cancel_shipment` refunds the label. Carriers take up to thirty days to answer,
+so the status that comes back is `submitted` — and that is what lands on the
+row. Writing `refunded` on the strength of having asked would not be true. The
+one answer that is a refusal rather than a delay, `not_applicable`, is an error:
+a row quietly reading it while an operator believes the consignment is cancelled
+is worse than being told.
 
 ## What a sink receives
 

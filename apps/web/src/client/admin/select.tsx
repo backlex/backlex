@@ -23,7 +23,10 @@ export interface SelectOption {
    *  not available yet (a status move whose required field is still empty).
    *  Pair it with `hint` so the row says why. */
   disabled?: boolean;
-  badge?: ReactNode;
+  /** Plain text, not a node: this component owns the badge chrome. Typed as a
+   *  string on purpose — when it was `ReactNode`, callers passed a `<Badge>`
+   *  and it rendered inside the one below, drawing two nested pill borders. */
+  badge?: string;
   icon?: IconComponent | ReactNode;
 }
 
@@ -147,7 +150,11 @@ export function Select({
                   </span>
                 )}
                 {o.badge && (
-                  <Badge variant="outline" mono>
+                  // `secondary` (filled, borderless) rather than `outline`:
+                  // Radix clones the selected row into the trigger, and an
+                  // outlined pill there sits as a second rounded border inside
+                  // the trigger's own.
+                  <Badge variant="secondary" mono>
                     {o.badge}
                   </Badge>
                 )}

@@ -66,6 +66,34 @@ const propsOf = (src: string, start: number): string => {
   return src.slice(start);
 };
 
+/**
+ * Line numbers that hold comment text rather than code.
+ *
+ * A JSX-ancestry scan has to skip them: this file's rules are documented in the
+ * source they police, so prose naming an element — "callers passed a `<Badge>`"
+ * — reads to the tag scanner as an element that opens and never closes, and
+ * every real one after it looks nested inside it. Whole-line comments are the
+ * shape that actually occurs; a tag written in a trailing comment after code on
+ * the same line is not covered, and should be reworded if it ever trips a rule.
+ */
+const commentLines = (src: string): Set<number> => {
+  const out = new Set<number>();
+  let inBlock = false;
+  src.split("\n").forEach((line, i) => {
+    const t = line.trim();
+    if (inBlock) {
+      out.add(i + 1);
+      if (t.includes("*/")) inBlock = false;
+    } else if (t.startsWith("//")) {
+      out.add(i + 1);
+    } else if (t.startsWith("/*")) {
+      out.add(i + 1);
+      if (!t.includes("*/")) inBlock = true;
+    }
+  });
+  return out;
+};
+
 /** Every `actions={…}` block, brace-matched, with the line it starts on. */
 const actionBlocks = (src: string): Array<{ block: string; line: number }> => {
   const out: Array<{ block: string; line: number }> = [];
@@ -246,6 +274,45 @@ describe("admin UI conventions", () => {
       }
     }
     expect({ bare, nested }).toEqual({ bare: [], nested: [] });
+  });
+
+  /**
+   * A pill inside a pill draws two rounded borders a couple of pixels apart —
+   * unmistakable on a screenshot, invisible in a diff, and no render test
+   * fails on it.
+   *
+   * It shipped on the search playground's collection picker. The option passed
+   * `<Badge>FTS</Badge>` to `Select`'s `badge` prop, and `Select` wraps
+   * whatever it is handed in a Badge of its own, so the label came out double-
+   * ringed. That cross-file route is closed by the prop's type — it takes a
+   * string now, and the wrapper owns the chrome. This closes the shape a scan
+   * can see: one Badge written inside another.
+   *
+   * Deliberately not the ancestry walk the EmptyState rule uses. That one skips
+   * each element's props region wholesale, so a Badge inside `badge={…}` or an
+   * `options={…}` literal — where this defect was actually written — is
+   * invisible to it. Reading forward from each open tag to its first `</Badge>`
+   * has no such blind spot.
+   */
+  test("a Badge never nests inside another Badge", () => {
+    const offenders: string[] = [];
+    for (const { rel, src } of FILES) {
+      if ((src.match(/<Badge\b/g) ?? []).length < 2) continue;
+      const prose = commentLines(src);
+      for (const m of src.matchAll(/<Badge\b/g)) {
+        const line = lineOf(src, m.index);
+        if (prose.has(line)) continue;
+        const props = propsOf(src, m.index);
+        if (props.endsWith("/>")) continue;
+        const inner = src.slice(m.index + props.length);
+        const close = inner.indexOf("</Badge>");
+        const next = inner.indexOf("<Badge");
+        // A second Badge opening before this one closes is the nesting itself —
+        // no need to match the close, since finding one is already the answer.
+        if (close !== -1 && next !== -1 && next < close) offenders.push(`${rel}:${line}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   // There were two of each for a while — `admin/ui.tsx` and `components/*` —

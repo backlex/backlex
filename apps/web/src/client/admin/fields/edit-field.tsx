@@ -315,9 +315,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
       ...all.map((i) => ({
         value: i.id,
         label: `${i.label} — ${i.sub}`,
-        // `secondary` (filled, borderless) — an `outline` badge nests a second
-        // rounded border inside the Select trigger's own border.
-        ...(i.hasChoices ? { badge: <Badge variant="secondary">choices</Badge> } : {}),
+        ...(i.hasChoices ? { badge: "choices" } : {}),
       })),
     ];
   }, [draft?.type, draft?.interface, extensionsQuery.data]);

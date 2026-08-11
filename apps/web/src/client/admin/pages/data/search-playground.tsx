@@ -153,11 +153,7 @@ export function SearchPlaygroundPage({ pushToast }: { pushToast: PushToast }) {
               options={cols.map((c) => ({
                 value: c.slug,
                 label: c.slug,
-                badge: ftsReady(c) ? (
-                  <Badge variant="outline" mono>
-                    FTS
-                  </Badge>
-                ) : undefined,
+                badge: ftsReady(c) ? "FTS" : undefined,
               }))}
               placeholder={t`Pick a collection`}
             />

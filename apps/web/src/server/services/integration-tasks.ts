@@ -25,6 +25,14 @@
  * A failure after step 2 leaves a `failed` run row holding the error. That is
  * deliberately NOT a claim: the retry re-runs, because the alternative is a
  * shipment that was booked, failed to record, and can never be recorded.
+ *
+ * A task that declares itself `repeatable` opts out of step 1 being a gate.
+ * Asking a carrier where a parcel is has no effect at the carrier, and running
+ * it under the guard would freeze the row on the first poll's answer — which for
+ * a parcel that has not left the warehouse yet is the least useful one it will
+ * ever have. The run row is still written and still updated, so "what did the
+ * carrier last say, and when" survives; it just stops short-circuiting. `force`
+ * has nothing to force on one of these and is ignored rather than refused.
  */
 
 import { and, eq, sql } from "drizzle-orm";
@@ -222,8 +230,15 @@ export async function runTask(
   if (!row) throw new AppError("NOT_FOUND", `No "${input.collection}" row with id ${input.itemId}`);
 
   // ── 1. Claim ───────────────────────────────────────────────────────────────
+  //
+  // A repeatable task has nothing to claim. It has no side effect at the
+  // provider, so the guard below would only ever stop it doing the one thing it
+  // exists to do — ask again and get a newer answer. Its run row is still
+  // written and still updated, because when a carrier last said what it said is
+  // worth keeping; it just stops being a gate.
+  const repeatable = task.repeatable === true;
   const existing = await findRun(ctx, tenantId, input);
-  if (existing?.status === "succeeded" && !input.force) {
+  if (existing?.status === "succeeded" && !input.force && !repeatable) {
     // Hand back the first run's answer rather than refusing. An operator who
     // clicked twice wants the label, and a flow that re-fired wants to carry on.
     return {
@@ -234,7 +249,7 @@ export async function runTask(
     };
   }
 
-  const runId = existing?.id ?? crypto.randomUUID();
+  let runId = existing?.id ?? crypto.randomUUID();
   const now = new Date();
   if (existing) {
     await (ctx.db as AnyDb)
@@ -261,7 +276,8 @@ export async function runTask(
       // already booking this shipment, and the only safe answer is not to book
       // a second one.
       const again = await findRun(ctx, tenantId, input);
-      if (again) {
+      if (!again) throw e;
+      if (!repeatable) {
         return {
           status: "skipped",
           outputs: (again.outputs ?? {}) as Record<string, unknown>,
@@ -269,7 +285,15 @@ export async function runTask(
           reused: true,
         };
       }
-      throw e;
+      // Two polls raced to create the same run row. Neither is doing anything
+      // the other needs protecting from, so this one carries on against the row
+      // that already exists rather than handing back an answer it did not ask
+      // for — the whole reason to poll again is that the last one is stale.
+      runId = again.id;
+      await (ctx.db as AnyDb)
+        .update(t)
+        .set({ status: "running", attempts: (again.attempts ?? 0) + 1, error: null, updatedAt: now })
+        .where(eq(t.id, again.id));
     }
   }
 

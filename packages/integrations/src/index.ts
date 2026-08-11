@@ -226,6 +226,10 @@ export const TASK_KINDS = entries.filter(([, p]) => p.tasks?.length).map(([id]) 
  * `outputs` travels with each one because a caller has to map them onto its own
  * columns before it can invoke anything — the admin form and the flow step both
  * build their pickers from this rather than from a second, hand-kept list.
+ *
+ * `repeatable` travels for a narrower reason: it is what tells a caller that
+ * scheduling this task hourly is the intended use rather than an accident, and
+ * that the "re-run" escape hatch has nothing to escape.
  */
 export const INTEGRATION_TASKS = Object.fromEntries(
   entries
@@ -237,9 +241,13 @@ export const INTEGRATION_TASKS = Object.fromEntries(
         label: t.label,
         settingFields: [...(t.settingFields ?? [])],
         outputs: [...t.outputs],
+        repeatable: t.repeatable === true,
       })),
     ]),
-) as Record<string, { id: string; label: string; settingFields: IntegrationConfigField[]; outputs: TaskOutput[] }[]>;
+) as Record<
+  string,
+  { id: string; label: string; settingFields: IntegrationConfigField[]; outputs: TaskOutput[]; repeatable: boolean }[]
+>;
 
 /** Look one task up. `undefined` for an unknown kind or an unknown task id. */
 export const taskFor = (kind: string, taskId: string): IntegrationTask | undefined =>

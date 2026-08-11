@@ -507,6 +507,24 @@ export interface IntegrationTask {
   /** The closed set of fields this task may write back. */
   outputs: readonly TaskOutput[];
   /**
+   * Asking again is asking, not doing again.
+   *
+   * The once-only guard exists because booking a shipment twice costs money and
+   * confuses a courier. "Where is this parcel" costs neither: it is a read whose
+   * whole point is that the answer changes, and running it under the guard would
+   * mean the first poll's `pre_transit` was the last word the row ever heard.
+   *
+   * So `repeatable` says this task has NO side effect at the provider. The
+   * engine still records every run — the history of what a carrier said and
+   * when is worth as much as the current value — but it stops short-circuiting
+   * to the first run's answer, and a caller that loses the claim race runs
+   * anyway rather than reading somebody else's result.
+   *
+   * Default is false, because the default has to be the safe one: a provider
+   * author who does not think about this gets the guard.
+   */
+  repeatable?: boolean;
+  /**
    * Do the thing. Throwing fails the run and the queue retries it with backoff;
    * the engine's task-run row is what stops a retry booking a second shipment.
    */

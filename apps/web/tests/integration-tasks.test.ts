@@ -10,6 +10,11 @@
  *   - a provider failure is recorded and re-thrown, never reported as success
  *   - an artifact is stored BEFORE the row names its key
  *
+ * And the exception the guard has to make: a task that declares itself
+ * `repeatable` is a READ. Asking a carrier where a parcel is has no effect at
+ * the carrier, so every one of the assertions above inverts for it — that is
+ * what the second fake task is here to pin.
+ *
  * No shipped provider declares a task yet — the first will be the carrier
  * connector this engine work is for — so the provider half is mocked. The two
  * mocked functions are captured by value before mocking and restored
@@ -45,6 +50,21 @@ const FAKE_TASK = {
   run: async () => ({ outputs: {} }),
 };
 
+/**
+ * The read half — a carrier being asked where the parcel is.
+ *
+ * Declared `repeatable` because it changes nothing at the provider, which is
+ * the only thing that entitles a task to run more than once.
+ */
+const FAKE_REPEATABLE_TASK = {
+  id: "check_tracking",
+  label: "Check tracking",
+  repeatable: true,
+  settingFields: [],
+  outputs: [{ key: "shipmentStatus", label: "Shipment status" }],
+  run: async () => ({ outputs: {} }),
+};
+
 /** What the mocked provider does on the next call, and how often it was asked. */
 let calls = 0;
 let behaviour: () => Promise<{ outputs: Record<string, unknown>; artifact?: unknown }> = async () => ({
@@ -74,8 +94,12 @@ const taskRuns = () =>
 beforeAll(async () => {
   mock.module("@backlex/integrations", () => ({
     ...realIntegrations,
-    taskFor: (kind: string, taskId: string) =>
-      kind === "google-sheets" && taskId === "create_shipment" ? FAKE_TASK : undefined,
+    taskFor: (kind: string, taskId: string) => {
+      if (kind !== "google-sheets") return undefined;
+      if (taskId === "create_shipment") return FAKE_TASK;
+      if (taskId === "check_tracking") return FAKE_REPEATABLE_TASK;
+      return undefined;
+    },
     runIntegrationTask: async () => {
       calls += 1;
       return behaviour();
@@ -91,6 +115,7 @@ beforeAll(async () => {
     fields: [
       { name: "tracking", type: "text" },
       { name: "label", type: "text" },
+      { name: "ship_status", type: "text" },
       // Nothing maps an output onto this one. It is here to be left alone —
       // see "a write-back leaves the columns it was not given". A collection
       // whose only columns are the ones the task writes cannot fail that.
@@ -140,7 +165,7 @@ beforeEach(() => {
   const now = Date.now();
   client
     .query(
-      `insert into "${shipmentsTable}" (id, tracking, label, order_ref, created_at, updated_at) values ('ship-1', null, null, 'ORD-1001', ?, ?)`,
+      `insert into "${shipmentsTable}" (id, tracking, label, ship_status, order_ref, created_at, updated_at) values ('ship-1', null, null, null, 'ORD-1001', ?, ?)`,
     )
     .run(now, now);
   calls = 0;
@@ -256,6 +281,110 @@ describe("running a task", () => {
     expect(res.data.status).toBe("succeeded");
     expect(shipmentRows()[0]!.tracking).toBe("TRK-RETRY");
     expect(taskRuns()).toHaveLength(1);
+  });
+});
+
+describe("a repeatable task is a read, so the guard steps aside", () => {
+  const trackUrl = () => `${BASE}/${integrationId}/tasks/check_tracking`;
+  const TRACK_BODY = {
+    collection: "shipments",
+    itemId: "ship-1",
+    outputMapping: { shipmentStatus: "ship_status" },
+  };
+
+  test("asking twice asks the provider twice and keeps the NEWER answer", async () => {
+    // The inversion of the guard's whole point. A parcel that has not left the
+    // warehouse answers `pre_transit`, and freezing the row on that would make
+    // the field useless the moment it became interesting.
+    behaviour = async () => ({ outputs: { shipmentStatus: "pre_transit" } });
+    const first = await ok("POST", trackUrl(), TRACK_BODY);
+    expect(first.data.status).toBe("succeeded");
+    expect(shipmentRows()[0]!.ship_status).toBe("pre_transit");
+
+    behaviour = async () => ({ outputs: { shipmentStatus: "delivered" } });
+    const second = await ok("POST", trackUrl(), TRACK_BODY);
+
+    expect(calls).toBe(2);
+    expect(second.data.reused).toBe(false);
+    expect(second.data.status).toBe("succeeded");
+    expect(shipmentRows()[0]!.ship_status).toBe("delivered");
+  });
+
+  test("it still leaves ONE run row, carrying the latest answer and the count", async () => {
+    // Every poll is recorded rather than accumulating a row each time: what the
+    // carrier last said and when is the useful fact, not a log of every ask.
+    behaviour = async () => ({ outputs: { shipmentStatus: "in_transit" } });
+    await ok("POST", trackUrl(), TRACK_BODY);
+    behaviour = async () => ({ outputs: { shipmentStatus: "out_for_delivery" } });
+    await ok("POST", trackUrl(), TRACK_BODY);
+
+    const runs = taskRuns();
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.status).toBe("succeeded");
+    expect(runs[0]!.attempts).toBe(2);
+    expect(JSON.parse(String(runs[0]!.outputs)).shipmentStatus).toBe("out_for_delivery");
+  });
+
+  test("two concurrent polls BOTH reach the provider", async () => {
+    // The opposite of the booking assertion above, and deliberately so: losing
+    // the insert race must not hand a poll somebody else's stale answer.
+    behaviour = async () => {
+      await new Promise((r) => setTimeout(r, 20));
+      return { outputs: { shipmentStatus: "in_transit" } };
+    };
+    const [a, b] = await Promise.all([
+      req("POST", trackUrl(), TRACK_BODY),
+      req("POST", trackUrl(), TRACK_BODY),
+    ]);
+
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    expect(calls).toBe(2);
+    expect(taskRuns()).toHaveLength(1);
+  });
+
+  test("the once-only task alongside it is unaffected", async () => {
+    // The two live under the same (integration, collection, row) triple and are
+    // told apart by task id alone, so this is what proves `repeatable` is a
+    // property of the task and not of the run table.
+    behaviour = async () => ({ outputs: { trackingNumber: "TRK-1" } });
+    await ok("POST", runUrl(), BODY);
+    behaviour = async () => ({ outputs: { trackingNumber: "TRK-SECOND" } });
+    const booked = await ok("POST", runUrl(), BODY);
+    expect(booked.data.reused).toBe(true);
+
+    behaviour = async () => ({ outputs: { shipmentStatus: "delivered" } });
+    await ok("POST", trackUrl(), TRACK_BODY);
+    const polled = await ok("POST", trackUrl(), TRACK_BODY);
+    expect(polled.data.reused).toBe(false);
+
+    expect(taskRuns()).toHaveLength(2);
+    expect(shipmentRows()[0]!.tracking).toBe("TRK-1");
+    expect(shipmentRows()[0]!.ship_status).toBe("delivered");
+  });
+
+  test("a failed poll is recorded and the next one still runs", async () => {
+    behaviour = async () => {
+      throw new Error("carrier tracking unavailable");
+    };
+    const failed = await req("POST", trackUrl(), TRACK_BODY);
+    expect(failed.ok).toBe(false);
+    expect(taskRuns()[0]!.status).toBe("failed");
+
+    behaviour = async () => ({ outputs: { shipmentStatus: "in_transit" } });
+    const res = await ok("POST", trackUrl(), TRACK_BODY);
+    expect(res.data.status).toBe("succeeded");
+    expect(shipmentRows()[0]!.ship_status).toBe("in_transit");
+  });
+
+  test("it still refuses an output it never declared", async () => {
+    // Repeatable relaxes the guard, not the contract.
+    const res = await req("POST", trackUrl(), {
+      ...TRACK_BODY,
+      outputMapping: { trackingNumber: "tracking" },
+    });
+    expect(res.status).toBe(422);
+    expect(calls).toBe(0);
   });
 });
 

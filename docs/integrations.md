@@ -587,6 +587,31 @@ The engine also hands the provider an idempotency key, stable across every retry
 of the same row. Carriers that honour it refuse the duplicate at their end too,
 which is strictly better than us noticing afterwards.
 
+### Except when asking again *is* the point
+
+Some tasks change nothing at the provider. *Where is this parcel* is a read, and
+its whole value is that the answer moves: `pre_transit` today, `delivered` on
+Thursday. Run one of those under the guard above and the row keeps the least
+useful answer it will ever have — the one from before the parcel left.
+
+A provider marks such a task **repeatable**, and the table inverts:
+
+| | |
+|---|---|
+| A second call | asks the provider again and keeps the **newer** answer |
+| Two concurrent calls | both reach the provider — neither is doing anything the other needs protecting from |
+| `--force` | has nothing to force, and is ignored rather than refused |
+
+What does *not* change: the run is still recorded, so *what did the carrier last
+say, and when* survives; there is still one run row per *(integration, task,
+row)* rather than one per poll; and the outputs a task may write are still only
+the ones it declared. Repeatable relaxes the guard, not the contract.
+
+Poll one on a schedule with a cron flow over the open shipments — see
+[flows](./flows.md). Only a provider can declare it: `repeatable` is a statement
+about the provider's API having no side effect, which is not something a caller
+is in a position to promise.
+
 ### It writes back a patch, not a row
 
 A task hands back the two or three fields it learned. The engine writes **only
@@ -884,7 +909,9 @@ real-world effect:
 - **It runs [once per row](#it-runs-once).** A flow that re-fires reads the first
   run's answer back instead of booking a second shipment, and the step reports
   `reused: true` so a following `condition` can tell the two apart. `force: true`
-  is the escape hatch for a consignment genuinely cancelled at the carrier.
+  is the escape hatch for a consignment genuinely cancelled at the carrier. A
+  [repeatable](#except-when-asking-again-is-the-point) task is the exception, and
+  the one worth putting on a cron flow: it answers afresh every time.
 - **The step is checked when the flow is saved.** A task the provider does not
   declare, a setting outside its option set, or an output key it never returns
   is refused at save time. At run time all three present the same way: a step

@@ -3186,6 +3186,10 @@ msgid "Book a consignment, ask where the parcel is, and cancel it."
 msgstr "Book a consignment, ask where the parcel is, and cancel it."
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a consignment, fetch its printable label, ask where the parcel is, and cancel it."
+msgstr "Book a consignment, fetch its printable label, ask where the parcel is, and cancel it."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Book a shipment and store its label, read where the parcel is, and cancel it."
 msgstr "Book a shipment and store its label, read where the parcel is, and cancel it."
 

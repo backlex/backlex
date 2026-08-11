@@ -37,7 +37,7 @@ Forty-one providers ship in the registry, grouped by category:
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 | marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source and a task |
-| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo) |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -1113,6 +1113,75 @@ from somebody else's DataSet is how a row ends up permanently empty while the
 run reports success. Those names *are* in the integration document Aras hands
 over with the credentials; with that document in front of you the task is a
 short addition, because the helper already reads an arbitrary tree by name.
+
+#### PTT Kargo, the complete one
+
+**PTT Kargo** is the third SOAP courier and the most complete carrier here: it
+books, hands back a printable label, says where the parcel is, and cancels. It
+is also the only national courier in this engine that produces a label at all.
+
+It speaks through **two** services, and they differ in more than their address:
+
+| | Acceptance | Tracking |
+|---|---|---|
+| Path | `/PttVeriYukleme/services/Sorgu` | `/GonderiTakip/services/Sorgu` |
+| Namespace | `http://kabul.ptt.gov.tr` | `http://takip.ptt.gov.tr` |
+| Stack | Axis2 | Axis 1.4 |
+| SOAPAction | `urn:<operation>` | **empty** |
+| Outcome field | `hataKodu` / `aciklama` | `sonucKodu` / `sonucAciklama` |
+
+Both WSDLs are readable without any credential. The credentials come from a PTT
+İl Müdürlüğü; the contracts do not — which is what unblocked this file, exactly
+as it unblocked Yurtiçi and Aras.
+
+Four things shape the provider, three of them verified against the live service:
+
+- **A refusal is a field inside a 200.** Probed with deliberately wrong
+  credentials, the acceptance service answers HTTP 200 carrying
+  `<hataKodu>-1</hataKodu><aciklama>Kullanıcı Şifre Hatalı</aciklama>`. A booking
+  says it a *second* time per parcel in `dongu.donguHataKodu`, so a batch can
+  succeed with its only parcel rejected — reading just the outer code would write
+  a barcode-less success onto the row.
+- **The three credentials travel in three different combinations.** `kabulEkle2`
+  wants username + password + customer id; `etiketGetir` and `barkodVeriSil` want
+  customer id + password and **no username**; `gonderiSorgu` wants username +
+  password and **no customer id**. That is the WSDL, not a transcription error.
+- **We choose the reference, PTT chooses the barcode.** `musteriReferansNo` is
+  derived from the engine's idempotency key so a retry re-books the same
+  consignment. The barcode comes back in the answer and is what the label,
+  tracking and cancel tasks all address, so one row field serves all three. PTT
+  also publishes `referansVeriSil`, which cancels by our reference — the door to
+  use if a booking's answer was lost before the barcode reached the row.
+- **The label is EPL, and it is stored as such.** `etiketGetir` returns Eltron
+  printer language, not a document — the bytes a thermal label printer consumes.
+  It is stored through the engine's artifact mechanism as `text/plain` and the row
+  is given its storage key. Converting it to a PDF would mean re-rendering
+  somebody else's label layout.
+
+**`fetch_label` is deliberately not repeatable**, which is the one judgement call
+here. Asking PTT to render a label again has no effect on the parcel — but it
+does write a fresh artifact into storage every run, and a repeatable task on a
+cron would fill a bucket with copies of one label.
+
+**Tracking ships even though it cannot be called yet.** `/GonderiTakip/` sits
+behind a Layer 7 gateway that serves the WSDL to anybody and refuses every POST
+with `Policy Falsified — Service Not Found`, whatever the body; the acceptance
+service on the same host answers normally. That is a routing policy opened per
+customer, not a fault in the request.
+
+This is the *opposite* of Aras's missing tracking task, and the reason the two
+decisions differ is worth keeping straight. Aras's tracking operations return an
+untyped DataSet, so the field names cannot be known and the task cannot be
+**written**. PTT's are fully typed in a published WSDL, so the task is written
+correctly and the only open question is whether a given customer's account is
+routed — one provisioning step, not a guess. The provider translates the
+gateway's words into that: *ask your PTT İl Müdürlüğü to enable it for this
+account*.
+
+One last detail worth knowing: PTT's event history carries its own `siraNo`
+sequence number, so **ordering is contract here rather than luck** — the provider
+takes the highest one and does not care what order the transport delivered them
+in. Compare DHL below, where no order is promised at all.
 
 #### DHL, and half a carrier on purpose
 

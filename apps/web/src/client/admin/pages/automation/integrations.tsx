@@ -182,6 +182,10 @@ const BRANDS: Record<string, Brand> = {
   // Turkish one among them, which is why the description names MNG Kargo: the
   // brand changed in 2025 and an operator still looks for the old name.
   dhl: { name: "DHL", mark: "DHL", markBg: "#D40511" },
+  // PTT's brand yellow is the same problem Mailchimp's is: the mark is drawn
+  // white-on-brand and white on yellow is unreadable. The navy their logo pairs
+  // it with is the other half of the same identity.
+  ptt: { name: "PTT Kargo", mark: "PTT", markBg: "#0B3B75" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -349,6 +353,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Book a consignment and cancel it.`;
       case "dhl":
         return t`Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo).`;
+      case "ptt":
+        return t`Book a consignment, fetch its printable label, ask where the parcel is, and cancel it.`;
       default:
         return "";
     }

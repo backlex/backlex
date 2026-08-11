@@ -3186,6 +3186,10 @@ msgid "Book a consignment, ask where the parcel is, and cancel it."
 msgstr "Gönderi oluşturun, kargonun nerede olduğunu sorun, iptal edin."
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a consignment, fetch its printable label, ask where the parcel is, and cancel it."
+msgstr "Gönderi oluşturun, yazdırılabilir etiketini alın, kargonun nerede olduğunu sorun ve iptal edin."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Book a shipment and store its label, read where the parcel is, and cancel it."
 msgstr "Gönderi oluşturup etiketini saklar, kargonun nerede olduğunu okur ve iptal eder."
 

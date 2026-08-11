@@ -41,6 +41,7 @@ import { notion } from "./notion";
 import { opsgenie } from "./opsgenie";
 import { pagerduty } from "./pagerduty";
 import { posthog } from "./posthog";
+import { ptt } from "./ptt";
 import { quickbooks } from "./quickbooks";
 import { segment } from "./segment";
 import { sentry } from "./sentry";
@@ -107,6 +108,7 @@ export const INTEGRATION_KINDS = [
   "yurtici",
   "aras",
   "dhl",
+  "ptt",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -154,6 +156,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   yurtici,
   aras,
   dhl,
+  ptt,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

@@ -1,4 +1,12 @@
-import { defineProvider, type DestinationRow } from "../provider";
+import {
+  defineProvider,
+  type DestinationRow,
+  type ListingAttribute,
+  type ListingCategory,
+  type ListingProduct,
+  type ListingVariant,
+  type ListingVerdict,
+} from "../provider";
 
 /**
  * n11 — a seller's shipment packages in, stock and price out, and the one
@@ -43,6 +51,15 @@ const PAGE = 100;
 const MAX_SKUS = 1000;
 
 /**
+ * Who n11 is told is calling.
+ *
+ * n11 asks for the integrator's name on every write and asks that the SAME
+ * value be sent every time — it is how they attribute traffic — so it is one
+ * constant rather than a string at each call site.
+ */
+const INTEGRATOR = "backlex";
+
+/**
  * The widest window the packages feed honours, and the one a first run reads.
  *
  * n11 states it three ways — a start alone reads 15 days forward, an end alone
@@ -80,7 +97,7 @@ export const n11 = defineProvider({
   id: "n11",
   label: "n11",
   category: "marketplace",
-  capabilities: ["source", "destination", "task"],
+  capabilities: ["source", "destination", "task", "listing"],
   /**
    * A thousand requests a minute is what the packages feed publishes. Paced
    * under it: the bucket is per-isolate and best-effort, so two isolates
@@ -193,7 +210,7 @@ export const n11 = defineProvider({
       const res = await ctx.fetch(`${BASE}/ms/product/tasks/price-stock-update`, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ payload: { integrator: "backlex", skus: skus.slice(0, MAX_SKUS) } }),
+        body: JSON.stringify({ payload: { integrator: INTEGRATOR, skus: skus.slice(0, MAX_SKUS) } }),
       });
       if (!res.ok) throw await readError(res, "update stock and price");
 
@@ -206,6 +223,314 @@ export const n11 = defineProvider({
       }
       const taskId = text(body.id);
       if (taskId) await verifyTask(ctx, headers, taskId);
+    },
+  },
+  /**
+   * Putting a product ON SALE — a different job from keeping one priced.
+   *
+   * The destination above addresses a listing that already exists, by stock
+   * code. This one creates it, which is why it needs a category and that
+   * category's own attributes.
+   *
+   * **There is no brand field, and that is the fact worth keeping.** n11 sends
+   * the brand as attribute id 1 ("Marka"), like any other category attribute —
+   * so this provider declares NO `lookups` and needs no brand picker. The
+   * existing attribute mapper already covers it, because `isCustomValue` is
+   * true on that attribute: an operator may pick one of n11's own brand values
+   * or type a name.
+   *
+   * The second fact worth keeping is what a verdict echoes. n11 answers with
+   * **`itemCode`**, and its documentation says outright that `itemCode` holds
+   * the STOCK CODE — not the barcode, which is optional here and routinely
+   * null. That is what makes `stockCode` the reference column.
+   */
+  listing: {
+    settingFields: [
+      {
+        key: "shipmentTemplate",
+        // Required by n11 per product, and it is a NAME rather than an id — the
+        // one the seller created under Hesabım > Teslimat Bilgilerim.
+        label: "Shipment template name",
+        placeholder: "the template name from Hesabım > Teslimat Bilgilerim",
+      },
+      {
+        key: "preparingDay",
+        label: "Handling time (days)",
+        options: [
+          { value: "1", label: "1 day" },
+          { value: "2", label: "2 days" },
+          { value: "3", label: "3 days" },
+          { value: "5", label: "5 days" },
+          { value: "7", label: "7 days" },
+        ],
+      },
+      {
+        key: "vatRate",
+        label: "VAT rate",
+        // n11 publishes the closed set; anything else is refused for the task.
+        options: [
+          { value: "0", label: "0%" },
+          { value: "1", label: "1%" },
+          { value: "10", label: "10%" },
+          { value: "20", label: "20%" },
+        ],
+      },
+      {
+        key: "currencyType",
+        label: "Currency",
+        options: [
+          { value: "TL", label: "Turkish lira" },
+          { value: "USD", label: "US dollar (tracked to the central bank rate)" },
+          { value: "EUR", label: "Euro (tracked to the central bank rate)" },
+        ],
+      },
+      {
+        key: "maxPurchaseQuantity",
+        label: "Maximum per buyer (optional)",
+        placeholder: "5",
+      },
+    ],
+    /** Product-level fields, repeated onto every one of its units — n11's items
+     *  are flat, the same shape Trendyol's v2 create has. */
+    columns: [
+      { value: "title", label: "Title" },
+      { value: "description", label: "Description (HTML)" },
+      { value: "images", label: "Image URLs (https only)" },
+    ],
+    /**
+     * Per-unit fields.
+     *
+     * `barcode` is offered but never required: n11 documents it as optional and
+     * uses it only to match its own catalog, and its own variant example sends
+     * `null`. Requiring it would refuse perfectly listable products.
+     */
+    variantColumns: [
+      { value: "stockCode", label: "Stock code" },
+      { value: "barcode", label: "Barcode (optional, matches n11's catalog)" },
+      { value: "quantity", label: "Stock quantity" },
+      { value: "salePrice", label: "Sale price" },
+      { value: "listPrice", label: "List price" },
+    ],
+    referenceColumn: "stockCode",
+    outputs: [
+      { key: "listingId", label: "n11 stock code (listing id)" },
+      { key: "listingStatus", label: "Listing status" },
+      { key: "listingError", label: "Rejection reason" },
+      { key: "listedAt", label: "Listed at" },
+    ],
+
+    /**
+     * The whole tree in one request, flattened.
+     *
+     * Unlike Trendyol's, this one needs the credential — probed live, it
+     * answers 403 "Authentication parameters missing" without the header pair —
+     * so the picker only works once the keys are pasted.
+     */
+    async categories(ctx) {
+      const headers = readConnection(ctx, "listing");
+      const res = await ctx.fetch(`${BASE}/cdn/categories`, { headers });
+      if (!res.ok) throw await readError(res, "read the categories");
+      const body = (await res.json()) as unknown;
+      // n11 has answered both as a bare array and under `categories`; both are
+      // accepted rather than one being guessed at.
+      const roots = Array.isArray(body) ? body : asArray(obj(body).categories);
+
+      const out: ListingCategory[] = [];
+      // Iterative, not recursive: the tree's depth is nobody's promise, and a
+      // cycle in someone else's data should not be able to blow our stack.
+      const stack: { node: unknown; parentId: string | null }[] = [];
+      for (const node of roots) stack.push({ node, parentId: null });
+      let guard = 0;
+      while (stack.length > 0 && guard++ < 50_000) {
+        const { node, parentId } = stack.pop()!;
+        const row = obj(node);
+        const id = text(row.id);
+        if (!id) continue;
+        const kids = asArray(row.subCategories);
+        out.push({
+          id,
+          name: text(row.name) ?? id,
+          // n11 says "leaf" by returning `null` where Trendyol returns `[]`.
+          // Deriving it here is what keeps that difference out of every reader.
+          leaf: kids.length === 0,
+          parentId,
+        });
+        for (const kid of kids) stack.push({ node: kid, parentId: id });
+      }
+      return out;
+    },
+
+    /** What one leaf category demands, including its brand list. */
+    async attributes(ctx) {
+      const headers = readConnection(ctx, "listing");
+      const categoryId = numericId(ctx.categoryId, "category id");
+      const res = await ctx.fetch(`${BASE}/cdn/category/${categoryId}/attribute`, { headers });
+      if (!res.ok) throw await readError(res, "read the category attributes");
+      const body = (await res.json()) as { categoryAttributes?: unknown };
+
+      const out: ListingAttribute[] = [];
+      for (const raw of asArray(body.categoryAttributes)) {
+        const row = obj(raw);
+        const id = text(row.attributeId);
+        if (!id) continue;
+        out.push({
+          id,
+          name: text(row.attributeName) ?? id,
+          required: row.isMandatory === true,
+          allowCustom: row.isCustomValue === true,
+          // `isVariant` is what splits a product into variants; `isSlicer`
+          // groups the variants onto one page and n11 documents BOTH as
+          // wanting a shared productMainId, so either one means "this tells two
+          // units apart".
+          variant: row.isVariant === true || row.isSlicer === true,
+          // n11 publishes no multi-value flag — one value per attribute.
+          multiple: false,
+          values: asArray(row.attributeValues)
+            .map((v) => {
+              const val = obj(v);
+              const vid = text(val.id);
+              // n11 spells the label `value` where Trendyol spells it `name`.
+              return vid ? { id: vid, name: text(val.value) ?? vid } : null;
+            })
+            .filter((v): v is { id: string; name: string } => v !== null),
+        });
+      }
+      return out;
+    },
+
+    async publish(ctx) {
+      const headers = readConnection(ctx, "listing");
+      const opts = readListingSettings(ctx);
+
+      const skus: Record<string, unknown>[] = [];
+      const rejected: ListingVerdict[] = [];
+      for (const product of ctx.products) {
+        for (const variant of product.variants) {
+          const built = buildSku(product, variant, opts);
+          if (typeof built === "string") {
+            // Refused HERE rather than by n11, which REJECTs the whole task and
+            // explains itself in one `reasons` list for the batch. A verdict per
+            // unit is what an operator can act on.
+            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            continue;
+          }
+          skus.push(built);
+        }
+      }
+
+      if (skus.length === 0) {
+        // Nothing queued, so nothing to poll. A batch id here would leave the
+        // engine asking n11 about work it never accepted.
+        return { batchId: "", rejected };
+      }
+      if (skus.length > MAX_SKUS) {
+        throw new Error(`n11 accepts ${MAX_SKUS} SKUs per request, and this batch has ${skus.length}`);
+      }
+
+      const res = await ctx.fetch(`${BASE}/ms/product/tasks/product-create`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ payload: { integrator: INTEGRATOR, skus } }),
+      });
+      if (!res.ok) throw await readError(res, "create the products");
+
+      const body = (await res.json().catch(() => ({}))) as {
+        id?: unknown;
+        status?: unknown;
+        reasons?: unknown;
+      };
+      const reasons = asArray(body.reasons)
+        .map((r) => text(r))
+        .filter((r): r is string => r !== null);
+
+      // REJECT is n11 refusing the whole data set before queueing anything —
+      // an answer, not a ticket. Every unit sent gets that answer, so the batch
+      // closes here rather than being polled for a task that will never run.
+      if (text(body.status)?.toUpperCase() === "REJECT") {
+        const why = reasons.length > 0 ? reasons : ["n11 refused the task without giving a reason"];
+        return {
+          batchId: "",
+          rejected: [
+            ...rejected,
+            ...skus.map((s) => ({
+              reference: String(s.stockCode ?? ""),
+              status: "rejected" as const,
+              errors: why,
+            })),
+          ],
+        };
+      }
+
+      const batchId = text(body.id);
+      if (!batchId) {
+        // A 200 with no task id is not a success we can follow up. Treating it
+        // as one would strand every unit at `pending` forever.
+        throw new Error("n11 accepted the products but returned no task id");
+      }
+      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+    },
+
+    /**
+     * What became of a task.
+     *
+     * Two statuses, at two levels, and conflating them is the mistake to avoid.
+     * The TASK is `IN_QUEUE` while it runs and `PROCESSED` when it is finished;
+     * each SKU inside is `SUCCESS` or `Fail`. A task that is finished with a SKU
+     * carrying neither has nothing further to say about it, so that unit is
+     * closed rather than polled for ever.
+     */
+    async poll(ctx) {
+      const headers = readConnection(ctx, "listing");
+      // The ticket round-trips through our database, so it is re-derived as the
+      // number n11 types it rather than echoed.
+      const taskId = Number(ctx.batchId);
+      if (!Number.isInteger(taskId) || taskId <= 0) throw new Error("n11 task id is not a task id");
+
+      const res = await ctx.fetch(`${BASE}/ms/product/task-details/page-query`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, pageable: { page: 0, size: MAX_SKUS } }),
+      });
+      if (!res.ok) throw await readError(res, "read the listing task");
+
+      const body = (await res.json()) as { skus?: unknown; status?: unknown };
+      const taskStatus = text(body.status)?.toUpperCase();
+      const done = taskStatus === "PROCESSED" || taskStatus === "REJECT";
+
+      const out: ListingVerdict[] = [];
+      for (const raw of asArray(obj(body.skus).content)) {
+        const row = obj(raw);
+        // n11's own words: the response's `itemCode` holds the stock code. It
+        // is the only place our reference survives — there is no request id in
+        // the answer.
+        const reference = text(row.itemCode);
+        if (!reference) continue;
+        const status = text(row.status)?.toUpperCase();
+        // `reasons` appears both on the row and inside `sku`, and which one is
+        // filled varies; both are read so a reason is never dropped.
+        const errors = [...asArray(row.reasons), ...asArray(obj(row.sku).reasons)]
+          .map((r) => text(r))
+          .filter((r): r is string => r !== null);
+
+        if (status === "SUCCESS") {
+          // n11 addresses a listing by the seller's own stock code — it mints no
+          // separate product id — so the stock code IS the listing's id.
+          out.push({ reference, status: "accepted", externalId: reference });
+        } else if (status === "FAIL" || status === "FAILED") {
+          out.push({
+            reference,
+            status: "rejected",
+            errors: errors.length > 0 ? errors : ["n11 refused it without giving a reason"],
+          });
+        } else {
+          out.push(
+            done
+              ? { reference, status: "rejected", errors: ["n11 finished the task without a verdict"] }
+              : { reference, status: "pending" },
+          );
+        }
+      }
+      return out;
     },
   },
   /**
@@ -640,6 +965,166 @@ const verifyTask = async (
     `n11 refused every SKU in the batch — check the stock code mapping${reason ? `: ${reason.slice(0, 160)}` : ""}`,
   );
 };
+
+// ── Listings ─────────────────────────────────────────────────────────────────
+
+/** n11's published cap on images per product. */
+const MAX_IMAGES = 8;
+
+/** The per-sync answers a SKU needs, read once per publish. */
+type ListingOpts = {
+  shipmentTemplate: string;
+  preparingDay: number;
+  vatRate: number;
+  currencyType: string;
+  maxPurchaseQuantity: number | null;
+};
+
+const readListingSettings = (ctx: { setting(k: string): string | null }): ListingOpts => {
+  const shipmentTemplate = ctx.setting("shipmentTemplate")?.trim();
+  if (!shipmentTemplate) {
+    // Required by n11 on every product, and it is a name the seller chose — no
+    // default could be right, and an omitted one REJECTs the whole task.
+    throw new Error("n11 listing needs a shipment template name — the one from Hesabım > Teslimat Bilgilerim");
+  }
+  const vat = Number(ctx.setting("vatRate"));
+  // n11 publishes the closed set and refuses the task for anything else.
+  const vatRate = [0, 1, 10, 20].includes(vat) ? vat : 10;
+  const prep = Number(ctx.setting("preparingDay"));
+  const preparingDay = Number.isInteger(prep) && prep > 0 ? prep : 3;
+  const currency = ctx.setting("currencyType");
+  const currencyType = ["TL", "USD", "EUR"].includes(currency ?? "") ? (currency as string) : "TL";
+  const max = Number(ctx.setting("maxPurchaseQuantity"));
+  return {
+    shipmentTemplate,
+    preparingDay,
+    vatRate,
+    currencyType,
+    maxPurchaseQuantity: Number.isInteger(max) && max > 0 ? max : null,
+  };
+};
+
+/**
+ * The image list, as n11's `{url, order}` pairs.
+ *
+ * https only — n11 states the requirement, and an http URL is silently dropped
+ * at their end rather than refused, which reads as a product that listed
+ * without pictures.
+ */
+const imageList = (v: unknown): { url: string; order: number }[] => {
+  const raw: unknown[] = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\n,;|]/) : [];
+  const out: { url: string; order: number }[] = [];
+  for (const entry of raw) {
+    // An array of `{url}` objects is what a media relation expands to.
+    const s = typeof entry === "string" ? entry : text(obj(entry).url);
+    const url = s?.trim();
+    if (url && url.startsWith("https://") && !out.some((o) => o.url === url)) {
+      out.push({ url, order: out.length });
+    }
+    if (out.length === MAX_IMAGES) break;
+  }
+  return out;
+};
+
+/**
+ * One `skus[]` entry, or the reason this unit cannot become one.
+ *
+ * Returning the reason rather than throwing is the whole point: n11 REJECTs a
+ * whole task for a bad data set and explains itself once for the batch, so one
+ * product with no stock code would take its 199 healthy siblings down with it.
+ * A refusal here is one verdict on one row, which is what an operator can fix.
+ */
+function buildSku(
+  product: ListingProduct,
+  variant: ListingVariant,
+  opts: ListingOpts,
+): Record<string, unknown> | string {
+  const p = product.fields;
+  const v = variant.fields;
+
+  const stockCode = text(v.stockCode);
+  if (!stockCode) return "No stock code — n11 addresses a listing by stock code, so it cannot be created without one";
+  if (stockCode.length > 255) return `Stock code is ${stockCode.length} characters and n11 allows 255`;
+
+  const title = text(p.title);
+  if (!title) return "No title";
+  const description = text(p.description);
+  if (!description) return "No description";
+
+  const quantity = num(v.quantity);
+  if (quantity === null || quantity < 0) return "Stock quantity is missing or not a number";
+
+  const salePrice = money(v.salePrice);
+  const listPrice = money(v.listPrice);
+  // n11 REJECTS the task for either — a missing pair or a list price below the
+  // sale price — so both are checked here where the reason names the row.
+  if (salePrice === null || listPrice === null) return "List price and sale price are both required";
+  if (listPrice < salePrice) return "List price is below the sale price, which n11 refuses";
+
+  const images = imageList(v.images ?? p.images);
+  if (images.length === 0) return "No https image URL — n11 requires at least one, and refuses http";
+
+  // n11 types both ids as numbers. A binding that is not one would serialise as
+  // `null` and be refused with a reason naming the task rather than the
+  // attribute, so it is caught here.
+  const attributes: Record<string, unknown>[] = [];
+  for (const a of variant.attributes) {
+    const id = Number(a.attributeId);
+    if (!Number.isInteger(id)) return `Attribute "${a.attributeId}" is not an n11 attribute id`;
+    const valueId = a.valueId === undefined ? null : Number(a.valueId);
+    if (valueId !== null && !Number.isInteger(valueId)) {
+      return `Attribute "${a.attributeId}" has a value that is not an n11 value id`;
+    }
+    // n11's own examples send BOTH keys on every attribute, using nulls for the
+    // half that does not apply — so the shape is matched rather than trimmed.
+    attributes.push({
+      id,
+      valueId,
+      customValue: a.custom ?? null,
+    });
+  }
+
+  const barcode = text(v.barcode);
+
+  return {
+    // Truncated where an over-long stock code above was REFUSED, and the
+    // difference is the point: a title is a label, so losing its tail still
+    // lists the right product, while a stock code is an identifier and a
+    // truncated one addresses a different listing.
+    title: title.slice(0, 200),
+    description,
+    categoryId: Number(product.categoryId),
+    currencyType: opts.currencyType,
+    // The engine derives this from the product row's key, which is what makes
+    // several stock codes one product page — and what makes a re-run land on
+    // the same page rather than opening a second one.
+    productMainId: product.groupId,
+    preparingDay: opts.preparingDay,
+    shipmentTemplate: opts.shipmentTemplate,
+    stockCode,
+    // Optional at n11, and used only to match their own catalog. Sent as null
+    // rather than omitted, which is what their own variant example does.
+    barcode: barcode ?? null,
+    catalogId: null,
+    quantity: Math.floor(quantity),
+    images,
+    attributes,
+    salePrice,
+    listPrice,
+    vatRate: opts.vatRate,
+    ...(opts.maxPurchaseQuantity === null ? {} : { maxPurchaseQuantity: opts.maxPurchaseQuantity }),
+  };
+}
+
+/** A category or value id on its way into a URL path. Digits only, because it
+ *  round-trips through our database first. */
+const numericId = (raw: string, what: string): string => {
+  const v = raw.trim();
+  if (!/^\d{1,20}$/.test(v)) throw new Error(`n11 ${what} must be numeric`);
+  return v;
+};
+
+const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 // ── Tasks ────────────────────────────────────────────────────────────────────
 

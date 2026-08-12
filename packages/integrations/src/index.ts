@@ -24,7 +24,14 @@ import {
   type DestinationColumn,
   type FetchLike,
   type IntegrationConfigField,
+  type IntegrationListing,
   type IntegrationTask,
+  type ListingAttribute,
+  type ListingBatch,
+  type ListingCategory,
+  type ListingOption,
+  type ListingProduct,
+  type ListingVerdict,
   type SourcePullPage,
   type IntegrationEvent,
   type IntegrationProvider,
@@ -76,6 +83,19 @@ export type {
   DestinationPushContext,
   DestinationRow,
   IntegrationTask,
+  IntegrationListing,
+  ListingAttribute,
+  ListingAttributeBinding,
+  ListingAttributeValue,
+  ListingBatch,
+  ListingCatalogContext,
+  ListingCategory,
+  ListingOption,
+  ListingPollContext,
+  ListingProduct,
+  ListingPublishContext,
+  ListingVariant,
+  ListingVerdict,
   RateLimit,
   SourceChildRecord,
   SourcePullContext,
@@ -614,6 +634,205 @@ export async function unregisterWebhook(
       return typeof v === "string" && v ? v : null;
     },
   });
+}
+
+// ── Listings ─────────────────────────────────────────────────────────────────
+
+/** Kinds that can put a product on sale. Derived, like SOURCE_KINDS. */
+export const LISTING_KINDS = entries.filter(([, p]) => p.listing).map(([id]) => id);
+
+/**
+ * What each listing provider needs a form to know, without loading its calls.
+ *
+ * The taxonomy itself is deliberately NOT here. It is fetched per connection
+ * with the seller's own credentials, it is hundreds of kilobytes, and it
+ * changes without us — three reasons a build-time constant would be wrong. What
+ * travels is only the part that IS fixed per provider: the columns a row maps
+ * onto, the fields written back, and which registries can be searched.
+ */
+export const INTEGRATION_LISTINGS = Object.fromEntries(
+  entries
+    .filter(([, p]) => p.listing)
+    .map(([id, p]) => [
+      id,
+      {
+        settingFields: [...(p.listing!.settingFields ?? [])],
+        columns: [...p.listing!.columns],
+        variantColumns: p.listing!.variantColumns ? [...p.listing!.variantColumns] : null,
+        outputs: [...p.listing!.outputs],
+        lookups: [...(p.listing!.lookups ?? [])],
+      },
+    ]),
+) as Record<
+  string,
+  {
+    settingFields: IntegrationConfigField[];
+    columns: DestinationColumn[];
+    variantColumns: DestinationColumn[] | null;
+    outputs: TaskOutput[];
+    lookups: { key: string; label: string }[];
+  }
+>;
+
+/** Look up a kind's listing block. `undefined` when it has none. */
+export const listingFor = (kind: string): IntegrationListing | undefined => providerFor(kind)?.listing;
+
+/** This kind's listing columns, narrowed to what these settings allow. */
+export const listingColumnsFor = (
+  kind: string,
+  settings: Record<string, unknown>,
+  which: "product" | "variant" = "product",
+): DestinationColumn[] | undefined => {
+  const block = listingFor(kind);
+  if (!block) return undefined;
+  const all = which === "variant" ? block.variantColumns : block.columns;
+  return all ? columnsForSettings(all, settings) : undefined;
+};
+
+/** The catalog reads share one context; only the arguments differ. */
+const catalogContext = (kind: string, config: Record<string, unknown>, connectionKey?: string, fetchImpl?: FetchLike) => ({
+  config,
+  fetch: engineFetch(kind, connectionKey, fetchImpl),
+  str: (key: string) => {
+    const v = config[key];
+    return typeof v === "string" && v ? v : null;
+  },
+});
+
+/**
+ * The whole category tree, flattened.
+ *
+ * Not cached here: this package holds no state that outlives a request, and a
+ * tree cached per isolate would answer differently depending on which isolate
+ * served the operator — the read-your-writes trap that has bitten this codebase
+ * before. The caller caches, where it can key by connection and expire.
+ */
+export async function fetchListingCategories(
+  kind: string,
+  args: { config: Record<string, unknown>; connectionKey?: string },
+  fetchImpl?: FetchLike,
+): Promise<ListingCategory[]> {
+  const block = listingFor(kind);
+  if (!block) throw new Error(`${kind} cannot list products`);
+  return block.categories(catalogContext(kind, args.config, args.connectionKey, fetchImpl));
+}
+
+/** What one leaf category demands of a product. */
+export async function fetchListingAttributes(
+  kind: string,
+  args: { config: Record<string, unknown>; categoryId: string; connectionKey?: string },
+  fetchImpl?: FetchLike,
+): Promise<ListingAttribute[]> {
+  const block = listingFor(kind);
+  if (!block) throw new Error(`${kind} cannot list products`);
+  return block.attributes({
+    ...catalogContext(kind, args.config, args.connectionKey, fetchImpl),
+    categoryId: args.categoryId,
+  });
+}
+
+/**
+ * Search one declared registry — a brand list.
+ *
+ * The lookup key is checked against the provider's declaration rather than
+ * passed through, for the same reason a destination column is: it reaches the
+ * provider's URLs, and an undeclared one is a typo that would otherwise surface
+ * as an empty picker with nothing to say why.
+ */
+export async function searchListingLookup(
+  kind: string,
+  args: {
+    config: Record<string, unknown>;
+    lookup: string;
+    query: string;
+    cursor: string | null;
+    connectionKey?: string;
+  },
+  fetchImpl?: FetchLike,
+): Promise<{ items: ListingOption[]; cursor: string | null }> {
+  const block = listingFor(kind);
+  if (!block?.lookup) throw new Error(`${kind} has no searchable listing registries`);
+  if (!block.lookups?.some((l) => l.key === args.lookup)) {
+    throw new Error(`${kind} has no listing registry "${args.lookup}"`);
+  }
+  return block.lookup({
+    ...catalogContext(kind, args.config, args.connectionKey, fetchImpl),
+    lookup: args.lookup,
+    query: args.query,
+    cursor: args.cursor,
+  });
+}
+
+/**
+ * Send one batch of products to be listed.
+ *
+ * Does NOT swallow errors, like every other call with an outside effect: a
+ * publish that reported success having failed would leave the engine polling a
+ * batch id the marketplace never issued, and the products would sit `pending`
+ * forever with nothing to retry them.
+ */
+export async function publishListings(
+  kind: string,
+  args: {
+    config: Record<string, unknown>;
+    settings: Record<string, unknown>;
+    products: readonly ListingProduct[];
+    connectionKey?: string;
+  },
+  fetchImpl?: FetchLike,
+): Promise<ListingBatch> {
+  const block = listingFor(kind);
+  if (!block) throw new Error(`${kind} cannot list products`);
+  if (args.products.length === 0) throw new Error(`${kind}: nothing to publish`);
+  const pick = (bag: Record<string, unknown>, key: string) => {
+    const v = bag[key];
+    return typeof v === "string" && v ? v : null;
+  };
+  return block.publish({
+    config: args.config,
+    settings: args.settings,
+    products: args.products,
+    fetch: engineFetch(kind, args.connectionKey, fetchImpl),
+    str: (key) => pick(args.config, key),
+    setting: (key) => pick(args.settings, key),
+  });
+}
+
+/**
+ * Ask what became of a batch.
+ *
+ * Verdicts for references this batch never carried are dropped HERE rather than
+ * by each provider, so a marketplace whose status endpoint reports a whole queue
+ * can be implemented literally. `known` is the guard: without it, one sync's
+ * poll could write another sync's rows.
+ */
+export async function pollListingBatch(
+  kind: string,
+  args: {
+    config: Record<string, unknown>;
+    settings: Record<string, unknown>;
+    batchId: string;
+    known: Iterable<string>;
+    connectionKey?: string;
+  },
+  fetchImpl?: FetchLike,
+): Promise<ListingVerdict[]> {
+  const block = listingFor(kind);
+  if (!block) throw new Error(`${kind} cannot list products`);
+  const pick = (bag: Record<string, unknown>, key: string) => {
+    const v = bag[key];
+    return typeof v === "string" && v ? v : null;
+  };
+  const verdicts = await block.poll({
+    config: args.config,
+    settings: args.settings,
+    batchId: args.batchId,
+    fetch: engineFetch(kind, args.connectionKey, fetchImpl),
+    str: (key) => pick(args.config, key),
+    setting: (key) => pick(args.settings, key),
+  });
+  const known = new Set(args.known);
+  return verdicts.filter((v) => known.has(v.reference));
 }
 
 /** Case-insensitive header read across both shapes a caller may hold. */

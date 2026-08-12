@@ -1,4 +1,12 @@
-import { defineProvider, type DestinationRow } from "../provider";
+import {
+  defineProvider,
+  type DestinationRow,
+  type ListingAttribute,
+  type ListingCategory,
+  type ListingProduct,
+  type ListingVariant,
+  type ListingVerdict,
+} from "../provider";
 import { takeToken } from "../throttle";
 
 /**
@@ -146,7 +154,7 @@ export const trendyol = defineProvider({
   id: "trendyol",
   label: "Trendyol",
   category: "marketplace",
-  capabilities: ["source", "destination", "task", "webhook"],
+  capabilities: ["source", "destination", "task", "webhook", "listing"],
   /**
    * 1,000 requests a minute is what the order API publishes. Paced under it
    * rather than at it: the bucket is per-isolate and best-effort, so two
@@ -333,6 +341,300 @@ export const trendyol = defineProvider({
       if (typeof body.batchRequestId === "string" && body.batchRequestId) {
         await verifyBatch(ctx, base, sellerId, headers, body.batchRequestId);
       }
+    },
+  },
+  /**
+   * Putting a product ON SALE, which is a different job from keeping one priced.
+   *
+   * The destination above addresses a listing that already exists, by barcode.
+   * This one creates it — and that is why it needs a category, a brand and a
+   * category's own attributes, none of which the destination ever has to know.
+   *
+   * **V1 is gone.** Trendyol retired the v1 create on 10 August 2026, so
+   * `/v2/products` is not a preference; it is the only endpoint that still
+   * answers. Its items are FLAT — every item repeats the product's title,
+   * description, brand and category alongside its own barcode and price — which
+   * is why the engine's product fields and variant fields are merged per item
+   * here rather than nested.
+   */
+  listing: {
+    settingFields: [
+      {
+        key: "vatRate",
+        label: "VAT rate",
+        options: [
+          { value: "0", label: "0%" },
+          { value: "1", label: "1%" },
+          { value: "10", label: "10%" },
+          { value: "20", label: "20%" },
+        ],
+      },
+      {
+        key: "deliveryDuration",
+        label: "Handling time (days, optional)",
+        placeholder: "1",
+      },
+    ],
+    /**
+     * Product-level fields — repeated onto every one of the product's items.
+     *
+     * `categoryId` is absent on purpose: it is not a column, it is the answer
+     * the category mapping exists to give. Putting it here as well would leave
+     * two places disagreeing about which category a product belongs to, and the
+     * one an operator could not see would win.
+     */
+    columns: [
+      { value: "title", label: "Title" },
+      { value: "description", label: "Description (HTML)" },
+      {
+        value: "brandId",
+        label: "Trendyol brand ID",
+      },
+      { value: "images", label: "Image URLs" },
+      { value: "dimensionalWeight", label: "Desi (optional)" },
+      { value: "shipmentAddressId", label: "Shipment address ID (optional)" },
+      { value: "returningAddressId", label: "Returning address ID (optional)" },
+    ],
+    /**
+     * Per-unit fields. A workspace with no variant collection maps the product
+     * row through this list too, which is what makes "one product, one barcode"
+     * a configuration rather than a branch.
+     */
+    variantColumns: [
+      { value: "barcode", label: "Barcode" },
+      { value: "stockCode", label: "Stock code" },
+      { value: "quantity", label: "Stock quantity" },
+      { value: "listPrice", label: "List price" },
+      { value: "salePrice", label: "Sale price" },
+    ],
+    // Trendyol echoes the item it was sent on `requestItem`, and the barcode is
+    // the field that survives the round trip.
+    referenceColumn: "barcode",
+    outputs: [
+      { key: "listingId", label: "Trendyol barcode (listing id)" },
+      { key: "listingStatus", label: "Listing status" },
+      { key: "listingError", label: "Rejection reason" },
+      { key: "listedAt", label: "Listed at" },
+    ],
+    lookups: [{ key: "brands", label: "Trendyol brands" }],
+
+    /**
+     * The whole tree in one request, flattened.
+     *
+     * Public: this endpoint takes no credentials at all, which is why the
+     * catalog can be browsed before a seller has finished pasting their keys.
+     * The connection's headers are still sent — they are harmless here and it
+     * keeps one code path for every call in this file.
+     */
+    async categories(ctx) {
+      const base = baseFor(ctx);
+      const res = await ctx.fetch(`${base}/integration/product/product-categories`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw await readError(res, "read the categories");
+      const body = (await res.json()) as { categories?: unknown };
+      const out: ListingCategory[] = [];
+      // Iterative, not recursive: the tree is six deep today and nothing
+      // promises it stays that way, and a cycle in someone else's data should
+      // not be able to blow our stack.
+      const stack: { node: unknown; parentId: string | null }[] = [];
+      for (const node of asArray(body.categories)) stack.push({ node, parentId: null });
+      let guard = 0;
+      while (stack.length > 0 && guard++ < 50_000) {
+        const { node, parentId } = stack.pop()!;
+        const row = obj(node);
+        const id = idOf(row.id);
+        if (!id) continue;
+        const kids = asArray(row.subCategories);
+        out.push({
+          id,
+          name: text(row.name) ?? id,
+          parentId,
+          // Trendyol says "leaf" with an empty array; n11 says it with `null`.
+          // Deriving it here is what keeps that difference out of every reader.
+          leaf: kids.length === 0,
+        });
+        for (const kid of kids) stack.push({ node: kid, parentId: id });
+      }
+      return out;
+    },
+
+    /** What one leaf category demands. ~24 attributes and ~26 KB, per category. */
+    async attributes(ctx) {
+      const base = baseFor(ctx);
+      const categoryId = numericId(ctx.categoryId, "category id");
+      const res = await ctx.fetch(
+        `${base}/integration/product/product-categories/${categoryId}/attributes`,
+        { headers: { Accept: "application/json" } },
+      );
+      if (!res.ok) throw await readError(res, "read the category attributes");
+      const body = (await res.json()) as { categoryAttributes?: unknown };
+      const out: ListingAttribute[] = [];
+      for (const raw of asArray(body.categoryAttributes)) {
+        const row = obj(raw);
+        const attr = obj(row.attribute);
+        const id = idOf(attr.id);
+        if (!id) continue;
+        out.push({
+          id,
+          name: text(attr.name) ?? id,
+          required: row.required === true,
+          allowCustom: row.allowCustom === true,
+          // Trendyol's word for "this attribute splits a product into variants".
+          variant: row.varianter === true,
+          multiple: row.allowMultipleAttributeValues === true,
+          values: asArray(row.attributeValues)
+            .map((v) => {
+              const val = obj(v);
+              const vid = idOf(val.id);
+              return vid ? { id: vid, name: text(val.name) ?? vid } : null;
+            })
+            .filter((v): v is { id: string; name: string } => v !== null),
+        });
+      }
+      return out;
+    },
+
+    /**
+     * Brand search.
+     *
+     * `/brands` pages through a quarter of a million rows and **ignores a
+     * `name` parameter** — verified: it answers `{brands:[]}` rather than
+     * filtering — so browsing it is the only thing it is good for. `by-name` is
+     * the search, and it answers with a BARE ARRAY where `/brands` answers with
+     * an object. Two envelopes on one resource is exactly the kind of thing
+     * that reads as an empty result rather than a bug, so both are handled.
+     */
+    async lookup(ctx) {
+      const base = baseFor(ctx);
+      const query = ctx.query.trim();
+      // The cursor round-trips through our database and back into a query
+      // string, so it is re-derived as a number rather than echoed. An
+      // unparseable one restarts the walk, which is the harmless direction.
+      const rawPage = Number(ctx.cursor ?? "0");
+      const page = Number.isInteger(rawPage) && rawPage >= 0 ? rawPage : 0;
+      const url = query
+        ? `${base}/integration/product/brands/by-name?name=${encodeURIComponent(query)}`
+        : `${base}/integration/product/brands?page=${page}&size=100`;
+      const res = await ctx.fetch(url, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw await readError(res, "search the brands");
+      const body = (await res.json()) as unknown;
+      const rows = Array.isArray(body) ? body : asArray(obj(body).brands);
+      const items = rows
+        .map((r) => {
+          const row = obj(r);
+          const id = idOf(row.id);
+          return id ? { id, name: text(row.name) ?? id } : null;
+        })
+        .filter((o): o is { id: string; name: string } => o !== null);
+      // A search is one shot; only the browse walks pages. A short page ends it.
+      return { items, cursor: query || items.length < 100 ? null : String(page + 1) };
+    },
+
+    async publish(ctx) {
+      const { sellerId, headers, base } = readConnection(ctx, "listing");
+      const vatRate = readVatRate(ctx.setting("vatRate"));
+      const deliveryDuration = readPositiveInt(ctx.setting("deliveryDuration"));
+
+      const items: Record<string, unknown>[] = [];
+      const rejected: ListingVerdict[] = [];
+      for (const product of ctx.products) {
+        for (const variant of product.variants) {
+          const built = buildListingItem(product, variant, { vatRate, deliveryDuration });
+          if (typeof built === "string") {
+            // Refused HERE rather than by Trendyol, because Trendyol refuses the
+            // whole batch for one bad item and names it by index. A verdict per
+            // unit is what an operator can act on.
+            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            continue;
+          }
+          items.push(built);
+        }
+      }
+
+      if (items.length === 0) {
+        // Nothing queued, so nothing to poll. Returning a batch id here would
+        // leave the engine asking Trendyol about work it never accepted.
+        return { batchId: "", rejected };
+      }
+      if (items.length > MAX_ITEMS) {
+        throw new Error(`Trendyol accepts ${MAX_ITEMS} items per request, and this batch has ${items.length}`);
+      }
+
+      const res = await ctx.fetch(`${base}/integration/product/sellers/${sellerId}/v2/products`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) throw await readError(res, "create the products");
+      const body = (await res.json().catch(() => ({}))) as { batchRequestId?: unknown };
+      const batchId = text(body.batchRequestId);
+      if (!batchId) {
+        // A 200 with no ticket is not a success we can follow up. Treating it as
+        // one would strand every unit in the batch at `pending` forever.
+        throw new Error("Trendyol accepted the products but returned no batchRequestId");
+      }
+      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+    },
+
+    /**
+     * What became of a batch.
+     *
+     * Trendyol echoes the item we SENT back on `requestItem`, and that is the
+     * only place our reference survives — there is no request id in the answer.
+     * So each verdict is matched on the barcode we put there.
+     *
+     * Results are kept for four hours after completion. A batch asked about
+     * later answers 404, which is why an unknown batch reads as `pending`
+     * nowhere: the engine gives up on it rather than polling a ticket that no
+     * longer exists.
+     */
+    async poll(ctx) {
+      const { sellerId, headers, base } = readConnection(ctx, "listing");
+      const batchId = ctx.batchId.trim();
+      // The ticket is Trendyol's own and goes into a URL PATH, so it is checked
+      // rather than trusted: it round-trips through our database first.
+      if (!/^[A-Za-z0-9-]{1,64}$/.test(batchId)) throw new Error("Trendyol batch id is not a batch id");
+
+      const res = await ctx.fetch(
+        `${base}/integration/product/sellers/${sellerId}/products/batch-requests/${batchId}`,
+        { headers },
+      );
+      if (!res.ok) throw await readError(res, "read the listing batch");
+      const body = (await res.json()) as { status?: unknown; items?: unknown };
+      const done = text(body.status)?.toUpperCase() === "COMPLETED";
+
+      const out: ListingVerdict[] = [];
+      for (const raw of asArray(body.items)) {
+        const row = obj(raw);
+        const reference = text(obj(row.requestItem).barcode);
+        if (!reference) continue;
+        const status = text(row.status)?.toUpperCase();
+        const errors = asArray(row.failureReasons)
+          .map((r) => text(r))
+          .filter((r): r is string => r !== null);
+        if (status === "SUCCESS") {
+          // Trendyol addresses a listing by the seller's own barcode — it mints
+          // no separate product id — so the barcode IS the listing's id.
+          out.push({ reference, status: "accepted", externalId: reference });
+        } else if (status === "FAILED") {
+          out.push({
+            reference,
+            status: "rejected",
+            errors: errors.length > 0 ? errors : ["Trendyol refused it without giving a reason"],
+          });
+        } else {
+          // Still in the queue. A batch reported COMPLETED with an item that is
+          // neither success nor failure has nothing left to say about it, so it
+          // is closed rather than polled forever.
+          out.push(
+            done
+              ? { reference, status: "rejected", errors: ["Trendyol finished the batch without a verdict"] }
+              : { reference, status: "pending" },
+          );
+        }
+      }
+      return out;
     },
   },
   /**
@@ -944,3 +1246,159 @@ const readError = async (res: Response, what: string): Promise<Error> => {
   }
   return new Error(`Trendyol responded ${res.status} and could not ${what}${detail ? `: ${detail}` : ""}`);
 };
+
+// ── Listings ─────────────────────────────────────────────────────────────────
+
+/**
+ * The environment a catalog read runs against.
+ *
+ * The taxonomy calls take no seller id and no credentials, so they cannot use
+ * {@link readConnection} — an operator browsing categories before they have
+ * finished pasting their keys is the normal case, not an error.
+ */
+const baseFor = (ctx: { str(k: string): string | null }): string =>
+  ctx.str("environment") === "stage" ? BASES.stage : BASES.production;
+
+/** A JSON array, or an empty one. Never throws on a provider's shape change. */
+const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+/**
+ * A caller-supplied id on its way into a URL path.
+ *
+ * Category ids reach here from the stored mapping, which reached it from a
+ * picker — two round trips through our own database, which is exactly when a
+ * value stops being ours.
+ */
+const numericId = (raw: string, what: string): string => {
+  const v = raw.trim();
+  if (!/^\d{1,15}$/.test(v)) throw new Error(`Trendyol ${what} must be numeric`);
+  return v;
+};
+
+/** Trendyol publishes four VAT rates and refuses anything else. */
+const readVatRate = (raw: string | null): number => {
+  const n = raw === null ? Number.NaN : Number(raw);
+  return [0, 1, 10, 20].includes(n) ? n : 20;
+};
+
+const readPositiveInt = (raw: string | null): number | null => {
+  const n = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+};
+
+/**
+ * Image URLs, from whichever shape the mapped column holds.
+ *
+ * A products collection stores these three ways in the wild — a JSON array, a
+ * separated string, a single URL — and an operator mapping the column they have
+ * should not have to reshape it first. Non-HTTPS entries are DROPPED rather
+ * than sent: Trendyol refuses them, and refusing the whole product for one bad
+ * image would be a worse trade than listing it with the images that work.
+ */
+const imageUrls = (v: unknown): { url: string }[] => {
+  const raw: unknown[] = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\n,;|]/) : [];
+  const out: { url: string }[] = [];
+  for (const entry of raw) {
+    // An array of `{url}` objects is what a media relation expands to.
+    const s = typeof entry === "string" ? entry : text(obj(entry).url);
+    const url = s?.trim();
+    if (url && url.startsWith("https://") && !out.some((o) => o.url === url)) out.push({ url });
+    if (out.length === MAX_IMAGES) break;
+  }
+  return out;
+};
+
+/** Trendyol's published cap on images per product. */
+const MAX_IMAGES = 8;
+
+/**
+ * One `items[]` entry, or the reason this unit cannot become one.
+ *
+ * Returning the reason rather than throwing is the whole point: Trendyol
+ * refuses a batch for one bad item and names it by position, so a product with
+ * no barcode would take its 199 healthy siblings down with it. A refusal here
+ * is one verdict on one row, which is what an operator can fix.
+ */
+function buildListingItem(
+  product: ListingProduct,
+  variant: ListingVariant,
+  opts: { vatRate: number; deliveryDuration: number | null },
+): Record<string, unknown> | string {
+  const p = product.fields;
+  const v = variant.fields;
+
+  const barcode = text(v.barcode);
+  if (!barcode) return "No barcode — Trendyol addresses a listing by barcode, so it cannot be created without one";
+  if (barcode.length > 40) return `Barcode is ${barcode.length} characters and Trendyol allows 40`;
+
+  const title = text(p.title);
+  if (!title) return "No title";
+  const description = text(p.description);
+  if (!description) return "No description";
+
+  const brandId = num(p.brandId);
+  if (brandId === null) {
+    return "No Trendyol brand ID — pick one with the brand search and map it onto a column";
+  }
+
+  const stockCode = text(v.stockCode) ?? barcode;
+  const quantity = num(v.quantity);
+  if (quantity === null || quantity < 0) return "Stock quantity is missing or not a number";
+  const listPrice = num(v.listPrice);
+  const salePrice = num(v.salePrice);
+  if (listPrice === null || salePrice === null) return "List price and sale price are both required";
+  if (salePrice > listPrice) return "Sale price is above the list price, which Trendyol refuses";
+
+  // Trendyol types both ids as integers. A binding that is not one would become
+  // `NaN` and JSON-serialise as `null`, which Trendyol answers with a generic
+  // refusal naming the item's position — so it is caught here, where the reason
+  // can name the attribute instead.
+  const attributes: Record<string, unknown>[] = [];
+  for (const a of variant.attributes) {
+    const attributeId = Number(a.attributeId);
+    if (!Number.isInteger(attributeId)) return `Attribute "${a.attributeId}" is not a Trendyol attribute id`;
+    const valueId = a.valueId === undefined ? null : Number(a.valueId);
+    if (valueId !== null && !Number.isInteger(valueId)) {
+      return `Attribute "${a.attributeId}" has a value that is not a Trendyol value id`;
+    }
+    attributes.push({
+      attributeId,
+      ...(valueId === null ? {} : { attributeValueId: valueId }),
+      ...(a.custom ? { customAttributeValue: a.custom } : {}),
+    });
+  }
+
+  const dimensionalWeight = num(p.dimensionalWeight);
+  const shipmentAddressId = num(p.shipmentAddressId);
+  const returningAddressId = num(p.returningAddressId);
+  // A variant may carry its own images; otherwise the product's are used for
+  // every unit, which is what a size-only variant set wants.
+  const images = imageUrls(v.images ?? p.images);
+
+  return {
+    barcode,
+    // Truncated where an over-long barcode above was REFUSED, and the
+    // difference is the point: a title is a label, so losing its tail still
+    // lists the right product, while a barcode is an identifier and a truncated
+    // one addresses a different listing.
+    title: title.slice(0, 100),
+    description,
+    // The engine derives this from the product row's key, which is what makes
+    // several barcodes one product page — and what makes a re-run land on the
+    // same page rather than opening a second one.
+    productMainId: product.groupId,
+    brandId,
+    categoryId: Number(product.categoryId),
+    quantity,
+    stockCode,
+    listPrice,
+    salePrice,
+    vatRate: opts.vatRate,
+    ...(dimensionalWeight === null ? {} : { dimensionalWeight }),
+    ...(shipmentAddressId === null ? {} : { shipmentAddressId }),
+    ...(returningAddressId === null ? {} : { returningAddressId }),
+    ...(opts.deliveryDuration === null ? {} : { deliveryOption: { deliveryDuration: opts.deliveryDuration } }),
+    images,
+    attributes,
+  };
+}

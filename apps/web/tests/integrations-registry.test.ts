@@ -9,6 +9,8 @@ import {
   INTEGRATION_CATALOG,
   INTEGRATION_FIELDS,
   INTEGRATION_KINDS,
+  INTEGRATION_LISTINGS,
+  LISTING_KINDS,
   OAUTH_CONFIG_KEYS,
   OAUTH_KINDS,
   SOURCE_KINDS,
@@ -56,6 +58,15 @@ describe("provider registry", () => {
       if (p.capabilities.includes("task")) {
         expect(p.tasks?.length).toBeGreaterThan(0);
         for (const t of p.tasks ?? []) expect(typeof t.run).toBe("function");
+      }
+      if (p.capabilities.includes("listing")) {
+        // All four calls, not just `publish`: a listing that cannot be
+        // configured is a listing that can never be sent, and the two reads are
+        // the whole reason this is a shape rather than a destination.
+        expect(typeof p.listing?.categories).toBe("function");
+        expect(typeof p.listing?.attributes).toBe("function");
+        expect(typeof p.listing?.publish).toBe("function");
+        expect(typeof p.listing?.poll).toBe("function");
       }
     }
   });
@@ -201,6 +212,76 @@ describe("SOURCE_KINDS is derived, not hand-listed", () => {
       expect(Boolean(p.destination)).toBe(p.capabilities.includes("destination"));
     }
     expect([...DESTINATION_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].destination).sort());
+  });
+
+  test("listings agree the same way, in both directions", () => {
+    for (const kind of KINDS) {
+      const p = PROVIDERS[kind];
+      // Same trap as `source` and `destination`, with a sharper edge: a listing
+      // capability with no block reaches the admin as a category picker that
+      // throws the moment an operator opens it.
+      expect(Boolean(p.listing)).toBe(p.capabilities.includes("listing"));
+    }
+    expect([...LISTING_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].listing).sort());
+  });
+
+  test("a listing declares columns and outputs, and both are unique", () => {
+    for (const kind of LISTING_KINDS) {
+      const block = PROVIDERS[kind].listing!;
+      // A listing with no mappable column could carry a category and nothing to
+      // sell; one with no output could never report why it was refused.
+      expect(block.columns.length).toBeGreaterThan(0);
+      expect(block.outputs.length).toBeGreaterThan(0);
+      for (const list of [block.columns, block.variantColumns ?? []]) {
+        const values = list.map((c) => c.value);
+        expect(new Set(values).size).toBe(values.length);
+      }
+      const keys = block.outputs.map((o) => o.key);
+      expect(new Set(keys).size).toBe(keys.length);
+      // A verdict is a value the provider returns, never a file — so no output
+      // may claim the artifact slot the task shape uses.
+      expect(block.outputs.some((o) => o.artifact)).toBe(false);
+    }
+  });
+
+  test("a listing's reference column names a column it actually declares", () => {
+    for (const kind of LISTING_KINDS) {
+      const block = PROVIDERS[kind].listing!;
+      // The engine reads this column off every unit to build the reference it
+      // matches verdicts back on. A typo here does not throw — it reads every
+      // unit's reference as empty, matches nothing, and leaves every product
+      // "pending" forever with the marketplace reporting success.
+      const declared = new Set(
+        (block.variantColumns ?? block.columns).map((c) => c.value),
+      );
+      expect(declared.has(block.referenceColumn)).toBe(true);
+    }
+  });
+
+  test("a searchable registry is declared before it can be searched", () => {
+    for (const kind of LISTING_KINDS) {
+      const block = PROVIDERS[kind].listing!;
+      // The two halves have to arrive together: `lookups` with no `lookup` is a
+      // picker with nothing behind it, and `lookup` with no `lookups` is a call
+      // no key can ever reach, because `searchListingLookup` checks the list.
+      expect(Boolean(block.lookups?.length)).toBe(typeof block.lookup === "function");
+      for (const l of block.lookups ?? []) {
+        expect(l.key).toBeTruthy();
+        expect(l.label).toBeTruthy();
+      }
+    }
+  });
+
+  test("every listing's settings are declared and none is a secret", () => {
+    for (const kind of LISTING_KINDS) {
+      for (const f of INTEGRATION_LISTINGS[kind]!.settingFields) {
+        expect(f.key).toBeTruthy();
+        expect(f.label).toBeTruthy();
+        // Settings are stored and returned in cleartext by contract, exactly as
+        // a source's and a destination's are.
+        expect(f.secret).toBeFalsy();
+      }
+    }
   });
 
   test("every destination declares the settings it will read", () => {

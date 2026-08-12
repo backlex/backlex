@@ -87,7 +87,9 @@ export type IntegrationCapability =
   | "source"
   | "destination"
   | "task"
-  | "webhook";
+  | "webhook"
+  /** The provider can put a product on sale — see {@link IntegrationListing}. */
+  | "listing";
 
 /** An event to fan out: machine name, one-line human text, and a machine payload. */
 export interface IntegrationEvent {
@@ -766,6 +768,282 @@ export interface IntegrationWebhook {
   unregister?(ctx: WebhookRegisterContext & { id: string }): Promise<void>;
 }
 
+// ── Listings ─────────────────────────────────────────────────────────────────
+
+/**
+ * One node in a marketplace's own category tree.
+ *
+ * Flattened on purpose. Every marketplace here hands the tree back nested —
+ * Trendyol as `subCategories`, n11 the same, Çiçeksepeti under
+ * `parentCategoryId` — and each nests it differently enough that a shared
+ * consumer would have to re-walk three shapes. `parentId` carries the same
+ * information, and a flat list is what a searchable picker over ~4,000 nodes
+ * actually wants.
+ */
+export interface ListingCategory {
+  id: string;
+  name: string;
+  parentId: string | null;
+  /**
+   * A product may only be listed against a leaf, and all four marketplaces say
+   * so in their own words ("en alt kırılım"). Derived by the provider from
+   * whatever it uses to mean childless, so a consumer never has to know that
+   * Trendyol sends `[]` and n11 sends `null`.
+   */
+  leaf: boolean;
+}
+
+/** One value a closed-set attribute will accept. */
+export interface ListingAttributeValue {
+  id: string;
+  name: string;
+}
+
+/**
+ * What a chosen category demands of a product.
+ *
+ * The four marketplaces spell these flags four ways — `required` /
+ * `isMandatory`, `allowCustom` / `isCustomValue`, `varianter` / `isVariant` —
+ * and one of them (Çiçeksepeti) encodes a third state in a Turkish `type`
+ * string rather than a boolean. Normalising here is what lets ONE attribute
+ * mapper serve all of them instead of four near-identical forms.
+ */
+export interface ListingAttribute {
+  id: string;
+  name: string;
+  /** The listing is refused without it. */
+  required: boolean;
+  /** Free text is accepted, instead of or as well as a listed value. */
+  allowCustom: boolean;
+  /**
+   * Two products differing only here are one product with two variants.
+   *
+   * Trendyol and n11 both express this the same way — same `productMainId`,
+   * different value on a `varianter` attribute — which is why a variant is a
+   * child ROW here rather than a second product.
+   */
+  variant: boolean;
+  /** More than one value may be sent. */
+  multiple: boolean;
+  /**
+   * The closed set. Empty when the attribute is free text only.
+   *
+   * Held inline because three of the four providers return values with the
+   * attribute. Hepsiburada is the exception — it needs a second call per
+   * attribute — so a provider is free to make that call itself rather than the
+   * shape growing a lazy variant for one marketplace.
+   */
+  values: readonly ListingAttributeValue[];
+}
+
+/** One entry in a searchable registry a listing has to name — a brand. */
+export interface ListingOption {
+  id: string;
+  name: string;
+}
+
+/** What the taxonomy reads receive. No settings: the operator is still filling
+ *  the form the settings would come from, so only the connection exists yet. */
+export interface ListingCatalogContext {
+  /** Connection config — credentials, already decrypted. */
+  config: Record<string, unknown>;
+  fetch: FetchLike;
+  str(key: string): string | null;
+}
+
+/**
+ * One value bound to one of the category's attributes.
+ *
+ * Exactly one of `valueId` / `custom` is set. Which one is not the operator's
+ * preference but the attribute's: a closed-set attribute is refused with free
+ * text, and an attribute with no values has nothing to pick from.
+ */
+export interface ListingAttributeBinding {
+  attributeId: string;
+  valueId?: string;
+  custom?: string;
+}
+
+/**
+ * One sellable unit on its way out.
+ *
+ * A product with no variant collection has exactly one of these, built from the
+ * product row itself — so a provider never branches on whether a workspace
+ * models variants.
+ */
+export interface ListingVariant {
+  /** The collection row this unit came from, for the writeback. */
+  rowId: string;
+  /**
+   * What the provider will echo back in its verdict.
+   *
+   * The seller's own stock code, and the ONLY thing that ties an asynchronous
+   * verdict to the row that asked for it: none of these marketplaces returns
+   * our request id, and every one of them echoes the stock code. A provider
+   * must send this as whatever field its API echoes.
+   */
+  reference: string;
+  /** Mapped listing fields, already narrowed to the declared columns. */
+  fields: DestinationRow;
+  attributes: readonly ListingAttributeBinding[];
+}
+
+/** One product, with its variants and its category resolved. */
+export interface ListingProduct {
+  /** The product row's primary key. */
+  rowId: string;
+  /**
+   * Groups this product's variants at the marketplace.
+   *
+   * Trendyol and n11 both call it `productMainId` and both use it to decide
+   * that two barcodes are one product page. Derived from the row's primary key
+   * so it is stable across runs — a changed value orphans the page.
+   */
+  groupId: string;
+  /** The leaf category this product was mapped to. */
+  categoryId: string;
+  fields: DestinationRow;
+  variants: readonly ListingVariant[];
+}
+
+/** What `publish` receives. */
+export interface ListingPublishContext {
+  config: Record<string, unknown>;
+  settings: Record<string, unknown>;
+  /** Never empty — the engine skips the call when there is nothing to send. */
+  products: readonly ListingProduct[];
+  fetch: FetchLike;
+  str(key: string): string | null;
+  setting(key: string): string | null;
+}
+
+/**
+ * What one `publish` call started.
+ *
+ * Every marketplace here answers a create with a queue ticket rather than a
+ * result — Trendyol a `batchRequestId`, n11 a task `id`, Çiçeksepeti a
+ * `batchId` — so there is no synchronous form to model. The ticket is stored
+ * and polled; it is the only thing that can ever say whether a listing landed.
+ */
+export interface ListingBatch {
+  /** The provider's own id for the queued work. */
+  batchId: string;
+  /**
+   * A provider that refused the whole request before queueing anything.
+   *
+   * Distinct from a batch that queued and then failed every item: nothing is
+   * pending, so nothing should be polled.
+   */
+  rejected?: readonly ListingVerdict[];
+}
+
+/** What became of one unit. */
+export interface ListingVerdict {
+  /** {@link ListingVariant.reference} — how the engine finds the row again. */
+  reference: string;
+  /** `pending` keeps the batch open; the other two close that unit. */
+  status: "pending" | "accepted" | "rejected";
+  /** The marketplace's own id for the listing, when it returns one. */
+  externalId?: string;
+  /** Verbatim from the provider. Shown to the operator, never parsed. */
+  errors?: readonly string[];
+}
+
+/** What `poll` receives. */
+export interface ListingPollContext {
+  config: Record<string, unknown>;
+  settings: Record<string, unknown>;
+  batchId: string;
+  fetch: FetchLike;
+  str(key: string): string | null;
+  setting(key: string): string | null;
+}
+
+/**
+ * A provider that puts a product ON SALE, rather than moving one that sold.
+ *
+ * The sixth shape, and the first one that cannot be configured from a static
+ * declaration. Every other shape's form is knowable when the provider is
+ * written: a `source` declares its settings, a `destination` declares its
+ * columns. A listing's form is a QUESTION ONLY THE PROVIDER CAN ANSWER — which
+ * of ~4,000 categories, and then which of the ~24 attributes that category
+ * demands, with which of the hundreds of values each attribute allows. None of
+ * that fits `IntegrationConfigField.options`, and none of it is the same twice.
+ *
+ * So a listing provider is INTERROGATED at form-fill time ({@link categories},
+ * {@link attributes}, {@link lookup}) and the operator's answers are stored as a
+ * mapping per local category. That is the whole reason this is a shape rather
+ * than a destination with more columns.
+ *
+ * It is deliberately NOT a `destination`. A destination mirrors rows out and
+ * hears nothing back; a listing is refused, one unit at a time, minutes later,
+ * with a reason a person has to read. The writeback is the feature.
+ */
+export interface IntegrationListing {
+  /** Per-sync config — a shipment template name, a handling time. */
+  settingFields?: readonly IntegrationConfigField[];
+  /**
+   * The closed set of listing fields a product row may be mapped onto.
+   *
+   * The same declaration a {@link IntegrationDestination} makes, and read the
+   * same way, so `columnsForSettings` narrows both.
+   */
+  columns: readonly DestinationColumn[];
+  /**
+   * The same, for a variant row.
+   *
+   * Absent for a marketplace that has no per-unit fields worth mapping. When a
+   * workspace models no variants the product row is mapped through BOTH lists,
+   * which is what makes "no variant collection" a configuration rather than a
+   * branch every provider would have to write.
+   */
+  variantColumns?: readonly DestinationColumn[];
+  /**
+   * Which declared variant column the provider's verdicts echo.
+   *
+   * The engine reads this column off each unit to build
+   * {@link ListingVariant.reference}, and matches verdicts back on it. It has to
+   * be declared because the answer differs per marketplace and only the
+   * provider knows it — Trendyol echoes the `barcode` it was sent, Çiçeksepeti
+   * echoes the `stockCode`. Guessing would mean every verdict from one of them
+   * silently matched nothing, which reads as "still pending" forever.
+   *
+   * Must name a value in {@link variantColumns} (or {@link columns} when a
+   * provider declares no variant columns); the registry test enforces it.
+   */
+  referenceColumn: string;
+  /** The closed set of fields a verdict writes back onto the row. */
+  outputs: readonly TaskOutput[];
+  /**
+   * Registries a listing has to name that are not categories — Trendyol's
+   * brand list, which is a quarter of a million rows and therefore searched
+   * rather than browsed.
+   */
+  lookups?: readonly { key: string; label: string }[];
+  /** The whole tree, flattened. Cached by the engine; it changes rarely and is
+   *  hundreds of kilobytes. */
+  categories(ctx: ListingCatalogContext): Promise<ListingCategory[]>;
+  /** What one leaf category demands. */
+  attributes(ctx: ListingCatalogContext & { categoryId: string }): Promise<ListingAttribute[]>;
+  /** Search one declared registry. Paged, because brand lists are not browsable. */
+  lookup?(
+    ctx: ListingCatalogContext & { lookup: string; query: string; cursor: string | null },
+  ): Promise<{ items: ListingOption[]; cursor: string | null }>;
+  /**
+   * Send a batch. Throwing retries it; the engine's batch row is what stops a
+   * retry listing the same product twice.
+   */
+  publish(ctx: ListingPublishContext): Promise<ListingBatch>;
+  /**
+   * Ask what became of a batch. Called on a schedule until nothing is `pending`.
+   *
+   * A verdict for a reference the batch never carried is dropped, so a provider
+   * that reports a whole queue rather than one batch is safe to implement
+   * literally.
+   */
+  poll(ctx: ListingPollContext): Promise<ListingVerdict[]>;
+}
+
 /**
  * A single integration provider. `deliver` returns `null` when the stored
  * config is missing/invalid; the dispatcher turns that (and any thrown error)
@@ -810,6 +1088,9 @@ export interface IntegrationProvider<Id extends string = string> {
   /** Present only on providers that call us. Implies `webhook` in
    *  `capabilities`; the registry test enforces the two agree. */
   webhook?: IntegrationWebhook;
+  /** Present only on providers that can put a product on sale. Implies
+   *  `listing` in `capabilities`; the registry test enforces the two agree. */
+  listing?: IntegrationListing;
   deliver?(ctx: DeliverContext): Promise<DeliveryOutcome | null>;
 }
 

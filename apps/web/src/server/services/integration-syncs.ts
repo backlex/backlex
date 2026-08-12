@@ -756,6 +756,9 @@ export interface UpdateSyncInput {
   intervalMinutes?: number;
   enabled?: boolean;
   matchField?: string | null;
+  /** Listing only. Changing either re-checks BOTH — see the update path. */
+  categoryField?: string | null;
+  outputsMapping?: Record<string, string>;
 }
 
 export async function updateSync(
@@ -805,6 +808,32 @@ export async function updateSync(
       direction,
       integration.kind,
     );
+  }
+  // Re-checked TOGETHER even when only one arrived, because
+  // `validateListingFields` refuses an empty outputs mapping — patching only
+  // the category field would otherwise have to re-derive the other half and
+  // could reject a sync that is perfectly valid on disk.
+  if (patch.categoryField !== undefined || patch.outputsMapping !== undefined) {
+    const collection = await loadCollection(ctx, tenantId, existing.collection);
+    const variantSpec = ((set.childMappings ?? existing.childMappings ?? {}) as Record<string, ChildMappingSpec>)[
+      LISTING_VARIANT_GROUP
+    ];
+    const verdictCollection =
+      direction === "listing" && variantSpec
+        ? await loadCollection(ctx, tenantId, variantSpec.collection)
+        : collection;
+    const listing = validateListingFields(
+      {
+        categoryField: patch.categoryField ?? existing.categoryField,
+        outputsMapping: patch.outputsMapping ?? existing.outputsMapping,
+      },
+      collection,
+      verdictCollection,
+      direction,
+      integration.kind,
+    );
+    set.categoryField = listing.categoryField;
+    set.outputsMapping = listing.outputsMapping;
   }
   if (patch.intervalMinutes !== undefined) {
     if (direction === "inbound") {

@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { INTEGRATION_KINDS } from "@backlex/integrations";
 import { createClient } from "../../../packages/client/src/index";
 import { integrationsTools } from "../src/server/mcp/tools/integrations";
+import { SYNC_DIRECTIONS } from "../src/server/services/integration-syncs";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const SECRET = "https://hooks.slack.com/services/TOP-SECRET-VALUE";
@@ -175,6 +176,12 @@ describe("integrations — MCP surface", () => {
       "integrations.task_runs",
       "integrations.update_sync",
       "integrations.update_webhook_events",
+      "integrations.listing_categories",
+      "integrations.listing_attributes",
+      "integrations.listing_lookup",
+      "integrations.listing_maps",
+      "integrations.map_listing_category",
+      "integrations.listing_batches",
     ].sort());
   });
 
@@ -249,7 +256,12 @@ describe("integrations — direction reaches every surface", () => {
     const direction = (tool?.inputSchema.properties as Record<string, any>).direction;
     // An enum rather than a free string: an agent guessing "outbound" would
     // otherwise create a pull and be told nothing.
-    expect(direction.enum).toEqual(["pull", "push", "inbound"]);
+    //
+    // Derived from the service's own list rather than re-typed here. A literal
+    // makes this a test you UPDATE when a direction is added, which is the
+    // opposite of a gate — the whole point is to fail when a surface is left
+    // behind, and a hand-kept copy fails when it is not.
+    expect(direction.enum).toEqual([...SYNC_DIRECTIONS]);
   });
 });
 
@@ -527,5 +539,201 @@ describe("integrations — inbound webhooks reach every surface", () => {
     // secret being withheld rather than the whole field being missing.
     expect(overRest.data[0]!.webhook?.path).toContain("/api/integrations/hooks/");
     expect(overGraphql.data?.integrationSyncs[0].webhook.registered).toBeDefined();
+  });
+});
+
+/**
+ * Listings across the surfaces.
+ *
+ * The taxonomy reads are the interesting half. They hang off the CONNECTION
+ * rather than a sync on every surface, and they are the one part of this
+ * feature that talks to the marketplace while an operator is still filling in
+ * a form — so a surface that quietly required a sync first would make the whole
+ * mapping flow impossible rather than merely inconvenient.
+ */
+describe("integrations — listings reach every surface", () => {
+  let h: TestHarness;
+  let client: ReturnType<typeof createClient>;
+  let integrationId: string;
+  let syncId: string;
+  const realFetch = globalThis.fetch;
+
+  const gql = async (query: string, variables?: unknown) =>
+    (await (await h.fetch("/api/graphql", json({ query, variables }))).json()) as {
+      data?: Record<string, any>;
+      errors?: { message: string }[];
+    };
+
+  beforeAll(async () => {
+    globalThis.fetch = (async (url: any, init: any) => {
+      const u = String(url);
+      if (u.includes("trendyol.com/")) {
+        const body = u.includes("/attributes")
+          ? {
+              categoryAttributes: [
+                {
+                  attribute: { id: 92, name: "Beden" },
+                  attributeValues: [{ id: 5, name: "M" }],
+                  required: true,
+                  varianter: true,
+                  allowCustom: false,
+                  allowMultipleAttributeValues: false,
+                },
+              ],
+            }
+          : u.includes("/brands")
+            ? [{ id: 1479, name: "Nike" }]
+            : { categories: [{ id: 368, name: "Aksesuar", subCategories: [] }] };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return realFetch(url, init);
+    }) as typeof fetch;
+
+    h = makeHarness();
+    await seedAdmin(h);
+    client = createClient({ url: "http://localhost", fetch: h.fetch as typeof fetch });
+    await h.fetch(
+      "/api/collections",
+      json({
+        slug: "wares",
+        fields: [
+          { name: "title", type: "text" },
+          { name: "kind", type: "text" },
+          { name: "listing_status", type: "text" },
+        ],
+      }),
+    );
+    integrationId = (
+      await (
+        await h.fetch(
+          "/api/admin/integrations",
+          json({
+            kind: "trendyol",
+            config: {
+              sellerId: "12345",
+              apiKey: "k",
+              apiSecret: "s",
+              storeFrontCode: "TR",
+              environment: "production",
+            },
+          }),
+        )
+      ).json()
+    ).data.id;
+    syncId = (
+      await client.integrations.createSync({
+        integrationId,
+        collection: "wares",
+        direction: "listing",
+        settings: { vatRate: "20" },
+        categoryField: "kind",
+        mapping: { title: "title" },
+        outputsMapping: { listingStatus: "listing_status" },
+      })
+    ).data.id;
+  });
+
+  afterAll(() => {
+    globalThis.fetch = realFetch;
+    h.cleanup();
+  });
+
+  test("the SDK browses the taxonomy off the connection and maps a category", async () => {
+    const cats = await client.integrations.listingCategories(integrationId);
+    expect(cats.data[0]).toMatchObject({ id: "368", leaf: true, parentId: null });
+
+    const attrs = await client.integrations.listingAttributes(integrationId, "368");
+    expect(attrs.data[0]).toMatchObject({ id: "92", required: true, variant: true });
+
+    const brands = await client.integrations.listingLookup(integrationId, {
+      lookup: "brands",
+      query: "nike",
+    });
+    expect(brands.data.items[0]).toEqual({ id: "1479", name: "Nike" });
+
+    const mapped = await client.integrations.mapListingCategory(syncId, {
+      localValue: "Saat",
+      categoryId: "368",
+      attributes: { "92": { field: "size" } },
+    });
+    expect(mapped.data).toMatchObject({ localValue: "Saat", categoryId: "368" });
+    expect((await client.integrations.listingMaps(syncId)).data).toHaveLength(1);
+    expect((await client.integrations.listingBatches(syncId)).data).toEqual([]);
+
+    await client.integrations.unmapListingCategory(syncId, mapped.data.id);
+    expect((await client.integrations.listingMaps(syncId)).data).toHaveLength(0);
+  });
+
+  test("GraphQL reaches the same four reads and both writes", async () => {
+    const cats = await gql(
+      `query($i:String!){ integrationListingCategories(integrationId:$i){ id name leaf } }`,
+      { i: integrationId },
+    );
+    expect(cats.errors).toBeUndefined();
+    expect(cats.data?.integrationListingCategories[0]).toMatchObject({ id: "368", leaf: true });
+
+    const attrs = await gql(
+      `query($i:String!,$c:String!){ integrationListingAttributes(integrationId:$i, categoryId:$c){ id required variant } }`,
+      { i: integrationId, c: "368" },
+    );
+    expect(attrs.data?.integrationListingAttributes[0]).toMatchObject({ id: "92", variant: true });
+
+    const mapped = await gql(
+      `mutation($s:String!,$l:String!,$c:String!,$a:JSON){ mapIntegrationListingCategory(syncId:$s, localValue:$l, categoryId:$c, attributes:$a){ id localValue categoryId } }`,
+      { s: syncId, l: "Kolye", c: "368", a: { "92": { valueId: "5" } } },
+    );
+    expect(mapped.errors).toBeUndefined();
+    const mapId = mapped.data?.mapIntegrationListingCategory.id as string;
+
+    const listed = await gql(`query($s:String!){ integrationListingMaps(syncId:$s){ id localValue } }`, {
+      s: syncId,
+    });
+    expect(listed.data?.integrationListingMaps).toHaveLength(1);
+
+    const batches = await gql(`query($s:String!){ integrationListingBatches(syncId:$s){ id status } }`, {
+      s: syncId,
+    });
+    expect(batches.data?.integrationListingBatches).toEqual([]);
+
+    await gql(
+      `mutation($s:String!,$m:String!){ unmapIntegrationListingCategory(syncId:$s, mapId:$m) }`,
+      { s: syncId, m: mapId },
+    );
+    expect(
+      (await gql(`query($s:String!){ integrationListingMaps(syncId:$s){ id } }`, { s: syncId })).data
+        ?.integrationListingMaps,
+    ).toHaveLength(0);
+  });
+
+  test("GraphQL guards a binding whose value is not a string", async () => {
+    // This surface hands the service RAW input where REST hands it zod-parsed
+    // input, so a number here would reach the provider as `NaN` and be refused
+    // with a reason nobody can act on.
+    const res = await gql(
+      `mutation($s:String!,$a:JSON){ mapIntegrationListingCategory(syncId:$s, localValue:"X", categoryId:"368", attributes:$a){ attributes } }`,
+      { s: syncId, a: { "92": { valueId: 5 } } },
+    );
+    expect(res.errors).toBeUndefined();
+    expect(res.data?.mapIntegrationListingCategory.attributes).toEqual({});
+  });
+
+  test("MCP declares the six listing tools with closed schemas", () => {
+    const names = integrationsTools.map((t) => t.name);
+    for (const n of [
+      "integrations.listing_categories",
+      "integrations.listing_attributes",
+      "integrations.listing_lookup",
+      "integrations.listing_maps",
+      "integrations.map_listing_category",
+      "integrations.listing_batches",
+    ]) {
+      expect(names).toContain(n);
+      const tool = integrationsTools.find((t) => t.name === n)!;
+      expect(tool.inputSchema.additionalProperties).toBe(false);
+      expect(tool.description.length).toBeGreaterThan(20);
+    }
   });
 });

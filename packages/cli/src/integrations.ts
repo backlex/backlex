@@ -16,6 +16,36 @@ import {
   resolveContext,
 } from "./client";
 
+interface ListingCategoryRow {
+  id: string;
+  name: string;
+  parentId: string | null;
+  leaf: boolean;
+}
+
+interface ListingAttributeRow {
+  id: string;
+  name: string;
+  required: boolean;
+  variant: boolean;
+  values: { id: string; name: string }[];
+}
+
+interface ListingMapRow {
+  id: string;
+  localValue: string;
+  categoryId: string;
+  attributes: Record<string, Record<string, string>>;
+}
+
+interface ListingBatchRow {
+  batchId: string;
+  status: string;
+  unitCount: number;
+  pendingCount: number;
+  error: string | null;
+}
+
 interface SyncRow {
   id: string;
   integrationId: string;
@@ -89,6 +119,15 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|
   hook-events <sync-id> --events a,b   change what the endpoint accepts
   hook-off <sync-id>                   tear the endpoint down
   hooks <sync-id>                      what the provider delivered, newest first
+  categories <integration-id>          the marketplace's category tree, flattened
+  attributes <integration-id> --category <id>
+                                       what that leaf category demands
+  brands <integration-id> --q <text>   search a registry the provider declares
+  maps <sync-id>                       how local categories are mapped
+  map <sync-id> --value <local> --category <id> [--attr 92=valueId:10633877]
+                                       map one local category, or re-map it
+  unmap <sync-id> <map-id>             remove one mapping
+  batches <sync-id>                    what was published, and what is pending
   deliveries <id> [--limit N]          recent attempts, newest first
   resume <id>                          re-enable a breaker-paused integration
   disconnect <id>
@@ -104,6 +143,17 @@ completes in a browser already signed in as the same admin.
 `;
 
 const BASE = "/api/admin/integrations";
+
+/**
+ * The directions a sync may travel.
+ *
+ * Kept here rather than imported: the CLI talks to a REMOTE instance over HTTP
+ * and must not depend on the server package. It is checked before the request
+ * so a typo names the flag instead of falling through to the default and
+ * creating a PULL — which then fails on its first run with an error about the
+ * wrong half of the provider.
+ */
+const DIRECTIONS = ["pull", "push", "inbound", "listing"];
 
 const die = (e: unknown, what: string): never => {
   const msg = e instanceof BacklexError ? `${e.status} ${e.message}` : (e as Error).message;
@@ -282,16 +332,16 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
         // otherwise fall through to the default and create a PULL, which fails
         // on its first run with an error about the wrong half of the provider.
         const direction = flag(args, "--direction");
-        if (
-          direction !== undefined &&
-          direction !== "pull" &&
-          direction !== "push" &&
-          direction !== "inbound"
-        ) {
-          process.stderr.write("--direction must be pull, push or inbound\n");
+        if (direction !== undefined && !DIRECTIONS.includes(direction)) {
+          process.stderr.write(`--direction must be one of: ${DIRECTIONS.join(", ")}\n`);
           process.exit(1);
         }
         const matchField = flag(args, "--match");
+        // Listing only. Both are required for that direction and refused for
+        // every other, which the server says plainly — repeated here would be a
+        // second rule to keep in step.
+        const categoryField = flag(args, "--category-field");
+        const outputsMapping = collectSet(args, "--out");
         // JSON rather than a repeated flag: a child group is four values deep
         // (group, collection, parent column, field map) and every flag syntax
         // that flattens it turns into a punctuation puzzle at the shell.
@@ -308,6 +358,8 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
           ...(childMappings === undefined ? {} : { childMappings }),
           ...(every === undefined ? {} : { intervalMinutes: Number(every) }),
           ...(matchField === undefined ? {} : { matchField }),
+          ...(categoryField === undefined ? {} : { categoryField }),
+          ...(outputsMapping === undefined ? {} : { outputsMapping }),
         });
         if (json) printJson(data);
         else
@@ -317,6 +369,159 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
             direction: data.direction ?? "pull",
             every: `${data.intervalMinutes}m`,
           });
+        return;
+      }
+      case "categories": {
+        const id = rest[0];
+        if (!id) {
+          process.stderr.write("categories needs an integration id\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{ data: ListingCategoryRow[] }>(
+          "GET",
+          `${BASE}/${encodeURIComponent(id)}/listing/categories`,
+        );
+        if (json) printJson(data);
+        else {
+          // Only leaves are listable, and a tree of a few thousand nodes is
+          // unreadable at a terminal — so the default is the sellable ones.
+          const leaves = data.filter((c) => c.leaf);
+          printTable(leaves.map((c) => ({ id: c.id, name: c.name, parent: c.parentId ?? "" })));
+          process.stdout.write(`\n${leaves.length} leaf of ${data.length} categories\n`);
+        }
+        return;
+      }
+      case "attributes": {
+        const id = rest[0];
+        const categoryId = flag(args, "--category");
+        if (!id || !categoryId) {
+          process.stderr.write("attributes needs an integration id and --category <id>\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{ data: ListingAttributeRow[] }>(
+          "GET",
+          `${BASE}/${encodeURIComponent(id)}/listing/attributes?categoryId=${encodeURIComponent(categoryId)}`,
+        );
+        if (json) printJson(data);
+        else
+          printTable(data.map((a) => ({
+              id: a.id,
+              name: a.name,
+              // The three flags that decide how a value is supplied at all.
+              required: a.required ? "yes" : "",
+              variant: a.variant ? "yes" : "",
+              values: a.values.length ? String(a.values.length) : "free text",
+            })));
+        return;
+      }
+      case "brands": {
+        const id = rest[0];
+        if (!id) {
+          process.stderr.write("brands needs an integration id\n");
+          process.exit(1);
+        }
+        const qs = new URLSearchParams({ lookup: flag(args, "--lookup") ?? "brands" });
+        const q = flag(args, "--q");
+        if (q) qs.set("query", q);
+        const { data } = await client.request<{ data: { items: { id: string; name: string }[] } }>(
+          "GET",
+          `${BASE}/${encodeURIComponent(id)}/listing/lookup?${qs}`,
+        );
+        if (json) printJson(data);
+        else printTable(data.items);
+        return;
+      }
+      case "maps": {
+        const syncId = rest[0];
+        if (!syncId) {
+          process.stderr.write("maps needs a sync id\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{ data: ListingMapRow[] }>(
+          "GET",
+          `${BASE}/syncs/${encodeURIComponent(syncId)}/listing/maps`,
+        );
+        if (json) printJson(data);
+        else
+          printTable(
+            data.map((m) => ({
+              id: m.id,
+              local: m.localValue,
+              category: m.categoryId,
+              attrs: String(Object.keys(m.attributes ?? {}).length),
+            })));
+        return;
+      }
+      case "map": {
+        const syncId = rest[0];
+        const localValue = flag(args, "--value");
+        const categoryId = flag(args, "--category");
+        if (!syncId || !localValue || !categoryId) {
+          process.stderr.write("map needs a sync id, --value <local> and --category <id>\n");
+          process.exit(1);
+        }
+        // `--attr 92=valueId:10633877` / `=custom:Kırmızı` / `=field:size`.
+        // One flag with a named half rather than three flags, because which of
+        // the three an attribute takes is decided by the attribute, not the
+        // operator, and three flags invites sending two.
+        const attributes: Record<string, Record<string, string>> = {};
+        for (const [attributeId, raw] of Object.entries(collectSet(args, "--attr"))) {
+          const split = raw.indexOf(":");
+          const kind = split < 0 ? "" : raw.slice(0, split);
+          const value = split < 0 ? "" : raw.slice(split + 1);
+          if (!["valueId", "custom", "field"].includes(kind) || !value) {
+            process.stderr.write(
+              `--attr ${attributeId} must be valueId:<id>, custom:<text> or field:<column>\n`,
+            );
+            process.exit(1);
+          }
+          attributes[attributeId] = { [kind]: value };
+        }
+        const { data } = await client.request<{ data: ListingMapRow }>(
+          "PUT",
+          `${BASE}/syncs/${encodeURIComponent(syncId)}/listing/maps`,
+          { localValue, categoryId, attributes },
+        );
+        if (json) printJson(data);
+        else printKeyValues({ id: data.id, local: data.localValue, category: data.categoryId });
+        return;
+      }
+      case "unmap": {
+        const syncId = rest[0];
+        const mapId = rest[1];
+        if (!syncId || !mapId) {
+          process.stderr.write("unmap needs a sync id and a map id\n");
+          process.exit(1);
+        }
+        await client.request(
+          "DELETE",
+          `${BASE}/syncs/${encodeURIComponent(syncId)}/listing/maps/${encodeURIComponent(mapId)}`,
+        );
+        if (json) printJson({ ok: true });
+        else process.stdout.write("unmapped\n");
+        return;
+      }
+      case "batches": {
+        const syncId = rest[0];
+        if (!syncId) {
+          process.stderr.write("batches needs a sync id\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{ data: ListingBatchRow[] }>(
+          "GET",
+          `${BASE}/syncs/${encodeURIComponent(syncId)}/listing/batches`,
+        );
+        if (json) printJson(data);
+        else
+          printTable(data.map((b) => ({
+              batch: b.batchId,
+              status: b.status,
+              units: String(b.unitCount),
+              // What an operator actually watches: a batch is not done until
+              // the marketplace has ruled on every unit, which takes hours.
+              pending: String(b.pendingCount),
+              error: b.error ?? "",
+            })));
         return;
       }
       case "task-run": {

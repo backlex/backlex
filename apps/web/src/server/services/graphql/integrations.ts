@@ -23,6 +23,14 @@ import {
   updateSync,
   type CreateSyncInput,
 } from "../integration-syncs";
+import {
+  deleteListingMap,
+  listListingBatches,
+  listListingMaps,
+  readListingAttributes,
+  readListingCategories,
+  upsertListingMap,
+} from "../integration-listings";
 import { listTaskRuns, runTask } from "../integration-tasks";
 import {
   disableWebhook,
@@ -113,6 +121,10 @@ const SyncType = new GraphQLObjectType({
     disabledReason: { type: GraphQLString },
     /** The collection field a patching delivery is matched on, if any. */
     matchField: { type: GraphQLString },
+    /** Listing only: the product column naming the local category. */
+    categoryField: { type: GraphQLString },
+    /** Listing only: provider output key → the column a verdict is written to. */
+    outputsMapping: { type: JSONScalar },
     /** `{ path, events, registered }`, or null when this sync receives nothing.
      *  Never the secret — that is returned once, by `enableIntegrationWebhook`. */
     webhook: { type: JSONScalar },
@@ -159,6 +171,10 @@ const SyncInputType = new GraphQLInputObjectType({
     /** The collection field a patching delivery is matched on. Required for a
      *  provider whose webhook updates rows it did not create. */
     matchField: { type: GraphQLString },
+    /** Listing only: the product column naming the local category. */
+    categoryField: { type: GraphQLString },
+    /** Listing only: provider output key → the column a verdict is written to. */
+    outputsMapping: { type: JSONScalar },
     settings: { type: JSONScalar },
     mapping: { type: JSONScalar },
     /** Pull only: `{ group: { collection, parentField, mapping } }`. */
@@ -204,6 +220,62 @@ const SyncRunType = new GraphQLObjectType({
   },
 });
 
+const ListingCategoryType = new GraphQLObjectType({
+  name: "IntegrationListingCategory",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    parentId: { type: GraphQLString },
+    /** A product may only be listed against a leaf. */
+    leaf: { type: new GraphQLNonNull(GraphQLBoolean) },
+  },
+});
+
+const ListingAttributeType = new GraphQLObjectType({
+  name: "IntegrationListingAttribute",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    /** The listing is refused without it. */
+    required: { type: new GraphQLNonNull(GraphQLBoolean) },
+    /** Free text is accepted instead of, or as well as, a listed value. */
+    allowCustom: { type: new GraphQLNonNull(GraphQLBoolean) },
+    /** Two products differing only here are one product with two variants. */
+    variant: { type: new GraphQLNonNull(GraphQLBoolean) },
+    multiple: { type: new GraphQLNonNull(GraphQLBoolean) },
+    /** The closed set. Empty when the attribute is free text only. */
+    values: { type: JSONScalar },
+  },
+});
+
+const ListingMapType = new GraphQLObjectType({
+  name: "IntegrationListingMap",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    syncId: { type: new GraphQLNonNull(GraphQLString) },
+    localValue: { type: new GraphQLNonNull(GraphQLString) },
+    categoryId: { type: new GraphQLNonNull(GraphQLString) },
+    attributes: { type: JSONScalar },
+    createdAt: { type: JSONScalar },
+    updatedAt: { type: JSONScalar },
+  },
+});
+
+const ListingBatchType = new GraphQLObjectType({
+  name: "IntegrationListingBatch",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    batchId: { type: new GraphQLNonNull(GraphQLString) },
+    /** `open` while anything is pending; then `settled` or `failed`. */
+    status: { type: new GraphQLNonNull(GraphQLString) },
+    unitCount: { type: new GraphQLNonNull(GraphQLInt) },
+    pendingCount: { type: new GraphQLNonNull(GraphQLInt) },
+    error: { type: GraphQLString },
+    createdAt: { type: JSONScalar },
+    resolvedAt: { type: JSONScalar },
+  },
+});
+
 const OAuthStartType = new GraphQLObjectType({
   name: "IntegrationOAuthStart",
   fields: {
@@ -211,6 +283,35 @@ const OAuthStartType = new GraphQLObjectType({
     url: { type: new GraphQLNonNull(GraphQLString) },
   },
 });
+
+/**
+ * A `JSON` argument is whatever the caller sent.
+ *
+ * GraphQL hands the service RAW input where REST hands it zod-parsed input, so
+ * a map whose values are numbers would reach a column-name check as numbers.
+ * Guarded here rather than trusted — the same lesson `matchField` learned.
+ */
+const isBindingMap = (
+  v: unknown,
+): v is Record<string, { valueId?: string; custom?: string; field?: string }> =>
+  typeof v === "object" &&
+  v !== null &&
+  !Array.isArray(v) &&
+  Object.values(v as Record<string, unknown>).every(
+    (b) =>
+      typeof b === "object" &&
+      b !== null &&
+      ["valueId", "custom", "field"].every((k) => {
+        const x = (b as Record<string, unknown>)[k];
+        return x === undefined || typeof x === "string";
+      }),
+  );
+
+const isStringMap = (v: unknown): v is Record<string, string> =>
+  typeof v === "object" &&
+  v !== null &&
+  !Array.isArray(v) &&
+  Object.values(v as Record<string, unknown>).every((x) => typeof x === "string");
 
 /** yoga masks non-GraphQLError throws — surface AppErrors with their code. */
 const surfacing = async <T>(work: () => Promise<T> | T): Promise<T> => {
@@ -268,6 +369,61 @@ export const integrationQueryFields: Record<string, GraphQLFieldConfig<unknown, 
       surfacing(async () => {
         const tenantId = requireFlowAdmin(gqlCtx);
         return listSyncs(gqlCtx.ctx, tenantId, (args as { integrationId?: string }).integrationId);
+      }),
+  },
+  integrationListingCategories: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ListingCategoryType))),
+    description:
+      "The marketplace's own category tree, flattened (admin-only). A product may only be listed against a " +
+      "LEAF. Keyed on the CONNECTION rather than a sync, because this is what an operator browses while " +
+      "deciding whether to make one.",
+    args: { integrationId: { type: new GraphQLNonNull(GraphQLString) } },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        return readListingCategories(gqlCtx.ctx, tenantId, (args as { integrationId: string }).integrationId);
+      }),
+  },
+  integrationListingAttributes: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ListingAttributeType))),
+    description:
+      "What one leaf category demands of a product (admin-only), with each attribute's closed value set " +
+      "and the three flags that decide how to answer it: `required`, `allowCustom`, and `variant` — the " +
+      "last meaning two products differing only here are one product with two variants.",
+    args: {
+      integrationId: { type: new GraphQLNonNull(GraphQLString) },
+      categoryId: { type: new GraphQLNonNull(GraphQLString) },
+    },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const a = args as { integrationId: string; categoryId: string };
+        return readListingAttributes(gqlCtx.ctx, tenantId, a.integrationId, a.categoryId);
+      }),
+  },
+  integrationListingMaps: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ListingMapType))),
+    description:
+      "How one sync's local categories are mapped onto the marketplace's (admin-only). A product whose " +
+      "category has no row here is skipped by a run and counted as `unmapped`.",
+    args: { syncId: { type: new GraphQLNonNull(GraphQLString) } },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        return listListingMaps(gqlCtx.ctx, tenantId, (args as { syncId: string }).syncId);
+      }),
+  },
+  integrationListingBatches: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ListingBatchType))),
+    description:
+      "What a listing sync published and what came back, newest first (admin-only). A batch stays `open` " +
+      "until the marketplace has ruled on every unit, so `pendingCount` is what to watch; the per-unit " +
+      "verdict is written onto the rows themselves through the sync's `outputsMapping`.",
+    args: { syncId: { type: new GraphQLNonNull(GraphQLString) } },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        return listListingBatches(gqlCtx.ctx, tenantId, (args as { syncId: string }).syncId);
       }),
   },
   integrationInboundDeliveries: {
@@ -388,7 +544,7 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
           collection: d.collection as string,
           // Left undefined when absent so the service applies its own default
           // rather than this surface inventing a second one.
-          direction: d.direction as "pull" | "push" | "inbound" | undefined,
+          direction: d.direction as "pull" | "push" | "inbound" | "listing" | undefined,
           settings: (d.settings ?? {}) as Record<string, unknown>,
           mapping: (d.mapping ?? {}) as Record<string, string>,
           childMappings: d.childMappings as CreateSyncInput["childMappings"],
@@ -397,6 +553,8 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
           // Type-guarded rather than cast: this surface hands the service raw
           // input, so a number here would reach a field-name check as a number.
           matchField: typeof d.matchField === "string" ? d.matchField : undefined,
+          categoryField: typeof d.categoryField === "string" ? d.categoryField : undefined,
+          outputsMapping: isStringMap(d.outputsMapping) ? d.outputsMapping : undefined,
         });
         await recordActivity(gqlCtx.ctx, {
           userId: gqlCtx.auth.userId ?? null,
@@ -426,7 +584,58 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
           intervalMinutes: a.data.intervalMinutes as number | undefined,
           enabled: a.data.enabled as boolean | undefined,
           matchField: typeof a.data.matchField === "string" ? a.data.matchField : undefined,
+          categoryField: typeof a.data.categoryField === "string" ? a.data.categoryField : undefined,
+          outputsMapping: isStringMap(a.data.outputsMapping) ? a.data.outputsMapping : undefined,
         });
+      }),
+  },
+  mapIntegrationListingCategory: {
+    type: new GraphQLNonNull(ListingMapType),
+    description:
+      "Map one of the workspace's own categories onto a marketplace LEAF category (admin-only). An upsert " +
+      "keyed on the local value, so calling it again re-maps rather than adding a second row. Each entry " +
+      "in `attributes` carries exactly one of `valueId`, `custom` or `field`.",
+    args: {
+      syncId: { type: new GraphQLNonNull(GraphQLString) },
+      localValue: { type: new GraphQLNonNull(GraphQLString) },
+      categoryId: { type: new GraphQLNonNull(GraphQLString) },
+      attributes: { type: JSONScalar },
+    },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const a = args as {
+          syncId: string;
+          localValue: string;
+          categoryId: string;
+          attributes?: unknown;
+        };
+        return upsertListingMap(gqlCtx.ctx, tenantId, {
+          syncId: a.syncId,
+          localValue: a.localValue,
+          categoryId: a.categoryId,
+          // Raw from this surface, so the shape is checked rather than cast —
+          // a binding whose `valueId` arrived as a number would reach the
+          // provider as `NaN` and be refused with a reason nobody can act on.
+          attributes: isBindingMap(a.attributes) ? a.attributes : undefined,
+        });
+      }),
+  },
+  unmapIntegrationListingCategory: {
+    type: new GraphQLNonNull(JSONScalar),
+    description:
+      "Remove one category mapping (admin-only). Products in it are skipped by the next run rather than " +
+      "published uncategorised, and the run reports how many.",
+    args: {
+      syncId: { type: new GraphQLNonNull(GraphQLString) },
+      mapId: { type: new GraphQLNonNull(GraphQLString) },
+    },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const a = args as { mapId: string };
+        await deleteListingMap(gqlCtx.ctx, tenantId, a.mapId);
+        return { ok: true };
       }),
   },
   deleteIntegrationSync: {

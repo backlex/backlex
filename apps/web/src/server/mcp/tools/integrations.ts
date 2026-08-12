@@ -198,10 +198,11 @@ export const createIntegrationSyncTool: McpTool = {
       collection: { type: "string", description: "Managed collection slug." },
       direction: {
         type: "string",
-        enum: ["pull", "push", "inbound"],
+        enum: ["pull", "push", "inbound", "listing"],
         description:
-          "Rows in (default), the collection mirrored out, or `inbound` — nothing to poll, existing to " +
-          "receive the provider's webhook deliveries. A `pull` sync may ALSO have an endpoint; that is the " +
+          "Rows in (default), the collection mirrored out, `inbound` — nothing to poll, existing to " +
+          "receive the provider's webhook deliveries — or `listing`, which puts products ON SALE at a " +
+          "marketplace and writes the verdict back. A `pull` sync may ALSO have an endpoint; that is the " +
           "normal case for a marketplace, and the poll is what repairs the deliveries a webhook loses.",
       },
       matchField: {
@@ -236,7 +237,27 @@ export const createIntegrationSyncTool: McpTool = {
           required: ["collection", "parentField", "mapping"],
         },
       },
-      intervalMinutes: { type: "number", description: "0 = manual only. Default 60. Max 10080." },
+      categoryField: {
+        type: "string",
+        description:
+          "Listing only, and required for it. The product column naming the LOCAL category — the mapping " +
+          "itself is one row per value, set with `integrations.map_listing_category`.",
+      },
+      outputsMapping: {
+        type: "object",
+        additionalProperties: { type: "string" },
+        description:
+          "Listing only, and required for it. Read the OTHER way from `mapping`: provider output key → the " +
+          "column a marketplace's verdict is written to (`listingId`, `listingStatus`, `listingError`, " +
+          "`listedAt`). Without one a batch would be published and every answer discarded. The columns are " +
+          "on the VARIANT collection when the sync declares one, because a marketplace rules per unit.",
+      },
+      intervalMinutes: {
+        type: "number",
+        description:
+          "0 = manual only. Default 60, and 0 for a listing — a publish is an outward, hard-to-undo act at " +
+          "a live marketplace, so putting it on a schedule is the operator's decision.",
+      },
       enabled: { type: "boolean" },
     },
     required: ["integrationId", "collection", "mapping"],
@@ -518,6 +539,166 @@ export const integrationInboundDeliveriesTool: McpTool = {
   },
 };
 
+// ── Listings ─────────────────────────────────────────────────────────────────
+
+export const listingCategoriesTool: McpTool = {
+  name: "integrations.listing_categories",
+  description:
+    "The marketplace's own category tree, flattened — every node with `parentId` and `leaf`. A product may " +
+    "only be listed against a LEAF. Ask this before mapping anything; the tree runs to thousands of nodes " +
+    "and a category id guessed from a name will be refused at publish time. Keyed on the CONNECTION, not a " +
+    "sync, so it answers while an operator is still deciding whether to make one.",
+  inputSchema: {
+    type: "object",
+    properties: { integrationId: { type: "string" } },
+    required: ["integrationId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.integrationId ?? "");
+    if (!id) throw new Error("VALIDATION: integrationId is required");
+    const res = await ctx.fetchInternal(`${BASE}/${encodeURIComponent(id)}/listing/categories`);
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const listingAttributesTool: McpTool = {
+  name: "integrations.listing_attributes",
+  description:
+    "What one leaf category DEMANDS of a product, with each attribute's closed value set and three flags " +
+    "that decide how to answer it: `required` (refused without it), `allowCustom` (free text is accepted) " +
+    "and `variant` (two products differing only here are one product with two variants). Every `required` " +
+    "attribute must appear in the mapping's `attributes` or the marketplace rejects the listing.",
+  inputSchema: {
+    type: "object",
+    properties: { integrationId: { type: "string" }, categoryId: { type: "string" } },
+    required: ["integrationId", "categoryId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.integrationId ?? "");
+    const categoryId = String(args.categoryId ?? "");
+    if (!id || !categoryId) throw new Error("VALIDATION: integrationId and categoryId are required");
+    const res = await ctx.fetchInternal(
+      `${BASE}/${encodeURIComponent(id)}/listing/attributes?categoryId=${encodeURIComponent(categoryId)}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const listingLookupTool: McpTool = {
+  name: "integrations.listing_lookup",
+  description:
+    "Search a registry a listing has to name — a brand list, which runs to hundreds of thousands of rows " +
+    "and so is searched rather than browsed. `lookup` must be one the provider declares; an undeclared key " +
+    "is refused rather than passed on.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      integrationId: { type: "string" },
+      lookup: { type: "string", description: "The registry key, e.g. `brands`." },
+      query: { type: "string" },
+      cursor: { type: "string" },
+    },
+    required: ["integrationId", "lookup"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.integrationId ?? "");
+    if (!id) throw new Error("VALIDATION: integrationId is required");
+    const qs = new URLSearchParams({ lookup: String(args.lookup ?? "") });
+    if (args.query) qs.set("query", String(args.query));
+    if (args.cursor) qs.set("cursor", String(args.cursor));
+    const res = await ctx.fetchInternal(`${BASE}/${encodeURIComponent(id)}/listing/lookup?${qs}`);
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const listingMapsTool: McpTool = {
+  name: "integrations.listing_maps",
+  description:
+    "How this sync's local categories are mapped onto the marketplace's. A product whose category has no " +
+    "row here is SKIPPED by a run and counted as `unmapped` — which is the usual reason a publish looks " +
+    "like it did nothing.",
+  inputSchema: {
+    type: "object",
+    properties: { syncId: { type: "string" } },
+    required: ["syncId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.syncId ?? "");
+    if (!id) throw new Error("VALIDATION: syncId is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(id)}/listing/maps`);
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const mapListingCategoryTool: McpTool = {
+  name: "integrations.map_listing_category",
+  description:
+    "Map one of the workspace's own categories onto a marketplace LEAF category, and answer what that " +
+    "category demands. An upsert keyed on the local value, so calling it again re-maps rather than adding " +
+    "a second row. Each entry in `attributes` carries exactly ONE of: `valueId` (a value from the closed " +
+    "set), `custom` (free text, only where `allowCustom`), or `field` (the product/variant column to read " +
+    "the value from) — the last being what makes a size or a colour describe every unit without typing " +
+    "each one. Read `integrations.listing_attributes` for the category first.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      syncId: { type: "string" },
+      localValue: { type: "string", description: "The value found in the sync's category field, verbatim." },
+      categoryId: { type: "string", description: "The marketplace's LEAF category id." },
+      attributes: {
+        type: "object",
+        additionalProperties: {
+          type: "object",
+          properties: {
+            valueId: { type: "string" },
+            custom: { type: "string" },
+            field: { type: "string" },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["syncId", "localValue", "categoryId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { syncId, ...body } = args as Record<string, unknown>;
+    const id = String(syncId ?? "");
+    if (!id) throw new Error("VALIDATION: syncId is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(id)}/listing/maps`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const listingBatchesTool: McpTool = {
+  name: "integrations.listing_batches",
+  description:
+    "What this sync published and what came back, newest first. A batch stays `open` until the marketplace " +
+    "has ruled on every unit — which can take hours — so `pendingCount` is what to watch. The per-unit " +
+    "verdict is written onto the rows themselves through the sync's `outputsMapping`; read those columns " +
+    "for the reason a product was refused.",
+  inputSchema: {
+    type: "object",
+    properties: { syncId: { type: "string" } },
+    required: ["syncId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.syncId ?? "");
+    if (!id) throw new Error("VALIDATION: syncId is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(id)}/listing/batches`);
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const integrationsTools: McpTool[] = [
   integrationCatalogTool,
   listIntegrationsTool,
@@ -537,4 +718,10 @@ export const integrationsTools: McpTool[] = [
   updateIntegrationWebhookEventsTool,
   disableIntegrationWebhookTool,
   integrationInboundDeliveriesTool,
+  listingCategoriesTool,
+  listingAttributesTool,
+  listingLookupTool,
+  listingMapsTool,
+  mapListingCategoryTool,
+  listingBatchesTool,
 ];

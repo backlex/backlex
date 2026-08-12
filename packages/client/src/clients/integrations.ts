@@ -84,7 +84,7 @@ export interface IntegrationSync {
    * a delivery about an order the poll already imported update that row instead
    * of creating a second one.
    */
-  direction: "pull" | "push" | "inbound";
+  direction: "pull" | "push" | "inbound" | "listing";
   /** Which spreadsheet / base / database. Non-secret by contract. */
   settings: Record<string, unknown>;
   /** External field name → collection field name. */
@@ -103,6 +103,10 @@ export interface IntegrationSync {
   disabledReason: string | null;
   /** The collection field a patching delivery is matched on, if any. */
   matchField: string | null;
+  /** Listing only. The product column naming the local category. */
+  categoryField: string | null;
+  /** Listing only. Provider output key → the column a verdict is written to. */
+  outputsMapping: Record<string, string>;
   /** The endpoint, described. Never the secret — that is returned once, by
    *  `enableWebhook`. Null when this sync receives nothing. */
   webhook: { path: string; events: string[]; registered: boolean } | null;
@@ -158,7 +162,7 @@ export interface IntegrationSyncInput {
    * be a `push` target and vice versa, and the mapping is read in the direction
    * of travel — external → field on a pull, field → external on a push.
    */
-  direction?: "pull" | "push" | "inbound";
+  direction?: "pull" | "push" | "inbound" | "listing";
   settings?: Record<string, unknown>;
   /** At least one entry; every target must be a writable field. */
   mapping: Record<string, string>;
@@ -181,6 +185,89 @@ export interface IntegrationSyncInput {
    * addressed by its namespaced id.
    */
   matchField?: string | null;
+  /**
+   * Listing only. The product column naming the local category.
+   *
+   * The mapping itself is one row per local value — see `mapListingCategory`.
+   * This says which column those values are read from, because a workspace's
+   * idea of a category is a column of its own choosing.
+   */
+  categoryField?: string | null;
+  /**
+   * Listing only, and read the OTHER way from `mapping`: provider output key →
+   * the column a marketplace's verdict is written to. At least one entry, or a
+   * batch would be published and every answer discarded.
+   */
+  outputsMapping?: Record<string, string>;
+}
+
+/** One node of a marketplace's category tree, flattened. */
+export interface ListingCategory {
+  id: string;
+  name: string;
+  parentId: string | null;
+  /** A product may only be listed against a leaf. */
+  leaf: boolean;
+}
+
+/** What one leaf category demands of a product. */
+export interface ListingAttribute {
+  id: string;
+  name: string;
+  /** The listing is refused without it. */
+  required: boolean;
+  /** Free text is accepted instead of, or as well as, a listed value. */
+  allowCustom: boolean;
+  /** Two products differing only here are one product with two variants. */
+  variant: boolean;
+  multiple: boolean;
+  /** The closed set. Empty when the attribute is free text only. */
+  values: { id: string; name: string }[];
+}
+
+/**
+ * One answer to what a category demands. Exactly one of the three is set: a
+ * value from the closed set, free text, or the product column to read it from —
+ * the last being what makes a size or a colour describe every unit without an
+ * operator typing each one.
+ */
+export interface ListingBinding {
+  valueId?: string;
+  custom?: string;
+  field?: string;
+}
+
+/** How one of a workspace's categories maps onto a marketplace's. */
+export interface ListingMap {
+  id: string;
+  syncId: string;
+  localValue: string;
+  categoryId: string;
+  attributes: Record<string, ListingBinding>;
+  createdAt: number | string | null;
+  updatedAt: number | string | null;
+}
+
+/** One batch handed to a marketplace, and how much of it is still unanswered. */
+export interface ListingBatch {
+  id: string;
+  batchId: string;
+  /** `open` while anything is pending; then `settled` or `failed`. */
+  status: string;
+  unitCount: number;
+  pendingCount: number;
+  error: string | null;
+  createdAt: number | string | null;
+  resolvedAt: number | string | null;
+}
+
+/** What a publish did. A push reports rows written; a publish reports units. */
+export interface ListingRunResult {
+  sent: number;
+  rejected: number;
+  /** Products skipped because their local category is not mapped yet. */
+  unmapped: number;
+  batchId: string | null;
 }
 
 /** One thing a provider can be asked to do TO a row. */
@@ -284,7 +371,43 @@ export interface IntegrationsClient {
    * Run one sync now and report what landed. Bounded to 20 pages / 2000 rows;
    * a longer import resumes on the schedule.
    */
-  runSync: (id: string) => Promise<{ data: { written: number; pages: number; complete: boolean } }>;
+  runSync: (
+    id: string,
+  ) => Promise<{ data: { written: number; pages: number; complete: boolean } | ListingRunResult }>;
+  /**
+   * The marketplace's category tree, flattened, with `parentId` and `leaf`.
+   *
+   * Keyed on the CONNECTION rather than a sync: this is what an operator browses
+   * while deciding whether to make one, and for a provider whose catalog is
+   * public it answers before a credential has been pasted.
+   */
+  listingCategories: (integrationId: string) => Promise<{ data: ListingCategory[] }>;
+  /** What one leaf category demands, with its closed value sets. */
+  listingAttributes: (
+    integrationId: string,
+    categoryId: string,
+  ) => Promise<{ data: ListingAttribute[] }>;
+  /** Search a registry the provider declares — a brand list is too large to browse. */
+  listingLookup: (
+    integrationId: string,
+    input: { lookup: string; query?: string; cursor?: string | null },
+  ) => Promise<{ data: { items: { id: string; name: string }[]; cursor: string | null } }>;
+  /** How this sync's local categories are mapped. */
+  listingMaps: (syncId: string) => Promise<{ data: ListingMap[] }>;
+  /**
+   * Map one local category, or re-map it.
+   *
+   * An upsert keyed on the local value, so two operators mapping the same
+   * category converge on one row rather than racing.
+   */
+  mapListingCategory: (
+    syncId: string,
+    input: { localValue: string; categoryId: string; attributes?: Record<string, ListingBinding> },
+  ) => Promise<{ data: ListingMap }>;
+  /** Unmap one. Products in it are skipped by the next run, and it says how many. */
+  unmapListingCategory: (syncId: string, mapId: string) => Promise<{ ok: boolean }>;
+  /** What this sync published, newest first, and how much is still unanswered. */
+  listingBatches: (syncId: string) => Promise<{ data: ListingBatch[] }>;
   /**
    * Turn on the endpoint this sync receives deliveries on, and register it at
    * the provider where that is possible.
@@ -355,6 +478,46 @@ export const makeIntegrations = (core: ClientCore): IntegrationsClient => {
       ),
     deleteSync: (id) =>
       core.request<{ ok: boolean }>("DELETE", `/api/admin/integrations/syncs/${encodeURIComponent(id)}`),
+    listingCategories: (integrationId) =>
+      core.request<{ data: ListingCategory[] }>(
+        "GET",
+        `/api/admin/integrations/${encodeURIComponent(integrationId)}/listing/categories`,
+      ),
+    listingAttributes: (integrationId, categoryId) =>
+      core.request<{ data: ListingAttribute[] }>(
+        "GET",
+        `/api/admin/integrations/${encodeURIComponent(integrationId)}/listing/attributes?categoryId=${encodeURIComponent(categoryId)}`,
+      ),
+    listingLookup: (integrationId, input) => {
+      const qs = new URLSearchParams({ lookup: input.lookup });
+      if (input.query) qs.set("query", input.query);
+      if (input.cursor) qs.set("cursor", input.cursor);
+      return core.request<{ data: { items: { id: string; name: string }[]; cursor: string | null } }>(
+        "GET",
+        `/api/admin/integrations/${encodeURIComponent(integrationId)}/listing/lookup?${qs}`,
+      );
+    },
+    listingMaps: (syncId) =>
+      core.request<{ data: ListingMap[] }>(
+        "GET",
+        `/api/admin/integrations/syncs/${encodeURIComponent(syncId)}/listing/maps`,
+      ),
+    mapListingCategory: (syncId, input) =>
+      core.request<{ data: ListingMap }>(
+        "PUT",
+        `/api/admin/integrations/syncs/${encodeURIComponent(syncId)}/listing/maps`,
+        input,
+      ),
+    unmapListingCategory: (syncId, mapId) =>
+      core.request<{ ok: boolean }>(
+        "DELETE",
+        `/api/admin/integrations/syncs/${encodeURIComponent(syncId)}/listing/maps/${encodeURIComponent(mapId)}`,
+      ),
+    listingBatches: (syncId) =>
+      core.request<{ data: ListingBatch[] }>(
+        "GET",
+        `/api/admin/integrations/syncs/${encodeURIComponent(syncId)}/listing/batches`,
+      ),
     runSync: (id) =>
       core.request<{ data: { written: number; pages: number; complete: boolean } }>(
         "POST",

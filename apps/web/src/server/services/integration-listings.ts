@@ -29,16 +29,20 @@
  * collection has, so recording an approval would blank everything else on the
  * row.
  */
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import {
+  fetchListingAttributes,
+  INTEGRATION_LISTINGS,
+  fetchListingCategories,
   isRateLimited,
   listingColumnsFor,
   listingFor,
   publishListings,
   pollListingBatch,
+  searchListingLookup,
   type ListingProduct,
   type ListingVariant,
   type ListingVerdict,
@@ -106,6 +110,106 @@ export interface ListingBatchRow {
   resolvedAt: Date | number | null;
 }
 
+// ── Reading the taxonomy ─────────────────────────────────────────────────────
+
+/**
+ * Load a connection and decrypt it, for the reads that browse a marketplace.
+ *
+ * Keyed on the INTEGRATION rather than a sync: an operator browses categories
+ * while deciding whether to make a sync at all, and for the providers whose
+ * catalog is public the browse works before a credential has been pasted.
+ */
+const loadListingConnection = async (
+  ctx: Ctx,
+  tenantId: string,
+  integrationId: string,
+): Promise<{ id: string; kind: string; config: Record<string, unknown> }> => {
+  const t = (ctx.dialect === "pg" ? pg.schema.integrations : sqlite.schema.integrations) as typeof pg.schema.integrations;
+  const [row] = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, integrationId)))) as {
+    id: string;
+    kind: string;
+    config: Record<string, unknown>;
+  }[];
+  if (!row) throw new AppError("NOT_FOUND", "Integration not found");
+  if (!listingFor(row.kind)) throw new AppError("VALIDATION", `${row.kind} cannot list products`);
+  const config = await decryptConfig(row.kind, (row.config ?? {}) as Record<string, unknown>, ctx.env.AUTH_SECRET);
+  return { id: row.id, kind: row.kind, config };
+};
+
+/**
+ * The whole tree, flattened.
+ *
+ * Not cached: this is a few hundred kilobytes fetched once while an operator
+ * fills a form, and a cache here would be per-isolate — so two requests from
+ * one browser could see two different answers, which is the read-your-writes
+ * trap this codebase has been bitten by before. If it becomes a cost, the place
+ * to cache it is a shared store keyed by connection, not module state.
+ */
+export async function readListingCategories(ctx: Ctx, tenantId: string, integrationId: string) {
+  const conn = await loadListingConnection(ctx, tenantId, integrationId);
+  return asOperatorError(() =>
+    fetchListingCategories(conn.kind, { config: conn.config, connectionKey: conn.id }),
+  );
+}
+
+export async function readListingAttributes(
+  ctx: Ctx,
+  tenantId: string,
+  integrationId: string,
+  categoryId: string,
+) {
+  const conn = await loadListingConnection(ctx, tenantId, integrationId);
+  const attrs = await asOperatorError(() =>
+    fetchListingAttributes(conn.kind, { config: conn.config, categoryId, connectionKey: conn.id }),
+  );
+  // The engine's `values` is readonly — a provider's declaration is not the
+  // caller's to edit. Copied on the way out so the JSON boundary owns its own.
+  return attrs.map((a) => ({ ...a, values: [...a.values] }));
+}
+
+export async function searchListingRegistry(
+  ctx: Ctx,
+  tenantId: string,
+  integrationId: string,
+  input: { lookup: string; query: string; cursor: string | null },
+) {
+  const conn = await loadListingConnection(ctx, tenantId, integrationId);
+  // Checked HERE as well as in the engine, and the difference is the status an
+  // operator sees. The engine's guard is a plain throw — right for a contract
+  // violation, wrong for a typo in a query string, which would surface as an
+  // internal error rather than as the bad request it is.
+  const declared = INTEGRATION_LISTINGS[conn.kind]?.lookups ?? [];
+  if (!declared.some((l) => l.key === input.lookup)) {
+    throw new AppError(
+      "VALIDATION",
+      `${conn.kind} has no searchable registry "${input.lookup}"${declared.length ? ` — one of: ${declared.map((l) => l.key).join(", ")}` : ""}`,
+    );
+  }
+  return asOperatorError(() =>
+    searchListingLookup(conn.kind, { config: conn.config, connectionKey: conn.id, ...input }),
+  );
+}
+
+/**
+ * A marketplace's refusal is not our internal error.
+ *
+ * The same call the manual-run route makes, and for the same reason: a provider
+ * goes to trouble to write a message an operator can act on ("check the API key
+ * on the Integration Details page"), and reporting it as a 500 buries exactly
+ * that. An `AppError` from our own layer passes through untouched.
+ */
+const asOperatorError = async <T,>(fn: () => Promise<T>): Promise<T> => {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof AppError) throw e;
+    throw new AppError("UNAVAILABLE", e instanceof Error ? e.message : String(e));
+  }
+};
+
 // ── The category mapping ─────────────────────────────────────────────────────
 
 /** Every mapping this sync holds. Tenant-scoped on top of the sync id: the id
@@ -144,6 +248,11 @@ export async function upsertListingMap(
   if (!localValue) throw new AppError("VALIDATION", "A mapping needs the local category value it is for");
   const categoryId = input.categoryId.trim();
   if (!categoryId) throw new AppError("VALIDATION", "A mapping needs a marketplace category");
+  // The sync id comes from a path. Writing the row under the CALLER's tenant
+  // already makes it unreadable to anyone else, so this is not a leak — it is
+  // what stops an operator quietly filling their workspace with mappings
+  // attached to a sync that is not theirs and that will never read them.
+  await loadListingSync(ctx, tenantId, input.syncId);
 
   const t = mapsTableFor(ctx.dialect);
   const now = new Date();
@@ -171,6 +280,49 @@ export async function upsertListingMap(
     .where(and(eq(t.tenantId, tenantId), eq(t.syncId, input.syncId), eq(t.localValue, localValue)))) as ListingMapRow[];
   if (!row) throw new AppError("NOT_FOUND", "The mapping could not be read back");
   return row;
+}
+
+/**
+ * This sync's batches, newest first — the operator's record of what was sent.
+ *
+ * `sent` is deliberately not returned. It is a map of every barcode in the
+ * batch to the row it came from, which is the whole payload again in a
+ * different shape; what a reader needs is how many units are outstanding and
+ * whether anything went wrong.
+ */
+export async function listListingBatches(
+  ctx: Ctx,
+  tenantId: string,
+  syncId: string,
+): Promise<
+  {
+    id: string;
+    batchId: string;
+    status: string;
+    unitCount: number;
+    pendingCount: number;
+    error: string | null;
+    createdAt: Date | number | null;
+    resolvedAt: Date | number | null;
+  }[]
+> {
+  const t = batchesTableFor(ctx.dialect);
+  const rows = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.syncId, syncId)))
+    .orderBy(desc(t.createdAt))
+    .limit(50)) as ListingBatchRow[];
+  return rows.map((b) => ({
+    id: b.id,
+    batchId: b.batchId,
+    status: b.status,
+    unitCount: Object.keys(b.sent ?? {}).length,
+    pendingCount: b.pendingCount,
+    error: b.error,
+    createdAt: b.createdAt,
+    resolvedAt: b.resolvedAt,
+  }));
 }
 
 export async function deleteListingMap(ctx: Ctx, tenantId: string, id: string): Promise<void> {

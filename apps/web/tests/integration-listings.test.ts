@@ -464,3 +464,118 @@ describe("what the form refuses", () => {
     expect(sync.intervalMinutes).toBe(0);
   });
 });
+
+describe("the admin surface", () => {
+  test("the taxonomy hangs off the connection, not a sync", async () => {
+    // An operator browses categories while deciding whether to make a sync at
+    // all — so no sync exists yet, and the route must not need one.
+    responses.push({
+      body: {
+        categories: [{ id: 368, name: "Aksesuar", subCategories: [{ id: 387, name: "Saat", subCategories: [] }] }],
+      },
+    });
+
+    const out = await ok("GET", `${BASE}/${trendyolId}/listing/categories`);
+
+    expect(out.data).toEqual([
+      { id: "368", name: "Aksesuar", parentId: null, leaf: false },
+      { id: "387", name: "Saat", parentId: "368", leaf: true },
+    ]);
+  });
+
+  test("a category's attributes come back with the flags a form renders from", async () => {
+    responses.push({
+      body: {
+        categoryAttributes: [
+          {
+            attribute: { id: 92, name: "Beden" },
+            attributeValues: [{ id: 5, name: "M" }],
+            required: true,
+            varianter: true,
+            allowCustom: false,
+            allowMultipleAttributeValues: false,
+          },
+        ],
+      },
+    });
+
+    const out = await ok("GET", `${BASE}/${trendyolId}/listing/attributes?categoryId=1238`);
+
+    expect(out.data[0]).toMatchObject({ id: "92", required: true, variant: true, allowCustom: false });
+    expect(out.data[0].values).toEqual([{ id: "5", name: "M" }]);
+  });
+
+  test("a registry the provider never declared reads as a bad request, not an outage", async () => {
+    const res = await req("GET", `${BASE}/${trendyolId}/listing/lookup?lookup=suppliers&query=x`);
+    // A typo in a query string is the caller's, and a 500 would send an
+    // operator looking for a broken server instead of a misspelt word.
+    expect(res.status).toBe(422);
+    expect(await res.text()).toContain("brands");
+    expect(calls).toHaveLength(0);
+  });
+
+  test("a marketplace's refusal keeps the message the provider wrote", async () => {
+    responses.push({ status: 401, body: { errors: [{ message: "unauthorized" }] } });
+    const res = await req("GET", `${BASE}/${trendyolId}/listing/categories`);
+    // Reported as unavailable rather than internal, so the sentence the
+    // connector went to trouble to write reaches the person who can act on it.
+    expect(res.status).toBe(503);
+    expect(await res.text()).toContain("Integration Details");
+  });
+
+  test("a mapping can be created, re-mapped and removed over HTTP", async () => {
+    const sync = await makeSync();
+
+    const created = await ok("PUT", `${BASE}/syncs/${sync.id}/listing/maps`, {
+      localValue: "Tişört",
+      categoryId: "1238",
+      attributes: { "92": { field: "size" } },
+    });
+    expect(created.data).toMatchObject({ localValue: "Tişört", categoryId: "1238" });
+
+    // The same local value again is an UPDATE, not a second row: two operators
+    // mapping one category converge rather than racing.
+    const remapped = await ok("PUT", `${BASE}/syncs/${sync.id}/listing/maps`, {
+      localValue: "Tişört",
+      categoryId: "9999",
+    });
+    expect(remapped.data.id).toBe(created.data.id);
+    expect(remapped.data.categoryId).toBe("9999");
+
+    const listed = await ok("GET", `${BASE}/syncs/${sync.id}/listing/maps`);
+    expect(listed.data).toHaveLength(1);
+
+    await ok("DELETE", `${BASE}/syncs/${sync.id}/listing/maps/${created.data.id}`);
+    expect((await ok("GET", `${BASE}/syncs/${sync.id}/listing/maps`)).data).toHaveLength(0);
+  });
+
+  test("running a listing sync reports what it published, not what it wrote", async () => {
+    const sync = await makeSync();
+    await ok("PUT", `${BASE}/syncs/${sync.id}/listing/maps`, { localValue: "Tişört", categoryId: "1238" });
+    seedProduct("p1");
+    seedVariant("v1", "p1", { barcode: "BAR-1" });
+    responses.push({ body: { batchRequestId: "batch-9" } });
+
+    const out = await ok("POST", `${BASE}/syncs/${sync.id}/run`);
+
+    // A push reports rows written; a publish reports units sent and how many
+    // products it could not place. One shape cannot honestly describe both.
+    expect(out.data).toMatchObject({ sent: 1, rejected: 0, unmapped: 0, batchId: "batch-9" });
+  });
+
+  test("the batch log says what is still outstanding, and never the barcodes", async () => {
+    const sync = await makeSync();
+    await ok("PUT", `${BASE}/syncs/${sync.id}/listing/maps`, { localValue: "Tişört", categoryId: "1238" });
+    seedProduct("p1");
+    seedVariant("v1", "p1", { barcode: "BAR-1" });
+    responses.push({ body: { batchRequestId: "batch-9" } });
+    await ok("POST", `${BASE}/syncs/${sync.id}/run`);
+
+    const out = await ok("GET", `${BASE}/syncs/${sync.id}/listing/batches`);
+
+    expect(out.data[0]).toMatchObject({ batchId: "batch-9", status: "open", unitCount: 1, pendingCount: 1 });
+    // `sent` is the payload again in another shape; what a reader needs is the
+    // count and the error.
+    expect(JSON.stringify(out.data)).not.toContain("BAR-1");
+  });
+});

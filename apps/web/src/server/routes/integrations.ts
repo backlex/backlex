@@ -26,12 +26,23 @@ import { beginOAuth, completeOAuth, oauthRedirectUri } from "../services/integra
 import {
   createSync,
   deleteSync,
+  getSync,
   listSyncs,
   runSync,
   SYNC_DIRECTIONS,
   type SyncDirection,
   updateSync,
 } from "../services/integration-syncs";
+import {
+  deleteListingMap,
+  listListingBatches,
+  listListingMaps,
+  readListingAttributes,
+  readListingCategories,
+  runListingSync,
+  searchListingRegistry,
+  upsertListingMap,
+} from "../services/integration-listings";
 import { listTaskRuns, runTask } from "../services/integration-tasks";
 import {
   disableWebhook,
@@ -296,6 +307,47 @@ const SyncInput = z
     enabled: z.boolean().optional(),
   })
   .openapi("IntegrationSyncInput");
+
+/**
+ * One local category's answer to what a marketplace demands.
+ *
+ * `attributes` is keyed by the provider's attribute id and each entry carries
+ * exactly one of three answers: a value from the closed set, free text, or the
+ * product column to read the value from. The third is what makes a varianter
+ * attribute — a size, a colour — describe every unit without the operator
+ * typing each one.
+ */
+const ListingAttributeBindingSchema = z
+  .object({
+    valueId: z.string().min(1).optional(),
+    custom: z.string().min(1).optional(),
+    field: z.string().min(1).optional(),
+  })
+  .openapi("IntegrationListingBinding");
+
+const ListingMapInput = z
+  .object({
+    localValue: z.string().min(1).openapi({
+      description: "The value found in the sync's category field, verbatim.",
+    }),
+    categoryId: z.string().min(1).openapi({
+      description: "The marketplace's own LEAF category id. A parent is refused by the provider.",
+    }),
+    attributes: z.record(z.string(), ListingAttributeBindingSchema).optional(),
+  })
+  .openapi("IntegrationListingMapInput");
+
+const ListingMapOut = z
+  .object({
+    id: z.string(),
+    syncId: z.string(),
+    localValue: z.string(),
+    categoryId: z.string(),
+    attributes: z.record(z.string(), ListingAttributeBindingSchema),
+    createdAt: z.union([z.string(), z.number()]).nullable(),
+    updatedAt: z.union([z.string(), z.number()]).nullable(),
+  })
+  .openapi("IntegrationListingMap");
 
 const SyncPatch = SyncInput.omit({ integrationId: true, collection: true })
   .partial()
@@ -782,8 +834,19 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           description: "OK",
           content: {
             "application/json": {
+              // A listing run reports what it published rather than what it
+              // wrote, so the two shapes are offered rather than one pretending
+              // to describe both.
               schema: z.object({
-                data: z.object({ written: z.number(), pages: z.number(), complete: z.boolean() }),
+                data: z.union([
+                  z.object({ written: z.number(), pages: z.number(), complete: z.boolean() }),
+                  z.object({
+                    sent: z.number(),
+                    rejected: z.number(),
+                    unmapped: z.number(),
+                    batchId: z.string().nullable(),
+                  }),
+                ]),
               }),
             },
           },
@@ -794,9 +857,16 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      let data: Awaited<ReturnType<typeof runSync>>;
+      let data: Awaited<ReturnType<typeof runSync>> | Awaited<ReturnType<typeof runListingSync>>;
       try {
-        data = await runSync(c.get("ctx"), tenantId, id);
+        // Dispatched here rather than inside `runSync`, which would have to
+        // import the listing runner while the listing runner already imports
+        // it — a cycle for the sake of one branch.
+        const sync = await getSync(c.get("ctx"), tenantId, id);
+        data =
+          sync?.direction === "listing"
+            ? await runListingSync(c.get("ctx"), tenantId, id)
+            : await runSync(c.get("ctx"), tenantId, id);
       } catch (e) {
         // The whole point of running one by hand is to see WHY it fails. A
         // provider's refusal is not an internal error, and reporting it as one
@@ -810,9 +880,291 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         action: "update",
         collection: "system_integration_syncs",
         itemId: id,
-        payload: { ran: true, written: data.written },
+        payload: { ran: true, ...("written" in data ? { written: data.written } : { sent: data.sent }) },
       });
       return c.json({ data });
+    },
+  )
+  // ── Listings ───────────────────────────────────────────────────────────────
+  //
+  // The taxonomy reads hang off the CONNECTION, not the sync, because an
+  // operator browses categories while deciding whether to make a sync at all —
+  // and for the providers whose catalog is public they work before a credential
+  // has even been pasted. The mapping and the batches hang off the sync, which
+  // is what they configure and what they record.
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/listing/categories",
+      tags,
+      summary: "The marketplace's category tree, flattened",
+      description:
+        "Admin-only. Every node, with `parentId` and `leaf` — flat rather than nested because the three " +
+        "marketplaces that nest it nest it differently, and a searchable picker over a few thousand nodes " +
+        "wants a list. A product may only be listed against a leaf.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.array(
+                  z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    parentId: z.string().nullable(),
+                    leaf: z.boolean(),
+                  }),
+                ),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      return c.json({ data: await readListingCategories(c.get("ctx"), tenantId, id) });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/listing/attributes",
+      tags,
+      summary: "What one category demands of a product",
+      description:
+        "Admin-only. The attributes the chosen leaf category requires, with their closed value sets and " +
+        "the three flags that decide how the form renders one: `required`, `allowCustom`, and `variant` — " +
+        "the last meaning two products differing only here are one product with two variants.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        params: z.object({ id: z.string() }),
+        query: z.object({ categoryId: z.string().min(1) }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.array(
+                  z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    required: z.boolean(),
+                    allowCustom: z.boolean(),
+                    variant: z.boolean(),
+                    multiple: z.boolean(),
+                    values: z.array(z.object({ id: z.string(), name: z.string() })),
+                  }),
+                ),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const { categoryId } = c.req.valid("query");
+      return c.json({ data: await readListingAttributes(c.get("ctx"), tenantId, id, categoryId) });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/listing/lookup",
+      tags,
+      summary: "Search a registry a listing has to name",
+      description:
+        "Admin-only. A brand list is a quarter of a million rows, so it is searched rather than browsed. " +
+        "`lookup` must be one the provider declares; an undeclared key is refused rather than passed on.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        params: z.object({ id: z.string() }),
+        query: z.object({
+          lookup: z.string().min(1),
+          query: z.string().optional(),
+          cursor: z.string().optional(),
+        }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  items: z.array(z.object({ id: z.string(), name: z.string() })),
+                  cursor: z.string().nullable(),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const q = c.req.valid("query");
+      return c.json({
+        data: await searchListingRegistry(c.get("ctx"), tenantId, id, {
+          lookup: q.lookup,
+          query: q.query ?? "",
+          cursor: q.cursor ?? null,
+        }),
+      });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/syncs/{id}/listing/maps",
+      tags,
+      summary: "How this sync's local categories are mapped",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({ data: z.array(ListingMapOut) }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      return c.json({ data: await listListingMaps(c.get("ctx"), tenantId, id) });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "put",
+      path: "/syncs/{id}/listing/maps",
+      tags,
+      summary: "Map one local category, or re-map it",
+      description:
+        "Admin-only. An upsert keyed on the local value: two operators mapping the same category at once " +
+        "converge on one row rather than racing. `attributes` answers what the chosen category demands — " +
+        "a fixed value id, free text, or the product column to read the value from.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        params: z.object({ id: z.string() }),
+        body: { content: { "application/json": { schema: ListingMapInput } } },
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: ListingMapOut }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const data = await upsertListingMap(c.get("ctx"), tenantId, { syncId: id, ...body });
+      await logActivity(c, {
+        action: "update",
+        collection: "system_integration_syncs",
+        itemId: id,
+        payload: { mapped: body.localValue, to: body.categoryId },
+      });
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/syncs/{id}/listing/maps/{mapId}",
+      tags,
+      summary: "Unmap a local category",
+      description:
+        "Admin-only. Products in it are skipped by the next run rather than published uncategorised, and " +
+        "the run reports how many.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string(), mapId: z.string() }) },
+      responses: {
+        200: { description: "OK", content: { "application/json": { schema: OkSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id, mapId } = c.req.valid("param");
+      await deleteListingMap(c.get("ctx"), tenantId, mapId);
+      await logActivity(c, {
+        action: "update",
+        collection: "system_integration_syncs",
+        itemId: id,
+        payload: { unmapped: mapId },
+      });
+      return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/syncs/{id}/listing/batches",
+      tags,
+      summary: "What this sync published, and what came back",
+      description:
+        "Admin-only. Newest first. A batch stays `open` until the marketplace has ruled on every unit in " +
+        "it — which can take hours — so `pendingCount` is what an operator watches. The barcodes it " +
+        "carried are deliberately not returned: that is the payload again in another shape.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.array(
+                  z.object({
+                    id: z.string(),
+                    batchId: z.string(),
+                    status: z.string(),
+                    unitCount: z.number(),
+                    pendingCount: z.number(),
+                    error: z.string().nullable(),
+                    createdAt: z.union([z.string(), z.number()]).nullable(),
+                    resolvedAt: z.union([z.string(), z.number()]).nullable(),
+                  }),
+                ),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      return c.json({ data: await listListingBatches(c.get("ctx"), tenantId, id) });
     },
   )
   .openapi(

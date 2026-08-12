@@ -1,4 +1,12 @@
-import { defineProvider, type DestinationRow } from "../provider";
+import {
+  defineProvider,
+  type DestinationRow,
+  type ListingAttribute,
+  type ListingCategory,
+  type ListingProduct,
+  type ListingVariant,
+  type ListingVerdict,
+} from "../provider";
 import { takeToken } from "../throttle";
 
 /**
@@ -116,7 +124,7 @@ export const ciceksepeti = defineProvider({
   id: "ciceksepeti",
   label: "Çiçeksepeti",
   category: "marketplace",
-  capabilities: ["source", "destination", "task"],
+  capabilities: ["source", "destination", "task", "listing"],
   /**
    * A modest provider-wide pace, under the loosest published rule (one request
    * a second on the price upload). The endpoint that is genuinely slower takes
@@ -273,6 +281,258 @@ export const ciceksepeti = defineProvider({
    * "handed to the carrier" status — a different word for a different thing,
    * and one an operator would otherwise discover from an error message.
    */
+  /**
+   * Putting a product ON SALE, which the destination above cannot do — it
+   * addresses a listing that already exists, by variant code.
+   *
+   * **Read this before changing a field name.** Çiçeksepeti's own product
+   * documentation contradicts itself: its parameter TABLE names the price and
+   * stock fields `StockQuantity` / `TotalPrice` / `FirstPrice`, while its own
+   * request EXAMPLE sends `stockQuantity` / `salesPrice` / `listPrice`. The
+   * example wins, and not as a guess — the batch-status endpoint ECHOES the
+   * stored record back as `stockQuantity` / `salesPrice` / `listPrice`, so
+   * those are the names the service actually stores. The table is stale
+   * internal vocabulary.
+   *
+   * Casing is a non-issue either way: their own example mixes `"id"` and
+   * `"Id"` inside one attribute array, which only a case-insensitive binder
+   * tolerates.
+   */
+  listing: {
+    settingFields: [
+      {
+        key: "deliveryType",
+        label: "How it is delivered",
+        options: [
+          { value: "1", label: "By Çiçeksepeti's service vehicle" },
+          { value: "2", label: "By carrier" },
+          { value: "3", label: "By carrier or service vehicle" },
+        ],
+      },
+      {
+        key: "deliveryMessageType",
+        label: "Delivery promise",
+        options: [
+          { value: "5", label: "Gift delivery, 1-5 working days" },
+          { value: "6", label: "Gift delivery, 1-10 working days" },
+          { value: "7", label: "Gift delivery, 1-7 working days" },
+          { value: "13", label: "Gift delivery, 3-5 working days" },
+        ],
+      },
+    ],
+    columns: [
+      { value: "productName", label: "Product name" },
+      { value: "description", label: "Description (min 30 characters)" },
+      { value: "images", label: "Image URLs (500x500 to 2000x2000)" },
+      { value: "supplierDescription", label: "Supplier note (optional)" },
+    ],
+    /**
+     * Per-unit fields.
+     *
+     * `stockCode` is Çiçeksepeti's "tedarikçi VARYANT kodu" — the per-unit one —
+     * where `mainProductCode` is the product's. The engine supplies the latter
+     * from the product row's key as `groupId`, which is why it is not a column:
+     * two places naming one product page is how a variant set gets orphaned.
+     */
+    variantColumns: [
+      { value: "stockCode", label: "Variant code" },
+      { value: "barcode", label: "Barcode (optional, 3-50 characters)" },
+      { value: "stockQuantity", label: "Stock quantity" },
+      { value: "salesPrice", label: "Sale price" },
+      { value: "listPrice", label: "Struck-through price (optional)" },
+    ],
+    // Çiçeksepeti echoes the stored record on `items[].data`, and `stockCode`
+    // is the field of ours that survives the round trip.
+    referenceColumn: "stockCode",
+    outputs: [
+      { key: "listingId", label: "Çiçeksepeti variant code (listing id)" },
+      { key: "listingStatus", label: "Listing status" },
+      { key: "listingError", label: "Rejection reason" },
+      { key: "listedAt", label: "Listed at" },
+    ],
+
+    /** The whole tree, flattened. */
+    async categories(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const res = await ctx.fetch(`${conn.base}/Categories`, { headers: conn.headers });
+      if (!res.ok) throw await readError(res, "read the categories");
+      const body = (await res.json()) as { categories?: unknown };
+
+      const out: ListingCategory[] = [];
+      // Iterative, and BOTH ways of expressing the tree are read: Çiçeksepeti
+      // returns `parentCategoryId` on every node AND nests them under
+      // `subCategories`, so a walk that trusted only one would either miss the
+      // depth or mis-parent the roots.
+      const stack: { node: unknown; parentId: string | null }[] = [];
+      for (const node of asArray(body.categories)) stack.push({ node, parentId: null });
+      let guard = 0;
+      while (stack.length > 0 && guard++ < 50_000) {
+        const { node, parentId } = stack.pop()!;
+        const row = obj(node);
+        const id = text(row.id);
+        if (!id) continue;
+        const kids = asArray(row.subCategories);
+        out.push({
+          id,
+          name: text(row.name) ?? id,
+          parentId: text(row.parentCategoryId) ?? parentId,
+          leaf: kids.length === 0,
+        });
+        for (const kid of kids) stack.push({ node: kid, parentId: id });
+      }
+      return out;
+    },
+
+    /**
+     * What one category demands.
+     *
+     * The one marketplace here that encodes a THIRD state in a Turkish string
+     * rather than a boolean: `type` is "Ürün Özelliği" (an ordinary attribute),
+     * "Variant Özelliği" (one that tells two units apart), or
+     * "Kişiselleştirilebilir Özellik" (one that asks the BUYER for text at
+     * checkout). The third is not a value a seller supplies at all, so it is
+     * dropped rather than offered — putting it in the mapping form would invite
+     * an operator to answer a question meant for a customer, and Çiçeksepeti
+     * refuses it on an ordinary product.
+     */
+    async attributes(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const categoryId = numericId(ctx.categoryId, "category id");
+      const res = await ctx.fetch(`${conn.base}/Categories/${categoryId}/attributes`, {
+        headers: conn.headers,
+      });
+      if (!res.ok) throw await readError(res, "read the category attributes");
+      const body = (await res.json()) as { categoryAttributes?: unknown };
+
+      const out: ListingAttribute[] = [];
+      for (const raw of asArray(body.categoryAttributes)) {
+        const row = obj(raw);
+        const id = text(row.attributeId);
+        if (!id) continue;
+        const kind = text(row.type) ?? "";
+        if (kind.startsWith("Kişiselleştirilebilir")) continue;
+        out.push({
+          id,
+          name: text(row.attributeName) ?? id,
+          required: row.required === true,
+          // Çiçeksepeti spells it `varianter`, and its `type` string says the
+          // same thing a second way; either is enough.
+          variant: row.varianter === true || kind.startsWith("Variant"),
+          // Every offered attribute is picked from the category's own list —
+          // there is no free-text flag, and an unknown value is refused.
+          allowCustom: false,
+          multiple: false,
+          values: asArray(row.attributeValues)
+            .map((v) => {
+              const val = obj(v);
+              const vid = text(val.id);
+              return vid ? { id: vid, name: text(val.name) ?? vid } : null;
+            })
+            .filter((v): v is { id: string; name: string } => v !== null),
+        });
+      }
+      return out;
+    },
+
+    async publish(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const deliveryType = readChoice(ctx.setting("deliveryType"), ["1", "2", "3"], "2");
+      const deliveryMessageType = readChoice(ctx.setting("deliveryMessageType"), ["5", "6", "7", "13"], "5");
+
+      const products: Record<string, unknown>[] = [];
+      const rejected: ListingVerdict[] = [];
+      for (const product of ctx.products) {
+        for (const variant of product.variants) {
+          const built = buildProduct(product, variant, { deliveryType, deliveryMessageType });
+          if (typeof built === "string") {
+            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            continue;
+          }
+          products.push(built);
+        }
+      }
+
+      if (products.length === 0) return { batchId: "", rejected };
+      if (products.length > MAX_LISTING_ITEMS) {
+        throw new Error(
+          `Çiçeksepeti accepts ${MAX_LISTING_ITEMS} items per request, and this batch has ${products.length}`,
+        );
+      }
+
+      // One request per five seconds, and this bucket is the CREATE's own:
+      // Çiçeksepeti meters it per distinct request body, and a publish must not
+      // queue behind an order walk that is paced for a different reason.
+      await takeToken(`ciceksepeti:listing:${conn.sellerId}`, LISTING_PACE);
+
+      const res = await ctx.fetch(`${conn.base}/Products`, {
+        method: "POST",
+        headers: { ...conn.headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ products }),
+      });
+      if (!res.ok) throw await readError(res, "create the products");
+
+      const body = (await res.json().catch(() => ({}))) as { batchId?: unknown };
+      const batchId = text(body.batchId);
+      if (!batchId) {
+        // A 200 with no ticket is not a success we can follow up. Treating it
+        // as one would strand every unit at `pending` forever.
+        throw new Error("Çiçeksepeti accepted the products but returned no batchId");
+      }
+      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+    },
+
+    /**
+     * What became of a batch. Creation takes up to 24 hours, so `Pending` and
+     * `Processing` are the normal answer for most of a batch's life.
+     *
+     * **`Warning` is a SUCCESS.** Çiçeksepeti's own table reads "İşlem başarılı
+     * ancak gönderilen istek kontrol edilmeli" — the product listed, and the
+     * note is usually about pricing law. Treating it as a failure would report
+     * a live listing as refused, and the reason is still carried through so the
+     * operator can read it.
+     */
+    async poll(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const batchId = ctx.batchId.trim();
+      // The ticket is Çiçeksepeti's own GUID and goes into a URL PATH, so it is
+      // checked rather than trusted: it round-trips through our database first.
+      if (!/^[A-Za-z0-9-]{1,64}$/.test(batchId)) throw new Error("Çiçeksepeti batch id is not a batch id");
+
+      const res = await ctx.fetch(`${conn.base}/Products/batch-status/${batchId}`, {
+        headers: conn.headers,
+      });
+      if (!res.ok) throw await readError(res, "read the listing batch");
+      const body = (await res.json()) as { items?: unknown };
+
+      const out: ListingVerdict[] = [];
+      for (const raw of asArray(body.items)) {
+        const row = obj(raw);
+        // The stored record comes back under `data`, and its `stockCode` is the
+        // only place our reference survives.
+        const reference = text(obj(row.data).stockCode);
+        if (!reference) continue;
+        const status = text(row.status);
+        const errors = asArray(row.failureReasons)
+          .map((r) => text(obj(r).message))
+          .filter((r): r is string => r !== null);
+
+        if (status === "Success" || status === "Warning") {
+          // Çiçeksepeti addresses a listing by the seller's own variant code —
+          // it mints no separate id — so the variant code IS the listing's id.
+          out.push({ reference, status: "accepted", externalId: reference });
+        } else if (status === "Failed") {
+          out.push({
+            reference,
+            status: "rejected",
+            errors: errors.length > 0 ? errors : ["Çiçeksepeti refused it without giving a reason"],
+          });
+        } else {
+          out.push({ reference, status: "pending" });
+        }
+      }
+      return out;
+    },
+  },
   tasks: [
     statusTask("mark_preparing", "Mark as preparing", 2),
     statusTask("mark_ready_to_ship", "Mark as ready for the carrier", 11),
@@ -574,6 +834,156 @@ const verifyBatch = async (
     }`,
   );
 };
+
+// ── Listings ─────────────────────────────────────────────────────────────────
+
+/** Çiçeksepeti's cap on one product-create request. */
+const MAX_LISTING_ITEMS = 1000;
+
+/**
+ * The pace the create asks for: one request per five seconds.
+ *
+ * Its own bucket rather than the orders one — Çiçeksepeti meters the two
+ * endpoints separately, and a publish an operator is waiting on must not queue
+ * behind a page walk.
+ */
+const LISTING_PACE = { rps: 0.2, burst: 1 } as const;
+
+/** Çiçeksepeti's published bounds on a description and a barcode. */
+const MIN_DESCRIPTION = 30;
+const MAX_DESCRIPTION = 20_000;
+
+/** One of a closed set, or the documented default. */
+const readChoice = (raw: string | null, allowed: readonly string[], fallback: string): number =>
+  Number(allowed.includes(raw ?? "") ? (raw as string) : fallback);
+
+/**
+ * One `products[]` entry, or the reason this unit cannot become one.
+ *
+ * Returning the reason rather than throwing is the point: a refusal here is one
+ * verdict on one row, where a rejected request is 200 rows an operator has to
+ * re-send to fix one.
+ */
+function buildProduct(
+  product: ListingProduct,
+  variant: ListingVariant,
+  opts: { deliveryType: number; deliveryMessageType: number },
+): Record<string, unknown> | string {
+  const p = product.fields;
+  const v = variant.fields;
+
+  const stockCode = text(v.stockCode);
+  if (!stockCode) {
+    return "No variant code — Çiçeksepeti addresses a listing by it, so it cannot be created without one";
+  }
+
+  const productName = text(p.productName);
+  if (!productName) return "No product name";
+
+  const description = text(p.description);
+  if (!description) return "No description";
+  // Çiçeksepeti measures the minimum on the PLAIN text, so markup does not
+  // count towards it — a 30-character `<p>` wrapper would otherwise look like a
+  // long enough description and be refused hours later.
+  const plain = description.replace(/<[^>]*>/g, "").trim();
+  if (plain.length < MIN_DESCRIPTION) {
+    return `Description is ${plain.length} characters of text and Çiçeksepeti wants at least ${MIN_DESCRIPTION}`;
+  }
+  if (description.length > MAX_DESCRIPTION) {
+    return `Description is ${description.length} characters and Çiçeksepeti allows ${MAX_DESCRIPTION}`;
+  }
+
+  const stockQuantity = num(v.stockQuantity);
+  if (stockQuantity === null || stockQuantity < 0) return "Stock quantity is missing or not a number";
+
+  const salesPrice = money(v.salesPrice);
+  if (salesPrice === null) return "Sale price is missing or not a number";
+  const listPrice = money(v.listPrice);
+
+  const images = imageUrls(v.images ?? p.images);
+  if (images.length === 0) return "No image URL — Çiçeksepeti requires at least one";
+
+  const barcode = text(v.barcode);
+  if (barcode && (barcode.length < 3 || barcode.length > 50)) {
+    return `Barcode is ${barcode.length} characters and Çiçeksepeti allows 3 to 50`;
+  }
+
+  // Çiçeksepeti types both ids as integers. A binding that is not one would
+  // serialise as `null` and be refused with a reason naming the batch rather
+  // than the attribute, so it is caught here.
+  const attributes: Record<string, unknown>[] = [];
+  for (const a of variant.attributes) {
+    const id = Number(a.attributeId);
+    if (!Number.isInteger(id)) return `Attribute "${a.attributeId}" is not a Çiçeksepeti attribute id`;
+    // Every offered attribute is a closed set here, so a free-text answer has
+    // nowhere to go — saying so beats sending an id-shaped `NaN`.
+    const valueId = Number(a.valueId);
+    if (!Number.isInteger(valueId)) {
+      return `Attribute "${a.attributeId}" needs one of Çiçeksepeti's own values, not free text`;
+    }
+    attributes.push({ id, valueId, textLength: 0 });
+  }
+
+  return {
+    productName: productName.slice(0, 200),
+    // The engine derives this from the product row's key — what makes several
+    // variant codes one product page, and what makes a re-run land on the same
+    // page rather than opening a second one.
+    mainProductCode: product.groupId,
+    stockCode,
+    categoryId: Number(product.categoryId),
+    description,
+    ...(text(p.supplierDescription) ? { supplierDescription: text(p.supplierDescription) } : {}),
+    deliveryType: opts.deliveryType,
+    deliveryMessageType: opts.deliveryMessageType,
+    stockQuantity: Math.floor(stockQuantity),
+    salesPrice,
+    // Omitted rather than sent as null when unmapped: Çiçeksepeti reads a
+    // struck-through price as a legal claim about the last 30 days, so an empty
+    // one is a claim not to make.
+    ...(listPrice === null ? {} : { listPrice }),
+    ...(barcode ? { barcode } : {}),
+    images,
+    attributes,
+  };
+}
+
+/**
+ * The image list.
+ *
+ * Plain URL strings, which is the shape Çiçeksepeti's own example sends —
+ * unlike n11's `{url, order}` pairs and Trendyol's `{url}` objects. Three
+ * marketplaces, three shapes for the same list.
+ */
+const imageUrls = (v: unknown): string[] => {
+  const raw: unknown[] = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\n,;|]/) : [];
+  const out: string[] = [];
+  for (const entry of raw) {
+    const s = typeof entry === "string" ? entry : text(obj(entry).url);
+    const url = s?.trim();
+    if (url && /^https?:\/\//.test(url) && !out.includes(url)) out.push(url);
+  }
+  return out;
+};
+
+/** Two decimals — a price with more is refused for the whole batch. */
+const money = (v: unknown): number | null => {
+  const n = num(v);
+  return n === null ? null : Math.round(n * 100) / 100;
+};
+
+/** A category id on its way into a URL path. Digits only, because it
+ *  round-trips through our database first. */
+const numericId = (raw: string, what: string): string => {
+  const value = raw.trim();
+  if (!/^\d{1,20}$/.test(value)) throw new Error(`Çiçeksepeti ${what} must be numeric`);
+  return value;
+};
+
+const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+const obj = (v: unknown): Record<string, unknown> =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
 
 // ── Tasks ────────────────────────────────────────────────────────────────────
 

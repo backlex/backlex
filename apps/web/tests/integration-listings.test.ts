@@ -463,6 +463,21 @@ describe("what the form refuses", () => {
     // it into a schedule is the operator's decision, not the default.
     expect(sync.intervalMinutes).toBe(0);
   });
+
+  test("a listing sync cannot be given an inbound endpoint", async () => {
+    // The trap this closes: Trendyol declares BOTH a listing and a webhook, and
+    // one connection is normally used for both jobs. A delivery lands through
+    // the sync's own collection and mapping — so an endpoint on the listing sync
+    // would upsert incoming ORDER packages into the seller's PRODUCT catalog
+    // through a mapping written for listings. Nothing else would have said so:
+    // the provider sends webhooks, the sync exists, and the write would look
+    // like an ordinary successful delivery.
+    const sync = await makeSync();
+    const res = await req("POST", `${BASE}/syncs/${sync.id}/webhook`, {});
+
+    expect(res.status).toBe(422);
+    expect(await res.text()).toContain("nowhere to put a delivery");
+  });
 });
 
 describe("the admin surface", () => {

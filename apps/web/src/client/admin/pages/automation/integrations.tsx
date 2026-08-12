@@ -30,6 +30,7 @@ import {
   type SettingField,
   type WebhookInfo,
 } from "./integration-syncs-card";
+import type { ListingInfo } from "./integration-listing-dialog";
 
 type Field = {
   key: string;
@@ -69,6 +70,12 @@ type Catalog = {
   /** How each provider that CALLS US authenticates, what it sends, and whether
    *  we can register the endpoint ourselves. Absent = sends no webhooks. */
   webhooks?: Record<string, WebhookInfo>;
+  /** The fixed half of each provider that can put a product ON SALE: the
+   *  columns a product maps onto, the per-unit columns, what a verdict writes
+   *  back, and which registries can be searched. The categories themselves are
+   *  NOT here — they are the marketplace's, fetched per connection with the
+   *  seller's own credentials. Absent = it cannot list. */
+  listings?: Record<string, ListingInfo>;
 };
 
 /** Config key holding the OAuth access token. Present (masked) once authorized,
@@ -246,6 +253,9 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
   );
   const destinationKinds = new Set(
     (catalog.providers ?? []).filter((p) => p.capabilities.includes("destination")).map((p) => p.id),
+  );
+  const listingKinds = new Set(
+    (catalog.providers ?? []).filter((p) => p.capabilities.includes("listing")).map((p) => p.id),
   );
   /** An OAuth row exists but has no token yet — credentials saved, not authorized. */
   const needsAuthorize = (it: Integration | undefined) =>
@@ -605,6 +615,17 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
               label: brandFor(i.kind).name,
               direction: "inbound" as const,
             })),
+          // A marketplace is normally connected as a source AND a listing — the
+          // same credentials, two different jobs — so this is offered ALONGSIDE
+          // the pull above rather than instead of it. Same authorize gate.
+          ...connected
+            .filter((i) => listingKinds.has(i.kind) && !needsAuthorize(i))
+            .map((i) => ({
+              id: i.id,
+              kind: i.kind,
+              label: brandFor(i.kind).name,
+              direction: "listing" as const,
+            })),
         ]}
         // Keyed by direction so one provider could declare both without the
         // dialog having to guess which set it is looking at.
@@ -615,10 +636,17 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
           ...Object.fromEntries(
             Object.entries(catalog.destinationSettings ?? {}).map(([k, v]) => [`${k}:push`, v]),
           ),
+          // A listing's settings live on its own block rather than beside the
+          // destination's: a marketplace declares both, and they ask for
+          // different things — a VAT rate to list at, not what to mirror.
+          ...Object.fromEntries(
+            Object.entries(catalog.listings ?? {}).map(([k, v]) => [`${k}:listing`, v.settingFields]),
+          ),
         }}
         destinationColumns={catalog.destinationColumns ?? {}}
         childGroups={catalog.sourceChildGroups ?? {}}
         webhooks={catalog.webhooks ?? {}}
+        listings={catalog.listings ?? {}}
         pushToast={pushToast}
       />
 

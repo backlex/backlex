@@ -312,6 +312,11 @@ msgstr "{0} added."
 msgid "{0} all · {1} custom · {2} none"
 msgstr "{0} all · {1} custom · {2} none"
 
+#. placeholder {0}: Object.keys(m.attributes).length
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{0} attributes"
+msgstr "{0} attributes"
+
 #. placeholder {0}: statusC.slug
 #. placeholder {1}: statusF.name
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -565,6 +570,12 @@ msgstr "{0} of {1} rows could not be updated."
 msgid "{0} of {1} signed"
 msgstr "{0} of {1} signed"
 
+#. placeholder {0}: b.pendingCount
+#. placeholder {1}: b.unitCount
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{0} of {1} still undecided"
+msgstr "{0} of {1} still undecided"
+
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
 #: src/client/components/mcp-guards-fields.tsx
@@ -755,6 +766,11 @@ msgstr "{0} tool(s)"
 msgid "{0} total · {1} editable · drag the grip to reorder"
 msgstr "{0} total · {1} editable · drag the grip to reorder"
 
+#. placeholder {0}: b.unitCount
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{0} units, all ruled on"
+msgstr "{0} units, all ruled on"
+
 #. placeholder {0}: r.updated
 #. placeholder {1}: r.failed
 #: src/client/admin/app.tsx
@@ -936,6 +952,10 @@ msgstr "{provider} sign-in"
 msgid "{provider} sign-in failed"
 msgstr "{provider} sign-in failed"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{providerName} also needs a brand, which is a product column rather than a category attribute — map it in the sync's field mapping."
+msgstr "{providerName} also needs a brand, which is a product column rather than a category attribute — map it in the sync's field mapping."
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "{providerName} has been told to post here. Rows land the moment it sends them; the schedule above stays as the backstop for anything a delivery misses."
 msgstr "{providerName} has been told to post here. Rows land the moment it sends them; the schedule above stays as the backstop for anything a delivery misses."
@@ -952,6 +972,10 @@ msgstr "{providerName} sends it back in the {0} header on every delivery."
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "{providerName} signs every delivery with it — nothing is accepted without a matching signature."
 msgstr "{providerName} signs every delivery with it — nothing is accepted without a matching signature."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{providerName} would not hand over its categories: {catalogError}"
+msgstr "{providerName} would not hand over its categories: {catalogError}"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "{r} may delete rows matching this rule."
@@ -1030,6 +1054,10 @@ msgstr "+ lines"
 msgid "+ preset"
 msgstr "+ preset"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "+ variants"
+msgstr "+ variants"
+
 #. placeholder {0}: i.reminderCount
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "+{0}"
@@ -1077,6 +1105,10 @@ msgstr "🔒 Needs your own API key — without one this falls back to {0} on ma
 msgid "0532 111 22 33"
 msgstr "0532 111 22 33"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "1 attribute"
+msgstr "1 attribute"
+
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "1 failed delivery in a row"
 msgstr "1 failed delivery in a row"
@@ -1085,9 +1117,18 @@ msgstr "1 failed delivery in a row"
 msgid "1 file"
 msgstr "1 file"
 
+#. placeholder {0}: b.unitCount
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "1 of {0} still undecided"
+msgstr "1 of {0} still undecided"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "1 row"
 msgstr "1 row"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "1 unit, all ruled on"
+msgstr "1 unit, all ruled on"
 
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
@@ -1250,6 +1291,10 @@ msgstr "A loop runs inline, so its body cannot wait for an approval or a long de
 msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 msgstr "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "A marketplace rules on each unit separately and hours later. Without somewhere to put the answer the batch is published and every verdict discarded."
+msgstr "A marketplace rules on each unit separately and hours later. Without somewhere to put the answer the batch is published and every verdict discarded."
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
@@ -1386,6 +1431,10 @@ msgstr "A user's registered numbers"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
 msgstr "A value is stored. Type a new one to replace it, or leave blank to keep it."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "A verdict lands on the row the unit came from, in the columns this sync writes back to. Batches are swept on their own schedule, so an open one settles without anything being re-run."
+msgstr "A verdict lands on the row the unit came from, in the columns this sync writes back to. Batches are swept on their own schedule, so an open one settles without anything being re-run."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "A webhook is told what happened. A sync hook runs before the write and decides whether it happens — it can reject the write or, when allowed to, patch the payload."
@@ -3406,6 +3455,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/jobs.tsx
@@ -3554,6 +3604,18 @@ msgstr "Cardinality"
 msgid "Carried out"
 msgstr "Carried out"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Categories"
+msgstr "Categories"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Category column"
+msgstr "Category column"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Category mapping"
+msgstr "Category mapping"
+
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "caught up"
 msgstr "caught up"
@@ -3682,6 +3744,10 @@ msgstr "Choices"
 msgid "choices · from schema enum"
 msgstr "choices · from schema enum"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Choose a different category"
+msgstr "Choose a different category"
+
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Choose a different folder"
 msgstr "Choose a different folder"
@@ -3694,6 +3760,10 @@ msgstr "Choose a file or drag it here"
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Choose a new password"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Choose a value"
+msgstr "Choose a value"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Choose folder…"
@@ -3793,6 +3863,10 @@ msgstr "Clear search"
 #: src/client/admin/pages/access/users.tsx
 msgid "Clear selection"
 msgstr "Clear selection"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Clear this attribute"
+msgstr "Clear this attribute"
 
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Click <0>+ New flow</0> to create your first one."
@@ -4110,6 +4184,14 @@ msgstr "Columns"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "columns · from schema enum"
 msgstr "columns · from schema enum"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "columns on the product"
+msgstr "columns on the product"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "columns on the variant"
+msgstr "columns on the variant"
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
@@ -5933,6 +6015,7 @@ msgstr "Don't write it back"
 #: src/client/admin/fields/field-transitions-editor.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/users.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -6206,6 +6289,7 @@ msgstr "edit"
 #: src/client/admin/pages/automation/agents.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/forms/index.tsx
@@ -6969,6 +7053,10 @@ msgstr "Every occurrence of this bug, with the latest stack trace and how many v
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Every panel runs with this flow's identity, then prints to a PDF."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Every product carries a local category; each one is mapped to a marketplace category once, and that mapping answers what the category demands. A product whose category is not mapped is skipped rather than published uncategorised."
+msgstr "Every product carries a local category; each one is mapped to a marketplace category once, and that mapping answers what the category demands. A product whose category is not mapped is skipped rather than published uncategorised."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Every row is answered on these — edit them on the field in <0>{collection}</0>."
 msgstr "Every row is answered on these — edit them on the field in <0>{collection}</0>."
@@ -7024,6 +7112,10 @@ msgstr "Everything the booking carries, and the moves still open to it. Times ar
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "Exact package name as published on npm."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "exactly what the product's category column holds"
+msgstr "exactly what the product's category column holds"
 
 #: src/client/admin/fields/field-email-editor.tsx
 #: src/client/admin/fields/field-url-editor.tsx
@@ -9655,6 +9747,10 @@ msgstr "list & sort"
 msgid "List columns"
 msgstr "List columns"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Listing at {providerName}"
+msgstr "Listing at {providerName}"
+
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Lists"
 msgstr "Lists"
@@ -9940,6 +10036,10 @@ msgstr "Many (relation_many)"
 msgid "Map →"
 msgstr "Map →"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Map a category"
+msgstr "Map a category"
+
 #: src/client/admin/fields/field-geo-editor.tsx
 msgid "Map opens at <0>(optional)</0>"
 msgstr "Map opens at <0>(optional)</0>"
@@ -9964,6 +10064,14 @@ msgstr "Mark paid"
 msgid "Marked as a no-show."
 msgstr "Marked as a no-show."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Marketplace category"
+msgstr "Marketplace category"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Marketplace field"
+msgstr "Marketplace field"
+
 #. placeholder {0}: node.op === "and" ? "all" : "any"
 #: src/client/admin/rule-builder.tsx
 msgid "match {0} of the following"
@@ -9976,6 +10084,10 @@ msgstr "Matched on"
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Matched rules"
 msgstr "Matched rules"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Matched verbatim — a product whose column holds anything else is skipped."
+msgstr "Matched verbatim — a product whose column holds anything else is skipped."
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/data/forms/index.tsx
@@ -10861,6 +10973,10 @@ msgstr "New webhook"
 #: src/client/admin/ui.tsx
 msgid "New workspace"
 msgstr "New workspace"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "newest first"
+msgstr "newest first"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Newest first. One row per attempt, including queue retries."
@@ -11961,6 +12077,10 @@ msgstr "nothing found"
 msgid "Nothing has arrived yet."
 msgstr "Nothing has arrived yet."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Nothing has been published yet."
+msgstr "Nothing has been published yet."
+
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Nothing in this period"
 msgstr "Nothing in this period"
@@ -11981,6 +12101,10 @@ msgstr "Nothing is coming up in this view."
 #~ msgid "Nothing is free in the next two weeks."
 #~ msgstr "Nothing is free in the next two weeks."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Nothing is mapped yet, so a run would publish nothing. Map the value your products carry in the category column to the marketplace category it belongs in."
+msgstr "Nothing is mapped yet, so a run would publish nothing. Map the value your products carry in the category column to the marketplace category it belongs in."
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Nothing is removed at this step — the preview only counts."
 msgstr "Nothing is removed at this step — the preview only counts."
@@ -11992,6 +12116,10 @@ msgstr "Nothing is waiting on anybody"
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Nothing matches that."
+msgstr "Nothing matches that."
 
 #. placeholder {0}: skipped.length
 #: src/client/admin/pages/data/template-onboarding.tsx
@@ -12374,6 +12502,10 @@ msgstr "Only rows matching (optional)"
 msgid "Only the current state exists — no edits recorded yet."
 msgstr "Only the current state exists — no edits recorded yet."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Only the deepest categories can be sold into, so the list offers those. What {providerName} demands is asked once the category is chosen."
+msgstr "Only the deepest categories can be sold into, so the list offers those. What {providerName} demands is asked once the category is chosen."
+
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
@@ -12558,6 +12690,10 @@ msgstr "Optional — a timestamped name is generated if you leave this blank."
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "optional — leave empty to import headers only"
 msgstr "optional — leave empty to import headers only"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "optional — leave empty when a product is one sellable unit"
+msgstr "optional — leave empty when a product is one sellable unit"
 
 #: src/client/pages/api-keys.tsx
 msgid "Optional — the key stops working after this time."
@@ -13310,6 +13446,10 @@ msgstr "Pick a unique name."
 msgid "Pick a user"
 msgstr "Pick a user"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Pick a value"
+msgstr "Pick a value"
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
 msgstr "Pick an agent on the left, or click <0>+ New agent</0>."
@@ -13790,6 +13930,10 @@ msgstr "Product events and crash reports from your apps. Visitors are counted by
 msgid "Production"
 msgstr "Production"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Products in"
+msgstr "Products in"
+
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/account-page.tsx
 msgid "Profile"
@@ -13967,6 +14111,7 @@ msgid "Publish changes"
 msgstr "Publish changes"
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Publish now"
 msgstr "Publish now"
 
@@ -14001,6 +14146,23 @@ msgstr "publish: refused"
 msgid "Published"
 msgstr "Published"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Published batches"
+msgstr "Published batches"
+
+#. placeholder {0}: d.unmapped
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Published nothing — {0} products are in categories nobody has mapped."
+msgstr "Published nothing — {0} products are in categories nobody has mapped."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Published nothing — 1 product is in a category nobody has mapped."
+msgstr "Published nothing — 1 product is in a category nobody has mapped."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Published nothing — no product had everything the marketplace needs."
+msgstr "Published nothing — no product had everything the marketplace needs."
+
 #: src/client/admin/pages/access/role-editor.tsx
 msgid "published only"
 msgstr "published only"
@@ -14012,6 +14174,10 @@ msgstr "published only"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
 #~ msgstr "Published."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Publishing…"
+msgstr "Publishing…"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull a spreadsheet into a collection on a schedule."
@@ -14037,13 +14203,13 @@ msgstr "Pull Selling Partner orders in with their lines and addresses, and confi
 msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
 msgstr "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
 
-#. placeholder {0}: res.data.written
+#. placeholder {0}: d.written
 #. placeholder {1}: row.collection
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Pulled {0} rows into {1}."
 msgstr "Pulled {0} rows into {1}."
 
-#. placeholder {0}: res.data.written
+#. placeholder {0}: d.written
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Pulled {0} rows; more pages resume on the schedule."
 msgstr "Pulled {0} rows; more pages resume on the schedule."
@@ -14063,6 +14229,10 @@ msgstr "Push settings saved."
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Put a space after the country code — <0>+90 5321112233</0>"
 msgstr "Put a space after the country code — <0>+90 5321112233</0>"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "put products on sale"
+msgstr "put products on sale"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Quality"
@@ -14166,6 +14336,10 @@ msgstr "Re-index now"
 msgid "Re-indexing…"
 msgstr "Re-indexing…"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Re-map a category"
+msgstr "Re-map a category"
+
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Re-run all"
 msgstr "Re-run all"
@@ -14198,6 +14372,10 @@ msgstr "Read & write"
 #: src/client/admin/fields/field-money-editor.tsx
 msgid "Read from another column"
 msgstr "Read from another column"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Read it from a column"
+msgstr "Read it from a column"
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Read on your own clock, then stored as an instant."
@@ -14944,6 +15122,7 @@ msgid "Require these fields first"
 msgstr "Require these fields first"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -15885,6 +16064,10 @@ msgstr "Save LDAP config"
 msgid "Save limits"
 msgstr "Save limits"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Save mapping"
+msgstr "Save mapping"
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Save metadata"
 msgstr "Save metadata"
@@ -16213,6 +16396,10 @@ msgstr "Search steps…"
 msgid "Search templates…"
 msgstr "Search templates…"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Search the categories"
+msgstr "Search the categories"
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 msgid "Searchable"
@@ -16502,6 +16689,15 @@ msgstr "sent"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Sent"
 msgstr "Sent"
+
+#. placeholder {0}: d.sent
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Sent {0} units. The marketplace rules on them in its own time; watch the batch."
+msgstr "Sent {0} units. The marketplace rules on them in its own time; watch the batch."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
+msgstr "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
 
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Separate several with a space."
@@ -16920,6 +17116,10 @@ msgstr "Showing all fields"
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Showing the 100 most recently updated rows. Use search to narrow down."
 msgstr "Showing the 100 most recently updated rows. Use search to narrow down."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Showing the first {MAX_HITS} — narrow the search to see the rest."
+msgstr "Showing the first {MAX_HITS} — narrow the search to see the rest."
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
@@ -17428,6 +17628,10 @@ msgstr "Specific dates"
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Splits the form into pages"
 msgstr "Splits the form into pages"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "splits variants"
+msgstr "splits variants"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Spreadsheets"
@@ -18519,6 +18723,10 @@ msgstr "the user's id"
 msgid "The value to compare against"
 msgstr "The value to compare against"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "The value to send"
+msgstr "The value to send"
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 msgstr "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
@@ -18588,6 +18796,10 @@ msgstr "This agent has no tools — it answers from the model alone. Add tools i
 msgid "This appointment has already happened."
 msgstr "This appointment has already happened."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "This attribute is what tells two units apart. A fixed answer gives every unit the same one — read it from a column instead unless that is what you mean."
+msgstr "This attribute is what tells two units apart. A fixed answer gives every unit the same one — read it from a column instead unless that is what you mean."
+
 #: src/client/pages/book.tsx
 msgid "This booking link is not valid"
 msgstr "This booking link is not valid"
@@ -18599,6 +18811,10 @@ msgstr "This booking was cancelled."
 #: src/client/admin/fields/field-geo-input.tsx
 msgid "This browser cannot report a location."
 msgstr "This browser cannot report a location."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "This category demands nothing beyond the product's own fields."
+msgstr "This category demands nothing beyond the product's own fields."
 
 #: src/client/admin/extras.tsx
 msgid "this collection"
@@ -19361,6 +19577,10 @@ msgstr "Type a command, collection, or item title…"
 msgid "Type and press Enter…"
 msgstr "Type and press Enter…"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Type it"
+msgstr "Type it"
+
 #: src/client/pages/graphql.tsx
 msgid "Types"
 msgstr "Types"
@@ -19458,9 +19678,17 @@ msgstr "Unlink"
 msgid "Unlinked {0}."
 msgstr "Unlinked {0}."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Unmap"
+msgstr "Unmap"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "unmapped columns are dropped"
 msgstr "unmapped columns are dropped"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Unmapped. Products in it are skipped by the next run rather than published uncategorised."
+msgstr "Unmapped. Products in it are skipped by the next run rather than published uncategorised."
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "unmetered"
@@ -19889,6 +20117,10 @@ msgstr "Variables (JSON)"
 msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 msgstr "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Variants"
+msgstr "Variants"
+
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Vector"
 msgstr "Vector"
@@ -20171,6 +20403,10 @@ msgstr "What the payment link travelled out with. Refused if it matches more tha
 msgid "What this agent is for"
 msgstr "What this agent is for"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "What this category demands"
+msgstr "What this category demands"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "What this collection holds — shown on the Collections page."
 msgstr "What this collection holds — shown on the Collections page."
@@ -20291,6 +20527,10 @@ msgstr "Where the preview starts for a row that has no point yet."
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "Which clock decides the year and the restart. Stored with the field, so changing your display time zone later never renumbers anything."
 msgstr "Which clock decides the year and the restart. Stored with the field, so changing your display time zone later never renumbers anything."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Which column"
+msgstr "Which column"
 
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
@@ -20526,6 +20766,10 @@ msgstr "Write the outcome to"
 msgid "write the tokens yourself"
 msgstr "write the tokens yourself"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Write the verdict back to"
+msgstr "Write the verdict back to"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Writes (1h)"
 msgstr "Writes (1h)"
@@ -20663,6 +20907,10 @@ msgstr "your app's thank-you page"
 msgid "Your appointment"
 msgstr "Your appointment"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Your category value"
+msgstr "Your category value"
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 msgstr "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
@@ -20686,6 +20934,10 @@ msgstr "Your email isn't verified yet. Check your inbox for the verification lin
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"
 msgstr "Your full name"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Your own category, whatever you call it. Each distinct value is mapped to a marketplace category from the sync's row once it exists — a product whose value is unmapped is skipped."
+msgstr "Your own category, whatever you call it. Each distinct value is mapped to a marketplace category from the sync's row once it exists — a product whose value is unmapped is skipped."
 
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Your own code at four moments in your end-users' sign-in: admit a new user, put your claims in their access token, judge a password attempt, or send the mail yourself. One hook per moment. These never apply to the people who administer this workspace."

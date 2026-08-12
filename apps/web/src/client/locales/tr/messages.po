@@ -312,6 +312,11 @@ msgstr "{0} eklendi."
 msgid "{0} all · {1} custom · {2} none"
 msgstr "{0} tümü · {1} özel · {2} yok"
 
+#. placeholder {0}: Object.keys(m.attributes).length
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{0} attributes"
+msgstr "{0} özellik"
+
 #. placeholder {0}: statusC.slug
 #. placeholder {1}: statusF.name
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -565,6 +570,12 @@ msgstr "{0} / {1} satır güncellenemedi."
 msgid "{0} of {1} signed"
 msgstr "{1} imzadan {0} tanesi tamam"
 
+#. placeholder {0}: b.pendingCount
+#. placeholder {1}: b.unitCount
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{0} of {1} still undecided"
+msgstr "{1} birimin {0} tanesi hâlâ karara bağlanmadı"
+
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
 #: src/client/components/mcp-guards-fields.tsx
@@ -755,6 +766,11 @@ msgstr "{0} araç"
 msgid "{0} total · {1} editable · drag the grip to reorder"
 msgstr "{0} toplam · {1} düzenlenebilir · yeniden sıralamak için tutacağı sürükleyin"
 
+#. placeholder {0}: b.unitCount
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{0} units, all ruled on"
+msgstr "{0} birim, hepsi karara bağlandı"
+
 #. placeholder {0}: r.updated
 #. placeholder {1}: r.failed
 #: src/client/admin/app.tsx
@@ -936,6 +952,10 @@ msgstr "{provider} ile giriş"
 msgid "{provider} sign-in failed"
 msgstr "{provider} ile giriş başarısız"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{providerName} also needs a brand, which is a product column rather than a category attribute — map it in the sync's field mapping."
+msgstr "{providerName} ayrıca bir marka istiyor; bu bir kategori özelliği değil, ürün kolonu — senkronun alan eşlemesinde eşleyin."
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "{providerName} has been told to post here. Rows land the moment it sends them; the schedule above stays as the backstop for anything a delivery misses."
 msgstr "{providerName} buraya göndermesi için ayarlandı. Satırlar o gönderdiği anda düşer; yukarıdaki zamanlama, kaçan teslimatlar için yedek olarak kalır."
@@ -952,6 +972,10 @@ msgstr "{providerName} her teslimatta bunu {0} başlığında geri gönderir."
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "{providerName} signs every delivery with it — nothing is accepted without a matching signature."
 msgstr "{providerName} her teslimatı bununla imzalar — imzası uyuşmayan hiçbir şey kabul edilmez."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{providerName} would not hand over its categories: {catalogError}"
+msgstr "{providerName} kategorilerini vermedi: {catalogError}"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "{r} may delete rows matching this rule."
@@ -1030,6 +1054,10 @@ msgstr "+ satırlar"
 msgid "+ preset"
 msgstr "+ ön ayar"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "+ variants"
+msgstr "+ varyantlar"
+
 #. placeholder {0}: i.reminderCount
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "+{0}"
@@ -1077,6 +1105,10 @@ msgstr "🔒 Kendi API anahtarını gerektirir — anahtar yoksa managed cloud'd
 msgid "0532 111 22 33"
 msgstr "0532 111 22 33"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "1 attribute"
+msgstr "1 özellik"
+
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "1 failed delivery in a row"
 msgstr "üst üste 1 başarısız teslimat"
@@ -1085,9 +1117,18 @@ msgstr "üst üste 1 başarısız teslimat"
 msgid "1 file"
 msgstr "1 dosya"
 
+#. placeholder {0}: b.unitCount
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "1 of {0} still undecided"
+msgstr "{0} birimin 1 tanesi hâlâ karara bağlanmadı"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "1 row"
 msgstr "1 satır"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "1 unit, all ruled on"
+msgstr "1 birim, karara bağlandı"
 
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
@@ -1250,6 +1291,10 @@ msgstr "Döngü satır içinde çalışır; gövdesi bir onayı ya da uzun bir b
 msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 msgstr "Örneğin öğle arası — açık olduğunuz her günde kapalı, hem de her açık aralığı ikiye bölmeden."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "A marketplace rules on each unit separately and hours later. Without somewhere to put the answer the batch is published and every verdict discarded."
+msgstr "Pazar yeri her birime ayrı ayrı ve saatler sonra karar verir. Cevabın yazılacağı bir yer olmazsa parti yayımlanır ve gelen her karar çöpe gider."
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "Bir matris, aynı sütunları paylaşabilecek iki alana ihtiyaç duyar — iki sayı alanı ya da aynı seçenekleri sunan iki açılır liste."
@@ -1386,6 +1431,10 @@ msgstr "Bir kullanıcının kayıtlı numaraları"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
 msgstr "Bir değer saklandı. Değiştirmek için yeni bir değer yazın ya da korumak için boş bırakın."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "A verdict lands on the row the unit came from, in the columns this sync writes back to. Batches are swept on their own schedule, so an open one settles without anything being re-run."
+msgstr "Karar, birimin geldiği satıra, bu senkronun geri yazdığı kolonlara düşer. Partiler kendi zamanlamasıyla taranır; açık bir parti hiçbir şey yeniden çalıştırılmadan sonuçlanır."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "A webhook is told what happened. A sync hook runs before the write and decides whether it happens — it can reject the write or, when allowed to, patch the payload."
@@ -3406,6 +3455,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/functions.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/jobs.tsx
@@ -3554,6 +3604,18 @@ msgstr "Kardinalite"
 msgid "Carried out"
 msgstr "Uygulandı"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Categories"
+msgstr "Kategoriler"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Category column"
+msgstr "Kategori kolonu"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Category mapping"
+msgstr "Kategori eşlemesi"
+
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "caught up"
 msgstr "güncel"
@@ -3682,6 +3744,10 @@ msgstr "Seçenekler"
 msgid "choices · from schema enum"
 msgstr "seçenekler · şema enum'ından"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Choose a different category"
+msgstr "Başka bir kategori seç"
+
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Choose a different folder"
 msgstr "Farklı bir klasör seç"
@@ -3694,6 +3760,10 @@ msgstr "Bir dosya seçin veya buraya sürükleyin"
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Yeni parola seçin"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Choose a value"
+msgstr "Bir değer seçin"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Choose folder…"
@@ -3793,6 +3863,10 @@ msgstr "Aramayı temizle"
 #: src/client/admin/pages/access/users.tsx
 msgid "Clear selection"
 msgstr "Seçimi temizle"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Clear this attribute"
+msgstr "Bu özelliği temizle"
 
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Click <0>+ New flow</0> to create your first one."
@@ -4110,6 +4184,14 @@ msgstr "Kolonlar"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "columns · from schema enum"
 msgstr "sütunlar · şema seçeneklerinden"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "columns on the product"
+msgstr "üründeki kolonlara"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "columns on the variant"
+msgstr "varyanttaki kolonlara"
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
@@ -5933,6 +6015,7 @@ msgstr "Geri yazma"
 #: src/client/admin/fields/field-transitions-editor.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/users.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -6206,6 +6289,7 @@ msgstr "düzenle"
 #: src/client/admin/pages/automation/agents.tsx
 #: src/client/admin/pages/automation/channels-card.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/forms/index.tsx
@@ -6969,6 +7053,10 @@ msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Her panel bu akışın kimliğiyle çalışır, sonra PDF'e basılır."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Every product carries a local category; each one is mapped to a marketplace category once, and that mapping answers what the category demands. A product whose category is not mapped is skipped rather than published uncategorised."
+msgstr "Her ürün kendi kategorisini taşır; her biri bir kez pazar yeri kategorisine eşlenir ve bu eşleme kategorinin istediklerini yanıtlar. Kategorisi eşlenmemiş bir ürün, kategorisiz yayımlanmak yerine atlanır."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Every row is answered on these — edit them on the field in <0>{collection}</0>."
 msgstr "Her satır bunlarla yanıtlanır — düzenlemek için <0>{collection}</0> içindeki alana gidin."
@@ -7024,6 +7112,10 @@ msgstr "Rezervasyonun taşıdığı her şey ve hâlâ yapılabilecekler. Saatle
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "npm'de yayınlandığı haliyle tam paket adı."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "exactly what the product's category column holds"
+msgstr "ürünün kategori kolonunda tam olarak ne yazıyorsa"
 
 #: src/client/admin/fields/field-email-editor.tsx
 #: src/client/admin/fields/field-url-editor.tsx
@@ -9655,6 +9747,10 @@ msgstr "listele ve sırala"
 msgid "List columns"
 msgstr "Liste kolonları"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Listing at {providerName}"
+msgstr "{providerName} üzerinde satışa çıkarma"
+
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Lists"
 msgstr "Liste"
@@ -9940,6 +10036,10 @@ msgstr "Çoklu (relation_many)"
 msgid "Map →"
 msgstr "Eşle →"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Map a category"
+msgstr "Kategori eşle"
+
 #: src/client/admin/fields/field-geo-editor.tsx
 msgid "Map opens at <0>(optional)</0>"
 msgstr "Harita şurada açılır <0>(isteğe bağlı)</0>"
@@ -9964,6 +10064,14 @@ msgstr "Ödendi işaretle"
 msgid "Marked as a no-show."
 msgstr "Gelmedi olarak işaretlendi."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Marketplace category"
+msgstr "Pazar yeri kategorisi"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Marketplace field"
+msgstr "Pazar yeri alanı"
+
 #. placeholder {0}: node.op === "and" ? "all" : "any"
 #: src/client/admin/rule-builder.tsx
 msgid "match {0} of the following"
@@ -9976,6 +10084,10 @@ msgstr "Eşleşme sütunu"
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Matched rules"
 msgstr "Eşleşen kurallar"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Matched verbatim — a product whose column holds anything else is skipped."
+msgstr "Birebir eşleşir — kolonunda başka bir şey yazan ürün atlanır."
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/data/forms/index.tsx
@@ -10861,6 +10973,10 @@ msgstr "Yeni webhook"
 #: src/client/admin/ui.tsx
 msgid "New workspace"
 msgstr "Yeni çalışma alanı"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "newest first"
+msgstr "en yeni önce"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Newest first. One row per attempt, including queue retries."
@@ -11961,6 +12077,10 @@ msgstr "bir şey bulunamadı"
 msgid "Nothing has arrived yet."
 msgstr "Henüz bir şey gelmedi."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Nothing has been published yet."
+msgstr "Henüz hiçbir şey yayımlanmadı."
+
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Nothing in this period"
 msgstr "Bu dönemde kayıt yok"
@@ -11981,6 +12101,10 @@ msgstr "Bu görünümde yaklaşan bir şey yok."
 #~ msgid "Nothing is free in the next two weeks."
 #~ msgstr "Önümüzdeki iki hafta içinde boş yer yok."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Nothing is mapped yet, so a run would publish nothing. Map the value your products carry in the category column to the marketplace category it belongs in."
+msgstr "Henüz hiçbir eşleme yok, dolayısıyla bir çalıştırma hiçbir şey yayımlamaz. Ürünlerinizin kategori kolonunda taşıdığı değeri, ait olduğu pazar yeri kategorisine eşleyin."
+
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Nothing is removed at this step — the preview only counts."
 msgstr "Bu adımda hiçbir şey silinmez — önizleme yalnızca sayar."
@@ -11992,6 +12116,10 @@ msgstr "Kimseyi bekleyen bir şey yok"
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya isteklerin, öğe yazmalarının ve otomasyon çalıştırmalarının akmasını bekleyin."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Nothing matches that."
+msgstr "Buna uyan bir şey yok."
 
 #. placeholder {0}: skipped.length
 #: src/client/admin/pages/data/template-onboarding.tsx
@@ -12374,6 +12502,10 @@ msgstr "Yalnızca şunu karşılayan satırlar (isteğe bağlı)"
 msgid "Only the current state exists — no edits recorded yet."
 msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Only the deepest categories can be sold into, so the list offers those. What {providerName} demands is asked once the category is chosen."
+msgstr "Yalnızca en alt kırılıma satış yapılabilir, liste de onları sunar. {providerName} neyi istiyorsa, kategori seçildikten sonra sorulur."
+
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
@@ -12558,6 +12690,10 @@ msgstr "İsteğe bağlı — boş bırakırsanız zaman damgalı bir ad oluştur
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "optional — leave empty to import headers only"
 msgstr "isteğe bağlı — boş bırakılırsa yalnızca başlıklar aktarılır"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "optional — leave empty when a product is one sellable unit"
+msgstr "isteğe bağlı — ürün tek bir satış birimiyse boş bırakın"
 
 #: src/client/pages/api-keys.tsx
 msgid "Optional — the key stops working after this time."
@@ -13310,6 +13446,10 @@ msgstr "Benzersiz bir ad seçin."
 msgid "Pick a user"
 msgstr "Bir kullanıcı seçin"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Pick a value"
+msgstr "Bir değer seçin"
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
 msgstr "Soldan bir ajan seçin veya <0>+ Yeni ajan</0>’a tıklayın."
@@ -13790,6 +13930,10 @@ msgstr "Uygulamalarınızdan gelen ürün olayları ve çökme raporları. Ziyar
 msgid "Production"
 msgstr "Üretim"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Products in"
+msgstr "Ürünler şurada"
+
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/account-page.tsx
 msgid "Profile"
@@ -13967,6 +14111,7 @@ msgid "Publish changes"
 msgstr "Değişiklikleri yayınla"
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Publish now"
 msgstr "Şimdi yayınla"
 
@@ -14001,6 +14146,23 @@ msgstr "yayınlama: reddedildi"
 msgid "Published"
 msgstr "Yayınlandı"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Published batches"
+msgstr "Yayımlanan partiler"
+
+#. placeholder {0}: d.unmapped
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Published nothing — {0} products are in categories nobody has mapped."
+msgstr "Hiçbir şey yayımlanmadı — {0} ürün, kimsenin eşlemediği kategorilerde."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Published nothing — 1 product is in a category nobody has mapped."
+msgstr "Hiçbir şey yayımlanmadı — 1 ürün, kimsenin eşlemediği bir kategoride."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Published nothing — no product had everything the marketplace needs."
+msgstr "Hiçbir şey yayımlanmadı — hiçbir üründe pazar yerinin istediklerinin tamamı yoktu."
+
 #: src/client/admin/pages/access/role-editor.tsx
 msgid "published only"
 msgstr "yalnızca yayınlananlar"
@@ -14012,6 +14174,10 @@ msgstr "yalnızca yayınlananlar"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
 #~ msgstr "Yayınlandı."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Publishing…"
+msgstr "Yayımlanıyor…"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull a spreadsheet into a collection on a schedule."
@@ -14037,13 +14203,13 @@ msgstr "Selling Partner siparişlerini kalemleri ve adresleriyle içeri çekin, 
 msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
 msgstr "Kargo paketlerini kalemleriyle içeri çekin, stok ve fiyatı dışarı gönderin, paketleri onaylayın."
 
-#. placeholder {0}: res.data.written
+#. placeholder {0}: d.written
 #. placeholder {1}: row.collection
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Pulled {0} rows into {1}."
 msgstr "{1} koleksiyonuna {0} satır çekildi."
 
-#. placeholder {0}: res.data.written
+#. placeholder {0}: d.written
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Pulled {0} rows; more pages resume on the schedule."
 msgstr "{0} satır çekildi; kalan sayfalar zamanlamada devam edecek."
@@ -14063,6 +14229,10 @@ msgstr "Push ayarları kaydedildi."
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Put a space after the country code — <0>+90 5321112233</0>"
 msgstr "Ülke kodundan sonra bir boşluk koy — <0>+90 5321112233</0>"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "put products on sale"
+msgstr "ürünleri satışa çıkarır"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Quality"
@@ -14166,6 +14336,10 @@ msgstr "Şimdi yeniden indeksle"
 msgid "Re-indexing…"
 msgstr "Yeniden indeksleniyor…"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Re-map a category"
+msgstr "Kategoriyi yeniden eşle"
+
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Re-run all"
 msgstr "Tümünü yeniden çalıştır"
@@ -14198,6 +14372,10 @@ msgstr "Okuma ve yazma"
 #: src/client/admin/fields/field-money-editor.tsx
 msgid "Read from another column"
 msgstr "Başka bir sütundan okunsun"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Read it from a column"
+msgstr "Bir kolondan oku"
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Read on your own clock, then stored as an instant."
@@ -14944,6 +15122,7 @@ msgid "Require these fields first"
 msgstr "Önce şu alanlar dolu olsun"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -15885,6 +16064,10 @@ msgstr "LDAP yapılandırmasını kaydet"
 msgid "Save limits"
 msgstr "Limitleri kaydet"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Save mapping"
+msgstr "Eşlemeyi kaydet"
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Save metadata"
 msgstr "Meta verileri kaydet"
@@ -16213,6 +16396,10 @@ msgstr "Adımları ara…"
 msgid "Search templates…"
 msgstr "Şablonları ara…"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Search the categories"
+msgstr "Kategorilerde ara"
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 msgid "Searchable"
@@ -16502,6 +16689,15 @@ msgstr "gönderildi"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Sent"
 msgstr "Gönderildi"
+
+#. placeholder {0}: d.sent
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Sent {0} units. The marketplace rules on them in its own time; watch the batch."
+msgstr "{0} birim gönderildi. Pazar yeri kendi zamanında karar verir; partiyi izleyin."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
+msgstr "1 birim gönderildi. Pazar yeri kendi zamanında karar verir; partiyi izleyin."
 
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Separate several with a space."
@@ -16920,6 +17116,10 @@ msgstr "Tüm alanlar gösteriliyor"
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Showing the 100 most recently updated rows. Use search to narrow down."
 msgstr "En son güncellenen 100 satır gösteriliyor. Daraltmak için arama yapın."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Showing the first {MAX_HITS} — narrow the search to see the rest."
+msgstr "İlk {MAX_HITS} tanesi gösteriliyor — gerisi için aramayı daraltın."
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
@@ -17428,6 +17628,10 @@ msgstr "Belirli tarihler"
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Splits the form into pages"
 msgstr "Formu sayfalara böler"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "splits variants"
+msgstr "varyantları ayırır"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Spreadsheets"
@@ -18519,6 +18723,10 @@ msgstr "kullanıcının kimliği"
 msgid "The value to compare against"
 msgstr "Karşılaştırılacak değer"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "The value to send"
+msgstr "Gönderilecek değer"
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 msgstr "Çalışma alanının son kullanıcı havuzu (<0>app_users</0>). E-posta veya ada göre arayın."
@@ -18588,6 +18796,10 @@ msgstr "Bu ajanın aracı yok — yalnızca modelden yanıt verir. Verilerinizi 
 msgid "This appointment has already happened."
 msgstr "Bu randevu çoktan gerçekleşti."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "This attribute is what tells two units apart. A fixed answer gives every unit the same one — read it from a column instead unless that is what you mean."
+msgstr "İki birimi birbirinden ayıran şey bu özelliktir. Sabit bir cevap her birime aynısını verir — bunu kastetmiyorsanız bir kolondan okutun."
+
 #: src/client/pages/book.tsx
 msgid "This booking link is not valid"
 msgstr "Bu rezervasyon bağlantısı geçerli değil"
@@ -18599,6 +18811,10 @@ msgstr "Bu rezervasyon iptal edildi."
 #: src/client/admin/fields/field-geo-input.tsx
 msgid "This browser cannot report a location."
 msgstr "Bu tarayıcı konum bildiremiyor."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "This category demands nothing beyond the product's own fields."
+msgstr "Bu kategori, ürünün kendi alanlarının ötesinde bir şey istemiyor."
 
 #: src/client/admin/extras.tsx
 msgid "this collection"
@@ -19361,6 +19577,10 @@ msgstr "Bir komut, koleksiyon veya öğe başlığı yazın…"
 msgid "Type and press Enter…"
 msgstr "Yazın ve Enter'a basın…"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Type it"
+msgstr "Elle yaz"
+
 #: src/client/pages/graphql.tsx
 msgid "Types"
 msgstr "Türler"
@@ -19458,9 +19678,17 @@ msgstr "Bağlantıyı kaldır"
 msgid "Unlinked {0}."
 msgstr "{0} bağlantısı kaldırıldı."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Unmap"
+msgstr "Eşlemeyi kaldır"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "unmapped columns are dropped"
 msgstr "eşlenmemiş sütunlar atılır"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Unmapped. Products in it are skipped by the next run rather than published uncategorised."
+msgstr "Eşleme kaldırıldı. İçindeki ürünler bir sonraki çalıştırmada kategorisiz yayımlanmak yerine atlanır."
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "unmetered"
@@ -19889,6 +20117,10 @@ msgstr "Değişkenler (JSON)"
 msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 msgstr "Değişkenler Liquid stili <0>{userEmailExample}</0> kullanır. Şablon işlemeleri Fonksiyonlar kum havuzundan geçer."
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Variants"
+msgstr "Varyantlar"
+
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Vector"
 msgstr "Vektör"
@@ -20171,6 +20403,10 @@ msgstr "Ödeme bağlantısıyla birlikte giden değer. Birden fazla ödemeyle e�
 msgid "What this agent is for"
 msgstr "Bu ajan ne için"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "What this category demands"
+msgstr "Bu kategorinin istedikleri"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "What this collection holds — shown on the Collections page."
 msgstr "Bu koleksiyonun ne tuttuğu — Koleksiyonlar sayfasında gösterilir."
@@ -20291,6 +20527,10 @@ msgstr "Henüz konumu olmayan bir satırda önizlemenin başlayacağı yer."
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "Which clock decides the year and the restart. Stored with the field, so changing your display time zone later never renumbers anything."
 msgstr "Yılı ve sıfırlamayı hangi saatin belirleyeceği. Alanla birlikte saklanır; görüntüleme saat diliminizi sonradan değiştirmek hiçbir şeyi yeniden numaralandırmaz."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Which column"
+msgstr "Hangi kolon"
 
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
@@ -20526,6 +20766,10 @@ msgstr "Sonucu şuraya yaz"
 msgid "write the tokens yourself"
 msgstr "belirteçleri kendiniz yazın"
 
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Write the verdict back to"
+msgstr "Kararı şuraya geri yaz"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Writes (1h)"
 msgstr "Yazma işlemleri (1s)"
@@ -20663,6 +20907,10 @@ msgstr "uygulamanızın teşekkür sayfası"
 msgid "Your appointment"
 msgstr "Randevunuz"
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Your category value"
+msgstr "Sizdeki kategori değeri"
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 msgstr "Koleksiyon sizin, kolon adları da öyle — bu yüzden her rezervasyon alanının bir karşılığı gerekir. Eşlemesi olmayan bir hedef hiçbir şey kaydetmez, o yüzden eşlemesiz kayıt reddedilir."
@@ -20686,6 +20934,10 @@ msgstr "E-postanız henüz doğrulanmadı. Doğrulama bağlantısı için gelen 
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"
 msgstr "Adınız ve soyadınız"
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Your own category, whatever you call it. Each distinct value is mapped to a marketplace category from the sync's row once it exists — a product whose value is unmapped is skipped."
+msgstr "Kendi kategoriniz, adına ne diyorsanız. Her farklı değer, senkron oluştuktan sonra satırından bir pazar yeri kategorisine eşlenir — değeri eşlenmemiş ürün atlanır."
 
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Your own code at four moments in your end-users' sign-in: admit a new user, put your claims in their access token, judge a password attempt, or send the mail yourself. One hook per moment. These never apply to the people who administer this workspace."

@@ -10,7 +10,7 @@
 // offered right after creating, because a schedule that silently never fires
 // looks identical to one that has not come round yet.
 import type { PushToast } from "../../types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { Badge, Button, EmptyState, relativeTime } from "../../ui";
@@ -34,6 +34,34 @@ import { api } from "@/lib/api";
 import { columnsForSettings, type DestinationColumn } from "@backlex/integrations/provider";
 import { useCollections } from "../../queries";
 import { fetchSafely } from "../_shared";
+import { ListingDialog, type ListingInfo } from "./integration-listing-dialog";
+
+/**
+ * The group a listing sync's variant rows travel under.
+ *
+ * The same `childMappings` a pull uses, read in the other direction — which is
+ * what keeps "this workspace models variants" a configuration rather than a
+ * branch in every provider. Must match the server's `LISTING_VARIANT_GROUP`.
+ */
+const LISTING_VARIANT_GROUP = "variants";
+
+/** Rows leaving the collection, for the arrow that is drawn in the direction of
+ *  travel. Showing a listing as "Trendyol → products" would say the opposite of
+ *  what happens: the products are ours and the listing is theirs. */
+const outbound = (direction: string): boolean => direction === "push" || direction === "listing";
+
+/** What a collection offers as a mapping target — or as the column an attribute
+ *  reads its value from. Computed columns are excluded: they regenerate
+ *  themselves and the server refuses them as a target anyway. */
+const writableFieldsOf = (
+  collections: { slug: string }[],
+  slug: string,
+): { value: string; label: string }[] => {
+  const c = collections.find((x) => x.slug === slug) as
+    | { fields?: { name: string; computed?: boolean }[] }
+    | undefined;
+  return (c?.fields ?? []).filter((f) => !f.computed).map((f) => ({ value: f.name, label: f.name }));
+};
 
 export type SettingField = {
   key: string;
@@ -107,6 +135,11 @@ export type ApiSync = {
   consecutiveFailures: number;
   disabledReason: string | null;
   matchField?: string | null;
+  /** Listing only. The product column naming the local category. */
+  categoryField?: string | null;
+  /** Listing only, and read the other way from `mapping`: provider output key →
+   *  the column a marketplace's verdict is written to. */
+  outputsMapping?: Record<string, string>;
   /** The endpoint, described — never the secret. Null when it receives nothing. */
   webhook?: { path: string; events: string[]; registered: boolean } | null;
 };
@@ -116,8 +149,9 @@ export type SourceOption = {
   id: string;
   kind: string;
   label: string;
-  /** `inbound` is a sync with nothing to poll: the provider does the calling. */
-  direction: "pull" | "push" | "inbound";
+  /** `inbound` is a sync with nothing to poll: the provider does the calling;
+   *  `listing` puts products on sale and hears the verdict back. */
+  direction: "pull" | "push" | "inbound" | "listing";
 };
 
 /** Identifies one ROW of the picker. A connection that can travel both ways
@@ -147,6 +181,7 @@ export function IntegrationSyncsCard({
   destinationColumns = {},
   childGroups = {},
   webhooks = {},
+  listings = {},
   pushToast,
 }: {
   /** Every direction; the dialog reads `direction` off the chosen entry. */
@@ -159,6 +194,9 @@ export function IntegrationSyncsCard({
   childGroups?: Record<string, ChildGroup[]>;
   /** How each provider that calls us behaves, keyed by kind. Absent = it does not. */
   webhooks?: Record<string, WebhookInfo>;
+  /** The fixed half of each listing provider, keyed by kind. Absent = it cannot
+   *  put a product on sale, and the direction is never offered for it. */
+  listings?: Record<string, ListingInfo>;
   pushToast: PushToast;
 }) {
   const { t } = useLingui();
@@ -169,6 +207,11 @@ export function IntegrationSyncsCard({
   /** The sync whose endpoint is open, and the secret if it was just minted. */
   const [endpointFor, setEndpointFor] = useState<ApiSync | null>(null);
   const [freshSecret, setFreshSecret] = useState<Endpoint | null>(null);
+  /** The listing sync whose category mapping and batches are open. */
+  const [listingFor, setListingFor] = useState<ApiSync | null>(null);
+  // Read here as well as in the dialog: the listing panel needs the product
+  // collection's own fields, and it opens from a row rather than from the form.
+  const collections = useCollections().data?.data ?? [];
 
   useEffect(() => {
     let live = true;
@@ -190,8 +233,20 @@ export function IntegrationSyncsCard({
 
   const kindOf = (integrationId: string) => sources.find((s) => s.id === integrationId)?.kind ?? "";
 
-  /** The endpoint description for this row's provider, or undefined. */
-  const hookFor = (row: ApiSync): WebhookInfo | undefined => webhooks[kindOf(row.integrationId)];
+  /**
+   * The endpoint description for this row's provider, or undefined.
+   *
+   * Gated on the DIRECTION as well as the provider, because a delivery lands
+   * through this sync's own collection and mapping. A marketplace is normally
+   * connected as a source AND a listing off one credential, and offering the
+   * endpoint on the listing row would upsert incoming order packages into the
+   * product catalog. The server refuses it too; this is so the button is never
+   * there to press.
+   */
+  const hookFor = (row: ApiSync): WebhookInfo | undefined =>
+    row.direction === "pull" || row.direction === "inbound"
+      ? webhooks[kindOf(row.integrationId)]
+      : undefined;
 
   /**
    * Turn the endpoint on — or rotate its secret, which is the same call.
@@ -322,14 +377,35 @@ export function IntegrationSyncsCard({
   const runNow = async (row: ApiSync) => {
     setBusy(row.id);
     try {
-      const res = await api<{ data: { written: number; complete: boolean } }>(
-        `/api/admin/integrations/syncs/${row.id}/run`,
-        { method: "POST" },
-      );
+      // Two shapes, because a listing run reports what it PUBLISHED rather than
+      // what it wrote — and the difference matters to the operator: rows landing
+      // is the whole result of a pull, while a published unit has not been ruled
+      // on yet.
+      const res = await api<{
+        data:
+          | { written: number; complete: boolean }
+          | { sent: number; rejected: number; unmapped: number; batchId: string | null };
+      }>(`/api/admin/integrations/syncs/${row.id}/run`, { method: "POST" });
+      const d = res.data;
       pushToast(
-        res.data.complete
-          ? t`Pulled ${res.data.written} rows into ${row.collection}.`
-          : t`Pulled ${res.data.written} rows; more pages resume on the schedule.`,
+        // Every count is written out per case rather than pluralised: this
+        // codebase has no `<Plural>` anywhere, and "1 products" is the same slip
+        // "Every 1 hours" was.
+        "sent" in d
+          ? d.sent === 0
+            ? // The single most likely reason a run looks like it did nothing,
+              // so it is named rather than reported as a clean empty run.
+              d.unmapped === 1
+              ? t`Published nothing — 1 product is in a category nobody has mapped.`
+              : d.unmapped > 1
+                ? t`Published nothing — ${d.unmapped} products are in categories nobody has mapped.`
+                : t`Published nothing — no product had everything the marketplace needs.`
+            : d.sent === 1
+              ? t`Sent 1 unit. The marketplace rules on it in its own time; watch the batch.`
+              : t`Sent ${d.sent} units. The marketplace rules on them in its own time; watch the batch.`
+          : d.complete
+            ? t`Pulled ${d.written} rows into ${row.collection}.`
+            : t`Pulled ${d.written} rows; more pages resume on the schedule.`,
       );
       const list = await fetchSafely<{ data: ApiSync[] }>("/api/admin/integrations/syncs");
       if (list) setSyncs(list.data);
@@ -400,11 +476,11 @@ export function IntegrationSyncsCard({
                       "ClickHouse → leads" would say the opposite of what
                       happens. */}
                   <span className="text-[13px] font-medium">
-                    {row.direction === "push" ? row.collection : labelFor(row.integrationId)}
+                    {outbound(row.direction) ? row.collection : labelFor(row.integrationId)}
                   </span>
                   <I.ArrowRight size={13} className="text-muted-foreground" />
                   <code className="text-[12px] text-muted-foreground">
-                    {row.direction === "push" ? labelFor(row.integrationId) : row.collection}
+                    {outbound(row.direction) ? labelFor(row.integrationId) : row.collection}
                   </code>
                   {!row.enabled && (
                     <Badge variant="destructive" className="text-[10px]">
@@ -421,7 +497,10 @@ export function IntegrationSyncsCard({
                     // touches a second collection, and nothing else here would
                     // hint at that until somebody opened the other one.
                     <Badge variant="secondary" className="text-[10px]">
-                      <Trans>+ lines</Trans>
+                      {/* A listing's second collection holds the sellable units,
+                          not an order's lines — the same mechanism, a different
+                          thing, and calling both "lines" would mislead. */}
+                      {row.direction === "listing" ? <Trans>+ variants</Trans> : <Trans>+ lines</Trans>}
                     </Badge>
                   )}
                   {row.enabled && row.intervalMinutes === 0 && row.direction !== "inbound" && (
@@ -473,7 +552,25 @@ export function IntegrationSyncsCard({
                     offering the button would be a promise it cannot keep. */}
                 {row.direction !== "inbound" && (
                   <Button variant="ghost" disabled={busy === row.id} onClick={() => void runNow(row)}>
-                    {busy === row.id ? <Trans>Pulling…</Trans> : <Trans>Run now</Trans>}
+                    {busy === row.id ? (
+                      row.direction === "listing" ? (
+                        <Trans>Publishing…</Trans>
+                      ) : (
+                        <Trans>Pulling…</Trans>
+                      )
+                    ) : row.direction === "listing" ? (
+                      <Trans>Publish now</Trans>
+                    ) : (
+                      <Trans>Run now</Trans>
+                    )}
+                  </Button>
+                )}
+                {/* A listing sync is the only one whose setup CANNOT be finished
+                    in the create dialog — the categories are the marketplace's
+                    and have to be asked for with the seller's credentials. */}
+                {row.direction === "listing" && listings[kindOf(row.integrationId)] && (
+                  <Button variant="ghost" onClick={() => setListingFor(row)}>
+                    <Trans>Categories</Trans>
                   </Button>
                 )}
                 {hookFor(row) &&
@@ -509,8 +606,35 @@ export function IntegrationSyncsCard({
           destinationColumns={destinationColumns}
           childGroups={childGroups}
           webhooks={webhooks}
+          listings={listings}
           onClose={() => setEditing(false)}
           onCreate={(input) => void create(input)}
+        />
+      )}
+
+      {listingFor && listings[kindOf(listingFor.integrationId)] && (
+        <ListingDialog
+          syncId={listingFor.id}
+          integrationId={listingFor.integrationId}
+          providerName={labelFor(listingFor.integrationId)}
+          info={listings[kindOf(listingFor.integrationId)]!}
+          // BOTH collections, because the engine resolves an attribute against
+          // the VARIANT row first and falls back to the product. Offering only
+          // the product's fields would make the most important case
+          // unconfigurable: a varianter attribute — a size, a colour — is by
+          // definition the column that differs per unit, so it lives on the
+          // variant. De-duplicated because the two often share a name.
+          productFields={[
+            ...writableFieldsOf(collections, listingFor.collection),
+            ...(listingFor.childMappings?.[LISTING_VARIANT_GROUP]?.collection
+              ? writableFieldsOf(
+                  collections,
+                  listingFor.childMappings[LISTING_VARIANT_GROUP]!.collection,
+                )
+              : []),
+          ].filter((f, i, all) => all.findIndex((x) => x.value === f.value) === i)}
+          onClose={() => setListingFor(null)}
+          pushToast={pushToast}
         />
       )}
 
@@ -787,24 +911,83 @@ function ChildGroupEditor({
   draft,
   collections,
   fieldsOf,
+  externalOptions,
+  hint,
   onChange,
 }: {
   group: ChildGroup;
   draft: ChildDraft;
   collections: string[];
   fieldsOf: (slug: string) => { value: string; label: string }[];
+  /** A closed set for the far side, when the provider declares one. Absent
+   *  leaves it free text, which is right for a source's arbitrary line columns. */
+  externalOptions?: { value: string; label: string }[];
+  /** Why leaving it empty is a real choice. Different sentence per direction:
+   *  a pull imports headers without lines, a listing sells a product that has
+   *  no variants — and "import headers only" is nonsense for the second. */
+  hint?: ReactNode;
   onChange: (next: ChildDraft) => void;
 }) {
   const { t } = useLingui();
   const childFields = draft.collection ? fieldsOf(draft.collection) : [];
   const pairs = draft.pairs.length > 0 ? draft.pairs : [{ id: "seed", external: "", field: "" }];
 
+  /** The far side of one pair — a picker when the provider declared its
+   *  columns, a box when the columns are the operator's own. */
+  const externalCell = (p: { id: string; external: string }) =>
+    externalOptions ? (
+      <div className="min-w-0 flex-1">
+        <Select
+          value={p.external || undefined}
+          onChange={(v: string) =>
+            onChange({
+              ...draft,
+              pairs: pairs.map((x) => (x.id === p.id ? { ...x, external: v } : x)),
+            })
+          }
+          placeholder={t`Marketplace field`}
+          options={externalOptions}
+          className="min-w-0"
+        />
+      </div>
+    ) : (
+      <Input
+        className="min-w-0 flex-1"
+        placeholder={t`Line column`}
+        value={p.external}
+        onChange={(e) =>
+          onChange({
+            ...draft,
+            pairs: pairs.map((x) => (x.id === p.id ? { ...x, external: e.target.value } : x)),
+          })
+        }
+      />
+    );
+
+  /** The collection's own field. */
+  const fieldCell = (p: { id: string; field: string }) => (
+    <div className="min-w-0 flex-1">
+      <Select
+        value={p.field || undefined}
+        onChange={(v: string) =>
+          onChange({
+            ...draft,
+            pairs: pairs.map((x) => (x.id === p.id ? { ...x, field: v } : x)),
+          })
+        }
+        placeholder={t`Field`}
+        options={childFields}
+        className="min-w-0"
+      />
+    </div>
+  );
+
   return (
     <div className="rounded-md border border-border p-3">
       <span className="mb-1 block text-[11.5px] font-medium">
         {group.label}{" "}
         <span className="font-normal text-muted-foreground">
-          · <Trans>optional — leave empty to import headers only</Trans>
+          · {hint ?? <Trans>optional — leave empty to import headers only</Trans>}
         </span>
       </span>
 
@@ -834,32 +1017,12 @@ function ChildGroupEditor({
 
             {pairs.map((p) => (
               <div key={p.id} className="flex items-center gap-2">
-                <Input
-                  className="min-w-0 flex-1"
-                  placeholder={t`Line column`}
-                  value={p.external}
-                  onChange={(e) =>
-                    onChange({
-                      ...draft,
-                      pairs: pairs.map((x) => (x.id === p.id ? { ...x, external: e.target.value } : x)),
-                    })
-                  }
-                />
+                {/* Laid out exactly as the header mapping above, so one grammar
+                    serves both: the far side on the left, this collection's own
+                    field on the right. */}
+                {externalCell(p)}
                 <I.ArrowRight size={13} className="shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <Select
-                    value={p.field || undefined}
-                    onChange={(v: string) =>
-                      onChange({
-                        ...draft,
-                        pairs: pairs.map((x) => (x.id === p.id ? { ...x, field: v } : x)),
-                      })
-                    }
-                    placeholder={t`Field`}
-                    options={childFields}
-                    className="min-w-0"
-                  />
-                </div>
+                {fieldCell(p)}
                 <Button
                   variant="ghost"
                   className="shrink-0 px-2"
@@ -898,6 +1061,7 @@ function SyncDialog({
   destinationColumns,
   childGroups,
   webhooks,
+  listings,
   onClose,
   onCreate,
 }: {
@@ -906,6 +1070,7 @@ function SyncDialog({
   destinationColumns: Record<string, DestinationColumn[]>;
   childGroups: Record<string, ChildGroup[]>;
   webhooks: Record<string, WebhookInfo>;
+  listings: Record<string, ListingInfo>;
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => void;
 }) {
@@ -924,6 +1089,12 @@ function SyncDialog({
   /** The column a patching delivery is matched on. Only asked for when the
    *  provider's deliveries are ABOUT rows rather than being them. */
   const [matchField, setMatchField] = useState("");
+  /** Listing only. The product column whose value the category mapping is keyed
+   *  by — a typo here makes every product unmapped and the run publish nothing. */
+  const [categoryField, setCategoryField] = useState("");
+  /** Listing only. Provider output key → the column its verdict is written to.
+   *  Without one a batch is published and every answer discarded. */
+  const [outputs, setOutputs] = useState<Record<string, string>>({});
   // Stable ids rather than the array index: rows can be removed, and an index
   // key would make React reuse the wrong input's state when one disappears.
   const [pairs, setPairs] = useState<{ id: string; external: string; field: string }[]>([
@@ -968,10 +1139,33 @@ function SyncDialog({
   // Narrowed by the settings, because some providers' targets depend on them:
   // QuickBooks writes customers OR invoices, and offering `dueDate` on a
   // customer sync is a trap that only shows up as a column nobody wrote.
-  const allColumns = direction === "push" ? destinationColumns[chosen?.kind ?? ""] : undefined;
+  //
+  // A listing's product columns come from the same declaration and are read the
+  // same way — that is the whole reason `columnsForSettings` narrows both, and
+  // why a listing needed no second mapping editor.
+  const listing = direction === "listing" ? listings[chosen?.kind ?? ""] : undefined;
+  /** Whether the variants live in a collection of their own. */
+  const hasVariantCollection = Boolean(children[LISTING_VARIANT_GROUP]?.collection);
+  const allColumns =
+    direction === "push"
+      ? destinationColumns[chosen?.kind ?? ""]
+      : listing
+        ? // With no variant collection the product row IS the unit, so it maps
+          // through both lists — offering only the product columns would leave
+          // the barcode and the price unmappable and every product refused for
+          // having no reference.
+          hasVariantCollection
+          ? listing.columns
+          : [...listing.columns, ...(listing.variantColumns ?? [])]
+        : undefined;
   const externalOptions = useMemo(
     () => (allColumns ? columnsForSettings(allColumns, settings) : undefined),
     [allColumns, settings],
+  );
+  /** Per-unit columns, for the collection that holds the variants. */
+  const variantOptions = useMemo(
+    () => (listing?.variantColumns ? columnsForSettings(listing.variantColumns, settings) : undefined),
+    [listing, settings],
   );
 
   /** Change one setting, and drop any mapping target it just invalidated —
@@ -997,14 +1191,7 @@ function SyncDialog({
 
   // Only writable fields can be a mapping target; a computed column regenerates
   // itself and the server would refuse it anyway.
-  const fieldsOf = (slug: string) => {
-    const c = collections.find((x) => x.slug === slug) as
-      | { fields?: { name: string; computed?: boolean }[] }
-      | undefined;
-    return (c?.fields ?? [])
-      .filter((f) => !f.computed)
-      .map((f) => ({ value: f.name, label: f.name }));
-  };
+  const fieldsOf = (slug: string) => writableFieldsOf(collections, slug);
   const targetOptions = fieldsOf(collection);
 
   // Lines are an inbound idea in either sense: a push walks one collection's
@@ -1014,7 +1201,12 @@ function SyncDialog({
   const groups =
     direction === "pull" || (direction === "inbound" && hook?.landing === "upsert")
       ? (childGroups[chosen?.kind ?? ""] ?? [])
-      : [];
+      : direction === "listing" && listing?.variantColumns
+        ? // Not the provider's source groups: a listing's one group is where the
+          // sellable units live, and it exists for every listing provider that
+          // declares per-unit columns rather than being declared per provider.
+          [{ key: LISTING_VARIANT_GROUP, label: t`Variants` }]
+        : [];
 
   // Written out rather than derived: `Every ${m / 60} hours` renders
   // "Every 1 hours" for the default cadence.
@@ -1053,6 +1245,10 @@ function SyncDialog({
     // The server refuses this one too, but only after the whole form was filled:
     // without it a delivery would be understood and applied to nothing.
     (!needsMatch || Boolean(matchField)) &&
+    // Both are refused by the server for the same reason they are required here:
+    // without a category column every product is unmapped, and without a
+    // writeback column every verdict the marketplace sends is discarded.
+    (direction !== "listing" || (Boolean(categoryField) && Object.values(outputs).some(Boolean))) &&
     childrenReady;
 
   const submit = () => {
@@ -1061,7 +1257,9 @@ function SyncDialog({
     // a pull and the key on a push.
     for (const p of pairs) {
       if (!p.external.trim() || !p.field) continue;
-      if (direction === "push") mapping[p.field] = p.external.trim();
+      // A listing travels the same way a push does — out of the collection —
+      // so its mapping is keyed by the collection's field.
+      if (direction === "push" || direction === "listing") mapping[p.field] = p.external.trim();
       else mapping[p.external.trim()] = p.field;
     }
     const cleaned: Record<string, string> = {};
@@ -1076,7 +1274,11 @@ function SyncDialog({
       if (!draft?.collection || !draft.parentField) continue;
       const childMapping: Record<string, string> = {};
       for (const p of draft.pairs) {
-        if (p.external.trim() && p.field) childMapping[p.external.trim()] = p.field;
+        if (!p.external.trim() || !p.field) continue;
+        // Same rule as the header mapping above, for the same reason: a
+        // listing's units travel out, so the variant row's own field is the key.
+        if (direction === "listing") childMapping[p.field] = p.external.trim();
+        else childMapping[p.external.trim()] = p.field;
       }
       if (Object.keys(childMapping).length === 0) continue;
       childMappings[g.key] = {
@@ -1096,12 +1298,27 @@ function SyncDialog({
       ...(direction === "inbound" ? {} : { intervalMinutes: interval }),
       ...(Object.keys(childMappings).length > 0 ? { childMappings } : {}),
       ...(needsMatch && matchField ? { matchField } : {}),
+      ...(direction === "listing"
+        ? {
+            categoryField,
+            outputsMapping: Object.fromEntries(
+              Object.entries(outputs).filter(([, column]) => Boolean(column)),
+            ),
+          }
+        : {}),
     });
   };
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="w-full gap-0 p-0 sm:max-w-[560px]">
+      {/* `[&>*]:min-w-0` is load-bearing, and only became so when a listing
+          arrived. DialogContent is a grid, so its column is sized from the
+          body's max-content — and the connection picker's longest option
+          ("Trendyol · put products on sale") stretched it to 464px inside a
+          358px dialog that then clipped 106px off every field AND the header.
+          `min-w-0` on the trigger cannot reach the column; this can. Desktop
+          never showed it: 464 fits inside `sm:max-w-[560px]`. */}
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[560px] [&>*]:min-w-0">
         <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
             <Trans>New data sync</Trans>
@@ -1125,6 +1342,12 @@ function SyncDialog({
                 onChange={(v: string) => {
                   setSelectionKey(v);
                   setMatchField("");
+                  setCategoryField("");
+                  setOutputs({});
+                  // Manual is the default for a listing and only for a listing:
+                  // publishing costs a listing at the far end, so it happens
+                  // when somebody asks rather than on the hour.
+                  setInterval(sources.find((s) => keyOf(s) === v)?.direction === "listing" ? 0 : 60);
                   // Settings belong to a provider AND a direction; carrying them
                   // across would send a spreadsheet id to Airtable, or a
                   // calendar id to a pull.
@@ -1138,11 +1361,17 @@ function SyncDialog({
                   value: keyOf(s),
                   // Two rows carrying the same provider name are otherwise
                   // indistinguishable in the list.
-                  label: bothWays.has(s.id)
-                    ? `${s.label} · ${s.direction === "push" ? t`rows out` : t`rows in`}`
-                    : s.direction === "inbound"
-                      ? `${s.label} · ${t`it calls us`}`
-                      : s.label,
+                  label:
+                    // Named before the both-ways check: a marketplace is
+                    // routinely connected as a source AND a listing, and "rows
+                    // out" would describe the wrong one of the two.
+                    s.direction === "listing"
+                      ? `${s.label} · ${t`put products on sale`}`
+                      : bothWays.has(s.id)
+                        ? `${s.label} · ${s.direction === "push" ? t`rows out` : t`rows in`}`
+                        : s.direction === "inbound"
+                          ? `${s.label} · ${t`it calls us`}`
+                          : s.label,
                 }))}
                 className="min-w-0"
               />
@@ -1150,7 +1379,9 @@ function SyncDialog({
 
             <label className="block">
               <span className="mb-1 block text-[11.5px] font-medium">
-                {direction === "push" ? (
+                {direction === "listing" ? (
+                  <Trans>Products in</Trans>
+                ) : direction === "push" ? (
                   <Trans>From collection</Trans>
                 ) : needsMatch ? (
                   <Trans>Updates rows in</Trans>
@@ -1169,6 +1400,8 @@ function SyncDialog({
                   // whatever was picked — the match column included.
                   setPairs([{ id: crypto.randomUUID(), external: "", field: "" }]);
                   setMatchField("");
+                  setCategoryField("");
+                  setOutputs({});
                 }}
                 placeholder={t`Pick a collection`}
                 options={collections.map((c) => ({ value: c.slug, label: c.slug }))}
@@ -1195,6 +1428,27 @@ function SyncDialog({
                   <Trans>
                     The column holding the {hook?.matchLabel ?? t`provider's id`}. A delivery updates the row
                     that matches, and only the fields it carries.
+                  </Trans>
+                </span>
+              </label>
+            )}
+
+            {direction === "listing" && (
+              <label className="block">
+                <span className="mb-1 block text-[11.5px] font-medium">
+                  <Trans>Category column</Trans>
+                </span>
+                <Select
+                  value={categoryField || undefined}
+                  onChange={(v: string) => setCategoryField(v)}
+                  placeholder={collection ? t`Pick a field` : t`Pick a collection first`}
+                  options={targetOptions}
+                  className="min-w-0"
+                />
+                <span className="mt-1 block text-[11.5px] leading-snug text-muted-foreground">
+                  <Trans>
+                    Your own category, whatever you call it. Each distinct value is mapped to a marketplace
+                    category from the sync's row once it exists — a product whose value is unmapped is skipped.
                   </Trans>
                 </span>
               </label>
@@ -1242,7 +1496,7 @@ function SyncDialog({
                               prev.map((x) => (x.id === p.id ? { ...x, external: v } : x)),
                             )
                           }
-                          placeholder={t`Destination column`}
+                          placeholder={direction === "listing" ? t`Marketplace field` : t`Destination column`}
                           options={externalOptions}
                           className="min-w-0"
                         />
@@ -1301,9 +1555,69 @@ function SyncDialog({
                 draft={children[g.key] ?? EMPTY_CHILD}
                 collections={collections.map((c) => c.slug)}
                 fieldsOf={fieldsOf}
-                onChange={(next) => setChildren((prev) => ({ ...prev, [g.key]: next }))}
+                externalOptions={g.key === LISTING_VARIANT_GROUP ? variantOptions : undefined}
+                hint={
+                  g.key === LISTING_VARIANT_GROUP ? (
+                    <Trans>optional — leave empty when a product is one sellable unit</Trans>
+                  ) : undefined
+                }
+                onChange={(next) => {
+                  setChildren((prev) => ({ ...prev, [g.key]: next }));
+                  // Choosing (or clearing) a variant collection moves where the
+                  // verdict lands, so the writeback targets belong to a
+                  // different collection now and cannot be carried across.
+                  if (g.key === LISTING_VARIANT_GROUP) setOutputs({});
+                }}
               />
             ))}
+
+            {direction === "listing" && listing && (
+              <div>
+                <span className="mb-1 block text-[11.5px] font-medium">
+                  <Trans>Write the verdict back to</Trans>{" "}
+                  <span className="font-normal text-muted-foreground">
+                    ·{" "}
+                    {hasVariantCollection ? (
+                      <Trans>columns on the variant</Trans>
+                    ) : (
+                      <Trans>columns on the product</Trans>
+                    )}
+                  </span>
+                </span>
+                <div className="flex flex-col gap-2">
+                  {listing.outputs.map((o) => (
+                    <div key={o.key} className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-[11.5px]">{o.label}</span>
+                      <I.ArrowRight size={13} className="shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <Select
+                          value={outputs[o.key] || undefined}
+                          onChange={(v: string) => setOutputs((prev) => ({ ...prev, [o.key]: v }))}
+                          placeholder={t`Field`}
+                          // The verdict lands on the row the UNIT came from, so
+                          // these are the variant collection's columns when there
+                          // is one. Offering the product's would make the correct
+                          // configuration impossible: a unit's listing status is
+                          // not a product column.
+                          options={
+                            hasVariantCollection
+                              ? fieldsOf(children[LISTING_VARIANT_GROUP]?.collection ?? "")
+                              : targetOptions
+                          }
+                          className="min-w-0"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <span className="mt-1 block text-[11.5px] leading-snug text-muted-foreground">
+                  <Trans>
+                    A marketplace rules on each unit separately and hours later. Without somewhere to put the
+                    answer the batch is published and every verdict discarded.
+                  </Trans>
+                </span>
+              </div>
+            )}
 
             {direction === "inbound" ? (
               <p className="text-[11.5px] leading-snug text-muted-foreground">

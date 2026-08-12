@@ -7,6 +7,7 @@ import {
   INTEGRATION_KINDS,
   DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
+  INTEGRATION_LISTINGS,
   INTEGRATION_TASKS,
   INTEGRATION_WEBHOOKS,
   SOURCE_CHILD_GROUPS,
@@ -122,6 +123,16 @@ const CatalogView = z
      *  replaces a row or patches one, and whether we can register the endpoint
      *  ourselves. A kind that is absent sends no webhooks. */
     webhooks: z.record(z.string(), z.unknown()),
+    /**
+     * What a listing form needs before it can ask anything, keyed by kind.
+     *
+     * Only the part that is FIXED per provider: the columns a product row maps
+     * onto, the per-unit columns, the fields a verdict writes back, and which
+     * registries can be searched. The taxonomy itself is deliberately absent —
+     * it is fetched per connection with the seller's own credentials, runs to
+     * hundreds of kilobytes, and changes without us.
+     */
+    listings: z.record(z.string(), z.unknown()),
   })
   .openapi("IntegrationCatalog");
 
@@ -429,6 +440,10 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           // no endpoint, which is the right reading for every provider that
           // only ever answers a request we made.
           webhooks: INTEGRATION_WEBHOOKS,
+          // Only the providers that can put a product on sale. Absent means the
+          // sync form never offers the direction, which is the right reading for
+          // every provider that has no catalog to be listed against.
+          listings: INTEGRATION_LISTINGS,
         },
       }),
   )

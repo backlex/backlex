@@ -181,6 +181,20 @@ const loadSyncForEndpoint = async (
   if (!webhookFor(integration.kind)) {
     throw new AppError("BAD_REQUEST", `${integration.kind} does not send webhooks`);
   }
+  // A delivery lands through THIS sync's collection and mapping — that is the
+  // whole design, and it is why the endpoint lives on the sync rather than in a
+  // table of its own. So only a sync that receives rows may have one. A
+  // marketplace connected as a listing has the same webhook capability and the
+  // same credentials, but its collection is the seller's PRODUCTS: turning an
+  // endpoint on there would upsert incoming order packages into the product
+  // catalog through a mapping written for listings. A push is refused for the
+  // mirror-image reason — it has no landing at all.
+  if (row.direction !== "pull" && row.direction !== "inbound") {
+    throw new AppError(
+      "VALIDATION",
+      `A ${row.direction} sync has nowhere to put a delivery — turn the endpoint on from the sync that brings ${integration.kind} rows in`,
+    );
+  }
   return { row, kind: integration.kind, config: (integration.config ?? {}) as Record<string, unknown> };
 };
 

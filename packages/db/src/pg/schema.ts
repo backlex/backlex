@@ -3756,6 +3756,15 @@ export const integrationSyncs = pgTable(
      * records are addressed by the namespaced id instead.
      */
     matchField: text("match_field"),
+    /**
+     * The product column naming the local category a listing is mapped from.
+     *
+     * `listing` direction only. The mapping itself lives one row per local
+     * value in `integration_listing_maps`; this says which column those values
+     * are read from, because a workspace's idea of a category is a column of
+     * its own choosing — `category`, `product_type`, a relation's label.
+     */
+    categoryField: text("category_field"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -3818,6 +3827,94 @@ export const integrationWebhookDeliveries = pgTable(
     index("integration_webhook_deliveries_tenant_idx").on(t.tenantId),
     // What the admin panel reads: this subscription's deliveries, newest first.
     index("integration_webhook_deliveries_sync_idx").on(t.syncId, t.createdAt),
+  ],
+);
+
+/**
+ * How one of a workspace's own categories maps onto a marketplace's.
+ *
+ * A table rather than a blob on the sync row, and the reason is concurrency
+ * rather than size: an operator edits ONE category at a time, and a JSON map of
+ * five hundred would make every such edit a read-modify-write of the whole
+ * thing — two people mapping two categories would each silently discard the
+ * other's. A row per local value makes the edit addressable.
+ *
+ * `attributes` holds the operator's answers to what the chosen category demands:
+ * attribute id → a fixed value id, free text, or the product column to read it
+ * from. Its shape is the provider's, not ours, which is why it is JSON and not
+ * columns — the questions differ per category and there are ~24 of them.
+ */
+export const integrationListingMaps = pgTable(
+  "integration_listing_maps",
+  {
+    id: text("id").primaryKey(),
+    /** Never null: a mapping belongs to one workspace's collection. */
+    tenantId: text("tenant_id").notNull(),
+    /** The listing sync this mapping configures — a row in `integration_syncs`. */
+    syncId: text("sync_id").notNull(),
+    /** The value found in the sync's `category_field`, verbatim. */
+    localValue: text("local_value").notNull(),
+    /** The marketplace's own leaf category id. */
+    categoryId: text("category_id").notNull(),
+    /** Attribute id → `{valueId}` | `{custom}` | `{field}`. */
+    attributes: jsonb("attributes")
+      .$type<Record<string, { valueId?: string; custom?: string; field?: string }>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One answer per local category. A second row for the same value would make
+    // "which category does this product go in" depend on row order.
+    uniqueIndex("integration_listing_maps_value_idx").on(t.syncId, t.localValue),
+    index("integration_listing_maps_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * One batch of products handed to a marketplace, and what became of it.
+ *
+ * Every marketplace here answers a create with a queue ticket rather than a
+ * result, so this row is the only thing that knows a publish is outstanding. It
+ * is also the operator's record of what was sent and why it was refused — the
+ * same argument `integration_webhook_deliveries` makes, and the reason neither
+ * grew a `last_*` column on the sync.
+ *
+ * `sent` is what makes a verdict addressable: the marketplace echoes one of our
+ * own columns back (a barcode, a stock code) and never our request id, so this
+ * maps that echo to the row that asked. Without it a verdict has nowhere to go.
+ */
+export const integrationListingBatches = pgTable(
+  "integration_listing_batches",
+  {
+    id: text("id").primaryKey(),
+    /** Never null: a verdict writes into a workspace's collection. */
+    tenantId: text("tenant_id").notNull(),
+    syncId: text("sync_id").notNull(),
+    integrationId: text("integration_id").notNull(),
+    /** The provider's own ticket. Empty when nothing was queued. */
+    batchId: text("batch_id").notNull(),
+    /** `open` while anything is pending; then `settled` or `failed`. */
+    status: text("status").notNull().default("open"),
+    /** Provider's echoed reference → the collection row it belongs to. */
+    sent: jsonb("sent").$type<Record<string, string>>().notNull().default({}),
+    /** How many units this batch is still waiting on. */
+    pendingCount: integer("pending_count").notNull().default(0),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Set when nothing is pending. The sweep reads `status`, not this. */
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    // A provider's ticket is unique within the sync that asked for it, which is
+    // what stops a retried publish opening a second batch for the same work.
+    uniqueIndex("integration_listing_batches_ticket_idx").on(t.syncId, t.batchId),
+    // The sweep's whole query: batches still owed a verdict, oldest first. It
+    // runs independently of any sync's schedule, because a manually published
+    // batch is owed an answer exactly as much as a scheduled one.
+    index("integration_listing_batches_open_idx").on(t.status, t.createdAt),
+    index("integration_listing_batches_tenant_idx").on(t.tenantId),
   ],
 );
 

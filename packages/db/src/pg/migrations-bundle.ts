@@ -115,6 +115,7 @@ import m108 from "../../drizzle/pg/20260812090000_cdc_sinks/migration.sql" with 
 import m109 from "../../drizzle/pg/20260813090000_integration_child_mappings/migration.sql" with { type: "text" };
 import m110 from "../../drizzle/pg/20260813100000_integration_task_runs/migration.sql" with { type: "text" };
 import m111 from "../../drizzle/pg/20260813110000_integration_webhooks/migration.sql" with { type: "text" };
+import m112 from "../../drizzle/pg/20260813120000_integration_listings/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -234,4 +235,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260813090000_integration_child_mappings", sql: m109 },
   { name: "20260813100000_integration_task_runs", sql: m110 },
   { name: "20260813110000_integration_webhooks", sql: m111 },
+  { name: "20260813120000_integration_listings", sql: m112 },
 ];

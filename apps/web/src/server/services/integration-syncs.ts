@@ -27,6 +27,8 @@ import {
   DESTINATION_BATCH_SIZE,
   DESTINATION_SETTING_FIELDS,
   destinationColumnsFor,
+  INTEGRATION_LISTINGS,
+  listingColumnsFor,
   SOURCE_CHILD_GROUPS,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
@@ -80,8 +82,8 @@ const MAX_ROWS_PER_RUN = 2000;
  * the normal case for a marketplace, and it is what makes the poll the repair
  * mechanism for the deliveries a webhook inevitably loses.
  */
-export type SyncDirection = "pull" | "push" | "inbound";
-export const SYNC_DIRECTIONS: readonly SyncDirection[] = ["pull", "push", "inbound"];
+export type SyncDirection = "pull" | "push" | "inbound" | "listing";
+export const SYNC_DIRECTIONS: readonly SyncDirection[] = ["pull", "push", "inbound", "listing"];
 
 /** Directions whose mapping reads `external → collection field`. */
 const writesRows = (d: SyncDirection): boolean => d === "pull" || d === "inbound";
@@ -123,6 +125,10 @@ export interface SyncRow {
   webhookExternalId: string | null;
   /** The collection field a `patch` delivery is matched on. */
   matchField: string | null;
+  /** `listing` only: the product column naming the local category. */
+  categoryField: string | null;
+  /** `listing` only: provider output key → collection field, for the verdict. */
+  outputsMapping: Record<string, string>;
   createdAt: Date | number | null;
   updatedAt: Date | number | null;
 }
@@ -147,6 +153,8 @@ export const toPublicSync = (row: SyncRow) => ({
   consecutiveFailures: row.consecutiveFailures,
   disabledReason: row.disabledReason,
   matchField: row.matchField ?? null,
+  categoryField: row.categoryField ?? null,
+  outputsMapping: row.outputsMapping ?? {},
   /**
    * The endpoint, described — never the secret.
    *
@@ -169,6 +177,88 @@ export const toPublicSync = (row: SyncRow) => ({
     : null,
   createdAt: row.createdAt,
 });
+
+/**
+ * The one child group a listing sync may declare.
+ *
+ * A constant rather than a literal in three places: it is the key an operator's
+ * stored `childMappings` is written under, so a rename in one place and not the
+ * others would leave a configured sync publishing every product as a single
+ * unit while reporting nothing wrong.
+ */
+export const LISTING_VARIANT_GROUP = "variants";
+
+/**
+ * Check the two fields only a listing sync has.
+ *
+ * `categoryField` must name a real column, because it is read off every product
+ * to find the mapping — a typo would make every product unmapped and the run
+ * would report "published 0" with nothing to point at.
+ *
+ * `outputsMapping` is checked in BOTH halves: the key against what the provider
+ * declares it can answer, and the target against what the collection can be
+ * written to. Getting either wrong means a verdict that arrives and lands
+ * nowhere, which is the failure this whole direction exists to avoid.
+ */
+const validateListingFields = (
+  input: { categoryField?: string | null; outputsMapping?: Record<string, string> },
+  collection: Awaited<ReturnType<typeof loadCollection>>,
+  /**
+   * Where a verdict actually lands.
+   *
+   * The variant collection when the sync declares one, because a marketplace
+   * rules per unit and the unit is the variant. Checking against the product
+   * collection instead does not merely under-check — it makes the CORRECT
+   * configuration impossible, since a variant's `listing_status` is not a
+   * product column at all.
+   */
+  verdictCollection: Awaited<ReturnType<typeof loadCollection>>,
+  direction: SyncDirection,
+  kind: string,
+): { categoryField: string | null; outputsMapping: Record<string, string> } => {
+  if (direction !== "listing") {
+    if (input.categoryField || (input.outputsMapping && Object.keys(input.outputsMapping).length > 0)) {
+      throw new AppError("VALIDATION", "categoryField and outputsMapping apply to a listing sync");
+    }
+    return { categoryField: null, outputsMapping: {} };
+  }
+
+  const categoryField = (input.categoryField ?? "").trim();
+  if (!categoryField) {
+    throw new AppError("VALIDATION", "A listing sync needs the column naming the local category");
+  }
+  if (!collection.fields.some((f) => f.name === categoryField)) {
+    throw new AppError("VALIDATION", `Collection "${collection.slug}" has no field "${categoryField}"`);
+  }
+
+  const declared = new Set((INTEGRATION_LISTINGS[kind]?.outputs ?? []).map((o) => o.key));
+  const writable = new Set(verdictCollection.fields.filter((f) => !f.computed).map((f) => f.name));
+  const outputsMapping: Record<string, string> = {};
+  for (const [key, target] of Object.entries(input.outputsMapping ?? {})) {
+    if (!declared.has(key)) {
+      throw new AppError(
+        "VALIDATION",
+        `${kind} has no listing output "${key}" — one of: ${[...declared].join(", ")}`,
+      );
+    }
+    if (typeof target !== "string" || !target.trim()) {
+      throw new AppError("VALIDATION", `Output "${key}" must name a column`);
+    }
+    const field = target.trim();
+    if (!writable.has(field)) {
+      throw new AppError(
+        "VALIDATION",
+        `Collection "${verdictCollection.slug}" has no writable field "${field}"`,
+      );
+    }
+    outputsMapping[key] = field;
+  }
+  if (Object.keys(outputsMapping).length === 0) {
+    // Without one, a batch would be published and every verdict discarded.
+    throw new AppError("VALIDATION", "A listing sync needs at least one output mapping");
+  }
+  return { categoryField, outputsMapping };
+};
 
 /** The public path a provider posts to. One definition, three consumers. */
 export const webhookPathFor = (token: string): string => `/api/integrations/hooks/${token}`;
@@ -212,7 +302,11 @@ const validateSettings = (
     return {};
   }
   const fields =
-    (direction === "push" ? DESTINATION_SETTING_FIELDS[kind] : SOURCE_SETTING_FIELDS[kind]) ?? [];
+    (direction === "listing"
+      ? INTEGRATION_LISTINGS[kind]?.settingFields
+      : direction === "push"
+        ? DESTINATION_SETTING_FIELDS[kind]
+        : SOURCE_SETTING_FIELDS[kind]) ?? [];
   const allowed = new Set(fields.map((f) => f.key));
   for (const key of Object.keys(settings)) {
     if (!allowed.has(key)) throw new AppError("VALIDATION", `${kind} has no setting "${key}"`);
@@ -290,6 +384,10 @@ export interface CreateSyncInput {
    * would be an invitation to write to the wrong row.
    */
   matchField?: string | null;
+  /** Listing only. The product column naming the local category. */
+  categoryField?: string | null;
+  /** Listing only. Provider output key → the column a verdict is written to. */
+  outputsMapping?: Record<string, string>;
 }
 
 /** Create a sync. `tenantId` is `string`, never nullable: an instance-wide sync
@@ -310,6 +408,9 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   if (direction === "inbound" && !provider?.webhook) {
     throw new AppError("BAD_REQUEST", `${integration.kind} does not send webhooks`);
   }
+  if (direction === "listing" && !provider?.listing) {
+    throw new AppError("BAD_REQUEST", `${integration.kind} cannot list products`);
+  }
   if (direction === "push") assertScope(integration, provider?.destination?.requiredScope);
   // Resolves within the caller's tenant and throws if the slug is unknown, so a
   // sync can never be aimed at another workspace's collection.
@@ -324,6 +425,14 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind, settings);
   const childMappings = await validateChildMappings(ctx, tenantId, direction, integration.kind, input.childMappings ?? {});
   const matchField = validateMatchField(input.matchField, collection, direction, integration.kind);
+  // Resolved from the child mapping the previous line just validated, so the
+  // outputs are checked against the collection they will actually be written to.
+  const variantSpec = childMappings[LISTING_VARIANT_GROUP];
+  const verdictCollection =
+    direction === "listing" && variantSpec
+      ? await loadCollection(ctx, tenantId, variantSpec.collection)
+      : collection;
+  const listing = validateListingFields(input, collection, verdictCollection, direction, integration.kind);
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -338,9 +447,19 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
     childMappings,
     // An inbound sync is never due, so an interval on it would be a schedule
     // that reads as active and does nothing. The scheduler already skips 0.
-    intervalMinutes: direction === "inbound" ? 0 : clampInterval(input.intervalMinutes),
+    // An inbound sync is never due; a listing sync defaults to MANUAL because a
+    // publish is an outward, hard-to-undo act at a live marketplace and a
+    // schedule is the operator's decision to make, not ours.
+    intervalMinutes:
+      direction === "inbound"
+        ? 0
+        : direction === "listing"
+          ? clampInterval(input.intervalMinutes ?? 0)
+          : clampInterval(input.intervalMinutes),
     enabled: input.enabled ?? true,
     matchField,
+    categoryField: listing.categoryField,
+    outputsMapping: listing.outputsMapping,
     createdAt: now,
     updatedAt: now,
   });
@@ -375,7 +494,19 @@ const validateChildMappings = async (
 ): Promise<Record<string, ChildMappingSpec>> => {
   const entries = Object.entries(childMappings);
   if (entries.length === 0) return {};
-  if (!writesRows(direction)) {
+  if (direction === "listing") {
+    // A listing READS a child collection rather than writing one: a product's
+    // variants are the units a marketplace rules on. Same column, same shape,
+    // read in the direction of travel — exactly as `mapping` already is.
+    for (const [group] of entries) {
+      if (group !== LISTING_VARIANT_GROUP) {
+        throw new AppError(
+          "VALIDATION",
+          `A listing sync's only child group is "${LISTING_VARIANT_GROUP}" — got "${group}"`,
+        );
+      }
+    }
+  } else if (!writesRows(direction)) {
     // A push walks one collection's watermark. There is no second collection in
     // that direction, so accepting the field would store something inert.
     throw new AppError("VALIDATION", "childMappings apply to a sync that writes rows in");
@@ -386,7 +517,10 @@ const validateChildMappings = async (
   // report a clean run doing it. A provider that declares no groups is left
   // alone rather than assumed to have none: the check is here to catch a typo,
   // not to stop a source that predates the declaration.
-  const declared = SOURCE_CHILD_GROUPS[kind];
+  // Skipped for a listing: `variants` is the ENGINE's group name, not one the
+  // provider hands back, and a marketplace's source groups (Trendyol's order
+  // `lines`) have nothing to do with it.
+  const declared = direction === "listing" ? undefined : SOURCE_CHILD_GROUPS[kind];
   if (declared) {
     const known = new Set(declared.map((g) => g.key));
     for (const [group] of entries) {
@@ -425,12 +559,32 @@ const validateChildMappings = async (
     }
 
     const mapping: Record<string, string> = {};
+    // A listing reads the child rather than writing it, so the mapping is
+    // `collection field → marketplace column` and both halves are checked
+    // against the opposite lists. Reading a computed column out is fine; it is
+    // only writing to one that is not.
+    const listingColumns =
+      direction === "listing" ? listingColumnsFor(kind, {}, "variant") : undefined;
+    const readable = new Set(collection.fields.map((f) => f.name));
     for (const [external, target] of Object.entries(spec.mapping ?? {})) {
       if (typeof target !== "string" || !target.trim()) {
         throw new AppError("VALIDATION", `Child mapping for "${external}" must name a column`);
       }
       const field = target.trim();
-      if (!writable.has(field)) {
+      if (direction === "listing") {
+        if (!readable.has(external)) {
+          throw new AppError(
+            "VALIDATION",
+            `Collection "${collection.slug}" has no field "${external}"`,
+          );
+        }
+        if (listingColumns && !listingColumns.some((c) => c.value === field)) {
+          throw new AppError(
+            "VALIDATION",
+            `${kind} has no listing column "${field}" — one of: ${listingColumns.map((c) => c.value).join(", ")}`,
+          );
+        }
+      } else if (!writable.has(field)) {
         throw new AppError(
           "VALIDATION",
           `Collection "${collection.slug}" has no writable field "${field}"`,
@@ -525,7 +679,15 @@ const validateMapping = (
   // Narrowed by the settings, because a provider's columns are not always fixed
   // for the whole provider: QuickBooks writes a customer OR an invoice, and
   // `dueDate` on a customer is the same silent drop this check exists to stop.
-  const columns = direction === "push" ? destinationColumnsFor(kind, settings) : undefined;
+  // A listing's product columns are declared the same way and narrowed the same
+  // way, so they are checked through the same branch — the mapping reads
+  // `field → listing column`, exactly as a push's does.
+  const columns =
+    direction === "listing"
+      ? listingColumnsFor(kind, settings, "product")
+      : direction === "push"
+        ? destinationColumnsFor(kind, settings)
+        : undefined;
   // An inbound mapping reads the same way a pull's does — `external → field` —
   // because it lands through the same ingest with the same targets. What differs
   // is only who initiates, which the mapping has no opinion about.
@@ -546,13 +708,13 @@ const validateMapping = (
         `Collection "${collection.slug}" has no writable field "${value}"`,
       );
     }
-    if (direction === "push" && !known.has(left)) {
+    if ((direction === "push" || direction === "listing") && !known.has(left)) {
       throw new AppError("VALIDATION", `Collection "${collection.slug}" has no field "${left}"`);
     }
     if (columns && !columns.some((c) => c.value === value)) {
       throw new AppError(
         "VALIDATION",
-        `${kind} has no destination column "${value}" — one of: ${columns.map((c) => c.value).join(", ")}`,
+        `${kind} has no ${direction === "listing" ? "listing" : "destination"} column "${value}" — one of: ${columns.map((c) => c.value).join(", ")}`,
       );
     }
     out[left] = value;

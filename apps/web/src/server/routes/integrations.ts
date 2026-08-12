@@ -28,6 +28,8 @@ import {
   deleteSync,
   listSyncs,
   runSync,
+  SYNC_DIRECTIONS,
+  type SyncDirection,
   updateSync,
 } from "../services/integration-syncs";
 import { listTaskRuns, runTask } from "../services/integration-tasks";
@@ -231,13 +233,20 @@ const SyncInput = z
     collection: z.string().min(1).openapi({
       description: "Managed collection slug the rows land in (pull) or come from (push).",
     }),
-    direction: z.enum(["pull", "push", "inbound"]).optional().openapi({
-      description:
-        "`pull` draws rows in from a source (default); `push` mirrors the collection out to a warehouse; " +
-        "`inbound` has nothing to poll and exists to receive the provider's webhook deliveries. A `pull` sync " +
-        "may ALSO have an endpoint — that is the normal case for a marketplace, and the poll is what repairs " +
-        "the deliveries a webhook loses.",
-    }),
+    // Derived from the service's own list rather than re-typed. A hand-written
+    // enum here is a second place a direction has to be added, and the one that
+    // silently 422s a request the service would have accepted.
+    direction: z
+      .enum(SYNC_DIRECTIONS as unknown as [SyncDirection, ...SyncDirection[]])
+      .optional()
+      .openapi({
+        description:
+          "`pull` draws rows in from a source (default); `push` mirrors the collection out to a warehouse; " +
+          "`inbound` has nothing to poll and exists to receive the provider's webhook deliveries; " +
+          "`listing` puts products on sale at a marketplace and writes the verdict back. A `pull` sync " +
+          "may ALSO have an endpoint — that is the normal case for a marketplace, and the poll is what repairs " +
+          "the deliveries a webhook loses.",
+      }),
     matchField: z
       .string()
       .min(1)
@@ -264,8 +273,25 @@ const SyncInput = z
           "returns (e.g. `items` for an order's lines). Children are upserted, never reconciled — " +
           "a line removed at the provider stays in the collection.",
       }),
+    categoryField: z
+      .string()
+      .min(1)
+      .nullish()
+      .openapi({
+        description:
+          "Listing only. The product column naming the local category, which the category mapping is keyed by.",
+      }),
+    outputsMapping: z
+      .record(z.string(), z.string())
+      .optional()
+      .openapi({
+        description:
+          "Listing only, and read the OTHER way from `mapping`: provider output key → the column a " +
+          "marketplace's verdict is written to. Without one a batch would be published and every " +
+          "answer discarded.",
+      }),
     intervalMinutes: z.number().int().min(0).max(10_080).optional().openapi({
-      description: "How often the scheduler runs it. 0 = manual only. Default 60.",
+      description: "How often the scheduler runs it. 0 = manual only. Default 60, and 0 for a listing.",
     }),
     enabled: z.boolean().optional(),
   })

@@ -27,6 +27,7 @@ import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { expireDueRequests, expireRequest } from "./approvals";
 import { enqueueJob, processJobs } from "./jobs";
 import { enqueueDueSyncs } from "./integration-syncs";
+import { enqueueOpenListingBatches } from "./integration-listings";
 import { sweepExpiredUploads } from "./uploads";
 import { sweepStaleFormUploads } from "./form-uploads";
 import { sweepStaleFormDrafts } from "./form-drafts";
@@ -349,6 +350,19 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await enqueueDueSyncs(ctx);
   } catch (e) {
     console.error("[integration-sync] enqueue failed", e);
+  }
+
+  // Listing batches: ask every open one what the marketplace decided.
+  //
+  // Separate from the sweep above, and that separation is the point. A listing
+  // sync defaults to manual, so `enqueueDueSyncs` — which only considers rows
+  // with an interval — would never revisit it, and every product an operator
+  // published by hand would read "pending" forever. A verdict is owed on the
+  // BATCH, not on a schedule.
+  try {
+    await enqueueOpenListingBatches(ctx);
+  } catch (e) {
+    console.error("[integration-listing] enqueue failed", e);
   }
 
   // Durable job queue: claim + run a batch of due jobs (function handlers,

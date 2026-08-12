@@ -3,6 +3,7 @@
 -- sweep runs independently of any sync's schedule.
 
 ALTER TABLE `integration_syncs` ADD COLUMN `category_field` text;--> statement-breakpoint
+ALTER TABLE `integration_syncs` ADD COLUMN `outputs_mapping` text DEFAULT '{}' NOT NULL;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `integration_listing_maps` (
   `id` text PRIMARY KEY NOT NULL,

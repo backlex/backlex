@@ -16,6 +16,11 @@
 -- workspace's idea of a category is a column of its own choosing.
 
 ALTER TABLE "integration_syncs" ADD COLUMN "category_field" text;--> statement-breakpoint
+-- A SECOND map, because it travels the other way: `mapping` says which column
+-- feeds a listing field, this says which column receives what the marketplace
+-- answered. Conflating them would mean a rejection reason could only be
+-- written to a column that also fed the request.
+ALTER TABLE "integration_syncs" ADD COLUMN "outputs_mapping" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
 
 -- How one of a workspace's categories maps onto a marketplace's.
 --

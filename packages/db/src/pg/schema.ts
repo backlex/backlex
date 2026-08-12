@@ -3765,6 +3765,16 @@ export const integrationSyncs = pgTable(
      * its own choosing — `category`, `product_type`, a relation's label.
      */
     categoryField: text("category_field"),
+    /**
+     * Where a verdict lands: provider output key → collection field.
+     *
+     * `listing` direction only, and it is a SECOND map because it travels the
+     * other way. `mapping` says which column feeds a listing field; this says
+     * which column receives what the marketplace answered. Conflating them
+     * would mean a rejection reason could only be written to a column that also
+     * fed the request.
+     */
+    outputsMapping: jsonb("outputs_mapping").$type<Record<string, string>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -3897,8 +3907,20 @@ export const integrationListingBatches = pgTable(
     batchId: text("batch_id").notNull(),
     /** `open` while anything is pending; then `settled` or `failed`. */
     status: text("status").notNull().default("open"),
-    /** Provider's echoed reference → the collection row it belongs to. */
-    sent: jsonb("sent").$type<Record<string, string>>().notNull().default({}),
+    /**
+     * Provider's echoed reference → the row it belongs to, and where that row
+     * lives.
+     *
+     * The collection travels WITH the batch rather than being re-derived from
+     * the sync when the verdict arrives. A verdict lands hours later, and an
+     * operator who repointed the sync's variant collection in between would
+     * otherwise have the answers written into whichever collection the sync
+     * names NOW — silently, into rows that happen to share an id.
+     */
+    sent: jsonb("sent")
+      .$type<Record<string, { rowId: string; collection: string }>>()
+      .notNull()
+      .default({}),
     /** How many units this batch is still waiting on. */
     pendingCount: integer("pending_count").notNull().default(0),
     error: text("error"),

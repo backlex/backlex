@@ -11,6 +11,7 @@ import { runFunction } from "./sandbox";
 import { deliverWebhookById } from "./webhooks";
 import { deliverIntegrationById } from "./integrations";
 import { runSync } from "./integration-syncs";
+import { pollListingBatchRow } from "./integration-listings";
 import { runTask } from "./integration-tasks";
 import { reconcileProvider } from "./payments";
 import { publishEvent } from "./events";
@@ -31,6 +32,10 @@ export type JobType =
   | "integration.deliver"
   | "integration.sync"
   | "integration.task"
+  /** Ask a marketplace what became of a batch of listings. Its own type rather
+   *  than a `sync` run because it is owed on batches, not on schedules — a
+   *  manually published batch has no interval to ride on. */
+  | "integration.listing-poll"
   | "agent.turn"
   | "payments.reconcile"
   | "agent.distill_memory";
@@ -338,6 +343,15 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     if (!job.tenantId) throw new Error("integration.sync job missing tenantId");
     const out = await runSync(ctx, job.tenantId, p.syncId);
     return { written: out.written, pages: out.pages, complete: out.complete };
+  }
+  if (job.type === "integration.listing-poll") {
+    const p = job.payload as { batchId?: string };
+    if (!p.batchId) throw new Error("integration.listing-poll job missing payload.batchId");
+    // The verdict is written into a workspace's collection, so a job without a
+    // tenant has nothing to scope by and must not fall through to "global".
+    if (!job.tenantId) throw new Error("integration.listing-poll job missing tenantId");
+    const out = await pollListingBatchRow(ctx, job.tenantId, p.batchId);
+    return { applied: out.applied, pending: out.pending, closed: out.closed };
   }
   if (job.type === "payments.reconcile") {
     const p = job.payload as {

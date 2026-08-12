@@ -1,6 +1,6 @@
 ---
 title: Marketplace listings
-description: Publish products to Trendyol, n11, Çiçeksepeti and Hepsiburada — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
+description: Publish products to Trendyol, n11, Çiçeksepeti, Hepsiburada and Amazon — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
 ---
 
 A **listing sync** puts your products on sale at a marketplace. It is the sixth
@@ -142,9 +142,9 @@ the product row.
 This is a configuration, not a special case: no provider branches on it, which
 is why "no variants" costs nothing.
 
-## The four marketplaces
+## The five marketplaces
 
-The shape held for all four, and they agree on almost nothing. What differs is
+The shape held for all five, and they agree on almost nothing. What differs is
 worth knowing before you map one.
 
 ### Trendyol
@@ -191,6 +191,39 @@ worth knowing before you map one.
   reason says so, because re-sending is your decision.
 - Echoes the **merchant SKU**; `hbSku` is Hepsiburada's own id and arrives only
   once the product exists.
+
+### Amazon
+
+Amazon is the odd one out on nearly every axis, and all of it is absorbed inside
+the provider — the mapping form works the same way it does for the other four.
+
+- **There is no category tree.** Amazon's categories are *product types*, a flat
+  vocabulary with no parents, so the picker is a search rather than a walk.
+- **The attributes come from a schema, and only the answerable ones are shown.**
+  A product type's attributes are published as a JSON Schema, and Amazon
+  describes far more elaborate shapes than one value — nested objects, per-date
+  schedules. Attributes that cannot be answered with a single value are **not
+  offered at all**, because a field that looks configured and changes nothing is
+  worse than one that is missing.
+- **Required attributes are listed first.** A product type routinely declares
+  two hundred of them and enforces eight.
+- **The reference is the SKU** — and unlike everywhere else, it is not something
+  Amazon echoes back as a courtesy. The SKU is the address: it is in the request
+  path, and every later read is by it.
+- **A refusal arrives immediately.** Amazon is the only one here that answers
+  the publish itself: `INVALID` closes that unit on the spot with its reasons.
+- **Acceptance does not.** `ACCEPTED` means "queued without blocking problems",
+  not "on sale". A listing is reported as accepted once Amazon says it is
+  **buyable**; until then it stays pending, and problems that appear minutes
+  later are read back as a rejection.
+- **Set the currency and the condition** on the sync before publishing. Amazon
+  prices carry their currency explicitly and there is nothing sensible to
+  default it to.
+- **Variants are listed as separate products.** Amazon groups variants with a
+  parent SKU and a variation theme rather than by marking an attribute, and that
+  is not built: each of your variants becomes its own listing on its own page.
+  Everything else works — this is the one place to expect less than the other
+  four give you.
 
 ## Template columns
 

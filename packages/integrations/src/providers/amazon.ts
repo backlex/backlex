@@ -1,4 +1,10 @@
-import { defineProvider } from "../provider";
+import {
+  defineProvider,
+  type ListingAttribute,
+  type ListingAttributeBinding,
+  type ListingCategory,
+  type ListingVerdict,
+} from "../provider";
 import { takeToken } from "../throttle";
 
 /**
@@ -41,14 +47,24 @@ import { takeToken } from "../throttle";
  * put a minute in front of an operator clicking a button, so each takes its own
  * token from the engine's bucket. See {@link ORDERS_PACE}.
  *
- * **There is no destination here, on purpose.** Price and quantity are written
- * through the Listings Items API as JSON-patch operations against attributes
- * (`purchasable_offer`, `fulfillment_availability`) whose exact value shapes are
- * defined per product type by the Product Type Definitions API and are not
- * stated in the operation's own reference. Writing a seller's prices from a
- * guessed payload is the one failure that is worse than not shipping the
- * feature: it reports a clean run and changes nothing, or changes the wrong
- * thing. It belongs in a follow-up that reads the product type definition first.
+ * **There is still no destination here** — but the reason has changed, and so
+ * has the answer. It used to be that an attribute's value shape is defined per
+ * product type and is not in the operation reference, so a hand-written payload
+ * would be a guess about a seller's own catalogue. That was the right call and
+ * it is why this provider shipped without either write path. The follow-up it
+ * asked for is the `listing` block below: it READS the product type definition,
+ * fetches the JSON Schema the definition links to, and builds every value from
+ * it. Price and quantity now travel that way. A separate destination — mirroring
+ * price and stock for listings somebody else created — is a different job and
+ * is not built.
+ *
+ * **Variations are not built, deliberately.** Amazon does not mark an attribute
+ * as the one that varies, the way Trendyol and n11 do; it wants a parent SKU
+ * carrying a `variation_theme` and children pointing at it. So a workspace's
+ * variants are listed here as standalone SKUs — correct listings, each on its
+ * own page, rather than one page with a size picker. Grouping them is a real
+ * feature, not a flag, and it needs the relationship attributes read off the
+ * same schema. Said out loud in the docs rather than left to be discovered.
  */
 
 /**
@@ -135,7 +151,7 @@ export const amazon = defineProvider({
   id: "amazon",
   label: "Amazon",
   category: "marketplace",
-  capabilities: ["source", "task"],
+  capabilities: ["source", "task", "listing"],
   /**
    * A modest provider-wide floor. The real pacing is per operation — see
    * {@link ORDERS_PACE} — because Amazon publishes it that way and the spread
@@ -373,7 +389,565 @@ export const amazon = defineProvider({
       },
     },
   ],
+
+  /**
+   * Putting a product on sale — the sixth shape, and the one this provider
+   * shipped without.
+   *
+   * The reason it was left out is in the header above: an attribute's value
+   * shape is defined per product type and is not in the operation reference, so
+   * a hand-written payload would have been a guess about a seller's own
+   * catalogue. That reason no longer holds, because the Product Type
+   * Definitions API hands the schema over — and this implementation is driven
+   * BY that schema rather than by a remembered example.
+   *
+   * Four things here differ from every marketplace before it:
+   *
+   * **The taxonomy is FLAT and has no tree.** Amazon's "categories" are product
+   * types, returned as a plain list with no parent. Every node is therefore a
+   * leaf, and the picker is a search rather than a walk.
+   *
+   * **The attributes are behind a second, signed link.** The definition names a
+   * `schema.link.resource` on Amazon's own CDN, and the actual JSON Schema is
+   * fetched from there. Hepsiburada set the precedent of a provider making its
+   * own second call; this one goes further, because the schema is also what
+   * tells `publish` how to WRAP each value.
+   *
+   * **The answer is synchronous, and it is still not the verdict.** A PUT
+   * answers `ACCEPTED` or `INVALID` immediately — the only marketplace here
+   * that refuses on the spot. But `ACCEPTED` means "queued without blocking
+   * problems", not "on sale": Amazon settles it afterwards, and issues can
+   * appear minutes later. So an immediate `INVALID` closes that unit and
+   * everything else is polled, which is exactly the two-phase shape the engine
+   * already models.
+   *
+   * **One call per unit.** There is no batch endpoint here; the SKU is in the
+   * path. At five requests a second that is the binding constraint on a run.
+   */
+  listing: {
+    settingFields: [
+      {
+        key: "currency",
+        label: "Currency (ISO 4217)",
+        placeholder: "EUR",
+      },
+      {
+        key: "conditionType",
+        label: "Condition",
+        options: [
+          { value: "new_new", label: "New" },
+          { value: "refurbished_refurbished", label: "Refurbished" },
+          { value: "used_like_new", label: "Used — like new" },
+          { value: "used_very_good", label: "Used — very good" },
+          { value: "used_good", label: "Used — good" },
+          { value: "used_acceptable", label: "Used — acceptable" },
+        ],
+      },
+      {
+        key: "languageTag",
+        label: "Language tag for text (optional)",
+        placeholder: "en_US",
+      },
+    ],
+    /**
+     * Product-level fields.
+     *
+     * Deliberately short. Everything beyond the handful every product type
+     * shares is reached through the ATTRIBUTE mapper, because which attributes
+     * exist is a property of the chosen product type — the whole reason this
+     * shape interrogates the provider instead of declaring a form.
+     */
+    columns: [
+      { value: "title", label: "Title (item_name)" },
+      { value: "description", label: "Description (product_description)" },
+      { value: "brand", label: "Brand" },
+      { value: "bulletPoints", label: "Bullet points, one per line (optional)" },
+      { value: "images", label: "Image URLs (optional)" },
+    ],
+    variantColumns: [
+      { value: "sku", label: "Seller SKU" },
+      { value: "quantity", label: "Stock quantity" },
+      { value: "price", label: "Price" },
+    ],
+    /**
+     * The SKU, and it is the strongest reference of any provider here: Amazon
+     * does not merely echo it, it is the resource being addressed — the PUT
+     * path IS the SKU, and both the response and every later read carry it.
+     */
+    referenceColumn: "sku",
+    outputs: [
+      { key: "listingId", label: "Seller SKU (listing id)" },
+      { key: "listingStatus", label: "Listing status" },
+      { key: "listingError", label: "Rejection reason" },
+      { key: "listedAt", label: "Listed at" },
+    ],
+
+    async categories(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const token = await accessToken(ctx, conn);
+      await takeToken(`amazon:definitions:${conn.sellerId}`, DEFINITIONS_PACE);
+      const url = `${conn.host}/definitions/2020-09-01/productTypes?marketplaceIds=${encodeURIComponent(conn.marketplaceId)}`;
+      const res = await ctx.fetch(url, { headers: headersFor(token) });
+      if (!res.ok) throw await readError(res, "read the product types");
+      const body = (await res.json()) as { productTypes?: unknown };
+      const list = Array.isArray(body.productTypes) ? body.productTypes : [];
+      const out: ListingCategory[] = [];
+      for (const raw of list) {
+        const pt = raw as Record<string, unknown>;
+        const name = text(pt.name);
+        if (!name) continue;
+        // No parent, and leaf for everyone: Amazon publishes product types as a
+        // flat vocabulary. Saying so here is what keeps the picker honest
+        // rather than drawing a one-level tree that means nothing.
+        out.push({ id: name, name: text(pt.displayName) ?? name, parentId: null, leaf: true });
+      }
+      return out;
+    },
+
+    async attributes(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const token = await accessToken(ctx, conn);
+      const schema = await productTypeSchema(ctx, conn, token, ctx.categoryId);
+      return schemaAttributes(schema);
+    },
+
+    async publish(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const token = await accessToken(ctx, conn);
+      const currency = (ctx.setting("currency") ?? "").trim().toUpperCase();
+      if (!/^[A-Z]{3}$/.test(currency)) {
+        throw new Error("Set the listing's currency to an ISO 4217 code before publishing — Amazon prices carry it explicitly");
+      }
+      const conditionType = ctx.setting("conditionType") ?? "new_new";
+      const languageTag = (ctx.setting("languageTag") ?? "").trim() || null;
+
+      // One schema per product type in this batch, not per unit. A run is
+      // normally one or two types, and the schema is the largest thing fetched
+      // here.
+      const schemas = new Map<string, ProductTypeSchema>();
+      const rejected: ListingVerdict[] = [];
+      let accepted = 0;
+
+      for (const product of ctx.products) {
+        let schema = schemas.get(product.categoryId);
+        if (!schema) {
+          schema = await productTypeSchema(ctx, conn, token, product.categoryId);
+          schemas.set(product.categoryId, schema);
+        }
+        for (const variant of product.variants) {
+          const sku = text(variant.fields.sku) ?? variant.reference;
+          if (!sku) {
+            rejected.push({ reference: variant.reference, status: "rejected", errors: ["no seller SKU"] });
+            continue;
+          }
+          const attributes = buildAttributes({
+            schema,
+            product,
+            variant,
+            conn,
+            currency,
+            conditionType,
+            languageTag,
+          });
+
+          await takeToken(`amazon:listings:${conn.sellerId}`, LISTINGS_PACE);
+          const res = await ctx.fetch(
+            `${conn.host}/listings/2021-08-01/items/${encodeURIComponent(conn.sellerId)}/${encodeURIComponent(sku)}?marketplaceIds=${encodeURIComponent(conn.marketplaceId)}`,
+            {
+              method: "PUT",
+              headers: { ...headersFor(token), "Content-Type": "application/json" },
+              body: JSON.stringify({
+                productType: product.categoryId,
+                requirements: "LISTING",
+                attributes,
+              }),
+            },
+          );
+          if (!res.ok) throw await readError(res, `list ${sku}`);
+          const body = (await res.json().catch(() => ({}))) as {
+            status?: unknown;
+            issues?: { message?: unknown; severity?: unknown }[];
+          };
+          const status = text(body.status);
+          const errors = (body.issues ?? [])
+            .filter((i) => text(i.severity) === "ERROR")
+            .map((i) => text(i.message) ?? "")
+            .filter(Boolean);
+          if (status === "INVALID") {
+            // Refused on the spot, so this unit is settled and must not be
+            // polled — the same reading n11's `REJECT` gets.
+            rejected.push({
+              reference: variant.reference,
+              status: "rejected",
+              errors: errors.length > 0 ? errors : ["Amazon refused the listing without saying why"],
+            });
+            continue;
+          }
+          accepted += 1;
+        }
+      }
+
+      // The batch id is the moment the publish ran, because that is what the
+      // poll asks with: Amazon has no batch, only listings that were last
+      // updated after a point in time. The engine drops any verdict whose
+      // reference this batch never sent, which is what makes that safe.
+      return { batchId: accepted > 0 ? String(Date.now()) : "", rejected };
+    },
+
+    async poll(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const token = await accessToken(ctx, conn);
+      const since = Number(ctx.batchId);
+      if (!Number.isFinite(since)) return [];
+
+      const out: ListingVerdict[] = [];
+      let pageToken: string | null = null;
+      for (let page = 0; page < POLL_PAGES; page += 1) {
+        const url = new URL(`${conn.host}/listings/2021-08-01/items/${encodeURIComponent(conn.sellerId)}`);
+        url.searchParams.set("marketplaceIds", conn.marketplaceId);
+        url.searchParams.set("includedData", "summaries,issues");
+        // A second before the publish: Amazon stamps `lastUpdatedDate` itself,
+        // and a boundary that excluded the unit we just sent would report it
+        // pending for ever.
+        url.searchParams.set("lastUpdatedAfter", new Date(since - 1000).toISOString());
+        url.searchParams.set("pageSize", "20");
+        if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+        await takeToken(`amazon:listings-search:${conn.sellerId}`, SEARCH_PACE);
+        const res = await ctx.fetch(url.toString(), { headers: headersFor(token) });
+        if (!res.ok) throw await readError(res, "read the listing statuses");
+        const body = (await res.json()) as {
+          items?: Record<string, unknown>[];
+          pagination?: { nextToken?: unknown };
+        };
+        for (const item of body.items ?? []) {
+          const verdict = readItemVerdict(item);
+          if (verdict) out.push(verdict);
+        }
+        pageToken = text(body.pagination?.nextToken);
+        if (!pageToken) break;
+      }
+      return out;
+    },
+  },
 });
+
+
+// ── Listing ──────────────────────────────────────────────────────────────────
+
+/** The published pace of the listing operations, from the API's own reference. */
+const DEFINITIONS_PACE = { rps: 5, burst: 10 } as const;
+const LISTINGS_PACE = { rps: 5, burst: 10 } as const;
+const SEARCH_PACE = { rps: 5, burst: 5 } as const;
+
+/** Pages one poll walks. Bounds the invocation; the next sweep resumes. */
+const POLL_PAGES = 5;
+
+/**
+ * Hosts a product type schema may be fetched from.
+ *
+ * The link comes out of an authenticated Amazon response rather than from a
+ * caller, so this is not an SSRF guard so much as a promise about where this
+ * provider will send a seller's access token — which is why the token is NOT
+ * sent with it. Same call the EasyPost label host got.
+ */
+const SCHEMA_HOSTS = [".amazonaws.com", ".media-amazon.com", ".ssl-images-amazon.com"] as const;
+
+/** A product type's JSON Schema, as far as this provider reads it. */
+interface ProductTypeSchema {
+  properties: Record<string, Record<string, unknown>>;
+  required: readonly string[];
+}
+
+/**
+ * Fetch a product type definition and then the schema it links to.
+ *
+ * Two requests, and the second one is to a signed URL on a CDN. The definition
+ * is asked for with `requirements=LISTING` because that is the set a seller
+ * creating their own listing has to satisfy; the offer-only and product-only
+ * sets exist for sellers adding to someone else's catalogue entry.
+ */
+const productTypeSchema = async (
+  ctx: { fetch: (u: string, i?: RequestInit) => Promise<Response> },
+  conn: Connection,
+  token: string,
+  productType: string,
+): Promise<ProductTypeSchema> => {
+  if (!/^[A-Z0-9_]{1,80}$/.test(productType)) {
+    throw new Error(`"${productType}" is not an Amazon product type`);
+  }
+  await takeToken(`amazon:definitions:${conn.sellerId}`, DEFINITIONS_PACE);
+  const url =
+    `${conn.host}/definitions/2020-09-01/productTypes/${encodeURIComponent(productType)}` +
+    `?marketplaceIds=${encodeURIComponent(conn.marketplaceId)}&sellerId=${encodeURIComponent(conn.sellerId)}` +
+    `&requirements=LISTING&requirementsEnforced=ENFORCED`;
+  const res = await ctx.fetch(url, { headers: headersFor(token) });
+  if (!res.ok) throw await readError(res, `read the "${productType}" definition`);
+  const body = (await res.json()) as { schema?: { link?: { resource?: unknown } } };
+  const link = text(body.schema?.link?.resource);
+  if (!link) throw new Error(`Amazon returned no schema for "${productType}"`);
+
+  let host: string;
+  try {
+    host = new URL(link).hostname;
+  } catch {
+    throw new Error("Amazon returned an unreadable schema link");
+  }
+  if (!SCHEMA_HOSTS.some((suffix) => host.endsWith(suffix))) {
+    throw new Error(`Amazon pointed the "${productType}" schema at ${host}, which is not one of its own hosts`);
+  }
+
+  // No credentials on this leg: the link is already signed, and Amazon's access
+  // token has no business travelling to a CDN.
+  const schemaRes = await ctx.fetch(link, { headers: { Accept: "application/json" } });
+  if (!schemaRes.ok) throw new Error(`Amazon's schema host responded ${schemaRes.status} for "${productType}"`);
+  const schema = (await schemaRes.json()) as { properties?: unknown; required?: unknown };
+  const properties: Record<string, Record<string, unknown>> = {};
+  if (schema.properties && typeof schema.properties === "object") {
+    for (const [k, v] of Object.entries(schema.properties as Record<string, unknown>)) {
+      if (v && typeof v === "object") properties[k] = v as Record<string, unknown>;
+    }
+  }
+  const required = Array.isArray(schema.required) ? schema.required.filter((r): r is string => typeof r === "string") : [];
+  return { properties, required };
+};
+
+/** The object one entry of an attribute array carries, per the schema. */
+const itemProperties = (prop: Record<string, unknown> | undefined): Record<string, Record<string, unknown>> => {
+  const items = prop?.items as Record<string, unknown> | undefined;
+  const props = items?.properties;
+  if (!props || typeof props !== "object") return {};
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const [k, v] of Object.entries(props as Record<string, unknown>)) {
+    if (v && typeof v === "object") out[k] = v as Record<string, unknown>;
+  }
+  return out;
+};
+
+/**
+ * The attributes this provider will offer an operator.
+ *
+ * Only the ones it can actually FILL. Amazon's schemas describe attributes far
+ * more varied than one bound value — nested objects, per-sub-attribute
+ * schedules — and an attribute offered in the mapping form that the publish
+ * could not express would be worse than an omission: it would read as
+ * configured and change nothing. So an attribute is offered when one entry of
+ * its array carries a plain `value`, and skipped otherwise. The ones this file
+ * fills from declared columns are skipped too, so the same fact is not asked
+ * for twice in two places that could disagree.
+ */
+const schemaAttributes = (schema: ProductTypeSchema): ListingAttribute[] => {
+  const required = new Set(schema.required);
+  const out: ListingAttribute[] = [];
+  for (const [name, prop] of Object.entries(schema.properties)) {
+    if (COLUMN_ATTRIBUTES.has(name)) continue;
+    const props = itemProperties(prop);
+    const value = props.value;
+    if (!value) continue;
+
+    const rawEnum = Array.isArray(value.enum) ? value.enum : [];
+    const names = Array.isArray((value as { enumNames?: unknown }).enumNames)
+      ? ((value as { enumNames?: unknown }).enumNames as unknown[])
+      : [];
+    const values = rawEnum
+      .map((v, i) => ({ id: String(v), name: text(names[i]) ?? String(v) }))
+      .filter((v) => v.id !== "");
+
+    const maxItems = typeof prop.maxItems === "number" ? prop.maxItems : null;
+    out.push({
+      id: name,
+      name: text(prop.title) ?? name,
+      required: required.has(name),
+      // A closed set refuses anything outside it; everything else is free text.
+      allowCustom: values.length === 0,
+      // Amazon expresses a variation with a parent SKU and a `variation_theme`
+      // rather than by marking an attribute, so there is nothing here to
+      // report. See the note on variations below.
+      variant: false,
+      multiple: maxItems === null ? false : maxItems > 1,
+      values,
+    });
+  }
+  // Required first: a form with two hundred optional attributes below the eight
+  // that decide whether the listing is accepted is a form nobody finishes.
+  return out.sort((a, b) => (a.required === b.required ? a.name.localeCompare(b.name) : a.required ? -1 : 1));
+};
+
+/**
+ * Attributes this provider fills itself, from its declared columns.
+ *
+ * Kept out of the mapping form so one fact never has two sources.
+ */
+const COLUMN_ATTRIBUTES = new Set([
+  "item_name",
+  "product_description",
+  "brand",
+  "bullet_point",
+  "main_product_image_locator",
+  "other_product_image_locator_1",
+  "other_product_image_locator_2",
+  "other_product_image_locator_3",
+  "other_product_image_locator_4",
+  "other_product_image_locator_5",
+  "condition_type",
+  "purchasable_offer",
+  "fulfillment_availability",
+  "merchant_suggested_asin",
+]);
+
+/**
+ * Wrap one value the way the schema says this attribute is carried.
+ *
+ * Every Amazon attribute is an ARRAY of objects, and which selectors those
+ * objects take differs per attribute — `marketplace_id` on nearly all of them,
+ * `language_tag` on the localisable ones. Reading that off the schema rather
+ * than sending a fixed envelope is what makes this work across product types
+ * without a table of special cases.
+ */
+const wrapValue = (
+  prop: Record<string, unknown> | undefined,
+  value: unknown,
+  conn: Connection,
+  languageTag: string | null,
+): unknown[] => {
+  const props = itemProperties(prop);
+  const entry: Record<string, unknown> = { value };
+  if (props.marketplace_id) entry.marketplace_id = conn.marketplaceId;
+  if (props.language_tag && languageTag) entry.language_tag = languageTag;
+  return [entry];
+};
+
+/**
+ * The offer — price — in the one shape Amazon documents for it.
+ *
+ * `our_price` is an array of schedules and the price sits on `value_with_tax`;
+ * `currency` and `marketplace_id` are selectors that say which offer this is,
+ * not data. Verified against Amazon's own sub-attribute reference rather than
+ * inferred, because a price written into the wrong field is the failure that
+ * looks like success.
+ */
+const buildOffer = (conn: Connection, currency: string, price: number): unknown[] => [
+  {
+    marketplace_id: conn.marketplaceId,
+    currency,
+    our_price: [{ schedule: [{ value_with_tax: price }] }],
+  },
+];
+
+/**
+ * Stock, with the fulfilment channel read off the schema.
+ *
+ * The selector's name is the same everywhere but its accepted values are the
+ * seller's own channels, so the schema is asked rather than assumed; `DEFAULT`
+ * — merchant-fulfilled — is the fallback when it enumerates nothing.
+ */
+const buildAvailability = (prop: Record<string, unknown> | undefined, quantity: number): unknown[] => {
+  const channel = itemProperties(prop).fulfillment_channel_code;
+  const options = Array.isArray(channel?.enum) ? (channel.enum as unknown[]) : [];
+  const code = text(options[0]) ?? "DEFAULT";
+  return [{ fulfillment_channel_code: code, quantity }];
+};
+
+/** Build the whole `attributes` object for one unit. */
+const buildAttributes = (args: {
+  schema: ProductTypeSchema;
+  product: { fields: Record<string, unknown> };
+  variant: { fields: Record<string, unknown>; attributes: readonly ListingAttributeBinding[] };
+  conn: Connection;
+  currency: string;
+  conditionType: string;
+  languageTag: string | null;
+}): Record<string, unknown> => {
+  const { schema, product, variant, conn, currency, conditionType, languageTag } = args;
+  const has = (name: string) => name in schema.properties;
+  const out: Record<string, unknown> = {};
+  const put = (name: string, value: unknown) => {
+    if (!has(name) || value === null || value === undefined || value === "") return;
+    out[name] = wrapValue(schema.properties[name], value, conn, languageTag);
+  };
+
+  put("item_name", text(product.fields.title));
+  put("product_description", text(product.fields.description));
+  put("brand", text(product.fields.brand));
+  put("condition_type", conditionType);
+
+  // One bullet per line, capped at the five Amazon shows. A single wrapped
+  // entry per bullet, because the attribute is a repeated one.
+  const bullets = (text(product.fields.bulletPoints) ?? "")
+    .split(/\r?\n/)
+    .map((b) => b.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  if (bullets.length > 0 && has("bullet_point")) {
+    out.bullet_point = bullets.flatMap((b) => wrapValue(schema.properties.bullet_point, b, conn, languageTag));
+  }
+
+  const images = splitList(product.fields.images);
+  if (images[0]) put("main_product_image_locator", images[0]);
+  for (let i = 1; i < images.length && i <= 5; i += 1) {
+    put(`other_product_image_locator_${i}`, images[i]);
+  }
+
+  const price = num(variant.fields.price);
+  if (price !== null && has("purchasable_offer")) out.purchasable_offer = buildOffer(conn, currency, price);
+  const quantity = num(variant.fields.quantity);
+  if (quantity !== null && has("fulfillment_availability")) {
+    out.fulfillment_availability = buildAvailability(schema.properties.fulfillment_availability, quantity);
+  }
+
+  // The operator's own answers last, so a mapped attribute wins over nothing
+  // and never silently overwrites a column above (those names are excluded
+  // from the mapping form).
+  for (const binding of variant.attributes) {
+    const prop = schema.properties[binding.attributeId];
+    if (!prop) continue;
+    const value = binding.valueId ?? binding.custom;
+    if (value === undefined || value === "") continue;
+    const existing = out[binding.attributeId];
+    const wrapped = wrapValue(prop, value, conn, languageTag);
+    out[binding.attributeId] = Array.isArray(existing) ? [...existing, ...wrapped] : wrapped;
+  }
+
+  return out;
+};
+
+/** Image URLs, however the mapped column spells a list. */
+const splitList = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) return raw.map((v) => text(v) ?? "").filter(Boolean);
+  const s = text(raw);
+  if (!s) return [];
+  return s
+    .split(/[\n,;]/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+};
+
+/**
+ * What one searched listing says about itself.
+ *
+ * `BUYABLE` is the only unambiguous "it worked" Amazon offers — an item can
+ * exist, be free of errors and still not be for sale. An ERROR-severity issue
+ * closes the unit the other way. Anything else is left pending, which is the
+ * honest answer while Amazon is still deciding.
+ */
+const readItemVerdict = (item: Record<string, unknown>): ListingVerdict | null => {
+  const sku = text(item.sku);
+  if (!sku) return null;
+  const issues = Array.isArray(item.issues) ? (item.issues as Record<string, unknown>[]) : [];
+  const errors = issues
+    .filter((i) => text(i.severity) === "ERROR")
+    .map((i) => text(i.message) ?? "")
+    .filter(Boolean);
+  if (errors.length > 0) return { reference: sku, status: "rejected", errors };
+
+  const summaries = Array.isArray(item.summaries) ? (item.summaries as Record<string, unknown>[]) : [];
+  const live = summaries.some((s) => {
+    const status = Array.isArray(s.status) ? (s.status as unknown[]) : [];
+    return status.some((v) => text(v) === "BUYABLE");
+  });
+  if (live) return { reference: sku, status: "accepted", externalId: sku };
+  return { reference: sku, status: "pending" };
+};
 
 // ── Connection ───────────────────────────────────────────────────────────────
 

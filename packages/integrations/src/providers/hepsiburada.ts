@@ -1,4 +1,12 @@
-import { defineProvider, type DestinationRow } from "../provider";
+import {
+  defineProvider,
+  type DestinationRow,
+  type ListingAttribute,
+  type ListingCategory,
+  type ListingProduct,
+  type ListingVariant,
+  type ListingVerdict,
+} from "../provider";
 
 /**
  * Hepsiburada — a seller's orders and packages in, stock and price out, and the
@@ -70,8 +78,19 @@ import { defineProvider, type DestinationRow } from "../provider";
  * documented as the same names with `-sit` removed.
  */
 const HOSTS = {
-  production: { oms: "https://oms-external.hepsiburada.com", listing: "https://listing-external.hepsiburada.com" },
-  test: { oms: "https://oms-external-sit.hepsiburada.com", listing: "https://listing-external-sit.hepsiburada.com" },
+  production: {
+    oms: "https://oms-external.hepsiburada.com",
+    listing: "https://listing-external.hepsiburada.com",
+    // A THIRD host, and it is the catalog's: creating a product, reading the
+    // category tree and reading a category's attributes all live here, while
+    // `listing` above only ever changes an offer that already exists.
+    catalog: "https://mpop.hepsiburada.com/product",
+  },
+  test: {
+    oms: "https://oms-external-sit.hepsiburada.com",
+    listing: "https://listing-external-sit.hepsiburada.com",
+    catalog: "https://mpop-sit.hepsiburada.com/product",
+  },
 } as const;
 
 type Environment = keyof typeof HOSTS;
@@ -123,7 +142,7 @@ export const hepsiburada = defineProvider({
   id: "hepsiburada",
   label: "Hepsiburada",
   category: "marketplace",
-  capabilities: ["source", "destination", "task"],
+  capabilities: ["source", "destination", "task", "listing"],
   /**
    * Hepsiburada publishes a thousand requests per second and returns
    * `X-RateLimit-*` headers with a 429. Paced well under it: the bucket is
@@ -279,6 +298,269 @@ export const hepsiburada = defineProvider({
    *
    * `refresh_package` is the exception and is marked repeatable — it is a read.
    */
+  /**
+   * Putting a product ON SALE — and the odd one out on three axes at once,
+   * every one of them absorbed here rather than by the engine.
+   *
+   * 1. **The categories are PAGED.** The other three hand back the whole tree
+   *    in one request; this one is walked.
+   * 2. **An attribute's values are a SECOND call**, one per attribute. The
+   *    other three send the values inline.
+   * 3. **The create is a FILE.** `POST /api/products/import` takes
+   *    `multipart/form-data` with one binary part — and the part is a JSON
+   *    document, which is the fact that made this implementable at all.
+   *
+   * A fourth thing is subtler and shapes the code more than any of them: **the
+   * file keys on attribute NAMES, and its values are value NAMES** —
+   * `"Marka": "Nike"`, `"renk_variant_property": "Siyah"`. So this provider
+   * reports each attribute's NAME as its id. Our engine hands `publish` the
+   * stored binding and nothing else; had the ids been Hepsiburada's own, the
+   * provider would have to re-fetch and re-walk the whole category to turn them
+   * back into the names the file needs.
+   *
+   * **`FAILED` here means a TECHNICAL error and is worth re-sending**, where the
+   * same word at the other three means the marketplace refused the product. The
+   * distinction is not translated away: it is reported as a rejection with
+   * Hepsiburada's own words attached, because an operator re-sending is a
+   * decision, not something to do silently on their behalf.
+   */
+  listing: {
+    columns: [
+      { value: "UrunAdi", label: "Product name" },
+      { value: "UrunAciklamasi", label: "Description" },
+      { value: "Marka", label: "Brand name" },
+      { value: "images", label: "Image URLs (up to 10)" },
+      { value: "Video1", label: "Video URL (optional)" },
+      { value: "GarantiSuresi", label: "Warranty in months (optional)" },
+    ],
+    variantColumns: [
+      { value: "merchantSku", label: "Merchant SKU" },
+      { value: "Barcode", label: "Barcode" },
+      { value: "price", label: "Price" },
+      { value: "stock", label: "Stock quantity" },
+      { value: "tax_vat_rate", label: "VAT rate" },
+    ],
+    // Hepsiburada echoes our own `merchantSku` on every status row — `hbSku` is
+    // theirs and does not exist until the product is created.
+    referenceColumn: "merchantSku",
+    outputs: [
+      { key: "listingId", label: "Hepsiburada SKU (hbSku)" },
+      { key: "listingStatus", label: "Listing status" },
+      { key: "listingError", label: "Rejection reason" },
+      { key: "listedAt", label: "Listed at" },
+    ],
+
+    /**
+     * The tree, walked.
+     *
+     * `leaf=false` is NOT sent: a picker needs the parents too, to show an
+     * operator where a leaf sits. The walk is bounded — a tree that never ends
+     * is a paging bug at the far end, and the alternative to a bound is a form
+     * that never loads.
+     */
+    async categories(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const out: ListingCategory[] = [];
+      for (let page = 0; page < MAX_CATEGORY_PAGES; page++) {
+        const url = new URL(`${conn.catalog}/api/categories/get-all-categories`);
+        url.searchParams.set("status", "ACTIVE");
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("size", String(CATEGORY_PAGE));
+        const res = await ctx.fetch(url.toString(), { headers: conn.headers });
+        if (!res.ok) throw await readError(res, "read the categories");
+        const body = (await res.json()) as { data?: unknown };
+        const rows = asArray(obj(body.data).data ?? body.data);
+        if (rows.length === 0) break;
+        for (const raw of rows) {
+          const row = obj(raw);
+          const id = text(row.categoryId);
+          if (!id) continue;
+          out.push({
+            id,
+            // `displayName` is what a person reads; `name` is the slug-ish one.
+            name: text(row.displayName) ?? text(row.name) ?? id,
+            parentId: text(row.parentCategoryId),
+            leaf: row.leaf === true,
+          });
+        }
+        if (rows.length < CATEGORY_PAGE) break;
+      }
+      return out;
+    },
+
+    /**
+     * What one category demands — and the only `attributes` here that costs
+     * more than one request.
+     *
+     * `baseAttributes` are deliberately DROPPED: they are the fixed fields
+     * (`UrunAdi`, `price`, `stock`, …) already declared as columns above, and
+     * returning them would ask an operator to map the same thing twice, in two
+     * places that could then disagree.
+     *
+     * Values come from a second call PER attribute, so the number of requests
+     * is bounded. An attribute past the bound, or one whose values cannot be
+     * read, is offered as free text rather than dropped — a required attribute
+     * that vanished would make the category unlistable.
+     */
+    async attributes(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const categoryId = numericId(ctx.categoryId, "category id");
+      const res = await ctx.fetch(`${conn.catalog}/api/categories/${categoryId}/attributes`, {
+        headers: conn.headers,
+      });
+      if (!res.ok) throw await readError(res, "read the category attributes");
+      const body = (await res.json()) as { data?: unknown };
+      const data = obj(obj(body.data).data ?? body.data);
+
+      const declared: { raw: Record<string, unknown>; variant: boolean }[] = [
+        ...asArray(data.attributes).map((a) => ({ raw: obj(a), variant: false })),
+        ...asArray(data.variantAttributes).map((a) => ({ raw: obj(a), variant: true })),
+      ];
+
+      const out: ListingAttribute[] = [];
+      let lookups = 0;
+      for (const { raw, variant } of declared) {
+        // The NAME is the identifier, because the name is what the import file
+        // uses as its key. See this block's note.
+        const name = text(raw.name);
+        if (!name) continue;
+        const attributeId = text(raw.id);
+        let values: { id: string; name: string }[] = [];
+        if (attributeId && lookups < MAX_VALUE_LOOKUPS) {
+          lookups++;
+          values = await readAttributeValues(ctx, conn, categoryId, attributeId);
+        }
+        out.push({
+          id: name,
+          name,
+          required: raw.mandatory === true,
+          variant,
+          multiple: raw.multiValue === true,
+          // With no closed set to pick from, free text is the only answer left.
+          allowCustom: values.length === 0,
+          values,
+        });
+      }
+      return out;
+    },
+
+    async publish(ctx) {
+      const conn = readConnection(ctx, "listing");
+
+      // One file per CATEGORY, because the file names its category once at the
+      // top rather than per row. A batch spanning two categories is therefore
+      // two requests — and the engine expects one ticket, so the rest are left
+      // for the next run rather than silently dropped.
+      const byCategory = new Map<string, ListingProduct[]>();
+      for (const product of ctx.products) {
+        const list = byCategory.get(product.categoryId) ?? [];
+        list.push(product);
+        byCategory.set(product.categoryId, list);
+      }
+      const [first] = [...byCategory.entries()];
+      if (!first) return { batchId: "", rejected: [] };
+      const [categoryId, products] = first;
+
+      const rows: Record<string, unknown>[] = [];
+      const rejected: ListingVerdict[] = [];
+      for (const product of products) {
+        for (const variant of product.variants) {
+          const built = buildImportRow(product, variant);
+          if (typeof built === "string") {
+            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            continue;
+          }
+          rows.push(built);
+        }
+      }
+      // Anything in another category is not refused — it is simply not in this
+      // file, and the next run picks it up.
+      if (rows.length === 0) return { batchId: "", rejected };
+
+      const file = JSON.stringify({
+        categoryId: Number(numericId(categoryId, "category id")),
+        merchant: conn.merchantId,
+        attributes: rows,
+      });
+      const form = new FormData();
+      // The part is a JSON DOCUMENT sent as a file — the name matters only in
+      // so far as it must be there.
+      form.append("file", new Blob([file], { type: "application/json" }), "products.json");
+
+      const res = await ctx.fetch(`${conn.catalog}/api/products/import?version=1`, {
+        method: "POST",
+        // Content-Type is deliberately NOT set: the boundary is generated with
+        // the body, and a hand-written header would name a boundary that is not
+        // in it.
+        headers: conn.headers,
+        body: form,
+      });
+      if (!res.ok) throw await readError(res, "create the products");
+
+      const body = (await res.json().catch(() => ({}))) as { data?: unknown };
+      const batchId = text(obj(body.data).trackingId ?? obj(body.data).data ?? body.data);
+      if (!batchId) {
+        throw new Error("Hepsiburada accepted the products but returned no tracking id");
+      }
+      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+    },
+
+    /**
+     * What became of an import.
+     *
+     * **`FAILED` is a technical error at Hepsiburada, not a refusal**, and the
+     * roadmap's rule holds: the same word must not be translated twice. It is
+     * still reported as a rejection — the unit did not list — but the reason
+     * carries Hepsiburada's own words, and a sentence saying it is worth
+     * re-sending, which is the only thing that distinguishes it for the person
+     * who has to act.
+     */
+    async poll(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const trackingId = ctx.batchId.trim();
+      // The ticket is Hepsiburada's own and goes into a URL PATH, so it is
+      // checked rather than trusted: it round-trips through our database first.
+      if (!/^[A-Za-z0-9-]{1,64}$/.test(trackingId)) {
+        throw new Error("Hepsiburada tracking id is not a tracking id");
+      }
+
+      const res = await ctx.fetch(`${conn.catalog}/api/products/status/${trackingId}`, {
+        headers: conn.headers,
+      });
+      if (!res.ok) throw await readError(res, "read the listing import");
+      const body = (await res.json()) as { data?: unknown };
+      const rows = asArray(obj(body.data).data ?? body.data);
+
+      const out: ListingVerdict[] = [];
+      for (const raw of rows) {
+        const row = obj(raw);
+        const reference = text(row.merchantSku);
+        if (!reference) continue;
+        const status = text(row.importStatus)?.toUpperCase();
+        const reasons = asArray(row.rejectReasonsMessages)
+          .map((r) => text(r))
+          .filter((r): r is string => r !== null);
+
+        if (status === "SUCCESS") {
+          // `hbSku` is Hepsiburada's own id and the one an operator needs to
+          // find the product in their panel.
+          out.push({ reference, status: "accepted", externalId: text(row.hbSku) ?? reference });
+        } else if (status === "FAILED") {
+          out.push({
+            reference,
+            status: "rejected",
+            errors: [
+              ...(reasons.length > 0 ? reasons : ["Hepsiburada refused it without giving a reason"]),
+              "Hepsiburada reports this as a technical failure rather than a rejection — sending it again is usually the fix",
+            ],
+          });
+        } else {
+          out.push({ reference, status: "pending" });
+        }
+      }
+      return out;
+    },
+  },
   tasks: [
     {
       id: "mark_intransit",
@@ -549,6 +831,7 @@ interface Connection {
   merchantId: string;
   oms: string;
   listing: string;
+  catalog: string;
   headers: Record<string, string>;
 }
 
@@ -583,6 +866,7 @@ const readConnection = (ctx: { str(k: string): string | null }, what: string): C
     merchantId,
     oms: hosts.oms,
     listing: hosts.listing,
+    catalog: hosts.catalog,
     headers: {
       Authorization: `Basic ${btoa(`${username}:${password}`)}`,
       // Documented as required on every operation. A request without it is
@@ -990,6 +1274,150 @@ const upload = async (
     }`,
   );
 };
+
+// ── Listings ─────────────────────────────────────────────────────────────────
+
+/** One page of the category walk, and the bound on how many pages it takes.
+ *  A tree that never ends is a paging bug at the far end; the alternative to a
+ *  bound is a form that never finishes loading. */
+const CATEGORY_PAGE = 500;
+const MAX_CATEGORY_PAGES = 60;
+
+/**
+ * How many attributes get their values fetched.
+ *
+ * Values are a second call PER attribute here — the only marketplace of the
+ * four that makes them one — so a category with thirty attributes would be
+ * thirty requests before the form could be drawn. Bounded, and an attribute
+ * past the bound is offered as free text rather than dropped: a required
+ * attribute that vanished would make the category unlistable.
+ */
+const MAX_VALUE_LOOKUPS = 25;
+
+/** Hepsiburada's numbered image fields: Image1 … Image10. */
+const MAX_IMAGES = 10;
+
+/**
+ * One attribute's closed value set, or an empty list.
+ *
+ * A failure here is deliberately NOT fatal. The values are a convenience — the
+ * attribute itself is still mappable as free text — and one attribute's lookup
+ * failing must not take down a form the operator could otherwise fill in.
+ */
+const readAttributeValues = async (
+  ctx: { fetch: (u: string, i?: RequestInit) => Promise<Response> },
+  conn: Connection,
+  categoryId: string,
+  attributeId: string,
+): Promise<{ id: string; name: string }[]> => {
+  const url = new URL(
+    `${conn.catalog}/api/categories/${categoryId}/attribute/${encodeURIComponent(attributeId)}/values`,
+  );
+  url.searchParams.set("page", "0");
+  url.searchParams.set("size", "500");
+  const res = await ctx.fetch(url.toString(), { headers: conn.headers }).catch(() => null);
+  if (!res || !res.ok) return [];
+  const body = (await res.json().catch(() => ({}))) as { data?: unknown };
+  const rows = asArray(obj(body.data).data ?? body.data);
+  const out: { id: string; name: string }[] = [];
+  for (const raw of rows) {
+    const row = obj(raw);
+    // The value's NAME is what the import file carries, so it is the id here
+    // too — the same reason the attribute's name is its id.
+    const name = text(row.name) ?? text(row.value) ?? text(raw);
+    if (name && !out.some((o) => o.id === name)) out.push({ id: name, name });
+  }
+  return out;
+};
+
+/**
+ * One row of the import file, or the reason this unit cannot become one.
+ *
+ * The row is a flat bag of NAMED fields — the fixed ones this provider declares
+ * as columns, plus whatever the category's own attributes are called.
+ */
+function buildImportRow(
+  product: ListingProduct,
+  variant: ListingVariant,
+): Record<string, unknown> | string {
+  const p = product.fields;
+  const v = variant.fields;
+
+  const merchantSku = text(v.merchantSku);
+  if (!merchantSku) {
+    return "No merchant SKU — Hepsiburada echoes it on every status row, so a listing cannot be tracked without one";
+  }
+
+  const name = text(p.UrunAdi);
+  if (!name) return "No product name";
+  const description = text(p.UrunAciklamasi);
+  if (!description) return "No description";
+  const brand = text(p.Marka);
+  if (!brand) return "No brand name";
+
+  const price = num(v.price);
+  if (price === null) return "Price is missing or not a number";
+  const stock = num(v.stock);
+  if (stock === null || stock < 0) return "Stock quantity is missing or not a number";
+
+  const images = imageUrls(v.images ?? p.images);
+  if (images.length === 0) return "No image URL — Hepsiburada requires at least one";
+
+  const row: Record<string, unknown> = {
+    merchantSku,
+    // Derived from the product row's key — what makes several SKUs one product
+    // page, and what makes a re-run land on the same page.
+    VaryantGroupID: product.groupId,
+    UrunAdi: name,
+    UrunAciklamasi: description,
+    Marka: brand,
+    price,
+    stock: Math.floor(stock),
+  };
+
+  const barcode = text(v.Barcode);
+  if (barcode) row.Barcode = barcode;
+  const vat = num(v.tax_vat_rate);
+  if (vat !== null) row.tax_vat_rate = vat;
+  const warranty = num(p.GarantiSuresi);
+  if (warranty !== null) row.GarantiSuresi = warranty;
+  const video = text(p.Video1);
+  if (video) row.Video1 = video;
+  images.forEach((url, i) => {
+    row[`Image${i + 1}`] = url;
+  });
+
+  // The category's own attributes, keyed by NAME — which is what this
+  // provider reports as an attribute's id, precisely so this line can exist.
+  for (const a of variant.attributes) {
+    const value = a.valueId ?? a.custom;
+    if (a.attributeId && value) row[a.attributeId] = value;
+  }
+  return row;
+}
+
+/** Up to ten image URLs, as the numbered fields want them. */
+const imageUrls = (v: unknown): string[] => {
+  const raw: unknown[] = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\n,;|]/) : [];
+  const out: string[] = [];
+  for (const entry of raw) {
+    const s = typeof entry === "string" ? entry : text(obj(entry).url);
+    const url = s?.trim();
+    if (url && /^https?:\/\//.test(url) && !out.includes(url)) out.push(url);
+    if (out.length === MAX_IMAGES) break;
+  }
+  return out;
+};
+
+/** A category id on its way into a URL path. Digits only, because it
+ *  round-trips through our database first. */
+const numericId = (raw: string, what: string): string => {
+  const value = raw.trim();
+  if (!/^\d{1,20}$/.test(value)) throw new Error(`Hepsiburada ${what} must be numeric`);
+  return value;
+};
+
+const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 // ── Tasks ────────────────────────────────────────────────────────────────────
 

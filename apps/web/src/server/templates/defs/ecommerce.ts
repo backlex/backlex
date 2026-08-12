@@ -286,6 +286,34 @@ export const ecommerce: SchemaTemplate = {
           ),
           bool("requires_shipping", { default: true, label: "Requires shipping" }),
         ]),
+        // What a marketplace says about this unit after it was published.
+        //
+        // On the VARIANT rather than the product because a marketplace rules on
+        // one sellable unit at a time — one size can be refused for a missing
+        // attribute while its siblings go live, and a product-level column
+        // could only ever record the last answer to arrive.
+        sec("Marketplace listing", [
+          hint(
+            "variants_listing",
+            "Filled in by a marketplace integration after a publish. A verdict lands here minutes or hours later, per unit — the marketplace decides in its own time.",
+          ),
+          ...half(
+            select(
+              "listing_status",
+              [ch("pending", C.amber), ch("accepted", C.green), ch("rejected", C.red)],
+              { label: "Listing status" },
+            ),
+            // The handle the marketplace knows this listing by. Three of the
+            // four mint no id of their own and echo the seller's code back, so
+            // this is often the same value as `sku` — and that is the answer,
+            // not a bug to normalise away.
+            text("listing_id", { indexed: true, label: "Listing ID" }),
+          ),
+          ...half(
+            ts("listed_at", { label: "Listed at" }),
+            notes("listing_error", { label: "Rejection reason" }),
+          ),
+        ]),
       ),
       samples: [
         { product: { ref: "products:0" }, title: "S / Black", sku: "TEE-001-S-BLK", price: 25, cost: 9, inventory_quantity: 40, position: 1 },

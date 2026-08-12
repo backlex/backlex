@@ -176,6 +176,7 @@ export default defineConfig({
             { slug: "oauth-provider" },
             { slug: "cdc" },
             { slug: "integrations" },
+            { slug: "marketplace-listings" },
             { slug: "sandbox" },
             { slug: "extensions" },
             { slug: "sdk-and-cli" },

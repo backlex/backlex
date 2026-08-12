@@ -41,9 +41,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import {
   isRateLimited,
-  providerFor,
   runIntegrationTask,
-  SECRET_KEYS,
   taskFor,
   taskOutputsProblem,
   taskSettingsProblem,
@@ -54,8 +52,7 @@ import type { Ctx } from "../context";
 import { loadCollection } from "./items/collection-loader";
 import { ingestRows } from "./migrate-ingest";
 import { queryAll } from "./items/sql-helpers";
-import { ensureAccessToken } from "./integrations-oauth";
-import { decryptSecret, isEncryptedSecret } from "../lib/crypto";
+import { connectionConfigFor } from "./integration-credentials";
 
 type AnyDb = any;
 
@@ -100,20 +97,6 @@ export interface TaskRunResult {
   /** True when a previous run's result was returned rather than a new call made. */
   reused: boolean;
 }
-
-/** Decrypt this kind's secret config fields. Mirrors the sync service. */
-const decryptConfig = async (
-  kind: string,
-  config: Record<string, unknown>,
-  secret: string,
-): Promise<Record<string, unknown>> => {
-  const keys = new Set(SECRET_KEYS[kind as keyof typeof SECRET_KEYS] ?? []);
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(config)) {
-    out[k] = keys.has(k) && typeof v === "string" && isEncryptedSecret(v) ? ((await decryptSecret(v, secret)) ?? "") : v;
-  }
-  return out;
-};
 
 /**
  * Settings are checked against what the task declared, and anything else is
@@ -203,6 +186,11 @@ export async function runTask(
     kind: string;
     config: Record<string, unknown> | null;
     status: string;
+    // Selected with `select()`, so these are present — and they are named
+    // because `connectionConfigFor` refuses a row that cannot prove it was read
+    // from the DB (see its `ConnectionRow`).
+    tenantId: string | null;
+    updatedAt: Date | number | null;
   }[];
   if (!integration) throw new AppError("NOT_FOUND", "Integration not found");
   if (integration.status !== "connected") {
@@ -298,18 +286,9 @@ export async function runTask(
   }
 
   // ── 2. Call the provider ───────────────────────────────────────────────────
-  let config = await decryptConfig(
-    integration.kind,
-    (integration.config ?? {}) as Record<string, unknown>,
-    ctx.env.AUTH_SECRET,
-  );
   let result: TaskResult;
   try {
-    if (providerFor(integration.kind)?.oauth) {
-      const token = await ensureAccessToken(ctx, integration as never, ctx.env.AUTH_SECRET);
-      if (!token) throw new AppError("UNAUTHORIZED", "OAuth connection needs re-authorizing");
-      config = { ...config, _oauthAccessToken: token };
-    }
+    const config = await connectionConfigFor(ctx, integration, ctx.env.AUTH_SECRET);
     result = await runIntegrationTask(
       integration.kind,
       input.task,

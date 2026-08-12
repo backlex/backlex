@@ -51,7 +51,8 @@ import type { Ctx } from "../context";
 import { loadCollection } from "./items/collection-loader";
 import { ingestRows } from "./migrate-ingest";
 import { queryAll } from "./items/sql-helpers";
-import { decryptConfig, LISTING_VARIANT_GROUP, type SyncRow } from "./integration-syncs";
+import { LISTING_VARIANT_GROUP, type SyncRow } from "./integration-syncs";
+import { connectionConfigFor, type ConnectionRow } from "./integration-credentials";
 import { enqueueJob } from "./jobs";
 
 type AnyDb = any;
@@ -128,14 +129,13 @@ const loadListingConnection = async (
   const [row] = (await (ctx.db as AnyDb)
     .select()
     .from(t)
-    .where(and(eq(t.tenantId, tenantId), eq(t.id, integrationId)))) as {
-    id: string;
-    kind: string;
-    config: Record<string, unknown>;
-  }[];
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, integrationId)))) as ConnectionRow[];
   if (!row) throw new AppError("NOT_FOUND", "Integration not found");
   if (!listingFor(row.kind)) throw new AppError("VALIDATION", `${row.kind} cannot list products`);
-  const config = await decryptConfig(row.kind, (row.config ?? {}) as Record<string, unknown>, ctx.env.AUTH_SECRET);
+  // Through the chokepoint, which is what renews an OAuth token. Browsing a
+  // taxonomy is the first thing an operator does after connecting, so a token
+  // that expired here reads as "this marketplace has no categories".
+  const config = await connectionConfigFor(ctx, row, ctx.env.AUTH_SECRET);
   return { id: row.id, kind: row.kind, config };
 };
 
@@ -772,17 +772,12 @@ const loadListingSync = async (
   const [integration] = (await (ctx.db as AnyDb)
     .select()
     .from(it)
-    .where(and(eq(it.tenantId, tenantId), eq(it.id, row.integrationId)))) as {
-    id: string;
-    kind: string;
-    config: Record<string, unknown>;
-  }[];
+    .where(and(eq(it.tenantId, tenantId), eq(it.id, row.integrationId)))) as ConnectionRow[];
   if (!integration) throw new AppError("NOT_FOUND", "Integration not found");
 
-  const config = await decryptConfig(
-    integration.kind,
-    (integration.config ?? {}) as Record<string, unknown>,
-    ctx.env.AUTH_SECRET,
-  );
+  // A publish or a poll is minutes-to-hours after the connect, which is exactly
+  // where an un-renewed access token turns into a batch that never gets a
+  // verdict.
+  const config = await connectionConfigFor(ctx, integration, ctx.env.AUTH_SECRET);
   return { row, integration: { id: integration.id, kind: integration.kind }, config };
 };

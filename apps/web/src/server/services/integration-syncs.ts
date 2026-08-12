@@ -23,7 +23,6 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import {
-  SECRET_KEYS,
   DESTINATION_BATCH_SIZE,
   DESTINATION_SETTING_FIELDS,
   destinationColumnsFor,
@@ -38,15 +37,13 @@ import {
   pullFromSource,
   pushToDestination,
   type FetchLike,
-  type IntegrationKind,
   type SourceRecord,
 } from "@backlex/integrations";
 import type { Ctx } from "../context";
-import { decryptSecret, isEncryptedSecret } from "../lib/crypto";
 import { loadCollection } from "./items/collection-loader";
 import { ingestRows } from "./migrate-ingest";
 import { queryAll } from "./items/sql-helpers";
-import { ensureAccessToken } from "./integrations-oauth";
+import { connectionConfigFor } from "./integration-credentials";
 import { enqueueJob } from "./jobs";
 
 type AnyDb = any;
@@ -879,22 +876,6 @@ export interface SyncRunResult {
 }
 
 /**
- * Decrypt this kind's secret config fields.
- *
- * Exported because the task service and the webhook receiver need exactly this
- * and nothing else. It was copied into each of them once, which is how three
- * copies of a decrypt helper come to disagree about which keys are secret.
- */
-export const decryptConfig = async (kind: string, config: Record<string, unknown>, secret: string) => {
-  const keys = new Set(SECRET_KEYS[kind as IntegrationKind] ?? []);
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(config)) {
-    out[k] = keys.has(k) && typeof v === "string" && isEncryptedSecret(v) ? ((await decryptSecret(v, secret)) ?? "") : v;
-  }
-  return out;
-};
-
-/**
  * The primary key a pulled row gets.
  *
  * Namespaced by provider AND by sync, because two syncs can legitimately point
@@ -1148,19 +1129,16 @@ export async function runSync(
     throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a destination`);
   }
 
-  let config = await decryptConfig(
-    integration.kind,
-    (integration.config ?? {}) as Record<string, unknown>,
-    ctx.env.AUTH_SECRET,
-  );
-  if (provider?.oauth) {
-    const token = await ensureAccessToken(ctx, integration, ctx.env.AUTH_SECRET);
-    if (!token) {
-      const error = "OAuth connection needs re-authorizing";
-      await applyRunOutcome(ctx, row, { ok: false, error });
-      throw new AppError("UNAUTHORIZED", error);
-    }
-    config = { ...config, _oauthAccessToken: token };
+  let config: Record<string, unknown>;
+  try {
+    config = await connectionConfigFor(ctx, integration, ctx.env.AUTH_SECRET);
+  } catch (e) {
+    // Whatever it says, not a guess at what it was: the chokepoint throws
+    // "needs re-authorizing" for a dead grant, but it can also fail to decrypt,
+    // and recording that as an OAuth problem sends an operator to the wrong
+    // screen.
+    await applyRunOutcome(ctx, row, { ok: false, error: e instanceof Error ? e.message : String(e) });
+    throw e;
   }
 
   if (direction === "push") {

@@ -38,7 +38,6 @@ import {
   INTEGRATION_WEBHOOKS,
   matchesEventFilter,
   parseWebhookDelivery,
-  providerFor,
   registerWebhook,
   unregisterWebhook,
   verifyWebhookDelivery,
@@ -51,9 +50,8 @@ import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
 import { loadCollection } from "./items/collection-loader";
 import { ingestRows } from "./migrate-ingest";
 import { queryAll } from "./items/sql-helpers";
-import { ensureAccessToken } from "./integrations-oauth";
+import { connectionConfigFor, decryptConfig, type ConnectionRow } from "./integration-credentials";
 import {
-  decryptConfig,
   getSyncRow,
   ingestSourceRecords,
   loadChildCollections,
@@ -166,17 +164,17 @@ const loadSyncForEndpoint = async (
   ctx: Ctx,
   tenantId: string,
   syncId: string,
-): Promise<{ row: SyncRow; kind: string; config: Record<string, unknown> }> => {
+): Promise<{ row: SyncRow; kind: string; connection: ConnectionRow }> => {
   const row = await getSyncRow(ctx, tenantId, syncId);
   if (!row) throw new AppError("NOT_FOUND", "Sync not found");
   const integrations = integrationsTableFor(ctx.dialect);
+  // The WHOLE row, not just its kind and config: registering with a provider
+  // may have to renew an OAuth token, and that write compares against
+  // `updatedAt`. Handing on a hand-built pair is what dropped the guard before.
   const [integration] = (await (ctx.db as AnyDb)
     .select()
     .from(integrations)
-    .where(and(eq(integrations.tenantId, tenantId), eq(integrations.id, row.integrationId)))) as {
-    kind: string;
-    config: Record<string, unknown> | null;
-  }[];
+    .where(and(eq(integrations.tenantId, tenantId), eq(integrations.id, row.integrationId)))) as ConnectionRow[];
   if (!integration) throw new AppError("NOT_FOUND", "Integration not found");
   if (!webhookFor(integration.kind)) {
     throw new AppError("BAD_REQUEST", `${integration.kind} does not send webhooks`);
@@ -195,7 +193,7 @@ const loadSyncForEndpoint = async (
       `A ${row.direction} sync has nowhere to put a delivery — turn the endpoint on from the sync that brings ${integration.kind} rows in`,
     );
   }
-  return { row, kind: integration.kind, config: (integration.config ?? {}) as Record<string, unknown> };
+  return { row, kind: integration.kind, connection: integration };
 };
 
 /**
@@ -218,7 +216,7 @@ export async function enableWebhook(
   input: { events?: readonly string[] } = {},
   fetchImpl?: FetchLike,
 ): Promise<WebhookEndpoint> {
-  const { row, kind, config } = await loadSyncForEndpoint(ctx, tenantId, syncId);
+  const { row, kind, connection } = await loadSyncForEndpoint(ctx, tenantId, syncId);
   const hook = webhookFor(kind)!;
   if (hook.landing === "patch" && !row.matchField) {
     // Without it a delivery has a value and no column to find it in. Refused
@@ -237,7 +235,7 @@ export async function enableWebhook(
 
   // Remove ours before adding another, so re-enabling does not accumulate
   // registrations at the provider that all point here.
-  await removeRegistration(ctx, kind, config, row, url, events, fetchImpl);
+  await removeRegistration(ctx, kind, connection, row, url, events, fetchImpl);
 
   let externalId: string | null = null;
   let registrationError: string | undefined;
@@ -245,7 +243,7 @@ export async function enableWebhook(
     try {
       const live = await registerWebhook(
         kind,
-        { config: await connectionConfig(ctx, kind, config, row.integrationId), url, secret, events },
+        { config: await connectionConfigFor(ctx, connection, ctx.env.AUTH_SECRET), url, secret, events },
         fetchImpl,
       );
       externalId = live.id;
@@ -292,12 +290,12 @@ export async function disableWebhook(
   syncId: string,
   fetchImpl?: FetchLike,
 ): Promise<void> {
-  const { row, kind, config } = await loadSyncForEndpoint(ctx, tenantId, syncId);
+  const { row, kind, connection } = await loadSyncForEndpoint(ctx, tenantId, syncId);
   if (!row.webhookToken) return;
   await removeRegistration(
     ctx,
     kind,
-    config,
+    connection,
     row,
     webhookUrlFor(ctx, row.webhookToken),
     row.webhookEvents ?? [],
@@ -320,7 +318,7 @@ export async function disableWebhook(
 const removeRegistration = async (
   ctx: Ctx,
   kind: string,
-  config: Record<string, unknown>,
+  connection: ConnectionRow,
   row: SyncRow,
   url: string,
   events: readonly string[],
@@ -331,7 +329,7 @@ const removeRegistration = async (
     await unregisterWebhook(
       kind,
       {
-        config: await connectionConfig(ctx, kind, config, row.integrationId),
+        config: await connectionConfigFor(ctx, connection, ctx.env.AUTH_SECRET),
         url,
         secret: "",
         events,
@@ -344,24 +342,6 @@ const removeRegistration = async (
     // removes its own subscription regardless, and the alternative is an
     // operator who cannot disable an endpoint because the provider is down.
   }
-};
-
-/** Decrypted config, with a fresh OAuth token for the providers that use one. */
-const connectionConfig = async (
-  ctx: Ctx,
-  kind: string,
-  stored: Record<string, unknown>,
-  integrationId: string,
-): Promise<Record<string, unknown>> => {
-  const config = await decryptConfig(kind, stored, ctx.env.AUTH_SECRET);
-  if (!providerFor(kind)?.oauth) return config;
-  const token = await ensureAccessToken(
-    ctx,
-    { id: integrationId, kind, config: stored } as never,
-    ctx.env.AUTH_SECRET,
-  );
-  if (!token) throw new AppError("UNAUTHORIZED", "OAuth connection needs re-authorizing");
-  return { ...config, _oauthAccessToken: token };
 };
 
 /** Change which events this endpoint accepts, at the provider too where it can. */

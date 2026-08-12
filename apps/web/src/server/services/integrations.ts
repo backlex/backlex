@@ -13,9 +13,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import {
-  OAUTH_ACCESS_TOKEN_KEY,
   OAUTH_CONFIG_KEYS,
-  SECRET_KEYS,
   deliverToIntegration,
   isIntegrationKind,
   maskConfig,
@@ -24,12 +22,10 @@ import {
   stripOAuthKeys,
   type FetchLike,
   type IntegrationEvent,
-  type IntegrationKind,
 } from "@backlex/integrations";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
-import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
-import { ensureAccessToken } from "./integrations-oauth";
+import { connectionConfigFor, encryptConfig } from "./integration-credentials";
 import { enqueueJob } from "./jobs";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
@@ -83,27 +79,6 @@ export interface IntegrationDeliveryRow {
   error: string | null;
   attempts: number;
   deliveredAt: Date | number;
-}
-
-const secretKeys = (kind: string) => new Set(SECRET_KEYS[kind as IntegrationKind] ?? []);
-
-async function encryptConfig(kind: string, config: Record<string, unknown>, secret: string) {
-  const keys = secretKeys(kind);
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(config)) {
-    out[k] =
-      keys.has(k) && typeof v === "string" && v && !isEncryptedSecret(v) ? await encryptSecret(v, secret) : v;
-  }
-  return out;
-}
-
-async function decryptConfig(kind: string, config: Record<string, unknown>, secret: string) {
-  const keys = secretKeys(kind);
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(config)) {
-    out[k] = keys.has(k) && typeof v === "string" && isEncryptedSecret(v) ? ((await decryptSecret(v, secret)) ?? "") : v;
-  }
-  return out;
 }
 
 /** Public (masked) view of an integration row — never leaks decrypted secrets. */
@@ -422,27 +397,25 @@ async function deliverOne(
 ): Promise<{ ok: boolean; status: number }> {
   const t = tableFor(ctx.dialect);
   const started = Date.now();
-  const cfg = await decryptConfig(row.kind, (row.config ?? {}) as Record<string, unknown>, env.AUTH_SECRET);
-  // OAuth providers hold a token with a lifetime; renew it before the call
-  // rather than letting the provider answer 401 and the breaker count it as an
-  // outage. `null` means the grant was revoked — that is a reconnect, not
-  // something a retry can fix, so report it as misconfigured straight away.
-  if (providerFor(row.kind)?.oauth && "env" in ctx) {
-    const fresh = await ensureAccessToken(ctx as Ctx, row, env.AUTH_SECRET);
-    if (!fresh) {
-      await applyDeliveryOutcome(ctx, row, false, "OAuth grant expired or revoked");
-      await recordDelivery(ctx, {
-        integrationId: row.id,
-        tenantId: row.tenantId,
-        event: message.event,
-        status: 0,
-        ms: Date.now() - started,
-        error: "OAuth connection needs re-authorizing",
-        attempts: attempt,
-      });
-      return { ok: false, status: 0 };
-    }
-    cfg[OAUTH_ACCESS_TOKEN_KEY] = fresh;
+  // Decrypt, and for an OAuth provider renew the token before the call rather
+  // than letting the provider answer 401 and the breaker count it as an outage.
+  // A throw means the grant was revoked — that is a reconnect, not something a
+  // retry can fix, so it is reported as misconfigured straight away.
+  let cfg: Record<string, unknown>;
+  try {
+    cfg = await connectionConfigFor(ctx, row, env.AUTH_SECRET);
+  } catch {
+    await applyDeliveryOutcome(ctx, row, false, "OAuth grant expired or revoked");
+    await recordDelivery(ctx, {
+      integrationId: row.id,
+      tenantId: row.tenantId,
+      event: message.event,
+      status: 0,
+      ms: Date.now() - started,
+      error: "OAuth connection needs re-authorizing",
+      attempts: attempt,
+    });
+    return { ok: false, status: 0 };
   }
   // Re-applied here because the queue handler reconstructs the message from a
   // stored payload: a job written before this rule existed, or hand-enqueued,

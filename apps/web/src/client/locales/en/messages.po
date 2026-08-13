@@ -14217,6 +14217,10 @@ msgstr "Pull marketplace orders in with their lines, push stock and price out, a
 msgid "Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back."
 msgstr "Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back."
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull Polish marketplace orders in with their lines, and set a seller order status with its waybill back."
+msgstr "Pull Polish marketplace orders in with their lines, and set a seller order status with its waybill back."
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #~ msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 #~ msgstr "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."

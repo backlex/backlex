@@ -14217,6 +14217,10 @@ msgstr "Pazar yeri siparişlerini kalemleriyle çeker, stok ve fiyatı gönderir
 msgid "Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back."
 msgstr "Siparişleri satırlarıyla birlikte içeri çek, ürünleri eBay pazar yerlerinde satışa koy ve kargo bildirimini geri gönder."
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull Polish marketplace orders in with their lines, and set a seller order status with its waybill back."
+msgstr "Polonya pazar yeri siparişlerini satırlarıyla içeri çek, satıcı sipariş durumunu taşıma numarasıyla geri yaz."
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #~ msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 #~ msgstr "Bağlı bir kaynaktan satırları zamanlanmış olarak bir koleksiyona çeker. Çekilen satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine asla yazmaz."

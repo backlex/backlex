@@ -183,6 +183,7 @@ const BRANDS: Record<string, Brand> = {
   ciceksepeti: { name: "Çiçeksepeti", mark: "Çs", markBg: "#E5004C" },
   amazon: { name: "Amazon", mark: "Az", markBg: "#232F3E" },
   ebay: { name: "eBay", mark: "eB", markBg: "#E53238" },
+  allegro: { name: "Allegro", mark: "Al", markBg: "#FF5A00" },
   easypost: { name: "EasyPost", mark: "Ep", markBg: "#164DFF" },
   yurtici: { name: "Yurtiçi Kargo", mark: "YK", markBg: "#004B93" },
   aras: { name: "Aras Kargo", mark: "AK", markBg: "#00539F" },
@@ -359,6 +360,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Pull Selling Partner orders in with their lines and addresses, put products on sale, and confirm shipments back.`;
       case "ebay":
         return t`Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back.`;
+      case "allegro":
+        return t`Pull Polish marketplace orders in with their lines, and set a seller order status with its waybill back.`;
       case "easypost":
         return t`Book a shipment and store its label, read where the parcel is, and cancel it.`;
       case "yurtici":

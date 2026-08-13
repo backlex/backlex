@@ -36,7 +36,7 @@ Forty-one providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source and a task |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Allegro — a source and a task |
 | carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
@@ -896,6 +896,31 @@ synonym for shipping: an order going out on Çiçeksepeti's own service vehicle 
 `mark_shipped` requires the courier and the tracking number, because
 Çiçeksepeti emails and texts the customer from exactly those fields — the
 courier is picked from a list of the ids it publishes, not typed.
+
+### eBay and Allegro — Europe, and two things the shape had not met
+
+eBay is the sixth marketplace and the first reached over **OAuth**: you paste an
+App ID, a Cert ID and a **RuName** and then press Connect. The RuName is the part
+worth knowing about — eBay's authorization flow does not take a callback URL at
+all, it takes an opaque handle eBay minted for the application, and the real URL
+is registered against that handle in eBay's own portal. The provider says which
+config key holds it and the engine sends that.
+
+eBay also answers a publish with the verdict rather than a ticket, which is why
+`ListingBatch` no longer calls its final-answers field `rejected` — the field
+carries accepted units too, and is now `settled`. A run against eBay therefore
+finishes with nothing pending and no batch to watch.
+
+**Allegro is a source and a task only, and the reason is worth stating.** Its
+API is entirely public — 1.5 MB of OpenAPI, no account needed — and orders,
+addresses and the seller status write are all straightforward. What it will not
+do is hand over its taxonomy: `GET /sale/categories` returns the children of one
+node and there is no whole-tree endpoint, so enumerating roughly twenty-three
+thousand categories would take thousands of round trips. A listing provider has
+to give the engine the whole tree to cache and search, so listing on Allegro
+needs the shape to learn to be walked a level at a time — an extension to the
+engine and the mapping form rather than a flag. Until then, offering a picker
+that quietly held only the top level would be worse than not offering one.
 
 ### Amazon, and what it proved
 

@@ -144,3 +144,8 @@ A daily cron tick (`services/scheduler.ts`) prunes old rows:
 `access.read` and `mcp.*` rows are higher-volume, so they get shorter dedicated
 clocks (`pruneOldActivityByPrefix(ctx, days, "<prefix>.")`) on top of the global
 prune. Set any of them to `0` to disable that pass.
+
+The same daily tick also prunes three tables that used to grow forever —
+finished jobs (`JOBS_RETENTION_DAYS`, 30; `JOBS_DEAD_LETTER_RETENTION_DAYS`, 90),
+webhook deliveries (`WEBHOOK_DELIVERIES_RETENTION_DAYS`, 30) and item revisions
+(`REVISIONS_RETENTION_DAYS`, 180). See `docs/jobs.md` and `docs/webhooks.md`.

@@ -483,3 +483,20 @@ steps; both paths land on the same `POST /api/collections` endpoint.
 - **`Table is already adopted`** — you can't adopt the same physical
   table twice. Delete the existing collection (metadata-only, data
   untouched) and re-run the wizard.
+
+## Dropping is gated by what it would destroy
+
+`DELETE /api/collections/:slug/fields/:name` and `DELETE /api/collections/:slug`
+both accept `?dryRun=1`, which reports the impact (`rows`, and `nonNull` for a
+field) and changes nothing.
+
+The `X-Backlex-Confirm: yes` header is required **only when the operation would
+actually destroy data**. Dropping an empty column or deleting an empty collection
+works with no header, exactly as before — CI and template automation do that
+constantly and an unconditional gate would break them for no safety gained.
+
+When data is at stake the server captures a `pre-drop` backup first and returns
+its `snapshotId`. See `docs/backup-restore.md` for the recovery steps.
+
+Adopted collections are unaffected: they are archived, never DDL'd, so there is
+nothing to count, confirm, or snapshot.

@@ -145,3 +145,24 @@ Two dual-dialect tables (`packages/db/src/{pg,sqlite}/schema.ts`):
 
 The pure diff engine lives in `packages/db/src/schema-diff.ts` (`diffSchema`); the
 orchestration in `apps/web/src/server/services/schema-versions.ts`.
+
+## What an apply saves before it destroys anything
+
+A destructive apply takes **two** safety copies, and they cover different things:
+
+- `safetySnapshotId` — the live **schema** before the apply. Records what the
+  columns were, not what was in them.
+- `dataSnapshotIds` — a `pre-drop` backup per destructive change, holding the
+  rows that change is about to destroy. `field.drop` and `field.type` capture
+  `(id, <column>)` for the rows where the column holds a value; `collection.drop`
+  captures the whole table.
+
+Recovery is the ordinary restore path: re-add the field (or re-create the
+collection), then restore the snapshot with `mode=overwrite` and `onlyTables` set
+to that one table. An additive restore will not do it — the rows still exist, so
+every one is skipped and the column comes back empty. See
+`docs/backup-restore.md`.
+
+Data snapshots require a storage adapter. Without one the apply still runs and
+`dataSnapshotIds` comes back empty, which is the honest answer rather than a
+safety net that silently is not there.

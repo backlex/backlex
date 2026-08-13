@@ -151,3 +151,14 @@ action, or `PATCH /api/webhooks/{id}` with `{ "active": true }`) resets
 
 `consecutiveFailures`, `lastFailureAt`, and `disabledReason` are returned on
 every `GET /api/webhooks` row so you can monitor hook health programmatically.
+
+## Delivery retention
+
+Every attempt writes a `webhook_deliveries` row carrying a truncated response
+body, and nothing pruned them before — an active integration wrote this table
+forever. The daily cron tick now deletes attempts older than
+`WEBHOOK_DELIVERIES_RETENTION_DAYS` (default 30). Set it to `0` to keep them.
+
+This one is instance-wide rather than per-workspace, and not because that is
+simpler: `webhook_deliveries` carries no `tenant_id` column, so a per-workspace
+policy is not expressible against it.

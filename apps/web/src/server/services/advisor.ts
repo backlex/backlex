@@ -37,6 +37,7 @@ import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { loadEmailConfigRow } from "./email-config";
+import { loadBackupConfig } from "./backup";
 import { recordActivity } from "./activity";
 import {
   type RuntimeInsights,
@@ -595,6 +596,35 @@ export const runAdvisorChecks = async (
     }
   } catch {
     // email_config read failed — skip.
+  }
+
+  // No automatic backups. Scheduling defaults to `off` and nothing ever
+  // mentions it, so the common case is a workspace running for months with no
+  // recoverable copy of anything — which is also what every other recovery path
+  // in the product quietly assumes exists. `warn`, not `info`: unlike a console
+  // email fallback, you do not find out this was wrong until you need it.
+  //
+  // Filed under `kind: "security"` rather than a new `"resilience"` kind on
+  // purpose — widening AdvisorKind for one rule would mean touching the advisor
+  // UI's grouping and its surfaces test for no gain to the reader.
+  try {
+    const cfg = await loadBackupConfig(ctx, tenantId);
+    if (cfg.schedule === "off") {
+      out.push({
+        id: "sec-backups-off",
+        kind: "security",
+        level: "warn",
+        rule: "backups-off",
+        groupTitle: "Automatic backups are off",
+        title: "No automatic backups are scheduled",
+        body: "Scheduled backups are disabled for this workspace, so there is no periodic copy of its data. Restore, and the pre-drop safety copies taken before a destructive schema change, can only recover as far back as a backup that exists.",
+        fix: "Turn on a daily or weekly schedule under Database → Backups, and set a retention that matches how far back you would want to go.",
+        resource: "app_settings · backupConfig",
+        link: "/database",
+      });
+    }
+  } catch {
+    // backup config read failed — skip.
   }
 
   // Half-configured OAuth provider: exactly one of id / secret set for a

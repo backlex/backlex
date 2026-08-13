@@ -97,6 +97,24 @@ await backlex.jobs.retry(jobs[0].id);
 dialog, per-row retry/cancel/delete, and a detail view with the payload, result
 and last error.
 
+## Retention
+
+Finished jobs are deleted on the daily cron tick. Two clocks, because the rows
+answer different questions:
+
+| Rows | Env | Default |
+|---|---|---|
+| `succeeded`, `cancelled` | `JOBS_RETENTION_DAYS` | 30 days |
+| `failed`, `dead_letter` | `JOBS_DEAD_LETTER_RETENTION_DAYS` | 90 days |
+
+Set either to `0` to keep those rows forever. Nothing pruned this table before,
+so on a busy workspace it outgrew the user data — and on D1 that is the whole
+database.
+
+**`pending` and `active` jobs are never deleted at any setting.** A delayed or
+scheduled job legitimately carries an old `created_at` and a `run_at` in the
+future; a status-blind cutoff would quietly eat work that had not run yet.
+
 ## Configuration
 
 All optional, with defaults:

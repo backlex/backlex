@@ -564,6 +564,12 @@ msgstr "{0} of {1} columns mapped"
 msgid "{0} of {1} rows could not be updated."
 msgstr "{0} of {1} rows could not be updated."
 
+#. placeholder {0}: impact.nonNull
+#. placeholder {1}: impact.rows
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "{0} of {1} rows have a value here. They are saved to a backup first, so they can be restored if the field is added back."
+msgstr "{0} of {1} rows have a value here. They are saved to a backup first, so they can be restored if the field is added back."
+
 #. placeholder {0}: view.signedCount
 #. placeholder {1}: view.signerCount
 #: src/client/pages/sign-document.tsx
@@ -4056,6 +4062,11 @@ msgstr "Collection c_{slug} archived. Restore it from the Archived view."
 msgid "Collection c_{slug} dropped."
 msgstr "Collection c_{slug} dropped."
 
+#. placeholder {0}: resp.rows
+#: src/client/admin/app.tsx
+msgid "Collection c_{slug} dropped. {0} row(s) saved to a backup."
+msgstr "Collection c_{slug} dropped. {0} row(s) saved to a backup."
+
 #: src/client/admin/app.tsx
 msgid "Collection c_{slug} restored."
 msgstr "Collection c_{slug} restored."
@@ -4150,6 +4161,11 @@ msgstr "Column \"{0}\" added to c_{slug}."
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "Column \"{name}\" dropped from c_{slug}."
 msgstr "Column \"{name}\" dropped from c_{slug}."
+
+#. placeholder {0}: res.nonNull
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "Column \"{name}\" dropped from c_{slug}. {0} value(s) saved to a backup."
+msgstr "Column \"{name}\" dropped from c_{slug}. {0} value(s) saved to a backup."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."
@@ -10458,6 +10474,10 @@ msgstr "Mirror Xero contacts, invoices and payments into a collection."
 msgid "Missing ({0})"
 msgstr "Missing ({0})"
 
+#: src/client/admin/pages/data/database.tsx
+msgid "Missing rows are re-inserted. Rows that still exist are never overwritten or deleted, so this is safe to run against live data."
+msgstr "Missing rows are re-inserted. Rows that still exist are never overwritten or deleted, so this is safe to run against live data."
+
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Mode"
 msgstr "Mode"
@@ -11740,6 +11760,10 @@ msgstr "No rooms yet — click + New room."
 msgid "No row from c_{target} selected"
 msgstr "No row from c_{target} selected"
 
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "No row has a value in this column, so nothing is lost."
+msgstr "No row has a value in this column, so nothing is lost."
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "No rows match \"{q}\"."
 msgstr "No rows match \"{q}\"."
@@ -12890,6 +12914,14 @@ msgstr "Overrides the workspace transport's configured sender id."
 #: src/client/pages/rest-explorer.tsx
 msgid "Overview"
 msgstr "Overview"
+
+#: src/client/admin/pages/data/database.tsx
+msgid "Overwrite and restore"
+msgstr "Overwrite and restore"
+
+#: src/client/admin/pages/data/database.tsx
+msgid "Overwrite existing rows"
+msgstr "Overwrite existing rows"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "owner"
@@ -15354,8 +15386,12 @@ msgid "Restore collection <0>c_{slug}</0>?"
 msgstr "Restore collection <0>c_{slug}</0>?"
 
 #: src/client/admin/pages/data/database.tsx
-msgid "Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted."
-msgstr "Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted."
+msgid "Restore from this backup?"
+msgstr "Restore from this backup?"
+
+#: src/client/admin/pages/data/database.tsx
+#~ msgid "Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted."
+#~ msgstr "Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted."
 
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "Restore this snapshot"
@@ -15370,6 +15406,13 @@ msgstr "Restore to draft"
 #: src/client/admin/pages/data/database.tsx
 msgid "Restored {0} rows across {1} tables."
 msgstr "Restored {0} rows across {1} tables."
+
+#. placeholder {0}: r.data.rowCount
+#. placeholder {1}: r.data.tableCount
+#. placeholder {2}: r.data.keptAdditive.join(", ")
+#: src/client/admin/pages/data/database.tsx
+msgid "Restored {0} rows across {1} tables. These stayed additive (no single-column id): {2}"
+msgstr "Restored {0} rows across {1} tables. These stayed additive (no single-column id): {2}"
 
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
@@ -15764,6 +15807,10 @@ msgstr "Rows matching this rule are visible to {r}."
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "rows out"
 msgstr "rows out"
+
+#: src/client/admin/pages/data/database.tsx
+msgid "Rows that still exist will be replaced by their values from this backup. Anything changed since it was taken is lost. This is how you undo a bad write."
+msgstr "Rows that still exist will be replaced by their values from this backup. Anything changed since it was taken is lost. This is how you undo a bad write."
 
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "RRF fusion of both"
@@ -18632,12 +18679,28 @@ msgstr "the ones ticked"
 #~ msgstr "The opening hours are written in the resource's own zone, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change."
 
 #: src/client/admin/app.tsx
-msgid "The physical table and all rows are dropped. This is irreversible."
-msgstr "The physical table and all rows are dropped. This is irreversible."
+#~ msgid "The physical table and all rows are dropped. This is irreversible."
+#~ msgstr "The physical table and all rows are dropped. This is irreversible."
 
 #: src/client/admin/app.tsx
-msgid "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
-msgstr "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
+#~ msgid "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
+#~ msgstr "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
+
+#: src/client/admin/app.tsx
+msgid "The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable."
+msgstr "The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable."
+
+#: src/client/admin/app.tsx
+msgid "The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable. Permissions, revisions, and webhooks tied to it are removed too."
+msgstr "The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable. Permissions, revisions, and webhooks tied to it are removed too."
+
+#: src/client/admin/app.tsx
+msgid "The physical table is dropped. It holds no rows, so no data is lost."
+msgstr "The physical table is dropped. It holds no rows, so no data is lost."
+
+#: src/client/admin/app.tsx
+msgid "The physical table is dropped. It holds no rows, so no data is lost. Permissions, revisions, and webhooks tied to this collection are removed too."
+msgstr "The physical table is dropped. It holds no rows, so no data is lost. Permissions, revisions, and webhooks tied to this collection are removed too."
 
 #: src/client/admin/pages/automation/payments.tsx
 msgid "the provider has not decided this refund"
@@ -19082,8 +19145,14 @@ msgstr "this room"
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
-msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+#~ msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+#~ msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+
+#. placeholder {0}: target.name
+#. placeholder {1}: target.slug
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column is removed for good."
+msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column is removed for good."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "This runs on the write path — a slow or failing hook affects live writes."
@@ -19634,6 +19703,18 @@ msgstr "Type and press Enter…"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Type it"
 msgstr "Type it"
+
+#: src/client/admin/app.tsx
+msgid "Type the collection slug to confirm"
+msgstr "Type the collection slug to confirm"
+
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "Type the column name to confirm"
+msgstr "Type the column name to confirm"
+
+#: src/client/admin/sheet.tsx
+msgid "Type the name to confirm"
+msgstr "Type the name to confirm"
 
 #: src/client/pages/graphql.tsx
 msgid "Types"

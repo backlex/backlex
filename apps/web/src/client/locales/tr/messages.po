@@ -564,6 +564,12 @@ msgstr "{1} sütunun {0} tanesi eşlendi"
 msgid "{0} of {1} rows could not be updated."
 msgstr "{0} / {1} satır güncellenemedi."
 
+#. placeholder {0}: impact.nonNull
+#. placeholder {1}: impact.rows
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "{0} of {1} rows have a value here. They are saved to a backup first, so they can be restored if the field is added back."
+msgstr "{1} satırın {0} tanesinde bu alanda bir değer var. Önce bir yedeğe kaydedilirler; alan tekrar eklenirse geri yüklenebilirler."
+
 #. placeholder {0}: view.signedCount
 #. placeholder {1}: view.signerCount
 #: src/client/pages/sign-document.tsx
@@ -4056,6 +4062,11 @@ msgstr "c_{slug} koleksiyonu arşivlendi. Arşivlendi görünümünden geri yük
 msgid "Collection c_{slug} dropped."
 msgstr "c_{slug} koleksiyonu silindi."
 
+#. placeholder {0}: resp.rows
+#: src/client/admin/app.tsx
+msgid "Collection c_{slug} dropped. {0} row(s) saved to a backup."
+msgstr "c_{slug} koleksiyonu silindi. {0} satır bir yedeğe kaydedildi."
+
 #: src/client/admin/app.tsx
 msgid "Collection c_{slug} restored."
 msgstr "c_{slug} koleksiyonu geri yüklendi."
@@ -4150,6 +4161,11 @@ msgstr "\"{0}\" sütunu c_{slug} koleksiyonuna eklendi."
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "Column \"{name}\" dropped from c_{slug}."
 msgstr "\"{name}\" sütunu c_{slug} tablosundan kaldırıldı."
+
+#. placeholder {0}: res.nonNull
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "Column \"{name}\" dropped from c_{slug}. {0} value(s) saved to a backup."
+msgstr "\"{name}\" sütunu c_{slug} tablosundan silindi. {0} değer bir yedeğe kaydedildi."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."
@@ -10458,6 +10474,10 @@ msgstr "Xero kişilerini, faturalarını ve ödemelerini bir koleksiyona yansıt
 msgid "Missing ({0})"
 msgstr "Eksik ({0})"
 
+#: src/client/admin/pages/data/database.tsx
+msgid "Missing rows are re-inserted. Rows that still exist are never overwritten or deleted, so this is safe to run against live data."
+msgstr "Eksik satırlar yeniden eklenir. Hâlâ var olan satırların üzerine asla yazılmaz ve silinmezler; bu yüzden canlı veride çalıştırmak güvenlidir."
+
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Mode"
 msgstr "Mod"
@@ -11740,6 +11760,10 @@ msgstr "Henüz oda yok — + Yeni oda'ya tıklayın."
 msgid "No row from c_{target} selected"
 msgstr "c_{target} tablosundan satır seçilmedi"
 
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "No row has a value in this column, so nothing is lost."
+msgstr "Hiçbir satırda bu sütunda değer yok, dolayısıyla hiçbir şey kaybolmaz."
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "No rows match \"{q}\"."
 msgstr "\"{q}\" ile eşleşen satır yok."
@@ -12890,6 +12914,14 @@ msgstr "Çalışma alanı taşıyıcısında tanımlı gönderici kimliğini ge�
 #: src/client/pages/rest-explorer.tsx
 msgid "Overview"
 msgstr "Genel bakış"
+
+#: src/client/admin/pages/data/database.tsx
+msgid "Overwrite and restore"
+msgstr "Üzerine yaz ve geri yükle"
+
+#: src/client/admin/pages/data/database.tsx
+msgid "Overwrite existing rows"
+msgstr "Mevcut satırların üzerine yaz"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "owner"
@@ -15354,8 +15386,12 @@ msgid "Restore collection <0>c_{slug}</0>?"
 msgstr "<0>c_{slug}</0> koleksiyonu geri yüklensin mi?"
 
 #: src/client/admin/pages/data/database.tsx
-msgid "Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted."
-msgstr "Bu yedekten geri yüklensin mi? Eksik satırlar yeniden eklenir; mevcut satırlar asla üzerine yazılmaz veya silinmez."
+msgid "Restore from this backup?"
+msgstr "Bu yedekten geri yüklensin mi?"
+
+#: src/client/admin/pages/data/database.tsx
+#~ msgid "Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted."
+#~ msgstr "Bu yedekten geri yüklensin mi? Eksik satırlar yeniden eklenir; mevcut satırlar asla üzerine yazılmaz veya silinmez."
 
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "Restore this snapshot"
@@ -15370,6 +15406,13 @@ msgstr "Taslağa geri al"
 #: src/client/admin/pages/data/database.tsx
 msgid "Restored {0} rows across {1} tables."
 msgstr "{1} tabloda {0} satır geri yüklendi."
+
+#. placeholder {0}: r.data.rowCount
+#. placeholder {1}: r.data.tableCount
+#. placeholder {2}: r.data.keptAdditive.join(", ")
+#: src/client/admin/pages/data/database.tsx
+msgid "Restored {0} rows across {1} tables. These stayed additive (no single-column id): {2}"
+msgstr "{1} tabloda {0} satır geri yüklendi. Şunlar eklemeli kaldı (tek sütunluk id yok): {2}"
 
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
@@ -15764,6 +15807,10 @@ msgstr "Bu kuralla eşleşen satırlar {r} için görünür."
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "rows out"
 msgstr "satır çıkışı"
+
+#: src/client/admin/pages/data/database.tsx
+msgid "Rows that still exist will be replaced by their values from this backup. Anything changed since it was taken is lost. This is how you undo a bad write."
+msgstr "Hâlâ var olan satırlar bu yedekteki değerleriyle değiştirilir. Yedek alındıktan sonra değişen her şey kaybolur. Hatalı bir yazmayı böyle geri alırsınız."
 
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "RRF fusion of both"
@@ -18632,12 +18679,28 @@ msgstr "işaretlenenler"
 #~ msgstr "Çalışma saatleri kaynağın kendi saat diliminde yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada hâlâ sabah dokuz demektir."
 
 #: src/client/admin/app.tsx
-msgid "The physical table and all rows are dropped. This is irreversible."
-msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz."
+#~ msgid "The physical table and all rows are dropped. This is irreversible."
+#~ msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz."
 
 #: src/client/admin/app.tsx
-msgid "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
-msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz. Bu koleksiyona bağlı izinler, sürümler ve webhook'lar da kaldırılır."
+#~ msgid "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
+#~ msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz. Bu koleksiyona bağlı izinler, sürümler ve webhook'lar da kaldırılır."
+
+#: src/client/admin/app.tsx
+msgid "The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable."
+msgstr "Fiziksel tablo ve içindeki {rows} satır silinir. Satırlar önce bir yedeğe kaydedilir, ancak koleksiyonun kendisi geri yüklenemez."
+
+#: src/client/admin/app.tsx
+msgid "The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable. Permissions, revisions, and webhooks tied to it are removed too."
+msgstr "Fiziksel tablo ve içindeki {rows} satır silinir. Satırlar önce bir yedeğe kaydedilir, ancak koleksiyonun kendisi geri yüklenemez. Buna bağlı izinler, revizyonlar ve webhook'lar da kaldırılır."
+
+#: src/client/admin/app.tsx
+msgid "The physical table is dropped. It holds no rows, so no data is lost."
+msgstr "Fiziksel tablo silinir. İçinde satır olmadığı için hiçbir veri kaybolmaz."
+
+#: src/client/admin/app.tsx
+msgid "The physical table is dropped. It holds no rows, so no data is lost. Permissions, revisions, and webhooks tied to this collection are removed too."
+msgstr "Fiziksel tablo silinir. İçinde satır olmadığı için hiçbir veri kaybolmaz. Bu koleksiyona bağlı izinler, revizyonlar ve webhook'lar da kaldırılır."
 
 #: src/client/admin/pages/automation/payments.tsx
 msgid "the provider has not decided this refund"
@@ -19082,8 +19145,14 @@ msgstr "bu oda"
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
-msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun ve tüm verileri kaldırılır. Bu geri alınamaz."
+#~ msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+#~ msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun ve tüm verileri kaldırılır. Bu geri alınamaz."
+
+#. placeholder {0}: target.name
+#. placeholder {1}: target.slug
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column is removed for good."
+msgstr "Bu, <1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun kalıcı olarak kaldırılır."
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "This runs on the write path — a slow or failing hook affects live writes."
@@ -19634,6 +19703,18 @@ msgstr "Yazın ve Enter'a basın…"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Type it"
 msgstr "Elle yaz"
+
+#: src/client/admin/app.tsx
+msgid "Type the collection slug to confirm"
+msgstr "Onaylamak için koleksiyon slug'ını yazın"
+
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "Type the column name to confirm"
+msgstr "Onaylamak için sütun adını yazın"
+
+#: src/client/admin/sheet.tsx
+msgid "Type the name to confirm"
+msgstr "Onaylamak için adı yazın"
 
 #: src/client/pages/graphql.tsx
 msgid "Types"

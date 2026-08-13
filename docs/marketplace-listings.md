@@ -1,6 +1,6 @@
 ---
 title: Marketplace listings
-description: Publish products to Trendyol, n11, Çiçeksepeti, Hepsiburada, Amazon and eBay — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
+description: Publish products to Trendyol, n11, Çiçeksepeti, Hepsiburada, Amazon, eBay and Otto — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
 ---
 
 A **listing sync** puts your products on sale at a marketplace. It is the sixth
@@ -142,9 +142,9 @@ the product row.
 This is a configuration, not a special case: no provider branches on it, which
 is why "no variants" costs nothing.
 
-## The six marketplaces
+## The seven marketplaces
 
-The shape held for all six, and they agree on almost nothing. What differs is
+The shape held for all seven, and they agree on almost nothing. What differs is
 worth knowing before you map one.
 
 ### Trendyol
@@ -245,6 +245,24 @@ the provider — the mapping form works the same way it does for the other four.
   listed or refused by the time the run finishes, and the reason is on the row.
 - **eBay's own message is kept verbatim** — it names the field, which "Invalid
   value" would not.
+
+### Otto
+
+- **Connect with a partner username and password** — there is no consent screen
+  and no Connect button here.
+- **The category picker has two levels**: a group, then the categories under it.
+  Map a product to one of the categories; the attributes it demands belong to
+  the group above it.
+- **Everything the form needs arrives in one walk**, so the mapping dialog draws
+  quickly — unlike Hepsiburada's, which fetches values per attribute.
+- **Pick the brand from Otto's own list.** It is a searchable registry like
+  Trendyol's, and brands Otto has retired are not offered because a listing
+  against one is refused.
+- **Every unit needs a SKU, an EAN and a brand.** A row missing one is refused
+  before the batch is sent, with which one it was on the row — Otto would refuse
+  the whole batch and name none of them.
+- **A product is on sale when Otto reports it ONLINE**, and its MOIN is the id
+  written back. Anything else is still pending, and errors come back verbatim.
 
 ## Template columns
 

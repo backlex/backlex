@@ -40,6 +40,7 @@ import { meilisearch } from "./meilisearch";
 import { mixpanel } from "./mixpanel";
 import { n11 } from "./n11";
 import { notion } from "./notion";
+import { otto } from "./otto";
 import { opsgenie } from "./opsgenie";
 import { pagerduty } from "./pagerduty";
 import { posthog } from "./posthog";
@@ -110,6 +111,7 @@ export const INTEGRATION_KINDS = [
   "easypost",
   "ebay",
   "allegro",
+  "otto",
   "yurtici",
   "aras",
   "dhl",
@@ -161,6 +163,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   easypost,
   ebay,
   allegro,
+  otto,
   yurtici,
   aras,
   dhl,

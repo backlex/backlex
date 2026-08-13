@@ -14210,6 +14210,10 @@ msgid "Pull an Airtable table into a collection on a schedule."
 msgstr "Bir Airtable tablosunu zamanlanmış olarak koleksiyona çeker."
 
 #: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull German marketplace orders in with their positions, put products on sale, and report shipments back."
+msgstr "Alman pazar yeri siparişlerini pozisyonlarıyla içeri çek, ürünleri satışa koy ve kargo bildirimini geri gönder."
+
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull marketplace orders in with their lines, push stock and price out, and notify package status back."
 msgstr "Pazar yeri siparişlerini kalemleriyle çeker, stok ve fiyatı gönderir, paket durumunu geri bildirir."
 

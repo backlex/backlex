@@ -36,7 +36,7 @@ Forty-one providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Allegro — a source and a task |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Otto — a source, a task and a listing; Allegro — a source and a task |
 | carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
@@ -897,7 +897,7 @@ synonym for shipping: an order going out on Çiçeksepeti's own service vehicle 
 Çiçeksepeti emails and texts the customer from exactly those fields — the
 courier is picked from a list of the ids it publishes, not typed.
 
-### eBay and Allegro — Europe, and two things the shape had not met
+### eBay, Otto and Allegro — Europe, and what the shape could and could not hold
 
 eBay is the sixth marketplace and the first reached over **OAuth**: you paste an
 App ID, a Cert ID and a **RuName** and then press Connect. The RuName is the part
@@ -910,6 +910,22 @@ eBay also answers a publish with the verdict rather than a ticket, which is why
 `ListingBatch` no longer calls its final-answers field `rejected` — the field
 carries accepted units too, and is now `settled`. A run against eBay therefore
 finishes with nothing pending and no batch to watch.
+
+**Otto is the counter-example, and it is the one that names the rule.** Its
+contract is public too, and it *does* list — because its taxonomy is
+enumerable. One paged walk of `GET /v5/products/categories` returns category
+groups carrying their categories, their attributes AND their variation themes,
+so a single call answers the whole mapping form. Otto also keeps its own brand
+registry, so brand is a searchable lookup rather than a string, and it mints its
+token from a partner username and password rather than a redirect — so there is
+no Connect button, just credentials.
+
+One thing Otto would not tell us: which attributes are mandatory. Its
+`relevance` field is a free string whose only published example is `HIGH`, so
+only the exact word `MANDATORY` marks an attribute required and anything else is
+left optional. That is the safe direction — a wrongly-required field blocks a
+form somebody could have submitted, while a wrongly-optional one is refused by
+Otto with its own message naming the field.
 
 **Allegro is a source and a task only, and the reason is worth stating.** Its
 API is entirely public — 1.5 MB of OpenAPI, no account needed — and orders,

@@ -1100,6 +1100,17 @@ export const revisions = sqliteTable(
   (t) => [
     index("revisions_item_idx").on(t.collection, t.itemId),
     index("revisions_tenant_idx").on(t.tenantId),
+    /** The retention sweep's cutoff column. See the pg twin. */
+    index("revisions_created_idx").on(t.createdAt),
+    /** `recordRevision` reads the newest revision for one item on EVERY write;
+     *  without `created_at` on the key that is an unindexed sort over a set that
+     *  only grows. See the pg twin. */
+    index("revisions_item_created_idx").on(
+      t.tenantId,
+      t.collection,
+      t.itemId,
+      t.createdAt,
+    ),
   ],
 );
 
@@ -2949,6 +2960,9 @@ export const backups = sqliteTable(
     tableCount: integer("table_count").notNull().default(0),
     status: text("status").notNull().default("queued"),
     error: text("error"),
+    /** Comma-separated tables named in the dump that don't exist here. See the
+     *  pg twin for why absence is recorded and a read failure is not. */
+    missingTables: text("missing_tables"),
     createdBy: text("created_by"),
     createdAt: ts("created_at"),
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),

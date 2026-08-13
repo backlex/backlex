@@ -1322,6 +1322,20 @@ export const revisions = pgTable(
   (t) => [
     index("revisions_item_idx").on(t.collection, t.itemId),
     index("revisions_tenant_idx").on(t.tenantId),
+    /** The retention sweep's cutoff column. `revisions` is the fastest-growing
+     *  table here (a full-row snapshot per update) and nothing pruned it before,
+     *  so the prune needs the same indexed clock `activity` and `spans` have. */
+    index("revisions_created_idx").on(t.createdAt),
+    /** `recordRevision` looks up the newest revision for one item on EVERY
+     *  write. `revisions_item_idx` narrows to the item but leaves an unindexed
+     *  sort over a per-item set that only grows; with `created_at` trailing the
+     *  key this is an index-only backwards scan with LIMIT 1. */
+    index("revisions_item_created_idx").on(
+      t.tenantId,
+      t.collection,
+      t.itemId,
+      t.createdAt,
+    ),
   ],
 );
 
@@ -3318,6 +3332,15 @@ export const backups = pgTable(
     /** queued | running | done | failed. */
     status: text("status").notNull().default("queued"),
     error: text("error"),
+    /**
+     * Comma-separated tables named in the dump that did not exist in this
+     * database, so contributed no rows.
+     *
+     * The dump used to swallow every read error, making "absent" and "could not
+     * be read" the same silent outcome on a backup that still reported `done`.
+     * Absence lands here; a real read failure now fails the backup.
+     */
+    missingTables: text("missing_tables"),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),

@@ -16,6 +16,7 @@ import { allegro } from "./allegro";
 import { amazon } from "./amazon";
 import { amplitude } from "./amplitude";
 import { aras } from "./aras";
+import { bol } from "./bol";
 import { ciceksepeti } from "./ciceksepeti";
 import { clickhouse } from "./clickhouse";
 import { contentful } from "./contentful";
@@ -112,6 +113,7 @@ export const INTEGRATION_KINDS = [
   "ebay",
   "allegro",
   "otto",
+  "bol",
   "yurtici",
   "aras",
   "dhl",
@@ -164,6 +166,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   ebay,
   allegro,
   otto,
+  bol,
   yurtici,
   aras,
   dhl,

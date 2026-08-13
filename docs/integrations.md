@@ -36,7 +36,7 @@ Forty-one providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Otto — a source, a task and a listing; Allegro — a source, a task and a listing (browsed a level at a time) |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Otto — a source, a task and a listing; Allegro — a source, a task and a listing (browsed a level at a time); bol.com — a source, a DESTINATION and a task |
 | carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
@@ -949,7 +949,22 @@ and its seller-status write is optimistically concurrent — it presents the
 `revision` the order was read at, which is why that value is pulled onto the
 order row.
 
-One lesson from building it, worth more than the provider: its
+**bol.com is the one that is deliberately not a listing at all.** Creating an
+offer there is `{ean, condition, pricing, stock, fulfilment}` — no category, no
+attributes, no title, no images. You are not putting a product on sale; you are
+adding an OFFER against a product already in bol's catalogue, which is
+destination-shaped. So bol brings orders in, mirrors **price and stock** out,
+and reports a shipment back, and a test pins the absence of `listing` so nobody
+completes it by inventing a category picker bol has no endpoint for. Same call
+Hepsiburada's `fastlisting` got.
+
+Two bol details worth knowing before you wire it: its token mint needs an
+explicit `Content-Length: 0` (without it bol's edge answers **411**, which reads
+like an outage rather than a malformed request), and its order list carries no
+address — the address is a second call per order, which is why its page size is
+smaller than bol's own maximum.
+
+One lesson from building Allegro, worth more than the provider: its
 `GET /sale/categories/{id}/parameters` endpoint is invisible to a naive scan of
 the published swagger, and a **live probe** settled whether it exists — the path
 answers Allegro's own `401 unauthorized` where a path that does not exist

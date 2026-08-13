@@ -576,6 +576,45 @@ export interface Env {
    *  daily cron tick. Defaults to 30. Set to `0` to disable (rows then fall
    *  back to ACTIVITY_RETENTION_DAYS). */
   MCP_AUDIT_RETENTION_DAYS?: string;
+  /** Days of finished (`succeeded` / `cancelled`) job rows to keep. Nothing
+   *  pruned this table before, so on a busy workspace it outgrew the user data.
+   *  `pending` and `active` jobs are never touched at any setting — a delayed
+   *  job legitimately carries an old `created_at` and a future `run_at`.
+   *  Defaults to 30. Set to `0` to disable. */
+  JOBS_RETENTION_DAYS?: string;
+  /** Days of `failed` / `dead_letter` job rows to keep. Longer than the
+   *  finished-job clock on purpose: these are the forensic ones. Defaults to
+   *  90. Set to `0` to disable. */
+  JOBS_DEAD_LETTER_RETENTION_DAYS?: string;
+  /** Days of webhook delivery attempts to keep. Instance-wide: the table has no
+   *  `tenant_id`, so this is not a per-workspace policy. Defaults to 30. Set to
+   *  `0` to disable. */
+  WEBHOOK_DELIVERIES_RETENTION_DAYS?: string;
+  /** Days of item revision history to keep. Each row is a full-row JSON
+   *  snapshot written on every update, so this is the fastest-growing table in
+   *  the system — but it is also the per-row undo path, so the default is
+   *  deliberately long. Pruned revisions remain recoverable from any backup
+   *  taken before the prune (`revisions` is in the dump). Defaults to 180. Set
+   *  to `0` to disable. */
+  REVISIONS_RETENTION_DAYS?: string;
+  /** Maximum rows a single backup dump may carry before it refuses. The dump is
+   *  assembled in memory, so past this point a large workspace OOMs the isolate
+   *  instead of producing a backup — and an OOM leaves the tracking row stuck at
+   *  `running`. Defaults to 500000. */
+  BACKUP_MAX_ROWS?: string;
+  /** Maximum rows `GET /api/items/:slug/export` may return. The export is
+   *  materialized in memory before it is serialized, so it is bounded the same
+   *  way the import already is. Over the cap the request is refused (422) rather
+   *  than silently truncated — a short export that looks complete is the
+   *  data-loss-shaped failure. Defaults to 100000. */
+  EXPORT_MAX_ROWS?: string;
+  /** Per-statement timeout in milliseconds for the request-path Postgres
+   *  client. **Unset by default, deliberately.** `createPgClient` returns the
+   *  same handle the boot migration runner uses, and a timed-out `CREATE INDEX`
+   *  is recorded as a failed migration that is retried on every cold start —
+   *  an expensive loop. Set this above the slowest migration, or leave it off.
+   *  Ignored on the D1 / SQLite path. */
+  PG_STATEMENT_TIMEOUT_MS?: string;
   /** Set to `"true"` to let the server-side migration connector dial
    *  private/internal addresses (localhost, RFC1918, link-local, ULA). Off
    *  by default — a hosted admin must not be able to use the server as a
@@ -765,6 +804,13 @@ export const STRING_ENV_KEYS = [
   "ERRORS_RETENTION_DAYS",
   "MCP_AUDIT_LEVEL",
   "MCP_AUDIT_RETENTION_DAYS",
+  "JOBS_RETENTION_DAYS",
+  "JOBS_DEAD_LETTER_RETENTION_DAYS",
+  "WEBHOOK_DELIVERIES_RETENTION_DAYS",
+  "REVISIONS_RETENTION_DAYS",
+  "BACKUP_MAX_ROWS",
+  "EXPORT_MAX_ROWS",
+  "PG_STATEMENT_TIMEOUT_MS",
   "MIGRATE_ALLOW_PRIVATE_SOURCES",
 ] as const satisfies readonly (keyof Env)[];
 

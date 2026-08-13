@@ -24,11 +24,26 @@ export interface BackupScheduleConfig {
   retainDays: number | null;
 }
 
-/** Result of an additive restore (`ON CONFLICT DO NOTHING`). */
+/**
+ * How an existing row is treated by a restore.
+ *
+ * - `additive` (default) — `ON CONFLICT DO NOTHING`; only ever adds data.
+ * - `overwrite` — `ON CONFLICT (id) DO UPDATE`; restates rows that still exist
+ *   to their backup-era values. The only path that undoes an edit, and the only
+ *   one that can destroy current data.
+ */
+export type BackupRestoreMode = "additive" | "overwrite";
+
+/** Result of a restore. */
 export interface BackupRestoreResult {
   tableCount: number;
   rowCount: number;
   skipped: number;
+  /** Rows restated to backup-era values. Always 0 in `additive` mode. */
+  overwritten: number;
+  /** Tables that stayed additive despite `overwrite`, having no single-column
+   *  `id` to name as the conflict target (e.g. `user_roles`). */
+  keptAdditive: string[];
 }
 
 /** Backup / restore (admin-scoped). Mirrors `/api/admin/db/backups*`. */
@@ -37,9 +52,14 @@ export interface BackupsClient {
   list(): Promise<{ data: BackupRecord[] }>;
   /** Run a manual backup now; resolves once the dump is done/failed. */
   run(opts?: { label?: string }): Promise<{ data: BackupRecord }>;
-  /** Additively restore a backup — missing rows come back, existing rows are
-   *  never overwritten or removed. Sends the confirm header for you. */
-  restore(id: string): Promise<{ data: BackupRestoreResult }>;
+  /** Restore a backup. Defaults to additive — missing rows come back, existing
+   *  rows are never overwritten or removed. Pass `mode: "overwrite"` to restate
+   *  rows that still exist, and `onlyTables` to narrow which tables are touched.
+   *  Sends the confirm header for you. */
+  restore(
+    id: string,
+    opts?: { mode?: BackupRestoreMode; onlyTables?: string[] },
+  ): Promise<{ data: BackupRestoreResult }>;
   /** Get the automatic-backup schedule + retention count. */
   getConfig(): Promise<{ data: BackupScheduleConfig }>;
   /** Set the automatic-backup schedule and/or retention count. */
@@ -51,7 +71,7 @@ export interface BackupsClient {
 export const makeBackups = (core: ClientCore): BackupsClient => {
   // Backup / restore. Admin-scoped over `/api/admin/db/backups*`; `run` blocks
   // until the dump finishes, `restore` carries the confirm header the REST
-  // endpoint requires (the restore itself is additive — never overwrites).
+  // endpoint requires in either mode.
   const backups: BackupsClient = {
     list: () => core.request<{ data: BackupRecord[] }>("GET", "/api/admin/db/backups"),
     run: (opts?: { label?: string }) =>
@@ -60,13 +80,21 @@ export const makeBackups = (core: ClientCore): BackupsClient => {
         "/api/admin/db/backups/now",
         opts?.label ? { label: opts.label } : {},
       ),
-    restore: (id: string) =>
-      core.request<{ data: BackupRestoreResult }>(
+    restore: (
+      id: string,
+      opts?: { mode?: BackupRestoreMode; onlyTables?: string[] },
+    ) => {
+      const q = new URLSearchParams();
+      if (opts?.mode) q.set("mode", opts.mode);
+      if (opts?.onlyTables?.length) q.set("onlyTables", opts.onlyTables.join(","));
+      const qs = q.toString();
+      return core.request<{ data: BackupRestoreResult }>(
         "POST",
-        `/api/admin/db/backups/${encodeURIComponent(id)}/restore`,
+        `/api/admin/db/backups/${encodeURIComponent(id)}/restore${qs ? `?${qs}` : ""}`,
         undefined,
         { "x-backlex-confirm": "yes" },
-      ),
+      );
+    },
     getConfig: () =>
       core.request<{ data: BackupScheduleConfig }>("GET", "/api/admin/db/backups/config"),
     setConfig: (patch: Partial<BackupScheduleConfig>) =>

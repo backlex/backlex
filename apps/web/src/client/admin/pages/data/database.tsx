@@ -4,6 +4,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../../config";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
+import { ConfirmDialog } from "../../sheet";
 import { useUrlTab } from "../../use-url-tab";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
@@ -402,12 +403,26 @@ function Backups({ pushToast }: { pushToast: PushToast }) {
       setSavingCfg(false);
     }
   };
-  const restore = async (id: string) => {
-    if (!window.confirm(t`Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted.`)) return;
+  // The restore confirm carries a mode switch, so it has to be a real dialog:
+  // `window.confirm` cannot hold a control, and the two modes differ by whether
+  // the restore can destroy current data.
+  const [restoreAsk, setRestoreAsk] = useState<string | null>(null);
+  const [restoreOverwrite, setRestoreOverwrite] = useState(false);
+  const restore = async (id: string, overwrite: boolean) => {
     setRestoring(id);
     try {
-      const r = await dbAdminApi.restoreBackup(id);
-      pushToast(t`Restored ${r.data.rowCount} rows across ${r.data.tableCount} tables.`);
+      const r = await dbAdminApi.restoreBackup(id, {
+        mode: overwrite ? "overwrite" : "additive",
+      });
+      // `keptAdditive` is the one result the operator must not miss: they asked
+      // for overwrite and part of the dump did not get it.
+      if (r.data.keptAdditive.length > 0) {
+        pushToast(
+          t`Restored ${r.data.rowCount} rows across ${r.data.tableCount} tables. These stayed additive (no single-column id): ${r.data.keptAdditive.join(", ")}`,
+        );
+      } else {
+        pushToast(t`Restored ${r.data.rowCount} rows across ${r.data.tableCount} tables.`);
+      }
     } catch (e) {
       pushToast((e as Error).message);
     } finally {
@@ -509,13 +524,50 @@ function Backups({ pushToast }: { pushToast: PushToast }) {
                     a.click();
                     a.remove();
                   }}><Trans>Download</Trans></Button>
-                  <Button size="sm" variant="ghost" icon={I.History} disabled={restoring === b.id} onClick={() => void restore(b.id)}><Trans>Restore</Trans></Button>
+                  <Button size="sm" variant="ghost" icon={I.History} disabled={restoring === b.id} onClick={() => { setRestoreOverwrite(false); setRestoreAsk(b.id); }}><Trans>Restore</Trans></Button>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Card>
+      <ConfirmDialog
+        open={restoreAsk !== null}
+        title={t`Restore from this backup?`}
+        destructive={restoreOverwrite}
+        actionLabel={restoreOverwrite ? t`Overwrite and restore` : t`Restore`}
+        description={
+          <span className="flex flex-col gap-3">
+            <span>
+              {restoreOverwrite ? (
+                <Trans>
+                  Rows that still exist will be replaced by their values from this
+                  backup. Anything changed since it was taken is lost. This is how
+                  you undo a bad write.
+                </Trans>
+              ) : (
+                <Trans>
+                  Missing rows are re-inserted. Rows that still exist are never
+                  overwritten or deleted, so this is safe to run against live data.
+                </Trans>
+              )}
+            </span>
+            <span className="flex items-center gap-2">
+              <Switch
+                checked={restoreOverwrite}
+                onChange={(v) => setRestoreOverwrite(v)}
+              />
+              <span className="text-[13px]"><Trans>Overwrite existing rows</Trans></span>
+            </span>
+          </span>
+        }
+        onCancel={() => setRestoreAsk(null)}
+        onConfirm={() => {
+          const id = restoreAsk;
+          setRestoreAsk(null);
+          if (id) void restore(id, restoreOverwrite);
+        }}
+      />
     </div>
   );
 }

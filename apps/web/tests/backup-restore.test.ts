@@ -4,7 +4,10 @@
  * HTTP surface, plus the scheduler sweep + CSV helpers directly.
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
+import { sql as drizzleSql } from "drizzle-orm";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+
+const sqlRaw = (q: string) => drizzleSql.raw(q);
 import { buildContext } from "../src/server/context";
 import { maybeRunScheduledBackups } from "../src/server/services/backup";
 import { toCsv, parseCsv } from "../src/server/services/items/csv";
@@ -348,5 +351,248 @@ describe("csv helpers", () => {
 
   test("parseCsv on empty input is []", () => {
     expect(parseCsv("")).toEqual([]);
+  });
+});
+
+/**
+ * Overwrite-mode restore.
+ *
+ * The pre-existing round-trip above DELETES rows and asserts they come back —
+ * which passes under either mode, so it cannot tell the two apart. These tests
+ * exercise the case `ON CONFLICT DO NOTHING` deliberately SKIPS: a row that
+ * still exists but has been changed since the backup. That is the whole reason
+ * overwrite exists (undo a bad write, recover a dropped column's data), and it
+ * is the only shape that fails if the mode is ignored.
+ */
+describe("restore: overwrite mode", () => {
+  let h: TestHarness;
+  const slug = `bkov_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await makeCollection(h, slug);
+  });
+  afterAll(() => h.cleanup());
+
+  const readTitle = async (id: string): Promise<string> => {
+    const res = await h.fetch(`/api/items/${slug}/${id}`);
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { data: { title: string } }).data.title;
+  };
+
+  const restore = async (
+    id: string,
+    query = "",
+  ): Promise<{
+    tableCount: number;
+    rowCount: number;
+    skipped: number;
+    overwritten: number;
+    keptAdditive: string[];
+  }> => {
+    const res = await h.fetch(`/api/admin/db/backups/${id}/restore${query}`, {
+      method: "POST",
+      headers: { ...json, "x-backlex-confirm": "yes" },
+    });
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { data: Awaited<ReturnType<typeof restore>> }).data;
+  };
+
+  test("additive leaves a changed row alone; overwrite restates it", async () => {
+    const id = await createItem(h, slug, { title: "Alpha", qty: 1, active: true });
+
+    const backupRes = await h.fetch("/api/admin/db/backups/now", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ label: "overwrite-test" }),
+    });
+    expect(backupRes.status).toBe(201);
+    const backup = ((await backupRes.json()) as { data: { id: string; status: string } }).data;
+    expect(backup.status).toBe("done");
+
+    // The row still EXISTS — it has just been changed. This is what `DO NOTHING`
+    // skips and `DO UPDATE` restates.
+    const patch = await h.fetch(`/api/items/${slug}/${id}`, {
+      method: "PATCH",
+      headers: json,
+      body: JSON.stringify({ title: "Corrupted" }),
+    });
+    expect(patch.status).toBe(200);
+    expect(await readTitle(id)).toBe("Corrupted");
+
+    // Additive: the row is counted (so we know the path ran and reached it —
+    // without this the next assertion would also pass if the restore silently
+    // did nothing at all), and deliberately left as it is.
+    const additive = await restore(backup.id);
+    expect(additive.rowCount).toBeGreaterThan(0);
+    expect(additive.overwritten).toBe(0);
+    expect(await readTitle(id)).toBe("Corrupted");
+
+    // Overwrite: the backup-era value comes back.
+    const overwrite = await restore(backup.id, "?mode=overwrite");
+    expect(overwrite.overwritten).toBeGreaterThan(0);
+    expect(await readTitle(id)).toBe("Alpha");
+  });
+
+  test("tables with no single-column id stay additive and are reported", async () => {
+    const list = await h.fetch("/api/admin/db/backups");
+    const first = ((await list.json()) as { data: { id: string }[] }).data[0];
+    expect(first).toBeTruthy();
+
+    const r = await restore(first!.id, "?mode=overwrite");
+    // `user_roles` is keyed (user_id, role_id) and carries no `id` column, so
+    // `ON CONFLICT (id) DO UPDATE` has no target to name. Asserting the specific
+    // table — not merely "non-empty" — is what makes this fail loudly if the
+    // eligibility check is ever widened to cover it by mistake.
+    expect(r.keptAdditive).toContain("user_roles");
+  });
+
+  test("onlyTables narrows the restore to the named tables", async () => {
+    const id = await createItem(h, slug, { title: "Solo", qty: 9, active: true });
+    const backupRes = await h.fetch("/api/admin/db/backups/now", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ label: "narrow" }),
+    });
+    const backup = ((await backupRes.json()) as { data: { id: string } }).data;
+
+    const patch = await h.fetch(`/api/items/${slug}/${id}`, {
+      method: "PATCH",
+      headers: json,
+      body: JSON.stringify({ title: "Changed" }),
+    });
+    expect(patch.status).toBe(200);
+
+    // Naming only `roles` must leave this collection's table untouched even in
+    // overwrite mode — otherwise a targeted recovery would drag every other
+    // table back to backup time, which is the reason onlyTables exists.
+    const narrowed = await restore(backup.id, "?mode=overwrite&onlyTables=roles");
+    expect(narrowed.keptAdditive).not.toContain("user_roles");
+    expect(await readTitle(id)).toBe("Changed");
+
+    // Same backup, unrestricted: now it is restated. The pair proves the
+    // narrowing did the skipping, not that the restore was a no-op.
+    await restore(backup.id, "?mode=overwrite");
+    expect(await readTitle(id)).toBe("Solo");
+  });
+
+  test("a restore writes an audit row naming the mode", async () => {
+    const list = await h.fetch("/api/admin/db/backups");
+    const first = ((await list.json()) as { data: { id: string }[] }).data[0];
+    await restore(first!.id, "?mode=overwrite");
+
+    const act = await h.fetch("/api/activity?limit=50");
+    expect(act.status).toBe(200);
+    const rows = ((await act.json()) as {
+      data: { action: string; payload?: { mode?: string } | null }[];
+    }).data;
+    const restored = rows.find((r) => r.action === "backup.restored");
+    expect(restored).toBeTruthy();
+    expect(restored?.payload?.mode).toBe("overwrite");
+  });
+});
+
+/**
+ * Overwrite must not reach a GLOBAL identity.
+ *
+ * `rowBelongs` lets `users` rows through because the dump was already narrowed
+ * to this workspace's members — harmless additively, since an existing identity
+ * is simply skipped. Under overwrite it is not: the same person can belong to
+ * several workspaces, so restating their profile from one workspace's backup
+ * would be visible in all of them. Scoped tables (memberships, roles,
+ * permissions) stay overwritable.
+ */
+describe("restore: overwrite never restates a shared identity", () => {
+  let h: TestHarness;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  test("`users` is reported in keptAdditive under overwrite", async () => {
+    const backupRes = await h.fetch("/api/admin/db/backups/now", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ label: "identity" }),
+    });
+    expect(backupRes.status).toBe(201);
+    const backup = ((await backupRes.json()) as { data: { id: string } }).data;
+
+    const res = await h.fetch(`/api/admin/db/backups/${backup.id}/restore?mode=overwrite`, {
+      method: "POST",
+      headers: { ...json, "x-backlex-confirm": "yes" },
+    });
+    expect(res.status).toBe(200);
+    const data = ((await res.json()) as { data: { keptAdditive: string[] } }).data;
+    // Named specifically: "non-empty" would also be satisfied by `user_roles`,
+    // which is kept additive for an unrelated reason (no `id` column).
+    expect(data.keptAdditive).toContain("users");
+  });
+});
+
+/**
+ * Overwrite must not restate INSTANCE-GLOBAL configuration.
+ *
+ * `tenantColumnWhere` scopes most system tables as `tenant_id = <mine> OR
+ * tenant_id IS NULL`, so every workspace's dump deliberately carries the
+ * instance-global rows — default email templates, global `app_settings`,
+ * instance-wide `api_keys`. Additively that is inert: those rows exist, so they
+ * are skipped. Under overwrite the UPDATE keys on `id` alone, which would let a
+ * workspace admin revert instance-wide configuration to its backup-era value
+ * from an operation scoped to their own workspace.
+ *
+ * Found in the security review of this feature, not by a failing test.
+ */
+describe("restore: overwrite never restates an instance-global row", () => {
+  let h: TestHarness;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  test("a global app_settings row survives an overwrite restore unchanged", async () => {
+    const ctx = await buildContext(h.env);
+    const key = `guard_probe_${Date.now()}`;
+    const insert = (value: string) =>
+      (ctx.db as any).run(
+        sqlRaw(
+          `INSERT INTO app_settings (id, tenant_id, key, value, updated_at)
+           VALUES ('${key}', NULL, '${key}', '${JSON.stringify(value)}', ${Date.now()})`,
+        ),
+      );
+    await insert("backup-era");
+
+    const backupRes = await h.fetch("/api/admin/db/backups/now", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ label: "global-guard" }),
+    });
+    expect(backupRes.status).toBe(201);
+    const backup = ((await backupRes.json()) as { data: { id: string } }).data;
+
+    // The instance is hardened after the backup was taken.
+    await (ctx.db as any).run(
+      sqlRaw(`UPDATE app_settings SET value = '"hardened"' WHERE id = '${key}'`),
+    );
+
+    const res = await h.fetch(`/api/admin/db/backups/${backup.id}/restore?mode=overwrite`, {
+      method: "POST",
+      headers: { ...json, "x-backlex-confirm": "yes" },
+    });
+    expect(res.status).toBe(200);
+    const data = ((await res.json()) as { data: { keptAdditive: string[] } }).data;
+
+    // The whole point: the global row is NOT reverted.
+    const after = (await (ctx.db as any).all(
+      sqlRaw(`SELECT value FROM app_settings WHERE id = '${key}'`),
+    )) as Array<{ value: unknown }>;
+    expect(String(after[0]?.value)).toContain("hardened");
+    // And it is reported rather than silently downgraded.
+    expect(data.keptAdditive).toContain("app_settings");
   });
 });

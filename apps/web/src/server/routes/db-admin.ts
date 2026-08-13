@@ -116,6 +116,14 @@ const RestoreResult = z
     tableCount: z.number().int().nonnegative(),
     rowCount: z.number().int().nonnegative(),
     skipped: z.number().int().nonnegative(),
+    overwritten: z.number().int().nonnegative().openapi({
+      description:
+        "Rows restated to their backup-era values. Always 0 unless `mode=overwrite`.",
+    }),
+    keptAdditive: z.array(z.string()).openapi({
+      description:
+        "Tables that stayed additive despite `mode=overwrite` because they have no single-column `id` to name as the conflict target (e.g. `user_roles`).",
+    }),
   })
   .openapi("RestoreResult");
 
@@ -459,10 +467,21 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "Restore a backup",
       description:
-        "Re-inserts the dump's rows additively (`ON CONFLICT DO NOTHING`) — missing/deleted rows come back, existing rows are never overwritten or removed. Destructive-by-omission only: safe to run live. Requires the `X-Backlex-Confirm: yes` header.",
+        "Re-inserts the dump's rows. `mode=additive` (the default) uses `ON CONFLICT DO NOTHING` — missing/deleted rows come back, existing rows are never overwritten or removed, so it is safe to run live. `mode=overwrite` uses `ON CONFLICT (id) DO UPDATE`, restating rows that still exist to their backup-era values: this is what undoes a bad bulk update or recovers a dropped column's data, and it CAN destroy current data. `onlyTables` narrows the restore to a named set. Requires the `X-Backlex-Confirm: yes` header in either mode.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
-      request: { params: z.object({ id: z.string() }) },
+      request: {
+        params: z.object({ id: z.string() }),
+        query: z.object({
+          mode: z.enum(["additive", "overwrite"]).optional().openapi({
+            description: "Defaults to `additive`.",
+          }),
+          onlyTables: z.string().optional().openapi({
+            description:
+              "Comma-separated table names. When present, only these tables are restored.",
+          }),
+        }),
+      },
       responses: {
         200: {
           description: "Restored",
@@ -475,21 +494,29 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     /**
      * Restore a stored backup into the active workspace. Gated on the same
-     * confirm header the SQL-write path uses, since it mutates data. The
-     * underlying service is additive (never overwrites/deletes), so the worst
-     * case is a no-op when every row already exists.
+     * confirm header the SQL-write path uses, since it mutates data. In the
+     * default additive mode the worst case is a no-op when every row already
+     * exists; `mode=overwrite` restates existing rows, which is the point of it
+     * and also why the header is not optional there either.
      */
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const { id } = c.req.valid("param");
+      const { mode, onlyTables } = c.req.valid("query");
       if (c.req.header("x-backlex-confirm") !== "yes") {
         throw new AppError(
           "FORBIDDEN",
           "Restore requires the X-Backlex-Confirm: yes header.",
         );
       }
-      const result = await restoreBackupById(ctx, auth.tenantId ?? null, id);
+      const result = await restoreBackupById(ctx, auth.tenantId ?? null, id, {
+        mode,
+        onlyTables: onlyTables
+          ? onlyTables.split(",").map((s) => s.trim()).filter(Boolean)
+          : undefined,
+        userId: auth.userId ?? null,
+      });
       return c.json({ data: result });
     },
   )

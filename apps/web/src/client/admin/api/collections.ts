@@ -170,15 +170,52 @@ export const collectionsApi = {
     api<{ ok: true } & FtsBackfillResult>(`/api/collections/${slug}/vectorize`, {
       method: "POST",
     }),
-  remove: (slug: string) =>
-    api<{ ok: true; archived?: boolean }>(`/api/collections/${slug}`, { method: "DELETE" }),
-  /** Drop a single field (column) from a managed collection. Destructive —
-   *  the column's data is gone. Refused on adopted collections. */
-  dropField: (slug: string, name: string) =>
-    api<{ ok: true; slug: string; field: string }>(
-      `/api/collections/${slug}/fields/${encodeURIComponent(name)}`,
+  /** Delete a collection. The confirm header is required only when the table
+   *  actually holds rows; the server then saves them to a `pre-drop` backup and
+   *  hands back its id. */
+  remove: (slug: string, opts?: { confirm?: boolean }) =>
+    api<{ ok: true; archived?: boolean; rows?: number; snapshotId?: string | null }>(
+      `/api/collections/${slug}`,
+      {
+        method: "DELETE",
+        ...(opts?.confirm ? { headers: { "x-backlex-confirm": "yes" } } : {}),
+      },
+    ),
+  /** What deleting a collection would destroy. Changes nothing. */
+  removeImpact: (slug: string) =>
+    api<{ ok: false; dryRun: true; slug: string; adopted: boolean; rows: number }>(
+      `/api/collections/${slug}?dryRun=1`,
       { method: "DELETE" },
     ),
+  /** Drop a single field (column) from a managed collection. The column is gone
+   *  for good, but its VALUES are saved to a `pre-drop` backup first (the
+   *  returned `snapshotId`) whenever any row holds one. Refused on adopted
+   *  collections. The confirm header is required only when data would be lost. */
+  dropField: (slug: string, name: string, opts?: { confirm?: boolean }) =>
+    api<{
+      ok: true;
+      slug: string;
+      field: string;
+      rows: number;
+      nonNull: number;
+      snapshotId: string | null;
+    }>(`/api/collections/${slug}/fields/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+      ...(opts?.confirm ? { headers: { "x-backlex-confirm": "yes" } } : {}),
+    }),
+  /** How many rows the column holds a value in. Changes nothing. */
+  dropFieldImpact: (slug: string, name: string) =>
+    api<{
+      ok: false;
+      dryRun: true;
+      slug: string;
+      field: string;
+      table: string;
+      rows: number;
+      nonNull: number;
+    }>(`/api/collections/${slug}/fields/${encodeURIComponent(name)}?dryRun=1`, {
+      method: "DELETE",
+    }),
   /** Re-activate an archived (adopted) collection. No-op on already-active rows. */
   restore: (slug: string) =>
     api<{ ok: true; alreadyActive?: boolean }>(`/api/collections/${slug}/restore`, {
@@ -517,11 +554,27 @@ export const dbAdminApi = {
       method: "POST",
       body: JSON.stringify({ label }),
     }),
-  restoreBackup: (id: string) =>
-    api<Envelope<{ tableCount: number; rowCount: number; skipped: number }>>(
-      `/api/admin/db/backups/${id}/restore`,
-      { method: "POST", headers: { "x-backlex-confirm": "yes" } },
-    ),
+  restoreBackup: (
+    id: string,
+    opts?: { mode?: "additive" | "overwrite"; onlyTables?: string[] },
+  ) => {
+    const q = new URLSearchParams();
+    if (opts?.mode) q.set("mode", opts.mode);
+    if (opts?.onlyTables?.length) q.set("onlyTables", opts.onlyTables.join(","));
+    const qs = q.toString();
+    return api<
+      Envelope<{
+        tableCount: number;
+        rowCount: number;
+        skipped: number;
+        overwritten: number;
+        keptAdditive: string[];
+      }>
+    >(`/api/admin/db/backups/${id}/restore${qs ? `?${qs}` : ""}`, {
+      method: "POST",
+      headers: { "x-backlex-confirm": "yes" },
+    });
+  },
   backupConfig: () => api<Envelope<BackupConfig>>(`/api/admin/db/backups/config`),
   saveBackupConfig: (cfg: Partial<BackupConfig>) =>
     api<Envelope<BackupConfig>>(`/api/admin/db/backups/config`, {

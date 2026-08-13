@@ -3,8 +3,10 @@
  *
  * Backups are JSONL dumps (see `docs/backup-restore.md`). `restore` is
  * confirm-gated server-side (`X-Backlex-Confirm: yes`), so the CLI demands an
- * explicit `--confirm` before sending it — restore is additive but still writes
- * data, and a fat-fingered id shouldn't run silently.
+ * explicit `--confirm` before sending it — even the default additive restore
+ * writes data, and a fat-fingered id shouldn't run silently. `--overwrite`
+ * additionally restates rows that still exist, so it prints what it is about to
+ * do on stderr rather than relying on `--confirm` alone to convey it.
  */
 import { writeFileSync } from "node:fs";
 import { BacklexError } from "backlex";
@@ -25,6 +27,9 @@ const BACKUP_HELP = `backlex backup <list|now|download|restore|config>
   now [--label <text>]         run a manual backup now
   download <id> [--out <file>] download a backup (JSONL); stdout if no --out
   restore <id> --confirm       restore a backup (additive; requires --confirm)
+    [--overwrite]              also restate rows that still exist (DESTRUCTIVE:
+                               current values are replaced by the backup's)
+    [--only <t1,t2>]           restrict the restore to these tables
   config                       show the auto-backup schedule
   config --schedule <off|daily|weekly> [--retain <n>]   set the schedule
 `;
@@ -102,9 +107,24 @@ export const runBackup = async (args: string[]): Promise<void> => {
           );
           process.exit(1);
         }
+        const overwrite = has(rest, "--overwrite");
+        const only = flag(rest, "--only");
+        // `--overwrite` is the one restore that can destroy current data, so it
+        // gets its own line rather than riding silently on --confirm.
+        if (overwrite) {
+          process.stderr.write(
+            `! overwrite mode: rows that still exist will be REPLACED by their backup-era values${
+              only ? ` (tables: ${only})` : " (every table in the dump)"
+            }\n`,
+          );
+        }
+        const q = new URLSearchParams();
+        if (overwrite) q.set("mode", "overwrite");
+        if (only) q.set("onlyTables", only);
+        const qs = q.toString();
         const res = await client.request<{ data: Record<string, unknown> }>(
           "POST",
-          `${BASE}/backups/${encodeURIComponent(id)}/restore`,
+          `${BASE}/backups/${encodeURIComponent(id)}/restore${qs ? `?${qs}` : ""}`,
           undefined,
           { "x-backlex-confirm": "yes" },
         );

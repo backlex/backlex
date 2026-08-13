@@ -46,9 +46,12 @@ export const runBackupNow: McpTool = {
 export const restoreBackup: McpTool = {
   name: "backups.restore",
   description:
-    "Additively restore a backup into the active workspace — missing/deleted " +
-    "rows come back, existing rows are never overwritten or removed. Requires " +
-    "`confirm: true` since it writes data.",
+    "Restore a backup into the active workspace. By default additive — " +
+    "missing/deleted rows come back, existing rows are never overwritten or " +
+    "removed. Set `overwrite: true` to also restate rows that still exist to " +
+    "their backup-era values; that is the only way to undo a bad write, and the " +
+    "only mode that can destroy current data. `onlyTables` narrows which tables " +
+    "are touched. Requires `confirm: true` since it writes data.",
   inputSchema: {
     type: "object",
     properties: {
@@ -56,6 +59,19 @@ export const restoreBackup: McpTool = {
       confirm: {
         type: "boolean",
         description: "Must be true — acknowledges the data write.",
+      },
+      overwrite: {
+        type: "boolean",
+        description:
+          "Restate rows that still exist (ON CONFLICT DO UPDATE). Destructive: " +
+          "current values are replaced by the backup's. Requires `confirm` too.",
+      },
+      onlyTables: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Restrict the restore to these table names. Recommended with " +
+          "`overwrite` so a targeted recovery does not roll settings back too.",
       },
     },
     required: ["id", "confirm"],
@@ -66,8 +82,14 @@ export const restoreBackup: McpTool = {
     if (!id) throw new Error("VALIDATION: id is required");
     if (args.confirm !== true)
       throw new Error("VALIDATION: confirm must be true to restore a backup");
+    const q = new URLSearchParams();
+    if (args.overwrite === true) q.set("mode", "overwrite");
+    const onlyTables = args.onlyTables;
+    if (Array.isArray(onlyTables) && onlyTables.length > 0)
+      q.set("onlyTables", onlyTables.map((t) => String(t)).join(","));
+    const qs = q.toString();
     const res = await ctx.fetchInternal(
-      `/api/admin/db/backups/${encodeURIComponent(id)}/restore`,
+      `/api/admin/db/backups/${encodeURIComponent(id)}/restore${qs ? `?${qs}` : ""}`,
       {
         method: "POST",
         headers: { "x-backlex-confirm": "yes" },

@@ -91,6 +91,10 @@ const RestoreResultType = new GraphQLObjectType({
     tableCount: { type: new GraphQLNonNull(GraphQLInt) },
     rowCount: { type: new GraphQLNonNull(GraphQLInt) },
     skipped: { type: new GraphQLNonNull(GraphQLInt) },
+    overwritten: { type: new GraphQLNonNull(GraphQLInt) },
+    keptAdditive: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
+    },
   },
 });
 
@@ -140,20 +144,36 @@ export const backupMutationFields: Record<string, GraphQLFieldConfig<unknown, Gq
   restoreBackup: {
     type: new GraphQLNonNull(RestoreResultType),
     description:
-      "Additively restore a backup (ON CONFLICT DO NOTHING — never overwrites). " +
+      "Restore a backup. Defaults to additive (ON CONFLICT DO NOTHING — never " +
+      "overwrites); `overwrite: true` restates rows that still exist to their " +
+      "backup-era values, which is what undoes a bad write and is also the only " +
+      "mode that can destroy current data. `onlyTables` narrows the restore. " +
       "Requires confirm: true, mirroring REST's X-Backlex-Confirm header (admin-only).",
     args: {
       id: { type: new GraphQLNonNull(GraphQLID) },
       confirm: { type: new GraphQLNonNull(GraphQLBoolean) },
+      overwrite: { type: GraphQLBoolean },
+      onlyTables: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     },
     resolve: (_src, args, gqlCtx) => {
       const tenantId = requireBackupAdmin(gqlCtx);
-      const a = args as { id: string; confirm: boolean };
+      const a = args as {
+        id: string;
+        confirm: boolean;
+        overwrite?: boolean | null;
+        onlyTables?: string[] | null;
+      };
       if (a.confirm !== true)
         throw new GraphQLError("Restore requires confirm: true.", {
           extensions: { code: "FORBIDDEN" },
         });
-      return surfacing(() => restoreBackupById(gqlCtx.ctx, tenantId, a.id));
+      return surfacing(() =>
+        restoreBackupById(gqlCtx.ctx, tenantId, a.id, {
+          mode: a.overwrite === true ? "overwrite" : "additive",
+          onlyTables: a.onlyTables ?? undefined,
+          userId: gqlCtx.auth.userId ?? null,
+        }),
+      );
     },
   },
   setBackupConfig: {

@@ -15,7 +15,7 @@
 // a marketplace refuses one unit at a time, minutes or hours later, with a
 // reason a person has to read.
 import type { PushToast } from "../../types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { Badge, Button, relativeTime } from "../../ui";
@@ -90,6 +90,16 @@ export type ListingBatch = {
 /** The fixed half of a provider's listing block, straight from the catalog. */
 export type ListingInfo = {
   settingFields: { key: string; label: string; placeholder?: string; options?: { value: string; label: string }[] }[];
+  /**
+   * How this marketplace will let its taxonomy be read.
+   *
+   * `all` — the whole tree in one request, so the picker is a search box.
+   * `levels` — one level at a time, so the picker is a drill-down. Allegro is
+   * the reason: it answers with the children of one node and has no whole-tree
+   * endpoint, and enumerating its ~23,000 categories would be thousands of
+   * requests.
+   */
+  browse: "all" | "levels";
   columns: { value: string; label: string }[];
   variantColumns: { value: string; label: string }[] | null;
   outputs: { key: string; label: string }[];
@@ -140,6 +150,8 @@ export function ListingDialog({
   const [categories, setCategories] = useState<ListingCategory[] | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [mapping, setMapping] = useState<ListingMap | "new" | null>(null);
+  /** Levels already fetched, so a walk back down does not re-ask. */
+  const loadedLevels = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let live = true;
@@ -181,11 +193,38 @@ export function ListingDialog({
    */
   const loadCategories = async () => {
     if (categories) return;
+    // A level-walked marketplace has no "whole tree" to ask for; its picker
+    // starts at the roots and fetches on the way down.
+    if (info.browse === "levels") return loadLevel(null);
     try {
       const res = await api<{ data: ListingCategory[] }>(
         `/api/admin/integrations/${integrationId}/listing/categories`,
       );
       setCategories(res.data);
+      setCatalogError(null);
+    } catch (e) {
+      setCatalogError((e as Error).message);
+    }
+  };
+
+  /**
+   * One level, MERGED into what is already known.
+   *
+   * Accumulating rather than replacing is what keeps the breadcrumb working:
+   * everything above the current node was fetched on the way down, so `pathOf`
+   * can still name it. It also makes going back free.
+   */
+  const loadLevel = async (parentId: string | null) => {
+    if (loadedLevels.current.has(parentId ?? "")) return;
+    try {
+      const res = await api<{ data: ListingCategory[] }>(
+        `/api/admin/integrations/${integrationId}/listing/categories?parentId=${encodeURIComponent(parentId ?? "")}`,
+      );
+      loadedLevels.current.add(parentId ?? "");
+      setCategories((prev) => {
+        const seen = new Set((prev ?? []).map((c) => c.id));
+        return [...(prev ?? []), ...res.data.filter((c) => !seen.has(c.id))];
+      });
       setCatalogError(null);
     } catch (e) {
       setCatalogError((e as Error).message);
@@ -439,6 +478,8 @@ export function ListingDialog({
           providerName={providerName}
           info={info}
           categories={categories}
+          browse={info.browse}
+          onLoadLevel={loadLevel}
           productFields={productFields}
           existing={mapping === "new" ? null : mapping}
           onClose={() => setMapping(null)}
@@ -464,6 +505,8 @@ function CategoryMapDialog({
   providerName,
   info,
   categories,
+  browse,
+  onLoadLevel,
   productFields,
   existing,
   onClose,
@@ -474,6 +517,10 @@ function CategoryMapDialog({
   info: ListingInfo;
   /** `null` while the tree is still being fetched. */
   categories: ListingCategory[] | null;
+  /** Whether the picker searches every leaf or walks a level at a time. */
+  browse: "all" | "levels";
+  /** Fetch and merge one level. Only called in `levels` mode. */
+  onLoadLevel: (parentId: string | null) => Promise<void>;
   productFields: { value: string; label: string }[];
   existing: ListingMap | null;
   onClose: () => void;
@@ -487,6 +534,13 @@ function CategoryMapDialog({
   const [localValue, setLocalValue] = useState(existing?.localValue ?? "");
   const [categoryId, setCategoryId] = useState(existing?.categoryId ?? "");
   const [search, setSearch] = useState("");
+  /**
+   * The node whose children are on screen, in `levels` mode. `null` is the top.
+   *
+   * Only ever set to something already fetched, which is what lets the
+   * breadcrumb name it.
+   */
+  const [level, setLevel] = useState<string | null>(null);
   const [attributes, setAttributes] = useState<ListingAttribute[] | null>(null);
   const [attrError, setAttrError] = useState<string | null>(null);
   const [bindings, setBindings] = useState<Record<string, ListingBinding>>(existing?.attributes ?? {});
@@ -528,6 +582,24 @@ function CategoryMapDialog({
     }
     return out;
   }, [categories, search, pathOf]);
+
+  /** Fetch whichever level is on screen. A no-op once it has been seen. */
+  useEffect(() => {
+    if (browse !== "levels" || categoryId) return;
+    void onLoadLevel(level);
+  }, [browse, categoryId, level, onLoadLevel]);
+
+  /** The children of the level on screen, for a drill-down picker. */
+  const levelItems = useMemo(
+    () => (categories ?? []).filter((c) => (c.parentId ?? null) === level),
+    [categories, level],
+  );
+
+  /** The parent of a node the walk has already seen. */
+  const parentOf = useMemo(() => {
+    const byId = new Map((categories ?? []).map((c) => [c.id, c]));
+    return (id: string): string | null => byId.get(id)?.parentId ?? null;
+  }, [categories]);
 
   /** What the chosen category demands. Re-asked whenever the choice changes. */
   useEffect(() => {
@@ -648,6 +720,58 @@ function CategoryMapDialog({
                       <Skeleton key={i} className="h-7 w-full" />
                     ))}
                   </div>
+                ) : browse === "levels" ? (
+                  // A marketplace that will not hand its taxonomy over is
+                  // walked instead of searched. Everything above the node on
+                  // screen was fetched on the way down, so the breadcrumb can
+                  // name it and going back costs nothing.
+                  <>
+                    <div className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5">
+                      {level !== null && (
+                        <Button
+                          variant="ghost"
+                          className="shrink-0 px-2"
+                          aria-label={t`Go up one level`}
+                          onClick={() => setLevel(parentOf(level))}
+                        >
+                          <I.ChevronLeft size={13} />
+                        </Button>
+                      )}
+                      <span className="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">
+                        {level === null ? t`All categories` : pathOf(level)}
+                      </span>
+                    </div>
+                    <ScrollArea className="mt-1.5 w-full rounded-md border border-border" viewportClassName="max-h-[190px]">
+                      <div className="flex flex-col p-1">
+                        {levelItems.length === 0 ? (
+                          <div className="flex flex-col gap-1.5 p-1">
+                            {[0, 1, 2].map((i) => (
+                              <Skeleton key={i} className="h-7 w-full" />
+                            ))}
+                          </div>
+                        ) : (
+                          levelItems.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[11.5px] hover:bg-muted"
+                              // A leaf is the answer; anything else is a step.
+                              onClick={() => (c.leaf ? setCategoryId(c.id) : setLevel(c.id))}
+                            >
+                              <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                              {!c.leaf && <I.ChevronRight size={13} className="shrink-0 text-muted-foreground" />}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                    <span className="mt-1 block text-[11.5px] leading-snug text-muted-foreground">
+                      <Trans>
+                        {providerName} hands its categories over a level at a time, so this walks down rather
+                        than searching.
+                      </Trans>
+                    </span>
+                  </>
                 ) : (
                   <>
                     <Input

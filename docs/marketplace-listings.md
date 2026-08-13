@@ -1,6 +1,6 @@
 ---
 title: Marketplace listings
-description: Publish products to Trendyol, n11, Çiçeksepeti, Hepsiburada, Amazon, eBay and Otto — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
+description: Publish products to Trendyol, n11, Çiçeksepeti, Hepsiburada, Amazon, eBay, Otto and Allegro — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
 ---
 
 A **listing sync** puts your products on sale at a marketplace. It is the sixth
@@ -142,9 +142,9 @@ the product row.
 This is a configuration, not a special case: no provider branches on it, which
 is why "no variants" costs nothing.
 
-## The seven marketplaces
+## The eight marketplaces
 
-The shape held for all seven, and they agree on almost nothing. What differs is
+The shape held for all eight, and they agree on almost nothing. What differs is
 worth knowing before you map one.
 
 ### Trendyol
@@ -263,6 +263,24 @@ the provider — the mapping form works the same way it does for the other four.
   the whole batch and name none of them.
 - **A product is on sale when Otto reports it ONLINE**, and its MOIN is the id
   written back. Anything else is still pending, and errors come back verbatim.
+
+### Allegro
+
+- **Connect by redirect**, then paste nothing else — Allegro scopes the token to
+  what your application was registered for.
+- **The category picker walks down instead of searching.** Allegro hands its
+  categories over one level at a time and has ~23,000 of them, so the dialog
+  shows a level, you step into it, and a breadcrumb names where you are. Pick a
+  leaf; Allegro says itself which nodes those are.
+- **Attributes are typed.** A dictionary parameter is a closed list unless
+  Allegro marks it as accepting a custom value; the other three types (text,
+  integer, decimal) are values you type. A unit, where there is one, is shown
+  beside the name.
+- **Variants are not marked here.** Allegro models them as separate offers
+  sharing a product rather than by flagging an attribute, so nothing in this
+  form claims to be the varying one.
+- **The verdict arrives immediately**, offer by offer — there is no batch to
+  watch, and a refusal names the offer it was.
 
 ## Template columns
 

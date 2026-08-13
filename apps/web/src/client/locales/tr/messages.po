@@ -956,6 +956,10 @@ msgstr "{provider} ile giriş başarısız"
 msgid "{providerName} also needs a brand, which is a product column rather than a category attribute — map it in the sync's field mapping."
 msgstr "{providerName} ayrıca bir marka istiyor; bu bir kategori özelliği değil, ürün kolonu — senkronun alan eşlemesinde eşleyin."
 
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "{providerName} hands its categories over a level at a time, so this walks down rather than searching."
+msgstr "{providerName} kategorilerini birer seviye hâlinde veriyor; bu yüzden burada arama yerine aşağı iniliyor."
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "{providerName} has been told to post here. Rows land the moment it sends them; the schedule above stays as the backstop for anything a delivery misses."
 msgstr "{providerName} buraya göndermesi için ayarlandı. Satırlar o gönderdiği anda düşer; yukarıdaki zamanlama, kaçan teslimatlar için yedek olarak kalır."
@@ -2199,6 +2203,10 @@ msgstr "Tümü ({0})"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "All {totalTools} tools allowed."
 msgstr "{totalTools} aracın tamamı izinli."
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "All categories"
+msgstr "Tüm kategoriler"
 
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "All clear in this category"
@@ -8091,6 +8099,10 @@ msgstr "Canlıya geç"
 #: src/client/admin/pages/automation/chat.tsx
 msgid "Go to Agents"
 msgstr "Agents sayfasına git"
+
+#: src/client/admin/pages/automation/integration-listing-dialog.tsx
+msgid "Go up one level"
+msgstr "Bir üst seviyeye çık"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Goes to that user's registered devices. No devices is a silent no-op."

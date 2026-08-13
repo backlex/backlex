@@ -914,12 +914,19 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags,
       summary: "The marketplace's category tree, flattened",
       description:
-        "Admin-only. Every node, with `parentId` and `leaf` — flat rather than nested because the three " +
+        "Admin-only. Every node, with `parentId` and `leaf` — flat rather than nested because the " +
         "marketplaces that nest it nest it differently, and a searchable picker over a few thousand nodes " +
-        "wants a list. A product may only be listed against a leaf.",
+        "wants a list. A product may only be listed against a leaf.\n\n" +
+        "Providers whose taxonomy is too large to enumerate (`browse: \"levels\"` in the catalog) answer one " +
+        "level at a time instead: pass `parentId` — empty for the roots — and walk down. Asking an " +
+        "enumerable provider for a level, or a level-walked one for everything, is an error rather than an " +
+        "empty list, because the caller has picked the wrong control.",
       security: SECURITY,
       middleware: adminGate,
-      request: { params: z.object({ id: z.string() }) },
+      request: {
+        params: z.object({ id: z.string() }),
+        query: z.object({ parentId: z.string().optional() }),
+      },
       responses: {
         200: {
           description: "OK",
@@ -944,7 +951,8 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      return c.json({ data: await readListingCategories(c.get("ctx"), tenantId, id) });
+      const { parentId } = c.req.valid("query");
+      return c.json({ data: await readListingCategories(c.get("ctx"), tenantId, id, parentId) });
     },
   )
   .openapi(

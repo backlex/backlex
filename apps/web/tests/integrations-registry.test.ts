@@ -63,7 +63,14 @@ describe("provider registry", () => {
         // All four calls, not just `publish`: a listing that cannot be
         // configured is a listing that can never be sent, and the two reads are
         // the whole reason this is a shape rather than a destination.
-        expect(typeof p.listing?.categories).toBe("function");
+        // EXACTLY one way of reading the taxonomy. A provider that declares
+        // both leaves the picker to guess which control to draw; one that
+        // declares neither cannot be configured at all. Allegro is the reason
+        // the second form exists — it answers with one level at a time and has
+        // no whole-tree endpoint.
+        const enumerable = typeof p.listing?.categories === "function";
+        const walked = typeof p.listing?.categoryChildren === "function";
+        expect(enumerable !== walked).toBe(true);
         expect(typeof p.listing?.attributes).toBe("function");
         expect(typeof p.listing?.publish).toBe("function");
         expect(typeof p.listing?.poll).toBe("function");

@@ -36,7 +36,7 @@ Forty-one providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Otto — a source, a task and a listing; Allegro — a source and a task |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Otto — a source, a task and a listing; Allegro — a source, a task and a listing (browsed a level at a time) |
 | carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
@@ -927,16 +927,33 @@ left optional. That is the safe direction — a wrongly-required field blocks a
 form somebody could have submitted, while a wrongly-optional one is refused by
 Otto with its own message naming the field.
 
-**Allegro is a source and a task only, and the reason is worth stating.** Its
-API is entirely public — 1.5 MB of OpenAPI, no account needed — and orders,
-addresses and the seller status write are all straightforward. What it will not
-do is hand over its taxonomy: `GET /sale/categories` returns the children of one
-node and there is no whole-tree endpoint, so enumerating roughly twenty-three
-thousand categories would take thousands of round trips. A listing provider has
-to give the engine the whole tree to cache and search, so listing on Allegro
-needs the shape to learn to be walked a level at a time — an extension to the
-engine and the mapping form rather than a flag. Until then, offering a picker
-that quietly held only the top level would be worse than not offering one.
+**Allegro is why a listing provider can now be WALKED.** Its API is entirely
+public — 1.5 MB of OpenAPI, no account needed — but it will not hand over its
+taxonomy: `GET /sale/categories` returns the children of one node and there is
+no whole-tree endpoint, so enumerating roughly twenty-three thousand categories
+would take thousands of round trips.
+
+Every marketplace before it could be asked for its whole tree, which is why the
+category picker was one search box over every leaf. So the shape gained a second
+way to be read: a provider declares **either** `categories` (the whole tree, for
+the marketplaces that will give it) **or** `categoryChildren` (the children of
+one node), never both and never neither — the registry test enforces that, and
+the catalog reports which as `browse: "all" | "levels"` so the admin knows which
+control to draw before making a request. A level-walked picker drills down and
+keeps what it has seen, so its breadcrumb still names the path: everything above
+the node on screen was fetched on the way down.
+
+Allegro also needs a **vendor media type** on every request
+(`application/vnd.allegro.public.v1+json`; a plain `application/json` is a 406),
+and its seller-status write is optimistically concurrent — it presents the
+`revision` the order was read at, which is why that value is pulled onto the
+order row.
+
+One lesson from building it, worth more than the provider: its
+`GET /sale/categories/{id}/parameters` endpoint is invisible to a naive scan of
+the published swagger, and a **live probe** settled whether it exists — the path
+answers Allegro's own `401 unauthorized` where a path that does not exist
+answers a differently shaped `404`. Probe before believing an absence.
 
 ### Amazon, and what it proved
 

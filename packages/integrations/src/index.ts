@@ -657,6 +657,14 @@ export const INTEGRATION_LISTINGS = Object.fromEntries(
       id,
       {
         settingFields: [...(p.listing!.settingFields ?? [])],
+        /**
+         * How the picker has to ask for categories.
+         *
+         * Travels with the fixed half so the admin can draw the right control
+         * before any request is made — a search box over every leaf, or a
+         * drill-down a level at a time.
+         */
+        browse: p.listing!.categoryChildren ? ("levels" as const) : ("all" as const),
         columns: [...p.listing!.columns],
         variantColumns: p.listing!.variantColumns ? [...p.listing!.variantColumns] : null,
         outputs: [...p.listing!.outputs],
@@ -667,6 +675,7 @@ export const INTEGRATION_LISTINGS = Object.fromEntries(
   string,
   {
     settingFields: IntegrationConfigField[];
+    browse: "all" | "levels";
     columns: DestinationColumn[];
     variantColumns: DestinationColumn[] | null;
     outputs: TaskOutput[];
@@ -714,7 +723,34 @@ export async function fetchListingCategories(
 ): Promise<ListingCategory[]> {
   const block = listingFor(kind);
   if (!block) throw new Error(`${kind} cannot list products`);
+  if (!block.categories) {
+    throw new Error(`${kind} hands its categories over one level at a time — ask for a level instead`);
+  }
   return block.categories(catalogContext(kind, args.config, args.connectionKey, fetchImpl));
+}
+
+/**
+ * One level of a taxonomy that cannot be enumerated.
+ *
+ * `parentId: null` asks for the roots. Only for the providers that declared
+ * {@link IntegrationListing.categoryChildren}; asking an enumerable one is an
+ * error rather than a silent empty list, because the caller has picked the
+ * wrong browse mode and would otherwise show an empty picker.
+ */
+export async function fetchListingCategoryChildren(
+  kind: string,
+  args: { config: Record<string, unknown>; parentId: string | null; connectionKey?: string },
+  fetchImpl?: FetchLike,
+): Promise<ListingCategory[]> {
+  const block = listingFor(kind);
+  if (!block) throw new Error(`${kind} cannot list products`);
+  if (!block.categoryChildren) {
+    throw new Error(`${kind} hands its whole taxonomy over at once — ask for all of it instead`);
+  }
+  return block.categoryChildren({
+    ...catalogContext(kind, args.config, args.connectionKey, fetchImpl),
+    parentId: args.parentId,
+  });
 }
 
 /** What one leaf category demands of a product. */

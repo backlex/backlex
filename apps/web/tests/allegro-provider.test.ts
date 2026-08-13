@@ -12,14 +12,29 @@
  *   - **The status write is optimistically concurrent** — it presents the
  *     revision the order was read at, which is why that value is pulled onto
  *     the row in the first place.
- *   - **There is no `listing` capability, and that is a decision.** Allegro
- *     will only give its taxonomy one level at a time, so enumerating ~23,000
- *     categories is thousands of round trips. The gap is in the engine's shape,
- *     not in this provider; the test at the bottom pins the absence so nobody
- *     "fixes" it by half-shipping a picker that only offers the top level.
+ *   - **It will only give its taxonomy one level at a time**, and that is what
+ *     made the sixth shape learn to walk. Enumerating ~23,000 categories would
+ *     be thousands of round trips, so `IntegrationListing` gained
+ *     `categoryChildren` and the picker gained a drill-down. Allegro is the
+ *     first provider to declare it, and asking it for the whole tree is an
+ *     error rather than an empty picker.
+ *   - **Its parameters endpoint was invisible to a naive scan of the published
+ *     swagger**, and a live probe settled it: the path answers Allegro's own
+ *     `401` where a path that does not exist answers a differently shaped
+ *     `404`. Probe before believing an absence.
  */
 import { beforeEach, describe, expect, test } from "bun:test";
-import { listingFor, providerFor, pullFromSource, resetThrottleState, runIntegrationTask } from "@backlex/integrations";
+import {
+  fetchListingAttributes,
+  fetchListingCategories,
+  fetchListingCategoryChildren,
+  INTEGRATION_LISTINGS,
+  providerFor,
+  publishListings,
+  pullFromSource,
+  resetThrottleState,
+  runIntegrationTask,
+} from "@backlex/integrations";
 
 const CONFIG = {
   environment: "sandbox",
@@ -223,16 +238,163 @@ describe("setting the seller status", () => {
   });
 });
 
-describe("what is deliberately absent", () => {
-  test("Allegro does not list, and the reason is its taxonomy rather than its API", () => {
-    // `GET /sale/categories` returns the CHILDREN of one node and there is no
-    // whole-tree endpoint, so `IntegrationListing.categories` — which hands
-    // back the entire taxonomy for the engine to cache — cannot be answered
-    // without thousands of round trips. Closing that means the shape learning
-    // to be walked a level at a time, which is an extension to the engine and
-    // the admin form, not a flag. Pinned so nobody half-ships a picker that
-    // quietly offers only the top level.
-    expect(listingFor("allegro")).toBeUndefined();
-    expect(providerFor("allegro")!.capabilities).toEqual(["source", "task"]);
+describe("the taxonomy it will not hand over", () => {
+  test("it answers a LEVEL, not a tree — the reason the shape learned to walk", async () => {
+    const { calls, fetchImpl } = recorder([
+      {
+        body: {
+          categories: [
+            { id: "3", name: "Elektronika", leaf: false },
+            { id: "9", name: "Smartfony", leaf: true },
+          ],
+        },
+      },
+    ]);
+    const kids = await fetchListingCategoryChildren(
+      "allegro",
+      { config: CONFIG, parentId: "1", connectionKey: "c1" },
+      fetchImpl,
+    );
+
+    expect(calls[0]!.url.pathname).toBe("/sale/categories");
+    expect(calls[0]!.url.searchParams.get("parent.id")).toBe("1");
+    // The parent comes from the WALK, not the payload: Allegro reports it only
+    // sometimes, and the caller already knows which level it asked for.
+    expect(kids).toEqual([
+      { id: "3", name: "Elektronika", parentId: "1", leaf: false },
+      { id: "9", name: "Smartfony", parentId: "1", leaf: true },
+    ]);
+  });
+
+  test("no parent means the roots", async () => {
+    const { calls, fetchImpl } = recorder([{ body: { categories: [{ id: "1", name: "Dom", leaf: false }] } }]);
+    const roots = await fetchListingCategoryChildren(
+      "allegro",
+      { config: CONFIG, parentId: null, connectionKey: "c1" },
+      fetchImpl,
+    );
+    expect(calls[0]!.url.searchParams.get("parent.id")).toBeNull();
+    expect(roots[0]!.parentId).toBeNull();
+  });
+
+  test("asking it for the whole tree is an error, not an empty picker", async () => {
+    const { fetchImpl } = recorder([]);
+    // The caller has picked the wrong control; an empty list would read as
+    // "this marketplace has no categories".
+    await expect(
+      fetchListingCategories("allegro", { config: CONFIG, connectionKey: "c1" }, fetchImpl),
+    ).rejects.toThrow(/one level at a time/i);
+  });
+
+  test("the catalog says which control to draw, before any request is made", () => {
+    expect(INTEGRATION_LISTINGS.allegro!.browse).toBe("levels");
+    // Every other marketplace hands the tree over at once.
+    expect(INTEGRATION_LISTINGS.trendyol!.browse).toBe("all");
+  });
+});
+
+describe("what a category demands", () => {
+  test("a dictionary parameter is closed unless Allegro allows a custom value", async () => {
+    const { calls, fetchImpl } = recorder([
+      {
+        body: {
+          parameters: [
+            {
+              id: "11323",
+              name: "Stan",
+              type: "dictionary",
+              required: true,
+              restrictions: { multipleChoices: false },
+              options: { customValuesEnabled: false },
+              dictionary: [
+                { id: "11323_1", value: "Nowy" },
+                { id: "11323_2", value: "Używany" },
+              ],
+            },
+            { id: "225693", name: "Waga", type: "float", required: false, unit: "kg" },
+            {
+              id: "9999",
+              name: "Kolor",
+              type: "dictionary",
+              required: false,
+              restrictions: { multipleChoices: true },
+              options: { customValuesEnabled: true },
+              dictionary: [{ id: "9999_1", value: "Czarny" }],
+            },
+          ],
+        },
+      },
+    ]);
+    const attrs = await fetchListingAttributes(
+      "allegro",
+      { config: CONFIG, categoryId: "9", connectionKey: "c1" },
+      fetchImpl,
+    );
+
+    // The path the published swagger hid and a live probe proved: it answers
+    // Allegro's own 401 where a path that does not exist answers a 404.
+    expect(calls[0]!.url.pathname).toBe("/sale/categories/9/parameters");
+    const byId = Object.fromEntries(attrs.map((a) => [a.id, a]));
+    expect(byId["11323"]).toMatchObject({
+      name: "Stan",
+      required: true,
+      allowCustom: false,
+      multiple: false,
+      // Allegro models variants as separate offers sharing a product, so no
+      // parameter is marked as the varying one.
+      variant: false,
+      values: [
+        { id: "11323_1", name: "Nowy" },
+        { id: "11323_2", name: "Używany" },
+      ],
+    });
+    // The three non-dictionary types are values the seller types.
+    expect(byId["225693"]).toMatchObject({ name: "Waga (kg)", allowCustom: true, values: [] });
+    expect(byId["9999"]).toMatchObject({ allowCustom: true, multiple: true });
+  });
+});
+
+describe("publishing", () => {
+  test("Allegro answers each create itself, so nothing is left to poll", async () => {
+    const { calls, fetchImpl } = recorder([{ status: 201, body: { id: "offer-1" } }]);
+    const batch = await publishListings(
+      "allegro",
+      {
+        config: CONFIG,
+        settings: { currency: "PLN" },
+        products: [
+          {
+            rowId: "p1",
+            groupId: "p1",
+            categoryId: "9",
+            fields: { title: "Walizka", description: "Twarda skorupa.", images: "https://cdn.test/a.jpg" },
+            variants: [
+              {
+                rowId: "v1",
+                reference: "SKU-1",
+                fields: { sku: "SKU-1", price: 129.99, quantity: 3, ean: "4006381333931" },
+                attributes: [{ attributeId: "11323", valueId: "11323_1" }],
+              },
+            ],
+          },
+        ],
+        connectionKey: "c1",
+      },
+      fetchImpl,
+    );
+
+    const post = calls.find((c) => c.method === "POST")!;
+    expect(post.url.pathname).toBe("/sale/product-offers");
+    expect(post.headers["Content-Type"]).toBe("application/vnd.allegro.public.v1+json");
+    // Ours, and the only thing tying Allegro's answer back to the row.
+    expect(post.body.external).toEqual({ id: "SKU-1" });
+    expect(post.body.sellingMode.price).toEqual({ amount: "129.99", currency: "PLN" });
+    expect(post.body.productSet[0].product.parameters).toEqual([{ id: "11323", valuesIds: ["11323_1"] }]);
+    // A bare sentence is refused by the description section, which wants a
+    // block element.
+    expect(post.body.description.sections[0].items[0].content).toBe("<p>Twarda skorupa.</p>");
+
+    expect(batch.settled).toEqual([{ reference: "SKU-1", status: "accepted", externalId: "offer-1" }]);
+    expect(batch.batchId).toBe("");
   });
 });

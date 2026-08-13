@@ -37,6 +37,7 @@ import {
   fetchListingAttributes,
   INTEGRATION_LISTINGS,
   fetchListingCategories,
+  fetchListingCategoryChildren,
   isRateLimited,
   listingColumnsFor,
   listingFor,
@@ -148,10 +149,33 @@ const loadListingConnection = async (
  * trap this codebase has been bitten by before. If it becomes a cost, the place
  * to cache it is a shared store keyed by connection, not module state.
  */
-export async function readListingCategories(ctx: Ctx, tenantId: string, integrationId: string) {
+export async function readListingCategories(
+  ctx: Ctx,
+  tenantId: string,
+  integrationId: string,
+  /**
+   * One level, for the marketplaces that will not hand the tree over.
+   *
+   * `undefined` asks for everything and is what the enumerable providers
+   * answer; a string (or the empty string, meaning the roots) asks for one
+   * level. Which of the two a provider supports is not the caller's guess —
+   * it is `INTEGRATION_LISTINGS[kind].browse`, and asking the wrong way is an
+   * error rather than an empty picker.
+   */
+  parentId?: string,
+) {
   const conn = await loadListingConnection(ctx, tenantId, integrationId);
+  if (parentId === undefined) {
+    return asOperatorError(() =>
+      fetchListingCategories(conn.kind, { config: conn.config, connectionKey: conn.id }),
+    );
+  }
   return asOperatorError(() =>
-    fetchListingCategories(conn.kind, { config: conn.config, connectionKey: conn.id }),
+    fetchListingCategoryChildren(conn.kind, {
+      config: conn.config,
+      parentId: parentId === "" ? null : parentId,
+      connectionKey: conn.id,
+    }),
   );
 }
 

@@ -1043,9 +1043,30 @@ export interface IntegrationListing {
    * rather than browsed.
    */
   lookups?: readonly { key: string; label: string }[];
-  /** The whole tree, flattened. Cached by the engine; it changes rarely and is
-   *  hundreds of kilobytes. */
-  categories(ctx: ListingCatalogContext): Promise<ListingCategory[]>;
+  /**
+   * The whole tree, flattened. Cached by the engine; it changes rarely and is
+   * hundreds of kilobytes.
+   *
+   * Declared by a marketplace whose taxonomy can be ENUMERATED — which is most
+   * of them, and which is what lets the picker be one search box over every
+   * leaf. A provider declares this OR {@link categoryChildren}, never both and
+   * never neither; the registry test enforces it.
+   */
+  categories?(ctx: ListingCatalogContext): Promise<ListingCategory[]>;
+  /**
+   * One level of the tree: the children of `parentId`, or the roots for `null`.
+   *
+   * Declared INSTEAD of {@link categories} by a marketplace that will not hand
+   * its taxonomy over. Allegro is the case that forced it: `GET /sale/categories`
+   * answers with the children of one node and there is no whole-tree endpoint,
+   * so enumerating its ~23,000 categories would be thousands of round trips —
+   * a form nobody can wait on.
+   *
+   * The engine does not assemble a tree out of these. The admin walks levels and
+   * keeps what it has seen, which is enough for a breadcrumb because the
+   * ancestors of anything on screen were fetched on the way down.
+   */
+  categoryChildren?(ctx: ListingCatalogContext & { parentId: string | null }): Promise<ListingCategory[]>;
   /** What one leaf category demands. */
   attributes(ctx: ListingCatalogContext & { categoryId: string }): Promise<ListingAttribute[]>;
   /** Search one declared registry. Paged, because brand lists are not browsable. */

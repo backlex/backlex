@@ -1,4 +1,9 @@
-import { defineProvider } from "../provider";
+import {
+  defineProvider,
+  type ListingAttribute,
+  type ListingCategory,
+  type ListingVerdict,
+} from "../provider";
 
 /**
  * Allegro — Poland's largest marketplace, and the first European local here.
@@ -25,26 +30,25 @@ import { defineProvider } from "../provider";
  * writers cannot silently overwrite each other. The revision is pulled onto the
  * order row for exactly that reason.
  *
- * ## Why there is no `listing` here, and what it would take
+ * ## Its taxonomy is the reason the shape learned to walk
  *
- * A listing provider has to hand back the whole taxonomy: the engine caches it
- * and the operator searches it. Allegro will not give it. `GET /sale/categories`
- * returns the CHILDREN of one node (`?parent.id=`) and there is no endpoint that
- * returns the tree — so enumerating roughly twenty-three thousand categories
- * means thousands of round trips, which is not a form an operator can wait on.
+ * Every marketplace before this one hands its whole taxonomy over, so a listing
+ * provider could be asked for all of it and the picker could be one search box.
+ * Allegro will not: `GET /sale/categories` answers with the CHILDREN of one node
+ * and there is no whole-tree endpoint, so enumerating roughly twenty-three
+ * thousand categories would be thousands of round trips — a form nobody can wait
+ * on.
  *
- * That is a genuine gap in the sixth shape rather than a quirk of Allegro's:
- * `IntegrationListing.categories` assumes a taxonomy small enough to enumerate,
- * and Trendyol's 3,867 nodes were what set that expectation. Closing it means a
- * provider being able to answer "the children of X" and the picker walking
- * levels — a real extension to the shape and the admin form, not a flag. Until
- * then, listing on Allegro would mean either a form that takes hours to draw or
- * a category picker that quietly only offers the top level. Neither is worth
- * shipping, so this provider does what it can do properly: orders in,
- * fulfilment back.
+ * That was a gap in the sixth shape rather than a quirk of Allegro's, so the
+ * shape gained {@link IntegrationListing.categoryChildren}: a provider answers
+ * "the children of X" and the admin walks levels, keeping what it has seen. This
+ * provider is the first to declare it.
  *
- * `POST /sale/product-offers` and `/sale/matching-categories` are the endpoints
- * that work would build on.
+ * One more thing about its parameters, and it is a lesson rather than a detail:
+ * `GET /sale/categories/{id}/parameters` was invisible to a naive scan of the
+ * published swagger, and a live probe settled it — the path answers Allegro's
+ * own `401 unauthorized` where a path that does not exist answers a differently
+ * shaped `404`. Probe before believing an absence.
  */
 
 /** Where the API lives. Sandbox is a separate host AND a separate account. */
@@ -82,7 +86,7 @@ export const allegro = defineProvider({
   id: "allegro",
   label: "Allegro",
   category: "marketplace",
-  capabilities: ["source", "task"],
+  capabilities: ["source", "task", "listing"],
   oauth: {
     authorizeUrl: "https://allegro.pl/auth/oauth/authorize",
     tokenUrl: "https://allegro.pl/auth/oauth/token",
@@ -170,6 +174,178 @@ export const allegro = defineProvider({
         // orders would be skipped for ever.
         ...(more ? {} : { resumeAt: Date.now() }),
       };
+    },
+  },
+
+  listing: {
+    settingFields: [
+      { key: "currency", label: "Currency (ISO 4217)", placeholder: "PLN" },
+      { key: "durationHours", label: "Listing duration (hours, optional)", placeholder: "168" },
+    ],
+    columns: [
+      { value: "title", label: "Title" },
+      { value: "description", label: "Description" },
+      { value: "images", label: "Image URLs" },
+    ],
+    variantColumns: [
+      { value: "sku", label: "Seller SKU (external id)" },
+      { value: "ean", label: "EAN (optional)" },
+      { value: "quantity", label: "Stock quantity" },
+      { value: "price", label: "Price" },
+    ],
+    /** Allegro echoes the seller's own external id on the offer it creates. */
+    referenceColumn: "sku",
+    outputs: [
+      { key: "listingId", label: "Allegro offer ID" },
+      { key: "listingStatus", label: "Listing status" },
+      { key: "listingError", label: "Rejection reason" },
+      { key: "listedAt", label: "Listed at" },
+    ],
+
+    /**
+     * One level, which is all Allegro will give.
+     *
+     * `parent.id` omitted means the roots. This is the reason the shape gained
+     * this method at all — see the note at the top of the file.
+     */
+    async categoryChildren(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const url = new URL(`${conn.api}/sale/categories`);
+      if (ctx.parentId) url.searchParams.set("parent.id", ctx.parentId);
+      const res = await ctx.fetch(url.toString(), { headers: headersFor(conn) });
+      if (!res.ok) throw await readError(res, "read the categories");
+      const body = (await res.json()) as { categories?: Record<string, unknown>[] };
+      const out: ListingCategory[] = [];
+      for (const raw of body.categories ?? []) {
+        const id = text(raw.id);
+        if (!id) continue;
+        out.push({
+          id,
+          name: text(raw.name) ?? id,
+          // From the walk rather than from the payload: Allegro reports a
+          // parent object only sometimes, and the caller already knows which
+          // level it asked for.
+          parentId: ctx.parentId,
+          // Allegro says so itself — "offers can be listed only in leaf
+          // categories".
+          leaf: raw.leaf === true,
+        });
+      }
+      return out;
+    },
+
+    async attributes(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const res = await ctx.fetch(
+        `${conn.api}/sale/categories/${encodeURIComponent(ctx.categoryId)}/parameters`,
+        { headers: headersFor(conn) },
+      );
+      if (!res.ok) throw await readError(res, `read the parameters of category ${ctx.categoryId}`);
+      const body = (await res.json()) as { parameters?: Record<string, unknown>[] };
+      const out: ListingAttribute[] = [];
+      for (const raw of body.parameters ?? []) {
+        const id = text(raw.id);
+        const name = text(raw.name);
+        if (!id || !name) continue;
+        const options = (raw.options ?? {}) as Record<string, unknown>;
+        const restrictions = (raw.restrictions ?? {}) as Record<string, unknown>;
+        const dictionary = Array.isArray(raw.dictionary) ? (raw.dictionary as Record<string, unknown>[]) : [];
+        const isDictionary = text(raw.type) === "dictionary";
+        out.push({
+          id,
+          name: text(raw.unit) ? `${name} (${text(raw.unit)})` : name,
+          required: raw.required === true,
+          // A dictionary parameter refuses anything outside its list unless
+          // Allegro says a custom value may be added; the other three types
+          // (string, integer, float) are values the seller types.
+          allowCustom: !isDictionary || options.customValuesEnabled === true,
+          // Allegro models variants as separate offers sharing a product rather
+          // than by marking a parameter, so there is nothing here to report.
+          variant: false,
+          multiple: restrictions.multipleChoices === true,
+          values: dictionary
+            .map((d) => ({ id: text(d.id) ?? "", name: text(d.value) ?? "" }))
+            .filter((d) => d.id && d.name),
+        });
+      }
+      return out.sort((a, b) => (a.required === b.required ? a.name.localeCompare(b.name) : a.required ? -1 : 1));
+    },
+
+    async publish(ctx) {
+      const conn = readConnection(ctx, "listing");
+      const currency = (ctx.setting("currency") ?? "").trim().toUpperCase();
+      if (!/^[A-Z]{3}$/.test(currency)) {
+        throw new Error("Set the listing's currency to an ISO 4217 code before publishing");
+      }
+      const settled: ListingVerdict[] = [];
+
+      for (const product of ctx.products) {
+        for (const variant of product.variants) {
+          const sku = text(variant.fields.sku) ?? variant.reference;
+          if (!sku) {
+            settled.push({ reference: variant.reference, status: "rejected", errors: ["no seller SKU"] });
+            continue;
+          }
+          const parameters = variant.attributes
+            .filter((b) => b.attributeId && (b.valueId ?? b.custom))
+            .map((b) =>
+              b.valueId
+                ? { id: b.attributeId, valuesIds: [b.valueId] }
+                : { id: b.attributeId, values: [String(b.custom)] },
+            );
+
+          const body: Record<string, unknown> = {
+            name: text(product.fields.title) ?? "",
+            category: { id: product.categoryId },
+            productSet: [
+              {
+                product: {
+                  name: text(product.fields.title) ?? "",
+                  category: { id: product.categoryId },
+                  parameters,
+                  ...(text(variant.fields.ean) ? { idsList: [{ type: "GTIN", value: text(variant.fields.ean) }] } : {}),
+                  images: splitList(product.fields.images),
+                },
+              },
+            ],
+            sellingMode: { format: "BUY_NOW", price: { amount: String(num(variant.fields.price) ?? 0), currency } },
+            stock: { available: num(variant.fields.quantity) ?? 0, unit: "UNIT" },
+            // Ours, and the only thing that ties Allegro's answer back to the
+            // row that asked for it.
+            external: { id: sku },
+            description: { sections: [{ items: [{ type: "TEXT", content: descriptionHtml(product.fields.description) }] }] },
+          };
+          const hours = num(ctx.setting("durationHours"));
+          if (hours !== null && hours > 0) body.publication = { duration: `PT${Math.round(hours)}H` };
+
+          const res = await ctx.fetch(`${conn.api}/sale/product-offers`, {
+            method: "POST",
+            headers: { ...headersFor(conn), "Content-Type": MEDIA },
+            body: JSON.stringify(body),
+          });
+          if (res.status === 201 || res.status === 202) {
+            const created = (await res.json().catch(() => ({}))) as { id?: unknown };
+            settled.push({
+              reference: sku,
+              status: "accepted",
+              externalId: text(created.id) ?? sku,
+            });
+            continue;
+          }
+          // One unit's refusal is not the batch's: Allegro answers per offer,
+          // so the next SKU is still worth trying.
+          const err = await readError(res, `list ${sku}`);
+          settled.push({ reference: sku, status: "rejected", errors: [err.message] });
+        }
+      }
+      // Allegro answers each create itself, so there is no ticket to poll.
+      return { batchId: "", settled };
+    },
+
+    // Unreachable by construction: `publish` never returns a batch id, so the
+    // sweep has nothing outstanding to ask about.
+    async poll() {
+      return [];
     },
   },
 
@@ -386,6 +562,30 @@ const optional = (
 ): string | null => {
   const column = ctx.setting(key);
   return column ? text(ctx.row[column]) : null;
+};
+
+/** Image URLs, however the mapped column spells a list. */
+const splitList = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) return raw.map((v) => text(v) ?? "").filter(Boolean);
+  const s = text(raw);
+  if (!s) return [];
+  return s
+    .split(/[\n,;]/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+};
+
+/**
+ * Allegro's description sections take HTML fragments.
+ *
+ * A bare sentence is refused — the section wants a block element — so text that
+ * does not already start with a tag is wrapped rather than sent as-is and
+ * rejected per offer.
+ */
+const descriptionHtml = (raw: unknown): string => {
+  const s = text(raw);
+  if (!s) return "<p></p>";
+  return /^\s*</.test(s) ? s : `<p>${s}</p>`;
 };
 
 const text = (v: unknown): string | null => {

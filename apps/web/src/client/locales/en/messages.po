@@ -9747,6 +9747,28 @@ msgstr "list & sort"
 msgid "List columns"
 msgstr "List columns"
 
+#. placeholder {0}: d.accepted
+#. placeholder {1}: d.sent
+#. placeholder {2}: d.rejected
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed {0} of {1} units — {2} were refused. The reasons are on the rows."
+msgstr "Listed {0} of {1} units — {2} were refused. The reasons are on the rows."
+
+#. placeholder {0}: d.accepted
+#. placeholder {1}: d.sent
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed {0} of {1} units — 1 was refused. The reason is on the row."
+msgstr "Listed {0} of {1} units — 1 was refused. The reason is on the row."
+
+#. placeholder {0}: d.sent
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed {0} units."
+msgstr "Listed {0} units."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed 1 unit."
+msgstr "Listed 1 unit."
+
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Listing at {providerName}"
 msgstr "Listing at {providerName}"
@@ -14191,13 +14213,21 @@ msgstr "Pull an Airtable table into a collection on a schedule."
 msgid "Pull marketplace orders in with their lines, push stock and price out, and notify package status back."
 msgstr "Pull marketplace orders in with their lines, push stock and price out, and notify package status back."
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back."
+msgstr "Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back."
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #~ msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 #~ msgstr "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 
 #: src/client/admin/pages/automation/integrations.tsx
-msgid "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
-msgstr "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
+#~ msgid "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
+#~ msgstr "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull Selling Partner orders in with their lines and addresses, put products on sale, and confirm shipments back."
+msgstr "Pull Selling Partner orders in with their lines and addresses, put products on sale, and confirm shipments back."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
@@ -16690,7 +16720,7 @@ msgstr "sent"
 msgid "Sent"
 msgstr "Sent"
 
-#. placeholder {0}: d.sent
+#. placeholder {0}: d.pending
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Sent {0} units. The marketplace rules on them in its own time; watch the batch."
 msgstr "Sent {0} units. The marketplace rules on them in its own time; watch the batch."

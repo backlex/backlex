@@ -458,16 +458,16 @@ export const hepsiburada = defineProvider({
         byCategory.set(product.categoryId, list);
       }
       const [first] = [...byCategory.entries()];
-      if (!first) return { batchId: "", rejected: [] };
+      if (!first) return { batchId: "", settled: [] };
       const [categoryId, products] = first;
 
       const rows: Record<string, unknown>[] = [];
-      const rejected: ListingVerdict[] = [];
+      const settled: ListingVerdict[] = [];
       for (const product of products) {
         for (const variant of product.variants) {
           const built = buildImportRow(product, variant);
           if (typeof built === "string") {
-            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            settled.push({ reference: variant.reference, status: "rejected", errors: [built] });
             continue;
           }
           rows.push(built);
@@ -475,7 +475,7 @@ export const hepsiburada = defineProvider({
       }
       // Anything in another category is not refused — it is simply not in this
       // file, and the next run picks it up.
-      if (rows.length === 0) return { batchId: "", rejected };
+      if (rows.length === 0) return { batchId: "", settled };
 
       const file = JSON.stringify({
         categoryId: Number(numericId(categoryId, "category id")),
@@ -502,7 +502,7 @@ export const hepsiburada = defineProvider({
       if (!batchId) {
         throw new Error("Hepsiburada accepted the products but returned no tracking id");
       }
-      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+      return { batchId, ...(settled.length > 0 ? { settled } : {}) };
     },
 
     /**

@@ -525,7 +525,7 @@ export const amazon = defineProvider({
       // normally one or two types, and the schema is the largest thing fetched
       // here.
       const schemas = new Map<string, ProductTypeSchema>();
-      const rejected: ListingVerdict[] = [];
+      const settled: ListingVerdict[] = [];
       let accepted = 0;
 
       for (const product of ctx.products) {
@@ -537,7 +537,7 @@ export const amazon = defineProvider({
         for (const variant of product.variants) {
           const sku = text(variant.fields.sku) ?? variant.reference;
           if (!sku) {
-            rejected.push({ reference: variant.reference, status: "rejected", errors: ["no seller SKU"] });
+            settled.push({ reference: variant.reference, status: "rejected", errors: ["no seller SKU"] });
             continue;
           }
           const attributes = buildAttributes({
@@ -576,7 +576,7 @@ export const amazon = defineProvider({
           if (status === "INVALID") {
             // Refused on the spot, so this unit is settled and must not be
             // polled — the same reading n11's `REJECT` gets.
-            rejected.push({
+            settled.push({
               reference: variant.reference,
               status: "rejected",
               errors: errors.length > 0 ? errors : ["Amazon refused the listing without saying why"],
@@ -591,7 +591,7 @@ export const amazon = defineProvider({
       // poll asks with: Amazon has no batch, only listings that were last
       // updated after a point in time. The engine drops any verdict whose
       // reference this batch never sent, which is what makes that safe.
-      return { batchId: accepted > 0 ? String(Date.now()) : "", rejected };
+      return { batchId: accepted > 0 ? String(Date.now()) : "", settled };
     },
 
     async poll(ctx) {

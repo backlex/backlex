@@ -228,7 +228,7 @@ describe("publishing a listing", () => {
     const out = await publish([product], { fetchImpl });
 
     expect(calls).toHaveLength(0);
-    expect(out.rejected![0]!.errors![0]).toMatch(/at least 30/);
+    expect(out.settled![0]!.errors![0]).toMatch(/at least 30/);
   });
 
   test("a unit with no variant code is refused here, not by Çiçeksepeti", async () => {
@@ -237,7 +237,7 @@ describe("publishing a listing", () => {
 
     expect(calls).toHaveLength(0);
     expect(out.batchId).toBe("");
-    expect(out.rejected![0]!.errors![0]).toMatch(/variant code/i);
+    expect(out.settled![0]!.errors![0]).toMatch(/variant code/i);
   });
 
   test("a free-text answer to a closed-set attribute is refused with a reason", async () => {
@@ -247,7 +247,7 @@ describe("publishing a listing", () => {
     const out = await publish([product], { fetchImpl });
 
     expect(calls).toHaveLength(0);
-    expect(out.rejected![0]!.errors![0]).toMatch(/own values/i);
+    expect(out.settled![0]!.errors![0]).toMatch(/own values/i);
   });
 
   test("a 200 with no batchId is an error, not a silent success", async () => {

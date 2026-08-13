@@ -182,6 +182,7 @@ const BRANDS: Record<string, Brand> = {
   n11: { name: "n11", mark: "n11", markBg: "#6C2C7C" },
   ciceksepeti: { name: "Çiçeksepeti", mark: "Çs", markBg: "#E5004C" },
   amazon: { name: "Amazon", mark: "Az", markBg: "#232F3E" },
+  ebay: { name: "eBay", mark: "eB", markBg: "#E53238" },
   easypost: { name: "EasyPost", mark: "Ep", markBg: "#164DFF" },
   yurtici: { name: "Yurtiçi Kargo", mark: "YK", markBg: "#004B93" },
   aras: { name: "Aras Kargo", mark: "AK", markBg: "#00539F" },
@@ -355,7 +356,9 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
       case "ciceksepeti":
         return t`Mirror orders in with their sub-orders, push stock and price out, and drive the customer's status notifications.`;
       case "amazon":
-        return t`Pull Selling Partner orders in with their lines and addresses, and confirm shipments back.`;
+        return t`Pull Selling Partner orders in with their lines and addresses, put products on sale, and confirm shipments back.`;
+      case "ebay":
+        return t`Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back.`;
       case "easypost":
         return t`Book a shipment and store its label, read where the parcel is, and cancel it.`;
       case "yurtici":

@@ -333,13 +333,24 @@ export async function deleteListingMap(ctx: Ctx, tenantId: string, id: string): 
 // ── Publishing ───────────────────────────────────────────────────────────────
 
 export interface ListingRunResult {
-  /** Units handed to the marketplace. */
+  /**
+   * Units handed to the marketplace — every one of them, whatever became of it.
+   *
+   * It used to mean "units still awaiting a verdict", which read the same for
+   * the four marketplaces that answer a publish with a ticket. eBay answers
+   * with the verdict itself, and would have reported a successful run as
+   * "0 sent".
+   */
   sent: number;
-  /** Units the provider refused before anything was queued. */
+  /** Of those, still awaiting a verdict. Zero for a synchronous marketplace. */
+  pending: number;
+  /** Already accepted, at publish time. */
+  accepted: number;
+  /** Already refused, at publish time. */
   rejected: number;
   /** Products skipped because their local category is not mapped yet. */
   unmapped: number;
-  /** The ticket, or null when nothing was queued. */
+  /** The ticket, or null when there is nothing to poll. */
   batchId: string | null;
 }
 
@@ -502,7 +513,7 @@ export async function runListingSync(
   }
 
   if (payload.length === 0) {
-    return { sent: 0, rejected: 0, unmapped, batchId: null };
+    return { sent: 0, pending: 0, accepted: 0, rejected: 0, unmapped, batchId: null };
   }
 
   let batch: Awaited<ReturnType<typeof publishListings>>;
@@ -517,11 +528,14 @@ export async function runListingSync(
     throw e;
   }
 
-  // Refusals the provider made before queueing anything are already final, so
-  // they are written now rather than waited for.
-  if (batch.rejected?.length) await applyVerdicts(ctx, tenantId, row, sent, batch.rejected);
+  // Verdicts the provider already has are final, so they are written now
+  // rather than waited for. For a marketplace whose publish is synchronous
+  // that is ALL of them, accepted ones included.
+  const settled = batch.settled ?? [];
+  if (settled.length > 0) await applyVerdicts(ctx, tenantId, row, sent, settled);
 
-  const queued = Object.keys(sent).length - (batch.rejected?.length ?? 0);
+  const handed = Object.keys(sent).length;
+  const queued = Math.max(0, handed - settled.length);
   if (batch.batchId) {
     await recordBatch(ctx, {
       tenantId,
@@ -529,13 +543,17 @@ export async function runListingSync(
       integrationId: integration.id,
       batchId: batch.batchId,
       sent,
-      pendingCount: Math.max(0, queued),
+      pendingCount: queued,
     });
   }
 
   return {
-    sent: Math.max(0, queued),
-    rejected: batch.rejected?.length ?? 0,
+    sent: handed,
+    pending: queued,
+    // Counted by what each verdict SAYS rather than by which field carried it:
+    // the same list holds both answers now.
+    accepted: settled.filter((v) => v.status === "accepted").length,
+    rejected: settled.filter((v) => v.status === "rejected").length,
     unmapped,
     batchId: batch.batchId || null,
   };

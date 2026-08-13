@@ -403,7 +403,7 @@ export const n11 = defineProvider({
       const opts = readListingSettings(ctx);
 
       const skus: Record<string, unknown>[] = [];
-      const rejected: ListingVerdict[] = [];
+      const settled: ListingVerdict[] = [];
       for (const product of ctx.products) {
         for (const variant of product.variants) {
           const built = buildSku(product, variant, opts);
@@ -411,7 +411,7 @@ export const n11 = defineProvider({
             // Refused HERE rather than by n11, which REJECTs the whole task and
             // explains itself in one `reasons` list for the batch. A verdict per
             // unit is what an operator can act on.
-            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            settled.push({ reference: variant.reference, status: "rejected", errors: [built] });
             continue;
           }
           skus.push(built);
@@ -421,7 +421,7 @@ export const n11 = defineProvider({
       if (skus.length === 0) {
         // Nothing queued, so nothing to poll. A batch id here would leave the
         // engine asking n11 about work it never accepted.
-        return { batchId: "", rejected };
+        return { batchId: "", settled };
       }
       if (skus.length > MAX_SKUS) {
         throw new Error(`n11 accepts ${MAX_SKUS} SKUs per request, and this batch has ${skus.length}`);
@@ -450,8 +450,8 @@ export const n11 = defineProvider({
         const why = reasons.length > 0 ? reasons : ["n11 refused the task without giving a reason"];
         return {
           batchId: "",
-          rejected: [
-            ...rejected,
+          settled: [
+            ...settled,
             ...skus.map((s) => ({
               reference: String(s.stockCode ?? ""),
               status: "rejected" as const,
@@ -467,7 +467,7 @@ export const n11 = defineProvider({
         // as one would strand every unit at `pending` forever.
         throw new Error("n11 accepted the products but returned no task id");
       }
-      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+      return { batchId, ...(settled.length > 0 ? { settled } : {}) };
     },
 
     /**

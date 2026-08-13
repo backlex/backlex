@@ -686,7 +686,7 @@ describe("publishing a listing", () => {
     const batch = await publish([bad], { fetchImpl });
 
     expect(calls[0]!.body.items).toHaveLength(1);
-    expect(batch.rejected).toEqual([
+    expect(batch.settled).toEqual([
       { reference: "", status: "rejected", errors: [expect.stringMatching(/barcode/i)] },
     ]);
   });
@@ -701,13 +701,13 @@ describe("publishing a listing", () => {
     // A batch id here would leave the engine asking Trendyol about work it
     // never accepted.
     expect(batch.batchId).toBe("");
-    expect(batch.rejected).toHaveLength(1);
+    expect(batch.settled).toHaveLength(1);
   });
 
   test("a sale price above the list price is refused before Trendyol sees it", async () => {
     const { fetchImpl } = recorder([{ body: { batchRequestId: "b" } }]);
     const batch = await publish([PRODUCT({ variant: { listPrice: 100, salePrice: 150 } })], { fetchImpl });
-    expect(batch.rejected?.[0]?.errors?.[0]).toMatch(/above the list price/);
+    expect(batch.settled?.[0]?.errors?.[0]).toMatch(/above the list price/);
   });
 
   test("an image that is not https is dropped rather than failing the product", async () => {

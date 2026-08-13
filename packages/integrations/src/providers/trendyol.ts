@@ -537,7 +537,7 @@ export const trendyol = defineProvider({
       const deliveryDuration = readPositiveInt(ctx.setting("deliveryDuration"));
 
       const items: Record<string, unknown>[] = [];
-      const rejected: ListingVerdict[] = [];
+      const settled: ListingVerdict[] = [];
       for (const product of ctx.products) {
         for (const variant of product.variants) {
           const built = buildListingItem(product, variant, { vatRate, deliveryDuration });
@@ -545,7 +545,7 @@ export const trendyol = defineProvider({
             // Refused HERE rather than by Trendyol, because Trendyol refuses the
             // whole batch for one bad item and names it by index. A verdict per
             // unit is what an operator can act on.
-            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            settled.push({ reference: variant.reference, status: "rejected", errors: [built] });
             continue;
           }
           items.push(built);
@@ -555,7 +555,7 @@ export const trendyol = defineProvider({
       if (items.length === 0) {
         // Nothing queued, so nothing to poll. Returning a batch id here would
         // leave the engine asking Trendyol about work it never accepted.
-        return { batchId: "", rejected };
+        return { batchId: "", settled };
       }
       if (items.length > MAX_ITEMS) {
         throw new Error(`Trendyol accepts ${MAX_ITEMS} items per request, and this batch has ${items.length}`);
@@ -574,7 +574,7 @@ export const trendyol = defineProvider({
         // one would strand every unit in the batch at `pending` forever.
         throw new Error("Trendyol accepted the products but returned no batchRequestId");
       }
-      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+      return { batchId, ...(settled.length > 0 ? { settled } : {}) };
     },
 
     /**

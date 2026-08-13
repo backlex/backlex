@@ -384,7 +384,14 @@ export function IntegrationSyncsCard({
       const res = await api<{
         data:
           | { written: number; complete: boolean }
-          | { sent: number; rejected: number; unmapped: number; batchId: string | null };
+          | {
+              sent: number;
+              pending: number;
+              accepted: number;
+              rejected: number;
+              unmapped: number;
+              batchId: string | null;
+            };
       }>(`/api/admin/integrations/syncs/${row.id}/run`, { method: "POST" });
       const d = res.data;
       pushToast(
@@ -400,9 +407,20 @@ export function IntegrationSyncsCard({
               : d.unmapped > 1
                 ? t`Published nothing — ${d.unmapped} products are in categories nobody has mapped.`
                 : t`Published nothing — no product had everything the marketplace needs.`
-            : d.sent === 1
-              ? t`Sent 1 unit. The marketplace rules on it in its own time; watch the batch.`
-              : t`Sent ${d.sent} units. The marketplace rules on them in its own time; watch the batch.`
+            : d.pending === 0
+              ? // A marketplace that answers the publish itself — there is no
+                // batch to watch, so saying so would send an operator looking
+                // for a row that will never appear.
+                d.rejected === 0
+                ? d.sent === 1
+                  ? t`Listed 1 unit.`
+                  : t`Listed ${d.sent} units.`
+                : d.rejected === 1
+                  ? t`Listed ${d.accepted} of ${d.sent} units — 1 was refused. The reason is on the row.`
+                  : t`Listed ${d.accepted} of ${d.sent} units — ${d.rejected} were refused. The reasons are on the rows.`
+              : d.pending === 1
+                ? t`Sent 1 unit. The marketplace rules on it in its own time; watch the batch.`
+                : t`Sent ${d.pending} units. The marketplace rules on them in its own time; watch the batch.`
           : d.complete
             ? t`Pulled ${d.written} rows into ${row.collection}.`
             : t`Pulled ${d.written} rows; more pages resume on the schedule.`,

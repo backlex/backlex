@@ -237,7 +237,7 @@ describe("publishing a listing", () => {
 
     expect(calls).toHaveLength(0);
     expect(out.batchId).toBe("");
-    expect(out.rejected![0]!.errors![0]).toMatch(/stock code/i);
+    expect(out.settled![0]!.errors![0]).toMatch(/stock code/i);
   });
 
   test("a list price below the sale price is refused before the task is sent", async () => {
@@ -247,7 +247,7 @@ describe("publishing a listing", () => {
     const out = await publish([product], { fetchImpl });
 
     expect(calls).toHaveLength(0);
-    expect(out.rejected![0]!.errors![0]).toMatch(/list price/i);
+    expect(out.settled![0]!.errors![0]).toMatch(/list price/i);
   });
 
   test("an http image is dropped, and a product left with none is refused", async () => {
@@ -259,7 +259,7 @@ describe("publishing a listing", () => {
     const out = await publish([product], { fetchImpl });
 
     expect(calls).toHaveLength(0);
-    expect(out.rejected![0]!.errors![0]).toMatch(/https/i);
+    expect(out.settled![0]!.errors![0]).toMatch(/https/i);
   });
 
   test("REJECT is an answer, not a ticket — nothing is left to poll", async () => {
@@ -272,7 +272,7 @@ describe("publishing a listing", () => {
     // A batch id here would leave the engine asking n11 for ever about a task
     // it refused to run.
     expect(out.batchId).toBe("");
-    expect(out.rejected).toEqual([
+    expect(out.settled).toEqual([
       { reference: "AB-1-S", status: "rejected", errors: ["Kategori bulunamadı"] },
     ]);
   });

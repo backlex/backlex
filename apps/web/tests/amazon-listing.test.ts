@@ -347,7 +347,7 @@ describe("publishing", () => {
       fetchImpl,
     );
 
-    expect(batch.rejected).toEqual([
+    expect(batch.settled).toEqual([
       { reference: "SKU-1", status: "rejected", errors: ["Brand is not registered"] },
     ]);
     // Nothing queued, so there is no batch to poll — the same reading n11's

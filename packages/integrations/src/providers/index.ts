@@ -22,6 +22,7 @@ import { datadog } from "./datadog";
 import { dhl } from "./dhl";
 import { discord } from "./discord";
 import { easypost } from "./easypost";
+import { ebay } from "./ebay";
 import { elasticsearch } from "./elasticsearch";
 import { github } from "./github";
 import { googleCalendar } from "./google-calendar";
@@ -106,6 +107,7 @@ export const INTEGRATION_KINDS = [
   "amazon",
   // carriers (book a shipment, read where it is, cancel it)
   "easypost",
+  "ebay",
   "yurtici",
   "aras",
   "dhl",
@@ -155,6 +157,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   ciceksepeti,
   amazon,
   easypost,
+  ebay,
   yurtici,
   aras,
   dhl,

@@ -440,19 +440,19 @@ export const ciceksepeti = defineProvider({
       const deliveryMessageType = readChoice(ctx.setting("deliveryMessageType"), ["5", "6", "7", "13"], "5");
 
       const products: Record<string, unknown>[] = [];
-      const rejected: ListingVerdict[] = [];
+      const settled: ListingVerdict[] = [];
       for (const product of ctx.products) {
         for (const variant of product.variants) {
           const built = buildProduct(product, variant, { deliveryType, deliveryMessageType });
           if (typeof built === "string") {
-            rejected.push({ reference: variant.reference, status: "rejected", errors: [built] });
+            settled.push({ reference: variant.reference, status: "rejected", errors: [built] });
             continue;
           }
           products.push(built);
         }
       }
 
-      if (products.length === 0) return { batchId: "", rejected };
+      if (products.length === 0) return { batchId: "", settled };
       if (products.length > MAX_LISTING_ITEMS) {
         throw new Error(
           `Çiçeksepeti accepts ${MAX_LISTING_ITEMS} items per request, and this batch has ${products.length}`,
@@ -478,7 +478,7 @@ export const ciceksepeti = defineProvider({
         // as one would strand every unit at `pending` forever.
         throw new Error("Çiçeksepeti accepted the products but returned no batchId");
       }
-      return { batchId, ...(rejected.length > 0 ? { rejected } : {}) };
+      return { batchId, ...(settled.length > 0 ? { settled } : {}) };
     },
 
     /**

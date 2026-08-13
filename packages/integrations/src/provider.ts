@@ -178,6 +178,21 @@ export interface IntegrationOAuth {
    */
   keepFromTokenResponse?: readonly string[];
   /**
+   * A config key whose value REPLACES the redirect URI.
+   *
+   * eBay's authorization-code flow does not take a URL at all: it takes an
+   * "RuName", an opaque handle eBay mints for the application, and the real
+   * callback URL is registered against that handle in eBay's own portal. So the
+   * value that travels as `redirect_uri` is a credential the admin pastes,
+   * not something this instance can derive.
+   *
+   * The redirect this instance actually serves is unchanged, and it is still
+   * what the admin registers at the provider — the catalog reports it. Only the
+   * parameter differs. Whatever leg 1 sent is stored on the state row and
+   * replayed at exchange time, so the two legs cannot disagree.
+   */
+  redirectUriFrom?: string;
+  /**
    * Query parameters on the redirect worth keeping. QuickBooks returns the
    * company id as `?realmId=…` on the callback and nowhere else — without this
    * an admin would have to go and find it by hand, and every API call needs it.
@@ -929,12 +944,20 @@ export interface ListingBatch {
   /** The provider's own id for the queued work. */
   batchId: string;
   /**
-   * A provider that refused the whole request before queueing anything.
+   * Units this call already has the final answer for.
    *
-   * Distinct from a batch that queued and then failed every item: nothing is
-   * pending, so nothing should be polled.
+   * Two shapes reach it. A marketplace that refuses part of a request before
+   * queueing anything reports those refusals here, and the rest are polled —
+   * Trendyol, n11 and Çiçeksepeti all do that. And a marketplace whose publish
+   * is SYNCHRONOUS reports every unit here, accepted ones included: eBay
+   * answers `createOffer`/`publishOffer` with a listing id or an error, so
+   * there is no ticket to poll and `batchId` is empty.
+   *
+   * It was called `rejected` until eBay arrived, which is when the name started
+   * to lie. What it always meant is "settled": nothing here is pending, so
+   * nothing here is polled.
    */
-  rejected?: readonly ListingVerdict[];
+  settled?: readonly ListingVerdict[];
 }
 
 /** What became of one unit. */

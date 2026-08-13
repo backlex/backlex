@@ -144,7 +144,18 @@ export async function beginOAuth(
 
   const state = randomB64Url(32);
   const codeVerifier = oauth.pkce ? randomB64Url(48) : null;
-  const redirectUri = oauthRedirectUri(ctx.env.APP_URL);
+  // Normally the callback this instance serves. A provider may instead name a
+  // config key holding an opaque handle it issued for the application (eBay's
+  // RuName) — the callback URL is then registered against that handle at the
+  // provider rather than sent here.
+  let redirectUri = oauthRedirectUri(ctx.env.APP_URL);
+  if (oauth.redirectUriFrom) {
+    const named = await readConfig(row.config ?? {}, oauth.redirectUriFrom, ctx.env.AUTH_SECRET);
+    if (!named) {
+      throw new AppError("BAD_REQUEST", `Set ${oauth.redirectUriFrom} before connecting — this provider redirects by its own handle, not by URL`);
+    }
+    redirectUri = named;
+  }
 
   const t = statesTableFor(ctx.dialect);
   // Sweep whatever has aged out before adding another. Abandoned flows (the

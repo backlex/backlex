@@ -1,6 +1,6 @@
 ---
 title: Marketplace listings
-description: Publish products to Trendyol, n11, Çiçeksepeti, Hepsiburada and Amazon — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
+description: Publish products to Trendyol, n11, Çiçeksepeti, Hepsiburada, Amazon and eBay — map a category once, answer what it demands, and read the marketplace's verdict back onto the row it came from.
 ---
 
 A **listing sync** puts your products on sale at a marketplace. It is the sixth
@@ -142,9 +142,9 @@ the product row.
 This is a configuration, not a special case: no provider branches on it, which
 is why "no variants" costs nothing.
 
-## The five marketplaces
+## The six marketplaces
 
-The shape held for all five, and they agree on almost nothing. What differs is
+The shape held for all six, and they agree on almost nothing. What differs is
 worth knowing before you map one.
 
 ### Trendyol
@@ -224,6 +224,27 @@ the provider — the mapping form works the same way it does for the other four.
   is not built: each of your variants becomes its own listing on its own page.
   Everything else works — this is the one place to expect less than the other
   four give you.
+
+### eBay
+
+- **Connecting is a redirect, not a pasted key** — eBay is the first marketplace
+  here that uses OAuth. You paste your App ID, Cert ID and **RuName**, then press
+  Connect and approve on eBay. The RuName is eBay's own handle for where to send
+  you back; register this instance's callback URL against it in eBay's portal
+  first (the connect dialog shows the URL).
+- **Set the six listing settings before publishing.** An eBay offer names a
+  fulfilment, a payment and a return policy by id, plus a merchant location key —
+  all created by you in Seller Hub. A publish with any of them missing is refused
+  as a whole rather than unit by unit, because every unit would fail the same way.
+- **The category tree is nested and deep**, and eBay says which nodes are leaves
+  itself.
+- **Aspects say which one is the variant.** eBay is the only marketplace here
+  that marks it, so a size or colour aspect is recognisable in the mapping form
+  without you knowing which is which.
+- **The verdict arrives immediately.** There is no batch to watch: a unit is
+  listed or refused by the time the run finishes, and the reason is on the row.
+- **eBay's own message is kept verbatim** — it names the field, which "Invalid
+  value" would not.
 
 ## Template columns
 

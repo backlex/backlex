@@ -214,7 +214,7 @@ describe("publishing a listing", () => {
     const doc = await filePart(calls[0]!);
     expect(doc.categoryId).toBe(80);
     expect(doc.attributes).toHaveLength(1);
-    expect(out.rejected ?? []).toEqual([]);
+    expect(out.settled ?? []).toEqual([]);
   });
 
   test("a unit with no merchant SKU is refused here, not by Hepsiburada", async () => {
@@ -223,7 +223,7 @@ describe("publishing a listing", () => {
 
     expect(calls).toHaveLength(0);
     expect(out.batchId).toBe("");
-    expect(out.rejected![0]!.errors![0]).toMatch(/merchant SKU/i);
+    expect(out.settled![0]!.errors![0]).toMatch(/merchant SKU/i);
   });
 
   test("a 200 with no tracking id is an error, not a silent success", async () => {

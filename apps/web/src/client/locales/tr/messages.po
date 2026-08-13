@@ -9747,6 +9747,28 @@ msgstr "listele ve sırala"
 msgid "List columns"
 msgstr "Liste kolonları"
 
+#. placeholder {0}: d.accepted
+#. placeholder {1}: d.sent
+#. placeholder {2}: d.rejected
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed {0} of {1} units — {2} were refused. The reasons are on the rows."
+msgstr "{1} birimin {0} tanesi listelendi — {2} tanesi reddedildi. Gerekçeler satırlarda."
+
+#. placeholder {0}: d.accepted
+#. placeholder {1}: d.sent
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed {0} of {1} units — 1 was refused. The reason is on the row."
+msgstr "{1} birimin {0} tanesi listelendi — 1 tanesi reddedildi. Gerekçe satırda."
+
+#. placeholder {0}: d.sent
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed {0} units."
+msgstr "{0} birim listelendi."
+
+#: src/client/admin/pages/automation/integration-syncs-card.tsx
+msgid "Listed 1 unit."
+msgstr "1 birim listelendi."
+
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Listing at {providerName}"
 msgstr "{providerName} üzerinde satışa çıkarma"
@@ -14191,13 +14213,21 @@ msgstr "Bir Airtable tablosunu zamanlanmış olarak koleksiyona çeker."
 msgid "Pull marketplace orders in with their lines, push stock and price out, and notify package status back."
 msgstr "Pazar yeri siparişlerini kalemleriyle çeker, stok ve fiyatı gönderir, paket durumunu geri bildirir."
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back."
+msgstr "Siparişleri satırlarıyla birlikte içeri çek, ürünleri eBay pazar yerlerinde satışa koy ve kargo bildirimini geri gönder."
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #~ msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
 #~ msgstr "Bağlı bir kaynaktan satırları zamanlanmış olarak bir koleksiyona çeker. Çekilen satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine asla yazmaz."
 
 #: src/client/admin/pages/automation/integrations.tsx
-msgid "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
-msgstr "Selling Partner siparişlerini kalemleri ve adresleriyle içeri çekin, kargo çıkışını geri bildirin."
+#~ msgid "Pull Selling Partner orders in with their lines and addresses, and confirm shipments back."
+#~ msgstr "Selling Partner siparişlerini kalemleri ve adresleriyle içeri çekin, kargo çıkışını geri bildirin."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Pull Selling Partner orders in with their lines and addresses, put products on sale, and confirm shipments back."
+msgstr "Selling Partner siparişlerini satır ve adresleriyle içeri çek, ürünleri satışa koy ve kargo bildirimini geri gönder."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Pull shipment packages in with their lines, push stock and price out, and approve packages back."
@@ -16690,7 +16720,7 @@ msgstr "gönderildi"
 msgid "Sent"
 msgstr "Gönderildi"
 
-#. placeholder {0}: d.sent
+#. placeholder {0}: d.pending
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Sent {0} units. The marketplace rules on them in its own time; watch the batch."
 msgstr "{0} birim gönderildi. Pazar yeri kendi zamanında karar verir; partiyi izleyin."

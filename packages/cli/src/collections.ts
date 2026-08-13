@@ -40,6 +40,12 @@ const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop
                                     metadata; never copies data)
   export-schema [--out <file>]      full schema as JSON (commit + diff for GitOps)
   drop-field <slug> <field>         drop a column (destructive; managed-only)
+                                      --dry-run    report rows + values at risk,
+                                                   change nothing
+                                      --confirm    required when the column holds
+                                                   any value; the server saves
+                                                   them to a pre-drop backup and
+                                                   returns its id
   fts-reindex <slug>                rebuild the full-text index for existing rows
                                     (rarely needed — enabling fts auto-backfills)
   vectorize <slug>                  embed every existing row into the vector store
@@ -214,20 +220,48 @@ export const runCollections = async (args: string[]): Promise<void> => {
     const slug = args[1];
     const field = args[2];
     if (!slug || !field) {
-      process.stderr.write("collections drop-field <slug> <field>\n");
+      process.stderr.write("collections drop-field <slug> <field> [--dry-run] [--confirm]\n");
       process.exit(1);
     }
+    const rest = args.slice(3);
+    const dryRun = has(rest, "--dry-run");
     try {
-      const ctx = resolveContext(args.slice(3));
-      const res = await makeClient(ctx).request<{ ok: true; slug: string; field: string }>(
+      const ctx = resolveContext(rest);
+      const base = `/api/collections/${encodeURIComponent(slug)}/fields/${encodeURIComponent(field)}`;
+      const res = await makeClient(ctx).request<{
+        ok: boolean;
+        dryRun?: boolean;
+        slug: string;
+        field: string;
+        rows?: number;
+        nonNull?: number;
+        snapshotId?: string | null;
+      }>(
         "DELETE",
-        `/api/collections/${encodeURIComponent(slug)}/fields/${encodeURIComponent(field)}`,
+        dryRun ? `${base}?dryRun=1` : base,
+        undefined,
+        // The server only demands this when the column actually holds values,
+        // so passing it on an empty column is harmless — and NOT passing it on a
+        // full one is a 403 that names the count, which is the point.
+        has(rest, "--confirm") ? { "x-backlex-confirm": "yes" } : undefined,
       );
       if (json) {
         printJson(res);
         return;
       }
-      process.stderr.write(`✓ dropped ${field} from ${res.slug}\n`);
+      if (res.dryRun) {
+        process.stderr.write(
+          `dry run: ${res.rows ?? 0} row(s), ${res.nonNull ?? 0} with a value in "${field}".\n` +
+            (res.nonNull ? `Re-run with --confirm to drop it.\n` : `Nothing would be lost.\n`),
+        );
+        return;
+      }
+      process.stderr.write(
+        `✓ dropped ${field} from ${res.slug}` +
+          (res.snapshotId
+            ? ` — ${res.nonNull} value(s) saved to backup ${res.snapshotId}\n`
+            : `\n`),
+      );
     } catch (e) {
       die(e, "collections drop-field");
     }

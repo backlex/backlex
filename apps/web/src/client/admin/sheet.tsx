@@ -10,6 +10,7 @@ import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
 import { DatePicker } from "@/components/date-picker";
 import {
   DropdownMenu,
@@ -344,6 +345,16 @@ export interface ConfirmDialogProps {
   description?: ReactNode;
   actionLabel?: string;
   destructive?: boolean;
+  /**
+   * When set, the action stays disabled until the operator types this string.
+   *
+   * For the handful of actions that destroy data no restore can fully undo, a
+   * click-through confirm is not a decision. Reserved for those — putting it on
+   * an ordinary confirm just trains people to type past it.
+   */
+  confirmText?: string;
+  /** Label above the type-to-confirm box. Defaults to naming `confirmText`. */
+  confirmTextLabel?: ReactNode;
   onConfirm?: () => void;
   onCancel?: () => void;
 }
@@ -354,11 +365,18 @@ export function ConfirmDialog({
   description,
   actionLabel,
   destructive,
+  confirmText,
+  confirmTextLabel,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   const { t } = useLingui();
   const resolvedLabel = actionLabel ?? t`Confirm`;
+  const [typed, setTyped] = useState("");
+  // Reset between openings AND between targets — otherwise a second dialog for
+  // a different collection would open already satisfied by the previous answer.
+  useEffect(() => { setTyped(""); }, [confirmText, open]);
+  const blocked = Boolean(confirmText) && typed !== confirmText;
   return (
     <AlertDialog open={open} onOpenChange={(o) => { if (!o) onCancel?.(); }}>
       <AlertDialogContent>
@@ -366,13 +384,31 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
         </AlertDialogHeader>
+        {confirmText ? (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] text-muted-foreground" htmlFor="confirm-typed">
+              {confirmTextLabel ?? <Trans>Type the name to confirm</Trans>}
+            </label>
+            <Input
+              id="confirm-typed"
+              value={typed}
+              autoComplete="off"
+              placeholder={confirmText}
+              onChange={(e) => setTyped(e.target.value)}
+            />
+          </div>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>
             <Trans>Cancel</Trans>
           </AlertDialogCancel>
           {/* Use the design-system destructive variant (soft red bg + red
               text) — the same treatment used across the app and cloud. */}
-          <AlertDialogAction onClick={onConfirm} variant={destructive ? "destructive" : "default"}>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={blocked}
+            variant={destructive ? "destructive" : "default"}
+          >
             {resolvedLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

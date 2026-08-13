@@ -37,6 +37,7 @@ import {
   setCachedGroupOrder,
 } from "../services/collections-cache";
 import { invalidateTenantPermissions } from "../services/permissions-cache";
+import { countDropImpact, snapshotBeforeDrop } from "../services/backup";
 import { loadCollection } from "../services/items/collection-loader";
 import {
   refreshCollectionRollups,
@@ -1499,15 +1500,27 @@ export const collectionsRoutes = new Hono<AppBindings>()
   /**
    * Drop a single field (column) from a managed collection. The metadata
    * `fields` array is the source of truth, so we remove the entry there and
-   * then `ALTER TABLE … DROP COLUMN` via the applier. Destructive and
-   * irreversible (the column's data is gone) — kept as its own endpoint, not
-   * folded into PATCH, because `applyCollection` is additive-only and never
+   * then `ALTER TABLE … DROP COLUMN` via the applier. Kept as its own endpoint,
+   * not folded into PATCH, because `applyCollection` is additive-only and never
    * drops columns. Refused on adopted tables (we never touch the user's DDL).
+   *
+   * The DDL is still irreversible, but the DATA no longer is: a `pre-drop`
+   * backup of `(id, <column>)` is captured first, and `restoreBackup` with
+   * `mode: "overwrite"` + `onlyTables: [table]` puts the values back after the
+   * field is re-added. A plain restore cannot do this — it is additive, so it
+   * re-adds the column and then skips every row that still exists, bringing the
+   * column back EMPTY.
+   *
+   * `?dryRun=1` reports the impact and touches nothing. Otherwise the
+   * `X-Backlex-Confirm: yes` header is required **when the drop would actually
+   * destroy data** (`nonNull > 0`) — an empty column drops as before, so the CI
+   * and template automation that does exactly that is unaffected.
    */
   .delete("/:slug/fields/:name", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
     const fieldName = c.req.param("name");
-    const { db, dialect } = c.get("ctx");
+    const ctx = c.get("ctx");
+    const { db, dialect } = ctx;
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
     const existing = await (db as any)
@@ -1530,6 +1543,47 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (!target) throw new AppError("NOT_FOUND", `Field "${fieldName}" not found`);
     const nextFields = fields.filter((f) => f.name !== fieldName);
     const physicalTable = (existing[0].physicalTable ?? existing[0].physical_table) as string;
+    const tenantScoped = existing[0].tenantScoped ?? existing[0].tenant_scoped ?? true;
+
+    const impact = await countDropImpact(ctx, {
+      table: physicalTable,
+      column: fieldName,
+      tenantScoped: Boolean(tenantScoped),
+      tenantId,
+    });
+    if (c.req.query("dryRun")) {
+      return c.json({
+        ok: false,
+        dryRun: true,
+        slug,
+        field: fieldName,
+        table: physicalTable,
+        ...impact,
+      });
+    }
+    // Gate on data loss, not on the operation. A column nobody has written to
+    // is scaffolding; a column with values in it is somebody's data.
+    if ((impact.nonNull ?? 0) > 0 && c.req.header("x-backlex-confirm") !== "yes") {
+      throw new AppError(
+        "FORBIDDEN",
+        `Dropping "${fieldName}" would destroy ${impact.nonNull} value(s). Re-send with the X-Backlex-Confirm: yes header.`,
+        { slug, field: fieldName, table: physicalTable, ...impact },
+      );
+    }
+
+    const snapshot =
+      (impact.nonNull ?? 0) > 0
+        ? await snapshotBeforeDrop(ctx, {
+            tenantId,
+            userId: c.get("auth")?.userId ?? null,
+            table: physicalTable,
+            columns: ["id", fieldName],
+            nonNullColumn: fieldName,
+            label: `Before dropping ${slug}.${fieldName}`,
+            tenantScoped: Boolean(tenantScoped),
+          })
+        : null;
+
     // Metadata first, then the physical DROP COLUMN. If the ALTER fails the
     // metadata write is rolled forward-compatible (the column simply still
     // exists physically but is hidden from the API — the next apply is a no-op).
@@ -1541,22 +1595,49 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // A dropped sequence field's counter is meaningless — and would silently
     // resume if a field of the same name were added back.
     if (target.sequence) {
-      await dropSequenceCounters(c.get("ctx"), tenantId, slug, fieldName);
+      await dropSequenceCounters(ctx, tenantId, slug, fieldName);
     }
     invalidateTenantCollections(tenantId);
-    const dropResponse = { ok: true, slug, field: fieldName };
+    const dropResponse = {
+      ok: true,
+      slug,
+      field: fieldName,
+      rows: impact.rows,
+      nonNull: impact.nonNull ?? 0,
+      snapshotId: snapshot?.id ?? null,
+    };
     await logActivity(c, {
       action: "drop_field",
       collection: "system_collections",
       itemId: slug,
-      payload: { field: fieldName, type: target.type },
+      payload: {
+        field: fieldName,
+        type: target.type,
+        rows: impact.rows,
+        nonNull: impact.nonNull ?? 0,
+        snapshotId: snapshot?.id ?? null,
+      },
       response: dropResponse,
     });
     return c.json(dropResponse);
   })
+  /**
+   * Delete a collection. Adopted collections are archived (the source table is
+   * never touched); a managed one has its `c_*` table DROPped and its metadata
+   * row hard-deleted.
+   *
+   * The managed branch captures a `pre-drop` backup of the whole table first, so
+   * the rows survive the DDL — recovery is re-creating the collection and then
+   * `restoreBackup` with `onlyTables: [table]`. `?dryRun=1` reports the row
+   * count without touching anything, and the `X-Backlex-Confirm: yes` header is
+   * required whenever the table actually holds rows. An empty collection deletes
+   * exactly as it did before, which is what keeps scaffolding and test cleanup
+   * working unchanged.
+   */
   .delete("/:slug", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
-    const { db, dialect } = c.get("ctx");
+    const ctx = c.get("ctx");
+    const { db, dialect } = ctx;
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
     const existing = await (db as any)
@@ -1567,6 +1648,54 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
     const physicalTable = (existing[0].physicalTable ?? existing[0].physical_table) as string;
     const adopted = Boolean(existing[0].adopted);
+    const tenantScoped = existing[0].tenantScoped ?? existing[0].tenant_scoped ?? true;
+
+    // Only the managed branch destroys anything — archiving an adopted
+    // collection leaves every row queryable on the source database, so there is
+    // nothing to count, confirm, or snapshot.
+    let snapshotId: string | null = null;
+    let rowCount = 0;
+    if (!adopted) {
+      rowCount = (
+        await countDropImpact(ctx, {
+          table: physicalTable,
+          tenantScoped: Boolean(tenantScoped),
+          tenantId,
+        })
+      ).rows;
+      if (c.req.query("dryRun")) {
+        return c.json({
+          ok: false,
+          dryRun: true,
+          slug,
+          table: physicalTable,
+          adopted,
+          rows: rowCount,
+        });
+      }
+      if (rowCount > 0 && c.req.header("x-backlex-confirm") !== "yes") {
+        throw new AppError(
+          "FORBIDDEN",
+          `Deleting "${slug}" would destroy ${rowCount} row(s). Re-send with the X-Backlex-Confirm: yes header.`,
+          { slug, table: physicalTable, rows: rowCount },
+        );
+      }
+      if (rowCount > 0) {
+        snapshotId =
+          (
+            await snapshotBeforeDrop(ctx, {
+              tenantId,
+              userId: c.get("auth")?.userId ?? null,
+              table: physicalTable,
+              label: `Before deleting collection ${slug}`,
+              tenantScoped: Boolean(tenantScoped),
+            })
+          )?.id ?? null;
+      }
+    } else if (c.req.query("dryRun")) {
+      return c.json({ ok: false, dryRun: true, slug, adopted, rows: 0 });
+    }
+
     if (adopted) {
       // Archive adopted collections: physical table is intact (the
       // applier already short-circuits on adopted), so flipping
@@ -1581,12 +1710,13 @@ export const collectionsRoutes = new Hono<AppBindings>()
         .set({ status: "archived", archivedAt: new Date() })
         .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
     } else {
-      // Managed collections — physical `c_<slug>` table goes too; the
-      // metadata row is hard-deleted. There's nothing to restore.
+      // Managed collections — physical `c_<slug>` table goes too; the metadata
+      // row is hard-deleted. The metadata is gone for good, but the ROWS are in
+      // the pre-drop snapshot taken above.
       await dropCollection(db, dialect, physicalTable, { adopted });
       // Recreating this slug is a NEW series: a fresh table with no rows in it
       // must not resume numbering where the dropped one left off.
-      await dropSequenceCounters(c.get("ctx"), tenantId, slug);
+      await dropSequenceCounters(ctx, tenantId, slug);
       await (db as any)
         .delete(t)
         .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
@@ -1599,10 +1729,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
       action: adopted ? "archive" : "delete",
       collection: "system_collections",
       itemId: slug,
-      payload: { adopted, archived: adopted },
+      payload: { adopted, archived: adopted, rows: rowCount, snapshotId },
       response: { ok: true },
     });
-    return c.json({ ok: true, archived: adopted });
+    return c.json({ ok: true, archived: adopted, rows: rowCount, snapshotId });
   })
   /**
    * Backfill: embed every existing row in the collection's physical table

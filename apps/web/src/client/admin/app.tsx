@@ -1244,28 +1244,44 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 onOpenApi={(slug) => navigate(slug ? `/rest-explorer?slug=${encodeURIComponent(slug)}` : "/rest-explorer")}
                 onOpenSchema={() => navigate("/schema-graph")}
                 onNew={() => setNewCollectionOpen(true)}
-                onDelete={(slug) => {
+                onDelete={async (slug) => {
                   // Branch by adopted flag — adopted collections soft-delete
                   // (archive, reversible), managed ones hard-DROP the table.
                   const target = (collections as Array<CollectionListItem & { adopted?: boolean }>).find((c) => c.slug === slug);
                   const adopted = !!target?.adopted;
+                  // Ask what the delete would destroy before describing it. A
+                  // managed collection with rows in it is a different decision
+                  // from an empty one, and the dialog should say which this is.
+                  const rows = adopted
+                    ? 0
+                    : await collectionsApi
+                        .removeImpact(slug)
+                        .then((r) => r.rows)
+                        // Probe failed — assume the worst, which is the safe
+                        // direction for a confirmation.
+                        .catch(() => -1);
                   setConfirm({
                     title: adopted
                       ? <Trans>Archive collection <span className="font-mono">c_{slug}</span>?</Trans>
                       : <Trans>Delete collection <span className="font-mono">c_{slug}</span>?</Trans>,
                     description: adopted
                       ? <Trans>Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
-                      : <Trans>The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too.</Trans>,
+                      : rows === 0
+                        ? <Trans>The physical table is dropped. It holds no rows, so no data is lost. Permissions, revisions, and webhooks tied to this collection are removed too.</Trans>
+                        : <Trans>The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable. Permissions, revisions, and webhooks tied to it are removed too.</Trans>,
                     actionLabel: adopted ? t`Archive collection` : t`Delete collection`,
                     destructive: !adopted,
+                    ...(!adopted && rows !== 0 ? { confirmText: slug, confirmTextLabel: t`Type the collection slug to confirm` } : {}),
                     onConfirm: async () => {
                       try {
-                        const resp = await collectionsApi.remove(slug);
+                        const resp = await collectionsApi.remove(slug, { confirm: !adopted });
                         invalidateCollections();
                         if (activeCollection === slug) setActiveCollection(null);
                         pushToast(resp.archived
                           ? t`Collection c_${slug} archived. Restore it from the Archived view.`
-                          : t`Collection c_${slug} dropped.`);
+                          : resp.snapshotId
+                            ? t`Collection c_${slug} dropped. ${resp.rows} row(s) saved to a backup.`
+                            : t`Collection c_${slug} dropped.`);
                       } catch (e) {
                         pushToast((e as Error).message, "error");
                       }
@@ -1767,26 +1783,39 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                       pushToast((e as Error).message, "error");
                     }
                   }}
-                  onDelete={() => {
+                  onDelete={async () => {
                     const adopted = !!(schemaState as { adopted?: boolean }).adopted;
+                    const slug = activeCollection || "posts";
+                    // Same probe as the sidebar's delete — the dialog names what
+                    // is at stake instead of warning in the abstract.
+                    const rows = adopted
+                      ? 0
+                      : await collectionsApi
+                          .removeImpact(slug)
+                          .then((r) => r.rows)
+                          .catch(() => -1);
                     setConfirm({
                       title: adopted
                         ? <Trans>Archive collection <span className="font-mono">c_{activeCollection}</span>?</Trans>
                         : <Trans>Delete collection <span className="font-mono">c_{activeCollection}</span>?</Trans>,
                       description: adopted
                         ? <Trans>Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
-                        : <Trans>The physical table and all rows are dropped. This is irreversible.</Trans>,
+                        : rows === 0
+                          ? <Trans>The physical table is dropped. It holds no rows, so no data is lost.</Trans>
+                          : <Trans>The physical table and its {rows} row(s) are dropped. The rows are saved to a backup first, but the collection itself is not restorable.</Trans>,
                       actionLabel: adopted ? t`Archive collection` : t`Delete collection`,
                       destructive: !adopted,
+                      ...(!adopted && rows !== 0 ? { confirmText: slug, confirmTextLabel: t`Type the collection slug to confirm` } : {}),
                       onConfirm: async () => {
-                        const slug = activeCollection || "posts";
                         try {
-                          const resp = await collectionsApi.remove(slug);
+                          const resp = await collectionsApi.remove(slug, { confirm: !adopted });
                           invalidateCollections();
                           setActiveCollection(null);
                           pushToast(resp.archived
                             ? t`Collection c_${slug} archived. Restore it from the Archived view.`
-                            : t`Collection c_${slug} dropped.`);
+                            : resp.snapshotId
+                              ? t`Collection c_${slug} dropped. ${resp.rows} row(s) saved to a backup.`
+                              : t`Collection c_${slug} dropped.`);
                         } catch (e) {
                           pushToast((e as Error).message, "error");
                         }

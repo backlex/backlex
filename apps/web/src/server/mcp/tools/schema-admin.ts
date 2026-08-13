@@ -136,14 +136,29 @@ export const dropField: McpTool = {
   name: "schema.drop_field",
   description:
     "Drop a single field (column) from a managed collection. Destructive — " +
-    "the column and all its data are removed (`ALTER TABLE … DROP COLUMN`). " +
-    "Refused on adopted collections (the source table is never altered) and " +
-    "on reserved columns. Returns `{ ok: true, slug, field }`.",
+    "the column is removed (`ALTER TABLE … DROP COLUMN`). Refused on adopted " +
+    "collections (the source table is never altered) and on reserved columns. " +
+    "Call with `dryRun: true` first to see `{ rows, nonNull }` — how big the " +
+    "table is, and how many values would actually be lost. If any value would " +
+    "be lost, `confirm: true` is required; the server then captures a " +
+    "`pre-drop` backup and returns its `snapshotId`, which restores the values " +
+    "(`backups.restore` with `overwrite: true` and `onlyTables`) once the field " +
+    "is re-added. Dropping an empty column needs no confirmation. Returns " +
+    "`{ ok: true, slug, field, rows, nonNull, snapshotId }`.",
   inputSchema: {
     type: "object",
     properties: {
       slug: { type: "string" },
       name: { type: "string", description: "Field (column) name to drop." },
+      dryRun: {
+        type: "boolean",
+        description: "Report the impact and change nothing.",
+      },
+      confirm: {
+        type: "boolean",
+        description:
+          "Required when the column holds any value. Acknowledges the data loss.",
+      },
     },
     required: ["slug", "name"],
     additionalProperties: false,
@@ -154,9 +169,18 @@ export const dropField: McpTool = {
     if (typeof name !== "string" || name.length === 0) {
       throw new Error("VALIDATION: name is required");
     }
+    const base = `/api/collections/${encodeURIComponent(slug)}/fields/${encodeURIComponent(name)}`;
     const res = await ctx.fetchInternal(
-      `/api/collections/${encodeURIComponent(slug)}/fields/${encodeURIComponent(name)}`,
-      { method: "DELETE" },
+      args.dryRun === true ? `${base}?dryRun=1` : base,
+      {
+        method: "DELETE",
+        // Same shape `backups.restore` uses: the agent's `confirm` becomes the
+        // header the route requires. Withheld unless asked for, so an agent
+        // cannot destroy data it never acknowledged.
+        ...(args.confirm === true
+          ? { headers: { "x-backlex-confirm": "yes" } }
+          : {}),
+      },
     );
     const body = await readJson<unknown>(res);
     return withLinks(textResult(body), collectionLink(slug));
@@ -167,22 +191,41 @@ export const dropCollection: McpTool = {
   name: "schema.drop_collection",
   description:
     "Delete a collection. Managed collections also drop the physical table " +
-    "(destructive — data is gone); adopted collections are soft-archived " +
-    "(the source table is untouched, `schema.restore_collection` would bring " +
-    "it back). Returns `{ ok: true, archived: <bool> }`.",
+    "(destructive); adopted collections are soft-archived (the source table is " +
+    "untouched, `schema.restore_collection` would bring it back). Call with " +
+    "`dryRun: true` first to see how many rows would be destroyed. If the table " +
+    "holds any row, `confirm: true` is required; the server then captures a " +
+    "`pre-drop` backup of the whole table and returns its `snapshotId`. " +
+    "Deleting an empty collection needs no confirmation. Returns " +
+    "`{ ok: true, archived: <bool>, rows, snapshotId }`.",
   inputSchema: {
     type: "object",
     properties: {
       slug: { type: "string" },
+      dryRun: {
+        type: "boolean",
+        description: "Report the row count and change nothing.",
+      },
+      confirm: {
+        type: "boolean",
+        description:
+          "Required when the collection holds any row. Acknowledges the data loss.",
+      },
     },
     required: ["slug"],
     additionalProperties: false,
   },
   handler: async (args, ctx) => {
     const slug = requireSlug(args);
+    const base = `/api/collections/${encodeURIComponent(slug)}`;
     const res = await ctx.fetchInternal(
-      `/api/collections/${encodeURIComponent(slug)}`,
-      { method: "DELETE" },
+      args.dryRun === true ? `${base}?dryRun=1` : base,
+      {
+        method: "DELETE",
+        ...(args.confirm === true
+          ? { headers: { "x-backlex-confirm": "yes" } }
+          : {}),
+      },
     );
     const body = await readJson<unknown>(res);
     return textResult(body);

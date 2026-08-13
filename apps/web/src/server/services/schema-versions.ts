@@ -40,6 +40,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { invalidateTenantCollections } from "./collections-cache";
 import { invalidateTenantPermissions } from "./permissions-cache";
 import { seedOwnerScopedPermissions } from "./seed";
+import { snapshotBeforeDrop } from "./backup";
+import type { Ctx } from "../context";
 import { loadAppSettings } from "./settings";
 
 type Dialect = "pg" | "sqlite";
@@ -50,6 +52,21 @@ type AnyDb = any;
 export interface SchemaVersionsCtx {
   db: AnyDb;
   dialect: Dialect;
+  /**
+   * Storage adapter, when the caller has one.
+   *
+   * Present → every destructive change in an apply captures a **data** snapshot
+   * before the DDL runs. `captureSnapshot` below is a SCHEMA snapshot: it
+   * records what the columns were, not what was in them, so on its own it makes
+   * an apply reversible in shape and irreversible in content.
+   *
+   * Optional rather than required because this type is also used by callers that
+   * only read (`loadLiveSchema`, `diffSchema`). When it is absent the drops still
+   * happen — refusing would break every existing caller — and `applySchema`
+   * reports `dataSnapshotIds: []` so nobody is told a safety net exists that
+   * does not.
+   */
+  storage?: Ctx["storage"];
 }
 
 /** Where a schema state comes from: the live workspace schema, a stored
@@ -91,8 +108,13 @@ export interface ApplyResult {
   diff: SchemaDiff;
   /** Change summaries that were applied (empty on a no-op). */
   applied: string[];
-  /** Id of the auto safety snapshot taken before applying (null on a no-op). */
+  /** Id of the auto safety SCHEMA snapshot taken before applying (null on a
+   *  no-op). Records what the columns were, not what was in them. */
   safetySnapshotId: string | null;
+  /** Ids of the `pre-drop` DATA backups captured for each destructive change.
+   *  Empty when the apply was non-destructive, or when the caller supplied no
+   *  storage adapter — in which case no safety copy of the rows exists. */
+  dataSnapshotIds: string[];
   noop: boolean;
 }
 
@@ -554,24 +576,57 @@ const executeDiff = async (
   live: SchemaSnapshot,
   targetData: SchemaSnapshot,
   d: SchemaDiff,
-): Promise<void> => {
+  createdBy?: string | null,
+): Promise<{ dataSnapshotIds: string[] }> => {
   const liveMap = new Map(live.map((c) => [c.slug, c]));
   const targetMap = new Map(targetData.map((c) => [c.slug, c]));
   const t = collectionsTable(ctx.dialect);
+  const dataSnapshotIds: string[] = [];
 
   // 1. Destructive drops first (managed only — adopted tables are never DDL'd).
+  //
+  // Each one captures its data first, when the caller gave us a storage adapter.
+  // This route reaches the SAME `dropField` / `dropCollection` the collections
+  // endpoints do, from REST, the SDK, the CLI, MCP and GraphQL — so a guard
+  // living in those handlers would have covered none of this. That is why the
+  // snapshot is a service both callers invoke rather than route-local code.
   for (const ch of d.changes) {
     if (ch.severity !== "destructive") continue;
     const lc = liveMap.get(ch.collection);
     if (!lc || lc.adopted) continue;
     const table = lc.physicalTable ?? derivePhysicalTable(tenantId, ch.collection);
+    const tenantScoped = lc.tenantScoped !== false;
+    const capture = async (
+      columns: string[] | undefined,
+      what: string,
+      nonNullColumn?: string,
+    ): Promise<void> => {
+      if (!ctx.storage) return;
+      const snap = await snapshotBeforeDrop(
+        { db: ctx.db, dialect: ctx.dialect, storage: ctx.storage },
+        {
+          tenantId,
+          userId: createdBy ?? null,
+          table,
+          columns,
+          nonNullColumn,
+          label: `Before schema apply: ${what} on ${ch.collection}`,
+          tenantScoped,
+        },
+      );
+      if (snap) dataSnapshotIds.push(snap.id);
+    };
     if (ch.kind === "field.drop" && ch.field) {
+      await capture(["id", ch.field], `drop ${ch.field}`, ch.field);
       await dropField(ctx.db, ctx.dialect, table, ch.field);
     } else if (ch.kind === "field.type" && ch.field) {
       // Drop the old column; the additive apply below re-adds it with the new
-      // type (the data in that column is lost — the diff summary warned).
+      // type. The values are NOT carried across (the diff summary warned), so
+      // the snapshot is the only copy of them that survives.
+      await capture(["id", ch.field], `retype ${ch.field}`, ch.field);
       await dropField(ctx.db, ctx.dialect, table, ch.field);
     } else if (ch.kind === "collection.drop") {
+      await capture(undefined, "drop collection");
       await dropCollection(ctx.db, ctx.dialect, table, { adopted: false });
     }
   }
@@ -610,6 +665,8 @@ const executeDiff = async (
     if (targetMap.has(lc.slug)) continue;
     await ctx.db.delete(t).where(and(eq(t.tenantId, tenantId), eq(t.slug, lc.slug)));
   }
+
+  return { dataSnapshotIds };
 };
 
 export const applySchema = async (
@@ -622,7 +679,7 @@ export const applySchema = async (
   const d = diffSchema(live, targetData);
 
   if (d.counts.total === 0) {
-    return { diff: d, applied: [], safetySnapshotId: null, noop: true };
+    return { diff: d, applied: [], safetySnapshotId: null, dataSnapshotIds: [], noop: true };
   }
   if (d.hasDestructive && !opts.confirmDestructive) {
     throw new AppError(
@@ -632,8 +689,9 @@ export const applySchema = async (
     );
   }
 
-  // Safety net: capture the current live schema before mutating it, so a bad
-  // apply can be rolled back by applying the safety snapshot.
+  // Safety net #1: the current live SCHEMA, so a bad apply can be rolled back by
+  // applying the safety snapshot. Note what this does not cover — it records
+  // what the columns were, not what was in them.
   const safety = await captureSnapshot(ctx, tenantId, {
     name: "Pre-apply safety snapshot",
     kind: "auto",
@@ -641,13 +699,23 @@ export const applySchema = async (
     createdBy: opts.createdBy,
   });
 
-  await executeDiff(ctx, tenantId, live, targetData, d);
+  // Safety net #2: the DATA each destructive change is about to destroy,
+  // captured inside `executeDiff` immediately before the corresponding DDL.
+  const { dataSnapshotIds } = await executeDiff(
+    ctx,
+    tenantId,
+    live,
+    targetData,
+    d,
+    opts.createdBy,
+  );
   invalidateTenantCollections(tenantId);
 
   return {
     diff: d,
     applied: d.changes.map((c) => c.summary),
     safetySnapshotId: safety.id,
+    dataSnapshotIds,
     noop: false,
   };
 };

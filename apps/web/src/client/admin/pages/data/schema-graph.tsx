@@ -43,6 +43,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { Input } from "@backlex/ui/components/input";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { collectionsApi, settingsApi, type ApiCollection } from "../../api";
 import { AddFieldDialog } from "../../fields/add-field";
 import { EditFieldDialog } from "../../fields/edit-field";
@@ -353,21 +354,87 @@ function DropFieldDialog({
 }: {
   target: { slug: string; name: string } | null;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (confirm: boolean) => void;
 }) {
+  // Asked on open, so the dialog can say what is at stake instead of warning in
+  // the abstract. Until it answers we show a skeleton — never a "Loading…".
+  const [impact, setImpact] = useState<{ rows: number; nonNull: number } | null>(null);
+  const [typed, setTyped] = useState("");
+  const slug = target?.slug;
+  const name = target?.name;
+
+  useEffect(() => {
+    if (!slug || !name) return;
+    let cancelled = false;
+    setImpact(null);
+    setTyped("");
+    collectionsApi
+      .dropFieldImpact(slug, name)
+      .then((r) => { if (!cancelled) setImpact({ rows: r.rows, nonNull: r.nonNull }); })
+      // A failed probe must not block the drop — fall back to treating it as
+      // destructive, which is the safe direction.
+      .catch(() => { if (!cancelled) setImpact({ rows: -1, nonNull: -1 }); });
+    return () => { cancelled = true; };
+  }, [slug, name]);
+
   if (!target) return null;
+  const destructive = impact === null || impact.nonNull !== 0;
+  // Typing the column name is asked for only when values would actually be
+  // lost. Dropping an empty column is a schema edit, not a data decision.
+  const needsTyping = impact !== null && impact.nonNull !== 0;
+  const canDrop = impact !== null && (!needsTyping || typed === target.name);
+
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle><Trans>Drop field</Trans></DialogTitle>
           <DialogDescription>
-            <Trans>This runs <span className="font-mono">ALTER TABLE … DROP COLUMN {target.name}</span> on <span className="font-mono">c_{target.slug}</span>. The column and all its data are removed. This cannot be undone.</Trans>
+            <Trans>This runs <span className="font-mono">ALTER TABLE … DROP COLUMN {target.name}</span> on <span className="font-mono">c_{target.slug}</span>. The column is removed for good.</Trans>
           </DialogDescription>
         </DialogHeader>
+        <div className="flex flex-col gap-3 text-[13px]">
+          {impact === null ? (
+            <Skeleton className="h-9 w-full" />
+          ) : impact.nonNull === 0 ? (
+            <p className="text-muted-foreground">
+              <Trans>No row has a value in this column, so nothing is lost.</Trans>
+            </p>
+          ) : (
+            <p className="text-muted-foreground">
+              <Trans>
+                {impact.nonNull} of {impact.rows} rows have a value here. They are
+                saved to a backup first, so they can be restored if the field is
+                added back.
+              </Trans>
+            </p>
+          )}
+          {needsTyping ? (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] text-muted-foreground" htmlFor="drop-confirm">
+                <Trans>Type the column name to confirm</Trans>
+              </label>
+              <Input
+                id="drop-confirm"
+                value={typed}
+                autoComplete="off"
+                placeholder={target.name}
+                onChange={(e) => setTyped(e.target.value)}
+              />
+            </div>
+          ) : null}
+        </div>
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
-          <Button variant="destructive" size="sm" icon={I.Trash} onClick={onConfirm}><Trans>Drop column</Trans></Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            icon={I.Trash}
+            disabled={!canDrop}
+            onClick={() => onConfirm(destructive)}
+          >
+            <Trans>Drop column</Trans>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -631,7 +698,7 @@ function ErdCanvas({
       <DropFieldDialog
         target={dropTarget}
         onClose={() => setDropTarget(null)}
-        onConfirm={async () => {
+        onConfirm={async (confirm) => {
           if (!dropTarget) return;
           const { slug, name } = dropTarget;
           // Optimistic: remove the column from the node immediately + close the
@@ -644,11 +711,15 @@ function ErdCanvas({
             ),
           );
           try {
-            await collectionsApi.dropField(slug, name);
+            const res = await collectionsApi.dropField(slug, name, { confirm });
             // Keep the optimistic removal — don't refetch-and-overwrite (a
             // stale cross-isolate list() cache would resurrect the dropped
             // column: "drops then reappears"). Reconcile only on error.
-            pushToast(t`Column "${name}" dropped from c_${slug}.`);
+            pushToast(
+              res.snapshotId
+                ? t`Column "${name}" dropped from c_${slug}. ${res.nonNull} value(s) saved to a backup.`
+                : t`Column "${name}" dropped from c_${slug}.`,
+            );
           } catch (e) {
             onMutated(prev);
             pushToast((e as Error).message, "error");

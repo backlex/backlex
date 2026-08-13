@@ -39,9 +39,17 @@ const requireTenant = (c: { get: (k: string) => unknown }): string => {
 const userIdOf = (c: { get: (k: string) => unknown }): string | null =>
   (c.get("auth") as { userId?: string } | undefined)?.userId ?? null;
 
+// `storage` rides along so a destructive apply can capture the DATA it is about
+// to destroy, not just the schema shape. Without it `applySchema` still runs but
+// reports `dataSnapshotIds: []`, which is the honest answer rather than a
+// safety net that silently isn't there.
 const ctxOf = (c: { get: (k: string) => unknown }) => {
-  const { db, dialect } = c.get("ctx") as { db: unknown; dialect: "pg" | "sqlite" };
-  return { db, dialect };
+  const { db, dialect, storage } = c.get("ctx") as {
+    db: unknown;
+    dialect: "pg" | "sqlite";
+    storage: never;
+  };
+  return { db, dialect, storage };
 };
 
 const RefSchema = z.discriminatedUnion("kind", [

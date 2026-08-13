@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -667,4 +667,36 @@ export const testWebhook = async (
     data: { hookId: h.id, ts: new Date().toISOString() },
   };
   return fireDelivery(ctx, h, "webhook.test", payload);
+};
+
+/**
+ * Delete webhook delivery attempts past their retention window.
+ *
+ * One row per attempt, each carrying a truncated response body — nothing pruned
+ * them before, so an active integration wrote this table forever. Instance-wide
+ * rather than per-workspace, and not because that is simpler: the table has no
+ * `tenant_id` column at all, so a per-workspace policy is not expressible here.
+ *
+ * `delivered_at` is already indexed (`webhook_deliveries_at_idx`), so the DELETE
+ * uses the same key the list view sorts by.
+ *
+ * Same signature and failure shape as `pruneOldSpans`: `0` disables, and a DB
+ * error is logged and reported rather than thrown so one bad prune cannot wedge
+ * the daily sweep.
+ */
+export const pruneWebhookDeliveries = async (
+  ctx: DbCtx,
+  retentionDays: number,
+): Promise<{ cutoff: Date; ok: boolean }> => {
+  const days = Math.floor(retentionDays);
+  if (!Number.isFinite(days) || days <= 0) return { cutoff: new Date(0), ok: false };
+  const t = deliveriesTable(ctx.dialect);
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  try {
+    await (ctx.db as any).delete(t).where(lt(t.deliveredAt, cutoff));
+    return { cutoff, ok: true };
+  } catch (e) {
+    console.error("[webhooks] delivery prune failed", e);
+    return { cutoff, ok: false };
+  }
 };

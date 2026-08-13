@@ -25,7 +25,9 @@ import { pruneScheduleFires, runDueScheduleFlows } from "./flow-schedules";
 import { runKpiAlerts } from "./kpi-alerts";
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { expireDueRequests, expireRequest } from "./approvals";
-import { enqueueJob, processJobs } from "./jobs";
+import { enqueueJob, processJobs, pruneFinishedJobs } from "./jobs";
+import { pruneWebhookDeliveries } from "./webhooks";
+import { pruneOldRevisions } from "./revisions";
 import { enqueueDueSyncs } from "./integration-syncs";
 import { enqueueOpenListingBatches } from "./integration-listings";
 import { sweepExpiredUploads } from "./uploads";
@@ -145,6 +147,16 @@ const DEFAULT_ERRORS_RETENTION_DAYS = 90;
 // MCP audit rows (`mcp.*`) — one per agent tool call, so chattier than the
 // mutation log they sit next to. Same shorter clock as the read audit.
 const DEFAULT_MCP_AUDIT_RETENTION_DAYS = 30;
+// Finished jobs are bookkeeping; failed and dead-lettered ones are forensics
+// somebody may still need to read, so they get the longer clock.
+const DEFAULT_JOBS_RETENTION_DAYS = 30;
+const DEFAULT_JOBS_DEAD_LETTER_RETENTION_DAYS = 90;
+// One row per delivery attempt, each carrying a truncated response body.
+const DEFAULT_WEBHOOK_DELIVERIES_RETENTION_DAYS = 30;
+// A full-row JSON snapshot per update — the fastest-growing table here. The
+// clock is deliberately the longest of the set because this is also the per-row
+// undo path, and pruned rows stay recoverable from any earlier backup.
+const DEFAULT_REVISIONS_RETENTION_DAYS = 180;
 
 const dueCronFunctions = (
   fns: FunctionRow[],
@@ -583,6 +595,41 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       // Telemetry pruning must never take down the tick that also runs jobs,
       // backups and scheduled publishing.
       console.error("[analytics-prune] sweep failed", e);
+    }
+
+    // Three tables that grew forever until now: finished jobs, webhook delivery
+    // attempts, and item revisions. They ride this same daily claim rather than
+    // a seventh sweep — the block already owns five unrelated prunes, and a
+    // separate claim would just mean another throttle row to reason about.
+    //
+    // Each helper reports rather than throws, and each is bounded by its own env
+    // clock with `0` meaning "keep forever", so an operator who wants today's
+    // behaviour back has one variable to set per table.
+    const retentionOf = (raw: string | undefined, fallback: number): number =>
+      raw == null || raw === "" ? fallback : Number(raw);
+    const jobsDays = retentionOf(env.JOBS_RETENTION_DAYS, DEFAULT_JOBS_RETENTION_DAYS);
+    const jobsDeadDays = retentionOf(
+      env.JOBS_DEAD_LETTER_RETENTION_DAYS,
+      DEFAULT_JOBS_DEAD_LETTER_RETENTION_DAYS,
+    );
+    const deliveryDays = retentionOf(
+      env.WEBHOOK_DELIVERIES_RETENTION_DAYS,
+      DEFAULT_WEBHOOK_DELIVERIES_RETENTION_DAYS,
+    );
+    const revisionDays = retentionOf(
+      env.REVISIONS_RETENTION_DAYS,
+      DEFAULT_REVISIONS_RETENTION_DAYS,
+    );
+    try {
+      await pruneFinishedJobs(
+        { db: ctx.db, dialect: ctx.dialect },
+        jobsDays,
+        jobsDeadDays,
+      );
+      await pruneWebhookDeliveries({ db: ctx.db, dialect: ctx.dialect }, deliveryDays);
+      await pruneOldRevisions({ db: ctx.db, dialect: ctx.dialect }, revisionDays);
+    } catch (e) {
+      console.error("[retention-prune] sweep failed", e);
     }
 
     // Retained broadcast messages. No retention setting: `retentionHours` is

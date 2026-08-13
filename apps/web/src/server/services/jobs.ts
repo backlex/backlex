@@ -1,9 +1,10 @@
-import { and, desc, eq, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AuthSubject } from "@backlex/core";
 import type { PaymentRecordKind } from "@backlex/integrations/payments";
 import type { Ctx } from "../context";
+import type { DbCtx } from "./seed";
 import type { Env } from "../env";
 import { buildContext } from "../context";
 import { findByName } from "./functions";
@@ -626,6 +627,56 @@ export const purgeJob = async (
   const t = tableFor(ctx.dialect);
   await (ctx.db as any).delete(t).where(eq(t.id, id));
   return true;
+};
+
+/**
+ * Delete finished job rows past their retention window.
+ *
+ * Nothing pruned this table before, so on a busy workspace it outgrew the user
+ * data — and on D1 that is the whole database. Two clocks, because the rows
+ * answer different questions: a `succeeded` job is bookkeeping, a `failed` or
+ * `dead_letter` one is forensics somebody may still need to read.
+ *
+ * **`pending` and `active` are never touched at any setting.** A delayed or
+ * scheduled job legitimately carries an old `created_at` and a future `run_at`,
+ * so a status-blind DELETE here would quietly eat a customer's scheduled work —
+ * the one failure mode of this function that would not look like a bug.
+ *
+ * Filters on `updated_at`, not `completed_at`: `completed_at` is nullable, and a
+ * NULL never satisfies `<`, so a terminal row that somehow missed it would be
+ * kept forever. `updated_at` is NOT NULL and, for a terminal job, is when it
+ * terminated.
+ *
+ * Same signature and failure shape as `pruneOldSpans` — a retention of `0` (or
+ * negative) disables that arm, and a DB error is logged and reported rather
+ * than thrown, so one bad prune cannot wedge the daily sweep.
+ */
+export const pruneFinishedJobs = async (
+  ctx: DbCtx,
+  retentionDays: number,
+  deadLetterRetentionDays: number,
+): Promise<{ ok: boolean; finished: boolean; failed: boolean }> => {
+  const t = tableFor(ctx.dialect);
+  const out = { ok: true, finished: false, failed: false };
+
+  const sweep = async (statuses: string[], days: number): Promise<boolean> => {
+    const d = Math.floor(days);
+    if (!Number.isFinite(d) || d <= 0) return false;
+    const cutoff = new Date(Date.now() - d * 24 * 60 * 60 * 1000);
+    await (ctx.db as any)
+      .delete(t)
+      .where(and(inArray(t.status, statuses), lt(t.updatedAt, cutoff)));
+    return true;
+  };
+
+  try {
+    out.finished = await sweep(["succeeded", "cancelled"], retentionDays);
+    out.failed = await sweep(["failed", "dead_letter"], deadLetterRetentionDays);
+  } catch (e) {
+    console.error("[jobs] prune failed", e);
+    out.ok = false;
+  }
+  return out;
 };
 
 export { asMs };

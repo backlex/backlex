@@ -48,6 +48,21 @@ import { defaultHook } from "../../lib/openapi-router";
  *  Larger imports should be chunked client-side (or use the batch endpoint). */
 const IMPORT_MAX = 5000;
 
+/**
+ * Cap a single export the same way the import above is capped.
+ *
+ * The export materializes every matching row into an array, maps it, and builds
+ * one CSV/JSON string — so on a large collection it does not return a big
+ * response, it exhausts the isolate. Import has been bounded since it was
+ * written; export was not, which is the asymmetry this closes.
+ *
+ * Deliberately a refusal rather than a silent `LIMIT`: a truncated export that
+ * looks complete is a data-loss-shaped bug, and this endpoint is exactly what
+ * people reach for before a migration. The default is high enough that no
+ * ordinary caller meets it, and `EXPORT_MAX_ROWS` moves it either way.
+ */
+const DEFAULT_EXPORT_MAX = 100_000;
+
 /** System/managed columns that show up in an export but aren't writable user
  *  fields. Stripped on import so an export round-trips cleanly (and a CSV with
  *  an `id` column doesn't 422 every row). Each imported row gets a fresh id. */
@@ -203,10 +218,22 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         undefined,
         joined ? collection.physicalTable : undefined,
       );
+      const rawMax = Number(ctx.env.EXPORT_MAX_ROWS ?? "");
+      const exportMax =
+        Number.isFinite(rawMax) && rawMax > 0 ? Math.floor(rawMax) : DEFAULT_EXPORT_MAX;
+      // Fetch one past the cap so "at the limit" and "over it" are
+      // distinguishable without a second COUNT.
       const rows = await queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(perm.whereSql, tenantWhere, deletedWhere, draftWhere)}`,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(perm.whereSql, tenantWhere, deletedWhere, draftWhere)} LIMIT ${exportMax + 1}`,
       );
+      if (rows.length > exportMax) {
+        throw new AppError(
+          "VALIDATION",
+          `This export exceeds EXPORT_MAX_ROWS (${exportMax}). Narrow it with a filter, or page through the collection with the keyset cursor (?cursor=) — that path is O(1) per page and has no ceiling.`,
+          { limit: exportMax, collection: collection.slug },
+        );
+      }
       const data = rows.map((r) =>
         projectFields(
           deserializeRow(r, collection.fields, ctx.dialect, collection.ownerScoped),

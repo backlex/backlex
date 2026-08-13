@@ -405,7 +405,9 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         "postgres-js does not work on stateless edge runtimes (Vercel/Netlify Edge, Deno Deploy) — set DATABASE_DRIVER=neon-http",
       );
     }
-    db = createPgClient(pgUrl, pgDriver);
+    db = createPgClient(pgUrl, pgDriver, {
+      statementTimeoutMs: env.PG_STATEMENT_TIMEOUT_MS,
+    });
     txCapable = pgDriver === "postgres-js";
   } else {
     // SQLite + no D1 → Bun self-host. Dynamically import so the top-level
@@ -425,7 +427,9 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       : undefined;
   const dbRead: PgDb | SqliteDb =
     pgReplicaUrl && pgDriver && !override
-      ? createPgClient(pgReplicaUrl, pgDriver)
+      ? createPgClient(pgReplicaUrl, pgDriver, {
+          statementTimeoutMs: env.PG_STATEMENT_TIMEOUT_MS,
+        })
       : db;
 
   const dbCtx = { db, dialect };

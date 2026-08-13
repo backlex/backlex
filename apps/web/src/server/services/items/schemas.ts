@@ -28,7 +28,14 @@ export const ListQuery = z.object({
       "Comma-separated relation fields to inline-expand. Each one must be a single-FK `relation` field on the collection. Single-hop only — chains (`a.b`) and `relation_many` heads return 422.",
   }),
   limit: z.coerce.number().int().min(1).max(200).optional(),
-  offset: z.coerce.number().int().min(0).optional(),
+  /**
+   * Capped, because `OFFSET n` costs O(n) on both dialects — the database walks
+   * and discards every skipped row. At `limit=200` this ceiling is page 500,
+   * past anything a person pages to; a crawler that keeps incrementing is
+   * billing a full table scan per request (literally, on D1) for rows the keyset
+   * `cursor` below returns in constant time.
+   */
+  offset: z.coerce.number().int().min(0).max(100_000).optional(),
   cursor: z.string().optional().openapi({
     description:
       "Keyset (seek) pagination. Pass an empty value to start; echo back the `next_cursor` from each response to page forward. O(1) per page regardless of depth and stable under concurrent inserts — unlike `offset`. When present, `offset` is ignored.",

@@ -500,7 +500,7 @@ export function ListingDialog({
  * blank attribute section is not an unfinished form, it is a question that has
  * not been asked yet.
  */
-function CategoryMapDialog({
+export function CategoryMapDialog({
   integrationId,
   providerName,
   info,

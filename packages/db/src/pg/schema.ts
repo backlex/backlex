@@ -814,6 +814,16 @@ export const agents = pgTable(
      *  personal, and they earn their keep inside a single conversation. */
     memoryScope: text("memory_scope").notNull().default("thread"),
     active: boolean("active").notNull().default(true),
+    /**
+     * Reachable by the workspace's END USERS (app plane), not just operators.
+     *
+     * Defaults to false, and that is load-bearing: a workspace's agents were
+     * built when only operators could reach them, so some carry internal
+     * prompts and privileged tools. Shipping an app-plane route must not
+     * retroactively hand those to every signed-in end user — exposure is a
+     * decision an operator makes per agent.
+     */
+    appAccess: boolean("app_access").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -118,6 +118,7 @@ import m111 from "../../drizzle/pg/20260813110000_integration_webhooks/migration
 import m112 from "../../drizzle/pg/20260813120000_integration_listings/migration.sql" with { type: "text" };
 import m113 from "../../drizzle/pg/20260813130000_resilience_retention/migration.sql" with { type: "text" };
 import m114 from "../../drizzle/pg/20260814140000_ai_usage_counters/migration.sql" with { type: "text" };
+import m115 from "../../drizzle/pg/20260814150000_agent_app_access/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -240,4 +241,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260813120000_integration_listings", sql: m112 },
   { name: "20260813130000_resilience_retention", sql: m113 },
   { name: "20260814140000_ai_usage_counters", sql: m114 },
+  { name: "20260814150000_agent_app_access", sql: m115 },
 ];

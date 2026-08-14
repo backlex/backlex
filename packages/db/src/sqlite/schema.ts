@@ -677,6 +677,16 @@ export const agents = sqliteTable(
      *  See the pg/schema.ts twin for the full contract and the privacy note. */
     memoryScope: text("memory_scope").notNull().default("thread"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /**
+     * Reachable by the workspace's END USERS (app plane), not just operators.
+     *
+     * Defaults to false, and that is load-bearing: a workspace's agents were
+     * built when only operators could reach them, so some carry internal
+     * prompts and privileged tools. Shipping an app-plane route must not
+     * retroactively hand those to every signed-in end user — exposure is a
+     * decision an operator makes per agent.
+     */
+    appAccess: integer("app_access", { mode: "boolean" }).notNull().default(false),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

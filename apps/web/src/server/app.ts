@@ -38,6 +38,7 @@ import { agentsRoutes } from "./routes/agents";
 import { apiKeysRoutes } from "./routes/api-keys";
 import { appUsersRoutes } from "./routes/app-users";
 import { appOrgsRoutes } from "./routes/app-orgs";
+import { appAgentsPublicRoutes } from "./routes/app-agents-public";
 import { appOrgsPublicRoutes } from "./routes/app-orgs-public";
 import { authRoutes } from "./routes/auth";
 import { authAdminRoutes } from "./routes/auth-admin";
@@ -908,6 +909,7 @@ export const createApp = (env: Env) => {
   // `/api/t/:slug` prefix. Mounted after tenantAuthRoutes — its catch-all is
   // `/:slug/auth/*`, so the `/orgs` paths here never collide with it.
   app.route("/api/t", appOrgsPublicRoutes);
+  app.route("/api/t", appAgentsPublicRoutes(app));
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
   app.route("/api/admin/documents", documentsRoutes);

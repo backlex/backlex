@@ -127,6 +127,9 @@ const parseAgentInput = (body: Record<string, unknown>, partial: boolean) => {
     out.memoryScope = body.memoryScope;
   }
   if (body.active !== undefined) out.active = Boolean(body.active);
+  // Opening an agent to end users is an operator decision, made here and
+  // nowhere else — the app-plane route only ever reads this flag.
+  if (body.appAccess !== undefined) out.appAccess = Boolean(body.appAccess);
   return out;
 };
 

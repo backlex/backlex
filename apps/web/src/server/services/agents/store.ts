@@ -27,6 +27,9 @@ export interface AgentRow {
    *  schema comment on `agents.memory_scope`. */
   memoryScope: string;
   active: boolean;
+  /** Reachable by the workspace's END USERS, not just operators. False by
+   *  default — see the schema comment on `agents.app_access`. */
+  appAccess: boolean;
   createdAt: Date | number;
   updatedAt: Date | number;
 }
@@ -181,6 +184,9 @@ export interface AgentInput {
   /** `thread` | `agent` — how far distilled semantic facts reach. */
   memoryScope?: string;
   active?: boolean;
+  /** Open this agent to the workspace's END USERS. Off unless asked for — see
+   *  the schema comment on `agents.app_access`. */
+  appAccess?: boolean;
 }
 
 export const createAgent = async (
@@ -205,6 +211,7 @@ export const createAgent = async (
     memory: input.memory ?? false,
     memoryScope: input.memoryScope === "agent" ? "agent" : "thread",
     active: input.active ?? true,
+    appAccess: input.appAccess ?? false,
     createdAt: now,
     updatedAt: now,
   };
@@ -239,6 +246,7 @@ export const updateAgent = async (
         ? { memoryScope: input.memoryScope === "agent" ? "agent" : "thread" }
         : {}),
       ...(input.active !== undefined ? { active: input.active } : {}),
+      ...(input.appAccess !== undefined ? { appAccess: input.appAccess } : {}),
       updatedAt: nowFor(ctx.dialect),
     })
     .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));

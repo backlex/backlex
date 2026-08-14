@@ -172,7 +172,11 @@ describe("shared links — surfaces", () => {
           ? { body: JSON.stringify({ collection: "invoices", itemId }) }
           : {}),
       });
-      expect(`${call} → ${res.status}`).not.toContain("404");
+      // Asserts the STATUS, and keeps `call` in the failure output so a real
+      // miss still names the route. It used to substring-match the rendered
+      // line for "404" — which a UUID like `…-4047-…` satisfies on its own, so
+      // every one of these files failed a few runs in a hundred for no reason.
+      expect({ call, status: res.status }).not.toMatchObject({ status: 404 });
     }
   });
 });

@@ -108,11 +108,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   cdc: { client: "cdc" },
   channels: { client: "channels" },
   collections: { core: "from" },
-  comments: {
-    deferred:
-      "Per-record discussion is exactly the boring collaboration CRUD an application draws itself, and the admin already proves the shape in `admin/api/content.ts`. This is a wave-19 target, not a decision to decline.",
-    until: "wave-19-phase-2",
-  },
+  comments: { client: "comments" },
   dashboards: { client: "dashboards" },
   db: {
     deferred:
@@ -176,11 +172,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   permissions: { client: "permissions" },
   phone: { core: "from" },
   retirement: { core: "from" },
-  revisions: {
-    deferred:
-      "Version history and revert are per-record collaboration an application shows its own users, and the envelope shapes are already settled in `admin/api/content.ts`. A wave-19 target.",
-    until: "wave-19-phase-2",
-  },
+  revisions: { client: "revisions" },
   rls: { client: "rls" },
   roles: { deferred: ADMIN_PLANE("Role creation and assignment"), until: "wave-21" },
   s3: { client: "s3" },
@@ -197,11 +189,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   },
   "schema-versions": { client: "schema" },
   settings: { deferred: ADMIN_PLANE("Workspace settings"), until: "wave-21" },
-  "shared-links": {
-    deferred:
-      "Handing someone a read-only link to one record is a feature applications ship themselves, and the one-shot token semantics are already coded in the admin. A wave-19 target.",
-    until: "wave-19-phase-2",
-  },
+  "shared-links": { client: "shared-links" },
   signatures: { client: "signatures" },
   "signing-keys": { client: "signing-keys" },
   slug: { core: "from" },
@@ -530,6 +518,32 @@ describe("SDK parity — every entry is well formed", () => {
         `${key}: ${Math.max(cov.deferred.length, 60)}`,
       );
       expect(`${key}: ${UNTIL.test(cov.until ?? "")}`).toBe(`${key}: true`);
+    }
+  });
+
+  test("a deferral cannot outlive the gap it defers", () => {
+    // The hole this closes: `missing` retires itself when the member lands,
+    // but a whole-subsystem `deferred` did not — so a phase could ship its
+    // client and leave the excuse for it sitting in the registry, which is
+    // the exact drift this file exists to catch, wearing the file's own
+    // uniform.
+    // "The client that would satisfy this deferral does not exist yet" — which
+    // is narrower than "a file of that name exists". `clients/schema.ts` is
+    // real and is claimed by `schema-versions`; the `schema` module's own
+    // tools (list and describe collections) are genuinely not in it, so that
+    // deferral is honest and must not fail here.
+    const claimed = new Set(
+      [...Object.values(MCP_SURFACES), ...Object.values(ROUTE_FAMILIES)]
+        .map((c) => c.client)
+        .filter((c): c is string => Boolean(c)),
+    );
+    for (const [key, cov] of allEntries) {
+      if (cov.deferred === undefined) continue;
+      const module = key.replace(/^mcp:/, "");
+      const stale = clientModules.includes(module) && !claimed.has(module);
+      expect(`${key} is deferred but an unclaimed clients/${module}.ts exists: ${stale}`).toBe(
+        `${key} is deferred but an unclaimed clients/${module}.ts exists: false`,
+      );
     }
   });
 

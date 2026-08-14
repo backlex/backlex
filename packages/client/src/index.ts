@@ -62,6 +62,9 @@ import type { SupportClient } from "./clients/support";
 import type { SigningKeysClient } from "./clients/signing-keys";
 import type { OAuthClientsClient } from "./clients/oauth-clients";
 import type { CdcClient } from "./clients/cdc";
+import type { CommentsClient } from "./clients/comments";
+import type { RevisionsClient } from "./clients/revisions";
+import type { SharedLinksClient } from "./clients/shared-links";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
 import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, RetireReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
@@ -154,6 +157,9 @@ export * from "./clients/support";
 export * from "./clients/signing-keys";
 export * from "./clients/oauth-clients";
 export * from "./clients/cdc";
+export * from "./clients/comments";
+export * from "./clients/revisions";
+export * from "./clients/shared-links";
 export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
@@ -190,6 +196,9 @@ import { makeSupport } from "./clients/support";
 import { makeSigningKeys } from "./clients/signing-keys";
 import { makeOAuthClients } from "./clients/oauth-clients";
 import { makeCdc } from "./clients/cdc";
+import { makeComments } from "./clients/comments";
+import { makeRevisions } from "./clients/revisions";
+import { makeSharedLinks } from "./clients/shared-links";
 import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
@@ -321,6 +330,13 @@ export interface BacklexClient {
   /** The changefeed, delivered somewhere — a webhook or this workspace's own
    *  bucket, at-least-once with a persisted watermark. */
   cdc: CdcClient;
+  /** Per-record discussion — the comments an application draws beside a row. */
+  comments: CommentsClient;
+  /** Version history for one row, and putting it back to a recorded state. */
+  revisions: RevisionsClient;
+  /** Read-only share links for a single record, and the public read they
+   *  authorise. */
+  sharedLinks: SharedLinksClient;
   extensions: ExtensionsClient;
   /** Named KPIs — the shared definition layer every surface reads a figure from. */
   kpis: KpisClient;
@@ -921,6 +937,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const signingKeys = makeSigningKeys(core);
   const oauth = makeOAuthClients(core);
   const cdc = makeCdc(core);
+  const comments = makeComments(core);
+  const revisions = makeRevisions(core);
+  const sharedLinks = makeSharedLinks(core);
   const payments = makePayments(core);
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
@@ -983,6 +1002,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     signingKeys,
     oauth,
     cdc,
+    comments,
+    revisions,
+    sharedLinks,
     extensions,
     kpis,
     dashboards,

@@ -98,6 +98,57 @@ describe("token persistence", () => {
     expect(reloaded.auth.getToken()).toBeNull();
   });
 
+  // The test above answers every request with success, so it could not see
+  // what the real server does: better-auth refuses a POST that carries no
+  // `content-type: application/json` with a 415, before its handler runs —
+  // including on the endpoints that take no parameters. `core.request` omits
+  // that header when there is no body (a bodyless POST to one of OUR routes
+  // made the server's body validator choke on the empty string), so `signOut`
+  // went out bare, was refused, and rejected BEFORE reaching the code that
+  // clears the token. Verified against a running dev server: sign-out,
+  // revoke-other-sessions and revoke-sessions all answered 415.
+  //
+  // The user-visible symptom is the exact one this whole file exists to
+  // prevent: pressing "Sign out" left the app signed in, with the token still
+  // in storage and the session still live on the server.
+  test("signing out is not refused for want of a content-type", async () => {
+    const client = makeClient(
+      (url, init) => {
+        if (url.includes("/sign-in/email")) return json({ token: "tok_z", user: USER });
+        const ct = new Headers(init?.headers as HeadersInit).get("content-type");
+        // Stand in for better-auth: no JSON content-type, no handler.
+        if (!ct?.includes("application/json")) return json({ error: "unsupported" }, 415);
+        return json({ success: true });
+      },
+      { persist: true },
+    );
+    await client.auth.signIn({ email: "a@b.test", password: "pw" });
+    await client.auth.signOut();
+
+    expect(client.auth.getToken()).toBeNull();
+    expect(client.auth.getState().status).toBe("anonymous");
+    expect(localStorage.getItem("backlex.token.acme")).toBeNull();
+  });
+
+  test("every parameterless auth POST declares a JSON content-type", async () => {
+    const seen: Record<string, string | null> = {};
+    const client = makeClient((url, init) => {
+      const name = url.split("/auth/")[1] ?? url;
+      seen[name] = new Headers(init?.headers as HeadersInit).get("content-type");
+      return json({ success: true });
+    });
+
+    await client.auth.signOut();
+    await client.auth.revokeOtherSessions();
+    await client.auth.revokeSessions();
+
+    expect(seen).toEqual({
+      "sign-out": "application/json",
+      "revoke-other-sessions": "application/json",
+      "revoke-sessions": "application/json",
+    });
+  });
+
   test("an explicit `token` beats a stored one", async () => {
     const seed = makeClient(
       (url) => (url.includes("/sign-in/email") ? json({ token: "stored", user: USER }) : json({})),
@@ -267,6 +318,37 @@ describe("useSession", () => {
 
     await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("anonymous"));
     expect(screen.getByTestId("user").textContent).toBe("");
+  });
+
+  // The fixture above is the shape we ASSUMED; this is the one the server
+  // actually sends. better-auth answers a signed-out `get-session` with a bare
+  // `null` body under HTTP 200 — verified against both planes of a running
+  // dev server (`/api/auth/get-session` and `/api/t/:ws/auth/get-session`).
+  //
+  // Dereferencing that `null` threw inside `getSession`'s own `.then`, which
+  // rejected `resolve()`, which left the status on "unknown" forever. Because
+  // `useSession` catches that rejection into its `error`, nothing reached the
+  // console: every example app rendered its loading branch to an anonymous
+  // visitor and never showed the sign-in form.
+  test("the signed-out answer is a bare `null` body, not `{ user: null }`", async () => {
+    const client = makeClient((url) => (url.includes("/get-session") ? json(null) : json({})));
+    renderWithProviders(<Probe client={client} />);
+
+    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("anonymous"));
+    expect(screen.getByTestId("user").textContent).toBe("");
+    expect(screen.getByTestId("loading").textContent).toBe("settled");
+  });
+
+  test("`getSession()` keeps its declared shape on a bare `null` body", async () => {
+    const client = makeClient((url) => (url.includes("/get-session") ? json(null) : json({})));
+
+    // The method's return type promises `{ user: AuthUser | null }`. It was
+    // handing back the raw `null`, so a caller destructuring the result — the
+    // documented way to use it — crashed instead of seeing "nobody".
+    const res = await client.auth.getSession();
+    expect(res).toEqual({ user: null });
+    expect(res.user).toBeNull();
+    expect(client.auth.getState().status).toBe("anonymous");
   });
 
   test("one session probe serves however many components ask for it", async () => {

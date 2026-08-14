@@ -131,6 +131,24 @@ export const makeAuth = (core: ClientCore): AuthClient => {
     );
   });
 
+  /**
+   * The body sent by the auth POSTs that take no parameters.
+   *
+   * It exists to make a HEADER appear, not to carry anything. better-auth
+   * refuses a POST without `content-type: application/json` with a 415 before
+   * its handler runs, and `core.request` only sets that header when there is a
+   * body — deliberately, because a bodyless POST to one of backlex's OWN routes
+   * made the server's validator try to parse an empty string. So the two rules
+   * are each right for their own side and disagree here; an empty object is the
+   * smallest thing that satisfies both, and better-auth ignores it.
+   *
+   * Do not "simplify" this back to a bodyless call: `signOut` then rejects
+   * before reaching the code that clears the token, which leaves the app signed
+   * in with the session still live — the exact failure the persistence work was
+   * meant to end.
+   */
+  const NO_PARAMS = {};
+
   /** Shared in-flight `resolve`, so six components mounting at once make one
    *  request rather than six. */
   let inFlight: Promise<AuthSessionState> | null = null;
@@ -210,7 +228,8 @@ export const makeAuth = (core: ClientCore): AuthClient => {
     /** Send an email-verification link to the signed-in (or named) user. */
     sendVerificationEmail: (input: { email: string; callbackURL?: string }) =>
       core.request<{ status: boolean }>("POST", `${core.authBase}/send-verification-email`, input),
-    signOut: () => core.request<{ success: boolean }>("POST", `${core.authBase}/sign-out`).then((r) => {
+    signOut: () =>
+      core.request<{ success: boolean }>("POST", `${core.authBase}/sign-out`, NO_PARAMS).then((r) => {
       if (core.opts.workspace) core.setToken(null);
       // Also published directly: on the cookie plane there is no token to
       // clear, so the token listener never fires and the state would stay
@@ -223,17 +242,31 @@ export const makeAuth = (core: ClientCore): AuthClient => {
      *  anything watching `onChange`. */
     getSession: () =>
       core
-        .request<{ user: AuthUser | null } & Record<string, unknown>>(
+        // Widened to `| null` because that is what actually arrives: better-auth
+        // answers a signed-OUT probe with a bare `null` body under HTTP 200, on
+        // both planes, not with `{ user: null }`. `core.request<T>` casts
+        // whatever it parsed to `T`, so the narrower type was a claim nothing
+        // checked — and dereferencing the `null` threw a TypeError inside this
+        // `.then`. That rejected `resolve()`, leaving the status on "unknown"
+        // for good; `useSession` catches the rejection into `error`, so it
+        // failed with nothing in the console while every app sat on its loading
+        // branch. Normalize here rather than in `core.request`: other endpoints
+        // may return null legitimately, and matching this method's own declared
+        // return type is this method's job.
+        .request<({ user: AuthUser | null } & Record<string, unknown>) | null>(
           "GET",
           `${core.authBase}/get-session`,
         )
         .then((r) => {
+          const session = r ?? { user: null };
           publish(
-            r.user
-              ? { status: "authenticated", token: core.getToken(), user: r.user }
+            session.user
+              ? { status: "authenticated", token: core.getToken(), user: session.user }
               : { status: "anonymous", token: core.getToken(), user: null },
           );
-          return r;
+          // Returned normalized too: the signature promises an object, and a
+          // caller destructuring `{ user }` is the documented way to read it.
+          return session;
         }),
     /** List the signed-in user's active sessions (one row per device/login). */
     listSessions: () => core.request<AuthSession[]>("GET", `${core.authBase}/list-sessions`),
@@ -242,9 +275,14 @@ export const makeAuth = (core: ClientCore): AuthClient => {
       core.request<{ status: boolean }>("POST", `${core.authBase}/revoke-session`, input),
     /** Revoke every session **except** the current one (sign out other devices). */
     revokeOtherSessions: () =>
-      core.request<{ status: boolean }>("POST", `${core.authBase}/revoke-other-sessions`),
+      core.request<{ status: boolean }>(
+        "POST",
+        `${core.authBase}/revoke-other-sessions`,
+        NO_PARAMS,
+      ),
     /** Revoke **all** sessions, including the current one. */
-    revokeSessions: () => core.request<{ status: boolean }>("POST", `${core.authBase}/revoke-sessions`),
+    revokeSessions: () =>
+      core.request<{ status: boolean }>("POST", `${core.authBase}/revoke-sessions`, NO_PARAMS),
     /** Public description of this workspace's auth surface (provider list +
      *  policy flags) — what a sign-in screen needs to render. No secrets. */
     providers: () =>

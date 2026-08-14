@@ -65,10 +65,21 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
       }
     });
   },
-  async query(model, { values, topK = 10, namespace = "default" }) {
+  async query(model, { values, topK = 10, namespace = "default", filter }) {
     assertDim(model, values, "Query vector");
     const table = tableFor(model);
     const lit = `[${values.join(",")}]`;
+    // Metadata narrowing is jsonb containment: `@>` is true exactly when every
+    // key/value in the filter is present with that value, which IS the flat
+    // AND-ed equality contract Qdrant (`match: { value }`) and Pinecone
+    // (`$eq`) already implement. One operator, GIN-indexable, and no filter
+    // dialect of its own. An empty map is not a filter — `{}` is contained by
+    // every row, so guarding it keeps the intent explicit rather than relying
+    // on that coincidence.
+    const metaWhere =
+      filter && Object.keys(filter).length
+        ? sql` AND metadata @> ${JSON.stringify(filter)}::jsonb`
+        : sql``;
     const result = await db.execute<{
       id: string;
       score: number;
@@ -78,7 +89,7 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
              1 - (embedding <=> ${lit}::vector) AS score,
              metadata
       FROM ${sql.identifier(table)}
-      WHERE namespace = ${namespace}
+      WHERE namespace = ${namespace}${metaWhere}
       ORDER BY embedding <=> ${lit}::vector
       LIMIT ${topK}
     `);

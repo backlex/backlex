@@ -47,6 +47,32 @@ const vectorKey = (namespace: string, id: string): string => `${namespace}:${id}
 const stripKey = (namespace: string, key: string): string =>
   key.startsWith(`${namespace}:`) ? key.slice(namespace.length + 1) : key;
 
+/**
+ * A metadata key as a SQLite JSON path (`$."collection"`), for `json_extract`.
+ *
+ * The path is BOUND, not interpolated — `json_extract(metadata, ?)` takes a
+ * parameter fine, so a filter key can never reach the SQL text and there is no
+ * injection surface here. Quoting the label is about meaning, not safety: it is
+ * what makes a key containing `.` or a space address the key rather than a
+ * nested path.
+ *
+ * A `"` or `\` in the key is refused because SQLite's path grammar has no
+ * escape for either inside a quoted label — such a key would silently address
+ * nothing and the filter would read as "matches no rows" instead of "you asked
+ * for something unrepresentable". Every metadata key this codebase writes
+ * (`itemId`, `collection`, `tenantId`, `content`, `model`) is a plain
+ * identifier.
+ */
+const jsonPath = (key: string): string => {
+  if (key.includes('"') || key.includes("\\")) {
+    throw new AppError(
+      "VALIDATION",
+      `Vector metadata filter key may not contain a quote or backslash: ${JSON.stringify(key)}`,
+    );
+  }
+  return `$."${key}"`;
+};
+
 const assertDim = (
   model: EmbeddingModel,
   values: number[],
@@ -93,10 +119,17 @@ export const libsqlVectorAdapter = (sqliteDb: SqliteDb): VectorAdapter => {
         `);
       }
     },
-    async query(model, { values, topK = 10, namespace = "default" }) {
+    async query(model, { values, topK = 10, namespace = "default", filter }) {
       assertDim(model, values, "Query vector");
       const table = tableFor(model);
       const lit = vectorLit(values);
+      // `metadata` is a JSON TEXT column here (pg's twin is jsonb and uses
+      // `@>`), so narrowing is one `json_extract` per key, AND-ed — the same
+      // flat exact-value contract Qdrant and Pinecone implement. Both the path
+      // and the value are bound parameters. An empty map is not a filter.
+      const metaWhere = Object.entries(filter ?? {}).map(
+        ([k, v]) => sql` AND json_extract(metadata, ${jsonPath(k)}) = ${v as never}`,
+      );
       const rows = await db.all<{
         id: string;
         score: number;
@@ -106,7 +139,7 @@ export const libsqlVectorAdapter = (sqliteDb: SqliteDb): VectorAdapter => {
                1 - vector_distance_cos(embedding, vector32(${lit})) AS score,
                metadata
         FROM ${sql.identifier(table)}
-        WHERE namespace = ${namespace} AND embedding IS NOT NULL
+        WHERE namespace = ${namespace} AND embedding IS NOT NULL${sql.join(metaWhere)}
         ORDER BY vector_distance_cos(embedding, vector32(${lit})) ASC
         LIMIT ${topK}
       `);

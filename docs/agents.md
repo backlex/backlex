@@ -11,10 +11,25 @@ conversation against it; sending a message runs one **turn** to completion.
 Under the hood a turn is a reason→act loop: the model is asked to either call
 one of the agent's allow-listed tools or finish. Each tool call is executed
 through the **MCP tool registry** (`allTools`) via an in-process sub-fetch that
-carries the caller's identity — so an agent can only ever do what the caller
-could do (the permission DSL, tenant scoping, and per-key guards all apply).
-Every step is persisted to the thread, so a thread is a complete, replayable
-transcript.
+carries the caller's identity — so the **permission DSL and tenant scoping**
+apply to every tool call, and roles are re-resolved from the database on each
+sub-request rather than baked into the run token. Every step is persisted to the
+thread, so a thread is a complete, replayable transcript.
+
+:::caution[What bounds an agent, and what does not]
+A turn runs **as the user who started it**, with that user's roles — not as the
+API key that made the request. Per-key MCP guards (a key's `mcpTools` allowlist
+and its `mcpReadOnly` flag) narrow what that key may call **directly** over MCP;
+they are *not* re-applied to the tool calls an agent makes on its own. The
+boundary on an agent is its **own tool allow-list**, which only an admin can
+edit.
+
+The practical consequence: granting a key `agents.run` delegates whatever that
+agent's tool list can reach, within the starting user's permissions. Scope keys
+with that in mind, and treat an agent's tool list as the security decision it
+is. (`agents.run` is classified `write`, so a read-only key cannot start a turn
+at all.)
+:::
 
 ## Concepts
 

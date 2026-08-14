@@ -16,8 +16,14 @@
  * How it authenticates: the enqueuing user's id travels on the job, and the
  * worker mints a short-lived agent-run token to re-enter the API with (see
  * `lib/jwt`). Roles are resolved from the DB on every sub-request, so the turn
- * can never do more than its caller could — the guarantee that makes agent tool
- * calls safe in the first place.
+ * can never exceed the starting USER's permissions — that is the guarantee that
+ * makes agent tool calls safe.
+ *
+ * It is a guarantee about the user, not about the API key: a turn re-enters as
+ * the user, so per-key MCP guards (`mcpTools`, `mcpReadOnly`) do not narrow an
+ * agent's inner tool calls. The agent's own tool allow-list is that boundary.
+ * Said out loud because the docs used to claim otherwise — see the caution in
+ * `docs/agents.md` and `tests/agent-guard-contract.test.ts`.
  */
 import type { Hono } from "hono";
 import { signAgentRunToken } from "../../lib/jwt";

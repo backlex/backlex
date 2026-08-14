@@ -1,4 +1,5 @@
 import type { QueryBuilder } from "./query";
+import type { TokenStore } from "./token-store";
 import type { AggregateQuery, AggregateRow, BatchOperation, BatchResponse, BulkUpdateResponse, ChangesQuery, ChangesResponse, ImportSummary, ItemQuery, ItemResponse, ListQuery, ListResponse, SearchQuery, SearchResponse } from "./types";
 
 /**
@@ -52,6 +53,22 @@ export interface ClientOptions {
   org?: string;
   /** Optional fetch override (testing / Node polyfill). */
   fetch?: typeof fetch;
+  /**
+   * Keep the app-mode session token across page loads.
+   *
+   * `true` picks the best store this runtime has — `localStorage` in a
+   * browser, memory anywhere else, because a token on a server belongs to one
+   * request and writing it process-wide would hand one caller's session to the
+   * next. Pass a {@link TokenStore} for anything else: `cookieTokens()` when a
+   * server needs to read the session during SSR, `sessionStorageTokens()` for
+   * a shared machine, or your own for a native keychain.
+   *
+   * Restoring is automatic — the stored token is read at `createClient` — and
+   * so is clearing, because `signOut` goes through the same one setter every
+   * capture path does. An explicit `token` option still wins: a caller who
+   * passed one knows something the store does not.
+   */
+  persist?: boolean | TokenStore;
   /**
    * Distributed tracing. When enabled (the default), every request carries a
    * W3C `traceparent` header so the call shows up in the admin Traces panel and
@@ -484,6 +501,10 @@ export interface ClientCore {
    *  request picks up a sign-in without the auth module holding the header. */
   getToken(): string | null;
   setToken(token: string | null): void;
+  /** Called whenever the token actually changes (never on a no-op write).
+   *  Returns an unsubscribe. This is what makes `auth.onChange` — and
+   *  `useSession` on top of it — see a sign-in that happened anywhere. */
+  onTokenChange(fn: (token: string | null) => void): () => void;
   getActiveOrg(): string | null;
   setActiveOrg(org: string | null): void;
   /** Auth + tenant + org headers, for the few calls that build their own

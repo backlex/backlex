@@ -1,5 +1,23 @@
 import type { AuthResult, AuthSession, AuthSurface, AuthUser, ClientCore } from "../core";
 
+/**
+ * Who the client currently believes it is.
+ *
+ * `status` has three values rather than a boolean because "we have not asked
+ * yet" is a real state and every application was hand-rolling it. Four of the
+ * four example SPAs opened with a `booting` flag whose only job was to keep
+ * the sign-in form from flashing before the stored session had been checked;
+ * `"unknown"` is that flag, computed once, in the one place that can know.
+ */
+export interface AuthSessionState {
+  /** `"unknown"` until the first {@link AuthClient.resolve}; then settled. */
+  status: "unknown" | "authenticated" | "anonymous";
+  /** The app-mode session token, if there is one. `null` on the cookie plane. */
+  token: string | null;
+  /** The signed-in user, once resolved. */
+  user: AuthUser | null;
+}
+
 /** Auth surface for a workspace's end-users (and the admin pool). See `createClient`. */
 export interface AuthClient {
   /** Email + password sign-up (app mode → a workspace end-user). */
@@ -58,6 +76,27 @@ export interface AuthClient {
   getToken(): string | null;
   /** Restore a workspace session token (app mode). */
   setToken(token: string | null): void;
+  /**
+   * The session as a value, with no request.
+   *
+   * **Returns the same reference until something actually changes.** That is a
+   * contract, not an optimisation: `useSyncExternalStore` compares snapshots by
+   * identity, so a getter that built a fresh object each call would re-render
+   * forever under React 19.
+   */
+  getState(): AuthSessionState;
+  /** Subscribe to session changes; returns an unsubscribe. Fires on sign-in,
+   *  sign-out, and any other write to the token — including one made in a
+   *  different part of the app. */
+  onChange(fn: (state: AuthSessionState) => void): () => void;
+  /**
+   * Ask the server who this is and settle {@link getState} from the answer.
+   *
+   * Idempotent and de-duplicated: concurrent callers share one in-flight
+   * request, so a page mounting six components that each want the session
+   * still makes one call.
+   */
+  resolve(): Promise<AuthSessionState>;
 }
 
 export const makeAuth = (core: ClientCore): AuthClient => {
@@ -65,6 +104,36 @@ export const makeAuth = (core: ClientCore): AuthClient => {
     if (core.opts.workspace && typeof r.token === "string") core.setToken(r.token);
     return r;
   };
+
+  // The cached snapshot. Replaced only when a field really differs, so the
+  // reference is stable and `useSyncExternalStore` settles.
+  let state: AuthSessionState = { status: "unknown", token: core.getToken(), user: null };
+  const listeners = new Set<(s: AuthSessionState) => void>();
+
+  const publish = (next: AuthSessionState): AuthSessionState => {
+    if (next.status === state.status && next.token === state.token && next.user === state.user) {
+      return state;
+    }
+    state = next;
+    for (const fn of listeners) fn(state);
+    return state;
+  };
+
+  // A token write is the one signal available without asking the server.
+  // Clearing it is knowable on its own — nobody is signed in. Setting one says
+  // a DIFFERENT person may be signed in, which is only knowable by asking, so
+  // the status drops back to "unknown" rather than claiming the previous user.
+  core.onTokenChange((token) => {
+    publish(
+      token === null
+        ? { status: "anonymous", token: null, user: null }
+        : { status: "unknown", token, user: null },
+    );
+  });
+
+  /** Shared in-flight `resolve`, so six components mounting at once make one
+   *  request rather than six. */
+  let inFlight: Promise<AuthSessionState> | null = null;
 
   const auth: AuthClient = {
     /** Email + password sign-up. In app mode this creates a *workspace* end-
@@ -143,11 +212,29 @@ export const makeAuth = (core: ClientCore): AuthClient => {
       core.request<{ status: boolean }>("POST", `${core.authBase}/send-verification-email`, input),
     signOut: () => core.request<{ success: boolean }>("POST", `${core.authBase}/sign-out`).then((r) => {
       if (core.opts.workspace) core.setToken(null);
+      // Also published directly: on the cookie plane there is no token to
+      // clear, so the token listener never fires and the state would stay
+      // `authenticated` with the session already gone.
+      publish({ status: "anonymous", token: core.getToken(), user: null });
       return r;
     }),
-    /** Current session, or `{ user: null }`. */
+    /** Current session, or `{ user: null }`. Settles the cached state on the
+     *  way past, so a caller who asks the long way round still updates
+     *  anything watching `onChange`. */
     getSession: () =>
-      core.request<{ user: AuthUser | null } & Record<string, unknown>>("GET", `${core.authBase}/get-session`),
+      core
+        .request<{ user: AuthUser | null } & Record<string, unknown>>(
+          "GET",
+          `${core.authBase}/get-session`,
+        )
+        .then((r) => {
+          publish(
+            r.user
+              ? { status: "authenticated", token: core.getToken(), user: r.user }
+              : { status: "anonymous", token: core.getToken(), user: null },
+          );
+          return r;
+        }),
     /** List the signed-in user's active sessions (one row per device/login). */
     listSessions: () => core.request<AuthSession[]>("GET", `${core.authBase}/list-sessions`),
     /** Revoke one session by its `token` (from `listSessions`). */
@@ -168,6 +255,30 @@ export const makeAuth = (core: ClientCore): AuthClient => {
     /** Restore a workspace session token (app mode). */
     setToken: (token: string | null): void => {
       core.setToken(token);
+    },
+    getState: () => state,
+    onChange: (fn) => {
+      listeners.add(fn);
+      return () => {
+        listeners.delete(fn);
+      };
+    },
+    resolve: () => {
+      if (inFlight) return inFlight;
+      inFlight = auth
+        .getSession()
+        .then(() => state)
+        .catch((err) => {
+          // A failed probe is not proof of anonymity — a dropped connection
+          // would otherwise sign the user out of the interface while their
+          // session is perfectly good. The status stays where it was and the
+          // caller decides what to show.
+          throw err;
+        })
+        .finally(() => {
+          inFlight = null;
+        });
+      return inFlight;
     },
   };
 

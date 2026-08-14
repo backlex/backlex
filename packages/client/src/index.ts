@@ -134,6 +134,7 @@ import {
 } from "./signal";
 export type { ItemSignal, ItemsTransportKind } from "./signal";
 export * from "./core";
+export * from "./token-store";
 export * from "./clients/auth";
 export * from "./clients/storage";
 export * from "./clients/messaging";
@@ -208,6 +209,7 @@ import { makeOrgs } from "./clients/orgs";
 import { makeFlags } from "./clients/flags";
 import type { ClientOptions, CollectionClient } from "./core";
 import type { ClientCore } from "./core";
+import { resolveTokenStore } from "./token-store";
 
 const buildSearch = (q: ListQuery | undefined): string => {
   if (!q) return "";
@@ -361,9 +363,17 @@ export interface BacklexClient {
 
 export const createClient = (opts: ClientOptions): BacklexClient => {
   const f = opts.fetch ?? globalThis.fetch.bind(globalThis);
+  // Where the session token survives a reload, when the caller asked for that.
+  // Resolved once: `persist: true` picks whatever this runtime actually has.
+  const tokenStore = resolveTokenStore(opts.persist, opts.workspace);
   // App-mode workspace session token, captured from sign-in/up and replayed
-  // as a bearer on later calls.
-  let appToken: string | null = opts.token ?? null;
+  // as a bearer on later calls. An explicit `token` wins over a stored one —
+  // the caller who passed it knows something the store does not.
+  let appToken: string | null = opts.token ?? tokenStore?.get() ?? null;
+  // Subscribers to token changes (`auth.onChange`, and `useSession` through
+  // it). Notified from `setToken`, which is the ONE place the token is
+  // written, so every capture path is covered without touching any of them.
+  const tokenListeners = new Set<(token: string | null) => void>();
   const authBase = opts.workspace
     ? `/api/t/${encodeURIComponent(opts.workspace)}/auth`
     : "/api/auth";
@@ -871,8 +881,20 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     collection,
     authHeaders: () => ({ ...authHeader(), ...tenantHeader(), ...orgHeader() }),
     getToken: () => appToken,
+    // The single write-through. `captureToken`, `signOut`, an explicit
+    // `auth.setToken` and every future capture path already funnel here, so
+    // persistence and change notification cost none of them a line.
     setToken: (t) => {
+      if (t === appToken) return;
       appToken = t;
+      tokenStore?.set(t);
+      for (const fn of tokenListeners) fn(t);
+    },
+    onTokenChange: (fn) => {
+      tokenListeners.add(fn);
+      return () => {
+        tokenListeners.delete(fn);
+      };
     },
     getActiveOrg: () => activeOrg,
     setActiveOrg: (o) => {

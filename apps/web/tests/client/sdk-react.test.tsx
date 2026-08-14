@@ -17,44 +17,9 @@ import { act, cleanup, screen, waitFor } from "@testing-library/react";
 import { createClient, type BacklexClient, type LiveQueryOptions } from "../../../../packages/client/src/index";
 import { useLiveQuery } from "../../../../packages/client/src/react";
 import { renderWithProviders } from "./render";
-
-// ── EventSource stub ────────────────────────────────────────────────────────
-
-type Listener = (ev: unknown) => void;
-
-class FakeEventSource {
-  static instances: FakeEventSource[] = [];
-  readonly url: string;
-  closed = false;
-  private listeners = new Map<string, Set<Listener>>();
-
-  constructor(url: string, _init?: unknown) {
-    this.url = url;
-    FakeEventSource.instances.push(this);
-  }
-  addEventListener(type: string, fn: Listener): void {
-    let set = this.listeners.get(type);
-    if (!set) {
-      set = new Set();
-      this.listeners.set(type, set);
-    }
-    set.add(fn);
-  }
-  close(): void {
-    this.closed = true;
-  }
-  /** Test hook: deliver a synthetic SSE event to the SDK's listeners. */
-  emit(type: string, ev: unknown): void {
-    for (const fn of this.listeners.get(type) ?? []) fn(ev);
-  }
-}
-
-/** Emit a realtime item event the way the server would (JSON on `message`). */
-const emitItem = (
-  es: FakeEventSource,
-  event: "created" | "updated" | "deleted",
-  data: Record<string, unknown>,
-): void => es.emit("message", { data: JSON.stringify({ event, data }) });
+// The stub lives next door so the hook tests that need it cannot drift into
+// three subtly different versions of "an EventSource that delivers events".
+import { FakeEventSource, emitItem } from "./fake-eventsource";
 
 // ── fetch mock (client-scoped — never touches global fetch) ─────────────────
 

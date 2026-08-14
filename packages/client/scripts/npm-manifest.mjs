@@ -12,10 +12,17 @@ const pkg = JSON.parse(readFileSync(path, "utf8"));
 
 pkg.main = "./dist/index.js";
 pkg.types = "./dist/index.d.ts";
+// Every subpath the source package declares must appear here, or it simply
+// does not resolve for npm consumers — `./token` was missing, so the
+// `backlex/token` import documented in docs/auth-planes.md failed for everyone
+// installing from npm while working fine in the monorepo and on JSR. Kept in
+// agreement with package.json / jsr.json / tsup.config.ts by
+// `apps/web/tests/sdk-exports.test.ts`.
 pkg.exports = {
   ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
   "./types": { types: "./dist/types.d.ts", default: "./dist/types.js" },
   "./webhook": { types: "./dist/webhook.d.ts", default: "./dist/webhook.js" },
+  "./token": { types: "./dist/token.d.ts", default: "./dist/token.js" },
   "./react": { types: "./dist/react.d.ts", default: "./dist/react.js" },
 };
 pkg.files = ["dist", "README.md", "LICENSE"];

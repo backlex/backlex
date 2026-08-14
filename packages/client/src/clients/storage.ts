@@ -28,6 +28,56 @@ const normalizeUploadData = (data: Blob | ArrayBuffer | Uint8Array): UploadSourc
   return { size: u.byteLength, slice: (s, e) => u.subarray(s, e) as unknown as BodyInit };
 };
 
+/**
+ * Escape a storage key for a URL path while KEEPING its slashes.
+ *
+ * A key may contain `/` and the route is a catch-all, so the separators have
+ * to survive; everything else must not. `encodeURI` would leave `?`, `#` and
+ * `&` alone and a key containing one would silently become a query string, so
+ * each segment is escaped in full and the slashes are put back.
+ *
+ * A `.` or `..` segment is REFUSED rather than escaped. Such a key has no URL:
+ * a browser normalizes dot segments out of a path before sending it, and the
+ * URL standard does that after percent-decoding, so `%2E%2E` is normalized
+ * away too — there is no encoding that survives. Composing one anyway would
+ * produce a link addressing something outside `/api/storage/` entirely, from
+ * a key the application may not control. The server refuses these keys on the
+ * way in for the same reason; this refuses to pretend one can be addressed.
+ */
+const encodeKeyPath = (key: string): string =>
+  key
+    .split("/")
+    .map((segment) => {
+      if (segment === "." || segment === "..") {
+        throw new BacklexError(400, {
+          error: {
+            code: "VALIDATION",
+            message: `Storage key segment ${JSON.stringify(segment)} cannot be addressed by URL — a dot segment is normalized away by every URL parser.`,
+          },
+        });
+      }
+      return encodeURIComponent(segment);
+    })
+    .join("/");
+
+/** Image transform parameters, as the download route accepts them. */
+export interface StorageTransform {
+  width?: number;
+  height?: number;
+  quality?: number;
+  fit?: "cover" | "contain";
+  format?: "webp" | "jpeg" | "png" | "avif";
+  /** Focal point as `x,y`, each 0–100. */
+  focal?: string;
+}
+
+/** How many files sit in each folder, for a tree that shows counts. */
+export interface StorageFolderCounts {
+  root: number;
+  byFolderId: Record<string, number>;
+  total: number;
+}
+
 /** File storage + resumable (TUS) uploads. See `createClient`. */
 export interface StorageClient {
   /** List stored objects, optionally under a key prefix. */
@@ -46,6 +96,51 @@ export interface StorageClient {
   download(key: string): Promise<Response>;
   /** Delete an object by key. */
   delete(key: string): Promise<{ ok: boolean }>;
+  /**
+   * Build the URL an object is served at, with optional image transforms.
+   *
+   * **A pure string builder — it issues no request.** That is the whole point:
+   * the result goes straight into `<img src>` or a CSS `url()`, and the
+   * browser fetches it the way it fetches any image, with caching and lazy
+   * loading intact. Fetching bytes into a blob and calling
+   * `URL.createObjectURL` — which is what an application has to do without
+   * this — gives up all three and never applies a transform at all.
+   *
+   * For a private object, pass the `url` from {@link signUrl} instead.
+   */
+  url(key: string, transform?: StorageTransform): string;
+  /**
+   * Mint a short-lived URL that serves the object without a session.
+   *
+   * The token authorises exactly this key, so it can be handed to an `<img>`,
+   * a download link or a third party without lending them anything else.
+   * `ttlSeconds` is 60–86400 and defaults to an hour.
+   */
+  signUrl(key: string, ttlSeconds?: number): Promise<{ url: string; expiresAt: string }>;
+  /** Change an object's visibility, folder, or metadata. */
+  update(
+    key: string,
+    patch: {
+      acl?: "public" | "private";
+      folderId?: string | null;
+      metadata?: Record<string, unknown> | null;
+    },
+  ): Promise<unknown>;
+  /** File counts per folder, for a tree that shows how full each one is. */
+  folderCounts(): Promise<StorageFolderCounts>;
+  /**
+   * Import a remote URL into storage, server-side.
+   *
+   * The fetch happens on the server, which is what makes it useful (no CORS,
+   * no bytes through the browser) and what makes it guarded: the destination
+   * goes through the SSRF check, with a 100 MB cap and a 30 second timeout.
+   */
+  fromUrl(input: {
+    url: string;
+    key?: string;
+    folderId?: string | null;
+    acl?: "public" | "private";
+  }): Promise<unknown>;
   /** Resumable upload (TUS 1.0.0) that resumes after a transient failure. */
   uploadResumable(input: {
     key: string;
@@ -188,6 +283,47 @@ export const makeStorage = (core: ClientCore): StorageClient => {
         "DELETE",
         `/api/storage/${encodeURIComponent(key)}`,
       ),
+
+    url: (key: string, transform?: StorageTransform): string => {
+      const q = new URLSearchParams();
+      for (const [k, v] of Object.entries(transform ?? {})) {
+        if (v !== undefined && v !== null) q.set(k, String(v));
+      }
+      const qs = q.toString();
+      // Slashes kept, everything else escaped — see `encodeKeyPath`. Matches
+      // the shape the server hands back from `signUrl`, so the two forms of a
+      // URL for the same object differ only by the token.
+      return `${core.opts.url}/api/storage/${encodeKeyPath(key)}${qs ? `?${qs}` : ""}`;
+    },
+
+    signUrl: (key: string, ttlSeconds?: number) =>
+      core.request<{ url: string; expiresAt: string }>(
+        "POST",
+        // A sentinel PREFIX, because the key is a catch-all and has to be the
+        // LAST thing in the path. The suffix form (`/{key}/sign`) is what the
+        // docs and the generated spec used to advertise, and it 404s on any
+        // key of three segments or more.
+        `/api/storage/_sign/${encodeKeyPath(key)}`,
+        ttlSeconds === undefined ? {} : { ttlSeconds },
+      ),
+
+    update: (
+      key: string,
+      patch: {
+        acl?: "public" | "private";
+        folderId?: string | null;
+        metadata?: Record<string, unknown> | null;
+      },
+    ) => core.request<unknown>("PATCH", `/api/storage/${encodeURIComponent(key)}`, patch),
+
+    folderCounts: () => core.request<StorageFolderCounts>("GET", "/api/storage/folder-counts"),
+
+    fromUrl: (input: {
+      url: string;
+      key?: string;
+      folderId?: string | null;
+      acl?: "public" | "private";
+    }) => core.request<unknown>("POST", "/api/storage/from-url", input),
 
     /**
      * Resumable upload (TUS 1.0.0). Splits `data` into chunks and PATCHes them

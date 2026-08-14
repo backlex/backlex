@@ -164,6 +164,80 @@ describe("forms — SDK surface + public round-trip", () => {
     expect(removed.ok).toBe(true);
   });
 
+  test("the visitor's whole journey runs through the SDK, on a client with no session", async () => {
+    /**
+     * The half of a public form that the form is FOR.
+     *
+     * The test above proves the same journey works — by writing every request
+     * by hand, because there was no method for it. That is the shape of the
+     * gap this wave closed: the surface existed, was documented, was reachable
+     * from an AI agent over MCP, and the one caller who most obviously needed
+     * it (an application embedding its own form) had to compose the requests
+     * itself.
+     *
+     * Everything here runs on a SEPARATE client built with no credentials, so
+     * a method that only worked because a session happened to be present would
+     * fail here rather than in a customer's browser.
+     */
+    const admin = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
+    // Its own collection: the specs around this one assert cumulative answer
+    // counts over `slug`, and a journey that lands a row there would move
+    // their numbers for a reason that has nothing to do with what they test.
+    const journeySlug = `sdk_forms_journey_${Date.now()}`;
+    await seedCollection(h, journeySlug);
+    const created = await admin.forms.create({
+      name: "visitor-journey",
+      collection: journeySlug,
+      fields: [{ name: "title", label: "Title" }, { name: "note" }],
+      settings: { successMessage: "thanks!", saveProgress: true },
+    });
+    const token = created.data.token;
+
+    const visitor = createClient({
+      url: "",
+      // Straight to the app: `h.fetch` carries the admin cookie jar, and a
+      // "visitor" holding an admin session proves nothing about a public path.
+      fetch: ((input: RequestInfo | URL, init?: RequestInit) =>
+        h.app.request(
+          typeof input === "string" ? input : String(input),
+          { ...init, headers: { ...((init?.headers as Record<string, string>) ?? {}) } } as RequestInit,
+          h.env,
+        )) as typeof fetch,
+    });
+
+    // 1. Render — the questions, and nothing the form does not list.
+    const rendered = await visitor.forms.public.render(token);
+    expect(rendered.data.blocks.map((b) => b.name)).toEqual(["title", "note"]);
+    expect(rendered.data.successMessage).toBe("thanks!");
+    // Nothing has been filled in yet, so there is nothing to come back to.
+    expect(rendered.data.draft).toBeNull();
+
+    // 2. Save a half-filled form, then resume it. There is no `resumeDraft`
+    //    method because there is no resume ROUTE — resuming IS rendering, and
+    //    inventing a method with nothing behind it would be the same kind of
+    //    fiction as a documented endpoint that 404s.
+    await visitor.forms.public.saveDraft(token, { data: { title: "half a thought" }, step: 0 });
+
+    // 3. Discard it — the visitor changed their mind.
+    await visitor.forms.public.discardDraft(token);
+
+    // 4. Submit. The row lands through the same write path an authenticated
+    //    create takes, so validation, flows and the audit trail all behave.
+    const submitted = await visitor.forms.public.submit(token, {
+      data: { title: "from the SDK", note: "visitor" },
+    });
+    expect(submitted.data.successMessage).toBe("thanks!");
+
+    const rows = await admin.from<{ title: string }>(journeySlug).list();
+    expect(rows.data.some((r) => r.title === "from the SDK")).toBe(true);
+
+    // 5. A rotated token kills the old link, on the SDK path too.
+    await admin.forms.rotateToken(created.data.form.id);
+    await expect(visitor.forms.public.render(token)).rejects.toBeDefined();
+
+    await admin.forms.delete(created.data.form.id);
+  });
+
   test("results answer the same numbers on REST, SDK and GraphQL", async () => {
     const client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
     const created = await client.forms.create({

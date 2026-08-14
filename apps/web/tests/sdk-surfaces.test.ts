@@ -122,14 +122,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   "feature-flags": { client: "flags" },
   flows: { client: "flows" },
   folders: { client: "folders" },
-  forms: {
-    client: "forms",
-    // The client is 341 lines of AUTHORING and cannot fill in a form, which is
-    // the entire point of a public form.
-    missing: ["public"],
-    until: "wave-19-phase-4",
-    deferred: undefined,
-  },
+  forms: { client: "forms" },
   functions: {
     deferred:
       "Invoking a sandboxed function straight from a browser is a security design question — what the sandbox may reach on behalf of an unattended caller — and not one to settle as a side effect of adding a client method.",
@@ -181,13 +174,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   signatures: { client: "signatures" },
   "signing-keys": { client: "signing-keys" },
   slug: { core: "from" },
-  storage: {
-    client: "storage",
-    // The two the ecommerce example works around with 40 lines of blob and
-    // `createObjectURL`, with a comment saying a transform was what it wanted.
-    missing: ["signUrl", "url"],
-    until: "wave-19-phase-4",
-  },
+  storage: { client: "storage" },
   support: { client: "support" },
   "sync-hooks": { client: "sync-hooks" },
   templates: { client: "templates" },

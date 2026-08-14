@@ -7,10 +7,11 @@
  * literal suffix beside sibling catch-alls falls through to the greedy matcher
  * and 404s on any key of three segments or more.
  *
- * What this file deliberately does NOT cover yet: `signUrl` and `url`, which
- * have no SDK method at all. `sdk-surfaces.test.ts` carries that gap as a
- * declared, dated entry, and this file grows the assertions when the entry is
- * deleted.
+ * `url()` is a pure string builder and is compared byte for byte against a
+ * hand-written string. That is the assertion that would have caught the
+ * signing path shipping as `/{key}/sign` for months: a URL the SDK composes is
+ * never exercised by a round trip, so nothing else notices when its shape
+ * drifts from the route's.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { storageTools } from "../src/server/mcp/tools/storage";
@@ -117,6 +118,88 @@ describe("storage — surfaces", () => {
       body: JSON.stringify({ ttlSeconds: 300 }),
     });
     expect(suffix.status).toBe(404);
+  });
+
+  test("`url()` composes the path by hand, and the bytes are pinned", () => {
+    const built = createClient({ url: "https://api.test", fetch: h.fetch as never });
+
+    // Byte comparison against a string written out in full. A round trip would
+    // pass against almost any shape; this is what notices a drift.
+    expect(built.storage.url(DEEP_KEY)).toBe(
+      "https://api.test/api/storage/invoices/2026/q1/summary.txt",
+    );
+    expect(built.storage.url(DEEP_KEY, { width: 320, format: "webp" })).toBe(
+      "https://api.test/api/storage/invoices/2026/q1/summary.txt?width=320&format=webp",
+    );
+
+    // Slashes survive because the route is a catch-all; everything else is
+    // escaped, so a key containing `?` cannot become a query string.
+    expect(built.storage.url("odd keys/a?b#c.txt")).toBe(
+      "https://api.test/api/storage/odd%20keys/a%3Fb%23c.txt",
+    );
+
+    // A dot segment is REFUSED, not escaped, and the difference is the whole
+    // point: `encodeURIComponent` leaves `..` alone, and percent-encoding it
+    // does not help either, because the URL standard normalizes dot segments
+    // AFTER percent-decoding. Proven here rather than asserted, so nobody
+    // "fixes" the refusal by encoding:
+    expect(new URL("https://api.test/api/storage/%2E%2E/%2E%2E/admin").pathname).toBe("/admin");
+
+    // So a key that cannot be addressed is reported as such, instead of
+    // composing a link that quietly points outside `/api/storage/`.
+    expect(() => built.storage.url("a/../../etc/passwd")).toThrow();
+    expect(() => built.storage.url("a/./b.txt")).toThrow();
+    expect(() => built.storage.signUrl("../../admin")).toThrow();
+
+    // A dot INSIDE a segment is ordinary and stays ordinary.
+    expect(built.storage.url("a/..hidden.txt")).toBe(
+      "https://api.test/api/storage/a/..hidden.txt",
+    );
+  });
+
+  test("`url()` issues no request — it is what goes straight into an `<img src>`", async () => {
+    let calls = 0;
+    const counted = createClient({
+      url: "https://api.test",
+      fetch: (async () => {
+        calls++;
+        return new Response("{}");
+      }) as unknown as typeof fetch,
+    });
+    counted.storage.url(DEEP_KEY, { width: 100 });
+    // Fetching bytes into a blob is exactly what an application does without
+    // this method, and it costs the browser's cache, lazy loading, and the
+    // transform itself.
+    expect(calls).toBe(0);
+  });
+
+  test("`signUrl` reaches the prefix route and its URL actually serves", async () => {
+    await client.storage.put(DEEP_KEY, "signed", "text/plain");
+    const signed = await client.storage.signUrl(DEEP_KEY, 300);
+
+    expect(signed.url).toContain("token=");
+    expect(typeof signed.expiresAt).toBe("string");
+
+    const res = await h.fetch(signed.url);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("signed");
+  });
+
+  test("`update`, `folderCounts` and `fromUrl` point at routes that answer", async () => {
+    await client.storage.put("counted/one.txt", "1", "text/plain");
+
+    const counts = await client.storage.folderCounts();
+    expect(typeof counts.total).toBe("number");
+    expect(counts.total).toBeGreaterThan(0);
+
+    // `update` changes visibility/filing rather than bytes.
+    await client.storage.update("counted/one.txt", { acl: "private" });
+
+    // `fromUrl` fetches server-side and is SSRF-guarded, so a loopback target
+    // is refused rather than followed — the guard is the feature.
+    await expect(
+      client.storage.fromUrl({ url: "http://169.254.169.254/latest/meta-data/" }),
+    ).rejects.toBeDefined();
   });
 
   test("a signed URL authorises the one object it names and no other", async () => {

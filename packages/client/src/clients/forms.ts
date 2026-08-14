@@ -1,3 +1,4 @@
+import { BacklexError } from "../types";
 import type { ClientCore } from "../core";
 
 /** One block on a public form (order = render order). `kind: "field"` exposes
@@ -191,6 +192,98 @@ export interface FormsClient {
   revokeInvite(id: string, inviteId: string): Promise<{ ok: boolean }>;
   /** Delete a form; its link stops working immediately. */
   delete(id: string): Promise<{ ok: boolean }>;
+  /**
+   * The VISITOR's side of a form: render it, fill it, send it.
+   *
+   * Everything above authors forms; this is the half that uses one, and it is
+   * what a public form is for. Every call here is **unauthenticated** and
+   * addressed by the form's public token, so it works on a client built with
+   * no session at all — which is exactly how an application embedding its own
+   * form should build one.
+   */
+  public: PublicFormFillClient;
+}
+
+/** One rendered block of a form, as the visitor's page draws it. */
+export interface PublicFormRenderedBlock {
+  kind?: "field" | "step" | "matrix";
+  field?: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+  choices?: unknown;
+  [key: string]: unknown;
+}
+
+/** A form resolved for rendering, plus whatever this visitor left behind. */
+export interface PublicFormRendered {
+  id: string;
+  title: string | null;
+  blocks: PublicFormRenderedBlock[];
+  submitLabel: string | null;
+  successMessage: string | null;
+  redirectUrl: string | null;
+  theme: "dark" | "light";
+  accent: string | null;
+  languages: string[];
+  locale: string;
+  turnstileSiteKey: string | null;
+  /** True ⇒ the form is meant to save progress as it is filled in. */
+  saveProgress: boolean;
+  /**
+   * What this visitor left behind last time, or `null` for a fresh start.
+   *
+   * There is no separate "resume" call: resuming IS rendering. The draft is
+   * filed under a cookie the server set, or — on an invite-only form — under
+   * the invite token, so the same request that fetches the questions brings
+   * back the answers already given.
+   */
+  draft: { data: Record<string, unknown>; step: number; savedAt: number } | null;
+  [key: string]: unknown;
+}
+
+/** What a submission returns: the row id, and where to send the visitor. */
+export interface PublicFormSubmitResult {
+  id: string | null;
+  successMessage: string | null;
+  redirectUrl: string | null;
+}
+
+/** The visitor-facing half of a public form (`/api/public/forms/:token`). */
+export interface PublicFormFillClient {
+  /**
+   * Resolve a public token to the form to draw — and to the draft to resume.
+   *
+   * Never exposes a field the form does not list. A paused form answers 410
+   * rather than rendering, so a link that is over says so.
+   */
+  render(token: string, opts?: { lang?: string }): Promise<{ data: PublicFormRendered }>;
+  /** Upload a file for one of the form's file blocks. */
+  upload(
+    token: string,
+    file: Blob | File,
+    opts?: { field?: string; invite?: string },
+  ): Promise<unknown>;
+  /** Save a half-filled form so the visitor can come back to it. */
+  saveDraft(
+    token: string,
+    input: { data: Record<string, unknown>; step?: number; invite?: string },
+  ): Promise<unknown>;
+  /** Throw the saved draft away. */
+  discardDraft(token: string, opts?: { invite?: string }): Promise<unknown>;
+  /** Send it. */
+  submit(
+    token: string,
+    input: {
+      data: Record<string, unknown>;
+      /** Captcha response, when the form asks for one. */
+      captchaToken?: string;
+      turnstileToken?: string;
+      /** Single-use invite token, required by invite-only forms. */
+      invite?: string;
+    },
+    opts?: { lang?: string },
+  ): Promise<{ data: PublicFormSubmitResult }>;
 }
 
 /** One invitation to answer a form. The token is never in a read response. */
@@ -297,6 +390,9 @@ export const makeForms = (core: ClientCore): FormsClient => {
   // Public form builder. Admin-scoped over `/api/admin/forms`; the plaintext
   // token only ever appears in `create` / `rotateToken` responses.
   const formPath = (id: string) => `/api/admin/forms/${encodeURIComponent(id)}`;
+  /** The visitor-facing mount. Public — no session, addressed by the form's
+   *  own token rather than by its id. */
+  const publicPath = (token: string) => `/api/public/forms/${encodeURIComponent(token)}`;
   const forms: FormsClient = {
     list: () => core.request<{ data: PublicForm[] }>("GET", "/api/admin/forms"),
     get: (id: string) => core.request<{ data: PublicForm }>("GET", formPath(id)),
@@ -335,6 +431,66 @@ export const makeForms = (core: ClientCore): FormsClient => {
         `${formPath(id)}/invites/${encodeURIComponent(inviteId)}`,
       ),
     delete: (id: string) => core.request<{ ok: boolean }>("DELETE", formPath(id)),
+
+    // The visitor's half. Public and unauthenticated — a client with no
+    // session reaches all of it, which is the point.
+    public: {
+      render: (token: string, opts?: { lang?: string }) =>
+        core.request<{ data: PublicFormRendered }>(
+          "GET",
+          `${publicPath(token)}${opts?.lang ? `?lang=${encodeURIComponent(opts.lang)}` : ""}`,
+        ),
+      upload: async (token: string, file: Blob | File, opts?: { field?: string; invite?: string }) => {
+        // Multipart, so this goes around `core.request` (which sends JSON) and
+        // through `core.fetch` — with `authHeaders` still applied, because an
+        // invite-only form embedded in a signed-in application is a real case
+        // and the visitor path must not strip a session that IS present.
+        const form = new FormData();
+        form.append("file", file);
+        if (opts?.field) form.append("field", opts.field);
+        if (opts?.invite) form.append("invite", opts.invite);
+        const res = await core.fetch(`${core.opts.url}${publicPath(token)}/upload`, {
+          method: "POST",
+          credentials: "include",
+          // Deliberately no `content-type`: the boundary is generated by the
+          // runtime, and setting the header by hand omits it and makes the
+          // body unparseable.
+          headers: { ...core.authHeaders() },
+          body: form,
+        });
+        if (!res.ok) {
+          const errBody = (await res.json().catch(() => ({}))) as
+            | { error?: { code: string; message: string; details?: unknown } }
+            | undefined;
+          throw new BacklexError(res.status, errBody);
+        }
+        return res.json();
+      },
+      saveDraft: (
+        token: string,
+        input: { data: Record<string, unknown>; step?: number; invite?: string },
+      ) => core.request<unknown>("PUT", `${publicPath(token)}/draft`, input),
+      discardDraft: (token: string, opts?: { invite?: string }) =>
+        core.request<unknown>(
+          "DELETE",
+          `${publicPath(token)}/draft${opts?.invite ? `?i=${encodeURIComponent(opts.invite)}` : ""}`,
+        ),
+      submit: (
+        token: string,
+        input: {
+          data: Record<string, unknown>;
+          captchaToken?: string;
+          turnstileToken?: string;
+          invite?: string;
+        },
+        opts?: { lang?: string },
+      ) =>
+        core.request<{ data: PublicFormSubmitResult }>(
+          "POST",
+          `${publicPath(token)}/submit${opts?.lang ? `?lang=${encodeURIComponent(opts.lang)}` : ""}`,
+          input,
+        ),
+    },
   };
 
   return forms;

@@ -90,7 +90,18 @@ export interface AggregateQuery {
 /** A row from `aggregate`: `{ value }` ungrouped, or `{ label, value }` grouped. */
 export interface AggregateRow {
   value: number;
+  /** The group key, when the query passed `groupBy`. */
   label?: unknown;
+  /**
+   * The grouped columns, under their own names.
+   *
+   * A `groupBy` response carries the group column verbatim as well as `label`
+   * — `{ label: "USD", value: 21.5, currency: "USD" }` — and the narrower type
+   * made reading it a type error, which is the wrong way round for a shape the
+   * server has always sent. Prefer `label` for the single-column case; this is
+   * what makes the column readable by name.
+   */
+  [column: string]: unknown;
 }
 
 /** Query for `from(slug).changes(...)` — one page of the incremental feed. */

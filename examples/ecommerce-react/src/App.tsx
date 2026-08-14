@@ -6,6 +6,7 @@ import {
   backlex,
   type Category,
   categories,
+  type Money,
   type OrderItem,
   orderItems,
   orders,
@@ -36,6 +37,17 @@ function AuthGate() {
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────
+/**
+ * The one currency this storefront trades in.
+ *
+ * A money field carries its own currency per row, so anything that COMPARES or
+ * AGGREGATES amounts has to name one — the server refuses to answer across
+ * currencies rather than answer wrongly. A real multi-currency store would read
+ * this from the customer's selection; naming it once here keeps the demo honest
+ * about where the choice is being made.
+ */
+const STORE_CURRENCY = "USD";
+
 // Sort modes map directly onto the query builder's `orderBy` argument.
 type Sort = "newest" | "price-asc" | "price-desc";
 type Stats = { count: number; avg: number };
@@ -47,7 +59,7 @@ function Store({ user }: { user: ExampleUser }) {
   const [cats, setCats] = useState<Category[]>([]);
   const [category, setCategory] = useState<string | null>(null); // a category id
   const [sort, setSort] = useState<Sort>("newest");
-  const [minPrice, setMinPrice] = useState(0); // dollars, in the input
+  const [minPrice, setMinPrice] = useState(0); // a plain amount, in the input
   const [stats, setStats] = useState<Stats>({ count: 0, avg: 0 });
   const [cart, setCart] = useState<Cart>(new Map());
   const [confirmation, setConfirmation] = useState<string | null>(null);
@@ -62,18 +74,24 @@ function Store({ user }: { user: ExampleUser }) {
     return m;
   }, [cats]);
 
-  // Aggregates: two single-function calls power the header. `count` counts every
-  // readable product; `avg` over `price` (dollars) is computed server-side, so
-  // we never pull the whole table down just to total it.
+  // Aggregates: two single-function calls power the header. `count` counts
+  // every readable product; `avg` over `price` is computed server-side, so we
+  // never pull the whole table down just to total it.
+  //
+  // The average is grouped BY CURRENCY, and not for tidiness: averaging a
+  // money column whose currency varies per row is a question with no single
+  // answer, so the server requires the grouping instead of returning a number
+  // that means nothing. We read the row for this store's own currency.
   const refreshStats = useCallback(async () => {
     try {
       const [countRes, avgRes] = await Promise.all([
         products.aggregate({ agg: "count" }),
-        products.aggregate({ agg: "avg", field: "price" }),
+        products.aggregate({ agg: "avg", field: "price", groupBy: "currency" }),
       ]);
       const count = countRes.data[0]?.value ?? 0;
-      const avg = avgRes.data[0]?.value ?? 0;
-      setStats({ count, avg });
+      const avgRow =
+        avgRes.data.find((r) => String(r.label) === STORE_CURRENCY) ?? avgRes.data[0];
+      setStats({ count, avg: avgRow?.value ?? 0 });
     } catch {
       // The collection may be empty on first run — non-fatal.
     }
@@ -96,10 +114,15 @@ function Store({ user }: { user: ExampleUser }) {
       .where((f) => {
         // Build only the active sub-conditions, then AND them together.
         // `and()` of zero conds is a no-op match-all; of one, it's that cond.
-        // `category` filters by the related row's id; `price` is in dollars.
+        // `category` filters by the related row's id.
         const conds = [
           ...(category ? [f.eq("category", category)] : []),
-          ...(minPrice > 0 ? [f.gte("price", minPrice)] : []),
+          // A money comparison must say WHICH currency. `price` holds a
+          // per-row currency, and 10 EUR is not 10 USD — so the server
+          // refuses a bare number rather than comparing minor units across
+          // currencies and answering confidently wrong. This storefront is
+          // single-currency, so it names its own.
+          ...(minPrice > 0 ? [f.gte("price", { amount: minPrice, currency: STORE_CURRENCY })] : []),
         ];
         return f.and(...conds);
       })
@@ -167,7 +190,7 @@ function Store({ user }: { user: ExampleUser }) {
     return lines;
   }, [cart, items]);
 
-  const cartTotal = cartLines.reduce((sum, l) => sum + l.product.price * l.qty, 0);
+  const cartTotal = cartLines.reduce((sum, l) => sum + amountOf(l.product.price) * l.qty, 0);
 
   async function checkout() {
     if (cartLines.length === 0) return;
@@ -178,10 +201,10 @@ function Store({ user }: { user: ExampleUser }) {
       //    dollars. The template also tracks `fulfillment_status` separately —
       //    left at its `unfulfilled` default here.
       const { data: order } = await orders.create({
-        subtotal: cartTotal,
-        total: cartTotal,
+        subtotal: { amount: cartTotal, currency: STORE_CURRENCY },
+        total: { amount: cartTotal, currency: STORE_CURRENCY },
         status: "paid",
-        currency: "USD",
+        currency: STORE_CURRENCY,
       });
       // 2. Insert every line in a SINGLE batched write. `createMany` posts one
       //    `/batch` request with an op per row, so a 10-item cart is one round
@@ -193,15 +216,16 @@ function Store({ user }: { user: ExampleUser }) {
         product: l.product.id,
         title: l.product.name,
         sku: l.product.sku,
-        unit_price: l.product.price,
+        // A line item has no currency column of its own — the parent order
+        // carries it — so the template stores a bare amount here. Send the
+        // number, not the money object.
+        unit_price: amountOf(l.product.price),
         qty: l.qty,
       }));
       const res = await orderItems.createMany(rows);
       setCart(new Map());
       setConfirmation(
-        `Order ${order.id.slice(0, 8)} placed — ${res.data.succeeded} item(s), ${formatPrice(
-          order.total,
-        )}.`,
+        `Order ${order.id.slice(0, 8)} placed — ${res.data.succeeded} item(s), ${formatMoney(order.total)}.`,
       );
     } catch (err) {
       setError(err instanceof BacklexError ? err.message : String(err));
@@ -214,7 +238,7 @@ function Store({ user }: { user: ExampleUser }) {
         <div>
           <h1 className="text-xl font-semibold">Storefront</h1>
           <p className="text-sm text-neutral-500">
-            {user.email} · {stats.count} products · avg {formatPrice(stats.avg)}
+            {user.email} · {stats.count} products · avg {formatAmount(stats.avg)}
           </p>
         </div>
         <button
@@ -338,7 +362,11 @@ function ProductComposer({
       const { data: created } = await products.create({
         name: n,
         status: "active",
-        price: Math.max(0, Math.round(dollars * 100) / 100),
+        // Send the canonical `{ amount, currency }`. A bare number is accepted
+        // too — the row's `currency` column would qualify it — but naming the
+        // currency at the point the amount is typed is what keeps the two from
+        // ever drifting apart.
+        price: { amount: Math.max(0, Math.round(dollars * 100) / 100), currency: STORE_CURRENCY },
         stock: stock ? Math.max(0, Math.round(Number(stock))) : undefined,
         category: category || undefined,
         description: description.trim() || undefined,
@@ -438,8 +466,12 @@ function ProductCard({
   onAdd: () => void;
 }) {
   const out = typeof product.stock === "number" && product.stock <= 0;
+  // Compare the AMOUNTS, and only within one currency — a "was" price in a
+  // different currency is not a higher price, it is a different question.
   const onSale =
-    typeof product.compare_at_price === "number" && product.compare_at_price > product.price;
+    !!product.compare_at_price &&
+    product.compare_at_price.currency === product.price.currency &&
+    product.compare_at_price.amount > product.price.amount;
   return (
     <li className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
       <ProductImage imageKey={product.featured_image} alt={product.name} />
@@ -449,10 +481,10 @@ function ProductCard({
           <span className="flex shrink-0 items-baseline gap-1 text-sm font-semibold">
             {onSale && (
               <span className="text-xs font-normal text-neutral-400 line-through">
-                {formatPrice(product.compare_at_price as number)}
+                {formatMoney(product.compare_at_price)}
               </span>
             )}
-            {formatPrice(product.price)}
+            {formatMoney(product.price)}
           </span>
         </div>
         {categoryName && (
@@ -534,7 +566,7 @@ function CartPanel({
                 onChange={(e) => onSetQty(product.id, Number(e.target.value) || 0)}
               />
               <span className="w-16 text-right text-neutral-500">
-                {formatPrice(product.price * qty)}
+                {formatAmount(product.price.amount * qty, product.price.currency)}
               </span>
             </li>
           ))}
@@ -542,7 +574,7 @@ function CartPanel({
       )}
       <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-sm font-medium">
         <span>Total</span>
-        <span>{formatPrice(total)}</span>
+        <span>{formatAmount(total)}</span>
       </div>
       <button
         type="button"
@@ -557,9 +589,35 @@ function CartPanel({
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-/** Render a dollar amount (template `price`, a decimal) as `$X.XX`. */
-function formatPrice(dollars: number): string {
-  return `$${(dollars ?? 0).toFixed(2)}`;
+/** The numeric part of a money field, for arithmetic. Missing reads as 0. */
+function amountOf(money: Money | null | undefined): number {
+  return money?.amount ?? 0;
+}
+
+/**
+ * Render a money field.
+ *
+ * The pair goes to `Intl.NumberFormat` rather than having a `$` glued to a
+ * number: the field carries its own currency, and half the world writes the
+ * symbol after the amount anyway. Passing `amount` alone would mean deciding
+ * the currency here — which is the thing a money field exists to stop.
+ */
+function formatMoney(money: Money | null | undefined, fallbackCurrency = STORE_CURRENCY): string {
+  const { amount, currency } = money ?? { amount: 0, currency: fallbackCurrency };
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(amount);
+  } catch {
+    // `Intl` throws a RangeError on a currency code it does not recognise, and
+    // the code comes from the row rather than from this file. Rendering the
+    // amount beside the raw code is worse than the ideal output and far better
+    // than the alternative, which is that one bad row takes down the page.
+    return `${amount} ${currency}`;
+  }
+}
+
+/** Format a computed total (cart maths) in a known currency. */
+function formatAmount(amount: number, currency = STORE_CURRENCY): string {
+  return formatMoney({ amount, currency });
 }
 
 function CatButton({

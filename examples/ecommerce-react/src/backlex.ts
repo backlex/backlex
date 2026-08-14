@@ -25,23 +25,36 @@ export const backlex = createClient({
 // Templates → E-commerce, or seeded automatically on a fresh workspace). No
 // manual collection creation needed — apply the template and run.
 //
-// Money is the template's `price` field: a **decimal number of dollars**
-// (interface `decimal`, validated `min: 0`). We format it as $X.XX via
-// `formatPrice`. The `& Record<string, unknown>` satisfies the SDK's row-type
-// constraint; `backlex gen-types --sdk` can generate these for you.
+// Money — `price`, `unit_price`, `subtotal`, `total` — is the template's
+// **money** type: read back as `{ amount, currency }` and rendered through
+// `formatMoney`, which hands the pair to `Intl.NumberFormat` rather than
+// gluing a `$` onto a number. The `& Record<string, unknown>` satisfies the
+// SDK's row-type constraint; `backlex gen-types --sdk` can generate these
+// for you.
 
 /** A product in the catalog. `featured_image` is the backlex storage object key
  *  of the uploaded photo — we resolve it to an object URL at render time.
  *  `category` is a **relation** — it stores the id of a `categories` row. */
+/**
+ * A backlex **money** field, as every read surface returns it.
+ *
+ * The column stores minor units; the API canonicalizes to `{ amount, currency }`
+ * so an amount is never a number whose currency you have to remember separately.
+ * Writes are more forgiving — a plain number is accepted when the collection has
+ * a sibling `currency` column, which the e-commerce template's `products` does —
+ * but a READ always hands back this shape, so that is what the row type says.
+ */
+export type Money = { amount: number; currency: string };
+
 export type Product = {
   id: string;
   name: string;
   slug?: string;
   description?: string;
-  /** Price in dollars (decimal). */
-  price: number;
+  /** Base price. A money field — `{ amount, currency }`, never a bare number. */
+  price: Money;
   /** Optional "was" price, struck through in the UI when higher than `price`. */
-  compare_at_price?: number;
+  compare_at_price?: Money | null;
   status?: "draft" | "active" | "archived";
   stock?: number;
   sku?: string;
@@ -61,13 +74,15 @@ export type Category = {
 
 /** An order header. The line items live in the child `order_items` collection,
  *  written in one batch at checkout. The template splits payment state
- *  (`status`) from shipping state (`fulfillment_status`); `total` is in dollars. */
+ *  (`status`) from shipping state (`fulfillment_status`). Money fields read back
+ *  as `{ amount, currency }`; a write may send a plain number, which the sibling
+ *  `currency` column then qualifies. */
 export type Order = {
   id: string;
   number?: string;
-  subtotal?: number;
-  /** Order total in dollars. */
-  total: number;
+  subtotal?: Money;
+  /** Order total. */
+  total: Money;
   /** Payment status — template financial_status (`pending` … `paid` … `refunded`). */
   status?: string;
   created_at?: string;
@@ -85,7 +100,14 @@ export type OrderItem = {
   /** Snapshot of the product name at purchase time. */
   title: string;
   sku?: string;
-  /** Unit price in dollars, captured at checkout. */
+  /**
+   * Unit price captured at checkout — a plain number, NOT a money field.
+   *
+   * This is deliberate in the template and worth understanding: a money field
+   * is denominated by a `currency` column on its OWN row, and a line item has
+   * none — its currency belongs to the parent order. So the line stores a bare
+   * amount and the order beside it says what currency the whole thing is in.
+   */
   unit_price: number;
   qty: number;
   /** Computed server-side as `qty * unit_price` — never written by the client. */

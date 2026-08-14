@@ -26,6 +26,9 @@ export interface TestHarness {
   /** Cookie-tracking fetch wrapper. Pass relative or absolute URLs; only
    *  the path matters since the app is invoked directly. */
   fetch: (input: string, init?: RequestInit) => Promise<Response>;
+  /** The synthetic client IP this harness presents. Exposed so a spec that
+   *  needs the SAME bucket across two paths can say so explicitly. */
+  clientIp: string;
   /** Snapshot of cookies the harness is currently sending. */
   cookies: () => Record<string, string>;
   /** Remove the temp SQLite file and any rollback artefacts. */
@@ -62,6 +65,48 @@ export const nextSyntheticIp = (): string => {
   const n = harnessSeq++;
   return `127.0.${(n >> 8) & 0xff}.${n & 0xff}`;
 };
+
+/**
+ * Apply the harness IP to requests made straight through `h.app.fetch`.
+ *
+ * ~43 specs hand-roll their own `request()` helper — they need to control the
+ * Cookie header per identity, which the cookie-jar wrapper owns — and every one
+ * of them sets `Origin` and `Cookie` and nothing else. So they reached the auth
+ * limiter as IP `"unknown"`: not one bucket per spec, ONE BUCKET FOR ALL OF THEM,
+ * against a budget of five sign-ups a minute.
+ *
+ * In a full run that bucket is always contended and which spec gets the 429 is
+ * decided by scheduling — so the failure lands in a file that did nothing wrong
+ * and disappears when that file is run on its own. Adding specs anywhere in the
+ * suite reshuffles it.
+ *
+ * Wrapping `fetch` here fixes all of them at the shared resource rather than in
+ * 43 copies, which is also the only version that stays fixed as specs are added.
+ * An explicit `X-Forwarded-For` still wins, so the specs that deliberately
+ * exercise the limiter are unaffected.
+ */
+export const withSyntheticIp = <T extends { fetch: (req: Request) => Response | Promise<Response> }>(
+  app: T,
+  ip: string,
+): T =>
+  new Proxy(app, {
+    get(target, prop, receiver) {
+      if (prop !== "fetch") return Reflect.get(target, prop, receiver);
+      return (req: Request, ...rest: unknown[]) => {
+        let out = req;
+        if (!req.headers.has("X-Forwarded-For")) {
+          const headers = new Headers(req.headers);
+          headers.set("X-Forwarded-For", ip);
+          // Re-wrapping preserves method and body; the original is discarded.
+          out = new Request(req, { headers });
+        }
+        return (target.fetch as (r: Request, ...a: unknown[]) => Response | Promise<Response>)(
+          out,
+          ...rest,
+        );
+      };
+    },
+  }) as T;
 
 /**
  * Hook budget for a spec that boots PGlite.
@@ -158,7 +203,8 @@ export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
 
   return {
     env,
-    app,
+    app: withSyntheticIp(app, syntheticIp),
+    clientIp: syntheticIp,
     fetch: fetchWithCookies,
     cookies: () => Object.fromEntries(cookieJar),
     cleanup: () => {

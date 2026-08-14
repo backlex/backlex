@@ -18,7 +18,7 @@ import { resolve } from "node:path";
 import { schema } from "@backlex/db/pg";
 import { createApp } from "../src/server/app";
 import { __setDbOverrideForTests } from "../src/server/context";
-import { nextSyntheticIp } from "./setup";
+import { nextSyntheticIp, withSyntheticIp } from "./setup";
 import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
 import type { Env } from "../src/server/env";
 
@@ -30,6 +30,8 @@ export interface PgTestHarness {
   app: ReturnType<typeof createApp>;
   fetch: (input: string, init?: RequestInit) => Promise<Response>;
   cookies: () => Record<string, string>;
+  /** The synthetic client IP this harness presents. See the SQLite twin. */
+  clientIp: string;
   /** Raw SQL against the same in-process Postgres the app is using. Exposed so
    *  a spec can assert what the DATABASE holds — `pg_policies`, `pg_class`, or
    *  what a second identity sees after `SET ROLE`. Simple protocol, like the
@@ -153,7 +155,8 @@ export const makeHarnessPg = async (
 
   return {
     env,
-    app,
+    app: withSyntheticIp(app, syntheticIp),
+    clientIp: syntheticIp,
     fetch: fetchWithCookies,
     cookies: () => Object.fromEntries(cookieJar),
     exec: async (text: string) => {

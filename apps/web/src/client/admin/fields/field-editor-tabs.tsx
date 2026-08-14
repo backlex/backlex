@@ -1,9 +1,14 @@
-// Shared tab shell for the Add / Edit field dialogs. Renders a Directus-style
+// Shared tab shell for the Add / Edit field dialogs. Renders an operator-style
 // vertical rail on desktop (Schema · Relationship · Field · Interface ·
 // Validation · Conditions) and collapses to a Select on mobile so the tab
-// strip never overflows the viewport. The scroll cap lives on the ScrollArea
-// viewport (see docs — a `flex-1` viewport doesn't scroll inside a max-h
-// dialog on Chromium), NOT on a flex-1 wrapper.
+// strip never overflows the viewport.
+//
+// This *is* the dialog's body — it carries `data-slot="dialog-body"` so
+// DialogContent gives it the one grid row that shrinks, the same as a plain
+// <DialogBody>. The scrolling pane then fills that row absolutely rather than
+// with a percentage height, which is what a Radix viewport cannot resolve
+// against a flex parent (it grows to content height and draws over the
+// footer). Nothing here guesses at the dialog's chrome in rem.
 import type { ReactNode } from "react";
 import { I, type IconComponent, type IconKey } from "../icons";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -21,16 +26,17 @@ export interface FieldTabLayoutProps {
   tabs: FieldTabItem[];
   active: string;
   onSelect: (key: string) => void;
-  /** Fixed height for the scroll viewport, e.g. `h-[calc(92vh-13rem)]` — a
-   *  constant (not max-h) height keeps the centered dialog from jumping when
-   *  tabs with different content heights are selected. */
-  viewportClassName: string;
   children: ReactNode;
 }
 
-export function FieldTabLayout({ tabs, active, onSelect, viewportClassName, children }: FieldTabLayoutProps) {
+export function FieldTabLayout({ tabs, active, onSelect, children }: FieldTabLayoutProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+    // The scrolling pane fills its row absolutely, so it contributes no
+    // intrinsic height and the dialog would otherwise collapse to the height
+    // of the tab rail. `min-h` gives it a comfortable opening size that is the
+    // same on every tab (no jump when you switch), and stays clear of the 85vh
+    // cap on short screens because it is written in the same unit.
+    <div data-slot="dialog-body" className="flex min-h-[min(56vh,520px)] flex-col sm:flex-row">
       {/* Desktop: vertical rail */}
       <nav className="hidden w-[170px] shrink-0 flex-col gap-0.5 border-r border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] p-2 sm:flex">
         {tabs.map((t) => {
@@ -64,8 +70,8 @@ export function FieldTabLayout({ tabs, active, onSelect, viewportClassName, chil
         />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <ScrollArea viewportClassName={viewportClassName}>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <ScrollArea className="min-h-0 flex-1" viewportClassName="absolute inset-0">
           <div className="px-5 py-[18px] max-[640px]:px-4">{children}</div>
         </ScrollArea>
       </div>

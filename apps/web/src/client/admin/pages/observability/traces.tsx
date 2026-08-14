@@ -211,22 +211,26 @@ function TraceDetail({
   // the "root" badge so the endpoint isn't printed twice.
   return (
     <Dialog open={!!trace} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex flex-col overflow-hidden [&>*]:min-w-0 sm:max-w-2xl">
+      <DialogContent className="[&>*]:min-w-0 sm:max-w-2xl">
+        {/* The status/duration/id strip belongs to the header rather than
+            standing on its own: DialogContent lays a body out as three tracks
+            (header, body, footer), so a fourth child would take the flexible
+            one and leave the waterfall in a row that cannot shrink. */}
         <DialogHeader>
           <DialogTitle className="break-all font-mono text-[13px]">
             {trace?.name ?? <Trans>Trace</Trans>}
           </DialogTitle>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-muted-foreground">
+            {trace && (
+              <Badge variant={trace.hasError ? "destructive" : "secondary"} mono>
+                {trace.rootStatus ?? "—"}
+              </Badge>
+            )}
+            {trace && <span className="font-mono tabular-nums text-foreground">{trace.durationMs}ms</span>}
+            <span className="break-all font-mono">{trace?.traceId}</span>
+          </div>
         </DialogHeader>
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-muted-foreground">
-          {trace && (
-            <Badge variant={trace.hasError ? "destructive" : "secondary"} mono>
-              {trace.rootStatus ?? "—"}
-            </Badge>
-          )}
-          {trace && <span className="font-mono tabular-nums text-foreground">{trace.durationMs}ms</span>}
-          <span className="break-all font-mono">{trace?.traceId}</span>
-        </div>
-        <DialogBody className="min-h-0">
+        <DialogBody>
           <div className="flex flex-col gap-1.5 py-1">
             {spans.length === 0 ? (
               <p className="m-0 px-1 py-6 text-center text-[13px] text-muted-foreground">

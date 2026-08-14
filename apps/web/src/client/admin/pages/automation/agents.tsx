@@ -266,7 +266,7 @@ export function AgentsPage({
 
       {editorOpen && (
         <Dialog open onOpenChange={(o) => { if (!o) setEditorOpen(false); }}>
-          <DialogContent className="flex max-h-[min(88vh,760px)] w-[680px] max-w-[92vw] flex-col overflow-hidden [&>*]:min-w-0">
+          <DialogContent className="w-[680px] max-w-[92vw] [&>*]:min-w-0">
             <DialogHeader>
               <DialogTitle>{draft.id ? <Trans>Edit agent</Trans> : <Trans>New agent</Trans>}</DialogTitle>
               <DialogDescription>
@@ -274,7 +274,7 @@ export function AgentsPage({
               </DialogDescription>
             </DialogHeader>
 
-            <DialogBody className="min-h-0 flex-1">
+            <DialogBody>
               <div className="flex flex-col gap-4 px-0.5 py-1">
                 <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
                   <div className="flex min-w-0 flex-col gap-1.5">

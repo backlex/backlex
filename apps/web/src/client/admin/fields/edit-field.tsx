@@ -1,6 +1,6 @@
 // Edit-field dialog: change a user-defined column's settings without
 // renaming or retyping it (those need DDL changes the backend doesn't yet
-// support). Directus-style tabbed editor (Schema · Relationship · Field ·
+// support). Operator-style tabbed editor (Schema · Relationship · Field ·
 // Interface · Validation · Conditions). Covers required/unique flags, the
 // interface override (drawn from the interface catalog, filtered to interfaces
 // compatible with this column's storage type), display name / note, and the
@@ -470,15 +470,10 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     { key: "conditions", label: t`Conditions`, icon: "Filter" },
   ];
   const activeTab = tabs.some((x) => x.key === tab) ? tab : "schema";
-  // Literal class strings — Tailwind's JIT can't see interpolated class names.
-  // Fixed height (not max-h): the centered dialog re-centers when the active
-  // tab changes its content height, so the modal jumps on every rail click.
-  const vp = "h-[calc(min(86vh,720px)-9rem)] max-[640px]:h-[calc(min(86vh,720px)-16rem)]";
-
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 [&>*]:min-w-0 sm:max-w-[720px]">
-        <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+      <DialogContent className="gap-0 p-0 [&>*]:min-w-0 sm:max-w-[720px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Edit <span className="font-mono">{draft.name}</span>{" "}
             <Badge variant="outline" mono>{draft.type}</Badge></Trans>
@@ -488,7 +483,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
           </DialogDescription>
         </DialogHeader>
 
-        <FieldTabLayout tabs={tabs} active={activeTab} onSelect={setTab} viewportClassName={vp}>
+        <FieldTabLayout tabs={tabs} active={activeTab} onSelect={setTab}>
           {activeTab === "schema" && isRollup && (
             <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
               <Trans>Read-only column — backlex writes it from the rows picked in the <span className="font-medium text-foreground">Rollup</span> tab, so it takes no constraints.</Trans>

@@ -75,7 +75,19 @@ function DialogContent({
           // layout is a consequence of having a scrolling body, and a prop is
           // one more thing a caller can forget. Dialogs with no DialogBody are
           // untouched and still size to their content.
-          "has-[>[data-slot=dialog-body]]:max-h-[85vh] has-[>[data-slot=dialog-body]]:grid-rows-[auto_minmax(0,1fr)_auto] has-[>[data-slot=dialog-body]]:overflow-hidden",
+          //
+          // `grid` is repeated inside the `:has()` for a reason. The base
+          // `grid` above is a plain utility, so a caller passing `flex` to
+          // className wins twice over — tailwind-merge drops the base as a
+          // conflict, and `.flex` would beat it in the cascade anyway. The
+          // rows then have no grid to apply to, the body stops shrinking, and
+          // the footer is drawn over the form. As a `:has()` variant it is a
+          // different merge group and carries the extra specificity, so a
+          // stray `flex` on a dialog that has a body can no longer silently
+          // take the layout apart. The three tracks assume three in-flow
+          // children (header, body, footer) — `admin-ui-conventions` guards
+          // that, since a fourth would push the body into an `auto` row.
+          "has-[>[data-slot=dialog-body]]:grid has-[>[data-slot=dialog-body]]:max-h-[85vh] has-[>[data-slot=dialog-body]]:grid-rows-[auto_minmax(0,1fr)_auto] has-[>[data-slot=dialog-body]]:overflow-hidden",
           className
         )}
         {...props}

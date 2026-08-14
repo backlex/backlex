@@ -332,7 +332,7 @@ function NewRoomDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
-      <DialogContent className="flex max-h-[min(88vh,640px)] w-[560px] max-w-[92vw] flex-col overflow-hidden [&>*]:min-w-0">
+      <DialogContent className="w-[560px] max-w-[92vw] [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle><Trans>New room</Trans></DialogTitle>
           <DialogDescription>

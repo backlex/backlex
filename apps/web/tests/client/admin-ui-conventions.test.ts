@@ -94,6 +94,39 @@ const commentLines = (src: string): Set<number> => {
   return out;
 };
 
+/** The `className="…"` literal of a props region, or "" when it is an expression. */
+const classNameOf = (props: string): string =>
+  props.match(/\bclassName="([^"]*)"/)?.[1] ?? "";
+
+/** Whether a DialogContent's contents include something that acts as its body. */
+const hasDialogBody = (body: string): boolean =>
+  /<DialogBody\b/.test(body) || /data-slot="dialog-body"/.test(body);
+
+/**
+ * Every `<DialogContent …>…</DialogContent>` in a file: its props region, the
+ * source between the tags, and the line it opens on. Dialogs are never nested
+ * inside each other's content, so the first closing tag after the opening one
+ * is the matching one.
+ */
+const dialogContents = (
+  src: string,
+): Array<{ props: string; body: string; line: number }> => {
+  const out: Array<{ props: string; body: string; line: number }> = [];
+  const comments = commentLines(src);
+  for (const m of src.matchAll(/<DialogContent\b/g)) {
+    if (comments.has(lineOf(src, m.index!))) continue;
+    const props = propsOf(src, m.index!);
+    const start = m.index! + props.length;
+    const end = src.indexOf("</DialogContent>", start);
+    out.push({
+      props,
+      body: src.slice(start, end === -1 ? src.length : end),
+      line: lineOf(src, m.index!),
+    });
+  }
+  return out;
+};
+
 /** Every `actions={…}` block, brace-matched, with the line it starts on. */
 const actionBlocks = (src: string): Array<{ block: string; line: number }> => {
   const out: Array<{ block: string; line: number }> = [];
@@ -196,6 +229,57 @@ describe("admin UI conventions", () => {
         const opens = (before.match(/<DialogContent\b/g) ?? []).length;
         const closes = (before.match(/<\/DialogContent>/g) ?? []).length;
         if (opens > closes) offenders.push(`${rel}:${lineOf(src, m.index!)}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // `<DialogBody>` only scrolls because DialogContent is a grid whose middle
+  // row is the one that shrinks. A `flex` in the caller's className takes that
+  // away twice over — tailwind-merge drops the base `grid` as a conflict, and
+  // `.flex` outranks it in the cascade anyway — and the failure is not a
+  // missing scrollbar but a footer drawn on top of the form, with everything
+  // below it unreachable. Five dialogs shipped that way (New agent, New room,
+  // Report, Trace, Add field) before anyone looked. The variant in dialog.tsx
+  // now wins the cascade, so this rule is about the className saying what the
+  // layout actually is rather than about the bug still being reachable.
+  test("a dialog with a body doesn't override the layout that scrolls it", () => {
+    const offenders: string[] = [];
+    for (const { rel, src } of FILES) {
+      for (const { props, body, line } of dialogContents(src)) {
+        if (!hasDialogBody(body)) continue;
+        const cls = classNameOf(props);
+        const bad = cls
+          .split(/\s+/)
+          .filter((c) => /^(flex|block|inline(-.*)?|table|contents|grid-rows-\[)/.test(c));
+        if (bad.length) offenders.push(`${rel}:${line} — ${bad.join(" ")}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // A dialog that zeroes its own padding hands the job to its three children.
+  // Header and footer are written right there and get it; the body is a
+  // ScrollArea whose padding belongs on the element inside it, one level
+  // further down, and that is the one that gets forgotten. It was forgotten on
+  // the API-keys create form, where the fields then sat flush against both
+  // edges of the dialog while the title above them was inset.
+  test("a p-0 dialog pads its own body", () => {
+    const offenders: string[] = [];
+    for (const { rel, src } of FILES) {
+      for (const { props, body, line } of dialogContents(src)) {
+        if (!/(^|\s)p-0(\s|$)/.test(classNameOf(props))) continue;
+        const at = body.indexOf("<DialogBody");
+        if (at === -1) continue;
+        const bodyProps = propsOf(body, at);
+        // Deliberately edge-to-edge bodies (a file browser's sidebar+pane, a
+        // full-bleed preview) say so, rather than being guessed at from here.
+        if (/\bdata-full-bleed\b/.test(bodyProps)) continue;
+        const firstChild = body.slice(at + bodyProps.length).match(/<[A-Za-z][^>]*/s)?.[0] ?? "";
+        const padded = (s: string) => /(^|[\s:"'`[])(p|px)-[\d[]/.test(s);
+        if (!padded(bodyProps) && !padded(firstChild)) {
+          offenders.push(`${rel}:${line} — ${firstChild.slice(0, 48).replace(/\s+/g, " ")}`);
+        }
       }
     }
     expect(offenders).toEqual([]);

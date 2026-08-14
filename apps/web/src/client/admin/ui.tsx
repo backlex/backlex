@@ -36,6 +36,7 @@ import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -909,11 +910,12 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
   const submit = () => { if (valid) onCreate({ name: slug, project, env }); };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[520px]">
         <DialogHeader className="flex-row items-center gap-2.5 space-y-0 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
           <DialogTitle className="text-sm font-medium"><Trans>New workspace</Trans></DialogTitle>
         </DialogHeader>
+        <DialogBody>
         <div className="flex flex-col gap-4 p-[22px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
@@ -946,6 +948,7 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
             </Select>
           </div>
         </div>
+        </DialogBody>
         <DialogFooter className="border-t border-border px-[18px] py-3">
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button variant="primary" size="sm" disabled={!valid} onClick={submit}><Trans>Create workspace</Trans></Button>

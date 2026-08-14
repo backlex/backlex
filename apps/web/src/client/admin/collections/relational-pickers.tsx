@@ -425,7 +425,9 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           </DialogDescription>
         </DialogHeader>
 
-        <DialogBody>
+        {/* Full bleed: the sidebar draws its own right border to the dialog's
+            edge and the pane beside it carries the padding. */}
+        <DialogBody data-full-bleed>
           <div className="flex flex-row">
           <FolderSidebar
             folders={folders}

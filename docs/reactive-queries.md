@@ -138,7 +138,14 @@ change — from another tab, another admin, the SDK, or a [flow](/flows).
 ## Not covered
 
 Reactive queries are an SDK + realtime concern, so they have no GraphQL / MCP /
-CLI surface (those are request/response). Aggregates aren't reactive — use a
+CLI surface (those are request/response). The React binding is
+[`backlex/react`](./client-react.md), which wraps `liveQuery` as `useLiveQuery`.
+
+Which subsystems reach the SDK at all — and the written reason for each one
+that does not — is a registry in `apps/web/tests/sdk-surfaces.test.ts`. That is
+the canonical record of parity exceptions rather than this page: an entry there
+costs a sentence of reasoning and names the wave it is revisited in, so an
+absent client is a decision on the record instead of a silence. Aggregates aren't reactive — use a
 `liveQuery` over the rows and reduce client-side, or refetch the aggregate on a
 `liveQuery` change. Server-side incremental view maintenance (a true materialized
 reactive cache) is a possible future direction; today the maintenance is

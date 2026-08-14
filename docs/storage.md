@@ -172,6 +172,23 @@ HMAC key is derived from `AUTH_SECRET` (`signStorageUrl`/
 and key-pinned: the GET handler rejects a token whose `(t, k)` don't
 match the requested path.
 
+### From the SDK
+
+```ts
+// A short-lived URL for a private object.
+const { url, expiresAt } = await backlex.storage.signUrl(key, 300);
+
+// For a public one, compose the address directly — no request, so it goes
+// straight into an `<img>` and the browser caches, lazy-loads and gets the
+// server-side resize.
+<img src={backlex.storage.url(key, { width: 480, format: "webp" })} loading="lazy" />
+```
+
+A key containing a `.` or `..` path segment is refused by `url()` / `signUrl()`
+rather than encoded: every URL parser normalizes dot segments away *after*
+percent-decoding, so there is no encoding that survives one, and composing the
+link anyway would address something outside `/api/storage/`.
+
 ### Using a signed URL
 
 ```ts

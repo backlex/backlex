@@ -143,6 +143,31 @@ never clipped to the freshest 200 rows. (The former standalone
 "Activity log" page was merged into this; `/activity` redirects to
 `/logs`.)
 
+## Why the admin keeps its own client
+
+The admin console does **not** use `@backlex/client`, and that is a design
+decision rather than a gap somebody has not got round to closing.
+
+`apps/web/src/client/lib/api.ts` carries a Cloudflare **D1 Sessions API
+bookmark** (`x-d1-bookmark`) on every request, and the server half reads it
+back in `server/app.ts`. The SDK has no equivalent. Routing admin reads through
+it would silently drop read-your-writes on D1: save a row, and the screen that
+re-reads it shows the **previous** one. The test suite runs on in-process
+SQLite, so it would not catch that — the failure would appear only on a
+deployed Worker.
+
+The two clients are also doing genuinely different jobs. The admin's is a React
+Query cache with an `ApiError` type and 44 hooks over 1148 lines; an
+application's is the SDK's live result array and a thrown `BacklexError`. What
+IS shared is shared: the admin imports the SDK's realtime channel naming rather
+than rebuilding it.
+
+A future SDK could carry the bookmark — it would need a `d1Bookmark` on the
+transport, CORS exposure of the response header, and a Workers-only
+integration test, since nothing in the local suite exercises D1's session
+semantics. Named here so the option stays visible and the omission does not
+keep getting rediscovered as a bug.
+
 ## Admin layout
 
 `apps/web/src/client/admin/` is laid out by what a file *is*, and a

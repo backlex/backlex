@@ -1,7 +1,11 @@
 # backlex
 
-Typed TypeScript client for the [backlex](https://backlex.com) API — the same
-fetch wrapper the admin SPA and the official examples use.
+Typed TypeScript client for the [backlex](https://backlex.com) API — what the
+official examples, and your own application, are built on.
+
+(The admin console deliberately keeps its own client: it carries a Cloudflare
+D1 Sessions bookmark this SDK has no equivalent for. See
+[Architecture](https://backlex.com/docs/architecture#why-the-admin-keeps-its-own-client).)
 
 ```bash
 npm i backlex                  # npm — compiled ESM + types

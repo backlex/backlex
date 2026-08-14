@@ -180,6 +180,7 @@ export default defineConfig({
             { slug: "sandbox" },
             { slug: "extensions" },
             { slug: "sdk-and-cli" },
+            { slug: "client-react" },
             { slug: "client-sdks" },
             { slug: "mcp" },
             { slug: "admin-i18n" },

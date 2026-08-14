@@ -209,6 +209,20 @@ await db.auth.signIn({ email, password });
 `db.collections.<slug>` is a thin proxy over `db.from(slug)` — no
 per-collection runtime code is generated; the types live in `Collections`.
 
+### React
+
+`backlex/react` wraps the primitives above as hooks — a persisted session, live
+queries, optimistic writes and resumable uploads:
+
+```tsx
+const backlex = createClient({ url: "", workspace: "acme", persist: true });
+
+const { status, user } = useSession(backlex);
+const { data } = useLiveQuery(backlex, "todos", { sort: "-created_at" });
+```
+
+Full reference: [React bindings](./client-react.md).
+
 ## `backlex` CLI
 
 Manage any Backlex instance from your terminal or CI — same REST API as the

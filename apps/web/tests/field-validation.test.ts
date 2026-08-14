@@ -95,6 +95,36 @@ describe("field validation: per-value rules", () => {
     expect(res.status).toBe(422);
   });
 
+  // The numeric bounds check is guarded by `typeof value === "number"`, so a
+  // value of any OTHER type skipped validation entirely and went to the driver
+  // as-is. An object arrived as the string `[object Object]` and the write
+  // failed as an INTERNAL error naming the SQL — a 500 for a malformed request
+  // body, which also means it pages someone.
+  //
+  // Reached for real: the e-commerce template gives `products.price` a money
+  // type and `order_items.unit_price` a plain number (a line item has no
+  // currency column of its own), so an app that copies one into the other
+  // sends `{ amount, currency }` to a numeric column.
+  test("an object on a numeric field → 422, not a 500", async () => {
+    const res = await post({ age: { amount: 30, currency: "USD" } });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("age");
+  });
+
+  test("an array on a numeric field → 422", async () => {
+    const res = await post({ age: [30] });
+    expect(res.status).toBe(422);
+  });
+
+  test("a numeric string still passes — this narrows nothing that worked", async () => {
+    // Not the canonical form, but it is what a form post sends and it has
+    // always been accepted. The check rejects what cannot be a number, not
+    // everything that is not already one.
+    const res = await post({ age: "30" });
+    expect(res.status).toBe(201);
+  });
+
   test("custom message overrides the generated text", async () => {
     const res = await post({ pin: "12" });
     expect(res.status).toBe(422);

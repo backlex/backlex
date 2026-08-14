@@ -2052,6 +2052,25 @@ export const validateValue = (
     }
   }
 
+  // Shape, not policy — the same rule `geo` and `money` above are held to, and
+  // for the same reason: this column is read back as a number by everything
+  // that touches it. The bounds below are guarded by `typeof value ===
+  // "number"`, so before this check a value of any OTHER type skipped
+  // validation ENTIRELY and went on to the driver, where an object bound as the
+  // string `[object Object]` and the write failed as an INTERNAL error naming
+  // the SQL. A malformed request body must not surface as a 500.
+  //
+  // Deliberately narrow: it rejects what CANNOT be a number, not everything
+  // that is not one already. A numeric string is what an HTML form posts and
+  // has always been accepted, so it still is.
+  if (field.type === "integer" || field.type === "number") {
+    const numeric =
+      typeof value === "number"
+        ? Number.isFinite(value)
+        : typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value));
+    if (!numeric) fail(`${field.name}: must be a number`);
+  }
+
   if (
     (field.type === "integer" || field.type === "number") &&
     typeof value === "number"

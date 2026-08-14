@@ -17,18 +17,22 @@
  */
 import { AppError } from "@backlex/core";
 import type { McpTool, ToolResult, ToolCtx } from "../types";
-import { callClaude, extractJson, hasDirectAiCredential } from "../ai-client";
+import { aiAvailable, callClaude, extractJson } from "../ai-client";
 import { readJson } from "../internal-fetch";
 
-/** Fail fast when the workspace has no AI credential — every `ai.*` tool
+/** Fail fast when the deployment cannot generate at all — every `ai.*` tool
  *  checks this BEFORE any other sub-fetch so missing-key errors don't hide
  *  behind upstream 404s (`ai.query` on a non-existent collection used to
- *  report "Collection not found" before this guard was added). Either the
- *  preferred `AI_GATEWAY_API_KEY`, the legacy `ANTHROPIC_API_KEY`, or a
- *  short-lived `ANTHROPIC_AUTH_TOKEN` satisfies the check — `callClaude`
- *  picks the credential per-call. */
+ *  report "Collection not found" before this guard was added).
+ *
+ *  Asks {@link aiAvailable}, the same question `callClaude` settles before it
+ *  dispatches, rather than "is there a direct key". It gated on the latter,
+ *  which is false on every managed-cloud project — so `ai.*` refused with
+ *  "No AI provider configured" precisely where AI is a platform feature the
+ *  customer never configures, and where the call one line later would have
+ *  gone to the gateway. */
 const requireAiKey = (ctx: ToolCtx): void => {
-  if (!hasDirectAiCredential(ctx.env)) {
+  if (!aiAvailable(ctx.env)) {
     throw new AppError(
       "UNAVAILABLE",
       "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider), the legacy ANTHROPIC_API_KEY, or a short-lived ANTHROPIC_AUTH_TOKEN on the backlex deployment.",
@@ -200,12 +204,12 @@ export const aiSuggestSchema: McpTool = {
       (slugHint ? `Suggested slug: "${slugHint}"\n` : "") +
       `Return the JSON schema only.`;
 
-    const reply = await callClaude(ctx.env, {
-      system,
-      user,
-      model: "claude-sonnet-4-6",
-      maxTokens: 2048,
-    });
+    // No model named on purpose. This prompt is provider-agnostic, and a
+    // hardcoded Anthropic id is passed through VERBATIM to a direct
+    // OpenAI/Google key — `resolveModelId` cannot tell a foreign bare id from
+    // a native one, so it 404'd. Omitting it asks the configured provider for
+    // its own default, which is the only answer that is right everywhere.
+    const reply = await callClaude(ctx.env, { system, user, maxTokens: 2048 });
     let schema: { slug?: string; fields?: Array<{ name: string; type: string }> };
     try {
       schema = extractJson(reply.text);
@@ -383,12 +387,12 @@ export const aiImportCsv: McpTool = {
       `Sample rows (first ${sampleRows.length}):\n${JSON.stringify(sampleRows, null, 2)}\n\n` +
       `Return the JSON schema only.`;
 
-    const reply = await callClaude(ctx.env, {
-      system,
-      user,
-      model: "claude-sonnet-4-6",
-      maxTokens: 2048,
-    });
+    // No model named on purpose. This prompt is provider-agnostic, and a
+    // hardcoded Anthropic id is passed through VERBATIM to a direct
+    // OpenAI/Google key — `resolveModelId` cannot tell a foreign bare id from
+    // a native one, so it 404'd. Omitting it asks the configured provider for
+    // its own default, which is the only answer that is right everywhere.
+    const reply = await callClaude(ctx.env, { system, user, maxTokens: 2048 });
     let schema: unknown;
     try {
       schema = extractJson(reply.text);

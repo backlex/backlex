@@ -53,6 +53,11 @@ export interface ClaudeResponse {
     input_tokens?: number;
     output_tokens?: number;
     cache_read_input_tokens?: number;
+    /** Workers AI neurons, on the managed-cloud path only. That gateway meters
+     *  authoritatively in neurons and does not return token counts, so this is
+     *  what the call actually cost — deriving a token figure from it would be a
+     *  number nobody could reconcile with a bill. */
+    neurons?: number;
   };
 }
 
@@ -117,9 +122,29 @@ export const resolveAiCredential = (env: Env): AiCredential | null => {
 };
 
 /** Is any direct provider credential configured on this env? Used to decide
- *  whether to route through the managed-cloud gateway instead. */
+ *  whether to route through the managed-cloud gateway instead.
+ *
+ *  This answers "whose key pays for it", NOT "can this deployment do AI" —
+ *  for that, ask {@link aiAvailable}. */
 export const hasDirectAiCredential = (env: Env): boolean =>
   resolveAiCredential(env) !== null;
+
+/**
+ * Can this deployment generate at all — by any route?
+ *
+ * The same question {@link callClaude} settles before it dispatches: a direct
+ * provider credential, or a provisioned cloud project whose generation runs on
+ * the platform gateway. Anything that gates a FEATURE on the presence of AI has
+ * to ask this one.
+ *
+ * Asking `hasDirectAiCredential` instead is how every `ai.*` MCP tool came to
+ * refuse with "No AI provider configured for this workspace" on managed cloud —
+ * the deployment where AI is a platform feature the customer never configures,
+ * and where the same request would have reached the gateway had it got one line
+ * further.
+ */
+export const aiAvailable = (env: Env): boolean =>
+  hasDirectAiCredential(env) || cloudConfigured(env);
 
 /** {@link resolveAiCredential}, but throwing the actionable setup error when
  *  nothing is configured. */
@@ -232,6 +257,11 @@ export const resolveModelId = (
  */
 const callCloudGeneration = async (
   env: Env,
+  // `maxTokens` is deliberately not destructured: the gateway takes no such
+  // parameter and applies its own fixed 8192-token ceiling, because the
+  // reasoning models it fronts spend a large part of any smaller budget on
+  // their thinking pass and return an empty answer. Named here so the next
+  // reader does not go looking for where the caller's value went.
   { system, user, model }: ClaudeRequest,
 ): Promise<ClaudeResponse> => {
   const messages = [
@@ -256,8 +286,16 @@ const callCloudGeneration = async (
     // 402 = monthly AI budget exhausted.
     throw new AppError(res.status === 402 ? "VALIDATION" : "UNAVAILABLE", message);
   }
-  const json = (await res.json()) as { response?: string };
-  return { text: json.response ?? "" };
+  const json = (await res.json()) as { response?: string; neurons?: number };
+  // Carry the cost through. The gateway meters this call authoritatively and
+  // answers with what it charged; dropping it made managed-cloud generation the
+  // one path in the product that reported no cost at all, which reads as free
+  // rather than as measured elsewhere. Absent stays absent — a gateway that did
+  // not say is not a gateway that said zero.
+  return {
+    text: json.response ?? "",
+    ...(typeof json.neurons === "number" ? { usage: { neurons: json.neurons } } : {}),
+  };
 };
 
 export const callClaude = async (

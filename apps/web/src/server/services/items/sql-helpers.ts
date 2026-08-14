@@ -1,7 +1,14 @@
 import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
+import {
+  type FieldDef,
+  findRetireField,
+  type RetiredScope,
+  retiredValue,
+} from "@backlex/db";
 import type { Ctx } from "../../context";
 import type { CollectionRow } from "./collection-loader";
+import { serialize } from "./serialize";
 
 /**
  * Build a `tenant_id = ?` filter when the collection is tenant-scoped.
@@ -71,6 +78,64 @@ export const draftFilter = (
   if (status === "published") return sql`${col} = 'published'`;
   if (status === "archived") return sql`${col} = 'archived'`;
   return null; // "all" — privileged default
+};
+
+/**
+ * Build the retirement filter for a `?retired=` read.
+ *
+ * Deliberately shaped so the DEFAULT is `null` — no filter, every row. That is
+ * the whole contract of retirement: it never hides a row from a read, it only
+ * removes one from the places that OFFER it for new work. So an existing API
+ * consumer that has never heard of the flag keeps getting exactly what it got
+ * yesterday, and the narrowing happens only where a caller asked for it.
+ *
+ * **A NULL flag is LIVE**, which is why `exclude` carries the `IS NULL` arm.
+ * Sixty-three of the sixty-four catalog columns carry a DDL default today, but
+ * a column added to an existing table backfills NULL, an adopted table brings
+ * whatever it brought, and a CSV import writes what the file held. Reading NULL
+ * as retired would empty every picker in the workspace the moment the flag was
+ * declared — a total failure that looks exactly like the feature working.
+ *
+ * `only` is the mirror and does NOT get the NULL arm, for the same reason: the
+ * two scopes partition the rows, and a row nobody has answered for belongs with
+ * the live ones.
+ *
+ * Takes the field list rather than a `CollectionRow` for the same reason as
+ * `tenantFilter` — GraphQL carries a narrower row and must reach the same
+ * filter instead of writing a second one that can drift. The optional
+ * `qualifier` qualifies the column for JOINed queries.
+ *
+ * Two dialect traps are handled here rather than assumed away:
+ *
+ *  - **The operand is encoded by the SAME `serialize` the write path uses.** A
+ *    boolean column is a native boolean on Postgres and an INTEGER 0/1 on
+ *    SQLite, so a bare bound `false` compares against nothing on half the
+ *    deploy targets. Two producers of one value is the bug class that inverted
+ *    every timestamp filter on SQLite (#46).
+ *  - **`IS DISTINCT FROM` is deliberately NOT used**, even though it says
+ *    exactly what the exclude arm means. SQLite only learned it in 3.39, and
+ *    which SQLite a self-host runs is a property of its binary. `IS NULL OR <>`
+ *    is the same predicate in every version of both engines.
+ */
+export const retiredFilter = (
+  fields: readonly FieldDef[],
+  scope: RetiredScope,
+  dialect: "pg" | "sqlite",
+  qualifier?: string,
+): SQL | null => {
+  if (scope === "all") return null;
+  const field = findRetireField(fields);
+  // A collection with no flag has no retired rows, so `exclude` is every row —
+  // and `only` is none of them. Answering `only` with "no filter" would hand
+  // back the whole table under a name that promised the opposite.
+  if (!field?.retire) return scope === "only" ? sql`(1=0)` : null;
+  const col = qualifier
+    ? sql`${sql.identifier(qualifier)}.${sql.identifier(field.name)}`
+    : sql`${sql.identifier(field.name)}`;
+  const retired = serialize(retiredValue(field.retire), "boolean", dialect);
+  return scope === "only"
+    ? sql`${col} = ${retired}`
+    : sql`(${col} IS NULL OR ${col} <> ${retired})`;
 };
 
 // Postgres-js's prepared-statement binder calls `byteLength` on params

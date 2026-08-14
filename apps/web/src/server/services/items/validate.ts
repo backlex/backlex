@@ -1,9 +1,12 @@
 import { sql } from "drizzle-orm";
 import { AppError, type AuthSubject } from "@backlex/core";
 import {
+  findRetireField,
   isLocalized,
+  isRetiredValue,
   matchesCondition,
   rangeOrderError,
+  type RetireSpec,
   validateValue,
   type FieldDef,
 } from "@backlex/db";
@@ -188,8 +191,10 @@ export const validateBody = (
 
 /**
  * Verify that every `relation` / `relation_many` value in the payload points
- * at a real row in the target collection. Empty string and null are
- * skipped (treated as "no relation"); a missing target id throws 422.
+ * at a real row in the target collection — and, when that collection declares a
+ * retirement flag, at one that is still in play. Empty string and null are
+ * skipped (treated as "no relation"); a missing target id throws 422, and so
+ * does a retired one unless the target's flag says `references: "allow"`.
  *
  * Batches by target slug so a payload with N `customer_id` references
  * costs one SELECT per target collection, not one per id.
@@ -197,6 +202,22 @@ export const validateBody = (
  * Loading the target collection through `loadCollection` keeps the lookup
  * tenant-scoped — a value pointing at a collection in another workspace
  * fails with the same "not found" wording.
+ *
+ * **Only values the write NAMES are judged.** This function has always read
+ * `data`, so a PATCH that does not mention a relation leaves it alone and no
+ * stored reference is ever re-validated. That is what makes the refusal safe:
+ * retiring a product does not invalidate a single past order, it only stops the
+ * next one from being written against it.
+ *
+ * There is deliberately **no per-write escape hatch** — no `skipRetiredCheck`
+ * on `WriteEnv` — and the reason is worth keeping. The obvious candidates for
+ * one are the paths that write HISTORY rather than new work (template seeding,
+ * `migrate-ingest`, a restore), and every one of them writes its rows with a
+ * raw INSERT and never reaches this function at all. A flag whose only callers
+ * turn out not to exist is `skipSyncHooks`, whose doc comment has claimed bulk
+ * paths set it since the day it was added and which no caller has ever set. The
+ * escape that DOES exist is declared on the field, visible in the schema, and
+ * per-target: `RetireSpec.references: "allow"`.
  */
 export const validateRelations = async (
   data: Record<string, unknown>,
@@ -204,7 +225,7 @@ export const validateRelations = async (
   ctx: Ctx,
   tenantId: string | null | undefined,
 ): Promise<void> => {
-  const checks = new Map<string, Set<string>>();
+  const checks = new Map<string, { ids: Set<string>; via: Set<string> }>();
   for (const f of fields) {
     if (f.type !== "relation" && f.type !== "relation_many") continue;
     if (!f.to) continue;
@@ -221,12 +242,15 @@ export const validateRelations = async (
       ids = [val];
     }
     if (ids.length === 0) continue;
-    const set = checks.get(f.to) ?? new Set<string>();
-    for (const id of ids) set.add(id);
-    checks.set(f.to, set);
+    const entry = checks.get(f.to) ?? { ids: new Set<string>(), via: new Set<string>() };
+    for (const id of ids) entry.ids.add(id);
+    // The field the value arrived on, kept so a refusal can name the box the
+    // operator filled rather than only the collection behind it.
+    entry.via.add(f.name);
+    checks.set(f.to, entry);
   }
   if (checks.size === 0) return;
-  for (const [slug, idSet] of checks) {
+  for (const [slug, { ids: idSet, via }] of checks) {
     let target: CollectionRow;
     try {
       target = await loadCollection(ctx, tenantId, slug);
@@ -237,9 +261,18 @@ export const validateRelations = async (
       );
     }
     const ids = [...idSet];
+    // The retirement flag rides along on the existence SELECT that already had
+    // to run. One statement answers both questions, so refusing a reference to
+    // a retired row costs nothing on the write path.
+    const retireField = findRetireField(target.fields);
+    const checkRetired = Boolean(retireField?.retire && retireField.retire.references !== "allow");
     const rows = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT ${sql.identifier(target.pkColumn)} AS ${sql.identifier("__rel_id")}
+      sql`SELECT ${sql.identifier(target.pkColumn)} AS ${sql.identifier("__rel_id")}${
+        checkRetired && retireField
+          ? sql`, ${sql.identifier(retireField.name)} AS ${sql.identifier("__rel_retired")}`
+          : sql``
+      }
           FROM ${sql.identifier(target.physicalTable)}
           WHERE ${sql.identifier(target.pkColumn)} IN (${sql.join(
         ids.map((i) => sql`${i}`),
@@ -254,6 +287,19 @@ export const validateRelations = async (
       throw new AppError(
         "VALIDATION",
         `Relation target "${slug}" has no row(s) with id: ${sample}${suffix}`,
+      );
+    }
+    if (!checkRetired || !retireField?.retire) continue;
+    const retired = rows
+      .filter((r) => isRetiredValue(r["__rel_retired"], retireField.retire as RetireSpec))
+      .map((r) => String(r["__rel_id"] ?? ""));
+    if (retired.length > 0) {
+      const sample = retired.slice(0, 3).join(", ");
+      const suffix = retired.length > 3 ? ` (…and ${retired.length - 3} more)` : "";
+      const where = [...via].join(", ");
+      throw new AppError(
+        "VALIDATION",
+        `"${where}" points at a retired row in "${slug}": ${sample}${suffix} — restore the row, or pick one that is still in play`,
       );
     }
   }

@@ -37,6 +37,7 @@ import {
   syncSequenceCounters,
 } from "../../services/items/sequence";
 import { backfillSlugs, slugFieldsOf } from "../../services/items/slug";
+import { setRetired } from "../../services/items/retirement";
 import { defaultHook } from "../../lib/openapi-router";
 
 /**
@@ -522,6 +523,66 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         },
       );
       return c.json({ ok: true, refreshed });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/{id}/retire",
+      tags: TAGS,
+      summary: "Take a row out of play, or put it back",
+      description:
+        "Sets the collection's retirement flag on one row — the boolean declared with `retire`, spelled `active` in most schemas. `?restore=1` puts the row back in play. Retirement never hides the row from a read: every existing reference still resolves and the row is still returned by list and get. What changes is that it stops being OFFERED for new work — the relation pickers skip it, `?retired=exclude` filters it out, and (unless the flag declares `references: \"allow\"`) a write pointing a NEW relation at it is refused with 422. Requires `update` on the collection, and specifically an update that covers the flag column: a role refused a PATCH of `active` is refused this too. Unlike `reorder`, a row-conditioned grant is honoured rather than refused — retiring one row does not touch any other, so retiring what the caller can see is a complete answer.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string(), id: z.string() }),
+        query: z.object({ restore: z.enum(["1"]).optional() }),
+      },
+      responses: {
+        200: {
+          description: "Retired (or restored)",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: ItemRow,
+                /** The flag column that was written. */
+                field: z.string(),
+                /** Where the row ended up. */
+                retired: z.boolean(),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const id = c.req.param("id");
+      const retired = c.req.query("restore") !== "1";
+      const env: WriteEnv = {
+        ctx,
+        collection,
+        userId: auth.userId,
+        tenantId: auth.tenantId,
+        roles: auth.roles,
+        email: auth.email,
+        meta: requestMeta(c.req.raw),
+        impersonatedBy: auth.impersonatedBy ?? null,
+        impersonationReadOnly: auth.impersonationReadOnly ?? false,
+        durationMs: () => elapsedMs(c),
+        locale: null,
+        readFields: await readFieldsFor(c, collection.slug),
+      };
+      const res = await setRetired(env, id, retired, {
+        whereSql: perm.whereSql,
+        fields: perm.fields,
+      });
+      return c.json(res);
     },
   )
   .openapi(

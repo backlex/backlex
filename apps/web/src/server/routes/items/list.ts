@@ -46,11 +46,13 @@ import {
   draftFilter,
   fromOf,
   queryAll,
+  retiredFilter,
   selectColRef,
   selectStar,
   tenantFilter,
   usesOwnershipSideTable,
 } from "../../services/items/sql-helpers";
+import { parseRetiredScope } from "@backlex/db/retirement";
 import {
   collectNestedRelationChains,
   rewriteSortField,
@@ -647,9 +649,29 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const searchWhere = q.search
         ? ftsMembershipWhere(collection, q.search, ctx.dialect)
         : null;
-      const wheres = [userWhere, permWhere, tenantWhere, deletedWhere, draftWhere, searchWhere].filter(
-        (x): x is SQL => x != null,
+      // `?retired=` — opt-in, defaulting to every row. Unrecognised values are
+      // refused rather than silently treated as `all`: an operator who typed
+      // `retired=excluded` and got the whole table back has been told a filter
+      // ran that did not.
+      const retiredScope = parseRetiredScope(c.req.query("retired"));
+      if (retiredScope === null) {
+        throw new AppError("VALIDATION", '`retired` must be "all", "exclude" or "only"');
+      }
+      const retiredWhere = retiredFilter(
+        collection.fields,
+        retiredScope,
+        ctx.dialect,
+        hasJoins ? collection.physicalTable : undefined,
       );
+      const wheres = [
+        userWhere,
+        permWhere,
+        tenantWhere,
+        deletedWhere,
+        draftWhere,
+        retiredWhere,
+        searchWhere,
+      ].filter((x): x is SQL => x != null);
       const whereClause = wheres.length
         ? sql`WHERE ${sql.join(wheres, sql` AND `)}`
         : sql``;

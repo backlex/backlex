@@ -46,6 +46,16 @@ export const ListQuery = z.object({
   locale: z.string().optional().openapi({
     description: "Locale for localized-field projection; `*` returns full map.",
   }),
+  /**
+   * Declared with `all` as the default, and that default is the contract: a
+   * retirement flag never hides a row from a read, so a caller who has never
+   * heard of it gets exactly what it always got. The narrowing happens only
+   * where somebody asked for it.
+   */
+  retired: z.enum(["all", "exclude", "only"]).optional().openapi({
+    description:
+      "How to treat rows the collection's retirement flag has taken out of play. `all` (default) returns everything — retirement never hides a row from a read. `exclude` returns only rows still in play (a NULL flag counts as in play). `only` returns just the retired ones. No effect on a collection with no `retire` field, except that `only` correctly returns nothing.",
+  }),
 });
 
 export const TAGS = ["items"];

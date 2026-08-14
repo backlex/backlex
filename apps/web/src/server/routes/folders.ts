@@ -12,6 +12,9 @@ import { defaultHook } from "../lib/openapi-router";
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.folders : sqlite.schema.folders;
 
+const filesTableFor = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.files : sqlite.schema.files;
+
 const FolderInput = z
   .object({
     name: z.string().min(1),
@@ -207,11 +210,39 @@ export const foldersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const conds: SQL[] = [eq(t.id, id), eq(t.tenantId, tenantId)];
       if (perm.whereSql) conds.push(perm.whereSql);
       const existing = await (ctx.db as any)
-        .select({ id: t.id })
+        .select({ id: t.id, parentId: t.parentId })
         .from(t)
         .where(and(...conds))
         .limit(1);
       if (!existing[0]) throw new AppError("NOT_FOUND", "Folder not found");
+
+      // Detach what points at this folder BEFORE removing it, in both
+      // dialects, rather than leaving it to the database.
+      //
+      // The two dialects do not agree on their own. Postgres carries
+      // `ON DELETE SET NULL` on `files.folder_id`; the hand-written SQLite
+      // migration wrote a plain `REFERENCES folders(id)`, so the Drizzle
+      // schema's `onDelete: "set null"` never reached the DDL there — and
+      // deleting a folder holding any file raised a FOREIGN KEY error, which
+      // surfaced as a 500 on every SQLite and D1 deployment, i.e. the default
+      // one. `folders.parent_id` has no constraint at all, so a subtree was
+      // silently orphaned instead.
+      //
+      // Doing it here makes the two behave identically and makes the promise
+      // explicit: a folder is a label, so removing it unfiles its contents and
+      // promotes its children. Nothing is destroyed — deleting files is
+      // `DELETE /api/storage/:key`, deliberately a separate decision.
+      const parentId = existing[0].parentId ?? null;
+      const files = filesTableFor(ctx.dialect);
+      await (ctx.db as any)
+        .update(files)
+        .set({ folderId: null })
+        .where(and(eq(files.folderId, id), eq(files.tenantId, tenantId)));
+      await (ctx.db as any)
+        .update(t)
+        .set({ parentId })
+        .where(and(eq(t.parentId, id), eq(t.tenantId, tenantId)));
+
       await (ctx.db as any)
         .delete(t)
         .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));

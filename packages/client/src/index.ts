@@ -65,6 +65,9 @@ import type { CdcClient } from "./clients/cdc";
 import type { CommentsClient } from "./clients/comments";
 import type { RevisionsClient } from "./clients/revisions";
 import type { SharedLinksClient } from "./clients/shared-links";
+import type { NotificationsClient } from "./clients/notifications";
+import type { FoldersClient } from "./clients/folders";
+import type { VectorClient } from "./clients/vector";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
 import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, RetireReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
@@ -160,6 +163,9 @@ export * from "./clients/cdc";
 export * from "./clients/comments";
 export * from "./clients/revisions";
 export * from "./clients/shared-links";
+export * from "./clients/notifications";
+export * from "./clients/folders";
+export * from "./clients/vector";
 export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
@@ -199,6 +205,9 @@ import { makeCdc } from "./clients/cdc";
 import { makeComments } from "./clients/comments";
 import { makeRevisions } from "./clients/revisions";
 import { makeSharedLinks } from "./clients/shared-links";
+import { makeNotifications } from "./clients/notifications";
+import { makeFolders } from "./clients/folders";
+import { makeVector } from "./clients/vector";
 import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
@@ -337,6 +346,13 @@ export interface BacklexClient {
   /** Read-only share links for a single record, and the public read they
    *  authorise. */
   sharedLinks: SharedLinksClient;
+  /** In-app notifications — the bell, distinct from push and SMS. */
+  notifications: NotificationsClient;
+  /** Folders for stored files. Metadata, not key prefixes, so renaming one
+   *  moves nothing and breaks no URL. */
+  folders: FoldersClient;
+  /** Semantic search over stored vectors, by vector or by text. */
+  vector: VectorClient;
   extensions: ExtensionsClient;
   /** Named KPIs — the shared definition layer every surface reads a figure from. */
   kpis: KpisClient;
@@ -940,6 +956,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const comments = makeComments(core);
   const revisions = makeRevisions(core);
   const sharedLinks = makeSharedLinks(core);
+  const notifications = makeNotifications(core);
+  const folders = makeFolders(core);
+  const vector = makeVector(core);
   const payments = makePayments(core);
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
@@ -1005,6 +1024,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     comments,
     revisions,
     sharedLinks,
+    notifications,
+    folders,
+    vector,
     extensions,
     kpis,
     dashboards,

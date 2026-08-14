@@ -117,19 +117,11 @@ const MCP_SURFACES: Record<string, Coverage> = {
   },
   documents: { client: "documents" },
   email: { core: "from" },
-  embedding: {
-    deferred:
-      "Writing a raw embedding belongs with the vector client rather than on its own, so it lands in the same phase and shares its capability check.",
-    until: "wave-19-phase-3",
-  },
+  embedding: { client: "vector" },
   extensions: { client: "extensions" },
   "feature-flags": { client: "flags" },
   flows: { client: "flows" },
-  folders: {
-    deferred:
-      "File organisation is part of the storage story an application tells its users, and there is no client for it at all today. A wave-19 target.",
-    until: "wave-19-phase-3",
-  },
+  folders: { client: "folders" },
   forms: {
     client: "forms",
     // The client is 341 lines of AUTHORING and cannot fill in a form, which is
@@ -159,13 +151,9 @@ const MCP_SURFACES: Record<string, Coverage> = {
   jobs: { client: "jobs" },
   kpis: { client: "kpis" },
   migrate: { client: "migrate" },
-  notifications: {
-    // The `messaging.*` half of this module IS covered, by `messaging`; the
-    // `notifications.*` half — the bell an application draws — is not.
-    deferred:
-      "The push and SMS tools in this module reach the SDK through `messaging`; the notification list, send and mark-read tools have no client at all, and an in-app bell is something applications draw constantly.",
-    until: "wave-19-phase-3",
-  },
+  // Two clients: `messaging` owns the push/SMS tools here, `notifications` the
+  // in-app bell. Named for the latter because that is this module's own verb.
+  notifications: { client: "notifications" },
   oauth: { client: "oauth-clients" },
   order: { core: "from" },
   payments: { client: "payments" },
@@ -217,11 +205,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   },
   usage: { client: "usage" },
   users: { deferred: ADMIN_PLANE("Administrator user management"), until: "wave-21" },
-  vector: {
-    deferred:
-      "Semantic search is a headline capability an application cannot reach at all today. It ships with the caveat that `capabilities()` must degrade rather than throw where no vector store is configured. A wave-19 target.",
-    until: "wave-19-phase-3",
-  },
+  vector: { client: "vector" },
   webhooks: {
     deferred:
       "The cheapest four-of-five-to-five-of-five in the repository: REST, MCP and CLI all cover it and only the SDK does not. Sized at roughly seventy lines, and deferred only because wave 19's cut line put depth on the app-plane surfaces first.",

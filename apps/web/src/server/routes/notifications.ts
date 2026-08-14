@@ -28,7 +28,8 @@ const NotificationInput = z
     body: z.string().optional(),
     url: z.string().optional(),
     userId: z.string().nullable().optional().openapi({
-      description: "Target user. Omit (or null) for a broadcast notification.",
+      description:
+        "Target user. Omitting it (or sending null) targets the CALLER — the handler falls back to the calling identity, so this endpoint cannot produce a workspace-wide broadcast. Broadcast rows (userId null) are written by flows and are readable by everyone; this said it created them, and it never did.",
     }),
     push: z.boolean().optional().openapi({
       description: "Also fan out to the target user's push devices (ignored for broadcasts).",

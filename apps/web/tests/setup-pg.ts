@@ -18,6 +18,7 @@ import { resolve } from "node:path";
 import { schema } from "@backlex/db/pg";
 import { createApp } from "../src/server/app";
 import { __setDbOverrideForTests } from "../src/server/context";
+import { nextSyntheticIp } from "./setup";
 import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
 import type { Env } from "../src/server/env";
 
@@ -116,9 +117,10 @@ export const makeHarnessPg = async (
   const app = createApp(env);
 
   const cookieJar = new Map<string, string>();
-  const syntheticIp = `127.0.${(Math.random() * 250 + 1) | 0}.${
-    (Math.random() * 250 + 1) | 0
-  }`;
+  // Shares the SQLite harness's sequence — both run in the same bun-test
+  // process, so two independent random draws could (and did) collide with each
+  // other. See `nextSyntheticIp` for why this is a counter and not a random pick.
+  const syntheticIp = nextSyntheticIp();
   const fetchWithCookies = async (
     input: string,
     init: RequestInit = {},

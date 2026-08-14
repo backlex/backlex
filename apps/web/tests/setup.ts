@@ -35,6 +35,35 @@ export interface TestHarness {
 const DEFAULT_APP_URL = "http://localhost:5173";
 
 /**
+ * A distinct synthetic client IP per harness.
+ *
+ * The auth rate limiter keys on IP and allows five sign-ups per minute
+ * (`lib/auth-rate-limit.ts`), and its window state is module-level — shared by
+ * every harness in one bun-test process. So each harness needs its own IP, or
+ * unrelated specs quietly eat each other's budget and someone's `sign-up`
+ * returns 429.
+ *
+ * This used to pick one at RANDOM out of 250×250. With ~420 spec files that is
+ * a birthday problem rather than a long shot: ~1.4 expected colliding pairs per
+ * run, i.e. a **76% chance** some run has two harnesses sharing a bucket — and
+ * the victim is whichever spec happens to sign up inside the loser's window,
+ * which is why it read as an unrelated flake. Adding five specs in one wave is
+ * what finally made it reproducible.
+ *
+ * A counter is collision-free by construction, which is the property actually
+ * wanted here. 65,536 distinct values, far past any plausible spec count.
+ *
+ * Both harnesses draw from this one sequence — they run in the same process and
+ * would otherwise collide with each other. Tests that deliberately exercise the
+ * limiter still set their own `X-Forwarded-For` and are unaffected.
+ */
+let harnessSeq = 0;
+export const nextSyntheticIp = (): string => {
+  const n = harnessSeq++;
+  return `127.0.${(n >> 8) & 0xff}.${n & 0xff}`;
+};
+
+/**
  * Hook budget for a spec that boots PGlite.
  *
  * Starting a WASM Postgres is seconds of CPU, and bun's default hook timeout is
@@ -93,16 +122,7 @@ export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
   const app = createApp(env);
 
   const cookieJar = new Map<string, string>();
-  // Each harness gets its own synthetic client IP so the module-level
-  // auth-rate-limit windows (lib/auth-rate-limit.ts) don't accumulate across
-  // unrelated describe blocks in the same bun-test process. Without this a
-  // batch of test files that legitimately sign up many users from the same
-  // empty/"unknown" IP would tip the signup limit and start 429-ing.
-  // Tests that explicitly want to exercise the limiter can set their own
-  // X-Forwarded-For via the init argument.
-  const syntheticIp = `127.0.${(Math.random() * 250 + 1) | 0}.${
-    (Math.random() * 250 + 1) | 0
-  }`;
+  const syntheticIp = nextSyntheticIp();
   const fetchWithCookies = async (
     input: string,
     init: RequestInit = {},

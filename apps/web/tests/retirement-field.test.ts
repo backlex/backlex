@@ -193,6 +193,25 @@ describe("row retirement", () => {
     expect(r.body.error?.message ?? "").toContain("retired");
   });
 
+  test("only the field actually holding a retired row is named", async () => {
+    // `product` and `extras` both point at ret_products, and both are named in
+    // this payload — but only one of them holds the retired id. Naming the
+    // other one too sends the operator to a box whose value was fine.
+    const live = await create(products, { name: "two-rel-live", active: true });
+    const dead = await create(products, { name: "two-rel-dead", active: false });
+    const r = await create(orders, {
+      name: "o5",
+      product: live.body.data.id,
+      extras: [dead.body.data.id],
+    });
+    expect(r.status).toBe(422);
+    // Asserted on the leading quoted list rather than with `not.toContain`:
+    // the collection slug is "ret_products" and appears later in the same
+    // message, so a bare negative on "product" would fail for the wrong reason.
+    const msg = (r.body.error?.message ?? "") as string;
+    expect(msg.slice(0, msg.indexOf(" points at"))).toBe('"extras"');
+  });
+
   test("relation_many is judged the same way", async () => {
     const rows = (await h.fetch(`/api/items/${products}?retired=only`).then((r) => r.json())) as any;
     const goneId = rows.data[0].id as string;

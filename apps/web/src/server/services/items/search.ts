@@ -2,7 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
-import { isVectorizable, resolveModel } from "../vectorize";
+import { isVectorizable, resolveModel, vectorNamespace } from "../vectorize";
 import { ftsRankedIds, isSearchable } from "../fts";
 import { loadAppSettings } from "../settings";
 import { hasLocalizedField, type CollectionRow } from "./collection-loader";
@@ -120,7 +120,11 @@ export const searchCollectionItems = async (
     const matches = await ctx.vector.query(model, {
       values: values[0]!,
       topK: pool,
-      namespace: collection.slug,
+      // Must be the SAME namespace the write path wrote to. It used to be the
+      // bare slug while every write was scoped `<tenantId>:<slug>`, so this
+      // searched a namespace nothing had ever been written to — silently, since
+      // "no matches" and "wrong namespace" are the same empty array here.
+      namespace: vectorNamespace(collection.slug, auth.tenantId ?? null),
     });
     return matches.map((m) => m.id);
   };

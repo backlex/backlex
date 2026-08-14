@@ -55,13 +55,22 @@ export const isVectorizable = (meta: VectorizeMeta, env: Pick<Env, "EMBEDDING_DE
  * across every workspace in a single-worker multi-tenant deployment, keyed
  * `<namespace>:<id>` — so two tenants owning a same-slug collection would
  * otherwise collide / read each other's vectors. Prefixing with the tenant id
- * isolates them. Mirrors `scopeNs` in `routes/vector.ts`. (Cloud runs one
- * index per tenant, so the prefix is a harmless no-op there.) Existing
- * self-host data embedded under the bare slug must be re-indexed via
- * `POST /api/collections/:slug/vectorize`.
+ * isolates them. (Cloud runs one index per tenant, so the prefix is a harmless
+ * no-op there.) Existing self-host data embedded under the bare slug must be
+ * re-indexed via `POST /api/collections/:slug/vectorize`.
+ *
+ * **Exported because every path that touches the store must derive the
+ * namespace from this one function.** It used to be private, so the collection
+ * search path in `services/items/search.ts` hand-wrote the bare slug and
+ * queried a namespace nothing had ever been written to — `mode: "vector"`
+ * returned nothing on every multi-workspace install and `mode: "hybrid"`
+ * degraded to full-text with no error. `routes/vector.ts::scopeNs` builds the
+ * same join on top of this (it adds its own auth check and a no-namespace
+ * fallback the write path has no use for). Pinned by
+ * `tests/vector-namespace-parity.test.ts`.
  */
-const nsFor = (meta: { slug: string }, tenantId: string | null): string =>
-  tenantId ? `${tenantId}:${meta.slug}` : meta.slug;
+export const vectorNamespace = (slug: string, tenantId: string | null): string =>
+  tenantId ? `${tenantId}:${slug}` : slug;
 
 const vectorMetadata = (
   meta: VectorizeMeta,
@@ -103,7 +112,7 @@ export const embedAndUpsert = async (
       {
         id: itemId,
         values: values[0]!,
-        namespace: nsFor(meta, tenantId),
+        namespace: vectorNamespace(meta.slug, tenantId),
         metadata: vectorMetadata(meta, tenantId, itemId, text, model),
       },
     ]);
@@ -138,7 +147,7 @@ export const embedAndUpsertBatch = async (
   const records = prepared.map((p, i) => ({
     id: p.id,
     values: values[i]!,
-    namespace: nsFor(meta, tenantId),
+    namespace: vectorNamespace(meta.slug, tenantId),
     metadata: vectorMetadata(meta, tenantId, p.id, p.text, model),
   }));
   await ctx.vector.upsert(model, records);
@@ -154,7 +163,7 @@ const safeDelete = async (
   const model = resolveModel(meta, ctx.env);
   if (!model) return;
   try {
-    await ctx.vector.delete(model, ids, nsFor(meta, tenantId));
+    await ctx.vector.delete(model, ids, vectorNamespace(meta.slug, tenantId));
   } catch (e) {
     console.error(
       `[vectorize] delete failed for ${meta.slug}/${ids.join(",")}:`,

@@ -12,6 +12,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { reportToCloud } from "../lib/cloud-report";
 import { defaultHook } from "../lib/openapi-router";
+import { vectorNamespace } from "../services/vectorize";
 
 /**
  * Tenant-scope the caller-supplied namespace. In a single-worker multi-tenant
@@ -25,11 +26,17 @@ import { defaultHook } from "../lib/openapi-router";
  * NOTE: existing self-host multi-tenant data embedded before this change lives
  * under the un-prefixed namespace and must be re-indexed (collection
  * `POST /:slug/vectorize`, or re-upsert for raw vectors) to be queryable again.
+ *
+ * The `<tenant>:<name>` join itself comes from `vectorNamespace` so this route
+ * and the collection write/search paths cannot drift apart — they already had,
+ * and the search path was the one that was wrong. What stays local is the two
+ * things the write path has no use for: requiring an active tenant, and
+ * falling back to the bare tenant id when the caller names no namespace.
  */
 const scopeNs = (c: Context<AppBindings>, ns: string | undefined): string => {
   const tenantId = c.get("auth")?.tenantId ?? null;
   if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
-  return ns ? `${tenantId}:${ns}` : tenantId;
+  return ns ? vectorNamespace(ns, tenantId) : tenantId;
 };
 
 // Build the model enum from the registry so adding a model in

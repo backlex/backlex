@@ -225,8 +225,18 @@ export const isSingleLocale = (locale: string | null): boolean =>
  * correlated aggregate in the SELECT instead). Both joins hit the sidecar's
  * `(row_id, locale)` primary key, so they never multiply base rows — keyset
  * pagination and the existing relation joins stay correct.
+ *
+ * Takes `defs` for the same reason {@link buildLocalizedSelects} does, and it
+ * is not an optimization: `applyCollection` creates `<table>__i18n` only when
+ * `sidecarFields(fields)` is non-empty, so on a collection with nothing
+ * localized the table does not exist. Gating only on "was a single locale
+ * requested?" emitted a LEFT JOIN onto a missing table and the whole list
+ * answered 500 — for `?locale=en`, a parameter a client sends without knowing
+ * whether any field happens to be translated. The join exists exactly when
+ * something selects from it.
  */
-export const buildSidecarJoins = (opts: SidecarReadOpts): SQL[] => {
+export const buildSidecarJoins = (defs: FieldDef[], opts: SidecarReadOpts): SQL[] => {
+  if (defs.length === 0) return [];
   if (!isSingleLocale(opts.locale) || !opts.locale) return [];
   const sidecar = i18nTableName(opts.physicalTable);
   const base = sql.identifier(opts.physicalTable);

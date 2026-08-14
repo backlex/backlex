@@ -162,3 +162,62 @@ describe("localized (sidecar) collection fields", () => {
     expect(gone.status).toBe(404);
   });
 });
+
+/**
+ * A collection with NO localized field has no sidecar table: `applyCollection`
+ * creates `<table>__i18n` only when `sidecarFields(fields)` is non-empty. The
+ * read path has to agree with that, and one half of it did not — the SELECT
+ * builder took the localized defs and returned nothing for an empty list,
+ * while the JOIN builder asked only "was a single locale requested?" and
+ * emitted a LEFT JOIN onto the table that was never created.
+ *
+ * `?locale=` is a general query parameter, not one a caller is expected to
+ * withhold from a collection that happens to have no translations — the blog
+ * example sends it on every list — so the whole collection answered 500.
+ */
+describe("?locale on a collection with nothing localized", () => {
+  let h: TestHarness;
+  const slug = `nolocale_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const created = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        name: "No localized fields",
+        fields: [{ name: "title", type: "text" }],
+      }),
+    });
+    expect(created.status).toBe(201);
+    const row = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Plain" }),
+    });
+    expect(row.status).toBe(201);
+  });
+
+  afterAll(() => h.cleanup?.());
+
+  test("listing with ?locale=en does not join a sidecar that was never created", async () => {
+    const res = await h.fetch(`/api/items/${slug}?locale=en`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { title: string }[] };
+    expect(body.data.map((r) => r.title)).toEqual(["Plain"]);
+  });
+
+  test("a single get with ?locale=en behaves the same", async () => {
+    const list = await h.fetch(`/api/items/${slug}`);
+    const [first] = ((await list.json()) as { data: { id: string }[] }).data;
+    const res = await h.fetch(`/api/items/${slug}/${first!.id}?locale=en`);
+    expect(res.status).toBe(200);
+  });
+
+  test("?locale=* is unaffected — it never joined in the first place", async () => {
+    const res = await h.fetch(`/api/items/${slug}?locale=*`);
+    expect(res.status).toBe(200);
+  });
+});

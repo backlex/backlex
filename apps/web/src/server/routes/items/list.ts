@@ -486,7 +486,7 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // Pushed into `extraJoins` so `hasJoins` qualifies the base `*` (a bare
       // `SELECT *` alongside the sidecar join would otherwise pull its columns
       // into the row). The `(row_id, locale)` PK keeps the joins 1:1.
-      for (const j of buildSidecarJoins({
+      for (const j of buildSidecarJoins(localizedDefs, {
         physicalTable: collection.physicalTable,
         pkColumn: collection.pkColumn,
         locale,

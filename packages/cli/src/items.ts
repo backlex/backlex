@@ -23,12 +23,14 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
 
   list <slug>     [--filter <json>] [--sort a,-b] [--fields a,b] [--expand …]
                   [--limit N] [--offset N | --cursor <c>] [--meta filter_count] [--status …]
+                  [--retired all|exclude|only]
   get <slug> <id> [--expand …] [--locale xx]
   create <slug>   --data <json|@file|-> [--locale xx]
   update <slug> <id> --data <json|@file|-> [--locale xx]
   delete <slug> <id>
   verify <slug> <id> --field <name> --value <plaintext>
   transitions <slug> <id>
+  retire <slug> <id> [--restore]
   reorder <slug> <id> --field <name> (--before <id> | --after <id>)
   normalize-order <slug> [--field <name>]
   backfill-slugs <slug> [--field <name>] [--apply]
@@ -177,6 +179,28 @@ export const runItems = async (args: string[]): Promise<void> => {
               process.stdout.write(`  ${m.allowed ? "→" : "✗"} ${m.to}${why}\n`);
             }
           }
+        }
+        return;
+      }
+      case "retire": {
+        const usage = "items retire <slug> <id> [--restore]";
+        const slug = requireSlug(rest, usage);
+        const id = rest[1];
+        if (!id || id.startsWith("-")) {
+          process.stderr.write(`${usage}\n`);
+          process.exit(1);
+        }
+        const restore = rest.includes("--restore");
+        const res = await client.from(slug).retire(id, restore ? { restore: true } : undefined);
+        if (json) printJson(res);
+        else {
+          // Says what happened to the ROW, not what was written to the column:
+          // half the schemas spell the flag `active` and the other half spell
+          // it the other way round, and "set discontinued = true" reads as the
+          // opposite of what it did.
+          process.stdout.write(
+            `${res.retired ? "retired" : "restored"} ${id} (${res.field})\n`,
+          );
         }
         return;
       }

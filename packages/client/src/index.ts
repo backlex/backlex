@@ -64,7 +64,7 @@ import type { OAuthClientsClient } from "./clients/oauth-clients";
 import type { CdcClient } from "./clients/cdc";
 import type { TemplatesClient } from "./clients/templates";
 import type { UsageClient } from "./clients/usage";
-import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
+import type { EmailNormalizeReport, FieldTransitions, GeoBackfillReport, NormalizeOrderReport, PhoneNormalizeReport, ReorderReport, RetireReport, SequenceSyncReport, SlugBackfillReport, WriteLocaleOpts, WriteUpdateOpts } from "./core";
 import {
   type AggregateQuery,
   type AggregateRow,
@@ -231,6 +231,7 @@ const buildSearch = (q: ListQuery | undefined): string => {
   if (q.locale) params.set("locale", q.locale);
   if (q.q) params.set("q", q.q);
   if (q.status) params.set("status", q.status);
+  if (q.retired) params.set("retired", q.retired);
   const s = params.toString();
   return s ? `?${s}` : "";
 };
@@ -631,6 +632,13 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
           id,
           ...to,
         }).then((r) => r.data),
+      /** Take a row out of play, or (with `restore`) put it back. */
+      retire: (id: string, opts?: { restore?: boolean }): Promise<RetireReport> =>
+        request<RetireReport>(
+          "POST",
+          `/api/items/${slug}/${encodeURIComponent(id)}/retire${opts?.restore ? "?restore=1" : ""}`,
+          {},
+        ),
       /** Renumber this collection's order fields into dense 1…N per list. */
       normalizeOrder: (field?: string): Promise<NormalizeOrderReport> =>
         request<{ data: NormalizeOrderReport }>(

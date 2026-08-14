@@ -50,6 +50,16 @@ export interface ListQuery {
    *  `publish`/`update` permission, otherwise they're ignored and published-only
    *  is enforced. */
   status?: "draft" | "published" | "archived" | "all";
+  /**
+   * How to treat rows the collection's retirement flag has taken out of play.
+   *
+   * `all` is the default and the contract: retirement never hides a row from a
+   * read, so leaving this off returns everything, exactly as it always did.
+   * `exclude` narrows to rows still in play (a NULL flag counts as in play);
+   * `only` returns just the retired ones. On a collection with no `retire`
+   * field `exclude` is everything and `only` is nothing.
+   */
+  retired?: "all" | "exclude" | "only";
 }
 
 /** Per-call options for `from(slug).one(id, ...)`. Mirrors the single-item

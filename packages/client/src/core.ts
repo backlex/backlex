@@ -220,6 +220,22 @@ export interface CollectionClient<T extends Record<string, unknown>> {
     id: string,
     to: { before: string } | { after: string },
   ): Promise<ReorderReport>;
+  /**
+   * Take a row out of play, or put it back.
+   *
+   * Writes the collection's retirement flag — the boolean declared with
+   * `retire`, spelled `active` in most schemas.
+   *
+   * **This is not a delete and not a hide.** Every existing reference still
+   * resolves, `get()` still returns the row, and `list()` still includes it
+   * unless you ask it not to with `retired: "exclude"`. What changes is that
+   * the row stops being OFFERED for new work: the admin's pickers skip it, and
+   * a write pointing a NEW relation at it is refused with 422 unless the flag
+   * declares `references: "allow"`.
+   *
+   * Requires an `update` grant that covers the flag column.
+   */
+  retire(id: string, opts?: { restore?: boolean }): Promise<RetireReport>;
   /** Renumber this collection's order fields into dense 1…N within each list,
    *  keeping the order the rows currently read in. The repair path for a column
    *  that predates being declared an order field. Idempotent; omit `field` to do
@@ -379,6 +395,16 @@ export interface ReorderReport {
   /** How many rows the tie repair renumbered before the move. Non-zero the
    *  first time a list that was never really ordered gets dragged. */
   repaired: number;
+}
+
+/** What {@link CollectionClient.retire} did. */
+export interface RetireReport {
+  /** The flag column that was written — `active` in most schemas. */
+  field: string;
+  /** Where the row ended up. */
+  retired: boolean;
+  /** The updated row, projected through the caller's READ grant. */
+  data: Record<string, unknown>;
 }
 
 /** What {@link CollectionClient.normalizeOrder} did. */

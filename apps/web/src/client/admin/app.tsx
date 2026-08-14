@@ -58,6 +58,7 @@ import { needsDisplayTemplate } from "./lib/row-label";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./fields/add-field";
 import { loadAuthors } from "./lib/authors-cache";
+import { liveValueOf, retireFieldOf } from "./lib/retirement";
 import { CollectionsIndex, NewCollectionDialog } from "./collections/collections-index";
 import { EditFieldDialog } from "./fields/edit-field";
 import { CollectionKpisPanel } from "./collections/collection-kpis";
@@ -311,6 +312,18 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   const [search, setSearch] = useUrlState("q", "");
   const [filters, setFilters] = useUrlStateJson<FilterCondition[]>("filter", []);
   const [statusTab, setStatusTab] = useState("all");
+  /**
+   * Which rows the retirement flag lets into the list — and it opens on the
+   * ones still in play.
+   *
+   * A UI default, not an API one: `?retired=` defaults to `all` everywhere
+   * else, so no consumer's results move. What this decides is only what the
+   * operator is looking at when the page opens, and a list of live products
+   * with the discontinued ones mixed in is the thing the feature exists to fix.
+   * The segmented control shows which scope is on, so nothing has silently
+   * vanished.
+   */
+  const [retiredTab, setRetiredTab] = useState("in-play");
   // Empty = don't send a sort; the server then applies the collection's
   // `defaultSort` setting, falling back to `-created_at` (stable — rows don't
   // reshuffle every time someone edits one, unlike the old `-updated_at`).
@@ -364,6 +377,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     [schemaState],
   );
   const hasStatusField = !!kanbanStatusField;
+  /** The collection's retirement flag, if it declares one — what the list's
+   *  in-play/out-of-play control and the row action are driven by. */
+  const retireField = useMemo(
+    () => retireFieldOf(schemaState.fields as Array<{ name: string; label?: string }>),
+    [schemaState.fields],
+  );
   const viewMode: ItemsViewMode =
     requestedView === "kanban" && !hasStatusField ? "table" : requestedView;
   // Archive lifecycle view — when on, GET /api/collections is called with
@@ -535,8 +554,10 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         statusTab,
         statusFieldName: kanbanStatusField?.name ?? null,
         expandHeads,
+        retiredTab,
+        hasRetireField: Boolean(retireField),
       }),
-    [sort, debouncedSearch, filters, statusTab, kanbanStatusField, expandHeads],
+    [sort, debouncedSearch, filters, statusTab, kanbanStatusField, expandHeads, retiredTab, retireField],
   );
   const itemsQuery = useItems(activeCollection, itemsParams);
   // Reactive list: subscribe to the collection's realtime feed and refresh on
@@ -1071,6 +1092,36 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       pushToast((e as Error).message, "error");
     }
   };
+  /**
+   * Retire (or restore) every selected row.
+   *
+   * Goes through the existing bulk-update mutation rather than looping the
+   * `retire` verb: the verb writes one column through `performUpdate`, and so
+   * does bulk-update — the row scope and the field allow-list are enforced the
+   * same way either side. A loop of N requests would only add N round trips and
+   * a partial-failure story the bulk endpoint already reports.
+   */
+  const onBulkRetire = async (retire: boolean) => {
+    if (!retireField?.retire) return;
+    const ids = [...selected];
+    const live = liveValueOf(retireField);
+    try {
+      const res = await bulkUpdate.mutateAsync({
+        ids,
+        data: { [retireField.name]: retire ? !live : live },
+      });
+      const r = res.data;
+      pushToast(
+        r.failed > 0
+          ? (retire ? t`${r.updated} taken out of play, ${r.failed} skipped.` : t`${r.updated} put back in play, ${r.failed} skipped.`)
+          : (retire ? t`${r.updated} taken out of play.` : t`${r.updated} put back in play.`),
+        r.failed > 0 && r.updated === 0 ? "error" : undefined,
+      );
+      setSelected(new Set());
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  };
   const onBulkPublish = async () => {
     const ids = [...selected];
     const { okIds, failed } = await bulkPublish.mutateAsync({ ids });
@@ -1464,6 +1515,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                       filters={filters} setFilters={setFilters}
                       schema={schemaState}
                       status={statusTab} setStatus={setStatusTab}
+                      retired={retiredTab} setRetired={setRetiredTab}
                       total={tweaks.populated ? posts.length : 0}
                     />
                     {/* Card labels are running on the composed/short-id
@@ -1549,6 +1601,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           onEdit={() => setBulkEditOpen(true)}
                           onPublish={onBulkPublish}
                           onDelete={onBulkDelete}
+                          onRetire={retireField ? onBulkRetire : undefined}
                         />
                       )}
                       {viewMode === "table" && gridMode && pageRows.length > 0 && (

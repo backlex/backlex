@@ -20,6 +20,14 @@ export interface ItemsQueryParams {
   /** Comma-joined relation heads to inline (`expand=author,category`) —
    *  driven by dot-notation list columns like `author.first_name`. */
   expand?: string;
+  /**
+   * Which rows the collection's retirement flag lets through. Sent as its own
+   * param rather than folded into `filter` — the server compiles it (the
+   * "NULL counts as in play" arm in particular), and a hand-built
+   * `{active: {_eq: true}}` chip here would quietly drop every row nobody has
+   * answered for.
+   */
+  retired?: "exclude" | "only";
 }
 
 /**
@@ -34,11 +42,17 @@ export function buildItemsParams(input: {
   filters: FilterCondition[];
   statusTab: string;
   statusFieldName: string | null;
+  /** `"in-play"` (the list's default), `"retired"`, or `"all"`. Ignored when
+   *  the collection declares no retirement flag. */
+  retiredTab?: string;
+  hasRetireField?: boolean;
   /** Relation heads needed by dot-notation list columns (deduped, sorted). */
   expandHeads?: string[];
 }): ItemsQueryParams {
-  const { sort, q, filters, statusTab, statusFieldName, expandHeads } = input;
+  const { sort, q, filters, statusTab, statusFieldName, expandHeads, retiredTab, hasRetireField } = input;
   const params: ItemsQueryParams = { limit: 50 };
+  if (hasRetireField && retiredTab === "retired") params.retired = "only";
+  else if (hasRetireField && retiredTab !== "all") params.retired = "exclude";
   if (sort) params.sort = sort;
   if (expandHeads?.length) params.expand = expandHeads.join(",");
   if (q.trim()) params.q = q.trim();

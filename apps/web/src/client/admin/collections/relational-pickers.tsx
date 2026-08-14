@@ -40,6 +40,7 @@ import { useCollections } from "../queries";
 import { expandParam } from "../lib/display-template";
 import { appUserLabel } from "../lib/relation-labels";
 import { makeLabelFor, type LabelFn } from "../lib/row-label";
+import { retireFieldOf, rowIsRetired } from "../lib/retirement";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared bits
@@ -822,12 +823,44 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string>(initial);
+  const meta = useTargetMeta(target);
+  const retireField = useMemo(() => retireFieldOf(meta.fields), [meta.fields]);
+  /**
+   * Retired rows are OFF by default and reachable behind this toggle.
+   *
+   * Off by default is the whole feature: an operator picking a product was
+   * being offered the discontinued one on equal footing with the one still
+   * being sold. Reachable at all is not a hedge — the row currently IN this
+   * field may itself be retired, and a picker that could not re-select it
+   * would make an ordinary edit of the row impossible.
+   */
+  const [includeRetired, setIncludeRetired] = useState(false);
+
+  // Typing is local; the request is debounced. Without this, moving the search
+  // server-side would mean one round trip per keystroke.
+  const [debouncedQ, setDebouncedQ] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQ(q), 250);
+    return () => clearTimeout(id);
+  }, [q]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setErr(null);
-    itemsApi.list(target, { limit: 100, sort: "-updated_at", ...(expand ? { expand } : {}) })
+    // Search runs SERVER-side. It used to filter the 100 rows already fetched,
+    // which meant a row outside the most-recent hundred could not be found at
+    // all — the box said "use search to narrow down" and narrowing was the one
+    // thing it could not do.
+    const query = debouncedQ.trim();
+    itemsApi
+      .list(target, {
+        limit: 100,
+        sort: "-updated_at",
+        ...(expand ? { expand } : {}),
+        ...(query ? { q: query } : {}),
+        ...(retireField && !includeRetired ? { retired: "exclude" } : {}),
+      })
       .then((res) => {
         if (cancelled) return;
         const next = (res?.data ?? []) as Array<Record<string, unknown>>;
@@ -837,17 +870,9 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
       .catch((e: Error) => { if (!cancelled) setErr(e.message || "Failed to load rows"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [target, seedLabels, expand]);
+  }, [target, seedLabels, expand, debouncedQ, includeRetired, retireField]);
 
-  const filtered = useMemo(() => {
-    if (!rows) return [];
-    const query = q.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter((r) => {
-      const hay = `${labelFor(r) ?? ""} ${r.id ?? ""}`.toLowerCase();
-      return hay.includes(query);
-    });
-  }, [rows, q, labelFor]);
+  const filtered = rows ?? [];
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -857,7 +882,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
             <Trans>Pick a row from <span className="font-mono">c_{target}</span></Trans>
           </DialogTitle>
           <DialogDescription className="text-[12.5px]">
-            <Trans>Showing the 100 most recently updated rows. Use search to narrow down.</Trans>
+            <Trans>The 100 most recently updated rows. Search runs across the whole collection.</Trans>
           </DialogDescription>
         </DialogHeader>
 
@@ -872,6 +897,13 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
               placeholder={t`Search by label or id…`}
             />
           </InputGroup>
+
+          {retireField && (
+            <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-muted-foreground">
+              <Checkbox checked={includeRetired} onChange={setIncludeRetired} />
+              <Trans>Also show rows that are out of play</Trans>
+            </label>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 200 }}>
             {loading && (
@@ -915,8 +947,18 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
                     flex: "none",
                   }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {lbl ?? <span className="text-muted-foreground"><Trans>(no label)</Trans></span>}
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {lbl ?? <span className="text-muted-foreground"><Trans>(no label)</Trans></span>}
+                      </span>
+                      {rowIsRetired(r, retireField) && (
+                        // Only reachable with the toggle on, so this labels a
+                        // row the operator deliberately asked to see — never a
+                        // surprise in the default list.
+                        <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10.5px] uppercase tracking-wide text-muted-foreground">
+                          <Trans>Out of play</Trans>
+                        </span>
+                      )}
                     </div>
                     <div className="truncate font-mono text-[11px] text-muted-foreground">
                       {id}

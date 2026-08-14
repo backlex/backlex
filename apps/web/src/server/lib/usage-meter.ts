@@ -26,10 +26,12 @@ import type { MiddlewareHandler } from "hono";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import {
+  bumpAiUsage,
   bumpUsage,
   effectiveUsageLimits,
   monthUsage,
 } from "../services/usage";
+import type { AiMeterSink } from "../mcp/ai-client";
 
 const isAuthPath = (path: string): boolean =>
   path.startsWith("/api/auth/") || /^\/api\/t\/[^/]+\/auth\//.test(path);
@@ -75,6 +77,47 @@ export const assertWorkspaceRequestQuota = async (
       used,
     });
   }
+};
+
+/**
+ * A meter sink for the workspace this request belongs to, for handing to
+ * `callClaude`.
+ *
+ * Returns `null` when there is no workspace to bill — an unauthenticated
+ * surface that never called `setMeterTenant`. That is the honest answer, and
+ * `callClaude` takes it as an explicit argument so it cannot be confused with
+ * having forgotten to meter.
+ *
+ * The write is scheduled the same way the request counter's is (waitUntil on
+ * Workers, a dangling promise elsewhere), so recording a cost never delays the
+ * answer the cost bought.
+ */
+export const aiMeterFor = (
+  c: Parameters<MiddlewareHandler<AppBindings>>[0],
+): AiMeterSink => {
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  const tenantId = auth?.tenantId ?? auth?.apiKeyTenantId ?? c.get("meterTenantId") ?? null;
+  if (!ctx || !tenantId) return null;
+  return (usage) => {
+    bumpAiUsage(
+      ctx,
+      {
+        tenantId,
+        apiKeyId: auth?.apiKeyId ?? "",
+        tokensIn: usage.input_tokens,
+        tokensOut: usage.output_tokens,
+        neurons: usage.neurons,
+      },
+      (work) => {
+        try {
+          c.executionCtx?.waitUntil?.(work);
+        } catch {
+          void work; // no ExecutionContext (Bun/Vercel/Netlify) — fire and forget
+        }
+      },
+    );
+  };
 };
 
 export const usageMeterMiddleware: MiddlewareHandler<AppBindings> = async (

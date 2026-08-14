@@ -27,6 +27,7 @@ import { publishEvent } from "../events";
 import { enqueueAgentTurn, runQueuedAgentTurn } from "./async-run";
 import { resolveResponders } from "./mentions";
 import { runAgentTurn, type RunTurnResult } from "./runner";
+import { aiMeterForTenant } from "../usage";
 import {
   appendMessage,
   claimRun,
@@ -113,7 +114,13 @@ export const sendMessage = async (
     }
     responders = input.forceAgentIds;
   } else {
-    responders = await resolveResponders({ env, thread, participants, message });
+    responders = await resolveResponders({
+      env,
+      thread,
+      participants,
+      message,
+      meter: aiMeterForTenant(ctx, tenantId),
+    });
   }
 
   // The message lands once, before any turn starts, so every viewer sees it

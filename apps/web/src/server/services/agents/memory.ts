@@ -24,6 +24,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import { isEmbeddingModel, type EmbeddingModel } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { callClaude } from "../../mcp/ai-client";
+import { aiMeterForTenant } from "../usage";
 
 const memoriesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.agentMemories : sqlite.schema.agentMemories;
@@ -631,7 +632,7 @@ export const distillSemantic = async (
       // Extraction is a mechanical read, not a reasoning task — the cheapest
       // effort tier is the right one and keeps the pass nearly free.
       effort: "low",
-    });
+    }, aiMeterForTenant(ctx, input.tenantId));
     facts = parseFacts(reply.text);
   } catch (e) {
     console.error(`[agent-memory] distill failed for ${input.threadId}:`, e);

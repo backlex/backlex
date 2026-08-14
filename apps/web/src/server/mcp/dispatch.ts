@@ -8,6 +8,7 @@ import {
   type ToolCtx,
 } from "./types";
 import { makeInternalFetch } from "./internal-fetch";
+import { aiMeterForTenant } from "../services/usage";
 import {
   checkToolCall,
   filterByAllowlist,
@@ -183,6 +184,15 @@ export const dispatch = async (
     mode: wiring.mode,
     env: wiring.env,
     guards,
+    // The MCP request carries the workspace, so an `ai.*` tool's generation is
+    // billed to whoever called the tool rather than going uncounted. Built from
+    // the tenant rather than the Hono context because `dispatch` declares a
+    // deliberately narrow structural context — the MCP tests hand it a bare one.
+    meterAi: aiMeterForTenant(
+      honoCtx.get("ctx") as Parameters<typeof aiMeterForTenant>[0],
+      auth.tenantId,
+      auth.apiKeyId,
+    ),
   };
 
   // Stateless transport: every request stands alone, so `initialize` is

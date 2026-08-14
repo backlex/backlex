@@ -120,7 +120,7 @@ export const aiQuery: McpTool = {
       `${renderSchemaContext(meta)}\n\nUser question: "${prompt}"\n\n` +
       `Return the JSON query object only.`;
 
-    const reply = await callClaude(ctx.env, { system, user, maxTokens: 1024 });
+    const reply = await callClaude(ctx.env, { system, user, maxTokens: 1024 }, ctx.meterAi);
     let query: { filter?: unknown; sort?: string; limit?: number };
     try {
       query = extractJson(reply.text);
@@ -209,7 +209,7 @@ export const aiSuggestSchema: McpTool = {
     // OpenAI/Google key — `resolveModelId` cannot tell a foreign bare id from
     // a native one, so it 404'd. Omitting it asks the configured provider for
     // its own default, which is the only answer that is right everywhere.
-    const reply = await callClaude(ctx.env, { system, user, maxTokens: 2048 });
+    const reply = await callClaude(ctx.env, { system, user, maxTokens: 2048 }, ctx.meterAi);
     let schema: { slug?: string; fields?: Array<{ name: string; type: string }> };
     try {
       schema = extractJson(reply.text);
@@ -392,7 +392,7 @@ export const aiImportCsv: McpTool = {
     // OpenAI/Google key — `resolveModelId` cannot tell a foreign bare id from
     // a native one, so it 404'd. Omitting it asks the configured provider for
     // its own default, which is the only answer that is right everywhere.
-    const reply = await callClaude(ctx.env, { system, user, maxTokens: 2048 });
+    const reply = await callClaude(ctx.env, { system, user, maxTokens: 2048 }, ctx.meterAi);
     let schema: unknown;
     try {
       schema = extractJson(reply.text);

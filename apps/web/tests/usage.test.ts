@@ -409,8 +409,13 @@ describe("usage — billing export", () => {
     );
     const text = await res.text();
     const lines = text.trimEnd().split("\r\n");
+    // Pinned in full, and deliberately: this file is what a customer feeds to
+    // their own billing, so a column appearing, moving or vanishing is a
+    // breaking change to somebody's spreadsheet — it should have to be typed
+    // out here first.
     expect(lines[0]).toBe(
-      '"day","apiKeyId","keyName","keyPrefix","requests","errors","storageBytes","dbRows"',
+      '"day","apiKeyId","keyName","keyPrefix","requests","errors",' +
+        '"aiCalls","aiTokensIn","aiTokensOut","aiNeurons","storageBytes","dbRows"',
     );
     expect(lines.length).toBeGreaterThanOrEqual(2);
     expect(text).toContain('"Sessions & admin"');

@@ -298,7 +298,40 @@ const callCloudGeneration = async (
   };
 };
 
+/**
+ * Where a generation's cost is recorded.
+ *
+ * A plain callback rather than a db handle: this module knows how to generate,
+ * not which workspace is paying — the tenant lives on the request, and `env` is
+ * per-deployment. The caller closes over what it knows.
+ *
+ * `null` is the "genuinely not attributable" answer, and it is spelled out
+ * rather than left to an optional parameter on purpose: an omitted argument is
+ * indistinguishable from a forgotten one, and a generation nobody counted is
+ * exactly the failure this ledger exists to end.
+ */
+export type AiMeterSink = ((usage: NonNullable<ClaudeResponse["usage"]>) => void) | null;
+
+/**
+ * Generate, and record what it cost.
+ *
+ * The one chokepoint every AI path in the product goes through — MCP tools,
+ * Ask AI, agent turns, mention replies, translation — so metering here covers
+ * all of them, on both the direct-provider and managed-cloud routes.
+ */
 export const callClaude = async (
+  env: Env,
+  req: ClaudeRequest,
+  meter: AiMeterSink,
+): Promise<ClaudeResponse> => {
+  const reply = await generate(env, req);
+  // Counted even when the provider reported no figures: a generation happened,
+  // and "one call, cost unknown" is a truer ledger entry than silence.
+  if (meter) meter(reply.usage ?? {});
+  return reply;
+};
+
+const generate = async (
   env: Env,
   { system, user, model, maxTokens, effort }: ClaudeRequest,
 ): Promise<ClaudeResponse> => {

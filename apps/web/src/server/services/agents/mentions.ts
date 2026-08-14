@@ -19,6 +19,7 @@
 import { callClaude } from "../../mcp/ai-client";
 import type { Env } from "../../env";
 import type { AgentRow, ThreadRow } from "./store";
+import type { AiMeterSink } from "../../mcp/ai-client";
 
 /** Trailing characters stripped off a mention token so `@sales, what…` and
  *  `(@sales)` still resolve. Only these — trimming arbitrary characters could
@@ -82,6 +83,7 @@ const routeAutomatically = async (
   env: Env,
   message: string,
   candidates: AgentRow[],
+  meter: AiMeterSink,
 ): Promise<string | null> => {
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return candidates[0]?.id ?? null;
@@ -95,7 +97,7 @@ const routeAutomatically = async (
       system: ROUTER_SYSTEM,
       user: `Agents:\n${roster}\n\nMessage:\n${message}`,
       maxTokens: 16,
-    });
+    }, meter);
     text = reply.text;
   } catch {
     return null; // no provider / provider error — the room just stays quiet
@@ -107,6 +109,10 @@ const routeAutomatically = async (
 
 export interface ResolveRespondersInput {
   env: Env;
+  /** Where the router's own model call is billed. Auto-routing spends tokens
+   *  on a message the user never asked a question about, so it is exactly the
+   *  kind of spend that goes unnoticed unless it is counted. */
+  meter: AiMeterSink;
   thread: ThreadRow;
   /** The room's participants, already loaded. */
   participants: AgentRow[];
@@ -121,7 +127,7 @@ export interface ResolveRespondersInput {
 export const resolveResponders = async (
   input: ResolveRespondersInput,
 ): Promise<string[]> => {
-  const { thread, participants, message, env } = input;
+  const { thread, participants, message, env, meter } = input;
   const active = participants.filter((a) => a.active);
 
   const mentioned = parseMentions(message, active);
@@ -138,7 +144,7 @@ export const resolveResponders = async (
     return active.length === 1 ? [active[0]!.id] : [];
   }
   if (thread.routing === "auto") {
-    const picked = await routeAutomatically(env, message, active);
+    const picked = await routeAutomatically(env, message, active, meter);
     return picked ? [picked] : [];
   }
   // "mention": nobody was named, so nobody answers. A room stays usable as a

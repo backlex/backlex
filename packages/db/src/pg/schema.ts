@@ -1529,6 +1529,23 @@ export const usageCounters = pgTable(
     requests: integer("requests").notNull().default(0),
     /** 5xx responses — a server-fault subset of `requests`, not additional. */
     errors: integer("errors").notNull().default(0),
+    /**
+     * Model generations — a subset of `requests` only when the generation was
+     * itself the request; a flow step or an agent turn bumps this without a
+     * request of its own, which is exactly why AI cannot be inferred from the
+     * request count.
+     */
+    aiCalls: integer("ai_calls").notNull().default(0),
+    /**
+     * Tokens, on the DIRECT-provider path. Zero on managed cloud, which meters
+     * in neurons and does not return token counts — the two paths measure
+     * genuinely different things, so they get different columns rather than one
+     * column whose meaning depends on the deployment.
+     */
+    aiTokensIn: bigint("ai_tokens_in", { mode: "number" }).notNull().default(0),
+    aiTokensOut: bigint("ai_tokens_out", { mode: "number" }).notNull().default(0),
+    /** Workers AI neurons, on the managed-cloud path. Zero elsewhere. */
+    aiNeurons: bigint("ai_neurons", { mode: "number" }).notNull().default(0),
     /** Gauge: total stored file bytes for the workspace at last sweep. */
     storageBytes: bigint("storage_bytes", { mode: "number" }),
     /** Gauge: total rows across the workspace's collections at last sweep. */

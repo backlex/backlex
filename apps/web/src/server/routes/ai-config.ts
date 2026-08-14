@@ -20,6 +20,7 @@ import {
   saveOwnConfigRow,
   tenantKey,
 } from "../services/provider-config";
+import { aiMeterFor } from "../lib/usage-meter";
 import {
   AI_MODELS,
   AI_PROVIDERS,
@@ -256,7 +257,7 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         user: "Reply with exactly the word: ok",
         model,
         maxTokens: 16,
-      });
+      }, aiMeterFor(c));
       return c.json({ ok: true, reply: reply.text.trim().slice(0, 200) });
     },
   );

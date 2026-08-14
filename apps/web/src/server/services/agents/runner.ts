@@ -32,6 +32,7 @@ import {
   scheduleDistillation,
   storeEpisodic,
 } from "./memory";
+import { aiMeterForTenant } from "../usage";
 import {
   appendMessage,
   getAgent,
@@ -282,6 +283,10 @@ export const runAgentTurn = async (
     mode: "admin",
     env: ctx.env,
     guards: { allowlist: null, readOnly: false },
+    // An agent turn is the heaviest AI spender in the product and has no
+    // request of its own to be billed against, which is exactly why the ledger
+    // counts generations rather than requests.
+    meterAi: aiMeterForTenant(ctx, tenantId),
   };
 
   // Memory (opt-in), in two passes. They're folded in under separate headings

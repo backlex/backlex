@@ -53,7 +53,53 @@ interface BufferedEntry {
   day: string;
   requests: number;
   errors: number;
+  aiCalls: number;
+  aiTokensIn: number;
+  aiTokensOut: number;
+  aiNeurons: number;
 }
+
+/** What one generation cost, as the provider reported it. Tokens and neurons
+ *  are alternatives, not a pair: the direct path returns the first, the managed
+ *  cloud gateway the second, and neither returns the other. */
+export interface AiUsageHit {
+  tenantId: string;
+  apiKeyId?: string | null;
+  tokensIn?: number;
+  tokensOut?: number;
+  neurons?: number;
+}
+
+/** Buffer key — one row per (workspace, key, UTC day), so a request and the
+ *  generation it made coalesce into a single upsert. */
+const bufferKey = (tenantId: string, apiKeyId: string, day: string): string =>
+  `${tenantId}\n${apiKeyId}\n${day}`;
+
+const entryFor = (tenantId: string, apiKeyId: string, day: string): BufferedEntry => {
+  const key = bufferKey(tenantId, apiKeyId, day);
+  let entry = buffer.get(key);
+  if (!entry) {
+    entry = {
+      tenantId,
+      apiKeyId,
+      day,
+      requests: 0,
+      errors: 0,
+      aiCalls: 0,
+      aiTokensIn: 0,
+      aiTokensOut: 0,
+      aiNeurons: 0,
+    };
+    buffer.set(key, entry);
+  }
+  return entry;
+};
+
+/** A non-negative integer, or 0. Guards the ledger against a provider that
+ *  reports a float, a negative, or `NaN` — the counters are additive and a
+ *  poisoned one never recovers on its own. */
+const counted = (n: number | undefined): number =>
+  typeof n === "number" && Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
 
 const FLUSH_MAX_EVENTS = 20;
 const FLUSH_MAX_AGE_MS = 10_000;
@@ -82,16 +128,71 @@ export const bumpUsage = (
   hit: { tenantId: string; apiKeyId?: string | null; error?: boolean },
   schedule: (work: Promise<unknown>) => void,
 ): void => {
-  const day = utcDay();
-  const apiKeyId = hit.apiKeyId ?? "";
-  const key = `${hit.tenantId}\n${apiKeyId}\n${day}`;
-  let entry = buffer.get(key);
-  if (!entry) {
-    entry = { tenantId: hit.tenantId, apiKeyId, day, requests: 0, errors: 0 };
-    buffer.set(key, entry);
-  }
+  const entry = entryFor(hit.tenantId, hit.apiKeyId ?? "", utcDay());
   entry.requests += 1;
   if (hit.error) entry.errors += 1;
+  markBuffered(ctx, schedule);
+};
+
+/**
+ * Record one model generation.
+ *
+ * Separate from {@link bumpUsage} because AI is NOT a subset of requests: a
+ * flow step, an agent turn and a sync hook each generate without a request of
+ * their own, and an `/api/ai/*` request that generates twice is one request and
+ * two calls. Counting it as a request would make both numbers wrong.
+ *
+ * Buffered through the same map and flushed by the same writer, so a request
+ * and the generation it made land as one upsert rather than two.
+ */
+export const bumpAiUsage = (
+  ctx: UsageDbCtx,
+  hit: AiUsageHit,
+  schedule: (work: Promise<unknown>) => void,
+): void => {
+  const entry = entryFor(hit.tenantId, hit.apiKeyId ?? "", utcDay());
+  entry.aiCalls += 1;
+  entry.aiTokensIn += counted(hit.tokensIn);
+  entry.aiTokensOut += counted(hit.tokensOut);
+  entry.aiNeurons += counted(hit.neurons);
+  markBuffered(ctx, schedule);
+};
+
+/**
+ * A meter sink for code that knows its workspace but has no Hono context — an
+ * agent turn, a flow step, a scheduled job. `null` tenant yields `null`, which
+ * is the honest answer for work that genuinely belongs to nobody.
+ *
+ * The request-scoped twin is `aiMeterFor(c)` in `lib/usage-meter.ts`; it exists
+ * separately only because it can schedule the write on `waitUntil`. Here there
+ * is no response to get out of the way of, so the flush is a dangling promise.
+ */
+export const aiMeterForTenant = (
+  ctx: UsageDbCtx | null | undefined,
+  tenantId: string | null | undefined,
+  apiKeyId?: string | null,
+): ((usage: { input_tokens?: number; output_tokens?: number; neurons?: number }) => void) | null => {
+  if (!ctx || !tenantId) return null;
+  return (usage) => {
+    bumpAiUsage(
+      ctx,
+      {
+        tenantId,
+        apiKeyId: apiKeyId ?? "",
+        tokensIn: usage.input_tokens,
+        tokensOut: usage.output_tokens,
+        neurons: usage.neurons,
+      },
+      (work) => void work,
+    );
+  };
+};
+
+/** Count the event and flush if a threshold tripped. */
+const markBuffered = (
+  ctx: UsageDbCtx,
+  schedule: (work: Promise<unknown>) => void,
+): void => {
   bufferedEvents += 1;
   if (bufferedSince === 0) bufferedSince = Date.now();
   if (
@@ -125,6 +226,10 @@ export const flushUsage = async (ctx: UsageDbCtx): Promise<void> => {
         day: e.day,
         requests: e.requests,
         errors: e.errors,
+        aiCalls: e.aiCalls,
+        aiTokensIn: e.aiTokensIn,
+        aiTokensOut: e.aiTokensOut,
+        aiNeurons: e.aiNeurons,
         updatedAt: now,
       })),
     )
@@ -133,6 +238,10 @@ export const flushUsage = async (ctx: UsageDbCtx): Promise<void> => {
       set: {
         requests: sql`${t.requests} + excluded.requests`,
         errors: sql`${t.errors} + excluded.errors`,
+        aiCalls: sql`${t.aiCalls} + excluded.ai_calls`,
+        aiTokensIn: sql`${t.aiTokensIn} + excluded.ai_tokens_in`,
+        aiTokensOut: sql`${t.aiTokensOut} + excluded.ai_tokens_out`,
+        aiNeurons: sql`${t.aiNeurons} + excluded.ai_neurons`,
         updatedAt: now,
       },
     });
@@ -177,12 +286,22 @@ export const monthUsage = async (
   return value;
 };
 
-/** Per-key request totals for the current UTC month (uncached — admin UI
- *  read, not a hot path). Key `""` is the session/no-key bucket. */
+/** One consumer's month, as the ledger has it. */
+export interface MonthKeyUsage {
+  requests: number;
+  errors: number;
+  aiCalls: number;
+  aiTokensIn: number;
+  aiTokensOut: number;
+  aiNeurons: number;
+}
+
+/** Per-key totals for the current UTC month (uncached — admin UI read, not a
+ *  hot path). Key `""` is the session/no-key bucket. */
 export const monthUsageByKey = async (
   ctx: UsageDbCtx,
   tenantId: string,
-): Promise<Map<string, { requests: number; errors: number }>> => {
+): Promise<Map<string, MonthKeyUsage>> => {
   const month = utcMonth();
   const t = tableFor(ctx.dialect);
   const rows = (await (ctx.db as any)
@@ -190,6 +309,10 @@ export const monthUsageByKey = async (
       apiKeyId: t.apiKeyId,
       requests: sql<number>`COALESCE(SUM(${t.requests}), 0)`,
       errors: sql<number>`COALESCE(SUM(${t.errors}), 0)`,
+      aiCalls: sql<number>`COALESCE(SUM(${t.aiCalls}), 0)`,
+      aiTokensIn: sql<number>`COALESCE(SUM(${t.aiTokensIn}), 0)`,
+      aiTokensOut: sql<number>`COALESCE(SUM(${t.aiTokensOut}), 0)`,
+      aiNeurons: sql<number>`COALESCE(SUM(${t.aiNeurons}), 0)`,
     })
     .from(t)
     .where(
@@ -199,16 +322,16 @@ export const monthUsageByKey = async (
         lte(t.day, `${month}-31`),
       ),
     )
-    .groupBy(t.apiKeyId)) as {
-    apiKeyId: string;
-    requests: number | string;
-    errors: number | string;
-  }[];
-  const out = new Map<string, { requests: number; errors: number }>();
+    .groupBy(t.apiKeyId)) as Record<keyof MonthKeyUsage | "apiKeyId", number | string>[];
+  const out = new Map<string, MonthKeyUsage>();
   for (const r of rows) {
-    out.set(r.apiKeyId, {
+    out.set(String(r.apiKeyId), {
       requests: Number(r.requests),
       errors: Number(r.errors),
+      aiCalls: Number(r.aiCalls),
+      aiTokensIn: Number(r.aiTokensIn),
+      aiTokensOut: Number(r.aiTokensOut),
+      aiNeurons: Number(r.aiNeurons),
     });
   }
   return out;
@@ -221,6 +344,14 @@ export interface UsageCounterRow {
   day: string;
   requests: number;
   errors: number;
+  /** Model generations. Not a subset of `requests` — a flow step or agent turn
+   *  generates without a request of its own. */
+  aiCalls: number;
+  /** Direct-provider tokens; 0 on managed cloud, which reports neurons. */
+  aiTokensIn: number;
+  aiTokensOut: number;
+  /** Managed-cloud Workers AI neurons; 0 on the direct-provider path. */
+  aiNeurons: number;
   storageBytes: number | null;
   dbRows: number | null;
 }
@@ -241,6 +372,10 @@ export const usageRows = async (
       day: t.day,
       requests: t.requests,
       errors: t.errors,
+      aiCalls: t.aiCalls,
+      aiTokensIn: t.aiTokensIn,
+      aiTokensOut: t.aiTokensOut,
+      aiNeurons: t.aiNeurons,
       storageBytes: t.storageBytes,
       dbRows: t.dbRows,
     })
@@ -291,6 +426,10 @@ export interface UsageExportRow {
   keyPrefix: string | null;
   requests: number;
   errors: number;
+  aiCalls: number;
+  aiTokensIn: number;
+  aiTokensOut: number;
+  aiNeurons: number;
   storageBytes: number | null;
   dbRows: number | null;
 }
@@ -341,6 +480,10 @@ export const usageExport = async (
       apiKeyId: t.apiKeyId,
       requests: t.requests,
       errors: t.errors,
+      aiCalls: t.aiCalls,
+      aiTokensIn: t.aiTokensIn,
+      aiTokensOut: t.aiTokensOut,
+      aiNeurons: t.aiNeurons,
       storageBytes: t.storageBytes,
       dbRows: t.dbRows,
     })
@@ -368,6 +511,10 @@ const EXPORT_CSV_COLUMNS = [
   "keyPrefix",
   "requests",
   "errors",
+  "aiCalls",
+  "aiTokensIn",
+  "aiTokensOut",
+  "aiNeurons",
   "storageBytes",
   "dbRows",
 ] as const;
@@ -472,7 +619,14 @@ export interface UsageOverview {
   /** Per-key day points (only days with traffic) — feeds the admin chart's
    *  consumer filter. `apiKeyId: ""` is the session/admin bucket. */
   keySeries: { day: string; apiKeyId: string; requests: number; errors: number }[];
-  monthTotals: { requests: number; errors: number };
+  monthTotals: {
+    requests: number;
+    errors: number;
+    aiCalls: number;
+    aiTokensIn: number;
+    aiTokensOut: number;
+    aiNeurons: number;
+  };
   byKey: {
     id: string;
     name: string;
@@ -592,9 +746,17 @@ export const usageOverview = async (
 
   let monthRequests = 0;
   let monthErrors = 0;
+  let monthAiCalls = 0;
+  let monthAiTokensIn = 0;
+  let monthAiTokensOut = 0;
+  let monthAiNeurons = 0;
   for (const v of byKeyMonth.values()) {
     monthRequests += v.requests;
     monthErrors += v.errors;
+    monthAiCalls += v.aiCalls;
+    monthAiTokensIn += v.aiTokensIn;
+    monthAiTokensOut += v.aiTokensOut;
+    monthAiNeurons += v.aiNeurons;
   }
 
   const over: UsageOverview["over"] = [];
@@ -620,7 +782,14 @@ export const usageOverview = async (
     days,
     series,
     keySeries,
-    monthTotals: { requests: monthRequests, errors: monthErrors },
+    monthTotals: {
+      requests: monthRequests,
+      errors: monthErrors,
+      aiCalls: monthAiCalls,
+      aiTokensIn: monthAiTokensIn,
+      aiTokensOut: monthAiTokensOut,
+      aiNeurons: monthAiNeurons,
+    },
     byKey,
     gauges,
     limits,

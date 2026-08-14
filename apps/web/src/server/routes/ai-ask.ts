@@ -25,6 +25,7 @@ import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { callClaude, extractJson } from "../mcp/ai-client";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
 import { allTools } from "../mcp/tools";
+import { aiMeterFor } from "../lib/usage-meter";
 import { makeInternalFetch, readJson } from "../mcp/internal-fetch";
 import type { ToolCtx } from "../mcp/types";
 import { recordActivity, requestMeta } from "../services/activity";
@@ -458,12 +459,12 @@ const planHandler = async (
       ? body.model.trim()
       : (configModel ?? DEFAULT_PLAN_MODEL);
 
-  const reply = await callClaude(aiEnv, {
-    system,
-    user: prompt,
-    model,
-    maxTokens: 1024,
-  });
+  const meter = aiMeterFor(c);
+  const reply = await callClaude(
+    aiEnv,
+    { system, user: prompt, model, maxTokens: 1024 },
+    meter,
+  );
 
   const parse = (
     text: string,
@@ -508,7 +509,7 @@ const planHandler = async (
         "fits, fall back to collections.aggregate.",
       model,
       maxTokens: 1024,
-    });
+    }, meter);
     try {
       const corrected = coercePlan(parse(retry.text));
       plan = corrected;
@@ -566,6 +567,7 @@ const runHandler = async (
     env,
     // Ask AI runs as the signed-in admin; no per-key MCP guards apply here.
     guards: { allowlist: null, readOnly: false },
+    meterAi: aiMeterFor(c),
   };
 
   const start = Date.now();

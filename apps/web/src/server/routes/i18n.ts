@@ -20,6 +20,7 @@ import { hasDirectAiCredential } from "../mcp/ai-client";
 import { cloudConfigured } from "../lib/cloud-report";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
+import { aiMeterFor } from "../lib/usage-meter";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.i18nStrings : sqlite.schema.i18nStrings;
@@ -344,6 +345,7 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         sourceLocale: source,
         targetLocale: body.targetLocale,
         items,
+        meter: aiMeterFor(c),
       });
 
       // Upsert each translation; mirror the single-key PUT handler's logic.

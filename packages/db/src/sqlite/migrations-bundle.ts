@@ -122,6 +122,7 @@ import m115 from "../../drizzle/sqlite/20260813100000_integration_task_runs/migr
 import m116 from "../../drizzle/sqlite/20260813110000_integration_webhooks/migration.sql" with { type: "text" };
 import m117 from "../../drizzle/sqlite/20260813120000_integration_listings/migration.sql" with { type: "text" };
 import m118 from "../../drizzle/sqlite/20260813130000_resilience_retention/migration.sql" with { type: "text" };
+import m119 from "../../drizzle/sqlite/20260814140000_ai_usage_counters/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -248,4 +249,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260813110000_integration_webhooks", sql: m116 },
   { name: "20260813120000_integration_listings", sql: m117 },
   { name: "20260813130000_resilience_retention", sql: m118 },
+  { name: "20260814140000_ai_usage_counters", sql: m119 },
 ];

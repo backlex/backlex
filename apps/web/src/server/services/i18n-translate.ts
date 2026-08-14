@@ -1,6 +1,7 @@
 import { AppError } from "@backlex/core";
 import { callClaude } from "../mcp/ai-client";
 import type { Env } from "../env";
+import type { AiMeterSink } from "../mcp/ai-client";
 
 /**
  * Auto-translate a batch of source strings into a target locale.
@@ -30,8 +31,12 @@ export const autoTranslateBatch = async (params: {
    *  default; translation is a cheap-tier job, so that default is the right
    *  one unless an operator deliberately chose otherwise. */
   model?: string;
+  /** Where this batch's cost is billed. A translation run is one request and
+   *  as many generations as there are batches, so the request counter alone
+   *  says almost nothing about what it cost. */
+  meter: AiMeterSink;
 }): Promise<{ key: string; value: string }[]> => {
-  const { env, sourceLocale, targetLocale, items, model } = params;
+  const { env, sourceLocale, targetLocale, items, model, meter } = params;
   if (items.length === 0) return [];
 
   // Encode as a numbered list so the model can return a JSON object keyed by
@@ -58,7 +63,7 @@ export const autoTranslateBatch = async (params: {
     user,
     model,
     maxTokens: Math.min(4096, 256 + items.length * 128),
-  });
+  }, meter);
   const text = reply.text.trim();
 
   // The model is asked for raw JSON, but tolerate fenced code just in case.

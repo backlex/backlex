@@ -7,6 +7,7 @@
  */
 import type { Hono } from "hono";
 import type { Env } from "../env";
+import type { AiMeterSink } from "./ai-client";
 
 /** JSON-RPC 2.0 message id. Notifications omit the id. */
 export type JsonRpcId = string | number;
@@ -113,6 +114,11 @@ export interface ToolCtx {
     readOnly: boolean;
     roleAllowlist?: string[] | null;
   };
+  /** Where an `ai.*` tool's generation cost is recorded. Built from the request
+   *  that carried the tool call, so it knows the workspace; `null` when the
+   *  request has no workspace to bill. Required rather than optional — a
+   *  generation nobody counted is the failure the ledger exists to end. */
+  meterAi: AiMeterSink;
 }
 
 export type McpMode = "tenant" | "admin";

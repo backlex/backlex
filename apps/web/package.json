@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "bunx --bun vite",
     "dev:bun": "bun run --hot src/server/entries/bun.ts",
     "build": "bun scripts/gen-openapi-static.ts && vite build",
     "gen:openapi-static": "bun scripts/gen-openapi-static.ts",

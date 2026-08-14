@@ -8,7 +8,7 @@ All commands run from the repo root via Bun workspaces.
 
 ```bash
 bun install
-bun run dev                # Vite + Cloudflare miniflare in one process (port 5173)
+bun run dev                # Vite + Cloudflare miniflare in one process (port 5173), on the Bun runtime
 bun run dev:bun            # Bun-native API only on :8787 (no admin SPA)
 bun run typecheck          # all workspaces
 bun run lint               # biome lint apps + packages (no formatter)
@@ -135,6 +135,8 @@ Bun workspaces — every package is source-consumed (no build step between them)
 - `server/env.ts` — runtime-agnostic `Env` interface; Cloudflare binding fields are optional and only present on Workers.
 
 The admin's API client (`client/lib/api.ts`) defaults to relative `/api/...` paths, so same-origin deploys work without `VITE_API_URL`. Set `VITE_API_URL` only for cross-origin setups.
+
+**The dev server runs on Bun, not Node.** `apps/web`'s `dev` script is `bunx --bun vite` (same form as `apps/site` / `apps/docs` use for Astro), so Vite + miniflare/workerd + HMR all run under the Bun runtime. This needs Bun's `ws` client `'upgrade'` event, which only became usable in the 1.4.0 canary line — on an older Bun the dev server hangs forever at `⎔ Establishing remote connection...`. If you see that hang, check `bun --revision` first. Note that **`ps` reports the process as `node`** because Bun spoofs `argv[0]`; the honest check is `lsof -p <pid> | awk '$4=="txt"'`, which shows the real `bun` binary. `vite build` and `tsc` still run on Node deliberately — only the dev server moved.
 
 **Anything runtime-specific must stay behind the adapter layer** — do not branch on `typeof process` etc. inside route code. Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image,saml,ldap}.ts`; concrete implementations live in `apps/web/src/server/adapters/*`. The selection rules (dialect, db driver, storage, vector, email, realtime transport, saml, ldap, smtp) live in `apps/web/src/server/context.ts::buildContext(env)` — see the adapter table in `docs/architecture.md` before adding a new one.
 

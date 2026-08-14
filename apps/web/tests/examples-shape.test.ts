@@ -15,7 +15,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const EXAMPLES = join(import.meta.dir, "..", "..", "..", "examples");
 
@@ -102,6 +102,33 @@ describe("examples — the boilerplate stays gone", () => {
       for (const { path, src } of sourcesOf(spa)) {
         expect(`${path}: ${src.includes("createObjectURL")}`).toBe(`${path}: false`);
       }
+    }
+  });
+
+  test("every SPA registers the shared package as a Tailwind source", () => {
+    // Moving the shared components into a workspace package moved them behind
+    // a `node_modules` symlink, and Tailwind v4's automatic source detection
+    // skips `node_modules` by design. So every utility used ONLY by
+    // `shared/src` was dropped from the generated CSS — the class stayed in the
+    // markup and resolved to nothing. The auth card lost `max-w-sm`, `p-6` and
+    // its `space-y-*` rhythm; the setup-check card lost the entire amber
+    // palette it is drawn in. Nothing errors and the build stays green, which
+    // is why this is a source scan.
+    //
+    // The path is RESOLVED rather than pattern-matched: a typo'd relative
+    // `@source` satisfies a regex and still registers nothing, which is the
+    // same silent failure with an extra step.
+    for (const spa of SPAS) {
+      const cssPath = join(EXAMPLES, spa, "src", "index.css");
+      const css = readFileSync(cssPath, "utf8");
+      const sources = [...css.matchAll(/@source\s+"([^"]+)"/g)].map(([, p]) =>
+        resolve(dirname(cssPath), p!),
+      );
+      const sharedSrc = join(EXAMPLES, "shared", "src");
+      const registered = sources.some((s) => existsSync(s) && sharedSrc.startsWith(s));
+      expect(`${spa} registers ${sharedSrc}: ${registered}`).toBe(
+        `${spa} registers ${sharedSrc}: true`,
+      );
     }
   });
 

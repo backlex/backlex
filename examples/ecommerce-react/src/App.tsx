@@ -1,4 +1,6 @@
 import { BacklexError } from "backlex";
+import { useLiveQuery, useSession } from "backlex/react";
+import { AuthForm, Centered, SetupCheck, type ExampleUser } from "@backlex-examples/shared";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   backlex,
@@ -7,131 +9,30 @@ import {
   type OrderItem,
   orderItems,
   orders,
-  persistToken,
   type Product,
   products,
 } from "./backlex";
-import { SetupCheck } from "./SetupCheck";
-
-type User = { id: string; email: string; name?: string | null };
 
 export function App() {
   // Gate the whole app behind a config check so a missing/wrong `.env` shows
   // actionable guidance instead of a blank screen.
   return (
-    <SetupCheck>
+    <SetupCheck client={backlex}>
       <AuthGate />
     </SetupCheck>
   );
 }
 
 function AuthGate() {
-  const [user, setUser] = useState<User | null>(null);
-  const [booting, setBooting] = useState(true);
+  // One hook replaces the `booting` flag, the session probe, the user state and
+  // the sign-out plumbing this file used to hand-roll. It reads the session
+  // from the client rather than from a copy, so a sign-in ANYWHERE — this
+  // form, another component, a plain `backlex.auth` call — moves it.
+  const { status, user } = useSession(backlex);
 
-  // Restore an existing session (token persisted in localStorage) on first load.
-  useEffect(() => {
-    backlex.auth
-      .getSession()
-      .then((s) => setUser(s.user ?? null))
-      .catch(() => setUser(null))
-      .finally(() => setBooting(false));
-  }, []);
-
-  if (booting) return <Centered>Loading…</Centered>;
-  return user ? (
-    <Store user={user} onSignOut={() => setUser(null)} />
-  ) : (
-    <AuthForm onAuthed={setUser} />
-  );
-}
-
-// ── Auth ────────────────────────────────────────────────────────────────────
-function AuthForm({ onAuthed }: { onAuthed: (u: User) => void }) {
-  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res =
-        mode === "sign-up"
-          ? await backlex.auth.signUp({ email, password, name })
-          : await backlex.auth.signIn({ email, password });
-      persistToken(); // stash the workspace session token
-      onAuthed(res.user);
-    } catch (err) {
-      setError(err instanceof BacklexError ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Centered>
-      <form
-        onSubmit={submit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-      >
-        <h1 className="text-lg font-semibold">
-          {mode === "sign-up" ? "Create account" : "Sign in to the store"}
-        </h1>
-        {mode === "sign-up" && (
-          <Field label="Name">
-            <input
-              className={inputCls}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ada Lovelace"
-            />
-          </Field>
-        )}
-        <Field label="Email">
-          <input
-            className={inputCls}
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-        </Field>
-        <Field label="Password">
-          <input
-            className={inputCls}
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </Field>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={busy} className={primaryBtnCls}>
-          {busy ? "…" : mode === "sign-up" ? "Sign up" : "Sign in"}
-        </button>
-        <button
-          type="button"
-          className="w-full text-center text-sm text-neutral-500 hover:text-neutral-800"
-          onClick={() => {
-            setError(null);
-            setMode(mode === "sign-up" ? "sign-in" : "sign-up");
-          }}
-        >
-          {mode === "sign-up"
-            ? "Already have an account? Sign in"
-            : "Need an account? Sign up"}
-        </button>
-      </form>
-    </Centered>
-  );
+  if (status === "unknown") return <Centered>Loading…</Centered>;
+  if (status === "anonymous") return <AuthForm client={backlex} />;
+  return <Store user={user as ExampleUser} />;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────
@@ -141,8 +42,8 @@ type Stats = { count: number; avg: number };
 // The cart is a plain `Map<productId, qty>` held in React state.
 type Cart = Map<string, number>;
 
-function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
-  const [items, setItems] = useState<Product[]>([]);
+function Store({ user }: { user: ExampleUser }) {
+  const { signOut } = useSession(backlex);
   const [cats, setCats] = useState<Category[]>([]);
   const [category, setCategory] = useState<string | null>(null); // a category id
   const [sort, setSort] = useState<Sort>("newest");
@@ -178,35 +79,40 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     }
   }, []);
 
-  // List via the fluent query builder. `.where(...)` compiles the category +
-  // min-price filters into the canonical JSON `Condition` the REST API speaks;
-  // `.orderBy(...)` maps the sort toggle to `price` / `-price` / `-created_at`.
-  const refresh = useCallback(async () => {
-    try {
-      const orderKey =
-        sort === "price-asc" ? "price" : sort === "price-desc" ? "-price" : "-created_at";
-      const res = await products
-        .query()
-        .where((f) => {
-          // Build only the active sub-conditions, then AND them together.
-          // `and()` of zero conds is a no-op match-all; of one, it's that cond.
-          // `category` filters by the related row's id; `price` is in dollars.
-          const conds = [
-            ...(category ? [f.eq("category", category)] : []),
-            ...(minPrice > 0 ? [f.gte("price", minPrice)] : []),
-          ];
-          return f.and(...conds);
-        })
-        .orderBy(orderKey)
-        .limit(100)
-        .withMeta("filter_count")
-        .list();
-      setItems(res.data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof BacklexError ? err.message : String(err));
-    }
+  // The fluent query builder still composes the filters — `.where(...)` maps
+  // the category + min-price controls onto the canonical JSON `Condition` the
+  // REST API speaks — but it is handed to `useLiveQuery` rather than to
+  // `list()`. `toQuery()` produces exactly the shape the hook takes.
+  //
+  // What that replaces is a manual `list()` plus a `subscribe()` whose reducer
+  // put every changed row at the FRONT of the array, regardless of the sort the
+  // user had picked. The hook keeps the result consistent with the query it was
+  // given, which is the part that is genuinely hard to hand-roll.
+  const query = useMemo(() => {
+    const orderKey =
+      sort === "price-asc" ? "price" : sort === "price-desc" ? "-price" : "-created_at";
+    return products
+      .query()
+      .where((f) => {
+        // Build only the active sub-conditions, then AND them together.
+        // `and()` of zero conds is a no-op match-all; of one, it's that cond.
+        // `category` filters by the related row's id; `price` is in dollars.
+        const conds = [
+          ...(category ? [f.eq("category", category)] : []),
+          ...(minPrice > 0 ? [f.gte("price", minPrice)] : []),
+        ];
+        return f.and(...conds);
+      })
+      .orderBy(orderKey)
+      .limit(100)
+      .toQuery();
   }, [category, sort, minPrice]);
+
+  const { data: items, error: listError } = useLiveQuery<Product>(backlex, "products", query);
+  // The hook reports its own load/reconcile failures; show them in the same
+  // place the app's own errors go rather than swallowing them.
+  const shownError =
+    error ?? (listError ? (listError instanceof Error ? listError.message : String(listError)) : null);
 
   // Load the category list once (template `categories` collection).
   const refreshCategories = useCallback(async () => {
@@ -219,23 +125,15 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   }, []);
 
   useEffect(() => {
-    refresh();
     refreshStats();
     refreshCategories();
-  }, [refresh, refreshStats, refreshCategories]);
+  }, [refreshStats, refreshCategories]);
 
+  // The product list needs no effect at all: `useLiveQuery` runs the initial
+  // page and then keeps it in step over the realtime stream. Only the counters
+  // beside it still refresh by hand.
   useEffect(() => {
-    // Realtime: the SSE stream replays the same create/update/delete events the
-    // server applies, so a freshly-added product shows up live (here and in a
-    // second tab) without a manual reload.
-    const off = backlex.subscribe<Product>("items:products", (e) => {
-      setItems((cur) => {
-        if (e.event === "deleted") return cur.filter((p) => p.id !== e.data.id);
-        const rest = cur.filter((p) => p.id !== e.data.id);
-        return [e.data, ...rest];
-      });
-      refreshStats();
-    });
+    const off = backlex.subscribe<Product>("items:products", () => refreshStats());
     return off;
   }, [refreshStats]);
 
@@ -310,12 +208,6 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     }
   }
 
-  async function signOut() {
-    await backlex.auth.signOut().catch(() => {});
-    persistToken();
-    onSignOut();
-  }
-
   return (
     <div className="mx-auto min-h-dvh max-w-5xl space-y-6 p-6 text-neutral-900">
       <header className="flex items-center justify-between">
@@ -327,7 +219,7 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         </div>
         <button
           type="button"
-          onClick={signOut}
+          onClick={() => void signOut()}
           className="text-sm text-neutral-500 hover:text-neutral-800"
         >
           Sign out
@@ -372,7 +264,7 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         </label>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {shownError && <p className="text-sm text-red-600">{shownError}</p>}
       {confirmation && (
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {confirmation}
@@ -584,47 +476,31 @@ function ProductCard({
   );
 }
 
-// ── Product image ──────────────────────────────────────────────────────────
-// Resolves a storage object key to a viewable image. `storage.download(key)`
-// returns a raw `Response` (works on every runtime); we turn the body into an
-// object URL and revoke it on unmount so blobs don't leak. NOTE: with edge
-// image transforms you'd instead point an <img> at a public/signed URL plus
-// `?width=240&format=webp` — no blob fetch, server-side resize, browser-cached
-// — but that needs a reachable URL; download()+objectURL is the portable path.
+// ── Product image ───────────────────────────────────────────────────────────
+// One line, and the browser does the rest.
+//
+// `storage.url()` composes the URL an object is served at — it issues no
+// request, so the result goes straight into `src` and the browser fetches it
+// the way it fetches any image: cached, lazily, and resized server-side by the
+// transform params. The alternative, which this example used to carry, is to
+// download the bytes, wrap them in a blob, hand out an object URL and revoke
+// it on unmount — forty lines that give up the cache, the lazy loading, and
+// the transform, and leak a blob if the cleanup is ever missed.
 function ProductImage({ imageKey, alt }: { imageKey?: string; alt: string }) {
-  const [src, setSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!imageKey) {
-      setSrc(null);
-      return;
-    }
-    let url: string | null = null;
-    let cancelled = false;
-    backlex.storage
-      .download(imageKey)
-      .then((res) => res.blob())
-      .then((blob) => {
-        if (cancelled) return;
-        url = URL.createObjectURL(blob);
-        setSrc(url);
-      })
-      .catch(() => {
-        if (!cancelled) setSrc(null);
-      });
-    return () => {
-      cancelled = true;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [imageKey]);
-
-  if (src) {
-    return <img src={src} alt={alt} className="aspect-square w-full object-cover" />;
+  if (!imageKey) {
+    return (
+      <div className="flex aspect-square w-full items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+        No image
+      </div>
+    );
   }
   return (
-    <div className="flex aspect-square w-full items-center justify-center bg-neutral-100 text-xs text-neutral-400">
-      {imageKey ? "Loading…" : "No image"}
-    </div>
+    <img
+      src={backlex.storage.url(imageKey, { width: 480, format: "webp" })}
+      alt={alt}
+      loading="lazy"
+      className="aspect-square w-full object-cover"
+    />
   );
 }
 
@@ -684,23 +560,6 @@ function CartPanel({
 /** Render a dollar amount (template `price`, a decimal) as `$X.XX`. */
 function formatPrice(dollars: number): string {
   return `$${(dollars ?? 0).toFixed(2)}`;
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-dvh items-center justify-center bg-neutral-50 p-6 text-neutral-900">
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium text-neutral-700">{label}</span>
-      {children}
-    </label>
-  );
 }
 
 function CatButton({

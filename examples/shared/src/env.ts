@@ -1,6 +1,15 @@
-// Declarative spec of the env vars this example reads. The in-app setup check
-// (SetupCheck.tsx) renders this so a newcomer sees exactly what to set and why,
-// instead of a cryptic crash. Keep this list in sync with .env.example.
+/**
+ * The environment every example reads, described once.
+ *
+ * Each app used to carry its own byte-identical copy of this. Keeping it here
+ * is not only about duplication: the setup check renders this list, so a
+ * newcomer sees exactly which variable to set and why. Four copies meant four
+ * chances for that explanation to drift from what the app actually reads.
+ *
+ * `import.meta.env.VITE_*` is statically replaced by Vite at build time in
+ * every file it processes, including a source-consumed workspace package like
+ * this one — so reading them here behaves exactly as it did in each app.
+ */
 export interface EnvSpec {
   key: string;
   required: boolean;
@@ -36,7 +45,7 @@ export const ENV: EnvSpec[] = [
   },
 ];
 
-/** Required vars that are not set — empty array means env is good to go. */
+/** Required vars that are not set — an empty array means env is good to go. */
 export const missingRequired = (): EnvSpec[] => ENV.filter((e) => e.required && !e.value);
 
 /** The configured workspace slug (empty string when unset). */

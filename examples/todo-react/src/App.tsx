@@ -1,132 +1,34 @@
 import { BacklexError } from "backlex";
-import { useLiveQuery } from "backlex/react";
-import { type FormEvent, useEffect, useState } from "react";
-import { backlex, persistToken, type Todo, todos } from "./backlex";
-import { SetupCheck } from "./SetupCheck";
-
-type User = { id: string; email: string; name?: string | null };
+import { useLiveQuery, useSession } from "backlex/react";
+import { type FormEvent, useState } from "react";
+import { AuthForm, Centered, SetupCheck, type ExampleUser } from "@backlex-examples/shared";
+import { backlex, type Todo, todos } from "./backlex";
 
 export function App() {
   // Gate the whole app behind a config check so a missing/wrong `.env` shows
   // actionable guidance instead of a blank screen.
   return (
-    <SetupCheck>
+    <SetupCheck client={backlex}>
       <AuthGate />
     </SetupCheck>
   );
 }
 
 function AuthGate() {
-  const [user, setUser] = useState<User | null>(null);
-  const [booting, setBooting] = useState(true);
+  // One hook replaces the `booting` flag, the session probe, the user state and
+  // the sign-out plumbing four examples each wrote by hand. It reads the
+  // session from the client rather than from a copy, so a sign-in ANYWHERE —
+  // this form, another component, a plain `backlex.auth` call — moves it.
+  const { status, user } = useSession(backlex);
 
-  // Restore an existing session (token persisted in localStorage) on first load.
-  useEffect(() => {
-    backlex.auth
-      .getSession()
-      .then((s) => setUser(s.user ?? null))
-      .catch(() => setUser(null))
-      .finally(() => setBooting(false));
-  }, []);
-
-  if (booting) return <Centered>Loading…</Centered>;
-  return user ? (
-    <Todos user={user} onSignOut={() => setUser(null)} />
-  ) : (
-    <AuthForm onAuthed={setUser} />
-  );
-}
-
-// ── Auth ────────────────────────────────────────────────────────────────────
-function AuthForm({ onAuthed }: { onAuthed: (u: User) => void }) {
-  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res =
-        mode === "sign-up"
-          ? await backlex.auth.signUp({ email, password, name })
-          : await backlex.auth.signIn({ email, password });
-      persistToken(); // stash the workspace session token
-      onAuthed(res.user);
-    } catch (err) {
-      setError(err instanceof BacklexError ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Centered>
-      <form
-        onSubmit={submit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-      >
-        <h1 className="text-lg font-semibold">
-          {mode === "sign-up" ? "Create account" : "Sign in"}
-        </h1>
-        {mode === "sign-up" && (
-          <Field label="Name">
-            <input
-              className={inputCls}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ada Lovelace"
-            />
-          </Field>
-        )}
-        <Field label="Email">
-          <input
-            className={inputCls}
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-        </Field>
-        <Field label="Password">
-          <input
-            className={inputCls}
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </Field>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={busy} className={primaryBtnCls}>
-          {busy ? "…" : mode === "sign-up" ? "Sign up" : "Sign in"}
-        </button>
-        <button
-          type="button"
-          className="w-full text-center text-sm text-neutral-500 hover:text-neutral-800"
-          onClick={() => {
-            setError(null);
-            setMode(mode === "sign-up" ? "sign-in" : "sign-up");
-          }}
-        >
-          {mode === "sign-up"
-            ? "Already have an account? Sign in"
-            : "Need an account? Sign up"}
-        </button>
-      </form>
-    </Centered>
-  );
+  if (status === "unknown") return <Centered>Loading…</Centered>;
+  if (status === "anonymous") return <AuthForm client={backlex} />;
+  return <Todos user={user as ExampleUser} />;
 }
 
 // ── Todos ─────────────────────────────────────────────────────────────────
-function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+function Todos({ user }: { user: ExampleUser }) {
+  const { signOut } = useSession(backlex);
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [activeOnly, setActiveOnly] = useState(false);
@@ -177,12 +79,6 @@ function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     }
   }
 
-  async function signOut() {
-    await backlex.auth.signOut().catch(() => {});
-    persistToken();
-    onSignOut();
-  }
-
   return (
     <Centered>
       <div className="w-full max-w-md space-y-4">
@@ -193,7 +89,7 @@ function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           </div>
           <button
             type="button"
-            onClick={signOut}
+            onClick={() => void signOut()}
             className="text-sm text-neutral-500 hover:text-neutral-800"
           >
             Sign out
@@ -270,24 +166,7 @@ function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   );
 }
 
-// ── Tiny presentational helpers ─────────────────────────────────────────────
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-dvh items-center justify-center bg-neutral-50 p-6 text-neutral-900">
-      {children}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium text-neutral-700">{label}</span>
-      {children}
-    </label>
-  );
-}
-
+// ── Local styling ───────────────────────────────────────────────────────────
 const inputCls =
   "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
 const primaryBtnCls =

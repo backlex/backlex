@@ -1,34 +1,23 @@
 import { createClient } from "backlex";
-import { API_URL, WORKSPACE } from "./env";
+import { API_URL, WORKSPACE } from "@backlex-examples/shared";
 
-// ── Config (from .env — see .env.example, validated by SetupCheck.tsx) ───────
+// ── Config (from .env — see .env.example, validated by <SetupCheck>) ─────────
 // Empty `url` = same-origin: the SDK issues relative `/api/...` requests that
 // the Vite dev proxy (vite.config.ts) forwards to the backend. Set
 // VITE_BACKLEX_URL to your deployed API origin for a cross-origin production
 // build. A missing workspace is surfaced by the in-app setup check rather than
 // crashing here, so the user sees what to fix.
-const url = API_URL;
-const workspace = WORKSPACE;
-
-// ── Session-token persistence ───────────────────────────────────────────────
-// In "app mode" (a `workspace` is set) the SDK captures the workspace session
-// token returned by signIn/signUp and replays it as a bearer on every request.
-// We stash it in localStorage so a page reload stays signed in, and hand it
-// back to `createClient({ token })` on boot.
-const TOKEN_KEY = `backlex.token.${workspace}`;
-
+//
+// `persist: true` is the whole session story. The SDK captures the workspace
+// session token from sign-in and writes it through to `localStorage` on the one
+// path every capture goes through — so a reload stays signed in, and signing
+// out clears it, without this file owning a token helper that each screen has
+// to remember to call.
 export const backlex = createClient({
-  url,
-  workspace,
-  token: localStorage.getItem(TOKEN_KEY) ?? undefined,
+  url: API_URL,
+  workspace: WORKSPACE,
+  persist: true,
 });
-
-/** Mirror the SDK's current token into localStorage (call after sign-in/out). */
-export function persistToken(): void {
-  const token = backlex.auth.getToken();
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
 
 // ── Collection row type ─────────────────────────────────────────────────────
 // Matches the `todos` collection you create in the admin UI (see README).

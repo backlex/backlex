@@ -1,0 +1,23 @@
+{
+  "name": "@backlex-examples/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The pieces every backlex example needs and none of them should own: the env spec, the setup check, and a sign-in form.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "backlex": "workspace:*",
+    "react": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.10",
+    "typescript": "^5.6.3",
+    "vite": "8.0.13"
+  }
+}

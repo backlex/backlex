@@ -1,5 +1,5 @@
 import { createClient } from "backlex";
-import { API_URL, WORKSPACE } from "./env";
+import { API_URL, WORKSPACE } from "@backlex-examples/shared";
 
 // ── Config (from .env — see .env.example, validated by SetupCheck.tsx) ───────
 // Empty `url` = same-origin: the SDK issues relative `/api/...` requests that
@@ -10,25 +10,15 @@ import { API_URL, WORKSPACE } from "./env";
 const url = API_URL;
 const workspace = WORKSPACE;
 
-// ── Session-token persistence ───────────────────────────────────────────────
-// In "app mode" (a `workspace` is set) the SDK captures the workspace session
-// token returned by signIn/signUp and replays it as a bearer on every request.
-// We stash it in localStorage so a page reload stays signed in, and hand it
-// back to `createClient({ token })` on boot.
-const TOKEN_KEY = `backlex.token.${workspace}`;
-
+// `persist: true` is the whole session story: the SDK writes the captured
+// token through on the ONE path every capture goes through, so a reload stays
+// signed in and signing out clears it — with no token helper for each screen
+// to remember to call.
 export const backlex = createClient({
   url,
   workspace,
-  token: localStorage.getItem(TOKEN_KEY) ?? undefined,
+  persist: true,
 });
-
-/** Mirror the SDK's current token into localStorage (call after sign-in/out). */
-export function persistToken(): void {
-  const token = backlex.auth.getToken();
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
 
 // ── Collection row types ────────────────────────────────────────────────────
 // These mirror a subset of the built-in **E-commerce template** (Overview →

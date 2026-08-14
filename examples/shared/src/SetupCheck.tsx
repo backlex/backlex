@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { backlex } from "./backlex";
-import { ENV, missingRequired, WORKSPACE } from "./env";
+import type { BacklexClient } from "backlex";
+import { ENV, type EnvSpec, WORKSPACE } from "./env";
 
 type Phase =
   | { kind: "checking" }
@@ -10,22 +10,44 @@ type Phase =
 
 /**
  * Gate that renders `children` only once the example is correctly configured.
- * Otherwise it shows a friendly panel telling the newcomer exactly which env
- * var to set (and why) or that the backend/workspace isn't reachable — so a
- * misconfigured `.env` is self-explanatory instead of a blank screen.
+ *
+ * Otherwise it says exactly which env var to set (and why), or that the
+ * backend/workspace is not reachable — so a misconfigured `.env` explains
+ * itself instead of showing a blank screen.
+ *
+ * The client is a PROP rather than an import: each example builds its own,
+ * against its own workspace, and a shared component that reached for one
+ * particular app's module would only be shareable by accident.
  */
-export function SetupCheck({ children }: { children: ReactNode }) {
+export function SetupCheck({
+  client,
+  extraEnv = [],
+  children,
+}: {
+  client: BacklexClient;
+  /** Variables only THIS example reads, listed alongside the shared ones. The
+   *  shared list stays a description of what every example needs; an example
+   *  with a demo of its own says so here rather than widening it for
+   *  everybody. */
+  extraEnv?: EnvSpec[];
+  children: ReactNode;
+}) {
+  const env = [...ENV, ...extraEnv];
   const [phase, setPhase] = useState<Phase>({ kind: "checking" });
+  // Env values are replaced at build time, so "is anything required missing"
+  // has one answer for the life of the page. Computed outside the effect so
+  // the effect depends on the client alone.
+  const envIncomplete = env.some((e) => e.required && !e.value);
 
   useEffect(() => {
-    if (missingRequired().length > 0) {
+    if (envIncomplete) {
       setPhase({ kind: "env-missing" });
       return;
     }
     // Env looks complete — confirm the API is reachable and the workspace
     // exists by reading its public auth surface (no credentials needed).
     let cancelled = false;
-    backlex.auth
+    client.auth
       .providers()
       .then(() => {
         if (!cancelled) setPhase({ kind: "ok" });
@@ -37,7 +59,7 @@ export function SetupCheck({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [client, envIncomplete]);
 
   if (phase.kind === "ok") return <>{children}</>;
   if (phase.kind === "checking") return <Center>Checking configuration…</Center>;
@@ -60,7 +82,7 @@ export function SetupCheck({ children }: { children: ReactNode }) {
         )}
 
         <ul className="space-y-3">
-          {ENV.map((e) => {
+          {env.map((e) => {
             const ok = !!e.value;
             const blocking = e.required && !ok;
             return (

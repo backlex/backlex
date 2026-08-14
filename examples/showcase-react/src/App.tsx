@@ -6,133 +6,41 @@ import {
   type PhoneNumber,
 } from "backlex";
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { backlex, type Note, notes, persistToken } from "./backlex";
-import { API_URL, VAPID_PUBLIC_KEY } from "./env";
-import { SetupCheck } from "./SetupCheck";
+import { useSession } from "backlex/react";
+import {
+  API_URL,
+  AuthForm,
+  Centered,
+  SetupCheck,
+  type ExampleUser,
+} from "@backlex-examples/shared";
+import { backlex, type Note, notes } from "./backlex";
+import { EXTRA_ENV, VAPID_PUBLIC_KEY } from "./env";
 
 // `SyncController` isn't exported by name; derive it from the client method so
 // the ref stays fully typed without importing an internal type.
 type SyncController = ReturnType<typeof backlex.sync>;
 
-type User = { id: string; email: string; name?: string | null };
-
 export function App() {
   // Gate the whole app behind a config check so a missing/wrong `.env` shows
   // actionable guidance instead of a blank screen.
   return (
-    <SetupCheck>
+    <SetupCheck client={backlex} extraEnv={EXTRA_ENV}>
       <AuthGate />
     </SetupCheck>
   );
 }
 
 function AuthGate() {
-  const [user, setUser] = useState<User | null>(null);
-  const [booting, setBooting] = useState(true);
+  // One hook replaces the `booting` flag, the session probe, the user state and
+  // the sign-out plumbing this file used to hand-roll. It reads the session
+  // from the client rather than from a copy, so a sign-in ANYWHERE — this
+  // form, another component, a plain `backlex.auth` call — moves it.
+  const { status, user } = useSession(backlex);
 
-  // Restore an existing session (token persisted in localStorage) on first load.
-  useEffect(() => {
-    backlex.auth
-      .getSession()
-      .then((s) => setUser(s.user ?? null))
-      .catch(() => setUser(null))
-      .finally(() => setBooting(false));
-  }, []);
-
-  if (booting) return <Centered>Loading…</Centered>;
-  return user ? (
-    <Showcase user={user} onSignOut={() => setUser(null)} />
-  ) : (
-    <AuthForm onAuthed={setUser} />
-  );
-}
-
-// ── Auth (reused verbatim from the blog example) ─────────────────────────────
-function AuthForm({ onAuthed }: { onAuthed: (u: User) => void }) {
-  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res =
-        mode === "sign-up"
-          ? await backlex.auth.signUp({ email, password, name })
-          : await backlex.auth.signIn({ email, password });
-      persistToken(); // stash the workspace session token
-      onAuthed(res.user);
-    } catch (err) {
-      setError(err instanceof BacklexError ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Centered>
-      <form
-        onSubmit={submit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
-      >
-        <h1 className="text-lg font-semibold">
-          {mode === "sign-up" ? "Create account" : "Sign in to the showcase"}
-        </h1>
-        {mode === "sign-up" && (
-          <Field label="Name">
-            <input
-              className={inputCls}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ada Lovelace"
-            />
-          </Field>
-        )}
-        <Field label="Email">
-          <input
-            className={inputCls}
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-        </Field>
-        <Field label="Password">
-          <input
-            className={inputCls}
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-        </Field>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={busy} className={primaryBtnCls}>
-          {busy ? "…" : mode === "sign-up" ? "Sign up" : "Sign in"}
-        </button>
-        <button
-          type="button"
-          className="w-full text-center text-sm text-neutral-500 hover:text-neutral-800"
-          onClick={() => {
-            setError(null);
-            setMode(mode === "sign-up" ? "sign-in" : "sign-up");
-          }}
-        >
-          {mode === "sign-up"
-            ? "Already have an account? Sign in"
-            : "Need an account? Sign up"}
-        </button>
-      </form>
-    </Centered>
-  );
+  if (status === "unknown") return <Centered>Loading…</Centered>;
+  if (status === "anonymous") return <AuthForm client={backlex} />;
+  return <Showcase user={user as ExampleUser} />;
 }
 
 // ── Showcase shell ───────────────────────────────────────────────────────────
@@ -154,14 +62,9 @@ const PANELS = [
 ] as const;
 type PanelId = (typeof PANELS)[number]["id"];
 
-function Showcase({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+function Showcase({ user }: { user: ExampleUser }) {
+  const { signOut } = useSession(backlex);
   const [tab, setTab] = useState<PanelId>("crud");
-
-  async function signOut() {
-    await backlex.auth.signOut().catch(() => {});
-    persistToken();
-    onSignOut();
-  }
 
   return (
     <div className="mx-auto min-h-dvh max-w-3xl space-y-6 p-6 text-neutral-900">
@@ -174,7 +77,7 @@ function Showcase({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         </div>
         <button
           type="button"
-          onClick={signOut}
+          onClick={() => void signOut()}
           className="text-sm text-neutral-500 hover:text-neutral-800"
         >
           Sign out
@@ -638,8 +541,12 @@ function PublishPanel() {
 }
 
 // ── Panel: storage ───────────────────────────────────────────────────────────
-// `storage.put` / `storage.list` / `storage.download` / `storage.delete`.
-// download() returns a raw Response; we turn it into an object URL for preview.
+// `storage.put` / `storage.list` / `storage.url` / `storage.delete`.
+// `url()` composes the address an object is served at and issues no request,
+// so a preview is an `<img src>` — cached and lazily loaded by the browser,
+// with the resize done server-side. Fetching the bytes into a blob and handing
+// out an object URL, which this panel used to do, gives up all three and leaks
+// one if the revoke is ever missed.
 type StoredObject = {
   key: string;
   size: number;
@@ -650,7 +557,7 @@ type StoredObject = {
 
 function StoragePanel() {
   const [objects, setObjects] = useState<StoredObject[]>([]);
-  const [preview, setPreview] = useState<{ key: string; url: string } | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -667,13 +574,8 @@ function StoragePanel() {
 
   useEffect(() => {
     void refresh();
-    // Revoke any object URL we created when the panel unmounts.
-    return () => {
-      setPreview((p) => {
-        if (p) URL.revokeObjectURL(p.url);
-        return null;
-      });
-    };
+    // Nothing to clean up on unmount any more: the preview is a key, not a
+    // blob handle, so there is no object URL to revoke and no way to leak one.
   }, [refresh]);
 
   async function upload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -692,27 +594,15 @@ function StoragePanel() {
     }
   }
 
-  async function show(key: string) {
-    try {
-      const res = await backlex.storage.download(key);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      setPreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev.url);
-        return { key, url };
-      });
-    } catch (err) {
-      setError(errMsg(err));
-    }
+  function show(key: string) {
+    // No request, nothing to clean up, nothing to fail.
+    setPreview(key);
   }
 
   async function remove(key: string) {
     try {
       await backlex.storage.delete(key);
-      if (preview?.key === key) {
-        URL.revokeObjectURL(preview.url);
-        setPreview(null);
-      }
+      if (preview === key) setPreview(null);
       await refresh();
     } catch (err) {
       setError(errMsg(err));
@@ -749,13 +639,23 @@ function StoragePanel() {
       </ul>
       {preview && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-          <p className="mb-2 text-xs text-neutral-500">Preview · {preview.key}</p>
-          {/* Images render inline; everything else gets a download link. */}
-          {/\.(png|jpe?g|gif|webp|svg)$/i.test(preview.key) ? (
-            <img src={preview.url} alt={preview.key} className="max-h-48 rounded" />
+          <p className="mb-2 text-xs text-neutral-500">Preview · {preview}</p>
+          {/* Images render inline, resized by the transform params; everything
+              else gets a link to the same URL. */}
+          {/\.(png|jpe?g|gif|webp|svg)$/i.test(preview) ? (
+            <img
+              src={backlex.storage.url(preview, { width: 480, format: "webp" })}
+              alt={preview}
+              loading="lazy"
+              className="max-h-48 rounded"
+            />
           ) : (
-            <a className="text-sm text-neutral-700 underline" href={preview.url} download>
-              Open downloaded object
+            <a
+              className="text-sm text-neutral-700 underline"
+              href={backlex.storage.url(preview)}
+              download
+            >
+              Open object
             </a>
           )}
         </div>
@@ -1005,7 +905,7 @@ function FlagsPanel() {
 // key, then hand the endpoint + keys to `messaging.registerDevice`. Delivery
 // still needs push credentials configured in the admin; without them the send
 // fails with an inline error while registration itself keeps working.
-function MessagingPanel({ user }: { user: User }) {
+function MessagingPanel({ user }: { user: ExampleUser }) {
   const [devices, setDevices] = useState<DeviceToken[]>([]);
   const [phones, setPhones] = useState<PhoneNumber[]>([]);
   const [phone, setPhone] = useState("");
@@ -1503,22 +1403,7 @@ function ErrorLine({ msg }: { msg: string }) {
   return <p className="text-sm text-red-600">{msg}</p>;
 }
 
-function Centered({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-dvh items-center justify-center bg-neutral-50 p-6 text-neutral-900">
-      {children}
-    </div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium text-neutral-700">{label}</span>
-      {children}
-    </label>
-  );
-}
 
 function errMsg(err: unknown): string {
   return err instanceof BacklexError ? err.message : String(err);

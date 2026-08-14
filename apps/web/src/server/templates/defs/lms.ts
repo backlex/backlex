@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, email, file, half, image, int, moneyIn, ms, notes, num, parent, pct, position, rating, rel, sec, select, slugField, stacked, tabbed, text, ts, url, userLink } from "../dsl";
+import { C, bool, ch, date, email, file, flag, half, image, int, moneyIn, ms, notes, num, parent, pct, position, rating, rel, sec, select, slugField, stacked, tabbed, text, ts, url, userLink } from "../dsl";
 
 export const lms: SchemaTemplate = {
   id: "lms",
@@ -53,7 +53,7 @@ export const lms: SchemaTemplate = {
       fields: [
         ...half(rel("course", "courses"), text("title", { required: true })),
         notes("description"),
-        ...half(position("course"), bool("published", { default: true, label: "Published" })),
+        ...half(position("course"), flag("published", { label: "Published" })),
       ],
       samples: [{ course: { ref: "courses:0" }, title: "Getting started", position: 1 }, { course: { ref: "courses:0" }, title: "Variables & types", position: 2 }],
     },
@@ -72,7 +72,7 @@ export const lms: SchemaTemplate = {
           ...half(url("video_url", { label: "Video URL" }), int("duration_minutes", { default: 0, label: "Duration (min)", validation: { min: 0 } })),
         ]),
         sec("Publishing", [
-          ...half(position("module"), bool("published", { default: true, label: "Published" })),
+          ...half(position("module"), flag("published", { label: "Published" })),
           bool("free_preview", { default: false, label: "Free preview", description: "Visible to anyone, even before they enroll." }),
         ]),
       ),

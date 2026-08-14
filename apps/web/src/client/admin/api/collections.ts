@@ -384,6 +384,18 @@ export const itemsApi = {
       `/api/items/${slug}/reorder`,
       { method: "POST", body: JSON.stringify({ field, id, ...to }) },
     ),
+  /**
+   * Take a row out of play, or put it back.
+   *
+   * Not a delete and not a hide — the row stays readable and every existing
+   * reference to it keeps resolving. What changes is that it stops being
+   * offered for new work.
+   */
+  retire: (slug: string, id: string, restore = false) =>
+    api<{ data: Record<string, unknown>; field: string; retired: boolean }>(
+      `/api/items/${slug}/${id}/retire${restore ? "?restore=1" : ""}`,
+      { method: "POST", body: "{}" },
+    ),
   /** Discard a staged-edits item's pending staged patch without applying it. */
   discardStaged: (slug: string, id: string) =>
     api<{ ok: true }>(`/api/items/${slug}/${id}/staged`, { method: "DELETE" }),

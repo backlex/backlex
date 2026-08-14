@@ -65,6 +65,8 @@ import { canonicalizeEmailFields, normalizeEmailOperands } from "../items/email-
 import { canonicalizeUrlFields, normalizeUrlOperands } from "../items/url-fields";
 import { canonicalizePhoneFields, normalizePhoneOperands } from "../items/phone-fields";
 import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
+import { parseRetiredScope } from "@backlex/db/retirement";
+import { retiredFilter } from "../items/sql-helpers";
 import { normalizeTemporalOperands } from "../items/temporal-fields";
 import { applyAutoGeocode, patchTouchesSources } from "../items/geocode";
 import { verifyHashField } from "../items/verify";
@@ -841,6 +843,12 @@ export interface ListArgs {
   cursor?: string | null;
   /** Project `localized` fields to one locale, or `"*"` for the full map. */
   locale?: string | null;
+  /**
+   * How to treat rows the collection's retirement flag has taken out of play —
+   * the twin of REST's `?retired=`, and defaulting to `all` for the same
+   * reason: retirement never hides a row from a read.
+   */
+  retired?: string | null;
 }
 
 export interface ListPage {
@@ -968,12 +976,22 @@ export const listPageResolver = async (
           ),
         )
       : null;
+  // Retirement, from the same helper REST composes — the surfaces gate exists
+  // because this file has hand-built its own SQL for every previous write-path
+  // feature and been the one that quietly did not have it.
+  const retiredScope = parseRetiredScope(args.retired ?? undefined);
+  if (retiredScope === null) {
+    throw new GraphQLError('`retired` must be "all", "exclude" or "only"', {
+      extensions: { code: "VALIDATION" },
+    });
+  }
   const wheres = [
     gqlTenantWhere(collection, auth),
     userWhere,
     perm.whereSql,
     deletedWhere,
     draftWhere,
+    retiredFilter(collection.fields, retiredScope, ctx.dialect),
     seekWhere,
   ].filter((x): x is SQL => x != null);
   const whereClause = wheres.length
@@ -1275,7 +1293,7 @@ const toCamelOutput = (
  * wherever it hands work to a shared service (batch, bulk update, changefeed).
  * The write core is another of those places.
  */
-const writeEnvOf = async (
+export const writeEnvOf = async (
   gqlCtx: GqlCtx,
   collection: WriteEnv["collection"],
 ): Promise<WriteEnv> => {

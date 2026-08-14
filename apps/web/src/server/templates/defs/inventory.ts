@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, geo, half, hint, int, money, moneyIn, ms, notes, parent, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, geo, half, hint, int, money, moneyIn, ms, notes, parent, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
 
 export const inventory: SchemaTemplate = {
   id: "inventory",
@@ -15,7 +15,7 @@ export const inventory: SchemaTemplate = {
         text("address"),
         ...half(text("city"), text("country")),
         geo("coordinates", ["address", "city", "country"], { label: "Map pin" }),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Central DC", code: "DC-1", city: "Newark", country: "US", active: true }, { name: "West DC", code: "DC-2", city: "Reno", country: "US", active: true }],
     },
@@ -44,7 +44,7 @@ export const inventory: SchemaTemplate = {
             select("payment_terms", [ch("net_15", C.blue, "Net 15"), ch("net_30", C.teal, "Net 30"), ch("net_60", C.amber, "Net 60"), ch("prepaid", C.gray)], { default: "net_30", label: "Payment terms" }),
             int("lead_time_days", { validation: { min: 0 }, label: "Lead time (days)" }),
           ),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ]),
       ),
       samples: [{ name: "Globex Supplies", contact_name: "Pat Lee", email: "sales@globex.example", phone: "+15555550190", payment_terms: "net_30", lead_time_days: 11, active: true }],
@@ -71,7 +71,7 @@ export const inventory: SchemaTemplate = {
             int("reorder_point", { default: 0, validation: { min: 0 }, label: "Reorder point", description: "Available stock at or below this triggers a reorder." }),
             int("reorder_quantity", { default: 0, validation: { min: 0 }, label: "Reorder qty" }),
           ),
-          ...half(bool("lot_tracked", { default: false, label: "Lot tracked" }), bool("active", { default: true, label: "Active" })),
+          ...half(bool("lot_tracked", { default: false, label: "Lot tracked" }), flag("active", { label: "Active" })),
         ]),
       ),
       samples: [{ name: "Widget A", sku: "WID-A", category: { ref: "item_categories:0" }, supplier: { ref: "suppliers:0" }, unit_cost: 4.5, unit_price: 9.99, unit: "ea", reorder_point: 100, reorder_quantity: 500, lot_tracked: true }, { name: "Widget B", sku: "WID-B", category: { ref: "item_categories:0" }, supplier: { ref: "suppliers:0" }, unit_cost: 6.0, unit_price: 12.99, unit: "ea", reorder_point: 50, reorder_quantity: 200 }],

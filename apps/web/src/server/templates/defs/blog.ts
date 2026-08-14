@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, divider, email, half, hint, image, int, ms, notes, parent, position, rel, relMany, sec, select, slugField, stacked, tabbed, text, url } from "../dsl";
+import { C, bool, ch, date, divider, email, flag, half, hint, image, int, ms, notes, parent, position, rel, relMany, sec, select, slugField, stacked, tabbed, text, url } from "../dsl";
 
 export const blog: SchemaTemplate = {
   id: "blog",
@@ -213,7 +213,7 @@ export const blog: SchemaTemplate = {
         ),
         ...half(
           bool("permanent", { default: true, label: "Permanent (301)" }),
-          bool("active", { default: true }),
+          flag("active"),
         ),
       ],
       samples: [

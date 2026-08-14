@@ -19,6 +19,7 @@ import { fieldLabel, formatFieldValue } from "../lib/format-value";
 import { useListColumns } from "./list-columns";
 import { useAppUserLabels, useRelationLabels } from "../lib/relation-labels";
 import { shortId } from "../lib/row-label";
+import { retireFieldOf, rowIsRetired } from "../lib/retirement";
 import { useCollections, useSettings } from "../queries";
 
 // Cosmos "Backlex Console" data-grid styling. Header cells: mono 10px violet-
@@ -31,8 +32,18 @@ const ADMIN_TABLE_CLS =
 /** Segmented-control classes shared by the status tabs + the view toggle so
  *  the two strips read as one system. Restyle-only — the Radix Tabs behavior
  *  (keyboard nav, value change) is untouched. */
+/**
+ * The segmented control the status tabs and the in-play control both wear.
+ *
+ * `border`/`bg-muted` rather than the literal `white/[0.07]` + `white/[0.04]`
+ * this used to carry: those alphas are a dark-theme assumption, and against the
+ * light theme's near-white surface they render an invisible box — the control
+ * read as three floating words with no boundary. Same class of bug as the
+ * cosmos colors that had to be scoped under `.dark`; the tokens already answer
+ * it in both themes.
+ */
 export const SEG_LIST_CLS =
-  "gap-[3px] rounded-control border border-white/[0.07] bg-white/[0.04] p-[3px]";
+  "gap-[3px] rounded-control border border-border bg-muted/60 p-[3px]";
 export const SEG_TRIGGER_CLS =
   "rounded-sm px-3 py-[5px] text-xs font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground";
 
@@ -362,10 +373,14 @@ export interface FilterBarProps {
   schema: CollectionSchema;
   status: string;
   setStatus: (v: string) => void;
+  /** `"in-play"` (default) / `"retired"` / `"all"` — only rendered when the
+   *  collection declares a retirement flag. */
+  retired?: string;
+  setRetired?: (v: string) => void;
   total: number;
 }
 
-export function FilterBar({ search, setSearch, filters, setFilters, schema, status, setStatus, total }: FilterBarProps) {
+export function FilterBar({ search, setSearch, filters, setFilters, schema, status, setStatus, retired, setRetired, total }: FilterBarProps) {
   const { t } = useLingui();
   const [popOpen, setPopOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -404,6 +419,14 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
       ]
     : null;
 
+  // Retirement gets its OWN control rather than sharing the status tabs: a
+  // collection can have both a status dropdown and a retirement flag, and they
+  // answer different questions ("where is this in its lifecycle" vs "is this
+  // still in play at all"). Folding them into one row of tabs would force a
+  // schema to choose.
+  const retireField = retireFieldOf(schema.fields);
+  const showRetired = Boolean(retireField && retired && setRetired);
+
   return (
     <div className="flex flex-col gap-2">
       {/* Row 1: search + Filter on the left, status tabs pinned to the right. */}
@@ -424,6 +447,26 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
           </Button>
           {popOpen && <AddFilterPopover schema={schema} onAdd={(f) => setFilters([...filters, f])} onClose={() => setPopOpen(false)} />}
         </div>
+
+        {showRetired && (
+          <Tabs
+            value={retired}
+            onValueChange={(v) => setRetired?.(v)}
+            className={statusTabs ? "" : "ml-auto"}
+          >
+            <TabsList className={SEG_LIST_CLS}>
+              <TabsTrigger value="in-play" className={SEG_TRIGGER_CLS}>
+                <Trans>In play</Trans>
+              </TabsTrigger>
+              <TabsTrigger value="retired" className={SEG_TRIGGER_CLS}>
+                <Trans>Out of play</Trans>
+              </TabsTrigger>
+              <TabsTrigger value="all" className={SEG_TRIGGER_CLS}>
+                <Trans>Both</Trans>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
 
         {statusTabs && (
           <Tabs value={status} onValueChange={(v) => setStatus(v)} className="ml-auto">
@@ -845,6 +888,9 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   // defined them. Status is now schema-driven — only shown when the
   // collection declares a dropdown field (typically named "status").
   const statusField = resolveStatusField(schema as any);
+  /** The collection's retirement flag, so a row the list is showing out of play
+   *  says so rather than looking identical to a live one. */
+  const tableRetireField = retireFieldOf(schema?.fields);
   const choiceByValue = new Map(
     statusField?.choices.map((c) => [c.value, c]) ?? [],
   );
@@ -1293,6 +1339,17 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                           <Trans>Staged</Trans>
                         </span>
                       )}
+                      {rowIsRetired(r as unknown as Record<string, unknown>, tableRetireField) && (
+                        // Only visible with the list showing out-of-play rows,
+                        // so this labels rows the operator asked to see — the
+                        // default view has none of them.
+                        <span
+                          className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] leading-4 text-muted-foreground"
+                          title={t`Out of play — still linked from anywhere that points at it, but no longer offered`}
+                        >
+                          <Trans>Out of play</Trans>
+                        </span>
+                      )}
                     </span>
                     {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
                   </div>
@@ -1472,14 +1529,27 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   );
 }
 
-export function BulkBar({ count, onClear, onEdit, onPublish, onDelete }: { count: number; onClear: () => void; onEdit: () => void; onPublish: () => void; onDelete: () => void }) {
+export function BulkBar({ count, onClear, onEdit, onPublish, onDelete, onRetire }: { count: number; onClear: () => void; onEdit: () => void; onPublish: () => void; onDelete: () => void; onRetire?: (retire: boolean) => void }) {
   if (!count) return null;
   return (
-    <div className="flex items-center gap-2.5 border-b border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-muted px-3.5 py-2">
+    <div className="flex flex-wrap items-center gap-2.5 border-b border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-muted px-3.5 py-2">
       <span className="text-[12.5px] font-medium"><Trans>{count} selected</Trans></span>
       <div className="flex-1" />
       <Button variant="outline" size="sm" icon={I.Pencil} onClick={onEdit}><Trans>Edit</Trans></Button>
       <Button variant="outline" size="sm" icon={I.Check} onClick={onPublish}><Trans>Publish</Trans></Button>
+      {/* Offered before Delete, and that order is the point: taking a batch of
+          rows out of play is what an operator usually means when they reach
+          for Delete on rows other rows still reference. */}
+      {onRetire && (
+        <>
+          <Button variant="outline" size="sm" icon={I.Archive} onClick={() => onRetire(true)}>
+            <Trans>Retire</Trans>
+          </Button>
+          <Button variant="outline" size="sm" icon={I.RotateCcw} onClick={() => onRetire(false)}>
+            <Trans>Restore</Trans>
+          </Button>
+        </>
+      )}
       <Button variant="outline" size="sm" icon={I.Trash} onClick={onDelete}><Trans>Delete</Trans></Button>
       <Button variant="ghost" size="sm" onClick={onClear}><Trans>Clear</Trans></Button>
     </div>

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, half, hint, int, money, ms, notes, num, parent, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
+import { C, ch, computedNum, date, email, flag, half, hint, int, money, ms, notes, num, parent, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
 
 export const maintenance: SchemaTemplate = {
   id: "maintenance",
@@ -23,7 +23,7 @@ export const maintenance: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), text("contact_name", { label: "Contact name" })),
         ...half(email("email"), phone("phone")),
-        ...half(text("specialties", { label: "Specialties" }), bool("active", { default: true, label: "Active" })),
+        ...half(text("specialties", { label: "Specialties" }), flag("active", { label: "Active" })),
       ],
       samples: [
         { name: "CoolAir HVAC Services", contact_name: "Dana Frost", email: "dispatch@coolair.example", phone: "+15555550142", specialties: "HVAC, refrigeration, air handling", active: true },
@@ -41,7 +41,7 @@ export const maintenance: SchemaTemplate = {
           ...half(rel("team", "teams", { label: "Maintenance team" }), rel("vendor", "vendors", { label: "Service vendor" })),
           ...half(
             select("criticality", [ch("low", C.gray), ch("medium", C.blue), ch("high", C.amber), ch("critical", C.red)], { default: "medium" }),
-            bool("active", { default: true, label: "In service" }),
+            flag("active", { label: "In service" }),
           ),
         ]),
         sec("Purchase", [
@@ -154,7 +154,7 @@ export const maintenance: SchemaTemplate = {
         ]),
         sec("Cadence", [
           ...half(date("last_done", { label: "Last done" }), date("next_due", { indexed: true, label: "Next due" })),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ]),
       ),
       samples: [{ equipment: { ref: "equipment:1" }, team: { ref: "teams:1" }, task: "Replace filters + coil clean", frequency: "quarterly", last_done: ms("2026-06-25"), next_due: ms("2026-09-25"), active: true }],

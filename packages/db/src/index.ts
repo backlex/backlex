@@ -13,6 +13,7 @@ export * from "./money";
 export * from "./order";
 export * from "./phone";
 export * from "./range";
+export * from "./retirement";
 export * from "./rollup";
 export * from "./sequence";
 export * from "./slug";

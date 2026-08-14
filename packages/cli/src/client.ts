@@ -118,6 +118,11 @@ export const buildListQuery = (args: string[]): ListQuery => {
   if (status) q.status = status as ListQuery["status"];
   const locale = flag(args, "--locale");
   if (locale) q.locale = locale;
+  // Unrecognised values are passed through rather than dropped, so the server
+  // refuses them by name — swallowing a typo here would silently return every
+  // row under a flag that promised a narrower list.
+  const retired = flag(args, "--retired");
+  if (retired) q.retired = retired as ListQuery["retired"];
   return q;
 };
 

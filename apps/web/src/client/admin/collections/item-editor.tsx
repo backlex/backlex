@@ -13,6 +13,7 @@ import { type CollectionSchema, type Post } from "../config";
 import { Badge, Button, IconButton, Switch, relativeTime } from "../ui";
 import { authorById } from "./items";
 import { rowLabel } from "../lib/row-label";
+import { liveValueOf, retireFieldOf, rowIsRetired } from "../lib/retirement";
 import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Skeleton } from "@backlex/ui/components/skeleton";
@@ -100,6 +101,8 @@ export function ItemEditorPage({
   const [conflict, setConflict] = useState(false);
 
   const form = useItemForm({ schema, initial: item, active: mode === "create" || !loading });
+  /** The collection's retirement flag, if it declares one. */
+  const retireField = useMemo(() => retireFieldOf(schema.fields), [schema.fields]);
   const dirty = form.dirty;
 
   // Open each record (and prev/next) at the top — the list scroll position
@@ -307,6 +310,38 @@ export function ItemEditorPage({
                 : t`Publish scheduled.`,
       );
     } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  };
+
+  /**
+   * Take this row out of play, or put it back.
+   *
+   * Optimistic, like every other mutation in the admin: the flag flips in the
+   * open editor first and rolls back if the server refuses. Rolling back
+   * matters here specifically — a role whose `update` grant excludes the flag
+   * is refused (403), and leaving the switch showing the value it could not
+   * write would tell the operator the opposite of what happened.
+   */
+  const doRetire = async (retire: boolean) => {
+    if (!item || !retireField?.retire) return;
+    const snapshot = item;
+    const optimistic = {
+      ...item,
+      [retireField.name]: retire ? !liveValueOf(retireField) : liveValueOf(retireField),
+    } as Post;
+    setItem(optimistic);
+    onSaved(optimistic);
+    try {
+      const res = await itemsApi.retire(slug, item.id, !retire);
+      const updated = { ...optimistic, ...(res.data as Partial<Post>) } as Post;
+      setItem(updated);
+      onSaved(updated);
+      setRevisionsKey((k) => k + 1);
+      pushToast(retire ? t`Row taken out of play.` : t`Row put back in play.`);
+    } catch (e) {
+      setItem(snapshot);
+      onSaved(snapshot);
       pushToast((e as Error).message, "error");
     }
   };
@@ -648,6 +683,40 @@ export function ItemEditorPage({
                   onPublish={doPublish}
                   onDiscardStaged={discardStaged}
                 />
+              </div>
+            </Card>
+          )}
+
+          {/* In play / out of play. Its own card rather than a switch buried in
+              the form, because the form writes a value and this states what
+              the row IS — and because the flag is the one column a role can be
+              granted the collection but refused. */}
+          {mode === "edit" && item && retireField && (
+            <Card className="gap-0 py-0">
+              <div className={SECTION_TITLE_CLS}>
+                <I.Archive size={13} />
+                <Trans>Availability</Trans>
+              </div>
+              <div className="flex flex-col gap-2.5 p-3.5">
+                <p className="text-[12px] text-muted-foreground">
+                  {rowIsRetired(item as unknown as Record<string, unknown>, retireField) ? (
+                    <Trans>
+                      Out of play. Still readable and still linked from anywhere that
+                      already points at it — it is just no longer offered for new work.
+                    </Trans>
+                  ) : (
+                    <Trans>In play — offered wherever a row of this collection is picked.</Trans>
+                  )}
+                </p>
+                {rowIsRetired(item as unknown as Record<string, unknown>, retireField) ? (
+                  <Button variant="outline" size="sm" icon={I.RotateCcw} onClick={() => doRetire(false)}>
+                    <Trans>Put back in play</Trans>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" icon={I.Archive} onClick={() => doRetire(true)}>
+                    <Trans>Take out of play</Trans>
+                  </Button>
+                )}
               </div>
             </Card>
           )}

@@ -29,6 +29,34 @@ export const notes = (name: string, extra: Partial<FieldDef> = {}): FieldDef => 
 export const num = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "number", ...extra });
 export const int = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", ...extra });
 export const bool = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "boolean", interface: "toggle", ...extra });
+/**
+ * The boolean that says whether a row is still in play — 64 columns across 21
+ * of the 27 templates, spelled `active` 56 times and then `visible`,
+ * `published`, `available`, `enabled`.
+ *
+ * A plain `bool()` is what they all were, and nothing in the product read any
+ * of them: the relation pickers offered a discontinued product exactly like one
+ * still being sold, and every "only the live ones" query was a table scan
+ * because not one of the 64 carried an index. Declaring `retire` is what makes
+ * the column mean something — the index comes with the declaration, the pickers
+ * skip the row, and a write pointing a NEW reference at it is refused.
+ *
+ * `default: true` is deliberate and belongs to the helper rather than to each
+ * call site: a row created without an opinion is in play, and a NULL here is
+ * read as in play for the same reason.
+ *
+ * NOT for a lifecycle value (`status: "cancelled"`) — that is `transitions`,
+ * which knows what a status may move to and who may move it. Two answers to one
+ * question is worse than either.
+ */
+export const flag = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({
+  name,
+  type: "boolean",
+  interface: "toggle",
+  default: true,
+  retire: {},
+  ...extra,
+});
 export const ts = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "timestamp", interface: "datetime", ...extra });
 export const date = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "timestamp", interface: "date", ...extra });
 export const file = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "file", ...extra });

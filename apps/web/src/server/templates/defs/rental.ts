@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, file, half, hint, int, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
+import { C, ch, computedNum, date, email, file, flag, half, hint, int, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
 
 export const rental: SchemaTemplate = {
   id: "rental",
@@ -27,7 +27,7 @@ export const rental: SchemaTemplate = {
             money("late_fee_per_day", { label: "Late fee / day" }),
             int("padding_hours", { default: 0, validation: { min: 0 }, label: "Padding between rentals (h)", description: "Turnaround time held after each return before the unit is bookable again." }),
           ),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ]),
       ),
       samples: [
@@ -151,7 +151,7 @@ export const rental: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), money("rate_daily", { label: "Daily rate" })),
         notes("description"),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Event starter kit", rate_daily: 150, description: "PA system plus stands and cabling for small events.", active: true }],
     },

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, computedText, date, email, file, flow, half, hint, host, int, money, moneyIn, ms, notes, num, pct, phone, position, rel, sec, select, stacked, text, ts } from "../dsl";
+import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, half, hint, host, int, money, moneyIn, ms, notes, num, pct, phone, position, rel, sec, select, stacked, text, ts } from "../dsl";
 
 export const crm: SchemaTemplate = {
   id: "crm",
@@ -61,7 +61,7 @@ export const crm: SchemaTemplate = {
       slug: "sales_teams", group: "Sales", singular: "Sales team", plural: "Sales teams", defaultSort: "name",
       fields: [
         ...half(text("name", { required: true }), text("region")),
-        ...half(money("target_amount", { label: "Target amount" }), bool("active", { default: true, label: "Active" })),
+        ...half(money("target_amount", { label: "Target amount" }), flag("active", { label: "Active" })),
       ],
       samples: [{ name: "AMER Enterprise", region: "North America", target_amount: 500000, active: true }, { name: "EMEA Mid-market", region: "Europe", target_amount: 300000, active: true }],
     },
@@ -157,7 +157,7 @@ export const crm: SchemaTemplate = {
       slug: "products", group: "Catalog", singular: "Product", plural: "Products", defaultSort: "name",
       fields: [
         ...half(text("name", { required: true }), text("sku", { unique: true, label: "SKU" })),
-        ...half(money("unit_price", { label: "Unit price" }), bool("active", { default: true, label: "Active" })),
+        ...half(money("unit_price", { label: "Unit price" }), flag("active", { label: "Active" })),
         notes("description"),
       ],
       samples: [

@@ -46,6 +46,7 @@ import { signatureQueryFields, signatureMutationFields } from "./signatures";
 import { bookingQueryFields, bookingMutationFields } from "./booking";
 import { i18nQueryFields, i18nMutationFields } from "./i18n";
 import { orderMutationFields } from "./order";
+import { retirementMutationFields } from "./retirement";
 import { slugMutationFields } from "./slug";
 import { storageQueryFields, storageMutationFields } from "./storage";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
@@ -153,6 +154,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...appOrgMutationFields,
           ...messagingMutationFields,
           ...orderMutationFields,
+          ...retirementMutationFields,
           ...slugMutationFields,
         },
       }),
@@ -220,6 +222,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...appOrgMutationFields,
     ...messagingMutationFields,
     ...orderMutationFields,
+    ...retirementMutationFields,
     ...slugMutationFields,
   };
 
@@ -274,6 +277,14 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           "Project `localized` fields to this locale (falling back to the " +
           "workspace default), instead of returning the full `{locale: value}` " +
           "map. `*` or omitted returns the map. Mirrors REST `?locale=`.",
+      },
+      retired: {
+        type: GraphQLString,
+        description:
+          "How to treat rows the collection's retirement flag has taken out of " +
+          "play: `all` (default — retirement never hides a row from a read), " +
+          "`exclude` (only rows still in play; a NULL flag counts as in play), " +
+          "or `only`. Mirrors REST `?retired=`.",
       },
     } as const;
 

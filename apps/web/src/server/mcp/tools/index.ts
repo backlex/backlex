@@ -22,6 +22,7 @@ import { documentsTools } from "./documents";
 import { geoTools } from "./geo";
 import { emailTools } from "./email";
 import { orderTools } from "./order";
+import { retirementTools } from "./retirement";
 import { slugTools } from "./slug";
 import { phoneTools } from "./phone";
 import { approvalsTools } from "./approvals";
@@ -95,6 +96,7 @@ export const allTools: McpTool[] = [
   ...documentsTools,
   ...geoTools,
   ...orderTools,
+  ...retirementTools,
   ...slugTools,
   ...phoneTools,
   ...emailTools,

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, file, half, hint, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedNum, date, email, file, flag, half, hint, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
 
 export const legal: SchemaTemplate = {
   id: "legal",
@@ -13,7 +13,7 @@ export const legal: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), email("email")),
         ...half(text("bar_number", { label: "Bar no." }), money("hourly_rate", { label: "Default hourly rate" })),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Elena Vasquez", email: "elena@firm.example", bar_number: "NY-448211", hourly_rate: 350, active: true }, { name: "David Osei", email: "david@firm.example", bar_number: "NY-501992", hourly_rate: 275, active: true }],
     },

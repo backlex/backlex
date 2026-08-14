@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, email, half, int, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
+import { C, ch, date, email, flag, half, int, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
 
 export const fleet: SchemaTemplate = {
   id: "fleet",
@@ -13,7 +13,7 @@ export const fleet: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), email("email")),
         ...half(phone("phone"), text("license_no", { label: "License no." })),
-        ...half(date("license_expires", { label: "License expires" }), bool("active", { default: true, label: "Active" })),
+        ...half(date("license_expires", { label: "License expires" }), flag("active", { label: "Active" })),
       ],
       samples: [{ name: "Priya Nair", email: "priya@example.com", license_no: "D-4471820", license_expires: ms("2028-03-01"), active: true }, { name: "Tom Becker", email: "tom@example.com", license_no: "D-9982710", license_expires: ms("2027-09-15"), active: true }],
     },

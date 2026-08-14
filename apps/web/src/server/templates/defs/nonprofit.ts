@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, email, half, int, money, moneyIn, ms, notes, num, phone, rel, sec, select, slugField, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, date, email, flag, half, int, money, moneyIn, ms, notes, num, phone, rel, sec, select, slugField, stacked, tabbed, text, ts, userLink } from "../dsl";
 
 export const nonprofit: SchemaTemplate = {
   id: "nonprofit",
@@ -40,7 +40,7 @@ export const nonprofit: SchemaTemplate = {
           text("name", { required: true }),
           select("restriction", [ch("unrestricted", C.green), ch("temporarily_restricted", C.amber, "Temporarily restricted"), ch("permanently_restricted", C.red, "Permanently restricted")], { default: "unrestricted" }),
         ),
-        ...half(text("code", { label: "GL code" }), bool("active", { default: true })),
+        ...half(text("code", { label: "GL code" }), flag("active")),
         notes("description"),
       ],
       samples: [

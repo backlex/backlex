@@ -13,6 +13,7 @@
     "./order": "./src/order.ts",
     "./phone": "./src/phone.ts",
     "./range": "./src/range.ts",
+    "./retirement": "./src/retirement.ts",
     "./sequence": "./src/sequence.ts",
     "./slug": "./src/slug.ts",
     "./transitions": "./src/transitions.ts",

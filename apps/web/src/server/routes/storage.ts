@@ -711,11 +711,15 @@ apiRegistry.registerPath({
 
 apiRegistry.registerPath({
   method: "post",
-  path: "/api/storage/{key}/sign",
+  // Sentinel-PREFIX form, matching the handler above. The suffix form
+  // (`/{key}/sign`) is what this registration and docs/storage.md used to
+  // advertise, and it 404s — anyone following the generated spec got a dead
+  // endpoint while the MCP tool, which had it right, worked.
+  path: "/api/storage/_sign/{key}",
   tags,
   summary: "Issue a signed URL",
   description:
-    "Generates a short-lived signed URL that bypasses session auth. The `{key}` path param may contain `/` (catch-all).",
+    "Generates a short-lived signed URL that bypasses session auth. The `{key}` path param may contain `/` (catch-all), so it is the LAST segment: `POST /api/storage/_sign/invoices/2026/q1.pdf`.",
   security: SECURITY,
   request: {
     params: z.object({ key: z.string() }),

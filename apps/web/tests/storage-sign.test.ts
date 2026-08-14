@@ -53,4 +53,30 @@ describe("storage.sign — multi-segment keys", () => {
       expect(typeof body.expiresAt).toBe("string");
     });
   }
+
+  // The route was right and everything that DESCRIBED it was wrong: the
+  // OpenAPI registration and docs/storage.md both advertised `/{key}/sign`,
+  // which 404s. Only the MCP tool had the prefix form. A working endpoint
+  // nobody can find from the spec is indistinguishable from a broken one.
+  test("the advertised path is the one that answers", async () => {
+    const spec = (await (await h.fetch("/api/openapi.json")).json()) as {
+      paths: Record<string, unknown>;
+    };
+    expect(Object.keys(spec.paths)).toContain("/api/storage/_sign/{key}");
+    expect(Object.keys(spec.paths)).not.toContain("/api/storage/{key}/sign");
+  });
+
+  test("the suffix form really does 404 — this is not a cosmetic rename", async () => {
+    await h.fetch("/api/storage/one/two/three.txt", {
+      method: "PUT",
+      headers: { "content-type": "text/plain" },
+      body: "regression-test",
+    });
+    const suffix = await h.fetch("/api/storage/one/two/three.txt/sign", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ttlSeconds: 300 }),
+    });
+    expect(suffix.status).toBe(404);
+  });
 });

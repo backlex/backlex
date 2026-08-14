@@ -49,7 +49,7 @@ bearer API key (except `GET` with a valid `?token=`).
 | GET    | `/:key`               | `system_files.read` *or* `?token=`  | Stream object — see [Image transform](#image-transform) and [Signed URLs](#signed-urls) |
 | PATCH  | `/:key`               | `system_files.update`               | Body `{ acl?: "public"\|"private", folderId?: string\|null }` |
 | DELETE | `/:key`               | `system_files.delete`               | Removes object + row                        |
-| POST   | `/:key/sign`          | `system_files.read`                 | Body `{ ttlSeconds?: number }` (60–86400, default 3600); returns `{ url, expiresAt }` |
+| POST   | `/_sign/:key`         | `system_files.read`                 | Body `{ ttlSeconds?: number }` (60–86400, default 3600); returns `{ url, expiresAt }` |
 
 The collection slug used by the permission system is `system_files`; the
 `ownerScoped`-style auto-permissions seeded for `authenticated` cover
@@ -131,15 +131,24 @@ distinct param sets get distinct cache entries. Clients that round-trip
 
 ## Signed URLs
 
-`POST /api/storage/:key/sign` issues a short-lived bearer that lets the
+`POST /api/storage/_sign/:key` issues a short-lived bearer that lets the
 holder fetch the object without a cookie or API key. Useful for hand-off
 to an `<img>` tag, a download anchor, or third parties (CDN purge
 webhooks, etc.).
 
+:::note[Why `_sign/` is a prefix, not a `/sign` suffix]
+A key may contain `/`, so it is a catch-all — and the router falls back to a
+greedy matcher when a literal-suffix route sits alongside sibling catch-alls,
+which made `…/a/b/c.txt/sign` 404 on keys of three or more segments. The
+sentinel prefix has no such ambiguity, so the key stays the *last* thing in the
+path. This page and the generated OpenAPI spec both advertised the suffix form
+for a while; it never worked. See `tests/storage-sign.test.ts`.
+:::
+
 ### Request
 
 ```bash
-curl -X POST /api/storage/uploads/private.pdf/sign \
+curl -X POST /api/storage/_sign/uploads/private.pdf \
   -H "content-type: application/json" \
   -d '{"ttlSeconds": 600}'      # 60–86400, default 3600
 # → { "url": "/api/storage/uploads/private.pdf?token=…", "expiresAt": "…" }
@@ -166,7 +175,7 @@ match the requested path.
 ### Using a signed URL
 
 ```ts
-const { url } = await fetch(`/api/storage/${key}/sign`, {
+const { url } = await fetch(`/api/storage/_sign/${key}`, {
   method: "POST",
   body: JSON.stringify({ ttlSeconds: 300 }),
 }).then((r) => r.json());

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flow, geo, half, hint, image, int, money, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, url, userLink } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, flow, geo, half, hint, image, int, money, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, url, userLink } from "../dsl";
 
 export const ecommerce: SchemaTemplate = {
   id: "ecommerce",
@@ -24,7 +24,7 @@ export const ecommerce: SchemaTemplate = {
         ...half(text("name", { required: true }), slugField("name")),
         notes("description"),
         ...half(parent("categories"), image("image")),
-        ...half(position("parent"), bool("visible", { default: true, label: "Visible" })),
+        ...half(position("parent"), flag("visible", { label: "Visible" })),
       ],
       samples: [
         { name: "Apparel", slug: "apparel", position: 1 },
@@ -45,7 +45,7 @@ export const ecommerce: SchemaTemplate = {
             select("collection_type", [ch("manual", C.blue), ch("smart", C.purple)], { default: "manual", label: "Type" }),
             select("sort_order", ["manual", "best_selling", "alpha_asc", "alpha_desc", "price_asc", "price_desc", "created_desc"], { default: "manual", label: "Sort order" }),
           ),
-          ...half(position(), bool("published", { default: true, label: "Published" })),
+          ...half(position(), flag("published", { label: "Published" })),
         ]),
       ),
       samples: [{ title: "Summer Sale", slug: "summer-sale", collection_type: "manual", position: 1, published: true }],
@@ -62,7 +62,7 @@ export const ecommerce: SchemaTemplate = {
         sec("SEO", [
           text("seo_title", { label: "SEO title" }),
           notes("seo_description", { label: "SEO description" }),
-          bool("visible", { default: true }),
+          flag("visible"),
         ], { folded: true }),
       ),
       samples: [
@@ -108,7 +108,7 @@ export const ecommerce: SchemaTemplate = {
           text("from_path", { required: true, unique: true, label: "From path", description: "Path only, e.g. /products/old-handle." }),
           text("to_path", { required: true, label: "To path or URL" }),
         ),
-        ...half(bool("permanent", { default: true, label: "Permanent (301)" }), bool("active", { default: true })),
+        ...half(bool("permanent", { default: true, label: "Permanent (301)" }), flag("active")),
       ],
       samples: [
         { from_path: "/products/tee", to_path: "/products/classic-tee", permanent: true, active: true },
@@ -136,7 +136,7 @@ export const ecommerce: SchemaTemplate = {
       // Where you ship / charge tax (Vendure Zone, Medusa Region).
       slug: "shipping_zones", group: "Shipping & tax", singular: "Shipping zone", plural: "Shipping zones", defaultSort: "name",
       fields: [
-        ...half(text("name", { required: true }), bool("active", { default: true })),
+        ...half(text("name", { required: true }), flag("active")),
         tags("countries", { label: "Countries", description: "ISO country codes this zone covers, e.g. US, CA." }),
       ],
       samples: [{ name: "North America", active: true }, { name: "Europe", active: true }],
@@ -149,7 +149,7 @@ export const ecommerce: SchemaTemplate = {
           num("rate", { validation: { min: 0, max: 100 }, label: "Rate (%)", format: { style: "percent100", precision: 2 } }),
           bool("inclusive", { default: false, label: "Prices include tax" }),
         ),
-        bool("active", { default: true }),
+        flag("active"),
       ],
       samples: [
         { name: "US standard", zone: { ref: "shipping_zones:0" }, rate: 8.5, inclusive: false, active: true },
@@ -168,7 +168,7 @@ export const ecommerce: SchemaTemplate = {
             money("min_order_subtotal", { label: "Minimum order subtotal" }),
             num("max_weight_kg", { validation: { min: 0 }, label: "Maximum weight (kg)" }),
           ),
-          ...half(int("eta_days", { label: "Delivery estimate (days)" }), bool("active", { default: true })),
+          ...half(int("eta_days", { label: "Delivery estimate (days)" }), flag("active")),
         ]),
       ),
       samples: [
@@ -183,7 +183,7 @@ export const ecommerce: SchemaTemplate = {
         text("address"),
         ...half(text("city"), text("country")),
         geo("coordinates", ["address", "city", "country"], { label: "Map pin" }),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [
         { name: "Central DC", code: "DC-1", city: "Newark", country: "US", active: true },
@@ -330,7 +330,7 @@ export const ecommerce: SchemaTemplate = {
           ...half(text("name", { required: true }), rel("product", "products")),
           ...half(
             select("kind", [ch("subscription", C.purple), ch("prepaid", C.teal), ch("try_before_you_buy", C.blue, "Try before you buy")], { default: "subscription" }),
-            bool("active", { default: true }),
+            flag("active"),
           ),
         ]),
         sec("Cadence & discount", [

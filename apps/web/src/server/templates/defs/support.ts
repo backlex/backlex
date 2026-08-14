@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, email, flow, half, host, int, ms, notes, phone, position, rating, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, userLink } from "../dsl";
+import { C, bool, ch, email, flag, flow, half, host, int, ms, notes, phone, position, rating, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, userLink } from "../dsl";
 
 export const support: SchemaTemplate = {
   id: "support",
@@ -28,7 +28,7 @@ export const support: SchemaTemplate = {
         ...half(text("name", { required: true }), email("email", { unique: true })),
         ...half(
           select("role", [ch("agent", C.blue), ch("admin", C.purple)], { default: "agent" }),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ),
       ],
       samples: [{ name: "Robin Park", email: "robin@support.example", role: "agent" }],
@@ -47,7 +47,7 @@ export const support: SchemaTemplate = {
           select("kind", [ch("email", C.blue), ch("web_widget", C.teal, "Web widget"), ch("chat", C.purple), ch("phone", C.amber), ch("api", C.gray)], { default: "email" }),
         ),
         ...half(email("inbound_address", { label: "Inbound address" }), rel("default_team", "teams", { label: "Routes to team" })),
-        ...half(bool("auto_reply", { default: true, label: "Send auto-reply" }), bool("active", { default: true })),
+        ...half(bool("auto_reply", { default: true, label: "Send auto-reply" }), flag("active")),
       ],
       samples: [
         { name: "support@ inbox", kind: "email", inbound_address: "support@example.com", default_team: { ref: "teams:0" }, auto_reply: true, active: true },
@@ -81,7 +81,7 @@ export const support: SchemaTemplate = {
       slug: "kb_sections", group: "Knowledge base", singular: "Section", plural: "Sections", defaultSort: "position",
       fields: [
         ...half(rel("category", "categories", { required: true }), text("name", { required: true })),
-        ...half(position("category"), bool("visible", { default: true })),
+        ...half(position("category"), flag("visible")),
         notes("description"),
       ],
       samples: [
@@ -127,7 +127,7 @@ export const support: SchemaTemplate = {
         ]),
         sec("Escalates to", [
           ...half(rel("escalate_to_team", "teams", { label: "Team" }), rel("escalate_to_agent", "agents", { label: "Agent" })),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ]),
       ),
       samples: [
@@ -217,7 +217,7 @@ export const support: SchemaTemplate = {
         ...half(text("name", { required: true }), text("key", { unique: true, label: "Key", description: "Referenced by automations, e.g. ticket_received." })),
         text("subject"),
         notes("body"),
-        bool("active", { default: true }),
+        flag("active"),
       ],
       samples: [
         { name: "Ticket received", key: "ticket_received", subject: "We got your message ({{ticket.number}})", body: "Thanks — an agent will reply within the SLA for your plan.", active: true },
@@ -241,7 +241,7 @@ export const support: SchemaTemplate = {
     {
       slug: "canned_responses", group: "Tickets", singular: "Canned response", plural: "Canned responses", defaultSort: "title",
       fields: [
-        ...half(text("title"), bool("active", { default: true })),
+        ...half(text("title"), flag("active")),
         notes("body"),
         tags("tags"),
       ],

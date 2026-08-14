@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flow, half, hint, int, money, moneyIn, ms, notes, num, pct, position, rel, sec, select, slugField, stacked, text, ts, url } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, flow, half, hint, int, money, moneyIn, ms, notes, num, pct, position, rel, sec, select, slugField, stacked, text, ts, url } from "../dsl";
 
 export const saas: SchemaTemplate = {
   id: "saas",
@@ -43,7 +43,7 @@ export const saas: SchemaTemplate = {
           num("percentage", { validation: { min: 0, max: 100 }, label: "Rate (%)", format: { style: "percent100", precision: 2 } }),
           text("country", { label: "Country code" }),
         ),
-        ...half(bool("inclusive", { default: false, label: "Prices include tax" }), bool("active", { default: true })),
+        ...half(bool("inclusive", { default: false, label: "Prices include tax" }), flag("active")),
       ],
       samples: [
         { display_name: "US Sales Tax", jurisdiction: "CA", percentage: 8.5, country: "US", inclusive: false, active: true },
@@ -67,7 +67,7 @@ export const saas: SchemaTemplate = {
       fields: [
         text("name", { required: true }),
         notes("description"),
-        ...half(bool("active", { default: true, label: "Active" }), text("unit_label", { label: "Unit label" })),
+        ...half(flag("active", { label: "Active" }), text("unit_label", { label: "Unit label" })),
       ],
       samples: [{ name: "Pro Plan", description: "Everything in Starter, plus advanced features.", active: true }, { name: "API Usage", description: "Metered API calls.", active: true }],
     },
@@ -160,7 +160,7 @@ export const saas: SchemaTemplate = {
         text("name", { required: true }),
         notes("description"),
         ...half(money("price", { required: true }), select("billing", [ch("per_seat", C.blue, "Per seat"), ch("flat", C.teal)], { default: "flat" })),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [
         { name: "Extra seats", description: "Additional team seats beyond the plan allowance.", price: 9, billing: "per_seat", active: true },
@@ -324,7 +324,7 @@ export const saas: SchemaTemplate = {
       fields: [
         rel("account", "accounts"),
         url("url", { required: true }),
-        ...half(text("secret", { private: true, label: "Signing secret" }), bool("active", { default: true })),
+        ...half(text("secret", { private: true, label: "Signing secret" }), flag("active")),
       ],
       samples: [{ account: { ref: "accounts:0" }, url: "https://acme.example/hooks/backlex", active: true }],
     },

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedMoneyIn, computedNum, date, email, file, flow, half, hint, money, moneyIn, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedMoneyIn, computedNum, date, email, file, flag, flow, half, hint, money, moneyIn, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
 
 export const invoicing: SchemaTemplate = {
   id: "invoicing",
@@ -12,7 +12,7 @@ export const invoicing: SchemaTemplate = {
       slug: "taxes", group: "Settings", singular: "Tax", plural: "Taxes", defaultSort: "name",
       fields: [
         ...half(text("name", { required: true }), num("rate", { validation: { min: 0, max: 100 }, label: "Rate (%)" })),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "VAT 20%", rate: 20, active: true }, { name: "Sales tax 8.5%", rate: 8.5, active: true }],
     },
@@ -33,7 +33,7 @@ export const invoicing: SchemaTemplate = {
             select("payment_terms", [ch("due_on_receipt", C.green, "Due on receipt"), ch("net_15", C.blue, "Net 15"), ch("net_30", C.teal, "Net 30"), ch("net_60", C.amber, "Net 60")], { default: "net_30", label: "Payment terms" }),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
           ),
-          ...half(bool("active", { default: true, label: "Active" }), userLink()),
+          ...half(flag("active", { label: "Active" }), userLink()),
           notes("notes"),
         ]),
       ),
@@ -210,7 +210,7 @@ export const invoicing: SchemaTemplate = {
             select("payment_terms", [ch("due_on_receipt", C.green, "Due on receipt"), ch("net_15", C.blue, "Net 15"), ch("net_30", C.teal, "Net 30"), ch("net_60", C.amber, "Net 60")], { default: "net_30", label: "Payment terms" }),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
           ),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
           notes("notes"),
         ]),
       ),
@@ -277,7 +277,7 @@ export const invoicing: SchemaTemplate = {
       slug: "expense_categories", group: "Expenses", singular: "Expense category", plural: "Expense categories", defaultSort: "name",
       fields: [
         ...half(text("name", { required: true }), text("gl_code", { label: "GL code" })),
-        ...half(bool("billable_by_default", { default: false, label: "Billable by default" }), bool("active", { default: true })),
+        ...half(bool("billable_by_default", { default: false, label: "Billable by default" }), flag("active")),
       ],
       samples: [
         { name: "Travel", gl_code: "6100", billable_by_default: true, active: true },

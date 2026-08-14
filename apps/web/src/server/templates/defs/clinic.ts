@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, divider, email, file, half, hint, int, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, ch, date, divider, email, file, flag, half, hint, int, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
 
 export const clinic: SchemaTemplate = {
   id: "clinic",
@@ -13,7 +13,7 @@ export const clinic: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), text("title", { label: "Title" })),
         ...half(text("specialty"), email("email")),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Dr. Amara Okafor", title: "MD", specialty: "Family medicine", email: "amara@clinic.example", active: true }, { name: "Dr. Jonas Weiss", title: "DDS", specialty: "Dentistry", email: "jonas@clinic.example", active: true }],
     },
@@ -42,7 +42,7 @@ export const clinic: SchemaTemplate = {
       slug: "services", group: "Scheduling", singular: "Service", plural: "Services", defaultSort: "name",
       fields: [
         ...half(text("name", { required: true }), int("duration_minutes", { default: 30, validation: { min: 5 }, label: "Duration (min)" })),
-        ...half(money("price"), bool("active", { default: true, label: "Active" })),
+        ...half(money("price"), flag("active", { label: "Active" })),
       ],
       samples: [{ name: "General consultation", duration_minutes: 30, price: 95, active: true }, { name: "Dental cleaning", duration_minutes: 45, price: 140, active: true }],
     },
@@ -53,7 +53,7 @@ export const clinic: SchemaTemplate = {
           text("name", { required: true }),
           select("kind", [ch("exam", C.blue), ch("procedure", C.purple), ch("lab", C.teal)], { default: "exam" }),
         ),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Exam 1", kind: "exam", active: true }, { name: "Procedure A", kind: "procedure", active: true }],
     },

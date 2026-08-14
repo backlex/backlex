@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, half, int, money, ms, notes, num, position, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
+import { C, ch, date, flag, half, int, money, ms, notes, num, position, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
 
 export const manufacturing: SchemaTemplate = {
   id: "manufacturing",
@@ -16,7 +16,7 @@ export const manufacturing: SchemaTemplate = {
           int("capacity_per_hour", { default: 1, validation: { min: 0 }, label: "Capacity / hour" }),
           money("cost_per_hour", { label: "Cost / hour" }),
         ),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Assembly line 1", code: "ASM-1", capacity_per_hour: 20, cost_per_hour: 85, active: true }, { name: "Paint booth", code: "PNT-1", capacity_per_hour: 12, cost_per_hour: 60, active: true }],
     },
@@ -34,7 +34,7 @@ export const manufacturing: SchemaTemplate = {
           ...half(money("cost", { label: "Standard cost" }), int("on_hand", { default: 0, validation: { min: 0 }, label: "On hand" })),
           ...half(
             int("reorder_point", { default: 0, validation: { min: 0 }, label: "Reorder point" }),
-            bool("active", { default: true, label: "Active" }),
+            flag("active", { label: "Active" }),
           ),
         ]),
       ),

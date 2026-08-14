@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, computedText, date, email, file, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
 
 export const hr: SchemaTemplate = {
   id: "hr",
@@ -63,7 +63,7 @@ export const hr: SchemaTemplate = {
           select("type", [ch("health", C.green), ch("dental", C.teal), ch("retirement", C.purple), ch("stipend", C.blue)], { default: "health" }),
           money("monthly_cost", { label: "Monthly cost" }),
         ),
-        bool("active", { default: true }),
+        flag("active"),
       ],
       samples: [
         { name: "Medical PPO", provider: "BlueShield", type: "health", monthly_cost: 450, active: true },

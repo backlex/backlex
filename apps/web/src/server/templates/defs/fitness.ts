@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, email, file, half, int, money, ms, notes, num, pct, phone, rel, sec, select, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, date, email, file, flag, half, int, money, ms, notes, num, pct, phone, rel, sec, select, tabbed, text, ts, userLink } from "../dsl";
 
 export const fitness: SchemaTemplate = {
   id: "fitness",
@@ -13,7 +13,7 @@ export const fitness: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), email("email")),
         ...half(phone("phone"), text("specialties", { label: "Specialties" })),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Alex Morgan", email: "alex@example.com", specialties: "Strength, HIIT", active: true }, { name: "Sofia Reyes", email: "sofia@example.com", specialties: "Yoga, Pilates", active: true }],
     },
@@ -27,7 +27,7 @@ export const fitness: SchemaTemplate = {
         ),
         ...half(
           bool("unlimited_classes", { default: false, label: "Unlimited classes" }),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ),
       ],
       samples: [
@@ -69,7 +69,7 @@ export const fitness: SchemaTemplate = {
         ),
         ...half(
           select("level", [ch("beginner", C.green), ch("intermediate", C.blue), ch("advanced", C.red), ch("all", C.gray, "All levels")], { default: "all" }),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ),
       ],
       samples: [
@@ -115,7 +115,7 @@ export const fitness: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), int("session_count", { default: 10, validation: { min: 1 }, label: "Sessions included" })),
         ...half(money("price"), rel("trainer", "trainers", { label: "Preferred trainer" })),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [
         { name: "PT starter — 5 sessions", session_count: 5, price: 275, trainer: { ref: "trainers:0" }, active: true },

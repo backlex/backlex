@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, file, geo, half, int, money, ms, notes, num, phone, position, rating, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, ch, computedNum, date, email, file, flag, geo, half, int, money, ms, notes, num, phone, position, rating, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
 
 export const fieldService: SchemaTemplate = {
   id: "field-service",
@@ -15,7 +15,7 @@ export const fieldService: SchemaTemplate = {
         ...half(phone("phone"), text("skills_summary", { label: "Skills" })),
         ...half(
           select("home_region", ["north", "south", "east", "west", "central"], { default: "central", label: "Home region" }),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ),
       ],
       samples: [

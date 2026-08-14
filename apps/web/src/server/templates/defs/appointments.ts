@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, geo, half, hint, image, int, money, moneyIn, ms, notes, phone, position, rel, relMany, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, geo, half, hint, image, int, money, moneyIn, ms, notes, phone, position, rel, relMany, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
 
 export const appointments: SchemaTemplate = {
   id: "appointments",
@@ -15,7 +15,7 @@ export const appointments: SchemaTemplate = {
         text("address"),
         ...half(text("city"), text("timezone", { default: "UTC", label: "Timezone (IANA)" })),
         geo("coordinates", ["address", "city"], { label: "Map pin" }),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [
         { name: "Downtown studio", address: "12 Main St", city: "Portland", timezone: "America/Los_Angeles", phone: "+15555550130", active: true },
@@ -28,7 +28,7 @@ export const appointments: SchemaTemplate = {
         sec("Staff member", [
           ...half(text("name", { required: true }), text("title")),
           ...half(email("email"), phone("phone")),
-          ...half(image("avatar"), bool("active", { default: true, label: "Active" })),
+          ...half(image("avatar"), flag("active", { label: "Active" })),
         ]),
         sec("Profile", [notes("bio")], { folded: true }),
       ),
@@ -42,7 +42,7 @@ export const appointments: SchemaTemplate = {
           select("type", [ch("room", C.blue), ch("station", C.amber), ch("equipment", C.teal), ch("other", C.gray)], { default: "room" }),
         ),
         ...half(rel("location", "locations"), int("capacity", { default: 1, validation: { min: 1 } })),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [{ name: "Meeting room A", type: "room", location: { ref: "locations:0" }, capacity: 6, active: true }, { name: "Studio 1", type: "station", location: { ref: "locations:1" }, capacity: 1, active: true }],
     },
@@ -63,7 +63,7 @@ export const appointments: SchemaTemplate = {
         sec("Pricing & staff", [
           ...half(moneyIn("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           relMany("providers", "staff", { label: "Bookable staff" }),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ]),
       ),
       samples: [
@@ -79,7 +79,7 @@ export const appointments: SchemaTemplate = {
           select("weekday", [ch("monday", C.blue), ch("tuesday", C.blue), ch("wednesday", C.blue), ch("thursday", C.blue), ch("friday", C.blue), ch("saturday", C.amber), ch("sunday", C.amber)], { default: "monday" }),
         ),
         ...half(text("start_time", { default: "09:00", label: "From (HH:MM)" }), text("end_time", { default: "17:00", label: "To (HH:MM)" })),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [
         { staff: { ref: "staff:0" }, weekday: "monday", start_time: "09:00", end_time: "17:00", active: true },
@@ -185,7 +185,7 @@ export const appointments: SchemaTemplate = {
         ),
         ...half(
           int("validity_days", { default: 90, validation: { min: 1 }, label: "Valid for (days)" }),
-          bool("active", { default: true, label: "Active" }),
+          flag("active", { label: "Active" }),
         ),
       ],
       samples: [{ name: "Strategy 5-pack", service: { ref: "services:1" }, session_count: 5, price: 1050, validity_days: 180, active: true }],

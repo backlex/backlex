@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, half, hint, image, int, money, ms, notes, num, phone, position, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, half, hint, image, int, money, ms, notes, num, phone, position, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
 
 export const restaurant: SchemaTemplate = {
   id: "restaurant",
@@ -13,7 +13,7 @@ export const restaurant: SchemaTemplate = {
       fields: [
         text("name", { required: true }),
         notes("description"),
-        ...half(position(), bool("active", { default: true, label: "Active" })),
+        ...half(position(), flag("active", { label: "Active" })),
       ],
       samples: [{ name: "Starters", position: 1 }, { name: "Mains", position: 2 }, { name: "Desserts", position: 3 }],
     },
@@ -24,7 +24,7 @@ export const restaurant: SchemaTemplate = {
           ...half(text("name", { required: true, searchable: true }), rel("category", "menu_categories")),
           notes("description", { searchable: true }),
           ...half(money("price", { required: true }), money("cost", { label: "Food cost" })),
-          ...half(position("category"), bool("available", { default: true, label: "Available" })),
+          ...half(position("category"), flag("available", { label: "Available" })),
           image("image"),
         ]),
         sec("Kitchen", [
@@ -63,7 +63,7 @@ export const restaurant: SchemaTemplate = {
       fields: [
         ...half(text("name", { required: true }), text("contact_name", { label: "Contact name" })),
         ...half(phone("phone"), email("email")),
-        bool("active", { default: true, label: "Active" }),
+        flag("active", { label: "Active" }),
       ],
       samples: [
         { name: "Verde Produce Co.", contact_name: "Lena Ortiz", phone: "+15555550163", email: "orders@verdeproduce.example", active: true },
@@ -131,7 +131,7 @@ export const restaurant: SchemaTemplate = {
           text("name", { required: true }),
           select("role", [ch("chef", C.amber), ch("server", C.blue), ch("host", C.teal), ch("manager", C.purple)], { default: "server" }),
         ),
-        ...half(phone("phone"), bool("active", { default: true, label: "Active" })),
+        ...half(phone("phone"), flag("active", { label: "Active" })),
       ],
       samples: [
         { name: "Elena Rossi", role: "chef", phone: "+15555550151", active: true },

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, email, half, int, ms, notes, position, rel, sec, select, slugField, stacked, text, ts, url } from "../dsl";
+import { C, bool, ch, email, flag, half, int, ms, notes, position, rel, sec, select, slugField, stacked, text, ts, url } from "../dsl";
 
 export const forms: SchemaTemplate = {
   id: "forms",
@@ -74,7 +74,7 @@ export const forms: SchemaTemplate = {
       slug: "share_links", group: "Integrations", singular: "Share link", plural: "Share links", defaultSort: "-created_at",
       fields: [
         ...half(rel("form", "forms"), text("token", { unique: true, required: true })),
-        ...half(ts("expires_at", { indexed: true, label: "Expires at" }), bool("active", { default: true })),
+        ...half(ts("expires_at", { indexed: true, label: "Expires at" }), flag("active")),
         ...half(
           int("max_responses", { validation: { min: 0 }, label: "Max responses" }),
           int("responses_used", { default: 0, validation: { min: 0 }, label: "Responses used" }),
@@ -91,7 +91,7 @@ export const forms: SchemaTemplate = {
           select("event", [ch("on_submit", C.green, "On submit"), ch("on_partial", C.amber, "On partial")], { default: "on_submit" }),
           text("secret", { private: true, label: "Signing secret" }),
         ),
-        ...half(bool("active", { default: true }), int("last_status", { label: "Last status code" })),
+        ...half(flag("active"), int("last_status", { label: "Last status code" })),
       ],
       samples: [{ form: { ref: "forms:0" }, url: "https://hooks.example.com/forms/feedback", event: "on_submit", secret: "whsec_demo", active: true, last_status: 200 }],
     },
@@ -99,7 +99,7 @@ export const forms: SchemaTemplate = {
       slug: "notification_rules", group: "Integrations", singular: "Notification rule", plural: "Notification rules", defaultSort: "-created_at",
       fields: [
         ...half(rel("form", "forms"), email("notify_email", { required: true, label: "Notify email" })),
-        ...half(text("condition", { label: "Condition", description: "Only notify when this holds, e.g. rating <= 2." }), bool("active", { default: true })),
+        ...half(text("condition", { label: "Condition", description: "Only notify when this holds, e.g. rating <= 2." }), flag("active")),
       ],
       samples: [{ form: { ref: "forms:0" }, notify_email: "support@backlex.example", condition: "rating <= 2", active: true }],
     },

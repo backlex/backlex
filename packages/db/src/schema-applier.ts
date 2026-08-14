@@ -14,6 +14,7 @@ import {
   sqlTypeFor,
   validateFields,
 } from "./field-types";
+import { isRetireFlag } from "./retirement";
 
 type Dialect = "pg" | "sqlite";
 type AnyDb = PgDb | SqliteDb;
@@ -364,6 +365,13 @@ export const ensureVersionedColumns = async (
  * added) later. `unique` fields are skipped — the UNIQUE constraint already
  * provides an index. `relation_many` is skipped — it has no scalar FK column
  * (its links live in a JSON array / junction), so a plain index buys nothing.
+ *
+ * A retirement flag is indexed WITHOUT the field having to say so. Indexing is
+ * opt-in everywhere else because it costs write throughput for a read nobody
+ * may make — but declaring `retire` is exactly the statement that this column
+ * is read on the offer path: every picker, every narrowed list, every relation
+ * check. All sixty-four catalog columns were unindexed, which is the measured
+ * problem rather than a preference, so the declaration carries the index.
  */
 const ensureFieldIndexes = async (
   db: AnyDb,
@@ -376,7 +384,7 @@ const ensureFieldIndexes = async (
     // non-existent column (their index lives on the sidecar). Presentational
     // blocks have no column either.
     if (isLocalized(f) || isPresentational(f)) continue;
-    const wantIndex = f.indexed || f.type === "relation";
+    const wantIndex = f.indexed || f.type === "relation" || isRetireFlag(f);
     if (!wantIndex || f.unique) continue;
     await exec(
       db,

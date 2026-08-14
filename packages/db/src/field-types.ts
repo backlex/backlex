@@ -12,6 +12,7 @@ import {
 import { type OrderSpec, validateOrderSpec } from "./order";
 import { type SlugSpec, validateSlugSpec } from "./slug";
 import { type RangeSpec, validateRangeSpec } from "./range";
+import { isRetireFlag, type RetireSpec, validateRetireSpec } from "./retirement";
 import {
   assertPhoneShaped,
   type PhoneSpec,
@@ -616,6 +617,21 @@ export interface FieldDef {
    * caller having to renumber the rows around it.
    */
   order?: OrderSpec;
+  /**
+   * Declare that this `boolean` field says whether the row is still in play —
+   * a discontinued product, a former supplier, a closed location. See
+   * {@link RetireSpec}.
+   *
+   * Nothing about the storage changes; the column stays an ordinary writable
+   * boolean. What the declaration buys is that the product finally READS it: it
+   * is indexed, the relation pickers stop offering retired rows, the admin's
+   * list opens on the live ones, and a write pointing a new reference at a
+   * retired row is refused rather than quietly made.
+   *
+   * It never hides a row from a read — that is `_status` (draft / published /
+   * archived), a publication lifecycle, and a different question.
+   */
+  retire?: RetireSpec;
   /**
    * Declare that this `text` field is a URL slug — the handle a row is
    * addressed by. See {@link SlugSpec}.
@@ -1400,6 +1416,50 @@ export const validateFields = (fields: FieldDef[]): void => {
       const fieldTypes: Record<string, string> = {};
       for (const o of fields) if (o.name !== f.name) fieldTypes[o.name] = o.type;
       validateOrderSpec(f.order, { fieldName: f.name, fieldTypes });
+    }
+    if (f.retire) {
+      // A retirement flag is an ordinary boolean and stays one, so `default`
+      // still behaves — and it matters, since `default: true` is what makes a
+      // newly created row start in play. `indexed` is not listed as allowed OR
+      // refused here because the declaration IMPLIES it (see
+      // `columnIndexesFor`): none of the sixty-four catalog columns carries it
+      // today, and an unindexed flag is the measured problem, not a preference.
+      for (const [flag, on] of [
+        // All three would own the column's value by another rule, and the
+        // retire/restore verbs write it directly.
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+        // A per-locale answer to "is this row in play" is not a thing: the
+        // sidecar holds one row per locale, so a product would be discontinued
+        // in French and on sale in English.
+        ["localized", !!f.localized],
+        // Two values in a whole table, so a UNIQUE flag permits exactly one
+        // live row and one retired one.
+        ["unique", !!f.unique],
+        // Folding "true" into a keyword or embedding index matches every row
+        // that is in play, which is all of them.
+        ["searchable", !!f.searchable],
+        ["vectorize", !!f.vectorize],
+        // The flag decides what the pickers OFFER, so a column no read surface
+        // returns cannot drive it — the admin would grey out rows for a reason
+        // it is never told, and `?retired=` would filter by a value the caller
+        // cannot see.
+        ["private", !!f.private],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a retirement flag`);
+        }
+      }
+      if (f.type !== "boolean") {
+        throw new Error(
+          `Field "${f.name}": a retirement flag is a boolean (got "${f.type}")`,
+        );
+      }
+      validateRetireSpec(f.retire, {
+        fieldName: f.name,
+        otherRetireFields: fields.filter((o) => o.name !== f.name && isRetireFlag(o)).map((o) => o.name),
+      });
     }
     if (f.slug) {
       // A slug is an ordinary text column with a maintained value, so most text

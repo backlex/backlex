@@ -346,6 +346,23 @@ const FieldSchema = z
       })
       .optional(),
     /**
+     * Declare this boolean column as the row's retirement flag — whether the
+     * row is still in play.
+     *
+     * Safe over the API for the same reason `order` is: nothing here reaches
+     * the DDL except an index this declaration implies, and `applyCollection`
+     * emits that additively. `validateRetireSpec` refuses a second flag on the
+     * same collection, which is the mistake worth catching at save time —
+     * `active` AND `visible` both declared leaves "is this row in play" with
+     * two answers and every consumer inventing its own.
+     */
+    retire: z
+      .object({
+        retiredWhen: z.boolean().optional(),
+        references: z.enum(["block", "allow"]).optional(),
+      })
+      .optional(),
+    /**
      * Slug configuration — which column an empty slug is folded from, and how
      * long the result may be.
      *

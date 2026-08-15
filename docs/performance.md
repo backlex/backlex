@@ -133,8 +133,36 @@ Attributing check time per file, without double-counting nested spans:
 All of them are long `.openapi(createRoute({…}), handler)` chains. Every link
 widens the router's generic type, so cost grows super-linearly with chain
 length — which is also why touching one route invalidates so much of the
-incremental build. Splitting the longest chains into sub-routers is the fix
-that would help every compiler; not attempted yet.
+incremental build.
+
+##### Splitting the chains — attempted 2026-08-15, and it did not work
+
+The obvious fix is to break the longest chains into sub-routers, the way
+`routes/items/` already is. It was tried on `routes/booking.ts`: one 15-link
+chain became `booking/resources.ts` (7) plus `booking/bookings.ts` (8), mounted
+through `.route("/", …)`. The refactor itself was sound — the generated OpenAPI
+document came out **byte-identical**, and all 114 booking tests passed. It was
+then reverted, because the numbers say it buys nothing:
+
+| | before | after |
+|---|---|---|
+| Instantiations | 29,469,305 | 29,440,411 (**−0.098%**) |
+| Types | 9,050,964 | 9,052,479 (**+0.017%**) |
+| Check time | 560.19s | 368.77s |
+| max RSS | 2.41 GB | 4.14 GB |
+
+**Read the first two rows, not the third.** `Instantiations` and `Types` are
+deterministic counts of the work the checker performed; they do not depend on
+how much RAM the machine happened to have. Neither moved. The 34% drop in wall
+`Check time` came with max RSS nearly doubling — the second run simply got more
+physical memory and paged less. That is the same effect the baseline's
+`sys` 316.82s against `user` 138.62s was already reporting: **on this 8 GB
+machine more than half of the wall clock is paging, not compiling.**
+
+So chain length is not the lever it looks like, at least at 15→7+8 on this
+tree. Don't re-attempt it on `routes/integrations.ts` (26 links) expecting a
+win. The lever that is actually measurable here is physical memory — the same
+constraint that makes the TypeScript 7 port slower rather than faster below.
 
 #### TypeScript 7 (the Go port) — measured, not adopted
 

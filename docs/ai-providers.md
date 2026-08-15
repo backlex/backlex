@@ -24,7 +24,7 @@ reached through the gateway or directly, and its vendor namespace:
 
 | id | transport | secret key (`ai_config.secrets`) | env var | reaches |
 |---|---|---|---|---|
-| `gateway` | gateway | `gatewayKey` | `AI_GATEWAY_API_KEY` | every vendor below, plus Mistral / Groq / … |
+| `gateway` | gateway | `gatewayKey` | `AI_GATEWAY_API_KEY` | every vendor below, plus Mistral / Meta / xAI / … |
 | `anthropic` | direct | `anthropicKey` | `ANTHROPIC_API_KEY` | Claude only |
 | `openai` | direct | `openaiKey` | `OPENAI_API_KEY` | GPT only |
 | `google` | direct | `googleKey` | `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini only |
@@ -64,11 +64,19 @@ Models are stored gateway-style (`anthropic/claude-haiku-4-5`) on every surface.
   saved before the catalog existed, when bare meant Anthropic; it still gets the
   `anthropic/` prefix, so old rows keep working.
 - **direct** — the vendor's own prefix is stripped. An id carrying a *different*
-  vendor's prefix (`openai/gpt-5` on a direct Anthropic key) cannot run, so it
-  falls back to that provider's default instead of forwarding a guaranteed 404.
+  vendor's prefix (`openai/gpt-5.6-sol` on a direct Anthropic key) cannot run,
+  so it falls back to that provider's default instead of forwarding a
+  guaranteed 404.
 
 One canonical shape is what lets a workspace flip gateway ↔ direct without its
 saved model becoming garbage.
+
+It also constrains which spelling of an id the catalog may use. The gateway's
+canonical Anthropic slugs use dots (`anthropic/claude-haiku-4.5`), but the
+direct Anthropic API only accepts hyphens (`claude-haiku-4-5`) — and stripping a
+prefix is all `resolveModelId` does. So the catalog stores the **hyphen** form,
+which the gateway accepts as an alias and the direct API accepts natively. Any
+Anthropic id added to the catalog has to satisfy both, not just the gateway.
 
 ## Resolution order
 
@@ -104,12 +112,12 @@ stored config:
 {
   "data": {
     "provider": "openai",
-    "config": { "model": "openai/gpt-5-mini" },
+    "config": { "model": "openai/gpt-5.6-terra" },
     "secretsSet": { "gatewayKey": false, "anthropicKey": false,
                     "openaiKey": true, "googleKey": false },
     "providers": [ /* registry, minus anything secret */ ],
     "models": [ /* catalog */ ],
-    "modelsByProvider": { "anthropic": ["anthropic/claude-opus-4-8", …] }
+    "modelsByProvider": { "anthropic": ["anthropic/claude-opus-5", …] }
   }
 }
 ```

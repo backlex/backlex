@@ -77,8 +77,8 @@ export function AskAiPage({
   const MODELS = useMemo<ModelOption[]>(
     () => [
       {
-        id: "anthropic/claude-opus-4-8",
-        label: "claude-opus-4-8",
+        id: "anthropic/claude-opus-5",
+        label: "claude-opus-5",
         hint: t`highest reasoning · slower · ~3x cost`,
       },
       {
@@ -93,18 +93,18 @@ export function AskAiPage({
         hint: t`fast · cheap · routine reads`,
       },
       {
-        id: "openai/gpt-5",
-        label: "gpt-5",
+        id: "openai/gpt-5.6-sol",
+        label: "gpt-5.6-sol",
         hint: t`OpenAI flagship; comparable to Opus`,
       },
       {
-        id: "google/gemini-2.5-pro",
-        label: "gemini-2.5-pro",
+        id: "google/gemini-3.1-pro-preview",
+        label: "gemini-3.1-pro",
         hint: t`long context · multimodal`,
       },
       {
-        id: "xai/grok-4.3",
-        label: "grok-4.3",
+        id: "xai/grok-4.6",
+        label: "grok-4.6",
         hint: t`xAI flagship · 1M context`,
       },
       {
@@ -123,13 +123,13 @@ export function AskAiPage({
         hint: t`fast · very cheap · routine reads`,
       },
       {
-        id: "alibaba/qwen3.7-max",
-        label: "qwen3.7-max",
+        id: "alibaba/qwen3.8-max",
+        label: "qwen3.8-max",
         hint: t`Qwen flagship · 1M context · strong multilingual`,
       },
       {
-        id: "alibaba/qwen3.6-plus",
-        label: "qwen3.6-plus",
+        id: "alibaba/qwen3.7-plus",
+        label: "qwen3.7-plus",
         hint: t`Qwen mid-tier · balanced pricing`,
       },
     ],

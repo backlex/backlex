@@ -98,7 +98,7 @@ export const AI_PROVIDERS: readonly AiProviderDef[] = [
     envKey: "OPENAI_API_KEY",
     transport: "direct",
     namespace: "openai",
-    defaultModel: "openai/gpt-5-mini",
+    defaultModel: "openai/gpt-5.6-terra",
     hint: "A direct OpenAI API key. GPT models only.",
     docsUrl: "https://platform.openai.com/api-keys",
   },
@@ -110,7 +110,7 @@ export const AI_PROVIDERS: readonly AiProviderDef[] = [
     envKey: "GOOGLE_GENERATIVE_AI_API_KEY",
     transport: "direct",
     namespace: "google",
-    defaultModel: "google/gemini-2.5-flash",
+    defaultModel: "google/gemini-3.7-flash",
     hint: "A direct Google AI Studio key. Gemini models only.",
     docsUrl: "https://aistudio.google.com/apikey",
   },
@@ -162,11 +162,22 @@ export interface AiModelDef {
  * surface keeps a free-text escape hatch, so an id missing here is a UI
  * inconvenience, never a hard block — `callClaude` passes whatever it is given
  * straight through to the provider.
+ *
+ * Every id here must be a real Vercel AI Gateway slug (`GET
+ * https://ai-gateway.vercel.sh/v1/models`, no auth needed) AND, for the three
+ * namespaces a `direct` provider covers, still resolve after the prefix is
+ * stripped — `anthropic/claude-opus-5` has to be a valid bare id on
+ * api.anthropic.com too, or a workspace flipping gateway → direct breaks. That
+ * double constraint is why the Anthropic ids are written with hyphens
+ * (`claude-haiku-4-5`) even though the gateway's canonical spelling uses dots:
+ * the hyphen form is an accepted gateway alias, and it is the ONLY form the
+ * direct API takes. The `mistral` / `meta` entries are gateway-only — no direct
+ * provider claims those namespaces, so nothing strips their prefix.
  */
 export const AI_MODELS: readonly AiModelDef[] = [
   {
-    id: "anthropic/claude-opus-4-8",
-    label: "Claude Opus 4.8",
+    id: "anthropic/claude-opus-5",
+    label: "Claude Opus 5",
     namespace: "anthropic",
     hint: "Most capable · slowest and priciest",
     tier: "flagship",
@@ -186,59 +197,66 @@ export const AI_MODELS: readonly AiModelDef[] = [
     tier: "fast",
   },
   {
-    id: "openai/gpt-5",
-    label: "GPT-5",
+    id: "openai/gpt-5.6-sol",
+    label: "GPT-5.6 Sol",
     namespace: "openai",
     hint: "Most capable OpenAI model · priciest",
     tier: "flagship",
   },
   {
-    id: "openai/gpt-5-mini",
-    label: "GPT-5 mini",
+    id: "openai/gpt-5.6-terra",
+    label: "GPT-5.6 Terra",
     namespace: "openai",
     hint: "Balanced · good default for OpenAI",
     tier: "balanced",
   },
   {
-    id: "openai/gpt-5-nano",
-    label: "GPT-5 nano",
+    id: "openai/gpt-5.6-luna",
+    label: "GPT-5.6 Luna",
     namespace: "openai",
     hint: "Cheapest and fastest · classification, extraction",
     tier: "fast",
   },
   {
-    id: "google/gemini-2.5-pro",
-    label: "Gemini 2.5 Pro",
+    // The Pro line currently ships only under a `-preview` id: Google retired
+    // `gemini-3-pro-preview` in favour of this one rather than promoting it to
+    // an unsuffixed slug, so the suffix is the model's real name here, not a
+    // pre-release we forgot to update.
+    id: "google/gemini-3.1-pro-preview",
+    label: "Gemini 3.1 Pro",
     namespace: "google",
     hint: "Most capable Gemini · long context",
     tier: "flagship",
   },
   {
-    id: "google/gemini-2.5-flash",
-    label: "Gemini 2.5 Flash",
+    id: "google/gemini-3.7-flash",
+    label: "Gemini 3.7 Flash",
     namespace: "google",
     hint: "Balanced · very large context per lira",
     tier: "balanced",
   },
   {
-    id: "google/gemini-2.5-flash-lite",
-    label: "Gemini 2.5 Flash Lite",
+    id: "google/gemini-3.5-flash-lite",
+    label: "Gemini 3.5 Flash Lite",
     namespace: "google",
     hint: "Cheapest and fastest Gemini",
     tier: "fast",
   },
   {
-    id: "mistral/mistral-large-latest",
-    label: "Mistral Large",
+    id: "mistral/mistral-large-3",
+    label: "Mistral Large 3",
     namespace: "mistral",
     hint: "EU-hosted flagship · gateway only",
     tier: "flagship",
   },
   {
-    id: "groq/llama-3.3-70b-versatile",
-    label: "Llama 3.3 70B (Groq)",
-    namespace: "groq",
-    hint: "Open weights at very high tokens/sec · gateway only",
+    // Was `groq/llama-3.3-70b-versatile`, which never resolved: the gateway
+    // namespaces by model CREATOR, not by the inference provider serving it, so
+    // there is no `groq/*` slug at all. Llama lives under `meta/`.
+    id: "meta/llama-4-maverick",
+    label: "Llama 4 Maverick",
+    namespace: "meta",
+    hint: "Open weights · cheap · gateway only",
     tier: "fast",
   },
 ] as const;

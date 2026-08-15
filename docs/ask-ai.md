@@ -149,8 +149,8 @@ End-to-end coverage lives in `tests/mcp-oauth.test.ts`.
   through [Vercel AI Gateway](https://ai-gateway.vercel.sh) by default —
   set `AI_GATEWAY_API_KEY` and one key reaches Anthropic, OpenAI, Google,
   and every other gateway-supported provider. The UI ships provider-
-  prefixed model ids (`anthropic/claude-haiku-4-5`, `openai/gpt-5`,
-  `google/gemini-2.5-pro`).
+  prefixed model ids (`anthropic/claude-haiku-4-5`, `openai/gpt-5.6-terra`,
+  `google/gemini-3.7-flash`).
 - **Legacy fallback:** when `AI_GATEWAY_API_KEY` is unset but
   `ANTHROPIC_API_KEY` is set, the client falls back to the direct
   Anthropic provider (Claude only). The page silently strips the
@@ -207,24 +207,25 @@ prefer them or want to swap on cost / context / latency.
 
 | Provider | Model id | Notes |
 |---|---|---|
-| Anthropic | `anthropic/claude-opus-4-8` | Highest reasoning, slower, ~3× cost |
+| Anthropic | `anthropic/claude-opus-5`    | Highest reasoning, slower, ~3× cost |
 | Anthropic | `anthropic/claude-sonnet-5` | Balanced — recommended for most queries |
 | Anthropic | `anthropic/claude-haiku-4-5` | Fast, cheap, routine reads — **default** |
-| OpenAI    | `openai/gpt-5`               | OpenAI flagship; comparable to Opus |
-| Google    | `google/gemini-2.5-pro`      | Long context, multimodal |
-| xAI       | `xai/grok-4.3`               | xAI flagship, 1M context |
+| OpenAI    | `openai/gpt-5.6-sol`         | OpenAI flagship; comparable to Opus |
+| Google    | `google/gemini-3.1-pro-preview` | Long context, multimodal |
+| xAI       | `xai/grok-4.6`               | xAI flagship, 1M context |
 | xAI       | `xai/grok-build-0.1`         | Optimized for code agents, cheap |
 | DeepSeek  | `deepseek/deepseek-v4-pro`   | Strong reasoning, 1M context, low cost |
 | DeepSeek  | `deepseek/deepseek-v4-flash` | Fast, very cheap, routine reads |
-| Alibaba   | `alibaba/qwen3.7-max`        | Qwen flagship, 1M context, strong multilingual |
-| Alibaba   | `alibaba/qwen3.6-plus`       | Qwen mid-tier, balanced pricing |
+| Alibaba   | `alibaba/qwen3.8-max`        | Qwen flagship, 1M context, strong multilingual |
+| Alibaba   | `alibaba/qwen3.7-plus`       | Qwen mid-tier, balanced pricing |
 
 Adding more from the [Vercel AI Gateway
 catalog](https://vercel.com/ai-gateway/models) is a one-line edit to the
 `MODELS` array in `apps/web/src/client/admin/pages/ask-ai/index.tsx` — the
 picker groups by the `provider/` prefix automatically, so no UI code
-change is needed. **Meta/Llama is not in the gateway catalog as of this
-writing** and is not exposed in the picker.
+change is needed. Note the gateway namespaces by model **creator**, not by
+the inference provider serving it — Llama is `meta/llama-4-maverick`, never
+`groq/…`, even when Groq is the one running it.
 
 Legacy `ANTHROPIC_API_KEY` mode silently strips the `anthropic/` prefix
 and only the three Anthropic rows above work; selecting an OpenAI /

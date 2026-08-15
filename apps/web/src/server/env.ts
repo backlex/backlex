@@ -185,7 +185,7 @@ export interface Env {
    *  When set, every `ai.*` MCP tool, the Ask AI planner, and any future
    *  AI-SDK caller routes through https://ai-gateway.vercel.sh and accepts
    *  provider-prefixed model ids (`anthropic/claude-haiku-4-5`,
-   *  `openai/gpt-5`, `google/gemini-2.5-pro`, …). One key reaches every
+   *  `openai/gpt-5.6-terra`, `google/gemini-3.7-flash`, …). One key reaches every
    *  upstream. See docs/ask-ai.md. */
   AI_GATEWAY_API_KEY?: string;
   /** Legacy direct-Anthropic API key. Kept as a fallback so workspaces

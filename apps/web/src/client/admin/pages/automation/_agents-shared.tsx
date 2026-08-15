@@ -104,11 +104,11 @@ export const MODEL_OPTIONS = [
   { value: "@cf/meta/llama-3.1-8b-instruct-fp8", label: "Llama 3.1 8B", hint: "Cloudflare AI · managed · fast/cheap" },
   // Bring-your-own-key models — Anthropic Claude, needs a key in Settings · AI.
   // (GLM / Kimi above are Cloudflare-hosted @cf models, so they need no key.)
-  { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "your key · most capable" },
+  { value: "anthropic/claude-opus-5", label: "Claude Opus 5", hint: "your key · most capable" },
   { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "your key · balanced" },
   { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "your key · fast/cheap" },
-  { value: "openai/gpt-5", label: "GPT-5", hint: "your key · AI Gateway" },
-  { value: "openai/gpt-5-mini", label: "GPT-5 mini", hint: "your key · AI Gateway · fast/cheap" },
+  { value: "openai/gpt-5.6-sol", label: "GPT-5.6 Sol", hint: "your key · AI Gateway" },
+  { value: "openai/gpt-5.6-luna", label: "GPT-5.6 Luna", hint: "your key · AI Gateway · fast/cheap" },
 ] as const;
 
 /** Managed default (mirrors the runner's CLOUD_DEFAULT_AGENT_MODEL). */

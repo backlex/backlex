@@ -113,6 +113,7 @@ that behaviour get the same label derived on read in `GET /threads`.
 | `memory` | `false` | See [Memory](#memory). |
 | `memoryScope` | `"thread"` | `thread` \| `agent` — how far distilled facts reach. See [`memoryScope`](#memoryscope). |
 | `active` | `true` | — |
+| `appAccess` | `false` | Reachable by your application's own end users, not just operators. See [Chat from your own application](#chat-from-your-own-application). |
 
 ## Tools
 
@@ -339,11 +340,100 @@ so a user suspended or demoted mid-turn loses access mid-turn. This is
 deliberately not the system identity the job queue uses elsewhere, which would
 escalate the agent past its caller.
 
+## Chat from your own application
+
+Everything above is the **operator's** surface: `/api/agents` is admin-only, so
+for most of this product's life AI was the one backlex primitive a customer's
+own users could never touch. No in-product support bot, no assistant, unless you
+proxied it yourself and put your own key behind it.
+
+`/api/t/{workspace}/agents` is the end-user half. What makes it safe to open is
+that the end user supplies only a **message** — you write the system prompt, you
+pick the tools, and you opt each agent in one at a time. A general "generate"
+endpoint would instead be free model access on your bill.
+
+**Opt in per agent.** `appAccess` is `false` on every agent, including ones that
+already exist: agents built when only operators could reach them may carry
+internal prompts and privileged tools, so nothing was exposed by this surface
+shipping. Turn it on in **Automation → Agents** (the *Open to end users* switch,
+beside *Active*), or `PATCH /api/agents/{id}` with `{"appAccess": true}`. An
+agent that is inactive or not opted in is **absent** from this surface rather
+than refused — a private agent answers `404`, not `403`, because whether it
+exists is not something an end user gets to confirm by guessing ids.
+
+Three guards hold it up, and they are independent:
+
+1. **The opt-in** above.
+2. **Thread ownership** — a conversation is readable and writable only by the
+   end user who started it. Revoking `appAccess` also closes the threads hanging
+   off that agent: a conversation must not outlive the decision that allowed it.
+   You still see every thread from the admin surface, which is what makes a
+   support conversation reviewable.
+3. **The turn runs as the end user.** The agent's tool calls re-enter the API
+   carrying that person's identity, so the [permission DSL](./permissions.md)
+   narrows the agent exactly as it narrows them. This is the property that makes
+   tools safe to leave enabled — without it, "ask the agent" would be a way to
+   read your neighbour's rows.
+
+### Endpoints (app plane)
+
+Every route needs a signed-in **workspace end user** (see
+[auth planes](./auth-planes.md)); the path's workspace must match the session's.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/t/{workspace}/agents` | The agents opened to end users |
+| `GET` | `/api/t/{workspace}/agents/threads` | My conversations |
+| `POST` | `/api/t/{workspace}/agents/threads` | Start one (`agentId`, optional `title`) |
+| `GET` | `/api/t/{workspace}/agents/threads/{threadId}/messages` | The transcript |
+| `POST` | `/api/t/{workspace}/agents/threads/{threadId}/messages` | Say something → get the reply |
+
+Two things are deliberately **not** on this surface. An agent is returned as
+`{id, name, handle, description}` only — never the system prompt (which is
+exactly what an attacker wants before trying to talk around it), the model, or
+the tool list. And the transcript is the conversation alone: `tool` rows are the
+agent's working-out, and reading them teaches an end user the shape of your
+workspace's internals.
+
+### From the SDK
+
+```ts
+import { createClient } from "backlex";
+
+const backlex = createClient({ url: "https://api.example.com", workspace: "acme" });
+await backlex.auth.signIn({ email, password });
+
+const { data: agents } = await backlex.agentChat.agents();
+const { data: thread } = await backlex.agentChat.start(agents[0].id);
+
+const { data } = await backlex.agentChat.send(thread.id, "Where is my order?");
+console.log(data.replies[0].content);
+
+// Reopen it later
+const { data: history } = await backlex.agentChat.messages(thread.id);
+```
+
+`agentChat` is app-mode only and throws if the client has no `workspace`, rather
+than addressing `/api/t/undefined/...` and returning a 404 that reads like a
+missing agent. It is a separate client from `client.agents` on purpose: an end
+user sees a strict subset of an agent, reads only their own threads, and gets
+back a reply rather than the reasoning — so folding both planes into one set of
+method names would give them different shapes and different rules, and half of
+them would answer 403.
+
+There is no MCP tool, CLI command or GraphQL field for this surface, and that is
+not an omission: those are operator tools, and an operator already has the
+richer `/api/agents` for the same conversations.
+
+Turns are metered like any other — the runner carries the workspace's meter, so
+an end user's turn lands in `usage_counters` exactly like an operator's. See
+[usage metering](./usage-metering.md#ai-generation).
+
 ## Other surfaces
 
 The feature mirrors `flows` across every surface ([parity](./service-map.md)):
 
-- **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}` plus rooms: `{rooms,createRoom,updateRoom,addRoomAgent,removeRoomAgent,getRun}` and memory: `{memory,remember,forget}`. `send(id, msg, { async: true })` queues; `thread()` returns `{ thread, messages, authors, agentIds, activeRuns }`.
+- **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}` plus rooms: `{rooms,createRoom,updateRoom,addRoomAgent,removeRoomAgent,getRun}` and memory: `{memory,remember,forget}`. `send(id, msg, { async: true })` queues; `thread()` returns `{ thread, messages, authors, agentIds, activeRuns }`. Your application's own end users get a separate client — `client.agentChat.{agents,threads,start,messages,send}`, see [Chat from your own application](#chat-from-your-own-application).
 - **GraphQL** — `agents` / `agent` / `agentMemories` queries; `createAgent` / `updateAgent` / `deleteAgent` / `runAgent` / `rememberAgentFact` / `forgetAgentMemory` mutations.
 - **MCP** — `agents.list`, `agents.get`, `agents.run`, `agents.rooms_list`, `agents.room_send`, `agents.memory_list`, `agents.memory_add`, `agents.memory_forget` (so an external agent like Claude Desktop can drive a Backlex agent, post in a room, or inspect what one has learned).
 - **CLI** — `backlex agents <list|get|create|update|delete|threads|run|rooms|say|memory>`. `backlex agents run <id> --message "…"` prints the answer; `backlex agents say <roomId> --message "@handle …"` posts in a room; `backlex agents memory <id>` lists its facts.

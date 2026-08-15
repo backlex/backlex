@@ -18,6 +18,42 @@ store both sides share.
 | Errors | same | The 5xx subset of requests. |
 | Storage bytes | per workspace (gauge) | `SUM(files.size)`, refreshed by the cron sweep (~every 30 min). |
 | DB rows | per workspace (gauge) | `COUNT(*)` across the workspace's collections, same sweep. |
+| AI calls | per workspace, per API key, per UTC day | One per model generation, counted where the model is called rather than where the request arrives. See [AI generation](#ai-generation). |
+| AI tokens in / out | same | Prompt and completion tokens, when the provider reports them. |
+| AI neurons | same | What the managed-cloud gateway bills in, when that is the path taken. |
+
+### AI generation
+
+`usage_counters` carries four AI columns — `ai_calls`, `ai_tokens_in`,
+`ai_tokens_out`, `ai_neurons` — and they are counted separately from requests
+for two reasons that are worth stating, because both look like duplication
+until you try to derive one from the other.
+
+**AI is not a subset of requests.** A flow step, an agent turn and a
+mention-router call each generate with no HTTP request of their own, and a
+single Ask AI request generates twice. So the call count can never be recovered
+from the request count in either direction.
+
+**Four columns because the two provider paths measure different quantities.** A
+direct provider key reports tokens and no neurons; the managed-cloud gateway
+reports neurons and no tokens. Neither returns the other, and a derived figure
+reconciles with no bill — so a single column whose meaning depends on how the
+deployment is configured would be worse than two empty ones. Expect exactly one
+pair to be populated on any given deployment.
+
+Metering is wired at the one place that calls a model, and the sink is a
+**required** argument there rather than an optional one: the module holds only
+`env`, while the tenant lives on the request, so the caller has to supply it and
+an omitted argument would be indistinguishable from a forgotten one. Passing
+`null` is how a call site says "not attributable" out loud. Two sinks exist —
+`aiMeterFor(c)` for request-scoped calls (it flushes on `waitUntil`) and
+`aiMeterForTenant(ctx, tenantId)` for the callers that have no Hono context at
+all: agents, flows and queued jobs.
+
+End-user agent chat is metered by this and needed no work of its own — the
+agent runner already carries the workspace's sink, so a turn your application's
+customer starts lands in the ledger exactly like one an operator started. See
+[AI agents](./agents.md#chat-from-your-own-application).
 
 Counts land in the dual-dialect `usage_counters` table — one row per
 `(tenant, api_key, day)`; `api_key_id = ''` is the bucket for session/admin

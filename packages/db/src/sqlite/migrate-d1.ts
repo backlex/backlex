@@ -102,7 +102,7 @@ const execSqlWrite = (sql: string) => {
 const execSqlRead = (sql: string) => {
   const args = ["d1", "execute", dbName, remoteFlag, persistFlag, "--json", `--command=${sql}`];
   const r = wrangler(args);
-  return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+  return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "", argv: args };
 };
 
 // wrangler may interleave stdout with progress noise around the JSON
@@ -142,8 +142,21 @@ const parseLedgerHashes = (stdout: string): Set<string> | null => {
   return sawResults ? out : null;
 };
 
+// Written without a single space on purpose. On the Cloudflare Builds runner
+// this argv element reached wrangler split into four — it answered
+// `Unknown arguments: hash, FROM, __drizzle_migrations;` on every build — so
+// the ledger never parsed and all 120 migrations replayed each deploy, which
+// was ~15 of a 16-minute build (the whole vite build is 12 seconds). It could
+// not be reproduced locally: spawnSync passes the argv intact under bun 1.3.14
+// and 1.4.0-canary on macOS, wrangler is 4.123.0 on both sides, and `--remote`
+// parses fine here. What every WORKING wrangler call in this file has in common
+// is that no argv element contains a space (`--file=` takes a temp path); this
+// was the only one that did. SQLite treats `/**/` as whitespace, so the query
+// is now a single token no re-splitting can break.
+const LEDGER_SELECT = `SELECT/**/hash/**/FROM/**/__drizzle_migrations;`;
+
 const readLedger = (): Set<string> => {
-  const r = execSqlRead(`SELECT hash FROM __drizzle_migrations;`);
+  const r = execSqlRead(LEDGER_SELECT);
   // Don't trust the exit code: wrangler can exit ≠ 0 on remote D1 even
   // when the SELECT itself succeeded and stdout carries the JSON payload.
   // Try to parse stdout regardless.
@@ -151,6 +164,9 @@ const readLedger = (): Set<string> => {
   if (parsed) return parsed;
   if (!r.ok && r.stderr) {
     console.warn(`  (could not parse ledger; wrangler stderr: ${r.stderr.trim().split("\n")[0]})`);
+    // The argv is the evidence that matters if this ever regresses: it says
+    // whether wrangler was handed one token or several.
+    console.warn(`  (ledger read argv: ${JSON.stringify(r.argv)})`);
   }
   return new Set();
 };

@@ -186,6 +186,53 @@ well invert that; the script is there to find out.
 `astro check`, which imports the compiler API, and 7.0 shipped without one.
 That returns in 7.1.
 
+#### The heap cap is load-bearing — do not lower it
+
+`apps/web`'s typecheck runs the server pass under
+`NODE_OPTIONS=--max-old-space-size=8192`. On an 8 GB machine that looks absurd,
+and lowering it is the obvious first thing to try. It was tried (2026-08-15,
+cold, idle):
+
+| cap | result | wall | user | sys | peak RSS |
+|---|---|---|---|---|---|
+| 8192 | ok | 338.56s | 134.19s | 319.18s | 2.28 GB |
+| 4096 | **OOM**, exit 134 | 67.66s | 109.85s | 58.50s | 4.01 GB |
+| 2048 | **OOM**, exit 134 | 20.77s | 50.15s | 1.91s | 2.37 GB |
+
+The live heap really does exceed 4 GB — the 4096 run died with peak RSS sitting
+exactly on its ceiling. The flag is not slack to be reclaimed; it is the only
+thing keeping the pass alive.
+
+#### Why `pre-push` is serial
+
+Same session, same machine, cold cache, nothing else running:
+
+| | `parallel: true` | serial |
+|---|---|---|
+| gate total | 695s | 715s |
+| typecheck | 695s | 327s |
+| test | 657s | 388s |
+| **total `sys`** | **707s** | **292s** |
+
+Serialising does not shorten the gate: parallel's total is its longest job,
+serial's is the sum, and the two land 20s apart — noise here. Each job roughly
+halves on its own, and that cancels out.
+
+What changes is the last row. Since typecheck needs >4 GB of live heap, running
+it beside the test suite pushes the machine into swap; `test`'s `sys` time alone
+falls 241s → 33s once nothing is competing with it. That contention is the same
+mechanism that once left two overlapping typechecks wedged in `U` state for 27
+minutes, paging rather than compiling, converging on nothing. So the gate is
+serial for stability, not speed — identical wait, machine still usable while it
+runs. Jobs are ordered cheapest-first so a failure costs seconds rather than
+twelve minutes.
+
+**Methodology note, worth more than any single number above:** wall time on this
+box swings ~40% for provably identical work — the same config on the same tree
+produced `real` 560.19s and 338.56s while `user`, `sys` and `Instantiations`
+(29,469,305, to the digit) barely moved. Compare `user` / `sys` /
+`Instantiations`. Never compare `real`.
+
 ### Admin first paint: 659 KB → 157 KB gzip
 
 The admin SPA used to ship 616 KB gzip of JavaScript (plus 44 KB of CSS) before

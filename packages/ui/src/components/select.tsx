@@ -120,7 +120,14 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2.5 rounded-control py-2 pr-8 pl-3 text-sm font-medium outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        // `*:[span]:last:min-w-0` targets the span Radix's ItemText renders.
+        // It is a flex item of this row and so defaults to `min-width:auto`,
+        // which means it refuses to shrink below its own content — a 434px
+        // label+hint sat inside a 358px row, overflowed the popover, and got
+        // cut off by its `overflow-x-hidden` with no ellipsis to show for it.
+        // Callers' own `min-w-0`/`truncate` (see admin/select.tsx) cannot help
+        // from further in: this span is the level that refuses.
+        "relative flex w-full cursor-default items-center gap-2.5 rounded-control py-2 pr-8 pl-3 text-sm font-medium outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:min-w-0 *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       {...props}

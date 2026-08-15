@@ -13,10 +13,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@better-auth/passkey": "^1.6.9",
+    "@better-auth/passkey": "^1.6.29",
     "@backlex/core": "workspace:*",
     "@backlex/db": "workspace:*",
-    "better-auth": "^1.1.4",
+    "better-auth": "^1.6.29",
     "drizzle-orm": "1.0.0-beta.22"
   },
   "devDependencies": {

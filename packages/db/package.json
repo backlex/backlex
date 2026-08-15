@@ -39,7 +39,7 @@
     "studio:pg": "drizzle-kit studio --config=drizzle.pg.config.ts"
   },
   "dependencies": {
-    "@libsql/client": "0.17.3",
+    "@libsql/client": "0.17.4",
     "@neondatabase/serverless": "1.1.0",
     "@backlex/core": "workspace:*",
     "drizzle-orm": "1.0.0-beta.22",

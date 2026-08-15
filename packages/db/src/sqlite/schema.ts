@@ -184,6 +184,12 @@ export const twoFactors = sqliteTable(
     secret: text("secret").notNull(),
     backupCodes: text("backup_codes").notNull(),
     verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+    // Lockout state, added by better-auth 1.6.29's two-factor plugin. It counts
+    // consecutive bad codes and, past the plugin's threshold, stamps
+    // `locked_until` so further attempts are refused until it passes. The
+    // adapter looks these up by the property name, so both must stay camelCase.
+    failedVerificationCount: integer("failed_verification_count").notNull().default(0),
+    lockedUntil: integer("locked_until", { mode: "timestamp_ms" }),
   },
   (t) => [index("two_factor_user_idx").on(t.userId)],
 );

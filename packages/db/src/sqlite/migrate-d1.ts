@@ -66,9 +66,19 @@ const configFlag = configPath
   ? `--config=${resolve(process.cwd(), configPath)}`
   : "";
 
+// `maxBuffer` defaults to 1 MB, and exceeding it is SILENT in the shape that
+// matters here: spawnSync returns `status: null`, `error.code === "ENOBUFS"`,
+// stdout truncated mid-JSON, and **stderr empty**. A ledger SELECT over a table
+// that had grown to 34,811 rows produced ~2.8 MB, so every remote read came
+// back unparseable with nothing to explain it. 64 MB is far past any plausible
+// ledger while still bounded.
 const wrangler = (extraArgs: string[]) => {
   const cmd = ["bunx", "wrangler", configFlag, ...extraArgs].filter(Boolean);
-  return spawnSync(cmd[0]!, cmd.slice(1), { cwd, encoding: "utf8" });
+  return spawnSync(cmd[0]!, cmd.slice(1), {
+    cwd,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
 };
 
 // Pull the lines from a wrangler stderr that actually explain a failure.
@@ -129,7 +139,16 @@ const execSqlWrite = (sql: string) => {
 const execSqlRead = (sql: string) => {
   const args = ["d1", "execute", dbName, remoteFlag, persistFlag, "--json", `--command=${sql}`];
   const r = wrangler(args);
-  return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "", argv: args };
+  // `spawnError` is the case with no exit code and no stderr — ENOBUFS being
+  // the one that actually bit. Surfaced separately so a failed READ can never
+  // again be mistaken for an empty ledger.
+  return {
+    ok: r.status === 0,
+    stdout: r.stdout ?? "",
+    stderr: r.stderr ?? "",
+    argv: args,
+    spawnError: r.error ? `${(r.error as NodeJS.ErrnoException).code ?? ""} ${r.error.message}`.trim() : "",
+  };
 };
 
 // wrangler may interleave stdout with progress noise around the JSON
@@ -180,7 +199,16 @@ const parseLedgerHashes = (stdout: string): Set<string> | null => {
 // is that no argv element contains a space (`--file=` takes a temp path); this
 // was the only one that did. SQLite treats `/**/` as whitespace, so the query
 // is now a single token no re-splitting can break.
-const LEDGER_SELECT = `SELECT/**/hash/**/FROM/**/__drizzle_migrations;`;
+//
+// DISTINCT is load-bearing, not tidiness. Only the SET of applied hashes is
+// ever consulted, but the table accumulates one row per hash per deploy because
+// nothing dedupes it — production reached 34,811 rows for 121 distinct hashes.
+// Selecting them all produced ~2.8 MB of stdout, blew spawnSync's 1 MB
+// maxBuffer, and returned truncated JSON with an empty stderr, which read as an
+// empty ledger, which replayed all 120 migrations, which appended 120 more
+// rows. DISTINCT takes the result back to ~121 rows and breaks that loop at the
+// source; the raised maxBuffer is the belt to this pair of braces.
+const LEDGER_SELECT = `SELECT/**/DISTINCT/**/hash/**/FROM/**/__drizzle_migrations;`;
 
 const readLedger = (): Set<string> => {
   const r = execSqlRead(LEDGER_SELECT);
@@ -189,12 +217,22 @@ const readLedger = (): Set<string> => {
   // Try to parse stdout regardless.
   const parsed = parseLedgerHashes(r.stdout);
   if (parsed) return parsed;
-  if (!r.ok && r.stderr) {
-    console.warn(`  (could not parse ledger; wrangler stderr: ${r.stderr.trim().split("\n")[0]})`);
-    // The argv is the evidence that matters if this ever regresses: it says
-    // whether wrangler was handed one token or several.
-    console.warn(`  (ledger read argv: ${JSON.stringify(r.argv)})`);
+
+  // A read that FAILED and a ledger that is genuinely EMPTY produce the same
+  // `new Set()` here, and the caller cannot tell them apart — it just replays
+  // everything. That silence is why this went unnoticed across ~290 deploys:
+  // the ENOBUFS truncation left `status: null` and an EMPTY stderr, so the old
+  // `if (!r.ok && r.stderr)` guard printed nothing at all. Never let a failed
+  // read pass as an empty one again — say so unconditionally, and say why.
+  console.warn(`  ⚠ ledger read FAILED — treating as empty, so every migration will replay.`);
+  if (r.spawnError) console.warn(`    spawn error: ${r.spawnError}`);
+  if (r.stderr.trim()) console.warn(`    wrangler stderr: ${redact(stripAnsi(r.stderr).trim().split("\n")[0] ?? "")}`);
+  if (!r.spawnError && !r.stderr.trim()) {
+    console.warn(`    (no stderr and no spawn error — stdout was ${r.stdout.length} bytes, likely truncated)`);
   }
+  // The argv is the evidence that matters if this ever regresses: it says
+  // whether wrangler was handed one token or several.
+  console.warn(`    argv: ${JSON.stringify(r.argv)}`);
   return new Set();
 };
 

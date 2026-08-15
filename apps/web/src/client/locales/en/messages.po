@@ -6713,6 +6713,10 @@ msgstr "Encrypted at rest; it is never returned by the API."
 msgid "End"
 msgstr "End"
 
+#: src/client/admin/pages/automation/agents.tsx
+msgid "end users"
+msgstr "end users"
+
 #: src/client/admin/pages/access/impersonation-card.tsx
 msgid "End-user"
 msgstr "End-user"
@@ -9698,6 +9702,10 @@ msgstr "Let it through (allow)"
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Let it through unverified (allow)"
 msgstr "Let it through unverified (allow)"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "Let your application's own signed-in users chat with this agent. They send messages only — the system prompt, model and tool list stay yours, each conversation is private to whoever started it, and the agent reads exactly what that person is allowed to read."
+msgstr "Let your application's own signed-in users chat with this agent. They send messages only — the system prompt, model and tool list stay yours, each conversation is private to whoever started it, and the agent reads exactly what that person is allowed to read."
 
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
@@ -12706,6 +12714,14 @@ msgstr "Open settings"
 #: src/client/admin/collections/item-editor.tsx
 msgid "Open the live preview for this record"
 msgstr "Open the live preview for this record"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "open to end users"
+msgstr "open to end users"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "Open to end users"
+msgstr "Open to end users"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Open-source · Apache-2.0 licensed"
@@ -21114,6 +21130,10 @@ msgstr "your API key"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "your app's thank-you page"
 msgstr "your app's thank-you page"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "Your application's signed-in users can chat with this agent."
+msgstr "Your application's signed-in users can chat with this agent."
 
 #: src/client/pages/book.tsx
 msgid "Your appointment"

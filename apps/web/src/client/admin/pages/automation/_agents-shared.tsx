@@ -23,6 +23,9 @@ export interface Agent {
   /** How far distilled facts reach: `thread` (default) | `agent`. */
   memoryScope?: string;
   active: boolean;
+  /** Reachable by the workspace's own END USERS through the app-plane chat
+   *  route, not just by operators. Off unless an operator asks for it. */
+  appAccess?: boolean;
 }
 
 /** How a room routes a message that addresses nobody. */

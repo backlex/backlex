@@ -6713,6 +6713,10 @@ msgstr "Saklanırken şifrelenir; API tarafından hiçbir zaman döndürülmez."
 msgid "End"
 msgstr "Bitir"
 
+#: src/client/admin/pages/automation/agents.tsx
+msgid "end users"
+msgstr "son kullanıcılar"
+
 #: src/client/admin/pages/access/impersonation-card.tsx
 msgid "End-user"
 msgstr "Son kullanıcı"
@@ -9698,6 +9702,10 @@ msgstr "Geçmesine izin ver (allow)"
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Let it through unverified (allow)"
 msgstr "Doğrulanmadan geçir (allow)"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "Let your application's own signed-in users chat with this agent. They send messages only — the system prompt, model and tool list stay yours, each conversation is private to whoever started it, and the agent reads exactly what that person is allowed to read."
+msgstr "Uygulamanızın kendi oturum açmış kullanıcıları bu ajanla sohbet edebilsin. Yalnızca mesaj gönderirler — sistem komutu, model ve izinli araç listesi sizde kalır, her konuşma onu başlatan kişiye özeldir ve ajan tam olarak o kişinin okumasına izin verilen şeyi okur."
 
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
@@ -12706,6 +12714,14 @@ msgstr "Ayarları aç"
 #: src/client/admin/collections/item-editor.tsx
 msgid "Open the live preview for this record"
 msgstr "Bu kaydın canlı önizlemesini aç"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "open to end users"
+msgstr "son kullanıcılara açık"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "Open to end users"
+msgstr "Son kullanıcılara açık"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Open-source · Apache-2.0 licensed"
@@ -21114,6 +21130,10 @@ msgstr "kendi API anahtarın"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "your app's thank-you page"
 msgstr "uygulamanızın teşekkür sayfası"
+
+#: src/client/admin/pages/automation/agents.tsx
+msgid "Your application's signed-in users can chat with this agent."
+msgstr "Uygulamanızın oturum açmış kullanıcıları bu ajanla sohbet edebilir."
 
 #: src/client/pages/book.tsx
 msgid "Your appointment"

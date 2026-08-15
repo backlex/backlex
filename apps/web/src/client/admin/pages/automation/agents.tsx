@@ -59,6 +59,7 @@ const EMPTY_DRAFT: Agent = {
   memory: false,
   memoryScope: "thread",
   active: true,
+  appAccess: false,
 };
 
 export function AgentsPage({
@@ -109,7 +110,7 @@ export function AgentsPage({
 
   // ── editor ────────────────────────────────────────────────────────────────
   const openEditor = useCallback((a?: Agent) => {
-    setDraft(a ? { ...a, description: a.description ?? "", systemPrompt: a.systemPrompt ?? "", model: a.model ?? "", effort: a.effort ?? "" } : EMPTY_DRAFT);
+    setDraft(a ? { ...a, description: a.description ?? "", systemPrompt: a.systemPrompt ?? "", model: a.model ?? "", effort: a.effort ?? "", appAccess: a.appAccess ?? false } : EMPTY_DRAFT);
     setModelCustom(!!(a?.model && !isKnownModel(a.model)));
     setToolFilter("");
     setEditorOpen(true);
@@ -134,6 +135,7 @@ export function AgentsPage({
       memory: draft.memory,
       memoryScope: draft.memoryScope || "thread",
       active: draft.active,
+      appAccess: draft.appAccess ?? false,
     };
     try {
       if (draft.id) {
@@ -236,7 +238,7 @@ export function AgentsPage({
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-[13px] font-medium">{a.name}</span>
                 <span className="truncate font-mono text-[11px] text-muted-foreground">
-                  {a.handle ? `@${a.handle} · ` : ""}{(a.tools ?? []).length} {t`tools`}{a.memory ? ` · ${t`memory`}` : ""}
+                  {a.handle ? `@${a.handle} · ` : ""}{(a.tools ?? []).length} {t`tools`}{a.memory ? ` · ${t`memory`}` : ""}{a.appAccess ? ` · ${t`end users`}` : ""}
                 </span>
               </div>
               <Badge variant={a.active ? "default" : "secondary"}>{a.active ? t`active` : t`off`}</Badge>
@@ -402,6 +404,28 @@ export function AgentsPage({
                   <Switch checked={draft.active} onChange={(next) => setDraft({ ...draft, active: next })} />
                 </div>
 
+                {/* Off by default, and deliberately a per-agent decision: an
+                    agent built for operators may carry an internal prompt and
+                    privileged tools, so nothing here is exposed as a side
+                    effect of the app-plane route existing. */}
+                <div className="flex items-center justify-between gap-3 rounded-control border border-border px-3 py-2.5">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-[13px] font-medium"><Trans>Open to end users</Trans></span>
+                    <span className="text-[11.5px] text-muted-foreground">
+                      <Trans>
+                        Let your application's own signed-in users chat with this agent. They
+                        send messages only — the system prompt, model and tool list stay
+                        yours, each conversation is private to whoever started it, and the
+                        agent reads exactly what that person is allowed to read.
+                      </Trans>
+                    </span>
+                  </div>
+                  <Switch
+                    checked={draft.appAccess ?? false}
+                    onChange={(next) => setDraft({ ...draft, appAccess: next })}
+                  />
+                </div>
+
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <Label className="shrink-0"><Trans>Tools</Trans> <span className="text-[11px] tabular-nums text-muted-foreground">({draft.tools.length}/{toolCatalog?.length ?? 0})</span></Label>
@@ -512,6 +536,14 @@ function AgentSummary({
         )}
         <Badge variant={agent.active ? "default" : "secondary"}>{agent.active ? t`active` : t`off`}</Badge>
         {agent.memory && <Badge variant="secondary"><Trans>memory</Trans></Badge>}
+        {/* Who can reach it is the one setting with a blast radius outside the
+            workspace, so it is stated on the panel rather than only in the
+            editor an operator has to open. */}
+        {agent.appAccess && (
+          <span title={t`Your application's signed-in users can chat with this agent.`} className="inline-flex">
+            <Badge variant="outline"><Trans>open to end users</Trans></Badge>
+          </span>
+        )}
         <span title={t`Running on ${modelSrc}`} className="inline-flex">
           <Badge variant="secondary" className="gap-1 font-normal">
             <I.Sparkles size={11} /> {effModel}

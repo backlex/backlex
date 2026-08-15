@@ -65,21 +65,31 @@ const groupPreview = (
   return sections;
 };
 
-/** Search + category-grouped template list (left pane). */
+/** Search + category-grouped template list (left pane).
+ *
+ *  Two-pane sizing: the right pane's content decides the grid row's height, so
+ *  the list must fill whatever that turns out to be — a fixed viewport cap
+ *  leaves dead space below the list on tall previews. From `md:` up the browser
+ *  is taken out of flow (`absolute inset-0` against the cell, which both
+ *  consumers mark `relative`) so it stretches to the row without feeding its own
+ *  ~26-item height back into it, and the ScrollArea takes the definite height
+ *  `flex-1` hands it. The cell carries a `md:min-h-*` floor for the short
+ *  previews (blank / few collections). Stacked (`max-md:`) there is no row to
+ *  match, so the caller's viewport cap applies as before. */
 function TemplateBrowser({
   templates,
   selected,
   onSelect,
   query,
   onQuery,
-  viewportClassName,
+  mobileViewportClassName,
 }: {
   templates: TemplateSummary[];
   selected: string;
   onSelect: (id: string) => void;
   query: string;
   onQuery: (q: string) => void;
-  viewportClassName: string;
+  mobileViewportClassName: string;
 }) {
   const { t } = useLingui();
   const groups = useMemo(() => {
@@ -105,7 +115,7 @@ function TemplateBrowser({
   }, [templates, query]);
 
   return (
-    <div className="flex flex-col min-h-0">
+    <div className="flex min-h-0 flex-col md:absolute md:inset-0">
       <div className="p-2.5 border-b border-border/60">
         <div className="relative">
           <I.Search
@@ -120,7 +130,7 @@ function TemplateBrowser({
           />
         </div>
       </div>
-      <ScrollArea viewportClassName={viewportClassName}>
+      <ScrollArea className="md:min-h-0 md:flex-1" viewportClassName={mobileViewportClassName}>
         {groups.length === 0 ? (
           <p className="px-4 py-6 text-[12px] text-muted-foreground text-center">
             <Trans>No templates match your search.</Trans>
@@ -316,14 +326,14 @@ export function TemplateOnboarding({
       </div>
 
       <div className="grid grid-cols-[280px_1fr] max-md:grid-cols-1">
-        <div className="border-r border-border max-md:border-r-0 max-md:border-b">
+        <div className="relative border-r border-border max-md:border-r-0 max-md:border-b md:min-h-[420px]">
           <TemplateBrowser
             templates={templates}
             selected={selectedId}
             onSelect={setSelected}
             query={query}
             onQuery={setQuery}
-            viewportClassName="max-h-[360px]"
+            mobileViewportClassName="max-md:max-h-[360px]"
           />
         </div>
         <div className="p-5 flex flex-col">
@@ -369,7 +379,7 @@ export function AddFromTemplateDialog({
   // otherwise claim "No templates match your search", which is false here.
   const dialogBody = catalog.isLoading ? (
     <div className="grid grid-cols-[280px_1fr] max-md:grid-cols-1 min-h-0">
-      <div className="border-r border-border max-md:border-r-0 max-md:border-b p-3 space-y-2">
+      <div className="border-r border-border max-md:border-r-0 max-md:border-b p-3 space-y-2 md:min-h-[360px]">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-9 w-full" />
         ))}
@@ -396,14 +406,14 @@ export function AddFromTemplateDialog({
     </div>
   ) : (
     <div className="grid grid-cols-[280px_1fr] max-md:grid-cols-1 min-h-0">
-      <div className="border-r border-border max-md:border-r-0 max-md:border-b">
+      <div className="relative border-r border-border max-md:border-r-0 max-md:border-b md:min-h-[360px]">
         <TemplateBrowser
           templates={templates}
           selected={selectedId}
           onSelect={setSelected}
           query={query}
           onQuery={setQuery}
-          viewportClassName="max-h-[calc(88vh-16rem)] max-md:max-h-[24vh]"
+          mobileViewportClassName="max-md:max-h-[24vh]"
         />
       </div>
       <ScrollArea viewportClassName="max-h-[calc(88vh-13rem)] max-md:max-h-[30vh]">

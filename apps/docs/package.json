@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bunx --bun astro dev",
-    "build": "astro build",
+    "build": "bunx --bun astro build",
     "preview": "bunx --bun astro preview",
     "typecheck": "astro check"
   },

@@ -136,7 +136,19 @@ Bun workspaces — every package is source-consumed (no build step between them)
 
 The admin's API client (`client/lib/api.ts`) defaults to relative `/api/...` paths, so same-origin deploys work without `VITE_API_URL`. Set `VITE_API_URL` only for cross-origin setups.
 
-**The dev server runs on Bun, not Node.** `apps/web`'s `dev` script is `bunx --bun vite` (same form as `apps/site` / `apps/docs` use for Astro), so Vite + miniflare/workerd + HMR all run under the Bun runtime. This needs Bun's `ws` client `'upgrade'` event, which only became usable in the 1.4.0 canary line — on an older Bun the dev server hangs forever at `⎔ Establishing remote connection...`. If you see that hang, check `bun --revision` first. Note that **`ps` reports the process as `node`** because Bun spoofs `argv[0]`; the honest check is `lsof -p <pid> | awk '$4=="txt"'`, which shows the real `bun` binary. `vite build` and `tsc` still run on Node deliberately — only the dev server moved.
+**Vite runs on Bun, not Node.** `dev`, `build`, `preview` and `deploy` all invoke it as `bunx --bun vite …` (the same form `apps/site` / `apps/docs` use for Astro), so Vite + miniflare/workerd + HMR run under the Bun runtime. The dev server needs Bun's `ws` client `'upgrade'` event, which only became usable in the 1.4.0 canary line — on an older Bun it hangs forever at `⎔ Establishing remote connection...`, so check `bun --revision` first if you see that. The production Worker bundle is **byte-identical** under either runtime (all 279 files); only one client chunk (`preload-helper`) differs, and only in minifier variable naming, which cascades content hashes across the SPA chunks. Note that **`ps` reports the process as `node`** because Bun spoofs `argv[0]`; the honest check is `lsof -p <pid> | awk '$4=="txt"'`, which shows the real `bun` binary.
+
+**What deliberately stays on Node**, so nobody "finishes the job" and breaks it:
+
+| Script | Why |
+|---|---|
+| `typecheck` (`tsc`) | `NODE_OPTIONS=--max-old-space-size=8192` is a **V8** flag; Bun uses JavaScriptCore and ignores it, dropping the only guard on a project whose working set already exceeds an 8 GB machine. The bottleneck is type complexity, not runtime — see `docs/performance.md`. |
+| `i18n:extract` (`lingui`) | Hangs indefinitely under `--bun` (no output at all). |
+| `astro check` | Imports the TypeScript compiler API, which 7.0 shipped without. |
+| `wrangler deploy` | Works under `--bun` for `--version`, but a real deploy was never exercised; no upside, since CF Builds runs it on its own runner. |
+| `build` in `packages/cli` / `packages/client` (`tsup`) | Its dts step fails on **both** runtimes under TypeScript 6.0 (`TS5101: baseUrl is deprecated`) — a pre-existing break, not a runtime question. |
+| `drizzle-kit` | Prompts on column renames; needs a real TTY. |
+| `start:node` | Runs the Node build target — Node is the point. |
 
 **Anything runtime-specific must stay behind the adapter layer** — do not branch on `typeof process` etc. inside route code. Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image,saml,ldap}.ts`; concrete implementations live in `apps/web/src/server/adapters/*`. The selection rules (dialect, db driver, storage, vector, email, realtime transport, saml, ldap, smtp) live in `apps/web/src/server/context.ts::buildContext(env)` — see the adapter table in `docs/architecture.md` before adding a new one.
 

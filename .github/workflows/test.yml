@@ -156,6 +156,14 @@ jobs:
       - name: Build all targets
         run: bun run build:targets
 
+      # The published SDK. Nothing else in this workflow compiles it — until
+      # now it was built for the first time inside publish-backlex.yml, which
+      # only runs on a `backlex-v*` tag. So when tsup's declaration step broke
+      # under TypeScript 6.0 (TS5101), `backlex` quietly became unpublishable
+      # and no PR went red. ~1.3s here buys that back.
+      - name: Build the SDK (tsup — catches .d.ts regressions before release)
+        run: bun run --cwd packages/client build
+
       # Everything the runtime-smoke matrix needs to boot a server without
       # rebuilding: the SPA bundle + each serverless function bundle.
       #   apps/web/dist          → client/ (SPA), lambda/, gcp/, azure/, node/, deno/

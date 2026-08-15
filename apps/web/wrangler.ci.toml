@@ -18,7 +18,18 @@ compatibility_flags = ["nodejs_compat"]
 "ldapts" = "./src/server/shims/ldapts-shim.ts"
 
 [vars]
-APP_URL = "https://backlex-admin.kinyasfurkan.workers.dev"
+# The address this worker ACTUALLY serves on under `wrangler dev --local` in
+# the runtime-smoke job — not the production host, which is what this used to
+# claim. `context.ts` seeds better-auth's `trustedOrigins` from APP_URL, so a
+# value that disagrees with where the smoke client is calling means every auth
+# request is a cross-origin one and comes back 403 INVALID_ORIGIN. Older
+# better-auth tolerated the mismatch; 1.6.29 does not, and the sign-up /
+# sign-in / get-session legs of the smoke contract went red on the upgrade.
+#
+# Note this is NOT overridable from the orchestrator: `wrangler dev` reads
+# [vars] from this file and ignores the parent process's APP_URL, so the fix
+# has to live here. Keep it in sync with tests/smoke/orchestrate.ts's PORT.
+APP_URL = "http://127.0.0.1:8787"
 # Public r2.dev origin for the `workeros-files` R2 bucket. Lets the storage
 # route ask Cloudflare Image Resizing to transform public files at the edge
 # (no bytes through the Worker isolate). Only used when the row's ACL is

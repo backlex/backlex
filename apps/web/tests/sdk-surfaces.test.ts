@@ -93,8 +93,8 @@ const MCP_SURFACES: Record<string, Coverage> = {
   agents: { client: "agents" },
   ai: {
     deferred:
-      "Every AI route is `requireAdmin` today, so there is no app-plane caller for an SDK method to serve. Wave 20 is the wave that decides which AI surfaces an end user may reach; shipping a client before that decision would fix the answer by accident.",
-    until: "wave-20",
+      "Wave 20 asked which AI surfaces an end user may reach and ANSWERED: agent chat, not raw generation. That shipped as `clients/agent-chat.ts` against `/api/t/:slug/agents`, where the operator writes the prompt, picks the tools and opts each agent in — so the injection surface and the spend stay theirs. These three tools are the surfaces that decision went AGAINST: `ai.query`, `ai.suggest_schema` and `ai.import_csv` reshape a workspace's data and schema from a prompt, which is an operator capability and stays `requireAdmin`. So nothing here is waiting on a decision any more; the only open question is whether an operator-mode client is worth writing at all.",
+    until: "wave-21",
   },
   analytics: { client: "analytics" },
   "api-keys": { deferred: ADMIN_PLANE("Key issuance and revocation"), until: "wave-21" },
@@ -213,7 +213,11 @@ const ADMIN: Family = { plane: "admin" };
 const INTERNAL: Family = { plane: "internal" };
 
 const ROUTE_FAMILIES: Record<string, Family> = {
-  "/.well-known": INTERNAL,
+  // Two routers, two answers. JWKS is fetched by whoever is verifying one of
+  // our tokens — a resource server, not this SDK — and the OAuth discovery
+  // documents are read by an MCP client's own machinery.
+  "/.well-known → jwksRoutes": INTERNAL,
+  "/.well-known → mcpOAuthWellKnownRoutes": INTERNAL,
   "/api": { core: "request" },
   "/api/_internal/sandbox-rpc": INTERNAL,
   "/api/account": {
@@ -227,7 +231,13 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/api-keys": MCP_SURFACES["api-keys"]!,
   "/api/app-orgs": { client: "orgs" },
   "/api/app-users": { client: "app-users" },
-  "/api/auth": { plane: "auth", client: "auth" },
+  // Four routers share this prefix because ordering matters in front of
+  // better-auth's catch-all; three of them are the auth surface the `auth`
+  // client already serves, and the other two are not app-facing at all.
+  "/api/auth → authPublicRoutes": { plane: "auth", client: "auth" },
+  "/api/auth → authRoutes": { plane: "auth", client: "auth" },
+  "/api/auth → mcpAuthorizeConsentGate": INTERNAL,
+  "/api/auth → platformAuthRoutes": ADMIN,
   "/api/collections": MCP_SURFACES.schema!,
   "/api/comments": MCP_SURFACES.comments!,
   "/api/device-tokens": { client: "messaging" },
@@ -282,7 +292,12 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/shared": MCP_SURFACES["shared-links"]!,
   "/api/shared-links": MCP_SURFACES["shared-links"]!,
   "/api/storage": MCP_SURFACES.storage!,
-  "/api/t": { core: "request" },
+  // The app plane, three routers deep. Each answers for itself now — the single
+  // `core: "request"` these used to share is the blanket that hid the agent
+  // chat surface below.
+  "/api/t → appAgentsPublicRoutes": { client: "agent-chat" },
+  "/api/t → appOrgsPublicRoutes": { client: "orgs" },
+  "/api/t → tenantAuthRoutes": { plane: "auth", client: "auth" },
   "/api/tenants": MCP_SURFACES.tenants!,
   "/api/uploads": MCP_SURFACES.uploads!,
   "/api/users": MCP_SURFACES.users!,
@@ -417,9 +432,39 @@ const mcpModules = readdirSync(MCP_DIR)
   .filter((m) => /^\s*name: "/m.test(m.src))
   .map((m) => m.name);
 
-const mountedFamilies = [
-  ...new Set([...read(APP_TS).matchAll(/app\.route\("([^"]+)"/g)].map((m) => m[1]!)),
-];
+const routeMounts = [
+  ...read(APP_TS).matchAll(/app\.route\("([^"]+)",\s*([A-Za-z_$][\w$]*)/g),
+].map((m) => ({ path: m[1]!, router: m[2]! }));
+
+/** Every `app.route(` in the file, however it is written — compared against
+ *  `routeMounts` in the sanity test. A mount the stricter regex failed to parse
+ *  would drop out of the registry entirely, so its surface would need no entry:
+ *  a hole shaped exactly like coverage. */
+const rawMountCount = [...read(APP_TS).matchAll(/app\.route\(/g)].length;
+
+/**
+ * Every mount, keyed by its path — or by `path → router` when the same path is
+ * mounted by more than one router.
+ *
+ * That second case is the hole this closes. Three prefixes are shared
+ * (`/api/auth` four ways, `/api/t` three, `/.well-known` two), and keying them
+ * by path alone let ONE answer excuse every router behind it: the app-plane
+ * agent chat shipped under `/api/t`, which had already been answered for by
+ * the workspace auth surface mounted at the same prefix, so this file stayed
+ * green over a brand-new app-facing surface with no client. A shared prefix is
+ * not a shared decision.
+ */
+const mountedFamilies = (() => {
+  const perPath = new Map<string, number>();
+  for (const m of routeMounts) perPath.set(m.path, (perPath.get(m.path) ?? 0) + 1);
+  return [
+    ...new Set(
+      routeMounts.map((m) =>
+        (perPath.get(m.path) ?? 0) > 1 ? `${m.path} → ${m.router}` : m.path,
+      ),
+    ),
+  ];
+})();
 
 const kindOf = (c: Coverage): string[] =>
   (["client", "core", "deferred", "serverOnly"] as const).filter((k) => c[k] !== undefined);
@@ -434,6 +479,8 @@ describe("SDK parity — the registry covers every surface", () => {
     // assertion below pass over an empty list.
     expect(mcpModules.length).toBeGreaterThanOrEqual(60);
     expect(mountedFamilies.length).toBeGreaterThanOrEqual(100);
+    // The router half of the mount scan is load-bearing — see `rawMountCount`.
+    expect(routeMounts.length).toBe(rawMountCount);
     expect(clientModules.length).toBeGreaterThanOrEqual(30);
     expect(surfacesTests.length).toBeGreaterThanOrEqual(45);
     expect(fieldForModule.size).toBe(clientModules.length);

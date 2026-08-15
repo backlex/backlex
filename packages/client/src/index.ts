@@ -30,6 +30,7 @@
  */
 import type { AdvisorClient } from "./clients/advisor";
 import type { AgentsClient } from "./clients/agents";
+import type { AgentChatClient } from "./clients/agent-chat";
 import type { AnalyticsClient } from "./clients/analytics";
 import type { AppUsersClient } from "./clients/app-users";
 import type { ApprovalsClient } from "./clients/approvals";
@@ -176,6 +177,7 @@ export * from "./clients/usage";
 export * from "./clients/advisor";
 export * from "./clients/backups";
 export * from "./clients/agents";
+export * from "./clients/agent-chat";
 export * from "./clients/permissions";
 export * from "./clients/schema";
 export * from "./clients/migrate";
@@ -218,6 +220,7 @@ import { makeUsage } from "./clients/usage";
 import { makeAdvisor } from "./clients/advisor";
 import { makeBackups } from "./clients/backups";
 import { makeAgents } from "./clients/agents";
+import { makeAgentChat } from "./clients/agent-chat";
 import { makePermissions } from "./clients/permissions";
 import { makeSchema } from "./clients/schema";
 import { makeMigrate } from "./clients/migrate";
@@ -368,8 +371,12 @@ export interface BacklexClient {
   advisor: AdvisorClient;
   /** Backup / restore + the automatic-backup schedule. */
   backups: BackupsClient;
-  /** AI agents (definitions, threads, and running turns). */
+  /** AI agents (definitions, threads, and running turns) — the operator's
+   *  surface. Your application's own end users get {@link BacklexClient.agentChat}. */
   agents: AgentsClient;
+  /** Chatting with an agent as one of the workspace's own end users. App mode
+   *  only, and only agents the operator opened with `appAccess`. */
+  agentChat: AgentChatClient;
   /** Permission tooling (simulator). */
   permissions: PermissionsClient;
   /** Schema templates (catalog + apply). */
@@ -969,6 +976,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const advisor = makeAdvisor(core);
   const backups = makeBackups(core);
   const agents = makeAgents(core);
+  const agentChat = makeAgentChat(core);
   const permissions = makePermissions(core);
   const schema = makeSchema(core);
   const migrate = makeMigrate(core);
@@ -1036,6 +1044,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     advisor,
     backups,
     agents,
+    agentChat,
     permissions,
     templates,
     appUsers,

@@ -71,6 +71,14 @@ const wrangler = (extraArgs: string[]) => {
   return spawnSync(cmd[0]!, cmd.slice(1), { cwd, encoding: "utf8" });
 };
 
+// wrangler prefixes real errors with ✘/X and pads them with blank lines and
+// telemetry chatter; surface the first line that actually says something.
+const firstMeaningfulLine = (stderr: string): string =>
+  stderr
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.length > 0 && !l.startsWith("▲") && !/^[─━-]+$/.test(l)) ?? "";
+
 const execFile = (file: string) => {
   const r = wrangler([
     "d1", "execute", dbName, remoteFlag, persistFlag,
@@ -203,15 +211,24 @@ for (const tag of order) {
     // DDL re-runs against an already-migrated D1 fail with "table already
     // exists" / "duplicate column" — those are noise. Fall through and
     // record the hash so we don't repeat the noise on the next run.
+    //
+    // Print wrangler's own words, though: swallowing them is how a genuine
+    // write failure hid behind this "probably harmless" message for months.
+    // The ledger stayed empty on every remote deploy, so all 120 migrations
+    // replayed each time, and the reason was never in the log to read.
     console.warn(`    (wrangler exit ≠ 0 — likely partial replay, recording hash anyway)`);
+    console.warn(`    ${firstMeaningfulLine(r.stderr) || "(no stderr)"}`);
   }
   const ts = Date.now();
   // Don't gate on exit status here either — wrangler can exit ≠ 0 even when
   // the INSERT was committed. We re-read the ledger after the loop and
   // report the actual recorded delta.
-  execSqlWrite(
+  const ins = execSqlWrite(
     `INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('${hash}', ${ts});`,
   );
+  if (!ins.ok) {
+    console.warn(`    (ledger INSERT exit ≠ 0) ${firstMeaningfulLine(ins.stderr) || "(no stderr)"}`);
+  }
   attemptedHashes.push(hash);
 }
 

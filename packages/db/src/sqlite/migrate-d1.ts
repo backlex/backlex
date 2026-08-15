@@ -71,13 +71,32 @@ const wrangler = (extraArgs: string[]) => {
   return spawnSync(cmd[0]!, cmd.slice(1), { cwd, encoding: "utf8" });
 };
 
-// wrangler prefixes real errors with ✘/X and pads them with blank lines and
-// telemetry chatter; surface the first line that actually says something.
-const firstMeaningfulLine = (stderr: string): string =>
-  stderr
+// Pull the lines from a wrangler stderr that actually explain a failure.
+//
+// Taking the *first* line was wrong: on a remote `--file=` write wrangler leads
+// with `▲ [WARNING] ⚠️ This process may take some time, during which your D1
+// database will be unavailable to serve queries.` — the import API announcing
+// itself, not the error. It also colours its output, so the line starts with an
+// ANSI escape rather than the `▲` a naive filter looks for. Strip the escapes,
+// prefer lines that carry an error marker, and fall back to the TAIL rather
+// than the head, because wrangler puts the verdict last.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: the ANSI CSI introducer IS a control character — matching it is the point
+const stripAnsi = (s: string): string => s.replace(/\u001B\[[0-9;]*m/g, "");
+
+// These lines land in a CI build log that outlives the run. The remote import
+// path signs an R2 upload URL, and a signed URL is a credential in query-string
+// form — wrangler does not print one today, but a log line is a bad place to
+// find out it started. Drop every query string before anything is echoed.
+const redact = (line: string): string => line.replace(/(https?:\/\/\S+?)\?\S*/g, "$1?<redacted>");
+
+const errorLines = (stderr: string, max = 5): string[] => {
+  const lines = stripAnsi(stderr)
     .split("\n")
-    .map((l) => l.trim())
-    .find((l) => l.length > 0 && !l.startsWith("▲") && !/^[─━-]+$/.test(l)) ?? "";
+    .map((l) => redact(l.trim()))
+    .filter((l) => l.length > 0 && !/^[─━-]+$/.test(l));
+  const flagged = lines.filter((l) => /✘|\[ERROR\]|error/i.test(l));
+  return (flagged.length > 0 ? flagged : lines.slice(-max)).slice(0, max);
+};
 
 const execFile = (file: string) => {
   const r = wrangler([
@@ -196,6 +215,20 @@ const applied = readLedger();
 console.log(`▸ Applying ${order.length} migration(s) to ${remote ? "remote" : "local"} D1 "${dbName}"`);
 console.log(`  ${applied.size} already recorded; ${order.length - applied.size} pending.`);
 
+// The same wrangler failure repeats for all 120 migrations, so the detail is
+// printed once. Without this the log carries 120 identical stack-like blocks
+// and the one line that matters is impossible to spot.
+let loggedApplyFailure = false;
+let loggedInsertFailure = false;
+let loggedInsertOk = false;
+const reportFailure = (label: string, stderr: string, already: boolean): boolean => {
+  if (already) return true;
+  const lines = errorLines(stderr);
+  console.warn(`    ${label} — wrangler said:`);
+  for (const l of lines.length > 0 ? lines : ["(stderr was empty)"]) console.warn(`      ${l}`);
+  return true;
+};
+
 const attemptedHashes: string[] = [];
 for (const tag of order) {
   const file = resolve(root, tag, "migration.sql");
@@ -217,7 +250,7 @@ for (const tag of order) {
     // The ledger stayed empty on every remote deploy, so all 120 migrations
     // replayed each time, and the reason was never in the log to read.
     console.warn(`    (wrangler exit ≠ 0 — likely partial replay, recording hash anyway)`);
-    console.warn(`    ${firstMeaningfulLine(r.stderr) || "(no stderr)"}`);
+    loggedApplyFailure = reportFailure("migration apply", r.stderr, loggedApplyFailure);
   }
   const ts = Date.now();
   // Don't gate on exit status here either — wrangler can exit ≠ 0 even when
@@ -227,7 +260,22 @@ for (const tag of order) {
     `INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('${hash}', ${ts});`,
   );
   if (!ins.ok) {
-    console.warn(`    (ledger INSERT exit ≠ 0) ${firstMeaningfulLine(ins.stderr) || "(no stderr)"}`);
+    loggedInsertFailure = reportFailure("ledger INSERT", ins.stderr, loggedInsertFailure);
+  } else if (!loggedInsertOk) {
+    // The harder case to debug is the INSERT that reports SUCCESS and still
+    // leaves the ledger empty, which is exactly what remote does today: no
+    // `ledger INSERT` failure line has ever appeared, yet the next build reads
+    // back `0 already recorded`. The /import endpoint answers with statistics
+    // (rows read/written), so print them once — a write that claims zero rows
+    // and a write that claims one point at very different bugs.
+    loggedInsertOk = true;
+    const stats = stripAnsi(ins.stdout)
+      .split("\n")
+      .map((l) => redact(l.trim()))
+      .filter((l) => l.length > 0)
+      .slice(-6);
+    console.warn(`    (first ledger INSERT reported success — wrangler stdout:)`);
+    for (const l of stats.length > 0 ? stats : ["(stdout was empty)"]) console.warn(`      ${l}`);
   }
   attemptedHashes.push(hash);
 }

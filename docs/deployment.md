@@ -20,7 +20,7 @@ constraints you need.
 | **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | yes (Node 22 has raw TCP) | yes (Node 22 has raw TCP) | no (no raw TCP) |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS-WASM / remote HTTP |
 | **Image**          | `Bun.Image`       | CF Image Resize      | `sharp`²             | Netlify Image CDN³   | WASM `@cf-wasm/photon`⁴ |
-| **Cron**           | setInterval       | wrangler triggers    | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` | native `Deno.cron` (1-min idempotent tick) |
+| **Cron**           | setInterval       | wrangler triggers (or `/api/_cron/tick`⁵) | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` | native `Deno.cron` (1-min idempotent tick) |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             | $0+ (free tier) |
 
 ¹ Realtime on these stateless targets has two paths, and `ABLY_API_KEY` is the one
@@ -69,6 +69,18 @@ Upstash, exactly like Vercel/Netlify serverless. Image transforms run through th
 addon doesn't load; **SMTP/LDAP need raw TCP and aren't available** — use an
 HTTP email provider (resend/sendgrid/mailgun/ses). Verified live: `/health`, auth
 sign-in, realtime, storage.
+
+⁵ A normal Workers deploy uses `wrangler.toml::triggers.crons`, and the
+`/api/_cron/tick` route stays closed because `CRON_SECRET` is unset. Set it only
+if the platform running this bundle can't attach a cron trigger to the script —
+notably **Workers for Platforms**, where a user Worker in a dispatch namespace
+exports `scheduled()` but has no schedules resource to register a cron against,
+so nothing ever calls it. On such an instance jobs, scheduled publish/unpublish,
+auto-backups, CDC, cron flows and integration syncs never run, and nothing
+reports a failure — the handler is simply never invoked. With `CRON_SECRET` set,
+have the platform ping `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` (or
+`Authorization: Bearer`); `cronTick` is idempotent and deduped by `lastTickAt`,
+so at-least-once delivery is safe.
 
 ## Bun (self-host)
 

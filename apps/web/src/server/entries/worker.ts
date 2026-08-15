@@ -1,12 +1,55 @@
 import { createApp } from "../app";
+import { timingSafeEqual } from "../lib/timing";
 import { cronTick } from "../services/scheduler";
 import type { Env } from "../env";
 
 export { RealtimeRoom } from "../durable-objects/realtime-room";
 export { RateLimitRoom } from "../durable-objects/rate-limit-room";
 
+/**
+ * HTTP cron endpoint, for a platform that runs this bundle but cannot give the
+ * script a `scheduled()` trigger of its own.
+ *
+ * An ordinary Workers deploy never needs it — `wrangler.toml::triggers.crons`
+ * drives `scheduled()` below, and this route stays closed because a self-hoster
+ * has no reason to set CRON_SECRET. It exists for **Workers for Platforms**: a
+ * user Worker in a dispatch namespace exports `scheduled()` but has no schedules
+ * resource to register a cron against (the API answers a write there from the
+ * script-upload handler), so nothing ever calls it. On such an instance the
+ * handler is present and merely never invoked, which means no jobs, no scheduled
+ * publish/unpublish, no auto-backups, no CDC, no cron flows and no integration
+ * syncs — with nothing anywhere reporting a failure.
+ *
+ * Same contract as the Vercel/Netlify/Lambda/GCP entries: `x-cron-secret` or
+ * `Authorization: Bearer`, compared in constant time, 401 otherwise. `cronTick`
+ * is idempotent and deduped by `lastTickAt`, so an at-least-once caller is safe.
+ * Opt-in by construction — with CRON_SECRET unset the endpoint is closed, so
+ * this changes nothing for anyone who does not deliberately turn it on.
+ */
+export async function handleCronTick(request: Request, env: Env): Promise<Response> {
+  const headerSecret = request.headers.get("x-cron-secret") ?? "";
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const provided = headerSecret || bearer;
+  if (!env.CRON_SECRET || !provided || !timingSafeEqual(provided, env.CRON_SECRET)) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+  await cronTick(env);
+  return Response.json({ ok: true, ts: Date.now() });
+}
+
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    // Answered ahead of the Hono app deliberately. The other entries register
+    // this as `app.get(...)` because they build their app once at module scope;
+    // here the app is constructed per request (env arrives with the request), so
+    // registering a route would mutate the router on every call. The trade-off
+    // is that this path does not inherit app middleware — acceptable because it
+    // authenticates with its own shared secret rather than a session, and an
+    // unauthenticated caller is rejected by a constant-time compare before any
+    // database work happens.
+    if (new URL(request.url).pathname === "/api/_cron/tick") {
+      return handleCronTick(request, env);
+    }
     const app = createApp(env);
     // Pass `ctx` through so `c.executionCtx.waitUntil` works — without it the
     // fire-and-forget tasks in keepAlive (5xx audit rows, opt-in cloud error /

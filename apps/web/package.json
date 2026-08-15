@@ -95,7 +95,7 @@
     "node-forge": "^1.4.0",
     "tailwindcss": "^4.3.3",
     "typescript": "6.0.3",
-    "vite": "8.2.1",
+    "vite": "8.0.13",
     "wrangler": "4.123.0",
     "xml-crypto": "^6.1.2"
   },

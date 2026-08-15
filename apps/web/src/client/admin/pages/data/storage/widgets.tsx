@@ -182,7 +182,9 @@ export function FileDetailModal({ f, onClose, ...rest }: any) {
             <DialogDescription className="mt-0.5 truncate font-mono text-xs">{f.key}</DialogDescription>
           </div>
         </DialogHeader>
-        <DialogBody>
+        {/* Full bleed: FileDetail's preview runs edge to edge and the panels
+            under it bring their own padding. */}
+        <DialogBody data-full-bleed>
           <FileDetail f={f} {...rest} embedded />
         </DialogBody>
       </DialogContent>

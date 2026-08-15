@@ -298,8 +298,10 @@ export const ApiKeys = () => {
               <Trans>The full secret is shown once after creation — copy it somewhere safe.</Trans>
             </DialogDescription>
           </DialogHeader>
-          <DialogBody className="min-h-0 flex-1">
-          <form id="new-api-key-form" className="space-y-4" onSubmit={submit}>
+          <DialogBody>
+          {/* DialogContent is `p-0` here so the header and footer can draw their
+              own rules, which means the body owns its padding too. */}
+          <form id="new-api-key-form" className="space-y-4 px-6 py-4" onSubmit={submit}>
             <div className="space-y-1.5">
               <Label htmlFor="name"><Trans>Name</Trans></Label>
               <Input

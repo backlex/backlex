@@ -39,22 +39,34 @@ pre-commit:
 #
 # Override with `git push --no-verify` ONLY when you're certain a transient
 # issue (network, sandbox-only DB lock) is the cause; otherwise diagnose it.
+# Deliberately SERIAL. This ran `parallel: true` until it was measured on the
+# 8 GB dev machine (2026-08-15, cold cache, otherwise idle):
+#
+#                    parallel        serial
+#   gate total        695s            715s
+#   typecheck         695s            327s
+#   test              657s            388s
+#   total sys time    707s            292s
+#
+# So serialising does NOT make the gate finish sooner — 20s apart is inside this
+# box's noise, because parallel's total is the longest job while serial's is the
+# sum. What it buys is the last row: **2.4x less kernel paging**. typecheck
+# genuinely needs >4 GB of live heap (lowering --max-old-space-size below 8192
+# OOMs it outright), so running it beside the test suite pushes an 8 GB machine
+# into swap — `test`'s sys time alone drops 241s -> 33s once it stops competing.
+# That contention is what once left two typechecks wedged in `U` state for 27
+# minutes, thrashing, finishing never. The trade is: same wait, usable machine.
+#
+# CI is unaffected either way — test.yml runs these as separate jobs on separate
+# runners with more RAM than this.
 pre-push:
-  parallel: true
+  parallel: false
   jobs:
+    # Order matters now that these run one at a time: cheapest first, so a
+    # failure costs seconds instead of the full ~12 minutes. Under `parallel:
+    # true` the order was meaningless. None of these depend on another's output.
     - name: lint
       run: bun run lint
-    - name: typecheck
-      run: bun run typecheck
-    # `--timeout`: these jobs are `parallel: true`, so the suite runs beside a
-    # typecheck and four platform builds. Bun's five-second default is a budget
-    # for a test's own work, not for a test's own work on a machine doing five
-    # other things — and the specs that lost the race were different ones each
-    # run, which is the signature of contention rather than of a slow test.
-    # Thirty seconds still fails a genuinely hung test; it just stops the gate
-    # reporting the machine.
-    - name: test
-      run: bun test --timeout 30000
     # Per-target build verification. Catches edge-only regressions the
     # in-process SQLite test suite can't see: a missing shim, a fresh
     # node:net import, or a Bun-specific API leaking into the worker
@@ -62,6 +74,15 @@ pre-push:
     # (~6s total when caches are warm; cold first run ~15s).
     - name: build:targets
       run: bun run build:targets
+    - name: typecheck
+      run: bun run typecheck
+    # `--timeout` stays at 30s even though the suite no longer runs beside a
+    # typecheck. It was raised from Bun's 5s default because contention made
+    # different specs lose the race each run; serialising removes most of that,
+    # but the suite still shares the machine with whatever else is open, and 30s
+    # still fails a genuinely hung test. Nothing is gained by tightening it.
+    - name: test
+      run: bun test --timeout 30000
 
 # Post-merge: reclaim agent worktrees. Parallel agent sessions each get a
 # worktree under `.claude/worktrees/` and nothing removes them when the session

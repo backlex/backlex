@@ -1612,7 +1612,7 @@ function ReportDashboardDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
-      <DialogContent className="flex max-h-[86vh] flex-col overflow-hidden sm:max-w-[520px] [&>*]:min-w-0">
+      <DialogContent className="sm:max-w-[520px] [&>*]:min-w-0">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <I.Download size={15} className="text-muted-foreground" />

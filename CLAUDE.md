@@ -8,7 +8,7 @@ All commands run from the repo root via Bun workspaces.
 
 ```bash
 bun install
-bun run dev                # Vite + Cloudflare miniflare in one process (port 5173)
+bun run dev                # Vite + Cloudflare miniflare in one process (port 5173), on the Bun runtime
 bun run dev:bun            # Bun-native API only on :8787 (no admin SPA)
 bun run typecheck          # all workspaces
 bun run lint               # biome lint apps + packages (no formatter)
@@ -54,6 +54,8 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 Every working session runs on its own branch. Merging into `main` triggers two independent paths:
 
 - **Cloudflare Workers Builds (native git integration)** — the `backlex-admin` Worker is connected to this repo from the CF dashboard. On every push to `main` it runs the build command (`bun run db:migrate:d1:remote && bun run build`) and then deploys with `cd apps/web && bunx wrangler deploy`. No GitHub secrets needed; CF Builds is auto-authenticated.
+
+  **Two settings live only in the CF dashboard and are invisible from this repo — check them before blaming the code.** (1) `BUN_VERSION` is pinned to `1.3.14` on **both** the `backlex-admin` and `backlex-website` triggers. The runner defaults to bun `1.2.15`, which reports `process.version` as `v22.6.0`; astro 7 rejects that (`>=22.12.0`) and killed every website deploy in 24 s until it was pinned, while vite merely warns. Bun has no version file — `BUN_VERSION` is the only lever (Node has `.nvmrc`/`.node-version`). Do not raise it to match this machine without checking `bun --revision`: the local bun is `1.4.0-canary.1`, which is not a published release and CF cannot install it. (2) The deploy command was `cd apps/web && bun run deploy`, which re-ran the *entire* `vite build` a second time after the build phase had already run it; it is now plain `bunx wrangler deploy`, matching what this file documents.
 - **`.github/workflows/test.yml`** — runs lint + typecheck + `bun test` + `bun run build:targets` on every PR **and** every push to `main`. Acts as a redundant gate that catches regressions in the four-runtime build matrix (Bun / CF / Vercel / Netlify) which Workers Builds doesn't exercise on its own.
 
 The repo also ships native-git deploy configs for **Vercel** (`vercel.ts` + Build Output API) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). All three platforms (CF / Vercel / Netlify) use their own native git integration — no GitHub Actions deploy workflow exists for any of them. Runtime caveats live in `docs/deployment.md`.
@@ -106,6 +108,12 @@ After pushing, report the test.yml run URL back to the user. Don't claim "deploy
 
 **Do not use `wrangler deployments list` to confirm a deploy.** It is stale for Workers Builds deploys (the native git integration this repo uses) and will show a days-old deployment while the new bundle is already serving. `scripts/verify-deploy.ts` checks behaviourally instead: it probes `/health` (**not** `/api/health`, which is a 404 that reads exactly like "deploy hasn't landed"), walks the entry chunks *and the lazy chunks they reference* (admin pages are lazy — grepping `index.html`'s chunks alone finds nothing), and fails if a marker you know is new is absent. Pick a marker that exists only in the commit just shipped: a new provider id, a brand hex, a fresh route path.
 
+**Almost none of a CF build is compilation — it is the D1 migration step.** Measured on a green 16.0-minute build: migrations ran 0.5m → 15.5m, then the whole `vite build` took **12 seconds** (`backlex_admin` env 2.37 s + client env 9.02 s). If a build ever creeps back toward the runner's 31-minute kill, read the migration timestamps first; the bundler is not where the minutes go.
+
+All 120 migrations used to replay on every remote deploy, and the cause was a **self-reinforcing loop that failed silently** — worth knowing in full, because every layer of it hid the next. The ledger writes always worked; production had accumulated **34,811 rows for 121 distinct hashes**, one set per deploy across ~290 deploys. Reading them back with `SELECT hash` produced ~2.8 MB on stdout, which overflowed `spawnSync`'s 1 MB default `maxBuffer`. That overflow is invisible in the worst possible shape: `status: null`, stdout truncated mid-JSON, and **stderr empty**. So the parse failed, the empty result read as "nothing recorded", all 120 migrations replayed, and the replay appended 120 more rows for next time. The read guard was `if (!r.ok && r.stderr)`, and with stderr empty it printed nothing at all.
+
+Fixed by three things that must stay together, pinned by `apps/web/tests/migrate-d1-ledger.test.ts`: the query selects `DISTINCT` (121 rows, not 34,811), the spawn raises `maxBuffer`, and a failed read now says so unconditionally instead of passing as an empty ledger. A separate earlier layer is also fixed and worth remembering — the query is written space-free because a spaced `--command=` argv element reached wrangler on the runner split into four tokens (`Unknown arguments: hash, FROM, __drizzle_migrations;`); see the comment above `LEDGER_SELECT`. **The 34,690 duplicate rows are still in production**; the loop is stopped, but the table has not been compacted.
+
 **After the deploy run goes green**, smoke-test the change against the live URL with the puppeteer MCP server (`mcp__puppeteer__puppeteer_*` tools). The default target is the production deploy unless the user names a specific URL. Drive the relevant flow end-to-end (sign in, exercise the feature touched by this branch, watch for console/network errors via `puppeteer_evaluate`) and screenshot the result. Report what you tested and what you saw — don't call it shipped without that pass.
 
 ## Architecture (one-screen orientation)
@@ -135,6 +143,20 @@ Bun workspaces — every package is source-consumed (no build step between them)
 - `server/env.ts` — runtime-agnostic `Env` interface; Cloudflare binding fields are optional and only present on Workers.
 
 The admin's API client (`client/lib/api.ts`) defaults to relative `/api/...` paths, so same-origin deploys work without `VITE_API_URL`. Set `VITE_API_URL` only for cross-origin setups.
+
+**Vite runs on Bun, not Node.** `dev`, `build`, `preview` and `deploy` all invoke it as `bunx --bun vite …` (the same form `apps/site` / `apps/docs` use for Astro), so Vite + miniflare/workerd + HMR run under the Bun runtime. The dev server needs Bun's `ws` client `'upgrade'` event, which only became usable in the 1.4.0 canary line — on an older Bun it hangs forever at `⎔ Establishing remote connection...`, so check `bun --revision` first if you see that. The production Worker bundle is **byte-identical** under either runtime (all 279 files); only one client chunk (`preload-helper`) differs, and only in minifier variable naming, which cascades content hashes across the SPA chunks. Note that **`ps` reports the process as `node`** because Bun spoofs `argv[0]`; the honest check is `lsof -p <pid> | awk '$4=="txt"'`, which shows the real `bun` binary.
+
+**What deliberately stays on Node**, so nobody "finishes the job" and breaks it:
+
+| Script | Why |
+|---|---|
+| `typecheck` (`tsc`) | `NODE_OPTIONS=--max-old-space-size=8192` is a **V8** flag; Bun uses JavaScriptCore and ignores it, dropping the only guard on a project whose working set already exceeds an 8 GB machine. The bottleneck is type complexity, not runtime — see `docs/performance.md`. |
+| `i18n:extract` (`lingui`) | Hangs indefinitely under `--bun` (no output at all). |
+| `astro check` | Imports the TypeScript compiler API, which 7.0 shipped without. |
+| `wrangler deploy` | Works under `--bun` for `--version`, but a real deploy was never exercised; no upside, since CF Builds runs it on its own runner. |
+| `build` in `packages/cli` / `packages/client` (`tsup`) | Its dts step fails on **both** runtimes under TypeScript 6.0 (`TS5101: baseUrl is deprecated`) — a pre-existing break, not a runtime question. |
+| `drizzle-kit` | Prompts on column renames; needs a real TTY. |
+| `start:node` | Runs the Node build target — Node is the point. |
 
 **Anything runtime-specific must stay behind the adapter layer** — do not branch on `typeof process` etc. inside route code. Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image,saml,ldap}.ts`; concrete implementations live in `apps/web/src/server/adapters/*`. The selection rules (dialect, db driver, storage, vector, email, realtime transport, saml, ldap, smtp) live in `apps/web/src/server/context.ts::buildContext(env)` — see the adapter table in `docs/architecture.md` before adding a new one.
 
@@ -182,6 +204,13 @@ Every admin/tenant/public UI change must be verified at **mobile (~390×740) AND
 - TypeScript is strict with `noUncheckedIndexedAccess`. Treat array/Record lookups as possibly `undefined`.
 - ESM only (`"type": "module"`); workspace packages are consumed by source path (e.g. `"main": "./src/index.ts"`) — no build step between packages.
 - Drizzle is on the `1.0.0-beta.22` line. APIs differ from the 0.x docs; pin all `drizzle-orm` / `drizzle-kit` versions together when upgrading.
+- **`vite` runs on `8.2.1`. The old exact pin to `8.0.13` was lifted 2026-08-15, because the reason for it did not survive being measured.** Keep the story, because the wrong version of it cost two advisories and a lot of build minutes. Vite 8 bundles rolldown, and rolldown ≥ 1.0.3 does have a real open deadlock on CPU-constrained CI when a JS plugin's `transform` hook calls a native NAPI addon — for us `@tailwindcss/vite` → `@tailwindcss/oxide` (rolldown [#10102](https://github.com/rolldown/rolldown/issues/10102), closed `not_planned`; [#10664](https://github.com/rolldown/rolldown/issues/10664)). Two Cloudflare deploys really did hang at exactly 31 minutes on `8.2.1`, which is why it was pinned back. The upstream env-var workarounds (`TOKIO_WORKER_THREADS`, `RAYON_NUM_THREADS`, `UV_THREADPOOL_SIZE`) were tried and none help.
+
+  **Why the pin came off.** The bump to `8.2.1` and the move to `bunx --bun vite build` landed in the *same* push, only the first was reverted, and `8.2.1` had also produced a green build — so the version was never actually isolated. Measured properly as an A/B on the playground trigger, which compiles the same `apps/web` bundle through the same oxide NAPI path: **13 runs on `8.2.1` / rolldown `1.2.4` — 7/7 green on Node, 6/6 green under `--bun`, zero hangs, 1.1–2.1 minutes each.** What every original hang shared was a build that first spent ~15 minutes replaying 120 migrations, and the deadlock is CPU-starvation sensitive — that load is what starved it. Fixing the migration ledger removed the trigger. Bumping also closed the two advisories `8.0.13` carried (GHSA-fx2h-pf6j-xcff, GHSA-v6wh-96g9-6wx3), both Windows-only and dev-server-only.
+
+  **If a build hangs at 31 minutes again, do not reach for the vite version first** — look at what else is loading the runner. The drift that IS still real is a declared pin failing to constrain a transitive copy, and `apps/web/tests/vite-pin-lockfile.test.ts` guards exactly that: it compares what `bun.lock` RESOLVED against what package.json DECLARES, with no version hardcoded, so a deliberate bump passes and a silent divergence does not.
+
+  **Declaring the pin does not enforce it — only the lockfile does, and `apps/web/tests/vite-pin-lockfile.test.ts` is what checks.** `apps/site/package.json` already named `vite: 8.0.13`, and astro still resolved its own nested `vite@8.2.1` (→ rolldown `1.2.4`) straight past it: a direct dependency pin does not constrain a dependency's own dependency. The obvious repair does not work either — Bun answers a scoped entry with `warn: Bun currently does not support nested "resolutions"` and ignores it, and that warning surfaces only in the CI install log, so locally the entry looks like it worked. A blanket `"vite"` resolution is not an option either, because `apps/docs` runs astro 6 and requires `vite ^7.3.2`. So what holds the pin is the resolved `bun.lock` plus CI's `--frozen-lockfile` — a state, not a constraint, which can drift back on any re-resolution. Check what was RESOLVED, never what a package.json asked for: `grep -oE '"[^"]*vite": \["vite@[0-9.]+' bun.lock`. **Known cost:** `8.0.13` carries two open advisories — GHSA-fx2h-pf6j-xcff (high, `server.fs.deny` bypass) and GHSA-v6wh-96g9-6wx3 (medium, launch-editor NTLM disclosure), both fixed in `8.0.16`. Both are Windows-only and dev-server-only, and vite never ships to production, so the exposure here is nil while the deadlock is not. Move to `8.0.16`+ once rolldown fixes the deadlock — verify by watching a real Cloudflare build to completion, not a local build.
 - `noUncheckedIndexedAccess` plus the dual-dialect union is why `routes/items.ts` casts to `any` in a few places — match that pattern rather than reaching for type assertions per-call.
 - Migrations are **hand-written SQL** under `packages/db/drizzle/{pg,sqlite}/`. `db:generate:*` only refreshes the drizzle snapshot. Both dialects must be edited in lockstep.
 

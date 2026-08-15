@@ -16,6 +16,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Card } from "@backlex/ui/components/card";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -518,13 +519,14 @@ function LimitsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden [&>*]:min-w-0 sm:max-w-md">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="[&>*]:min-w-0 sm:max-w-md">
+        <DialogHeader>
           <DialogTitle>
             <Trans>Workspace usage limits</Trans>
           </DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-3.5">
+        <DialogBody>
+        <div className="flex flex-col gap-3.5 px-1">
           <label className="flex flex-col gap-1.5 text-[13px] font-medium">
             <Trans>Enforcement</Trans>
             <Select
@@ -579,7 +581,8 @@ function LimitsDialog({
             {pinnedHint("maxDbRows")}
           </label>
         </div>
-        <DialogFooter className="shrink-0">
+        </DialogBody>
+        <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             <Trans>Cancel</Trans>
           </Button>
@@ -653,13 +656,14 @@ function KeyLimitsDialog({
 
   return (
     <Dialog open={!!keyRow} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden [&>*]:min-w-0 sm:max-w-sm">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="[&>*]:min-w-0 sm:max-w-sm">
+        <DialogHeader>
           <DialogTitle>
             <Trans>Limits for {keyRow?.name}</Trans>
           </DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-3.5">
+        <DialogBody>
+        <div className="flex flex-col gap-3.5 px-1">
           <label className="flex flex-col gap-1.5 text-[13px] font-medium">
             <Trans>Requests per minute</Trans>
             <Input
@@ -685,7 +689,8 @@ function KeyLimitsDialog({
             </span>
           </label>
         </div>
-        <DialogFooter className="shrink-0">
+        </DialogBody>
+        <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             <Trans>Cancel</Trans>
           </Button>

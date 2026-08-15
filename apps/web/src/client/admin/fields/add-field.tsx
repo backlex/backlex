@@ -487,30 +487,31 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     { key: "conditions", label: t`Conditions`, icon: "Filter" },
   ];
   const activeTab = tabs.some((x) => x.key === tab) ? tab : "schema";
-  // Fixed height (not max-h): the dialog is vertically centered, so a viewport
-  // that grows/shrinks with the active tab makes the whole modal jump on every
-  // rail click. Constant height per step keeps it anchored.
-  const vp = "h-[calc(92vh-13rem)] max-[640px]:h-[calc(92vh-19rem)]";
-
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[92vh] w-[94vw] flex-col gap-0 overflow-hidden p-0 [&>*]:min-w-0 sm:max-w-[820px]">
-        <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
-            <Trans>Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></Trans>
-          </DialogTitle>
-          <DialogDescription className="text-[12.5px]">
-            <Trans>Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.</Trans>
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[94vw] gap-0 p-0 [&>*]:min-w-0 sm:max-w-[820px]">
+        {/* Title block and step indicator share one child. A dialog with a
+            body lays its children out as three tracks — header, body, footer —
+            and the middle one is the only row that shrinks, so a fourth child
+            here would take it and leave the interface list unable to scroll. */}
+        <div>
+          <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+            <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
+              <Trans>Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></Trans>
+            </DialogTitle>
+            <DialogDescription className="text-[12.5px]">
+              <Trans>Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.</Trans>
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-5 py-3 text-[12.5px]">
-          <div className={`inline-flex items-center gap-2 font-medium ${step >= 1 ? "text-foreground" : "text-muted-foreground"}`}>
-            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>1</span> <Trans>Interface</Trans>
-          </div>
-          <div className="h-px max-w-[60px] flex-1 bg-border" />
-          <div className={`inline-flex items-center gap-2 font-medium ${step >= 2 ? "text-foreground" : "text-muted-foreground"}`}>
-            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</span> <Trans>Settings</Trans>
+          <div className="flex items-center gap-2.5 border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-5 py-3 text-[12.5px]">
+            <div className={`inline-flex items-center gap-2 font-medium ${step >= 1 ? "text-foreground" : "text-muted-foreground"}`}>
+              <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>1</span> <Trans>Interface</Trans>
+            </div>
+            <div className="h-px max-w-[60px] flex-1 bg-border" />
+            <div className={`inline-flex items-center gap-2 font-medium ${step >= 2 ? "text-foreground" : "text-muted-foreground"}`}>
+              <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</span> <Trans>Settings</Trans>
+            </div>
           </div>
         </div>
 
@@ -565,7 +566,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         )}
 
         {step === 2 && (
-          <FieldTabLayout tabs={tabs} active={activeTab} onSelect={setTab} viewportClassName={vp}>
+          <FieldTabLayout tabs={tabs} active={activeTab} onSelect={setTab}>
             {activeTab === "schema" && (
               <div className="flex flex-col gap-3.5">
                 <div className="flex flex-col gap-1.5">

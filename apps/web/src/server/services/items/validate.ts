@@ -225,7 +225,13 @@ export const validateRelations = async (
   ctx: Ctx,
   tenantId: string | null | undefined,
 ): Promise<void> => {
-  const checks = new Map<string, { ids: Set<string>; via: Set<string> }>();
+  // Keyed by target slug so the existence SELECT still batches. `via` is keyed
+  // by FIELD rather than the other way round for two reasons: insertion order
+  // is the declaration order of `fields`, so a refusal names the boxes in the
+  // order the form shows them, and a payload with two relations into one
+  // collection (`ship_to` and `bill_to` → `addresses`) can be told apart —
+  // naming both when only one is retired points the operator at the wrong box.
+  const checks = new Map<string, { ids: Set<string>; via: Map<string, Set<string>> }>();
   for (const f of fields) {
     if (f.type !== "relation" && f.type !== "relation_many") continue;
     if (!f.to) continue;
@@ -242,11 +248,16 @@ export const validateRelations = async (
       ids = [val];
     }
     if (ids.length === 0) continue;
-    const entry = checks.get(f.to) ?? { ids: new Set<string>(), via: new Set<string>() };
-    for (const id of ids) entry.ids.add(id);
-    // The field the value arrived on, kept so a refusal can name the box the
-    // operator filled rather than only the collection behind it.
-    entry.via.add(f.name);
+    const entry = checks.get(f.to) ?? { ids: new Set<string>(), via: new Map<string, Set<string>>() };
+    // Which ids arrived on which field, kept so a refusal can name the box the
+    // operator filled rather than only the collection behind it — and only the
+    // box that actually holds a retired row.
+    const seen = entry.via.get(f.name) ?? new Set<string>();
+    for (const id of ids) {
+      entry.ids.add(id);
+      seen.add(id);
+    }
+    entry.via.set(f.name, seen);
     checks.set(f.to, entry);
   }
   if (checks.size === 0) return;
@@ -296,7 +307,15 @@ export const validateRelations = async (
     if (retired.length > 0) {
       const sample = retired.slice(0, 3).join(", ");
       const suffix = retired.length > 3 ? ` (…and ${retired.length - 3} more)` : "";
-      const where = [...via].join(", ");
+      // Only the fields that actually carry one of the retired ids. Row order
+      // out of the database is not deterministic, so the names are taken from
+      // `via` — whose insertion order is the field declaration order — rather
+      // than from the order the retired rows came back in.
+      const retiredIds = new Set(retired);
+      const where = [...via]
+        .filter(([, ids]) => [...ids].some((id) => retiredIds.has(id)))
+        .map(([name]) => name)
+        .join(", ");
       throw new AppError(
         "VALIDATION",
         `"${where}" points at a retired row in "${slug}": ${sample}${suffix} — restore the row, or pick one that is still in play`,

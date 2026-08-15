@@ -4,7 +4,16 @@
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/.cache/tsc/.tsbuildinfo",
     "noEmit": true,
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022", "DOM"],
+    // NOT for anything this repo writes — no tsconfig here sets `baseUrl`, and
+    // the four that used to were emptied rather than silenced when TS 6.0
+    // landed. This is for `baseUrl` we cannot reach: tsup hardcodes
+    // `baseUrl: compilerOptions.baseUrl || "."` into the options it hands the
+    // declaration build (tsup/dist/rollup.js:6837), so every `tsup` run trips
+    // TS5101 and the .d.ts step dies — which meant the published SDK could not
+    // be built at all. 8.5.1 is the latest tsup, so there is no version to
+    // upgrade to. Remove this the moment tsup stops injecting it.
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*"]
 }

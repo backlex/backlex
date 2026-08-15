@@ -152,6 +152,19 @@ describe("AI provider registry (pure)", () => {
       expect(m.hint.length).toBeGreaterThan(0);
     }
   });
+
+  test("every provider's default model is a row the picker can actually show", () => {
+    // The admin picker filters the catalog by the chosen provider and preselects
+    // that provider's `defaultModel`. A default missing from the catalog renders
+    // as a blank selection that silently disagrees with what the server runs, so
+    // the two lists have to be refreshed together when models are bumped.
+    const catalogIds = new Set(AI_MODELS.map((m) => m.id));
+    for (const p of AI_PROVIDERS) {
+      expect(catalogIds.has(p.defaultModel)).toBe(true);
+      if (p.transport === "direct")
+        expect(modelsForProvider(p.id).map((m) => m.id)).toContain(p.defaultModel);
+    }
+  });
 });
 
 describe("model id normalization", () => {
@@ -163,8 +176,10 @@ describe("model id normalization", () => {
   });
 
   test("gateway mode passes an already-prefixed id through untouched", () => {
-    expect(resolveModelId("gateway", "openai/gpt-5")).toBe("openai/gpt-5");
-    expect(resolveModelId("gateway", "google/gemini-2.5-pro")).toBe("google/gemini-2.5-pro");
+    expect(resolveModelId("gateway", "openai/gpt-5.6-sol")).toBe("openai/gpt-5.6-sol");
+    expect(resolveModelId("gateway", "google/gemini-3.7-flash")).toBe(
+      "google/gemini-3.7-flash",
+    );
     expect(resolveModelId("gateway", undefined)).toBe("anthropic/claude-haiku-4-5");
   });
 
@@ -175,18 +190,22 @@ describe("model id normalization", () => {
     expect(resolveModelId("anthropic", "claude-sonnet-5")).toBe("claude-sonnet-5");
     // The dated id the direct Anthropic path has always defaulted to.
     expect(resolveModelId("anthropic", undefined)).toBe("claude-haiku-4-5-20251001");
-    expect(resolveModelId("openai", "openai/gpt-5-mini")).toBe("gpt-5-mini");
-    expect(resolveModelId("openai", undefined)).toBe("gpt-5-mini");
-    expect(resolveModelId("google", "google/gemini-2.5-pro")).toBe("gemini-2.5-pro");
-    expect(resolveModelId("google", undefined)).toBe("gemini-2.5-flash");
+    expect(resolveModelId("openai", "openai/gpt-5.6-terra")).toBe("gpt-5.6-terra");
+    expect(resolveModelId("openai", undefined)).toBe("gpt-5.6-terra");
+    expect(resolveModelId("google", "google/gemini-3.1-pro-preview")).toBe(
+      "gemini-3.1-pro-preview",
+    );
+    expect(resolveModelId("google", undefined)).toBe("gemini-3.7-flash");
   });
 
   test("a CROSS-vendor id is not forwarded to a direct provider that can't run it", () => {
     // Stale config: workspace was on the gateway with a GPT model, then moved
-    // to a direct Anthropic key. Forwarding `openai/gpt-5` would be a
+    // to a direct Anthropic key. Forwarding `openai/gpt-5.6-sol` would be a
     // guaranteed 404; falling back keeps generation alive.
-    expect(resolveModelId("anthropic", "openai/gpt-5")).toBe("claude-haiku-4-5-20251001");
-    expect(resolveModelId("google", "anthropic/claude-sonnet-5")).toBe("gemini-2.5-flash");
+    expect(resolveModelId("anthropic", "openai/gpt-5.6-sol")).toBe(
+      "claude-haiku-4-5-20251001",
+    );
+    expect(resolveModelId("google", "anthropic/claude-sonnet-5")).toBe("gemini-3.7-flash");
   });
 });
 
@@ -290,7 +309,7 @@ describe("GET /api/admin/ai-config exposes the registry + catalog", () => {
       "/api/admin/ai-config",
       putJson({
         provider: "openai",
-        config: { model: "openai/gpt-5-mini" },
+        config: { model: "openai/gpt-5.6-terra" },
         secrets: {
           openaiKey: "sk-openai-super-secret",
           googleKey: "goog-super-secret",
@@ -303,7 +322,7 @@ describe("GET /api/admin/ai-config exposes the registry + catalog", () => {
 
     const d = await getCfg(h);
     expect(d.provider).toBe("openai");
-    expect(d.config.model).toBe("openai/gpt-5-mini");
+    expect(d.config.model).toBe("openai/gpt-5.6-terra");
     expect(d.secretsSet.openaiKey).toBe(true);
     expect(d.secretsSet.googleKey).toBe(true);
     expect("bogusKey" in d.secretsSet).toBe(false);
@@ -372,17 +391,17 @@ describe("resolveAiRuntime — workspace row → global row → deployment defau
   test("the workspace row wins over the global row", async () => {
     const tenantId = await tenantIdOf(h);
     await writeConfigRow(h, GLOBAL_AI_CONFIG_ID, "anthropic", {
-      model: "anthropic/claude-opus-4-8",
+      model: "anthropic/claude-opus-5",
       secrets: { anthropicKey: "global-key" },
     });
     await writeConfigRow(h, tenantId, "openai", {
-      model: "openai/gpt-5-mini",
+      model: "openai/gpt-5.6-terra",
       secrets: { openaiKey: "workspace-key" },
     });
 
     const rt = await runtimeFor(tenantId);
     expect(rt.provider).toBe("openai");
-    expect(rt.model).toBe("openai/gpt-5-mini");
+    expect(rt.model).toBe("openai/gpt-5.6-terra");
     expect(rt.env.OPENAI_API_KEY).toBe("workspace-key");
     expect(rt.env.AI_PROVIDER).toBe("openai");
     // The deployment's Anthropic key must NOT remain reachable — "my key" means
@@ -394,7 +413,7 @@ describe("resolveAiRuntime — workspace row → global row → deployment defau
   test("a workspace row that picks NO provider falls through to the global row", async () => {
     const tenantId = await tenantIdOf(h);
     await writeConfigRow(h, GLOBAL_AI_CONFIG_ID, "gateway", {
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-3.7-flash",
       secrets: { gatewayKey: "global-gateway-key" },
     });
     // The workspace exists but explicitly inherits — the whole point of the
@@ -405,7 +424,7 @@ describe("resolveAiRuntime — workspace row → global row → deployment defau
     const rt = await runtimeFor(tenantId);
     expect(rt.provider).toBe("gateway");
     expect(rt.env.AI_GATEWAY_API_KEY).toBe("global-gateway-key");
-    expect(rt.model).toBe("google/gemini-2.5-flash");
+    expect(rt.model).toBe("google/gemini-3.7-flash");
   });
 
   test("model and credential resolve per-field down the same chain", async () => {

@@ -34,6 +34,8 @@ describe("anthropic provider options", () => {
 
   test("effort is sent to models that support it, with or without a gateway prefix", () => {
     for (const model of [
+      "claude-opus-5",
+      "anthropic/claude-opus-5",
       "claude-opus-4-8",
       "anthropic/claude-opus-4-8",
       "claude-sonnet-5",

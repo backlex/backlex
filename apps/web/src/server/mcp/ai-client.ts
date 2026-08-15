@@ -34,8 +34,8 @@ export interface ClaudeRequest {
   user: string;
   /** Override the default model. Cheap/fast operations stay on Haiku; tools
    *  that want richer reasoning (schema design from prose) can opt up. In
-   *  gateway mode pass either a bare id (`claude-sonnet-4-6`) or a
-   *  provider-prefixed id (`openai/gpt-5`). */
+   *  gateway mode pass either a bare id (`claude-sonnet-5`) or a
+   *  provider-prefixed id (`openai/gpt-5.6-terra`). */
   model?: string;
   maxTokens?: number;
   /** Reasoning effort; ignored on models that don't support it. */
@@ -185,7 +185,8 @@ export const AI_EFFORTS: readonly AiEffort[] = ["low", "medium", "high"] as cons
  *  Haiku 4.5 or Sonnet 4.5 is a 400, not a no-op. Gate on the resolved id so a
  *  workspace that picked a cheap model can't break its own agent by setting
  *  effort. (Matches with or without a gateway `anthropic/` prefix.) */
-const EFFORT_CAPABLE = /claude-(opus-4-[5-9]|sonnet-5|sonnet-4-6|fable-5|mythos-5)/;
+const EFFORT_CAPABLE =
+  /claude-(opus-5|opus-4-[5-9]|sonnet-5|sonnet-4-6|fable-5|mythos-5)/;
 
 /**
  * Provider options for the Anthropic path. The gateway forwards `providerOptions`

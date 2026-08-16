@@ -85,13 +85,35 @@ can opt into read auditing.
 Per collection — **Collection → Settings → Scoping & lifecycle → Audit reads**,
 or set `auditReads: true` on `POST`/`PATCH /api/collections`. Off by default.
 
-When on, both REST read paths record one `access.read` activity row each:
+When on, every read path records one `access.read` activity row.
+
+**REST:**
 
 - `GET /api/items/:slug` (list)
 - `GET /api/items/:slug/:id` (by-id)
+- `GET /api/items/:slug/export`
+- `POST /api/items/:slug/search`
+- `POST /api/items/:slug/aggregate`
+
+**GraphQL** — the same rows, with `payload.surface: "graphql"` so the two are
+distinguishable in the log:
+
+- `<collection>` / `<collection>Page` (list)
+- `<Collection>(id:)` (by-id)
+- `<collection>Search`, `<collection>Aggregate`
+- **nested relations** (`{ visits { patient } }`) — one row per batch, because
+  the loader reads them as one `WHERE id IN (…)`. This is the read most worth
+  recording and the easiest to miss: it never touches the by-id resolver, so a
+  hook on the two obvious entry points alone would leave a bulk read of the
+  sensitive collection — through an un-audited one — invisible.
 
 The rows surface under the **Access** lens in Logs, filterable via
 `/api/activity?action=access`.
+
+Both surfaces go through one service (`services/items/read-audit.ts`), the way
+the write path already shares `performCreate`/`performUpdate`. That is the point:
+GraphQL recorded nothing for as long as it had its own read path, and a second
+implementation is how the two would drift again.
 
 ### Security & permissions interplay
 
@@ -105,6 +127,9 @@ The rows surface under the **Access** lens in Logs, filterable via
   *viewed item id + the field names returned* (by-id). It never stores field
   **values**, so the audit trail can't itself become a second copy of the
   sensitive data it's protecting. (`response` is always null for reads.)
+- **A relation batch records what it actually read.** An id the caller asked for
+  but was not allowed to see resolved to `null` and was never read, so it is not
+  in the row's `ids` — recording it would claim an access that did not happen.
 - **Non-admins** only ever see their own `activity` rows via `/api/activity`, so
   the access trail doesn't leak who-viewed-what to ordinary users.
 - **Fire-and-forget.** Auditing runs via `keepAlive` (`waitUntil`) and swallows
@@ -113,10 +138,17 @@ The rows surface under the **Access** lens in Logs, filterable via
 
 ### Coverage & limits
 
-- Covers REST item reads (and therefore the public SDK, which uses the same
-  routes). **GraphQL reads are not yet audited** — they run through separate
-  resolvers; that hook is a follow-up.
-- Aggregate reads (`POST /api/items/:slug/aggregate`) are not audited.
+- Covers REST item reads (and therefore the public SDK and MCP, which use the
+  same routes) **and GraphQL item reads**, including nested relations.
+- Still not audited, and each for a stated reason rather than by oversight:
+  `GET /:slug/:id/revisions` and `/transitions` (they read metadata about a row,
+  not the row), and the changefeed `/:slug/changes` (a sync client polls it
+  continuously, so a row per poll would drown the log it is meant to make
+  readable). If a deployment needs those, say so — they are cheap to add now
+  that both surfaces share one hook.
+- `durationMs` is null on GraphQL rows: one request can read several
+  collections, so a per-request elapsed figure would be the same number on every
+  row and would describe none of them.
 
 ## MCP tool auditing
 

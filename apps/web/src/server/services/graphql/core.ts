@@ -46,6 +46,8 @@ import { ITEMS_AGG_FUNCS, runItemsAggregate } from "../items/aggregate";
 import { searchCollectionItems } from "../items/search";
 import { runBatch, type BatchOp } from "../items/batch";
 import { runChangefeed } from "../items/changefeed";
+import { recordSensitiveRead } from "../items/read-audit";
+import { requestMeta } from "../activity";
 import { runBulkUpdate } from "../items/bulk";
 import { performCreate, performDelete, performUpdate, type WriteEnv } from "../items/write";
 import {
@@ -95,6 +97,16 @@ export interface CollectionRow {
    *  resolver below must AND in `gqlTenantWhere` exactly like the REST path's
    *  `tenantFilter`. Omitting it leaks rows across workspaces. */
   tenantScoped: boolean;
+  /**
+   * Opt-in sensitive-read auditing, mirrored from the items collection-loader.
+   *
+   * It has to be on THIS row, not looked up per read: the resolvers here are
+   * hot and never load the items-loader row. Its absence is why GraphQL wrote
+   * no `access.read` at all — the audit hook read `collection.auditReads` off a
+   * shape that has never carried it, so it was `undefined` on every read and
+   * the gate closed silently.
+   */
+  auditReads?: boolean;
 }
 
 export interface GqlCtx {
@@ -111,6 +123,16 @@ export interface GqlCtx {
    *  REST route does. Absent on schema builds that never run an agent. */
   app?: Hono;
   rawRequest?: Request;
+  /**
+   * Hand a background promise to the runtime, when the caller has a way to.
+   *
+   * The GraphQL route fills this with `keepAlive(c, p)`; a caller without a
+   * Hono context (a test, an internal invocation) leaves it undefined and the
+   * promise simply floats — which is what the REST path does on Bun/Node
+   * anyway. It exists so a sensitive-read audit does not make the read wait
+   * for its own audit row, the same rule REST follows.
+   */
+  defer?: (p: Promise<unknown>) => void;
   /** Per-request batch loaders for to-one `relation` field resolution, keyed
    *  by TARGET collection slug. Coalesces the per-row `WHERE id = ?` lookups a
    *  list of N parents would otherwise fire (the classic GraphQL N+1) into one
@@ -118,6 +140,45 @@ export interface GqlCtx {
    *  or one tenant's loader could serve another's rows. Lazily created. */
   relationLoaders?: Map<string, RelationLoader>;
 }
+
+/**
+ * Record an `access.read` for a GraphQL read, on the same terms REST uses.
+ *
+ * GraphQL wrote no audit rows at all until now — `auditRead` needs a Hono
+ * `Context` and there is none here — so a workspace could switch `auditReads`
+ * on for its patient records, watch the log fill from the admin UI, and have
+ * every read through `/api/graphql` leave nothing behind. Both surfaces now go
+ * through one service (`services/items/read-audit.ts`), the way the WRITE path
+ * already shares `performCreate`/`performUpdate`.
+ *
+ * `ip`/`userAgent` come from `rawRequest` when the caller supplied one, and are
+ * simply absent otherwise rather than fabricated. `durationMs` is left null:
+ * one GraphQL request can read several collections, so a per-request elapsed
+ * figure would be the same number on every row and would describe none of them.
+ */
+const auditGqlRead = (
+  gqlCtx: GqlCtx,
+  collection: { slug: string; auditReads?: boolean },
+  itemId: string | null,
+  payload: Record<string, unknown>,
+): void => {
+  if (!collection.auditReads) return;
+  const { ctx, auth, rawRequest, defer } = gqlCtx;
+  const meta = rawRequest ? requestMeta(rawRequest) : { ip: null, userAgent: null };
+  const p = recordSensitiveRead(
+    { db: ctx.db, dialect: ctx.dialect },
+    collection,
+    {
+      userId: auth.userId,
+      tenantId: auth.tenantId ?? null,
+      itemId,
+      payload: { ...payload, surface: "graphql" },
+      ...meta,
+    },
+  );
+  if (defer) defer(p);
+  else void p.catch(() => {});
+};
 
 /** A minimal DataLoader: `load(id)` queues the id, a microtask flushes the
  *  whole queue as one batched fetch, and same-id loads in a request dedupe. */
@@ -1037,6 +1098,14 @@ export const listPageResolver = async (
     cursorMode && hasMore && last
       ? encodeCursor(sortPlan.keyset.map((c) => last[c.column] ?? null))
       : null;
+  // Same shape REST's list audit records (`routes/items/list.ts`): the query,
+  // how many rows came back, and the first fifty identities — read off the RAW
+  // rows, because `rendered` is permission-projected and may not carry the pk.
+  auditGqlRead(gqlCtx, collection, null, {
+    query: { filter: args.filter ?? null, sort: args.sort ?? null, limit, offset },
+    count: rendered.length,
+    ids: rows.slice(0, 50).map((r) => r[collection.pkColumn] ?? null),
+  });
   return { items: rendered, nextCursor, hasMore };
 };
 
@@ -1112,6 +1181,24 @@ const makeRelationLoader = (
           ),
         );
       }
+      // The audit that is easiest to miss, and the one that matters most.
+      //
+      // A nested selection like `{ visits { patient } }` reads patient rows
+      // through THIS loader — it never reaches `getResolver`, so hooking the
+      // two top-level resolvers alone would leave the sensitive collection
+      // readable, in bulk, with nothing recorded. Logged as one row for the
+      // batch rather than one per id, because that is what actually happened:
+      // a single `WHERE id IN (…)`.
+      //
+      // `byId.keys()` and not `ids`: an id the caller asked for but was not
+      // allowed to see resolved to null and was never read, so recording it
+      // would claim an access that did not occur.
+      auditGqlRead(gqlCtx, collection, null, {
+        relation: true,
+        requested: ids.length,
+        count: byId.size,
+        ids: [...byId.keys()].slice(0, 50),
+      });
       // A row filtered out by permission/tenant/draft simply isn't in the map →
       // null, exactly as the single-row getResolver would return.
       for (const item of batch) item.resolve(byId.get(item.id) ?? null);
@@ -1191,6 +1278,9 @@ export const getResolver = async (
     locale,
     await defaultLocaleFor(ctx, auth.tenantId ?? null, collection, locale),
   );
+  // REST's by-id twin records the field names it returned (`routes/items/read.ts`);
+  // `out` is the same projection, so the same shape holds here.
+  auditGqlRead(gqlCtx, collection, id, { fields: Object.keys(out) });
   return out;
 };
 
@@ -1662,6 +1752,16 @@ export const aggregateResolver = async (
     Boolean(perm.isAdmin) ||
     (await resolvePermission(ctx, auth, collection.slug, "publish", permCache)).allowed ||
     (await resolvePermission(ctx, auth, collection.slug, "update", permCache)).allowed;
+  // An aggregate reads the audited rows too — a COUNT or a MIN over a patient
+  // table tells you something about patients. REST's `/aggregate` did not log
+  // it either, and closing the gap on one surface while leaving it on the other
+  // would just move the blind spot, so both are closed together (see
+  // `routes/items/query.ts`).
+  auditGqlRead(gqlCtx, collection, null, {
+    aggregate: args.agg,
+    field: args.field ?? null,
+    groupBy: args.groupBy ?? null,
+  });
   return surfaceAppError(() =>
     runItemsAggregate(
       ctx,
@@ -1728,6 +1828,11 @@ export const searchResolver = async (
         canSeeDrafts,
       },
     );
+    // REST's `/search` records the mode + result count; this is its twin.
+    auditGqlRead(gqlCtx, collection, null, {
+      search: args.mode ?? "fts",
+      count: Array.isArray(data) ? data.length : 0,
+    });
     return data;
   });
 };

@@ -8,6 +8,7 @@ import { getSchema } from "../services/graphql";
 import { budgetFromEnv, overBudget } from "../services/graphql/cost";
 import { loadCollection } from "../services/items/collection-loader";
 import { openRealtimeSubscribe } from "./realtime";
+import { keepAlive } from "../services/activity";
 
 /** `{query}` / `[{query}, …]` → the query strings it carries. */
 const queriesOfPayload = (body: unknown): string[] => {
@@ -99,7 +100,16 @@ export const handleGraphql = async (
   const yoga = createYoga({
     schema,
     graphqlEndpoint: "/api/graphql",
-    context: () => ({ ctx, auth, permCache, app, rawRequest: c.req.raw }),
+    context: () => ({
+      ctx,
+      auth,
+      permCache,
+      app,
+      rawRequest: c.req.raw,
+      // Sensitive-read audit rows ride `waitUntil` where the runtime has one,
+      // exactly like the REST path — a read must not wait for its own audit.
+      defer: (p: Promise<unknown>) => keepAlive(c, p),
+    }),
     landingPage: false,
     graphiql: { defaultQuery: "{ _empty }" },
   });

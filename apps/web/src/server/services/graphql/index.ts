@@ -520,6 +520,7 @@ export const getSchema = async (
     // Default-true, matching the REST collection-loader: a row is treated as
     // tenant-scoped unless it explicitly opts out (legacy/system data).
     tenantScoped: (r.tenantScoped ?? r.tenant_scoped ?? true) ? true : false,
+    auditReads: Boolean(r.auditReads ?? r.audit_reads),
   }));
   const hash = hashCollections(normalized);
   const hit = cached.get(tenantId);

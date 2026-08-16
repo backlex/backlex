@@ -88,6 +88,18 @@ export const itemsQueryRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           excludeDrafts: !canSeeDrafts,
         },
       );
+      // An aggregate reads the audited rows: a COUNT or a MIN over a patient
+      // table tells you something about patients. This path was the one item
+      // read that recorded nothing, and its GraphQL twin is closed in the same
+      // change — a gap fixed on one surface is a gap moved, not closed.
+      // `loadCollection` is cached per request, and this only runs at all when
+      // the collection opted into read auditing — the lookup is the price of
+      // knowing whether it did.
+      auditRead(c, await loadCollection(ctx, auth.tenantId, slug), null, {
+        aggregate: body.agg,
+        field: body.field ?? null,
+        groupBy: body.groupBy ?? null,
+      });
       return c.json({ data });
     },
   )

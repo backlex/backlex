@@ -1049,6 +1049,11 @@ export const jobs = sqliteTable(
     claimedAt: integer("claimed_at", { mode: "timestamp_ms" }),
     lastError: text("last_error"),
     result: text("result", { mode: "json" }).$type<unknown>(),
+    /** How far a long-running job has got: `{done, total, phase, note}`. NULL
+     *  until the handler reports once — a job that never reports is not
+     *  "0% done", it simply does not answer the question. Written once per
+     *  BATCH, never per row: a per-row write would cost more than the work. */
+    progress: text("progress", { mode: "json" }).$type<unknown>(),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
     completedAt: integer("completed_at", { mode: "timestamp_ms" }),

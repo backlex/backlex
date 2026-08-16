@@ -652,11 +652,15 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       /** The status moves this row could make right now, refused ones included. */
       transitions: (id: string): Promise<{ data: FieldTransitions[] }> =>
         request<{ data: FieldTransitions[] }>("GET", `/api/items/${slug}/${id}/transitions`),
-      /** Restate this collection's rollup columns from the rows they aggregate. */
-      refreshRollups: (): Promise<{ ok: boolean; refreshed: string[] }> =>
-        request<{ ok: boolean; refreshed: string[] }>(
+      /** Restate this collection's rollup columns from the rows they aggregate.
+       *  Pass `{ async: true }` on a large collection to run it as a durable
+       *  background job — it answers `{ jobId }`, which `jobs.waitFor` takes. */
+      refreshRollups: (opts?: {
+        async?: boolean;
+      }): Promise<{ ok: boolean; refreshed?: string[]; jobId?: string; status?: string }> =>
+        request<{ ok: boolean; refreshed?: string[]; jobId?: string; status?: string }>(
           "POST",
-          `/api/items/${slug}/rollups/refresh`,
+          `/api/items/${slug}/rollups/refresh${opts?.async ? "?async=1" : ""}`,
         ),
       /** Catch this collection's sequence counters up to the rows already in it. */
       syncSequences: (): Promise<{ ok: boolean; synced: SequenceSyncReport[] }> =>
@@ -723,6 +727,26 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<{ data: GeoBackfillReport }>(
           "POST",
           `/api/geo/backfill/${slug}`,
+          limit === undefined ? { field } : { field, limit },
+        ).then((r) => r.data),
+      /**
+       * The same backfill, queued — it works through the WHOLE collection
+       * across as many batches as it takes instead of one bounded one, and
+       * answers a `jobId` you hand to `jobs.waitFor`.
+       *
+       * The job re-resolves your `update` permission on the collection every
+       * time it runs, so a revoked grant stops it mid-way. Refused for API
+       * keys, workspace end-users and impersonation sessions — each narrows
+       * permissions in a way a background identity cannot reproduce; use the
+       * bounded `backfillGeo` above instead.
+       */
+      backfillGeoAsync: (
+        field: string,
+        limit?: number,
+      ): Promise<{ jobId: string; status: string; field: string }> =>
+        request<{ data: { jobId: string; status: string; field: string } }>(
+          "POST",
+          `/api/geo/backfill/${slug}?async=1`,
           limit === undefined ? { field } : { field, limit },
         ).then((r) => r.data),
       /**

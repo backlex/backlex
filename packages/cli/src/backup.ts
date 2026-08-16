@@ -24,12 +24,15 @@ import {
 const BACKUP_HELP = `backlex backup <list|now|download|restore|config>
 
   list                         all backups (newest first)
-  now [--label <text>]         run a manual backup now
+  now [--label <text>] [--async]  run a manual backup now (--async queues it
+                               and prints a jobId; watch it with
+                               "backlex jobs get <id> --watch")
   download <id> [--out <file>] download a backup (JSONL); stdout if no --out
   restore <id> --confirm       restore a backup (additive; requires --confirm)
     [--overwrite]              also restate rows that still exist (DESTRUCTIVE:
                                current values are replaced by the backup's)
     [--only <t1,t2>]           restrict the restore to these tables
+    [--async]                  queue it and print a jobId instead of waiting
   config                       show the auto-backup schedule
   config --schedule <off|daily|weekly> [--retain <n>]   set the schedule
 `;
@@ -70,7 +73,7 @@ export const runBackup = async (args: string[]): Promise<void> => {
         const label = flag(rest, "--label");
         const res = await client.request<{ data: Record<string, unknown> }>(
           "POST",
-          `${BASE}/backups/now`,
+          `${BASE}/backups/now${has(rest, "--async") ? "?async=1" : ""}`,
           label ? { label } : {},
         );
         if (json) printJson(res.data);
@@ -121,6 +124,7 @@ export const runBackup = async (args: string[]): Promise<void> => {
         const q = new URLSearchParams();
         if (overwrite) q.set("mode", "overwrite");
         if (only) q.set("onlyTables", only);
+        if (has(rest, "--async")) q.set("async", "1");
         const qs = q.toString();
         const res = await client.request<{ data: Record<string, unknown> }>(
           "POST",

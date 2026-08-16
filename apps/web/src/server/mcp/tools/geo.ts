@@ -75,7 +75,10 @@ export const geoBackfillTool: McpTool = {
     "and no point yet — the repair path for an imported or adopted table, since imports deliberately " +
     "do not geocode row by row. BOUNDED per call: `limit` defaults to 50, ceiling 500. Call it " +
     "repeatedly while `remaining > 0`. Only ever FILLS a missing point, never revises one, so it is " +
-    "safe to re-run and a hand-corrected pin survives it. Requires `update` on the collection.",
+    "safe to re-run and a hand-corrected pin survives it. Requires `update` on the collection. " +
+    "Set `async: true` to hand the WHOLE collection to the durable job queue instead of looping " +
+    "yourself: it returns `{jobId}`, works through every batch, and re-checks your `update` " +
+    "permission each time it runs. Not available when acting through an API key.",
   inputSchema: {
     type: "object",
     properties: {
@@ -84,6 +87,11 @@ export const geoBackfillTool: McpTool = {
       limit: {
         type: "number",
         description: "Rows to attempt in this call (default 50, max 500).",
+      },
+      async: {
+        type: "boolean",
+        description:
+          "Queue the whole backfill as a background job and return a `jobId` instead of one batch.",
       },
     },
     required: ["collection", "field"],
@@ -95,7 +103,7 @@ export const geoBackfillTool: McpTool = {
     return textResult(
       await readJson<unknown>(
         await ctx.fetchInternal(
-          `/api/geo/backfill/${encodeURIComponent(String(args.collection))}`,
+          `/api/geo/backfill/${encodeURIComponent(String(args.collection))}${args.async ? "?async=1" : ""}`,
           postJson(body),
         ),
       ),

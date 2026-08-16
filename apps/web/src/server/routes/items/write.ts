@@ -7,7 +7,8 @@ import { getRequestPermCache, requirePermission } from "../../middleware/permiss
 import { resolvePermission } from "../../services/permissions";
 import { deleteStagedRow, getStagedRow } from "../../services/items/staged";
 import { publishEvent } from "../../services/events";
-import { elapsedMs, recordActivity, requestMeta } from "../../services/activity";
+import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../../services/activity";
+import { startLongJob } from "../../services/jobs-long-running";
 import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
 import {
   collectionFromParam,
@@ -489,6 +490,12 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       middleware: [requirePermission(collectionFromParam, "update")],
       request: {
         params: z.object({ slug: z.string() }),
+        query: z.object({
+          async: z.enum(["0", "1"]).optional().openapi({
+            description:
+              "`1` runs the refresh as a durable background job and answers 202 with a `jobId`; watch it on `GET /api/jobs/{id}`. The job re-resolves `update` on this collection when it runs, so a grant revoked in the meantime stops it. Not available to API keys, workspace end-users or impersonation sessions.",
+          }),
+        }),
       },
       responses: {
         200: {
@@ -499,6 +506,14 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             },
           },
         },
+        202: {
+          description: "Queued",
+          content: {
+            "application/json": {
+              schema: z.object({ ok: z.boolean(), jobId: z.string(), status: z.string() }),
+            },
+          },
+        },
         ...errorResponses,
       },
     }),
@@ -506,6 +521,15 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       if (!auth.tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+      if (c.req.query("async") === "1") {
+        const { jobId } = await startLongJob(ctx, {
+          type: "collection.reindex",
+          auth,
+          payload: { slug: c.req.param("slug"), kinds: ["rollups"] },
+          background: (p) => keepAlive(c, p),
+        });
+        return c.json({ ok: true, jobId, status: "queued" as const }, 202);
+      }
       const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
       const refreshed = await refreshCollectionRollups(ctx, auth.tenantId, collection);
       await recordActivity(
@@ -522,7 +546,10 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           durationMs: elapsedMs(c),
         },
       );
-      return c.json({ ok: true, refreshed });
+      // Explicit `200`: with a 202 also declared, a bare `c.json(x)` widens the
+      // inferred status to the union and the compiler asks this body to satisfy
+      // the queued shape too.
+      return c.json({ ok: true, refreshed }, 200);
     },
   )
   .openapi(

@@ -256,6 +256,22 @@ export type JobStatus =
   | "dead_letter"
   | "cancelled";
 
+/**
+ * How far a long-running job has got.
+ *
+ * Absent (null) means the job has not reported — which is NOT the same as zero
+ * per cent, and a UI that renders the two the same way is lying about one of
+ * them. `total` is null when the walk cannot know its own length until it ends.
+ */
+export interface JobProgress {
+  done: number;
+  total: number | null;
+  /** Which part of a multi-part job is running (`"fts"`, `"vector"`, …). */
+  phase?: string;
+  /** The unit currently being worked on — a table name, a collection slug. */
+  note?: string;
+}
+
 /** A durable background job row (from `jobs.get`/`jobs.list`). */
 export interface Job {
   id: string;
@@ -270,6 +286,7 @@ export interface Job {
   maxAttempts: number;
   lastError: string | null;
   result: unknown;
+  progress: JobProgress | null;
   createdAt: string | number;
   completedAt: string | number | null;
 }

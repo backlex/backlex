@@ -120,6 +120,7 @@ import m113 from "../../drizzle/pg/20260813130000_resilience_retention/migration
 import m114 from "../../drizzle/pg/20260814140000_ai_usage_counters/migration.sql" with { type: "text" };
 import m115 from "../../drizzle/pg/20260814150000_agent_app_access/migration.sql" with { type: "text" };
 import m116 from "../../drizzle/pg/20260815090000_two_factor_lockout/migration.sql" with { type: "text" };
+import m117 from "../../drizzle/pg/20260816120000_job_progress/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -244,4 +245,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260814140000_ai_usage_counters", sql: m114 },
   { name: "20260814150000_agent_app_access", sql: m115 },
   { name: "20260815090000_two_factor_lockout", sql: m116 },
+  { name: "20260816120000_job_progress", sql: m117 },
 ];

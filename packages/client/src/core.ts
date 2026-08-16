@@ -206,8 +206,14 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   /** Restate this collection's `rollup` columns from the rows they aggregate.
    *  Ordinary writes keep rollups in step on their own — this is the repair
    *  path for rows written around the API (a restore, a bulk seed, direct SQL).
-   *  Idempotent; returns the columns it refreshed. Requires `update`. */
-  refreshRollups(): Promise<{ ok: boolean; refreshed: string[] }>;
+   *  Idempotent; returns the columns it refreshed. Requires `update`.
+   *
+   *  `{ async: true }` queues it as a durable background job instead and
+   *  answers `{ jobId }` — hand that to `jobs.waitFor`. The job re-resolves
+   *  `update` on the collection when it runs, so a revoked grant stops it. */
+  refreshRollups(opts?: {
+    async?: boolean;
+  }): Promise<{ ok: boolean; refreshed?: string[]; jobId?: string; status?: string }>;
   /** Move this collection's `sequence` counters forward to the highest number
    *  already stored in each column. The repair path for a series that predates
    *  its counter — an adopted table, a restore, a bulk seed. Counters only ever
@@ -270,6 +276,16 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  point, never revises one, so re-running is safe and a hand-corrected pin
    *  survives it. Requires `update`. */
   backfillGeo(field: string, limit?: number): Promise<GeoBackfillReport>;
+  /** The same backfill, queued: it works through the WHOLE collection across as
+   *  many batches as it takes (queueing its own continuation) and answers a
+   *  `jobId` for `jobs.waitFor`. The job re-resolves `update` on the collection
+   *  every time it runs. Refused for API keys, workspace end-users and
+   *  impersonation sessions — each narrows permissions in a way a background
+   *  identity cannot reproduce; use the bounded `backfillGeo` for those. */
+  backfillGeoAsync(
+    field: string,
+    limit?: number,
+  ): Promise<{ jobId: string; status: string; field: string }>;
   /** Rewrite this collection's existing values of a `phone` field into
    *  canonical E.164 — the repair path for rows that predate the field being a
    *  phone field at all (an adopted table, a restore, a column that used to be

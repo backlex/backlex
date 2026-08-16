@@ -8,6 +8,7 @@ import { requireUser } from "../middleware/session";
 import {
   listBackups,
   startManualBackup,
+  createBackupRow,
   getBackupScoped,
   restoreBackupById,
   loadBackupConfig,
@@ -16,6 +17,8 @@ import {
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { requireOperatorMw } from "../services/roles/guards";
+import { assertQueueable, startLongJob } from "../services/jobs-long-running";
+import { keepAlive } from "../services/activity";
 
 /** Workspace-scoped admin. Enough for the backup routes below, which all run
  *  against `auth.tenantId`. NOT enough for the instance-wide routes (SQL
@@ -110,6 +113,29 @@ const BackupRow = z
 const BackupNowInput = z
   .object({ label: z.string().max(80).optional() })
   .openapi("BackupNowInput");
+
+/** The opt-in that moves an operation onto the durable job queue. Declared once
+ *  so every route that offers it says the same thing in the generated spec. */
+const AsyncQuery = z.object({
+  async: z.enum(["0", "1"]).optional().openapi({
+    description:
+      "`1` runs the operation as a durable background job: the call answers 202 with a `jobId` instead of doing the work, and the outcome, progress and any error land on `GET /api/jobs/{id}`. Retry, cancel and dead-lettering come with it. Omit for the synchronous behaviour, which is unchanged. Not available to API keys, workspace end-users or impersonation sessions — a queued job re-resolves permissions from the user id alone, which those three narrow in ways it cannot reproduce.",
+  }),
+});
+
+const QueuedResult = z
+  .object({
+    jobId: z.string(),
+    status: z.literal("queued"),
+  })
+  .catchall(z.unknown())
+  .openapi("QueuedJob");
+
+/** Read the flag. A route that offers `?async=1` must branch on this BEFORE it
+ *  does any work, and must not touch the synchronous return value — every one
+ *  of these responses has SDK, CLI and MCP twins reading it. */
+const wantsAsync = (c: { req: { query: (k: string) => string | undefined } }): boolean =>
+  c.req.query("async") === "1";
 
 const RestoreResult = z
   .object({
@@ -381,10 +407,11 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "Run a manual backup",
       description:
-        "Inserts the tracking row and runs the dump synchronously. Returns the refreshed row.",
+        "Inserts the tracking row and runs the dump synchronously. Returns the refreshed row. Pass `?async=1` to run the dump as a durable background job instead — the tracking row is still created immediately, and the call answers 202 with a `jobId`.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
       request: {
+        query: AsyncQuery,
         body: {
           content: { "application/json": { schema: BackupNowInput } },
         },
@@ -394,14 +421,22 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           description: "Done",
           content: { "application/json": { schema: z.object({ data: BackupRow }) } },
         },
+        202: {
+          description: "Queued",
+          content: { "application/json": { schema: z.object({ data: QueuedResult }) } },
+        },
         ...errorResponses,
       },
     }),
     /**
      * Run a manual backup. Inserts a tracking row, then dumps every system
      * table + the active tenant's c_* tables to JSONL via the storage adapter.
-     * The dump runs inline (synchronously from the request's perspective) so
-     * the UI shows immediate `done`/`failed` state without polling.
+     *
+     * Synchronously by default, which is what the admin UI wants for a small
+     * workspace — immediate `done`/`failed` with no polling. `?async=1` moves
+     * the dump onto the durable queue for the workspaces where it does not fit
+     * in a request: the tracking row is inserted here either way, so the caller
+     * always leaves with a backup id, and the job fills the rest in.
      */
     async (c) => {
       const ctx = c.get("ctx");
@@ -413,8 +448,38 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       } catch {
         body = {};
       }
+      if (wantsAsync(c)) {
+        // Refuse BEFORE the tracking row is written. `startLongJob` would reject
+        // an API key / app-plane / impersonation caller anyway, but by then the
+        // row exists — and an orphan `queued` backup that no job will ever run
+        // is worse than a plain refusal: it sits in the workspace's backup list
+        // looking like a dump in progress.
+        assertQueueable(auth);
+        const row = await createBackupRow(ctx, {
+          tenantId: auth.tenantId ?? null,
+          userId: auth.userId,
+          label: body.label ?? null,
+        });
+        const { jobId } = await startLongJob(ctx, {
+          type: "db.backup",
+          auth,
+          payload: { backupId: row.id, label: body.label ?? null },
+          background: (p) => keepAlive(c, p),
+        });
+        return c.json(
+          {
+            data: {
+              jobId,
+              status: "queued" as const,
+              backupId: row.id,
+              storageKey: row.storageKey,
+            },
+          },
+          202,
+        );
+      }
       // Runs inline — dump is small enough for D1/pg fixtures + this is admin
-      // traffic. Larger deployments can move this to a queue/cron worker.
+      // traffic. Larger deployments pass `?async=1`.
       const row = (await startManualBackup(ctx, {
         tenantId: auth.tenantId ?? null,
         userId: auth.userId,
@@ -480,7 +545,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             description:
               "Comma-separated table names. When present, only these tables are restored.",
           }),
-        }),
+        }).extend(AsyncQuery.shape),
       },
       responses: {
         200: {
@@ -488,6 +553,10 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           content: {
             "application/json": { schema: z.object({ data: RestoreResult }) },
           },
+        },
+        202: {
+          description: "Queued",
+          content: { "application/json": { schema: z.object({ data: QueuedResult }) } },
         },
         ...errorResponses,
       },
@@ -510,14 +579,32 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           "Restore requires the X-Backlex-Confirm: yes header.",
         );
       }
+      const tables = onlyTables
+        ? onlyTables.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined;
+      if (wantsAsync(c)) {
+        // The backup is resolved here rather than in the job so an unknown id
+        // or a foreign workspace's backup is still a 404/403 on THIS call —
+        // queueing a restore that was never going to be allowed just moves the
+        // refusal somewhere nobody is looking.
+        await getBackupScoped(ctx, auth.tenantId ?? null, id);
+        const { jobId } = await startLongJob(ctx, {
+          type: "db.restore",
+          auth,
+          payload: { backupId: id, mode, onlyTables: tables },
+          background: (p) => keepAlive(c, p),
+        });
+        return c.json({ data: { jobId, status: "queued" as const, backupId: id } }, 202);
+      }
       const result = await restoreBackupById(ctx, auth.tenantId ?? null, id, {
         mode,
-        onlyTables: onlyTables
-          ? onlyTables.split(",").map((s) => s.trim()).filter(Boolean)
-          : undefined,
+        onlyTables: tables,
         userId: auth.userId ?? null,
       });
-      return c.json({ data: result });
+      // The `200` is stated rather than inferred. Once a route declares more
+      // than one success status, a bare `c.json(x)` widens to the union of them
+      // and the compiler then asks this body to satisfy the 202 shape too.
+      return c.json({ data: result }, 200);
     },
   )
   .openapi(

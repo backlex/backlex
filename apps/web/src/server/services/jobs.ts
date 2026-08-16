@@ -17,6 +17,7 @@ import { runTask } from "./integration-tasks";
 import { reconcileProvider } from "./payments";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
+import type { JobProgress } from "./job-progress";
 
 const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
 
@@ -39,7 +40,17 @@ export type JobType =
   | "integration.listing-poll"
   | "agent.turn"
   | "payments.reconcile"
-  | "agent.distill_memory";
+  | "agent.distill_memory"
+  /** The long-running ADMIN operations. Everything above is integration or
+   *  agent work the product queues for itself; these four are things a person
+   *  presses a button for and then has to wait on. They ran inline in the
+   *  request until this queue could carry them, which meant the six operations
+   *  most likely to exceed a request deadline were the six with no retry, no
+   *  cancel and no dead-letter. See `services/jobs-long-running.ts`. */
+  | "db.backup"
+  | "db.restore"
+  | "collection.reindex"
+  | "geo.backfill";
 
 export type JobStatus =
   | "pending"
@@ -63,6 +74,9 @@ export interface JobRow {
   claimedAt: Date | number | null;
   lastError: string | null;
   result: unknown;
+  /** See `services/job-progress.ts`. NULL = has not reported, which is NOT the
+   *  same as 0%. */
+  progress: JobProgress | null;
   createdAt: Date | number;
   updatedAt: Date | number;
   completedAt: Date | number | null;
@@ -103,6 +117,36 @@ export const backoffMs = (attempt: number, policy: JobPolicy): number => {
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.jobs : sqlite.schema.jobs;
+
+/**
+ * The whole row, aliased back to the camelCase `JobRow` shape.
+ *
+ * It is spelled out because Postgres claims with `UPDATE … RETURNING` while
+ * SQLite claims with a plain `select()`, and the two have to hand `runHandler`
+ * the SAME object. The pg list used to name ten columns, so `claimedAt`,
+ * `lastError`, `result`, `progress` and the three timestamps were silently
+ * `undefined` on Postgres and populated on SQLite. Nothing read them at the
+ * time; a handler that resumes from `job.progress` would work on SQLite, start
+ * from zero on Postgres, and the suite — which runs on SQLite — would agree
+ * with it. `tests/job-row-parity.test.ts` pins the two shapes together.
+ */
+const JOB_RETURNING = sql`${sql.identifier("id")},
+                ${sql.identifier("tenant_id")} AS "tenantId",
+                ${sql.identifier("queue")},
+                ${sql.identifier("type")},
+                ${sql.identifier("payload")},
+                ${sql.identifier("status")},
+                ${sql.identifier("priority")},
+                ${sql.identifier("run_at")} AS "runAt",
+                ${sql.identifier("attempts")},
+                ${sql.identifier("max_attempts")} AS "maxAttempts",
+                ${sql.identifier("claimed_at")} AS "claimedAt",
+                ${sql.identifier("last_error")} AS "lastError",
+                ${sql.identifier("result")},
+                ${sql.identifier("progress")},
+                ${sql.identifier("created_at")} AS "createdAt",
+                ${sql.identifier("updated_at")} AS "updatedAt",
+                ${sql.identifier("completed_at")} AS "completedAt"`;
 
 const nowFor = (dialect: "pg" | "sqlite"): Date | number =>
   dialect === "pg" ? new Date() : Date.now();
@@ -193,16 +237,7 @@ export const claimDueJobs = async (
         FOR UPDATE SKIP LOCKED
         LIMIT ${policy.batch}
       )
-      RETURNING ${sql.identifier("id")},
-                ${sql.identifier("tenant_id")} AS "tenantId",
-                ${sql.identifier("queue")},
-                ${sql.identifier("type")},
-                ${sql.identifier("payload")},
-                ${sql.identifier("status")},
-                ${sql.identifier("priority")},
-                ${sql.identifier("run_at")} AS "runAt",
-                ${sql.identifier("attempts")},
-                ${sql.identifier("max_attempts")} AS "maxAttempts"
+      RETURNING ${JOB_RETURNING}
     `);
     const rows = Array.isArray(result) ? result : (result?.rows ?? []);
     return rows as JobRow[];
@@ -237,6 +272,83 @@ export const claimDueJobs = async (
     claimed.push({ ...row, status: "active", attempts: row.attempts + 1 });
   }
   return claimed;
+};
+
+/**
+ * Claim ONE job by id, and answer honestly about whether we won it.
+ *
+ * `claimDueJobs` picks work off the clock; this picks a job somebody just
+ * enqueued and wants started now, without waiting up to a minute for the next
+ * tick. The two race by construction, so unlike `claimDueJobs`'s SQLite arm —
+ * which is allowed to assume its guarded update succeeded, because the Bun tick
+ * is a single serial process — this one has to CHECK. It re-reads the row and
+ * only claims the job if the claim it just wrote is the one that is there.
+ *
+ * Returns null when somebody else already has it, when it was cancelled in the
+ * meantime, or when it is not `pending` for any other reason. Null means "do
+ * nothing", never "run it anyway": a second copy of a restore or an import is
+ * the failure this exists to prevent.
+ */
+export const claimJobById = async (ctx: Ctx, id: string): Promise<JobRow | null> => {
+  const t = tableFor(ctx.dialect);
+  const now = nowFor(ctx.dialect);
+
+  if (ctx.dialect === "pg") {
+    const jobsTbl = sql.identifier("jobs");
+    const result = await (ctx.db as any).execute(sql`
+      UPDATE ${jobsTbl}
+      SET ${sql.identifier("status")} = 'active',
+          ${sql.identifier("claimed_at")} = ${now},
+          ${sql.identifier("updated_at")} = ${now},
+          ${sql.identifier("attempts")} = ${sql.identifier("attempts")} + 1
+      WHERE ${sql.identifier("id")} = ${id}
+        AND ${sql.identifier("status")} = 'pending'
+      RETURNING ${JOB_RETURNING}
+    `);
+    const rows = (Array.isArray(result) ? result : (result?.rows ?? [])) as JobRow[];
+    return rows[0] ?? null;
+  }
+
+  const before = await getJob(ctx, id);
+  if (!before || before.status !== "pending") return null;
+  await (ctx.db as any)
+    .update(t)
+    .set({
+      status: "active",
+      claimedAt: now,
+      updatedAt: now,
+      attempts: before.attempts + 1,
+    })
+    .where(and(eq(t.id, id), eq(t.status, "pending")));
+  // Read back rather than assume. Two writers cannot both satisfy
+  // `status = 'pending'` — SQLite serializes writes — but only the row can say
+  // which of them did, and `claimedAt` is what it says it with.
+  const after = await getJob(ctx, id);
+  if (!after || after.status !== "active" || asMs(after.claimedAt) !== asMs(now)) {
+    return null;
+  }
+  return after;
+};
+
+/**
+ * Start a job the moment it is enqueued, rather than waiting for the tick.
+ *
+ * The queue's own cadence is 30-60 seconds, which is right for retries and
+ * wrong for "I pressed Reindex". Same shape as the agent path
+ * (`services/agents/async-run.ts`): the durable row is the source of truth and
+ * the scheduled tick is the safety net for an isolate that died — this is only
+ * the fast start. Never throws; a failure is already persisted on the row by
+ * `runJob`, and this runs detached on `waitUntil` where a rejection has nobody
+ * to catch it.
+ */
+export const runJobInline = async (ctx: Ctx, id: string): Promise<void> => {
+  try {
+    const job = await claimJobById(ctx, id);
+    if (!job) return;
+    await runJob(ctx, job, jobPolicy(ctx.env));
+  } catch (e) {
+    console.error(`[job:${id}] inline start failed`, e);
+  }
 };
 
 /** Dispatch a claimed job to its handler. Handlers throw on failure so the
@@ -414,7 +526,41 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
       model: p.model ?? null,
     });
   }
+  if (
+    job.type === "db.backup" ||
+    job.type === "db.restore" ||
+    job.type === "collection.reindex" ||
+    job.type === "geo.backfill"
+  ) {
+    // Every one of these is scoped to a workspace — a dump, a restore, an index
+    // rebuild, a column of addresses. A job without a tenant has nothing to
+    // scope by and must not fall through to "global", the same rule the
+    // integration and agent branches above state.
+    if (!job.tenantId) throw new Error(`${job.type} job missing tenantId`);
+    // Lazy, to keep `jobs → jobs-long-running → jobs` acyclic: the handlers
+    // enqueue continuations, so they import `enqueueJob` from this module.
+    const { runLongRunningJob } = await import("./jobs-long-running");
+    return await runLongRunningJob(ctx, job);
+  }
   throw new Error(`unknown job type '${job.type}'`);
+};
+
+/**
+ * Codes that describe the REQUEST, not the weather.
+ *
+ * `AppError` carries the same taxonomy the HTTP layer maps to 4xx, and a 4xx is
+ * by definition something a retry cannot change: the payload names a collection
+ * that has no searchable field, the caller's grant is gone, the backup id does
+ * not exist. Deliberately narrow — `INTERNAL`, `UNAVAILABLE` and anything that
+ * is not an `AppError` at all (a driver blip, a provider timeout, an evicted
+ * isolate) keep the full backoff, because those are exactly what retries are
+ * for.
+ */
+const PERMANENT_CODES = new Set(["VALIDATION", "FORBIDDEN", "UNAUTHORIZED", "NOT_FOUND"]);
+
+const isPermanentFailure = (e: unknown): boolean => {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === "string" && PERMANENT_CODES.has(code);
 };
 
 /** Run one claimed job and persist the outcome (succeeded / requeued-with-backoff
@@ -449,7 +595,13 @@ export const runJob = async (
     return "succeeded";
   } catch (e) {
     const message = (e as Error).message ?? "job failed";
-    const exhausted = job.attempts >= job.maxAttempts;
+    // A deterministic refusal is not a transient failure, and backing off from
+    // it three times is a minute of waiting per attempt to be told the same
+    // thing. A collection with no searchable field will not have one in sixty
+    // seconds; a grant that was revoked will not come back on its own. So these
+    // dead-letter on the first hearing, where the operator can see the reason,
+    // and `retryJob` is still there for once the cause is actually fixed.
+    const exhausted = job.attempts >= job.maxAttempts || isPermanentFailure(e);
     if (exhausted) {
       await (ctx.db as any)
         .update(t)

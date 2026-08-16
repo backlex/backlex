@@ -48,11 +48,16 @@ const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop
                                                    returns its id
   fts-reindex <slug>                rebuild the full-text index for existing rows
                                     (rarely needed — enabling fts auto-backfills)
+                                      --async      queue it; prints a jobId
   vectorize <slug>                  embed every existing row into the vector store
                                     (manual by design: each row costs a provider call)
+                                      --async      queue it; prints a jobId. Worth
+                                                   preferring — this one has no
+                                                   ceiling on how long it runs
   refresh-rollups <slug>            restate the collection's rollup columns from
                                     the rows they aggregate (repair path — writes
                                     keep them in step on their own)
+                                      --async      queue it; prints a jobId
   sync-sequences <slug>             move the collection's numbering counters up to
                                     the highest number already in each column
                                     (run after adopting a table that arrived with
@@ -279,17 +284,28 @@ export const runCollections = async (args: string[]): Promise<void> => {
     }
     try {
       const ctx = resolveContext(args.slice(2));
-      const res = await makeClient(ctx).request<{ ok: true; refreshed: string[] }>(
+      const async = has(args, "--async");
+      const res = await makeClient(ctx).request<{
+        ok: true;
+        refreshed?: string[];
+        jobId?: string;
+      }>(
         "POST",
-        `/api/items/${encodeURIComponent(slug)}/rollups/refresh`,
+        `/api/items/${encodeURIComponent(slug)}/rollups/refresh${async ? "?async=1" : ""}`,
       );
       if (json) {
         printJson(res);
         return;
       }
+      if (res.jobId) {
+        process.stderr.write(
+          `✓ ${slug}: queued as job ${res.jobId} — watch it with \`backlex jobs get ${res.jobId} --watch\`\n`,
+        );
+        return;
+      }
       process.stderr.write(
-        res.refreshed.length
-          ? `✓ ${slug}: refreshed ${res.refreshed.join(", ")}\n`
+        res.refreshed?.length
+          ? `✓ ${slug}: refreshed ${res.refreshed!.join(", ")}\n`
           : `✓ ${slug}: no rollup fields to refresh\n`,
       );
     } catch (e) {
@@ -600,20 +616,29 @@ export const runCollections = async (args: string[]): Promise<void> => {
       process.stderr.write(`collections ${sub} <slug>\n`);
       process.exit(1);
     }
+    const async = has(args, "--async");
+    const suffix = async ? "?async=1" : "";
     const path =
       sub === "fts-reindex"
-        ? `/api/collections/${encodeURIComponent(slug)}/fts-reindex`
-        : `/api/collections/${encodeURIComponent(slug)}/vectorize`;
+        ? `/api/collections/${encodeURIComponent(slug)}/fts-reindex${suffix}`
+        : `/api/collections/${encodeURIComponent(slug)}/vectorize${suffix}`;
     try {
       const ctx = resolveContext(args.slice(2));
       const res = await makeClient(ctx).request<{
         ok: true;
-        processed: number;
-        skipped: number;
-        total: number;
+        processed?: number;
+        skipped?: number;
+        total?: number;
+        jobId?: string;
       }>("POST", path);
       if (json) {
         printJson(res);
+        return;
+      }
+      if (res.jobId) {
+        process.stderr.write(
+          `✓ ${slug}: queued as job ${res.jobId} — watch it with \`backlex jobs get ${res.jobId} --watch\`\n`,
+        );
         return;
       }
       const verb = sub === "fts-reindex" ? "indexed" : "embedded";

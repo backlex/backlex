@@ -18,7 +18,7 @@ import {
 const JOBS_HELP = `backlex jobs <list|get|retry|cancel|remove|enqueue>
 
   list [--queue <q>] [--status <s>] [--limit N]
-  get <id>
+  get <id> [--watch]            --watch polls until the job finishes, printing progress
   retry <id>                    requeue a failed / dead-lettered job
   cancel <id>                   cancel a pending job
   remove <id>                   delete a job row
@@ -61,9 +61,26 @@ export const runJobs = async (args: string[]): Promise<void> => {
           process.stderr.write("jobs get <id>\n");
           process.exit(1);
         }
-        const job = await client.jobs.get(id);
+        // `--watch` is what makes `?async=1` usable from a script: kick a
+        // backup or a reindex off, then block here until it lands. Progress
+        // goes to stderr so `--json --watch` still pipes a clean final row.
+        const job = has(rest, "--watch")
+          ? await client.jobs.waitFor(id, {
+              onProgress: (p) => {
+                const of = p.total == null ? "" : `/${p.total}`;
+                const where = [p.phase, p.note].filter(Boolean).join(" ");
+                process.stderr.write(`  ${p.done}${of}${where ? ` — ${where}` : ""}\n`);
+              },
+            })
+          : await client.jobs.get(id);
         if (json) printJson(job);
         else printKeyValues(job as unknown as Record<string, unknown>);
+        // A watched job that dead-lettered is a failed command, not a
+        // successful report of a failure — a CI step has to be able to tell.
+        if (has(rest, "--watch") && job.status !== "succeeded") {
+          process.stderr.write(`job ${id} ${job.status}${job.lastError ? `: ${job.lastError}` : ""}\n`);
+          process.exit(1);
+        }
         return;
       }
       case "retry":

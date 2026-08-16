@@ -1,0 +1,28 @@
+-- How far a long-running job has got.
+--
+-- The queue could always say whether a job was pending, active or done; it
+-- could never say how far through it was. That was tolerable while every
+-- registered job type finished in one short burst (deliver a webhook, run one
+-- agent turn). It stops being tolerable the moment a backup, a restore, a
+-- reindex or a geocode backfill runs here: those take minutes, and "active"
+-- with no further detail is indistinguishable from "wedged".
+--
+-- Shape (`JobProgress` in `apps/web/src/server/services/job-progress.ts`):
+--   { done: number, total: number | null, phase?: string, note?: string }
+-- `total` is nullable because some walks genuinely do not know their length
+-- until they reach the end, and a made-up denominator is worse than none.
+--
+-- It is also a LEASE HEARTBEAT, which is the part that is easy to mistake for
+-- cosmetics: the same UPDATE restamps `claimed_at`, so a job that runs longer
+-- than `JOB_LEASE_MS` (300s, against a cron that fires every minute) is not
+-- re-claimed and run a second time while the first copy is still working.
+--
+-- NULL is the resting state, and it means "this job has not reported", NOT
+-- "zero percent". Every job written before this column existed reads NULL, and
+-- so does every short job that never bothers to report — the UI has to render
+-- those two the same way, because they are the same thing.
+--
+-- Replay safety: `ADD COLUMN IF NOT EXISTS` is idempotent on Postgres, so
+-- auto-migrate re-running this file is a no-op rather than an error.
+
+ALTER TABLE "jobs" ADD COLUMN IF NOT EXISTS "progress" jsonb;

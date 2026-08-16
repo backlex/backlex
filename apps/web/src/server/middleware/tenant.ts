@@ -186,6 +186,79 @@ const tenantExists = async (
   return rows.length > 0;
 };
 
+/**
+ * May this control-plane identity act in this workspace, and with which role
+ * names?
+ *
+ * The one answer to that question. `tenantMiddleware` asks it on every request;
+ * a queued job asks it again when it runs, because a job outlives the request
+ * that enqueued it and the grant that justified it can be gone by then. Two
+ * copies of this decision would drift, and the half that drifted would be the
+ * one nobody was watching.
+ *
+ *   - `roles: null` — refused. The caller nulls the tenant (a request) or fails
+ *     the job (the queue). It is deliberately not an empty array: "no roles" and
+ *     "not allowed here" are different answers and only one of them is safe to
+ *     fall through on.
+ *   - `viaAdminShortcut` — access came from the cross-tenant super-admin path
+ *     rather than membership. The request path uses it to avoid pinning the
+ *     tenant cookie: a support visit must not silently move the admin's own
+ *     workspace.
+ *
+ * `apiKeyId` closes an escalation: an admin-owned API key is confined to the
+ * workspaces it is scoped to, never every workspace its owner can reach
+ * interactively, so a key never gets the shortcut.
+ */
+export interface TenantAccess {
+  roles: string[] | null;
+  viaAdminShortcut: boolean;
+}
+
+export const resolveTenantAccess = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+  userId: string,
+  opts: { apiKeyRoleId?: string | null; apiKeyId?: string | null } = {},
+): Promise<TenantAccess> => {
+  const apiKeyRoleId = opts.apiKeyRoleId ?? null;
+  // Hot path: run the membership check and the tenant-scoped role load in
+  // parallel. If membership fails we fall back to a lazy global-admin lookup
+  // (the only reason we'd ever need the unfiltered role union) — this keeps
+  // the lookup off the request path for every member-of-tenant call, which
+  // is by far the common case.
+  const [member, scopedRoles] = await Promise.all([
+    isMember(db, dialect, tenantId, userId),
+    loadTenantRoleNames(db, dialect, tenantId, userId, apiKeyRoleId),
+  ]);
+  if (member) return { roles: scopedRoles, viaAdminShortcut: false };
+
+  // Membership failed — last chance is a cross-tenant super-admin. We also
+  // confirm the tenant actually exists so a forged UUID can't ride the
+  // UUID-bypass into `auth.tenantId` for the rest of the request (the resolver
+  // would still deny on permissions, but audit logs / route handlers that trust
+  // `auth.tenantId` would see a bogus id).
+  const [globalRoles, exists, suspendedHere] = await Promise.all([
+    loadUnfilteredRoleNames({ db, dialect }, userId, apiKeyRoleId),
+    tenantExists(db, dialect, tenantId),
+    isSuspendedMember(db, dialect, tenantId, userId),
+  ]);
+  // A suspended member is denied even if they hold an admin role: the
+  // super-admin shortcut is only for genuine non-members (status 'none')
+  // viewing a foreign workspace, never for someone banned from this one.
+  if (
+    globalRoles.includes("admin") &&
+    exists &&
+    !(opts.apiKeyId ?? null) &&
+    !suspendedHere
+  ) {
+    // Admin keeps tenant-scoped role names — the shortcut decides *whether*
+    // they may act here, never *as what*.
+    return { roles: scopedRoles, viaAdminShortcut: true };
+  }
+  return { roles: null, viaAdminShortcut: false };
+};
+
 const firstUserTenant = async (
   db: unknown,
   dialect: "pg" | "sqlite",
@@ -349,56 +422,21 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   let pinTenantCookie = true;
   if (auth.userId && auth.plane !== "app") {
     if (tenantId) {
-      const [member, scopedRoles] = await Promise.all([
-        isMember(db, dialect, tenantId, auth.userId),
-        loadTenantRoleNames(
-          db,
-          dialect,
-          tenantId,
-          auth.userId,
-          auth.apiKeyRoleId ?? null,
-        ),
-      ]);
-      if (member) {
-        tenantRoles = scopedRoles;
+      // One shared answer with the queue — see `resolveTenantAccess`. For
+      // non-admin non-members it refuses, and the tenant is nulled so the
+      // fallback below picks their own workspace instead.
+      const access = await resolveTenantAccess(db, dialect, tenantId, auth.userId, {
+        apiKeyRoleId: auth.apiKeyRoleId ?? null,
+        apiKeyId: auth.apiKeyId ?? null,
+      });
+      if (access.roles) {
+        tenantRoles = access.roles;
+        // Cross-tenant admin shortcut: viewing only. Don't persist the visit so
+        // the next request without a header drops back to the admin's own
+        // workspace (and clear any leaked cookie below).
+        if (access.viaAdminShortcut) pinTenantCookie = false;
       } else {
-        // Membership failed — last chance is a cross-tenant super-admin.
-        // We also confirm the tenant actually exists so a forged UUID can't
-        // ride the UUID-bypass into `auth.tenantId` for the rest of the
-        // request (the resolver would still deny on permissions, but audit
-        // logs / route handlers that trust `auth.tenantId` would see a bogus
-        // id). For non-admins membership already failed → tenantId nulled.
-        const [globalRoles, exists, suspendedHere] = await Promise.all([
-          loadUnfilteredRoleNames(
-            { db, dialect },
-            auth.userId,
-            auth.apiKeyRoleId ?? null,
-          ),
-          tenantExists(db, dialect, tenantId),
-          isSuspendedMember(db, dialect, tenantId, auth.userId),
-        ]);
-        // A suspended member is denied even if they hold an admin role: the
-        // super-admin shortcut is only for genuine non-members (status 'none')
-        // viewing a foreign workspace, never for someone banned from this one.
-        if (
-          globalRoles.includes("admin") &&
-          exists &&
-          !auth.apiKeyId &&
-          !suspendedHere
-        ) {
-          // API keys never get the cross-tenant super-admin bypass: an
-          // admin-owned key is confined to workspaces the key is actually
-          // scoped to (its home tenant), not every workspace the owner can
-          // reach interactively. Closes the unscoped-admin-key + tenant-header
-          // escalation path.
-          tenantRoles = scopedRoles; // admin keeps tenant-scoped role names
-          // Cross-tenant admin shortcut: viewing only. Don't persist the
-          // visit so the next request without a header drops back to the
-          // admin's own workspace (and clear any leaked cookie below).
-          pinTenantCookie = false;
-        } else {
-          tenantId = null;
-        }
+        tenantId = null;
       }
     }
     if (!tenantId) {

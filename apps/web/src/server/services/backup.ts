@@ -174,7 +174,16 @@ const backupMaxRows = (ctx: Ctx): number => {
  */
 export const runBackup = async (
   ctx: Ctx,
-  options: { tenantId: string | null; storageKey: string },
+  options: {
+    tenantId: string | null;
+    storageKey: string;
+    /** Called once per table, never once per row — a dump of a hundred tables
+     *  should cost a hundred progress writes, not a million. Optional because
+     *  the inline request path has nowhere to put the answer; the queued path
+     *  passes the job's reporter. Awaited so a slow sink cannot get ahead of
+     *  the walk and report a table that has not been read. */
+    onProgress?: (p: { done: number; total: number; note: string }) => Promise<void>;
+  },
 ): Promise<BackupResult> => {
   const sysTables =
     ctx.dialect === "pg" ? SYSTEM_TABLES_PG : SYSTEM_TABLES_SQLITE;
@@ -268,11 +277,24 @@ export const runBackup = async (
   // (see that map for why the predicate is chosen statically rather than
   // discovered by catching a SQL error). We just SELECT *; the resulting raw
   // rows already use the on-disk column names.
-  for (const name of Object.keys(sysTables)) {
+  const systemTableNames = Object.keys(sysTables);
+  // The denominator is known before the walk starts: every system table plus
+  // every collection this workspace owns. Reported as tables-walked rather than
+  // rows-written because a table that turns out to be empty is still progress,
+  // and rows are not knowable without counting them first.
+  const totalTables = systemTableNames.length + includedCollections.length;
+  let walked = 0;
+  const step = async (note: string): Promise<void> => {
+    walked += 1;
+    await options.onProgress?.({ done: walked, total: totalTables, note });
+  };
+
+  for (const name of systemTableNames) {
     const where = options.tenantId
       ? (TENANT_WHERE[name] ?? tenantColumnWhere)(options.tenantId)
       : null;
     const rows = await readTable(name, where);
+    await step(name);
     if (rows === null || rows.length === 0) continue;
     account(name, rows);
   }
@@ -288,6 +310,7 @@ export const runBackup = async (
         ? `tenant_id = ${lit(options.tenantId)}`
         : null;
     const rows = await readTable(table, scope);
+    await step(c.slug);
     if (rows === null || rows.length === 0) continue;
     account(table, rows);
   }
@@ -325,7 +348,14 @@ export const runBackup = async (
  */
 export const recordAndRunBackup = async (
   ctx: Ctx,
-  args: { id: string; tenantId: string | null; storageKey: string; userId: string | null; label: string | null },
+  args: {
+    id: string;
+    tenantId: string | null;
+    storageKey: string;
+    userId: string | null;
+    label: string | null;
+    onProgress?: (p: { done: number; total: number; note: string }) => Promise<void>;
+  },
 ): Promise<{ ok: boolean; error?: string }> => {
   const t = ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
   await (ctx.db as any)
@@ -336,6 +366,7 @@ export const recordAndRunBackup = async (
     const r = await runBackup(ctx, {
       tenantId: args.tenantId,
       storageKey: args.storageKey,
+      onProgress: args.onProgress,
     });
     await (ctx.db as any)
       .update(t)
@@ -934,10 +965,20 @@ export const listBackups = async (
  * admin traffic — see the REST handler's note), then return the refreshed row
  * so callers can render immediate `done`/`failed` state without polling.
  */
-export const startManualBackup = async (
+/**
+ * Insert the tracking row, without dumping anything.
+ *
+ * Split out of `startManualBackup` so the queued path can answer the caller
+ * with a real backup id straight away — the row appears in the workspace's
+ * backup list as `queued` the moment the button is pressed, rather than only
+ * once a worker picks the job up. It is also the queued run's replay guard:
+ * `recordAndRunBackup` moves `queued → running`, so a second copy of the job
+ * finds it already running and declines instead of dumping twice.
+ */
+export const createBackupRow = async (
   ctx: Ctx,
   options: { tenantId: string | null; userId: string | null; label?: string | null },
-): Promise<Record<string, unknown>> => {
+): Promise<{ id: string; storageKey: string }> => {
   const t = backupsTable(ctx.dialect);
   const id = crypto.randomUUID();
   const stamp = new Date().toISOString().replace(/[:.TZ-]/g, "").slice(0, 14);
@@ -953,12 +994,27 @@ export const startManualBackup = async (
     status: "queued",
     createdBy: options.userId,
   });
+  return { id, storageKey };
+};
+
+export const startManualBackup = async (
+  ctx: Ctx,
+  options: {
+    tenantId: string | null;
+    userId: string | null;
+    label?: string | null;
+    onProgress?: (p: { done: number; total: number; note: string }) => Promise<void>;
+  },
+): Promise<Record<string, unknown>> => {
+  const t = backupsTable(ctx.dialect);
+  const { id, storageKey } = await createBackupRow(ctx, options);
   await recordAndRunBackup(ctx, {
     id,
     tenantId: options.tenantId,
     storageKey,
     userId: options.userId,
     label: options.label ?? null,
+    onProgress: options.onProgress,
   });
   const refreshed = await (ctx.db as any).select().from(t).where(eq(t.id, id)).limit(1);
   return (refreshed[0] ?? { id, storageKey, status: "running" }) as Record<string, unknown>;

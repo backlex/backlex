@@ -14087,6 +14087,10 @@ msgstr "{0} için profil kaydedildi."
 msgid "Profile saved."
 msgstr "Profil kaydedildi."
 
+#: src/client/admin/pages/automation/jobs.tsx
+msgid "Progress"
+msgstr "İlerleme"
+
 #: src/client/admin/pages/settings/signing-keys-card.tsx
 msgid "Promote"
 msgstr "Yükselt"
@@ -18596,6 +18600,10 @@ msgstr "Analitik uç noktası hata döndürdü. Yenileyip tekrar deneyin."
 #: src/client/pages/oauth-consent.tsx
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "Yetkilendirme akışı yönlendirme döndürmedi — istemciden baştan başlayın."
+
+#: src/client/admin/pages/data/database.tsx
+msgid "The backup did not finish."
+msgstr "Yedekleme tamamlanmadı."
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."

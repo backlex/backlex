@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
-import { dbAdminApi, type BackupConfig } from "../../api";
+import { dbAdminApi, jobsApi, type BackupConfig } from "../../api";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -380,10 +380,40 @@ function Backups({ pushToast }: { pushToast: PushToast }) {
     }
   };
   useEffect(() => { void reload(); }, []);
+  /**
+   * Queue the dump rather than hold the request open for it.
+   *
+   * The toast has always said "queued"; until the operation moved onto the job
+   * queue it was not true — the dump ran inside this request, so a workspace
+   * large enough to matter got a spinner and then a gateway timeout. Now the
+   * tracking row is written before the call returns (so the list shows it
+   * immediately, as `queued`) and the dump happens behind it.
+   *
+   * The list is then re-read a few times rather than once: the job usually
+   * lands within seconds, and an operator who has to press Refresh to find out
+   * whether their backup worked will assume it did not.
+   */
   const backupNow = async () => {
     try {
-      await dbAdminApi.backupNow();
+      const r = await dbAdminApi.backupNow(undefined, { async: true });
       pushToast(t`Manual backup queued.`);
+      await reload();
+      const jobId = r.data.jobId;
+      if (!jobId) return;
+      for (let i = 0; i < 10; i += 1) {
+        await new Promise((res) => setTimeout(res, 1500));
+        const job = await jobsApi.get(jobId).catch(() => null);
+        if (!job) return;
+        if (["succeeded", "failed", "dead_letter", "cancelled"].includes(job.status)) {
+          await reload();
+          if (job.status !== "succeeded") {
+            pushToast(job.lastError ?? t`The backup did not finish.`);
+          }
+          return;
+        }
+      }
+      // Still running after fifteen seconds — a big workspace. Leave the row
+      // showing `running` rather than pretending it failed.
       await reload();
     } catch (e) {
       pushToast((e as Error).message);

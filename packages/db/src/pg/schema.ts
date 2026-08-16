@@ -1271,6 +1271,11 @@ export const jobs = pgTable(
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
     lastError: text("last_error"),
     result: jsonb("result").$type<unknown>(),
+    /** How far a long-running job has got: `{done, total, phase, note}`. NULL
+     *  until the handler reports once — a job that never reports is not
+     *  "0% done", it simply does not answer the question. Written once per
+     *  BATCH, never per row: a per-row write would cost more than the work. */
+    progress: jsonb("progress").$type<unknown>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),

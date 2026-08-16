@@ -133,7 +133,10 @@ export const loadUnfilteredRoleNames = async (
   return rows.map((r) => r.name);
 };
 
-const loadUserEmail = async (
+/** The address `$user.email` binds to. Exported because a queued job has to
+ *  rebuild the same identity the request had, and a permission condition
+ *  written against the email would otherwise silently match nothing. */
+export const loadUserEmail = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
   userId: string,
 ): Promise<string | null> => {

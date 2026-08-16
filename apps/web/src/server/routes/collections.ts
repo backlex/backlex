@@ -26,7 +26,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { requireAdminMw, requirePlatformMw } from "../services/roles/guards";
 import { listReadableCollections } from "../services/permissions";
-import { logActivity } from "../services/activity";
+import { keepAlive, logActivity } from "../services/activity";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { cascadeSlugRename } from "../services/collection-rename";
 import {
@@ -55,6 +55,7 @@ import { seedOwnerScopedPermissions } from "../services/seed";
 import { cloneCollection } from "../services/collections";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 import { backfillFts, ftsIndexSignature, isSearchable } from "../services/fts";
+import { startLongJob } from "../services/jobs-long-running";
 
 const DurationPartsSchema = z
   .object({
@@ -1766,6 +1767,18 @@ export const collectionsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const { db, dialect } = ctx;
     const tenantId = requireTenant(c);
+    // One embedding provider call per 100 rows, over every row, with no
+    // ceiling — the single worst inline long-runner in the API. `?async=1`
+    // moves it onto the durable queue; without it the behaviour is unchanged.
+    if (c.req.query("async") === "1") {
+      const { jobId } = await startLongJob(ctx, {
+        type: "collection.reindex",
+        auth: c.get("auth"),
+        payload: { slug, kinds: ["vector"] },
+        background: (p) => keepAlive(c, p),
+      });
+      return c.json({ ok: true, jobId, status: "queued" as const, mode: "vector" }, 202);
+    }
     const t = tableFor(dialect);
     const rows = await (db as any)
       .select()
@@ -1847,6 +1860,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const { db, dialect } = ctx;
     const tenantId = requireTenant(c);
+    if (c.req.query("async") === "1") {
+      const { jobId } = await startLongJob(ctx, {
+        type: "collection.reindex",
+        auth: c.get("auth"),
+        payload: { slug, kinds: ["fts"] },
+        background: (p) => keepAlive(c, p),
+      });
+      return c.json({ ok: true, jobId, status: "queued" as const, mode: "fts" }, 202);
+    }
     const t = tableFor(dialect);
     const rows = await (db as any)
       .select()

@@ -158,14 +158,24 @@ export function JobsPage({ pushToast }: { pushToast: PushToast }) {
                   <span>
                     <Badge variant={STATUS_VARIANT[job.status]}>{statusLabel(job.status)}</Badge>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setDetail(job)}
-                    className="min-w-0 truncate text-left font-mono text-[12.5px] hover:underline"
-                    title={job.type}
-                  >
-                    {job.type}
-                  </button>
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setDetail(job)}
+                      className="block w-full min-w-0 truncate text-left font-mono text-[12.5px] hover:underline"
+                      title={job.type}
+                    >
+                      {job.type}
+                    </button>
+                    {/* Only the long-running types report, so a webhook row is
+                        unchanged. A job with no progress shows nothing at all —
+                        "has not reported" is not "0%". */}
+                    {job.progress && (
+                      <span className="block truncate text-[11.5px] text-muted-foreground">
+                        {progressLabel(job.progress)}
+                      </span>
+                    )}
+                  </div>
                   <span className="truncate font-mono text-[12px] text-muted-foreground">{job.queue}</span>
                   <span className="font-mono text-[12px] text-muted-foreground">
                     {job.attempts}/{job.maxAttempts}
@@ -200,6 +210,18 @@ export function JobsPage({ pushToast }: { pushToast: PushToast }) {
   );
 }
 
+/**
+ * One line for a progress snapshot: `12/57 · dump · system_files`.
+ *
+ * A null `total` prints the count alone rather than inventing a denominator —
+ * a geocode backfill genuinely cannot know how many rows it will get through
+ * until it stops, and `12/0` or `12/?` both read as a bug.
+ */
+function progressLabel(p: NonNullable<ApiJob["progress"]>): string {
+  const count = p.total == null ? String(p.done) : `${p.done}/${p.total}`;
+  return [count, p.phase, p.note].filter(Boolean).join(" · ");
+}
+
 function JobDetailDialog({ job, onClose }: { job: ApiJob; onClose: () => void }) {
   const { t } = useLingui();
   const pretty = (v: unknown) => JSON.stringify(v ?? null, null, 2);
@@ -221,6 +243,11 @@ function JobDetailDialog({ job, onClose }: { job: ApiJob; onClose: () => void })
               <Field label={t`Priority`} value={String(job.priority)} mono />
               <Field label={t`Created`} value={relativeTime(job.createdAt)} />
               <Field label={t`Completed`} value={job.completedAt ? relativeTime(job.completedAt) : "—"} />
+              <Field
+                label={t`Progress`}
+                value={job.progress ? progressLabel(job.progress) : "—"}
+                mono
+              />
             </div>
             {job.lastError && (
               <div className="flex flex-col gap-1.5">

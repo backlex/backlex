@@ -72,6 +72,11 @@ const JobSchema = z
     maxAttempts: z.number(),
     lastError: z.string().nullable(),
     result: z.unknown(),
+    /** `{done, total, phase, note}` once the handler reports, null before that
+     *  — and null is "has not reported", not "0%". Only the long-running types
+     *  (`db.backup`, `db.restore`, `collection.reindex`, `geo.backfill`) write
+     *  it; a webhook delivery has nothing to say here. */
+    progress: z.unknown().nullable(),
     createdAt: z.unknown(),
     completedAt: z.unknown().nullable(),
   })

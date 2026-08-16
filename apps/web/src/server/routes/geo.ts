@@ -1,5 +1,4 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
@@ -7,16 +6,13 @@ import { requirePermission } from "../middleware/permission";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { collectionFromParam, loadCollection } from "../services/items/collection-loader";
-import { addressStringFor } from "../services/items/geocode";
 import {
-  deletedFilter,
-  execute,
-  pkEq,
-  queryAll,
-  tenantFilter,
-  whereOf,
-} from "../services/items/sql-helpers";
-import { serialize } from "../services/items/serialize";
+  geoFieldOrThrow,
+  requireGeocodeProvider,
+  runGeoBackfill,
+} from "../services/geo-backfill";
+import { startLongJob } from "../services/jobs-long-running";
+import { keepAlive } from "../services/activity";
 
 /**
  * Geocoding endpoints — turning an address into a point on demand, and filling
@@ -79,7 +75,7 @@ export const geoRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      requireProvider(ctx.geocode.provider);
+      requireGeocodeProvider(ctx.geocode.provider);
       const { address } = c.req.valid("json");
       const data = await ctx.geocode.geocode(address);
       return c.json({ data, provider: ctx.geocode.provider });
@@ -121,7 +117,7 @@ export const geoRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      requireProvider(ctx.geocode.provider);
+      requireGeocodeProvider(ctx.geocode.provider);
       if (!ctx.geocode.reverse) {
         throw new AppError(
           "UNAVAILABLE",
@@ -163,6 +159,12 @@ export const geoRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       middleware: [requireUser, requirePermission(collectionFromParam, "update")],
       request: {
         params: z.object({ slug: z.string() }),
+        query: z.object({
+          async: z.enum(["0", "1"]).optional().openapi({
+            description:
+              "`1` runs the backfill as a durable background job instead of one bounded batch: it works through the collection across as many batches as it takes, queueing its own continuation, and answers 202 with a `jobId` you watch on `GET /api/jobs/{id}`. The job re-resolves `update` on the collection each time it runs, so a revoked grant stops it mid-way. Not available to API keys, workspace end-users or impersonation sessions.",
+          }),
+        }),
         body: {
           content: {
             "application/json": {
@@ -194,123 +196,62 @@ export const geoRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             },
           },
         },
+        202: {
+          description: "Queued",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  jobId: z.string(),
+                  status: z.string(),
+                  field: z.string(),
+                }),
+              }),
+            },
+          },
+        },
         ...errorResponses,
       },
     }),
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      requireProvider(ctx.geocode.provider);
+      requireGeocodeProvider(ctx.geocode.provider);
       const { slug } = c.req.valid("param");
       const { field: fieldName, limit } = c.req.valid("json");
       const collection = await loadCollection(ctx, auth.tenantId, slug);
-      const field = collection.fields.find((f) => f.name === fieldName);
-      if (!field || field.type !== "geo") {
-        throw new AppError("VALIDATION", `"${fieldName}" is not a geo field on "${slug}"`);
-      }
-      if (!field.geo?.geocodeFrom?.length) {
-        throw new AppError(
-          "VALIDATION",
-          `"${fieldName}" has no \`geocodeFrom\` columns — nothing to derive a point from`,
+      const field = geoFieldOrThrow(collection, fieldName);
+
+      if (c.req.query("async") === "1") {
+        const { jobId } = await startLongJob(ctx, {
+          type: "geo.backfill",
+          auth,
+          payload: { slug, field: fieldName, batch: limit ?? 50 },
+          background: (p) => keepAlive(c, p),
+        });
+        return c.json(
+          { data: { jobId, status: "queued" as const, field: fieldName } },
+          202,
         );
       }
 
-      const table = sql.identifier(collection.physicalTable);
-      const col = sql.identifier(fieldName);
-      // Every statement below is scoped by the SAME four filters the item write
-      // path uses, assembled once so the read, the write and the `remaining`
-      // count cannot drift apart:
-      //
-      //  - `missing` — only fill a point that isn't there (never revise one);
-      //  - `perm.whereSql` — the caller's row-level `update` condition. Holding
-      //    `update` on a collection is NOT the same as holding it on every row:
-      //    the bundled self-service roles grant it conditioned on
-      //    `app_user_id = $user.id`, so without this an end-user could geocode —
-      //    and write to — every other customer's record in the workspace, and
-      //    ship their addresses to a third-party provider on the way.
-      //  - tenant scope — a backfill can never reach across workspaces;
-      //  - soft-delete — a deleted row takes no writes.
+      // One bounded batch, exactly as this endpoint has always answered — the
+      // caller loops and can see the cost as it goes. The body is shared with
+      // the queued path (`services/geo-backfill.ts`), which differs only in how
+      // many batches it is allowed.
       const perm = c.get("permission");
-      const missing = sql`(${col} IS NULL OR ${col} = ${""})`;
-      const scope = whereOf(
-        missing,
-        perm.whereSql,
-        tenantFilter(collection, { tenantId: auth.tenantId ?? null, roles: auth.roles }),
-        deletedFilter(collection),
-      );
-
-      const batch = Math.min(limit ?? 50, 500);
-      const rows = await queryAll<Record<string, unknown>>(
-        ctx,
-        sql`SELECT * FROM ${table} ${scope} LIMIT ${batch}`,
-      );
-
-      let located = 0;
-      let unresolved = 0;
-      let skipped = 0;
-      for (const row of rows) {
-        const address = addressStringFor(field, row);
-        if (!address) {
-          skipped++;
-          continue;
-        }
-        let hit: Awaited<ReturnType<typeof ctx.geocode.geocode>> = null;
-        try {
-          hit = await ctx.geocode.geocode(address);
-        } catch (e) {
-          // A provider failure mid-batch stops the run rather than burning the
-          // rest of the budget on calls that will fail the same way — and the
-          // rows already located stay located, because each one was its own
-          // statement.
-          throw new AppError(
-            "INTERNAL",
-            `Geocoding failed after ${located} row(s): ${(e as Error).message}`,
-          );
-        }
-        if (!hit) {
-          unresolved++;
-          continue;
-        }
-        // Written straight to the column rather than through `performUpdate`:
-        // this fills a value the row was missing, and routing it through the
-        // item write path would fire hooks, webhooks, realtime events and a
-        // revision for every row of a bulk repair.
-        const value = serialize({ lat: hit.lat, lng: hit.lng }, "geo", ctx.dialect);
-        // The row came out of a scoped SELECT, but the UPDATE re-states the
-        // whole scope rather than trusting that: the two run in separate
-        // statements, and an id is not an authorization.
-        await execute(
-          ctx,
-          sql`UPDATE ${table} SET ${col} = ${value} ${whereOf(
-            pkEq(collection.pkColumn, String(row[collection.pkColumn] ?? "")),
-            perm.whereSql,
-            tenantFilter(collection, { tenantId: auth.tenantId ?? null, roles: auth.roles }),
-            deletedFilter(collection),
-          )}`,
-        );
-        located++;
-      }
-
-      // Counted through the same scope, so `remaining` reports what THIS caller
-      // still has left rather than what the workspace does.
-      const [left] = await queryAll<{ n: number }>(
-        ctx,
-        sql`SELECT COUNT(*) AS n FROM ${table} ${scope}`,
-      );
-      return c.json({
-        data: { located, unresolved, skipped, remaining: Number(left?.n ?? 0) },
+      const { located, unresolved, skipped, remaining } = await runGeoBackfill(ctx, {
+        collection,
+        field,
+        batch: Math.min(limit ?? 50, 500),
+        maxBatches: 1,
+        permWhere: perm.whereSql,
+        tenantId: auth.tenantId ?? null,
+        roles: auth.roles,
       });
+      // Explicit `200`: with a 202 also declared, a bare `c.json(x)` widens the
+      // inferred status to the union and the compiler asks this body to satisfy
+      // the queued shape too.
+      return c.json({ data: { located, unresolved, skipped, remaining } }, 200);
     },
   );
-
-/** Refuse early, and by name, when nothing is configured — otherwise every
- *  address comes back unplaceable and the caller has no way to tell that from
- *  a provider that simply did not know the street. */
-const requireProvider = (provider: string): void => {
-  if (provider === "console") {
-    throw new AppError(
-      "UNAVAILABLE",
-      "No geocoding provider is configured — set GEOCODE_GOOGLE_API_KEY, GEOCODE_MAPBOX_TOKEN, or GEOCODE_PROVIDER=nominatim",
-    );
-  }
-};

@@ -561,8 +561,19 @@ export const dbAdminApi = {
   migrations: () =>
     api<Envelope<{ id: string | number; hash: string; created_at: string | number; tag: string | null; applied: boolean }[]>>(`/api/admin/db/migrations`),
   backups: () => api<Envelope<ApiBackup[]>>(`/api/admin/db/backups`),
-  backupNow: (label?: string) =>
-    api<Envelope<{ id: string; storageKey: string; status: string }>>(`/api/admin/db/backups/now`, {
+  /** `async` queues the dump as a durable job: the tracking row is written
+   *  before this returns (so the list shows it straight away) and the response
+   *  carries a `jobId` to watch instead of a finished row. */
+  backupNow: (label?: string, opts?: { async?: boolean }) =>
+    api<
+      Envelope<{
+        id?: string;
+        storageKey: string;
+        status: string;
+        jobId?: string;
+        backupId?: string;
+      }>
+    >(`/api/admin/db/backups/now${opts?.async ? "?async=1" : ""}`, {
       method: "POST",
       body: JSON.stringify({ label }),
     }),

@@ -170,6 +170,15 @@ export type ApiJobStatus =
   | "dead_letter"
   | "cancelled";
 
+/** How far a long-running job has got. `null` on the job means it has not
+ *  reported — render that as "—", never as 0%. */
+export interface ApiJobProgress {
+  done: number;
+  total: number | null;
+  phase?: string;
+  note?: string;
+}
+
 export interface ApiJob {
   id: string;
   tenantId: string | null;
@@ -183,6 +192,7 @@ export interface ApiJob {
   maxAttempts: number;
   lastError: string | null;
   result: unknown;
+  progress: ApiJobProgress | null;
   createdAt: string | number;
   completedAt: string | number | null;
 }

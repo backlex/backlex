@@ -239,11 +239,17 @@ export const ftsReindex: McpTool = {
     "Rarely needed — `schema.update_collection` auto-backfills when `fts` or " +
     "the `searchable` field set changes; use this as a manual recovery (e.g. " +
     "rows imported around the API). Requires `fts: true` and at least one " +
-    "searchable text field. Returns `{ ok, processed, skipped, total }`.",
+    "searchable text field. Returns `{ ok, processed, skipped, total }`. " +
+    "Set `async: true` on a large collection to queue it as a durable background " +
+    "job instead — it returns `{ jobId }`, which `jobs.get` reads.",
   inputSchema: {
     type: "object",
     properties: {
       slug: { type: "string" },
+      async: {
+        type: "boolean",
+        description: "Queue it as a background job and return a `jobId`.",
+      },
     },
     required: ["slug"],
     additionalProperties: false,
@@ -251,7 +257,7 @@ export const ftsReindex: McpTool = {
   handler: async (args, ctx) => {
     const slug = requireSlug(args);
     const res = await ctx.fetchInternal(
-      `/api/collections/${encodeURIComponent(slug)}/fts-reindex`,
+      `/api/collections/${encodeURIComponent(slug)}/fts-reindex${args.async ? "?async=1" : ""}`,
       { method: "POST" },
     );
     const body = await readJson<unknown>(res);
@@ -267,11 +273,17 @@ export const rollupsRefresh: McpTool = {
     "`schema.update_collection` auto-backfills when a rollup definition " +
     "changes; use this as a manual recovery after rows were written around " +
     "the write path (a restore, a template seed, a direct SQL edit). " +
-    "Idempotent. Returns `{ ok, refreshed }` naming the columns restated.",
+    "Idempotent. Returns `{ ok, refreshed }` naming the columns restated. " +
+    "Set `async: true` to queue it as a durable background job instead — it " +
+    "returns `{ jobId }` and re-checks your `update` permission when it runs.",
   inputSchema: {
     type: "object",
     properties: {
       slug: { type: "string" },
+      async: {
+        type: "boolean",
+        description: "Queue it as a background job and return a `jobId`.",
+      },
     },
     required: ["slug"],
     additionalProperties: false,
@@ -279,7 +291,7 @@ export const rollupsRefresh: McpTool = {
   handler: async (args, ctx) => {
     const slug = requireSlug(args);
     const res = await ctx.fetchInternal(
-      `/api/items/${encodeURIComponent(slug)}/rollups/refresh`,
+      `/api/items/${encodeURIComponent(slug)}/rollups/refresh${args.async ? "?async=1" : ""}`,
       { method: "POST" },
     );
     const body = await readJson<unknown>(res);
@@ -325,11 +337,18 @@ export const vectorizeBackfill: McpTool = {
     "row is one embedding-provider call, so it costs money/quota — confirm " +
     "with the user before running on large collections. Check " +
     "`vector.capabilities` first if unsure the deployment can embed at all. " +
-    "Returns `{ ok, processed, skipped, total }`.",
+    "Returns `{ ok, processed, skipped, total }`. This is the single worst " +
+    "operation to run inline — one provider call per 100 rows, over every row, " +
+    "with no ceiling — so prefer `async: true`, which queues it as a durable " +
+    "background job, reports progress per batch and returns `{ jobId }`.",
   inputSchema: {
     type: "object",
     properties: {
       slug: { type: "string" },
+      async: {
+        type: "boolean",
+        description: "Queue it as a background job and return a `jobId`.",
+      },
     },
     required: ["slug"],
     additionalProperties: false,
@@ -337,7 +356,7 @@ export const vectorizeBackfill: McpTool = {
   handler: async (args, ctx) => {
     const slug = requireSlug(args);
     const res = await ctx.fetchInternal(
-      `/api/collections/${encodeURIComponent(slug)}/vectorize`,
+      `/api/collections/${encodeURIComponent(slug)}/vectorize${args.async ? "?async=1" : ""}`,
       { method: "POST" },
     );
     const body = await readJson<unknown>(res);

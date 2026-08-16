@@ -24,20 +24,32 @@ export const runBackupNow: McpTool = {
   name: "backups.run",
   description:
     "Run a manual backup now (dumps system tables + the workspace's collection " +
-    "tables to storage). Returns the tracking row with `done`/`failed` status.",
+    "tables to storage). Returns the tracking row with `done`/`failed` status. " +
+    "Set `async: true` on a large workspace to queue the dump as a durable " +
+    "background job instead: the tracking row is created immediately and the " +
+    "call returns `{jobId}` — poll it with `jobs.get`. Prefer that over waiting " +
+    "on a dump that may outlast your own request.",
   inputSchema: {
     type: "object",
     properties: {
       label: { type: "string", description: "Optional label, max 80 chars." },
+      async: {
+        type: "boolean",
+        description:
+          "Queue the dump as a background job and return a `jobId` instead of the finished row.",
+      },
     },
     additionalProperties: false,
   },
   handler: async (args, ctx) => {
-    const res = await ctx.fetchInternal(`/api/admin/db/backups/now`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(args.label ? { label: String(args.label) } : {}),
-    });
+    const res = await ctx.fetchInternal(
+      `/api/admin/db/backups/now${args.async ? "?async=1" : ""}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(args.label ? { label: String(args.label) } : {}),
+      },
+    );
     const body = await readJson<unknown>(res);
     return textResult(body);
   },
@@ -73,6 +85,14 @@ export const restoreBackup: McpTool = {
           "Restrict the restore to these table names. Recommended with " +
           "`overwrite` so a targeted recovery does not roll settings back too.",
       },
+      async: {
+        type: "boolean",
+        description:
+          "Queue the restore as a background job and return a `jobId` instead " +
+          "of waiting. It is never retried if it dies part-way — a restore " +
+          "writes into live tables, so a half-finished one is reported rather " +
+          "than replayed.",
+      },
     },
     required: ["id", "confirm"],
     additionalProperties: false,
@@ -87,6 +107,7 @@ export const restoreBackup: McpTool = {
     const onlyTables = args.onlyTables;
     if (Array.isArray(onlyTables) && onlyTables.length > 0)
       q.set("onlyTables", onlyTables.map((t) => String(t)).join(","));
+    if (args.async === true) q.set("async", "1");
     const qs = q.toString();
     const res = await ctx.fetchInternal(
       `/api/admin/db/backups/${encodeURIComponent(id)}/restore${qs ? `?${qs}` : ""}`,

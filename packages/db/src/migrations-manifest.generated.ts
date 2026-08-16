@@ -125,6 +125,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "11bc5c53f891f3b4274868defcb7c7ec43f602180c270249d1fe651a1afab97a": "20260814140000_ai_usage_counters",
   "360ba8af63cfa25d4c4c757444bf2db312939448bd19e4a2e909cf72893a984c": "20260814150000_agent_app_access",
   "96e6b9514feb19e1b26b4484295c84cc7a4539a919c6d3715207b39912c05235": "20260815090000_two_factor_lockout",
+  "1d228928f83611f07d23101cacb32851e822bae5c6e6f77c58b81df49d5d9072": "20260816120000_job_progress",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -245,4 +246,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "fe020b7eafa6f46f36d9fde2823f2a00d358cc71649054154b9e1a11a903bd0b": "20260814140000_ai_usage_counters",
   "83f35f7ffce5e2c729dd1b5de49f458499686af9ef7c3befae9cd809a1fb0879": "20260814150000_agent_app_access",
   "b3008efc3b824a1d8f8ba2c79f736acf2a3e459325bcdd9fe24a753a442c767a": "20260815090000_two_factor_lockout",
+  "0a2168bab0fa640cc8c6d600e73977dc758c3cebfff8ff5ba18395716d194eda": "20260816120000_job_progress",
 };

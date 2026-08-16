@@ -329,8 +329,17 @@ describe("geocoding", () => {
       await seedUnlocated();
       const r = await h.fetch(`/api/geo/backfill/${clinics}`, json({ field: "location", limit: 1 }));
       const { data } = (await r.json()) as any;
+      // The bound: exactly one row was attempted, whichever one it was.
       expect(data.located + data.unresolved + data.skipped).toBe(1);
-      expect(data.remaining).toBe(3);
+      // And `remaining` agrees with what that attempt achieved. Asserted as a
+      // relationship rather than as `3`, because only a LOCATED row leaves the
+      // scope — one the provider could not place, or one with no address at
+      // all, is still missing a point and still counted. The old literal
+      // passed only because an unordered `SELECT … LIMIT 1` happened to hand
+      // back a resolvable row first; the batch is ordered by primary key now
+      // (a multi-batch walk needs a cursor to mean anything), so which row
+      // comes first is no longer luck.
+      expect(data.remaining).toBe(4 - data.located);
     });
 
     test("refuses a field that is not a point", async () => {

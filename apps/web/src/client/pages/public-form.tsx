@@ -771,6 +771,23 @@ function BlockInput({
           style={inputStyle}
         />
       );
+    case "email":
+    case "phone":
+    case "url":
+      // The field's own type, not a validation rule — these three carry their
+      // format in the type and so reach the default branch below with nothing
+      // for it to key off. Naming them here is also what puts the right
+      // keyboard in front of somebody filling the form on a phone.
+      return (
+        <input
+          type={block.type === "phone" ? "tel" : block.type}
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(e.target.value)}
+          required={block.required}
+          placeholder={block.placeholder ?? ""}
+          style={inputStyle}
+        />
+      );
     default: {
       const format = (block.validation?.format as string | undefined) ?? undefined;
       return (

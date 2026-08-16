@@ -51,11 +51,23 @@ const randomHex = (bytes: number): string => {
   return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
 };
 
-/** Field types a form may expose. Dropdowns are `text` + `options.choices`;
- *  `file` blocks write the storage key minted by the public upload endpoint. */
+/**
+ * Field types a form may expose. Dropdowns are `text` + `options.choices`;
+ * `file` blocks write the storage key minted by the public upload endpoint.
+ *
+ * `email`, `phone` and `url` are here because they used to be — they were all
+ * `text` columns until the field-type work converted them, and this list did
+ * not follow. The effect was that a public form could not ask for an email
+ * address, which is the single most common thing a public form asks for. They
+ * are as safe to expose as the `text` they were: scalar, writable, and folded
+ * to a canonical form by the same write path every other value goes through.
+ */
 const ALLOWED_TYPES = new Set<string>([
   "text",
   "longtext",
+  "email",
+  "phone",
+  "url",
   "integer",
   "number",
   "boolean",

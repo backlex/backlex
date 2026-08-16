@@ -116,6 +116,16 @@ exists, it is listed, and nobody on the internet can post to it. Deciding a
 public form is open is a thing an operator does on purpose, not something a
 template does for them.
 
+One thing to know before you open one, because a bundle can join two features
+that are each fine alone: a public form writes ordinary rows, and a
+[document template](/docs/documents/) prints those rows into HTML **without
+escaping them** — that is the same `{{ … }}` engine email templates use, and it
+is deliberate there. So a value typed by a stranger can reach a PDF as markup.
+The renderer runs with JavaScript off, but a `<img src="…">` is still fetched by
+whichever browser renders the page, which is why `docs/documents.md` says to
+give a self-hosted Gotenberg no route to anything internal. Nothing new — worth
+saying out loud now that a template can ship both halves.
+
 **Flows that need something configured ship switched off.** A bundled flow uses
 only self-contained operations; the ones that depend on a mail transport or a
 PDF renderer (`email`, `sms`, `document.render`, `report.deliver`) arrive

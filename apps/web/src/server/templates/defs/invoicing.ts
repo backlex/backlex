@@ -379,4 +379,223 @@ export const invoicing: SchemaTemplate = {
       ],
     },
   ],
+  /**
+   * The rules a billing operation runs on, already running.
+   *
+   * Deliberately absent: "a payment landed, so mark the invoice paid". Whether
+   * a payment settles an invoice or only part of it depends on the invoice's
+   * own total, and a flow's `data` is the payment row — it cannot see across.
+   * A step that set `paid` on every payment would be wrong on every instalment,
+   * which is worse than the operator doing it. So the flow reports the payment
+   * and leaves the judgement where the figures are.
+   */
+  flows: [
+    {
+      name: "Tell the team when an invoice is issued",
+      trigger: "event:items:invoices:created",
+      operations: [
+        {
+          type: "notification",
+          title: "Invoice {{ data.number }} created",
+          body: "A new invoice was raised. Open it to review the lines before sending.",
+          url: "/collections/invoices",
+        },
+      ],
+    },
+    {
+      name: "Chase an invoice three days before it falls due",
+      // Fires once per row, three days before `due_date`, at 09:00 — and only
+      // for invoices that are still owed. `_nin` rather than `_neq`, because
+      // "not paid" has to also exclude the ones that were voided.
+      trigger: `schedule:${JSON.stringify({
+        collection: "invoices",
+        field: "due_date",
+        offset: { value: 3, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _nin: ["paid", "void"] } },
+      })}`,
+      operations: [
+        {
+          type: "item.create",
+          collection: "payment_reminders",
+          data: {
+            invoice: "{{ data.id }}",
+            level: "friendly",
+            channel: "email",
+            note: "Due in three days.",
+          },
+        },
+        {
+          type: "notification",
+          title: "Invoice {{ data.number }} is due in three days",
+          body: "A friendly reminder has been logged against it.",
+          url: "/collections/invoices",
+        },
+      ],
+    },
+    {
+      name: "Move an invoice to overdue the morning after it was due",
+      trigger: "cron:0 6 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "invoices",
+          filter: { status: { _in: ["sent", "partial"] }, due_date: { _lt: "$now" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "invoices",
+              id: "{{ $item.id }}",
+              data: { status: "overdue" },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Log every payment against its invoice",
+      trigger: "event:items:payments:created",
+      operations: [
+        {
+          type: "notification",
+          title: "Payment received",
+          body: "{{ data.amount }} recorded via {{ data.method }}. Check the invoice balance and set its status.",
+          url: "/collections/payments",
+        },
+      ],
+    },
+    {
+      name: "Email the invoice PDF when it is sent (needs email + a PDF renderer)",
+      // Off until both are configured — see the note in docs/templates.md. The
+      // name carries the prerequisite so nobody has to open it to find out.
+      active: false,
+      trigger: "event:items:invoices:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "sent" } },
+          then: [
+            { type: "document.render", templateKey: "invoice" },
+            {
+              type: "email",
+              to: "{{ data.customer.email }}",
+              subject: "Invoice {{ data.number }}",
+              html: "<p>Your invoice is attached.</p>",
+              attach: ["{{ $last.key }}"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Monthly billing report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Billing overview",
+          subject: "Billing — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "invoice",
+      name: "Invoice",
+      description: "The invoice as the customer receives it.",
+      filename: "invoice-{{ data.number }}",
+      variables: ["number", "total", "currency"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:18px}" +
+        "th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #e5e5e5}" +
+        "td.n,th.n{text-align:right}" +
+        ".totals{margin-top:14px;width:100%}" +
+        ".totals td{border:0;padding:3px 6px}" +
+        "</style></head><body>" +
+        "<h1>Invoice {{ data.number }}</h1>" +
+        '<p class="muted">Issued {{ data.issue_date }} · Due {{ data.due_date }}</p>' +
+        "<p><strong>{{ data.customer.name }}</strong><br>{{ data.customer.address }}<br>" +
+        "{{ data.customer.city }} {{ data.customer.country }}</p>" +
+        "<table><thead><tr><th>Description</th><th class=\"n\">Qty</th>" +
+        '<th class="n">Unit</th><th class="n">Line total</th></tr></thead><tbody>' +
+        "<!-- one row per line item; fill from your own query or a foreach -->" +
+        "</tbody></table>" +
+        '<table class="totals"><tr><td class="n">Subtotal</td><td class="n">{{ data.subtotal }}</td></tr>' +
+        '<tr><td class="n">Tax</td><td class="n">{{ data.tax_total }}</td></tr>' +
+        '<tr><td class="n"><strong>Total {{ data.currency }}</strong></td>' +
+        '<td class="n"><strong>{{ data.total }}</strong></td></tr>' +
+        '<tr><td class="n">Paid</td><td class="n">{{ data.amount_paid }}</td></tr>' +
+        '<tr><td class="n"><strong>Balance due</strong></td>' +
+        '<td class="n"><strong>{{ data.balance_due }}</strong></td></tr></table>' +
+        "<p class=\"muted\">{{ data.notes }}</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "payment_receipt",
+      name: "Payment receipt",
+      description: "Confirmation of one payment against an invoice.",
+      filename: "receipt-{{ data.reference }}",
+      variables: ["amount", "method"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 12px}" +
+        "</style></head><body>" +
+        "<h1>Payment receipt</h1>" +
+        "<p>Received <strong>{{ data.amount }}</strong> on {{ data.received_at }} " +
+        "by {{ data.method }}.</p>" +
+        "<p>Reference: {{ data.reference }}</p>" +
+        "<p>Thank you.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "New customer details",
+      collection: "customers",
+      settings: {
+        submitLabel: "Send details",
+        successMessage: "Thank you — we'll set you up and send your first invoice.",
+      },
+      fields: [
+        { name: "name", label: "Company or full name" },
+        { name: "email", label: "Billing email", help: "Where invoices should be sent." },
+        { name: "phone" },
+        { name: "tax_number", label: "Tax number", help: "Leave blank if you have none." },
+        { name: "address" },
+        { name: "city" },
+        { name: "country" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Collections assistant",
+      handle: "collections-assistant",
+      description: "Answers questions about who owes what.",
+      systemPrompt:
+        "You help a billing team chase money. Answer questions about invoices, " +
+        "payments and outstanding balances using the workspace's own data. " +
+        "Always name the invoice number and the currency; amounts in different " +
+        "currencies are never added together. When asked what to chase, rank by " +
+        "how far past due an invoice is, not by size. Be brief and specific, and " +
+        "say plainly when the data does not answer the question.",
+      tools: ["collections.list", "collections.read", "collections.aggregate", "kpis.run"],
+      maxSteps: 8,
+    },
+  ],
 };

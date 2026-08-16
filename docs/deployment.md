@@ -13,7 +13,7 @@ constraints you need.
 
 |                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) | Deno Deploy (managed)⁴ |
 |--------------------|-------------------|----------------------|----------------------|------------------------------|------------------------|
-| **Database**       | SQLite, libSQL/Turso, or PG | D1, libSQL/Turso, or Hyperdrive→PG | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake), or libSQL/Turso | PG via `DATABASE_DRIVER=neon-http` (recommended), or libSQL/Turso | PG via `neon-http` (auto-forced); libSQL/Turso too |
+| **Database**       | SQLite, libSQL/Turso, or PG | D1 or libSQL/Turso — **no Postgres**⁶ | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake), or libSQL/Turso | PG via `DATABASE_DRIVER=neon-http` (recommended), or libSQL/Turso | PG via `neon-http` (auto-forced); libSQL/Turso too |
 | **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — no fs |
 | **Realtime**       | in-proc + SSE     | Durable Objects + WS | Ably signals¹ (or Upstash long-poll) | Ably signals¹ (or Upstash long-poll) | Ably signals¹ (or Upstash long-poll) |
 | **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) | yes (Deno `node:crypto`) |
@@ -81,6 +81,22 @@ reports a failure — the handler is simply never invoked. With `CRON_SECRET` se
 have the platform ping `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` (or
 `Authorization: Bearer`); `cronTick` is idempotent and deduped by `lastTickAt`,
 so at-least-once delivery is safe.
+
+⁶ **Postgres is not supported on Cloudflare Workers**, including through
+Hyperdrive. The Workers bundle ships without a Postgres driver on purpose:
+`apps/web/vite.config.ts` aliases `postgres`, `@neondatabase/serverless` and
+both `@backlex/db/pg` entrypoints to shims, which keeps every `pgTable`
+definition and `drizzle-orm/pg-core` out of the eager cold-start graph —
+`@backlex/db/pg` is statically imported across ~80 files, so this is not a flag
+you can flip, it is a different bundle. Binding Hyperdrive would give you a
+Worker that boots and then fails on its first query, so `context.ts` refuses the
+combination up front with a message naming the alternatives.
+
+**What to use instead.** For a networked database on Workers, set `LIBSQL_URL`
+(+ `LIBSQL_AUTH_TOKEN`) for Turso/libSQL — it is fetch-based, edge-safe and not
+shimmed. For D1, bind `D1` as usual. If you specifically need Postgres, deploy
+the Bun, Node, Vercel or Netlify target, all of which support it. See
+[Database providers](/database-providers/).
 
 ## Bun (self-host)
 

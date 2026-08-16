@@ -112,14 +112,13 @@ apply identical rules.
   skip the metadata round-trip.
 - **Batched to-many expands** — `relation_many` expands collect ids across the
   page and fetch in one `IN (…)`, no per-row N+1.
-- **Hyperdrive** for Postgres-on-Workers — `HYPERDRIVE.connectionString` is
-  auto-used when bound, `postgres-js` already runs `prepare:false` (required
-  behind a transaction pooler), and a read replica wires in via
-  `HYPERDRIVE_REPLICA`. Caveat: the Hyperdrive query cache (default 60s) can
-  serve a stale read just after a write — disable caching on the config if you
-  need strict read-your-writes. (See `wrangler.toml`.)
-- **PG read replicas** — `ctx.dbRead` routes reads to
-  `HYPERDRIVE_REPLICA`/`DATABASE_REPLICA_URL` when set.
+- **PG read replicas** — `ctx.dbRead` routes reads to `DATABASE_REPLICA_URL`
+  when set, on the runtimes that run Postgres (Bun / Node / Vercel / Netlify).
+  Not Workers: the Workers bundle ships no Postgres driver, so Hyperdrive is
+  refused there rather than half-working — see
+  [Deployment](/deployment/) footnote 6.
+- **`postgres-js` runs `prepare:false`** — required behind a transaction pooler
+  (PgBouncer, Supabase's pooler, Neon's pooled endpoint).
 - **Aggressive code-splitting** — GraphQL, SAML, libSQL, CodeMirror, xyflow,
   QuickJS are lazy chunks kept out of the Worker cold-start eval path; adapters
   are constructed lazily and memoized per isolate.

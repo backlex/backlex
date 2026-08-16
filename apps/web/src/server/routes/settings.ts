@@ -324,7 +324,6 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         { type: "Vectorize", name: "VECTORIZE_SELF_HOST_BGE_M3", target: "backlex-self-host-bge-m3", status: env.VECTORIZE_SELF_HOST_BGE_M3 ? "connected" : "optional" },
         { type: "WorkersAI", name: "AI", target: "@cf/baai/bge-m3", status: env.AI ? "connected" : "optional" },
         { type: "HTTP", name: "EMBEDDING_HTTP_URL", target: "self-host embeddings", status: env.EMBEDDING_HTTP_URL ? "connected" : "optional" },
-        { type: "Hyperdrive", name: "HYPERDRIVE", target: "pg-pool", status: env.HYPERDRIVE ? "connected" : "optional" },
       ];
       const envVars = [
         { key: "APP_URL", set: present("APP_URL"), source: "env", secret: false },

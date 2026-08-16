@@ -1,6 +1,6 @@
 ---
 title: Database providers (Postgres)
-description: Provider matrix for the Postgres dialect — self-host, Supabase, Neon, Xata, Vercel PG, Hyperdrive.
+description: Provider matrix for the Postgres dialect — self-host, Supabase, Neon, Xata, Vercel PG — and why Cloudflare Workers is not on it.
 ---
 
 # Database providers
@@ -19,9 +19,13 @@ Turso/libSQL, LiteFS).
 `buildContext` picks the database in this order, first match wins:
 
 1. `env.D1` binding (Cloudflare Workers) → SQLite via D1
-2. `env.HYPERDRIVE` binding (Cloudflare Workers) → Postgres via Hyperdrive
+2. `env.LIBSQL_URL` → SQLite via libSQL/Turso (fetch-based, edge-safe)
 3. `env.DATABASE_URL` → Postgres
 4. otherwise → SQLite via `bun:sqlite` at `./.data/backlex.sqlite`
+
+On **Cloudflare Workers**, step 3 is refused: that bundle ships no Postgres
+driver, so a `DATABASE_URL` with no D1 and no `LIBSQL_URL` fails fast with a
+message naming the alternatives. See [Deployment](/deployment/) footnote 6.
 
 The Postgres driver is chosen with `DATABASE_DRIVER`:
 
@@ -42,7 +46,13 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
 | **Neon**          | `postgres://<user>:<pwd>@ep-<id>-pooler.<region>.aws.neon.tech/<db>?sslmode=require` | postgres-js (Bun/CF/Node) / neon-http (Vercel Edge) | ✅ (CREATE EXTENSION vector) | ✅ | ✅ | Auto-suspend wakes on first query; first request after idle ≈ 100–500 ms. |
 | **Xata**          | `postgres://<workspace-id>:<api-key>@<workspace>.<region>.xata.sh:5432/<db>:<branch>?sslmode=require` | postgres-js | ❌ — pair with Vectorize or another PG | ✅ | ✅ | Branch lives in the URL after the database name (`<db>:<branch>`). |
 | **Vercel Postgres** | (issued by `vercel env`)                                                 | neon-http        | ✅ | ✅ | ✅ | Re-branded Neon under the hood; identical config. |
-| **Hyperdrive (CF)** | (binding, not URL)                                                       | postgres-js      | depends on origin | depends on origin | ✅ | Caches connections + idle queries; origin can be any of the rows above. |
+
+> **Not on this table: Cloudflare Workers.** Postgres is unavailable there in
+> any form, Hyperdrive included — the Workers bundle aliases `postgres`,
+> `@neondatabase/serverless` and `@backlex/db/pg` to shims so the pg schema and
+> `drizzle-orm/pg-core` stay out of the cold-start graph. Use D1 or
+> libSQL/Turso on Workers, or deploy the Bun / Node / Vercel / Netlify target
+> for Postgres.
 
 ## Per-provider gotchas
 
@@ -90,13 +100,19 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
   not used — Backlex uses Postgres `tsvector` + `websearch_to_tsquery`
   on the underlying table, which goes through the standard wire protocol.
 
-### Hyperdrive (CF Workers only)
+### Cloudflare Workers — why Postgres is absent
 
-- `HYPERDRIVE` binding's `connectionString` always wins over `DATABASE_URL`.
-- Hyperdrive is a connection pooler + query cache that sits in front of
-  your real Postgres (any provider above). It speaks the Postgres wire
-  protocol, so the driver is still `postgres-js`.
-- pgvector support depends on the *origin* database, not Hyperdrive itself.
+Hyperdrive would be the natural answer (a pooler + query cache in front of any
+provider above, speaking the Postgres wire protocol). It is **not supported**,
+and the reason is the bundle rather than the protocol: `@backlex/db/pg` is
+statically imported across ~80 files, so leaving it un-aliased would pull every
+`pgTable` definition plus `drizzle-orm/pg-core` into the eager cold-start graph
+of a Worker. `vite.config.ts` therefore aliases it — along with `postgres` and
+`@neondatabase/serverless` — to shims, which makes a Postgres-capable Workers
+build a genuinely different bundle rather than a configuration flag.
+
+Reach for **libSQL/Turso** (`LIBSQL_URL`) when you want a networked database on
+Workers: it is fetch-based, edge-safe, and not shimmed.
 
 ## Auto-migrate compatibility
 
@@ -126,8 +142,9 @@ laptop or CI — same SQL, same idempotency.
 - **Edge-native deploy (Vercel Edge / wide region spread)** → Neon with
   `DATABASE_DRIVER=neon-http`.
 - **Already on Cloudflare, want SQLite** → D1 (see sqlite-providers.md).
-- **Already on Cloudflare, want Postgres** → Hyperdrive in front of any
-  of the above.
+- **Already on Cloudflare, want a networked DB** → libSQL/Turso. Postgres is
+  not available on Workers at all; deploy the Bun / Node / Vercel / Netlify
+  target if you need it.
 - **Branching-first workflow (preview-per-PR DB)** → Neon (branching
   built-in) or Xata (branches are a URL suffix). Xata branches are free
   on the dashboard; Neon branches are charged by storage.

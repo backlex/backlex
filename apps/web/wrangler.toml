@@ -33,6 +33,15 @@ head_sampling_rate = 1
 # @cf-wasm/photon backs the Deno-only WASM image fallback; stub on Workers so its
 # WASM blob never enters the Worker bundle (CF Image Resizing is used here).
 "@cf-wasm/photon" = "./src/server/shims/photon-shim.ts"
+# ⚠️ The Postgres aliases (`postgres`, `@neondatabase/serverless`,
+# `@backlex/db/pg`, `@backlex/db/pg/schema`) are deliberately NOT here — they
+# live only in `vite.config.ts`. `.wrangler/deploy/config.json` is a redirected
+# config pointing at `dist/backlex_admin/wrangler.json`, so `wrangler deploy`
+# ships the Vite-built bundle and this `[alias]` block never sees them.
+# Consequence worth knowing: a bundle produced from `main` directly (this file
+# with no redirect, e.g. `wrangler.ci.toml` in the CI runtime smoke) DOES carry
+# the real pg schema, so it is not byte-comparable with what deploys. Either
+# way Postgres is refused at runtime on Workers — see `context.ts`.
 
 [vars]
 # ⚠️ FORKS MUST CHANGE THIS. `APP_URL` is the canonical origin better-auth
@@ -80,7 +89,9 @@ not_found_handling = "single-page-application"
 run_worker_first = ["/api/*", "/health", "/health/*", "/mcp", "/embed/*", "/f/*", "/book/*", "/b/*", "/.well-known/*"]
 # Override these in `.dev.vars` or via `wrangler secret put`:
 # AUTH_SECRET = "..."
-# DATABASE_URL = "postgres://..." # only if you want PG via Hyperdrive
+# LIBSQL_URL = "libsql://..." # Turso/libSQL instead of D1 (DATABASE_URL/Postgres
+# is not supported on Workers — see the note above the durable_objects block)
+# LIBSQL_AUTH_TOKEN = "..."
 # OPENAI_API_KEY = "..."
 # EMBEDDING_HTTP_URL = "https://embed.internal.example.com" # TEI/Ollama container
 # EMBEDDING_HTTP_TOKEN = "..." # optional bearer for the embeddings endpoint
@@ -153,17 +164,16 @@ bucket_name = "workeros-files"
 [ai]
 binding = "AI"
 
-# Optional: Hyperdrive proxy in front of Postgres for PG-on-edge. Pools
-# connections (no per-request TCP+TLS handshake to a distant PG) and edge-caches
-# read-only SELECTs. backlex auto-uses HYPERDRIVE.connectionString when bound and
-# already runs postgres-js with prepare:false (required behind a transaction
-# pooler). Caveat: Hyperdrive's query cache (default max_age 60s) can serve a
-# stale read just after a write — if you need strict read-your-writes, create the
-# config with caching disabled, or read through a second caching-off binding.
-# Add a read replica the same way via a HYPERDRIVE_REPLICA binding.
-# [[hyperdrive]]
-# binding = "HYPERDRIVE"
-# id = "REPLACE_WITH_HYPERDRIVE_ID"
+# NO HYPERDRIVE / NO POSTGRES HERE — this is not an omission.
+# The Workers bundle ships without a Postgres driver: `vite.config.ts` aliases
+# `postgres`, `@neondatabase/serverless` and both `@backlex/db/pg` entrypoints
+# to shims so every pgTable def and `drizzle-orm/pg-core` stay out of the eager
+# cold-start graph (`@backlex/db/pg` is statically imported across ~80 files).
+# Binding Hyperdrive here would produce a config that boots and then throws on
+# the first query, so `context.ts` refuses it with an explicit message instead.
+# For a networked database on Workers use LIBSQL_URL (Turso/libSQL), which is
+# fetch-based and not shimmed. For Postgres, deploy the Bun, Node, Vercel or
+# Netlify target. See docs/deployment.md § Postgres on Workers.
 
 # Durable Object for realtime fan-out.
 [[durable_objects.bindings]]

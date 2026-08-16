@@ -109,8 +109,8 @@ export interface Ctx {
   dialect: "pg" | "sqlite";
   db: PgDb | SqliteDb;
   /** Read-only client for lag-tolerant queries. Points at the configured
-   *  Postgres read replica when `HYPERDRIVE_REPLICA` / `DATABASE_REPLICA_URL`
-   *  is set; otherwise falls back to {@link Ctx.db}. SQLite/D1 always alias
+   *  Postgres read replica when `DATABASE_REPLICA_URL` is set; otherwise
+   *  falls back to {@link Ctx.db}. SQLite/D1 always alias
    *  the primary. Do NOT use for reads-after-write — replication lag means
    *  the row may not be visible yet. Default everywhere else is `ctx.db`;
    *  routes opt in by saying `ctx.dbRead` explicitly. */
@@ -343,7 +343,14 @@ export const buildContext = (env: Env): Promise<Ctx> => {
   if (inFlight) return inFlight;
   const p = assembleContext(env);
   ctxBuilding.set(env as unknown as object, p);
-  p.finally(() => ctxBuilding.delete(env as unknown as object));
+  // The cleanup rides a DERIVED promise, and a derived promise inherits the
+  // rejection. `assembleContext` genuinely rejects on a misconfigured runtime
+  // (no database on a stateless edge, postgres-js on an edge, Postgres on
+  // Workers), and nothing awaits this derivative — so without the catch the
+  // failure surfaces a SECOND time as an unhandled rejection, alongside the
+  // one the caller is already handling through the returned `p`. Swallow it
+  // here only; `p` still carries the real error to the caller.
+  p.finally(() => ctxBuilding.delete(env as unknown as object)).catch(() => {});
   return p;
 };
 
@@ -352,10 +359,12 @@ import { bindSigningKeysToDatabase } from "./services/signing-keys";
 const assembleContext = async (env: Env): Promise<Ctx> => {
   const override = testDbOverrides.get(env as unknown as object);
 
-  // Picks the most specific available PG URL. Hyperdrive (CF Workers) sits in
-  // front of the real Postgres and is the connection clients should use when
-  // bound; we fall back to `DATABASE_URL` everywhere else.
-  const pgUrl = env.HYPERDRIVE?.connectionString ?? env.DATABASE_URL;
+  // There is exactly one way to name a Postgres origin. Hyperdrive used to be
+  // read here as a more-specific alternative, but the Workers bundle ships no
+  // Postgres driver at all (see the refusal below), and Hyperdrive is a
+  // Workers-only binding — so that branch could never be taken on a runtime
+  // that could act on it.
+  const pgUrl = env.DATABASE_URL;
 
   const dialect: "pg" | "sqlite" = override
     ? override.dialect
@@ -369,6 +378,25 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     throw new AppError(
       "UNAVAILABLE",
       "Edge runtime requires DATABASE_URL (Postgres) or LIBSQL_URL (Turso/libSQL). On Vercel Edge with a Postgres origin, also set DATABASE_DRIVER=neon-http.",
+    );
+  }
+
+  // Postgres is NOT available on the Cloudflare Workers bundle, by
+  // construction: `apps/web/vite.config.ts` aliases `postgres`,
+  // `@neondatabase/serverless` and both `@backlex/db/pg` entrypoints to shims,
+  // so every `pgTable` def and `drizzle-orm/pg-core` stay out of the eager
+  // cold-start graph. `@backlex/db/pg` is statically imported across ~80 files;
+  // un-aliasing it is a different bundle, not a flag. Use libSQL/Turso for a
+  // networked database on Workers, or run the Postgres path on
+  // Bun/Node/Vercel/Netlify.
+  //
+  // Say that here rather than letting `createPgClient` throw from the shim —
+  // "Postgres driver is not bundled on the D1 Workers build (pg-shim)" reads
+  // like a build bug, not like a configuration answer.
+  if (!env.D1 && !env.LIBSQL_URL && pgUrl && isCloudflareWorkers()) {
+    throw new AppError(
+      "UNAVAILABLE",
+      "Postgres is not supported on Cloudflare Workers — the Workers bundle ships without a Postgres driver. Bind D1, or set LIBSQL_URL (Turso/libSQL) for a networked database. To run on Postgres, deploy the Bun, Node, Vercel or Netlify target instead.",
     );
   }
 
@@ -417,14 +445,10 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     txCapable = true;
   }
 
-  // Read replica (pg only). HYPERDRIVE_REPLICA (Workers) wins over the raw
-  // URL — same precedence as the primary. Tests share the override; SQLite/D1
-  // alias the primary because there's no replica equivalent. The driver
-  // tracks the primary so behaviour stays consistent across runtimes.
-  const pgReplicaUrl =
-    dialect === "pg"
-      ? env.HYPERDRIVE_REPLICA?.connectionString ?? env.DATABASE_REPLICA_URL
-      : undefined;
+  // Read replica (pg only). Tests share the override; SQLite/D1 alias the
+  // primary because there's no replica equivalent. The driver tracks the
+  // primary so behaviour stays consistent across runtimes.
+  const pgReplicaUrl = dialect === "pg" ? env.DATABASE_REPLICA_URL : undefined;
   const dbRead: PgDb | SqliteDb =
     pgReplicaUrl && pgDriver && !override
       ? createPgClient(pgReplicaUrl, pgDriver, {

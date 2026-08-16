@@ -64,15 +64,16 @@ export interface Env {
   DEMO_PASSWORD?: string;
   /** Minutes between playground wipes (demo mode only). Unset → `60`. */
   DEMO_RESET_MINUTES?: string;
-  // Postgres URL (self-host or Hyperdrive). One of DATABASE_URL or D1 is required.
+  /** Postgres URL. One of DATABASE_URL, D1 or LIBSQL_URL is required.
+   *  NOT usable on Cloudflare Workers — that bundle ships no Postgres
+   *  driver; use D1 or LIBSQL_URL there. See docs/deployment.md. */
   DATABASE_URL?: string;
   /** Optional read-replica Postgres URL. When set (pg dialect only), `ctx.dbRead`
    *  resolves to a second Drizzle client pointed at this URL; lag-tolerant
    *  read paths can opt into it explicitly. Unset, omitted, or non-pg
    *  dialect → `ctx.dbRead === ctx.db` (silent fallback to primary). Replication
    *  lag means reads-after-write may miss the freshly written row — keep
-   *  post-mutation reads on `ctx.db`. On Workers, prefer the
-   *  `HYPERDRIVE_REPLICA` binding (set in wrangler.toml) over a raw URL. */
+   *  post-mutation reads on `ctx.db`. */
   DATABASE_REPLICA_URL?: string;
   /** Postgres driver. `postgres-js` (default) uses `node:net`/`node:tls` — works
    *  on Bun, Node, Cloudflare Workers (nodejs_compat), and Netlify Edge (Deno
@@ -145,12 +146,6 @@ export interface Env {
   QDRANT_COLLECTION_OPENAI_LARGE?: string;
   QDRANT_COLLECTION_BGE_M3?: string;
   QDRANT_COLLECTION_SELF_HOST_BGE_M3?: string;
-  HYPERDRIVE?: Hyperdrive;
-  /** Optional read-replica Hyperdrive binding. When present (Workers only),
-   *  `ctx.dbRead` is built from its connection string; takes precedence over
-   *  `DATABASE_REPLICA_URL`. Wire in `wrangler.toml` exactly like `HYPERDRIVE`
-   *  but pointed at the replica's Hyperdrive config. */
-  HYPERDRIVE_REPLICA?: Hyperdrive;
   REALTIME?: DurableObjectNamespace;
   /** Per-key counter for the rate limiter (`lib/rate-limit.ts`). One DO per
    *  `(label, ip)` key — collapses isolate-rotation drift into a single
@@ -628,7 +623,7 @@ export interface Env {
  * Every string-valued config field on {@link Env} — i.e. everything an
  * environment-variable source (`process.env`, `Deno.env`) can supply. The
  * Cloudflare *binding* fields (D1 / R2 / ASSETS / AI / VECTORIZE_* /
- * HYPERDRIVE* / REALTIME / RATE_LIMIT / CLOUD_REPORT_SERVICE) are objects the
+ * REALTIME / RATE_LIMIT / CLOUD_REPORT_SERVICE) are objects the
  * Workers runtime injects and are intentionally absent here.
  *
  * `envFromSource` maps exactly these keys, so the non-Worker entries

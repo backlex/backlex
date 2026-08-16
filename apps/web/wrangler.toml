@@ -35,6 +35,12 @@ head_sampling_rate = 1
 "@cf-wasm/photon" = "./src/server/shims/photon-shim.ts"
 
 [vars]
+# ⚠️ FORKS MUST CHANGE THIS. `APP_URL` is the canonical origin better-auth
+# builds callback/redirect URLs from and the origin the CORS allow-list is
+# seeded with — leaving it pointing at somebody else's deployment breaks
+# sign-in on yours. The value below is *this* repo's own control worker, not a
+# placeholder: it is load-bearing for the live deploy, so don't "clean it up"
+# in place — a fork replaces it, and `R2_PUBLIC_BASE` below, with its own.
 APP_URL = "https://backlex-admin.kinyasfurkan.workers.dev"
 # Public r2.dev origin for the `workeros-files` R2 bucket. Lets the storage
 # route ask Cloudflare Image Resizing to transform public files at the edge

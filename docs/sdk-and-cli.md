@@ -581,17 +581,16 @@ set when the key was issued govern what the agent can call — see
 
 ## Adding the SDK to a separate repo
 
-The SDK is published as `backlex` (workspace today; NPM package
-in a follow-up). To use locally:
-
-```bash
-bun add file:../backlex/packages/client
-```
-
-Or, once published:
+The SDK is published as `backlex` on npm (and on JSR):
 
 ```bash
 bun add backlex
+```
+
+To develop against an unreleased local checkout instead:
+
+```bash
+bun add file:../backlex/packages/client
 ```
 
 The SDK has zero dependencies beyond `@backlex/core` (types only) and

@@ -14,7 +14,7 @@ hand-written ergonomic layer here, optional OpenAPI-generated models underneath
 <dependency>
   <groupId>com.backlex</groupId>
   <artifactId>backlex-kotlin</artifactId>
-  <version>0.0.1</version>   <!-- not yet published -->
+  <version>0.0.1</version>
 </dependency>
 ```
 

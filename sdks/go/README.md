@@ -10,7 +10,7 @@ established by the Python port: hand-written ergonomic layer here, optional
 OpenAPI-generated models underneath (see [Hybrid codegen](#hybrid-codegen)).
 
 ```bash
-go get github.com/backlex/backlex-go   # not yet published
+go get github.com/backlex/backlex-go
 ```
 
 ## Quickstart

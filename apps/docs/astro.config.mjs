@@ -124,6 +124,7 @@ export default defineConfig({
             { slug: "storage" },
             { slug: "resumable-uploads" },
             { slug: "draft-publish" },
+            { slug: "retirement" },
             { slug: "realtime" },
             { slug: "reactive-queries" },
             { slug: "offline-sync" },
@@ -156,6 +157,7 @@ export default defineConfig({
           label: "Auth",
           items: [
             { slug: "auth-planes" },
+            { slug: "app-organizations" },
             { slug: "sso" },
             { slug: "third-party-auth" },
             { slug: "api-keys-and-email" },

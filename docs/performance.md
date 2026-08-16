@@ -70,6 +70,41 @@ each row's `(id, updatedAt)`) plus the params that change the body. A matching
 per-user and always-revalidated — never a shared cache. Layers on top of the
 existing per-isolate schema cache so even a cache hit can 304.
 
+### D1 read replication via the Sessions API
+
+GET reads on the D1 path are served from the nearest replica. `app.ts` opens a
+**per-request** Sessions-API client (`createD1SessionClient`, exported from
+`@backlex/db/sqlite`) and hands the request's `ctx.db` to it, so route handlers
+read through the session while the base `Ctx` — and the better-auth instance it
+carries — stays bound to the original binding, keeping auth writes on primary.
+
+Read-your-writes survives across requests because the bookmark round-trips: the
+middleware reads `x-d1-bookmark` off the request (falling back to
+`first-unconstrained`, which lets Cloudflare pick the nearest replica when there
+is no anchor), and stamps `session.getBookmark()` onto the response after
+`next()` so a downstream handler cannot clobber it. The admin client sends it
+back on the following request (`client/lib/api.ts`). Mutations route to primary
+whatever the constraint is.
+
+The SDK deliberately does **not** carry the bookmark — see
+[Architecture → Why the admin keeps its own client](/architecture/).
+
+### Read-set-tracked reactive SSE invalidation
+
+Instead of broadcasting every collection event to every subscriber and filtering
+client-side, the server narrows each live query's stream to the events that
+actually affect it, so invalidation cost scales with *affected* subscriptions
+rather than the total.
+
+A live query's `filter` is evaluated server-side, so a subscription only receives
+matching events; membership transitions (`enter` / `leave` / `update`) are
+computed on the server, so an update that pushes a row out of the result set is
+still delivered rather than silently dropped; and windowed live queries skip the
+reconcile refetch on inserts. All three are wired into the SDK `liveQuery`. They
+share the in-memory `matchesCondition` evaluator at the emit chokepoint, so both
+transports (the in-process / Redis fan-out and the Durable Object socket path)
+apply identical rules.
+
 ### Already in place (verified during the audit)
 
 - **Per-isolate caches** — collection metadata (`(tenant, slug)`, 30s TTL),
@@ -302,24 +337,9 @@ These were evaluated and intentionally left for a follow-up — each needs an
 environment the test harness can't provide, a product/UX decision, or is a
 multi-week project. They are decisions, not forgotten TODOs.
 
-### D1 read replication via the Sessions API
-
-**Win:** the biggest global read-latency reduction on the D1 path — GET reads
-served from a nearby replica via `env.DB.withSession(constraint|bookmark)`, with
-the bookmark threaded response-header → client → next request for
-read-your-writes + monotonic reads.
-
-**Why deferred:** a D1 session is **per-request** (`withSession()` is bound to
-one request's bookmark), but Backlex's `Ctx` — including `db`/`dbRead` — is
-built **per-isolate** and memoized (WeakMap on the `Env`). Wiring sessions means
-a per-request read-db layer that doesn't fit the current per-isolate model, and
-none of it is exercisable in the `bun:sqlite` test harness (no `env.D1`), so it
-would ship to the cloud fleet untested. **Plan:** introduce a request-scoped
-`dbRead` override (middleware reads `x-d1-bookmark`, calls
-`env.D1.withSession(bookmark ?? "first-unconstrained")`, stashes a Drizzle bound
-to that session on the request; an `after` hook sets `session.getBookmark()` on
-the response), then point read handlers at the request `dbRead`. Verify on a
-real D1 with replication enabled (`read_replication.mode=auto`) before merge.
+> Two items that used to sit here have since shipped and moved up into
+> **Shipped**: D1 read replication via the Sessions API, and read-set-tracked
+> reactive SSE invalidation. Don't re-plan them.
 
 ### Admin items table virtualization
 
@@ -336,18 +356,3 @@ with the spacer-row technique (keeps the semantic table + sticky columns
 intact), inside a bounded `ScrollArea`; update `ItemsTableSkeleton` to match;
 verify geometry at both breakpoints.
 
-### Read-set-tracked reactive SSE invalidation
-
-**Win:** instead of broadcasting every collection event to every subscriber and
-filtering client-side, the server narrows each live query's stream to the events
-that actually affect it. Invalidation cost scales with *affected* subscriptions,
-not total.
-
-**Shipped.** A live query's `filter` is evaluated server-side, so a subscription
-only receives matching events; membership transitions (`enter` / `leave` /
-`update`) are computed on the server, so an update that pushes a row out of the
-result set is still delivered rather than silently dropped; and windowed live
-queries skip the reconcile refetch on inserts. All three are wired into the SDK
-`liveQuery`. They share the in-memory `matchesCondition` evaluator at the emit
-chokepoint, so both transports (the in-process / Redis fan-out and the Durable
-Object socket path) apply identical rules.

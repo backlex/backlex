@@ -10,7 +10,7 @@ hand-written ergonomic layer here, optional OpenAPI-generated models underneath
 (see [Hybrid codegen](#hybrid-codegen)).
 
 ```bash
-dotnet add package Backlex   # not yet published
+dotnet add package Backlex
 ```
 
 ## Quickstart

@@ -11,7 +11,7 @@ hand-written ergonomic layer here, optional OpenAPI-generated models underneath.
 ```yaml
 # pubspec.yaml
 dependencies:
-  backlex: ^0.0.1   # not yet published
+  backlex: ^0.0.1
 ```
 
 ## Quickstart

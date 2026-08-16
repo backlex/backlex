@@ -9,7 +9,7 @@ Part of backlex's multi-language SDK effort; follows the **hybrid** model:
 hand-written ergonomic layer here, optional OpenAPI-generated models underneath.
 
 ```bash
-composer require backlex/backlex   # not yet published
+composer require backlex/backlex
 ```
 
 ## Quickstart

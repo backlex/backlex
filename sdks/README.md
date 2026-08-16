@@ -6,8 +6,13 @@ Official client SDKs for the backlex API, one per ecosystem. They all wrap the
 way, with the same wire format.
 
 > Each is a thin, hand-written ergonomic layer verified with offline contract +
-> HTTP-layer tests. All are Apache-2.0 and **release-ready** (LICENSE + registry
-> metadata in place), but not yet pushed to a registry — see [`PUBLISHING.md`](./PUBLISHING.md).
+> HTTP-layer tests. All are Apache-2.0 and **published at `0.0.1`** — Python
+> (PyPI), .NET (NuGet), Ruby (RubyGems), Dart (pub.dev), Rust (crates.io), PHP
+> (Packagist), Go (`github.com/backlex/backlex-go`), Swift
+> (`github.com/backlex/backlex-swift`), Java + Kotlin (Maven Central,
+> `com.backlex:backlex` / `com.backlex:backlex-kotlin`). The TypeScript SDK is
+> `backlex` on npm and ships on its own version line. Release runbook:
+> [`PUBLISHING.md`](./PUBLISHING.md).
 
 ## The SDKs
 

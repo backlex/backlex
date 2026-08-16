@@ -12,7 +12,7 @@ hand-written ergonomic layer here, optional OpenAPI-generated models underneath.
 ```toml
 # Cargo.toml
 [dependencies]
-backlex = "0.0.1"   # not yet published
+backlex = "0.0.1"
 serde_json = "1"
 ```
 

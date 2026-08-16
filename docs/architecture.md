@@ -33,7 +33,8 @@ picks the right implementation based on bindings/env.
 | `VectorAdapter`     | `pgvectorAdapter`  | `vectorizeAdapter`      | `pgvectorAdapter`     |
 | Realtime            | in-proc + SSE      | DO (Hibernation API) → SSE bridge | SSE loads but impractical — Lambda is stateless, function timeout caps the stream |
 | `EmailAdapter`      | `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` | same minus `smtp` (no raw TCP) | `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` |
-| `ImageAdapter`      | `bunImage`         | `cfImage`               | `passthroughImage`    |
+| `ImageAdapter`      | `bunImage`         | `cfImage`               | `sharpImage` (Vercel) → `wasmImage` → `passthroughImage` |
+| `EdgeImageAdapter`  | —                  | `cfEdgeImage` (Image Resizing) | `netlifyEdgeImage` (Netlify Image CDN) on Netlify |
 | `SamlAdapter`       | `samlify`          | `samlify` (via `nodejs_compat`) | `samlify` (Node 22 native crypto) |
 | `LdapAdapter`       | `ldapts`           | — (no raw TCP; aliased to a throwing shim) | `ldapts` (Node 22 has raw TCP) |
 

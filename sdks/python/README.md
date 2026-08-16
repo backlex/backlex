@@ -10,7 +10,7 @@ hand-written ergonomic layer on top, optional OpenAPI-generated models
 underneath (see [Hybrid codegen](#hybrid-codegen)).
 
 ```bash
-pip install backlex   # not yet published — for now: pip install -e sdks/python
+pip install backlex
 ```
 
 ## Quickstart

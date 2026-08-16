@@ -9,7 +9,7 @@ Part of backlex's multi-language SDK effort; follows the **hybrid** model:
 hand-written ergonomic layer here, optional OpenAPI-generated models underneath.
 
 ```bash
-gem install backlex   # not yet published
+gem install backlex
 ```
 
 ## Quickstart

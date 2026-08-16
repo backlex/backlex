@@ -128,9 +128,12 @@ the wrong adapter at runtime, or breaks the URL rewrite in
 
 The CI matrix in `.github/workflows/test.yml::runtime-smoke` boots
 each runtime in-runner and exercises a shared smoke contract over
-real HTTP. Matrix: `[bun, vercel, netlify]`. (Cloudflare is excluded
-because `wrangler dev` needs auth for the `[ai]` binding; Layer 2
-covers CF bundle validation.)
+real HTTP. Matrix: `[bun, vercel, netlify, cloudflare, lambda, gcp,
+azure, deno]` — eight runtimes. Cloudflare **is** covered: the slot boots
+the real worker bundle under `wrangler dev --local` against
+`wrangler.ci.toml`, a sibling of `wrangler.toml` with the `[ai]` binding
+removed (the one binding that needs a real CF login). See the CF D1 note
+under [What it catches](#what-it-catches) below.
 
 ### Files
 

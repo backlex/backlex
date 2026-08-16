@@ -11,7 +11,7 @@ hand-written ergonomic layer here, optional OpenAPI-generated models underneath
 
 ```swift
 // Package.swift
-.package(url: "https://github.com/backlex/backlex-swift", from: "0.0.1")  // not yet published
+.package(url: "https://github.com/backlex/backlex-swift", from: "0.0.1")
 ```
 
 ## Quickstart

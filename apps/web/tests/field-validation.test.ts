@@ -272,6 +272,117 @@ describe("field validation: cross-field rule", () => {
     });
     expect(res.status).toBe(422);
   });
+
+  /**
+   * An ordering with a missing operand is a question, not a violation.
+   *
+   * The matcher these rules run through answers "does this row match?", and for
+   * a permission filter its treatment of an absent value is exactly right — a
+   * row with no amount must not match `amount >= 100`. Asked as a VALIDATION
+   * rule the same answer is wrong: a draft that has neither date yet has not
+   * put them in the wrong order, and refusing it says something that did not
+   * happen. It said "End date must be on or after start date" about a row with
+   * no dates at all.
+   *
+   * The three cases below are the whole shape of it; the two 422 tests above
+   * are what prove the rule still bites, so this is a narrowing and not a
+   * removal.
+   */
+  test("neither date set → 201, there is nothing to order", async () => {
+    const res = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(201);
+  });
+
+  test("only the end date set → 201, nothing to compare it against", async () => {
+    const res = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ end_date: ms("2025-02-01T00:00:00.000Z") }),
+    });
+    expect(res.status).toBe(201);
+  });
+
+  test("only the start date set → 201", async () => {
+    const res = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ start_date: ms("2025-02-01T00:00:00.000Z") }),
+    });
+    expect(res.status).toBe(201);
+  });
+
+  test("clearing the end date is allowed, not read as 1970", async () => {
+    // The admin form clears a box by sending `""`, which coerces to the number
+    // 0 — so removing an end date used to be refused for being "before" a start
+    // date in 2025. Absent has to mean absent on the way in, not the epoch.
+    const res = await h.fetch(`/api/items/${slug}/${id}`, {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ end_date: "" }),
+    });
+    expect(res.status).toBe(200);
+  });
+});
+
+/**
+ * The narrowing is per-OPERATOR, not per-rule: a rule keeps every part of
+ * itself that the row can still answer. Skipping the whole rule would be the
+ * easy version and would quietly stop enforcing bounds that have nothing to do
+ * with the missing sibling.
+ */
+describe("field validation: a partly-answerable rule still enforces its answerable half", () => {
+  let h: TestHarness;
+  const slug = `capped_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const res = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "floor", type: "integer" },
+          {
+            name: "amount",
+            type: "integer",
+            validation: {
+              rule: { amount: { _gte: "$field.floor", _lte: 100 } },
+              message: "Amount must be at least the floor and at most 100",
+            },
+          },
+        ],
+      }),
+    });
+    expect(res.status).toBe(201);
+  });
+
+  afterAll(() => h.cleanup());
+
+  const post = (body: unknown) =>
+    h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(body),
+    });
+
+  test("with no floor, the literal ceiling is still enforced", async () => {
+    expect((await post({ amount: 500 })).status).toBe(422);
+  });
+
+  test("with no floor, a value under the ceiling is accepted", async () => {
+    expect((await post({ amount: 50 })).status).toBe(201);
+  });
+
+  test("with a floor, both halves apply", async () => {
+    expect((await post({ floor: 10, amount: 5 })).status).toBe(422);
+    expect((await post({ floor: 10, amount: 50 })).status).toBe(201);
+  });
 });
 
 describe("field validation: schema consistency", () => {

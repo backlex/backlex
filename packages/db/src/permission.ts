@@ -593,3 +593,93 @@ export const matchesCondition = (
   ctx: AuthSubject,
   opts: EvalOpts = {},
 ): boolean => matchesInner(row, cond, ctx, opts.now ?? Date.now());
+
+/** Operators that ORDER two values. These are the ones with nothing to say
+ *  when either side is missing — an equality still has an answer (`_eq` against
+ *  an absent column is simply false, and that is a real verdict). */
+const ORDERED_OPS = new Set(["_gt", "_gte", "_lt", "_lte", "_between"]);
+
+/** Absent for the purpose of "is there anything to compare?" — including the
+ *  empty string, which is how the admin form clears a box. */
+const absent = (v: unknown): boolean => v === undefined || v === null || v === "";
+
+/**
+ * Narrow a condition to the part this row can actually be judged on, for the
+ * VALIDATION path only. Returns `null` when the row supports no verdict at all.
+ *
+ * The problem this exists for: {@link matchesCondition} answers "does this row
+ * match?", and for a filter its treatment of a missing value is exactly right —
+ * `amount >= 100` must not match a row with no amount, because a permission
+ * that fell open on absence would be a hole. A cross-field VALIDATION rule asks
+ * a different question — "is this row invalid?" — and there the same answer is
+ * wrong: `due_date >= issue_date` on a draft that has neither date yet is not a
+ * violation, it is a question with no operands. Before this, an invoice created
+ * without dates was refused with "An invoice can't fall due before it is
+ * issued", which is not what happened and does not say what to do.
+ *
+ * `range` already reached this conclusion for the ordering it enforces itself —
+ * `rangeOrderError` returns null when either endpoint is missing, "fine by
+ * construction: an open period has nothing to compare". This is the same rule
+ * for the hand-written half.
+ *
+ * The narrowing is per-operator, not per-rule, so a rule keeps every part that
+ * IS answerable: `{a: {_gte: "$field.b", _lte: 100}}` with `b` absent still
+ * enforces the ceiling. Unknown propagates the way it must through the
+ * connectives — an `$or` branch that cannot be judged might have been the one
+ * that satisfied it, and a `$not` of an unknown is unknown — so only `$and`
+ * survives partially, which is sound because a conjunction only ever gets
+ * stricter as branches drop.
+ *
+ * Deliberately NOT a flag on `matchesCondition`: one boolean away from turning
+ * a permission's fail-closed into a fail-open is not a place to put an option.
+ */
+export const checkableRule = (
+  row: Record<string, unknown>,
+  cond: Condition,
+): Condition | null => {
+  const walk = (node: unknown): unknown => {
+    if (node === null || node === undefined || typeof node !== "object") return node;
+    const c = node as Record<string, unknown>;
+    if (Array.isArray(c.$and)) {
+      const kept = (c.$and as unknown[]).map(walk).filter((x) => x !== null);
+      if (kept.length === 0) return null;
+      return kept.length === 1 ? kept[0] : { $and: kept };
+    }
+    if (Array.isArray(c.$or)) {
+      const parts = (c.$or as unknown[]).map(walk);
+      // One unjudgeable branch makes the whole disjunction unjudgeable.
+      if (parts.some((x) => x === null)) return null;
+      return { $or: parts };
+    }
+    if (c.$not !== undefined) {
+      const inner = walk(c.$not);
+      return inner === null ? null : { $not: inner };
+    }
+    const out: Record<string, unknown> = {};
+    for (const [field, cmp] of Object.entries(c)) {
+      if (cmp === null || typeof cmp !== "object" || Array.isArray(cmp)) {
+        out[field] = cmp;
+        continue;
+      }
+      const left = lookup(row, field);
+      const rest: Record<string, unknown> = {};
+      for (const [op, operand] of Object.entries(cmp as Record<string, unknown>)) {
+        if (ORDERED_OPS.has(op)) {
+          if (absent(left)) continue;
+          const sides = Array.isArray(operand) ? operand : [operand];
+          const missing = sides.some(
+            (s) =>
+              typeof s === "string" &&
+              s.startsWith("$field.") &&
+              absent(lookup(row, s.slice("$field.".length))),
+          );
+          if (missing) continue;
+        }
+        rest[op] = operand;
+      }
+      if (Object.keys(rest).length > 0) out[field] = rest;
+    }
+    return Object.keys(out).length === 0 ? null : out;
+  };
+  return walk(cond) as Condition | null;
+};

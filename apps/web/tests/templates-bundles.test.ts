@@ -369,8 +369,8 @@ describe("a catalog template arrives with its numbering already running", () => 
 
     // A real create takes the next one — the whole point of allocating rather
     // than copying a literal out of the sample.
-    // Both dates supplied: the template's own cross-field rule compares them,
-    // and it fires when they are absent as well as when they are out of order.
+    // Dates supplied so the row is realistic; the template's cross-field rule
+    // no longer objects to their absence either (see field-validation.test.ts).
     const created = await h.fetch(
       "/api/items/invoices",
       json({

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { AppError, type AuthSubject } from "@backlex/core";
 import {
+  checkableRule,
   findRetireField,
   isLocalized,
   isRetiredValue,
@@ -76,7 +77,13 @@ export const enforceValidationRules = (
     if (!rule) continue;
     // Advisory rules don't block — see collectFieldWarnings.
     if (f.validation?.severity && f.validation.severity !== "error") continue;
-    if (!matchesCondition(row, rule, subject)) {
+    // Narrowed to the part this row can be judged on first. An ordering with a
+    // missing operand is a question, not a violation — see `checkableRule`.
+    // Without it, creating an invoice with neither date yet was refused with
+    // "An invoice can't fall due before it is issued".
+    const checkable = checkableRule(row, rule);
+    if (!checkable) continue;
+    if (!matchesCondition(row, checkable, subject)) {
       throw new AppError(
         "VALIDATION",
         f.validation?.message ?? `Field "${f.name}" failed its validation rule`,
@@ -116,7 +123,10 @@ export const collectFieldWarnings = (
       continue; // one hint per field is enough
     }
     const rule = f.validation?.rule;
-    if (rule && !matchesCondition(row, rule, subject)) {
+    // Same narrowing as the blocking path — an advisory rule must not hint at a
+    // violation it has no operands to have found either.
+    const checkable = rule ? checkableRule(row, rule) : null;
+    if (checkable && !matchesCondition(row, checkable, subject)) {
       warnings.push({
         field: f.name,
         severity: sev,

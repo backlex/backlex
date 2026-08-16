@@ -220,6 +220,27 @@ describe("bundled artifacts are consistent with their own template", () => {
     }
   });
 
+  test("no sample writes a column the server owns", () => {
+    // A literal in one of these is dropped by the seeder, so it is not a bug
+    // that shows up — it is a line of the catalog that reads as if it does
+    // something and does not. Both classes are caught here rather than left to
+    // whoever next wonders why the demo invoice is numbered differently.
+    for (const tpl of TEMPLATES) {
+      for (const col of tpl.collections) {
+        const owned = col.fields.filter((f) => f.sequence || f.rollup).map((f) => f.name);
+        if (owned.length === 0) continue;
+        for (const [i, sample] of (col.samples ?? []).entries()) {
+          for (const name of owned) {
+            expect(
+              name in sample,
+              `${tpl.id}/${col.slug} sample ${i}: "${name}" is maintained by the server`,
+            ).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
   test("bundled KPI alerts and pins are complete", () => {
     for (const tpl of TEMPLATES) {
       for (const kpi of tpl.kpis ?? []) {
@@ -248,6 +269,79 @@ describe("bundled artifacts are consistent with their own template", () => {
         }
       }
     }
+  });
+});
+
+/**
+ * The invoicing vertical, applied for real through the REST route.
+ *
+ * The synthetic fixture below proves the seeder; this proves the CATALOG — that
+ * a template an operator can actually pick arrives with its document numbers
+ * issued by the server and its counter left standing, so the first invoice they
+ * raise does not collide with a demo row.
+ */
+describe("a catalog template arrives with its numbering already running", () => {
+  let h: TestHarness;
+
+  const json = (body: unknown): RequestInit => ({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const applied = await h.fetch("/api/admin/templates/apply", json({ templateId: "invoicing" }));
+    expect(applied.status).toBe(201);
+  });
+
+  afterAll(() => h.cleanup());
+
+  test("the seeded invoices are numbered by the counter, and the next one follows", async () => {
+    const seeded = (
+      (await (await h.fetch("/api/items/invoices?sort=number")).json()) as {
+        data: { number: string }[];
+      }
+    ).data;
+    expect(seeded.length).toBe(2);
+    // The year comes from the clock, so the shape is what is pinned.
+    expect(seeded[0]!.number).toMatch(/^INV-\d{4}-0001$/);
+    expect(seeded[1]!.number).toMatch(/^INV-\d{4}-0002$/);
+
+    // A real create takes the next one — the whole point of allocating rather
+    // than copying a literal out of the sample.
+    // Both dates supplied: the template's own cross-field rule compares them,
+    // and it fires when they are absent as well as when they are out of order.
+    const created = await h.fetch(
+      "/api/items/invoices",
+      json({
+        status: "draft",
+        currency: "USD",
+        issue_date: 1_760_000_000_000,
+        due_date: 1_762_000_000_000,
+      }),
+    );
+    expect(created.status).toBe(201);
+    const row = ((await created.json()) as { data: { number: string } }).data;
+    expect(row.number).toMatch(/^INV-\d{4}-0003$/);
+  });
+
+  test("a client cannot write the number itself", async () => {
+    const res = await h.fetch(
+      "/api/items/invoices",
+      json({
+        status: "draft",
+        currency: "USD",
+        issue_date: 1_760_000_000_000,
+        due_date: 1_762_000_000_000,
+        number: "INV-2026-0001",
+      }),
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    // …and refused for the right reason, not for the dates.
+    expect(body.error.message).toContain("sequence");
   });
 });
 

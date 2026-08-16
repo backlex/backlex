@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedMoneyIn, computedNum, date, email, file, flag, flow, half, hint, money, moneyIn, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedMoneyIn, computedNum, date, email, file, flag, flow, half, hint, money, moneyIn, ms, notes, num, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const invoicing: SchemaTemplate = {
   id: "invoicing",
@@ -46,7 +46,7 @@ export const invoicing: SchemaTemplate = {
       slug: "quotes", group: "Sales", singular: "Quote", plural: "Quotes", defaultSort: "-valid_until",
       fields: stacked(
         sec("Quote", [
-          ...half(text("number", { required: true, unique: true }), rel("customer", "customers")),
+          ...half(seq("number", "Q-{YYYY}-{####}"), rel("customer", "customers")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], {
               default: "draft",
@@ -67,8 +67,11 @@ export const invoicing: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { number: "Q-2026-014", customer: { ref: "customers:0" }, status: "accepted", issue_date: ms("2026-05-18"), valid_until: ms("2026-06-18"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208 },
-        { number: "Q-2026-015", customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-25"), valid_until: ms("2026-07-25"), currency: "EUR", subtotal: 6200, tax_total: 1240, total: 7440, notes: "Two-phase rollout; phase 2 optional." },
+        // No `number` here, and none in any sample of a collection that issues
+        // one: the value is allocated by the counter at seed time, so a literal
+        // would be silently dropped AND leave the series looking wrong.
+        { customer: { ref: "customers:0" }, status: "accepted", issue_date: ms("2026-05-18"), valid_until: ms("2026-06-18"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208 },
+        { customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-25"), valid_until: ms("2026-07-25"), currency: "EUR", subtotal: 6200, tax_total: 1240, total: 7440, notes: "Two-phase rollout; phase 2 optional." },
       ],
     },
     {
@@ -85,9 +88,15 @@ export const invoicing: SchemaTemplate = {
     },
     {
       slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issue_date",
+      // An invoice ledger is something people work through a column at a time —
+      // what is still a draft, what has been sent, what has gone overdue. Named
+      // rather than left to auto-detect: this collection has exactly one
+      // dropdown today, but the moment a second one arrives the board would
+      // silently regroup around whichever came first.
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Invoice", [
-          ...half(text("number", { required: true, unique: true }), rel("customer", "customers")),
+          ...half(seq("number", "INV-{YYYY}-{####}"), rel("customer", "customers")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("partial", C.amber, "Partially paid"), ch("paid", C.green), ch("overdue", C.red), ch("void", C.slate)], {
               default: "draft",
@@ -107,6 +116,17 @@ export const invoicing: SchemaTemplate = {
             date("issue_date", { indexed: true, label: "Issue date" }),
             date("due_date", { indexed: true, label: "Due date", validation: { rule: { due_date: { _gte: "$field.issue_date" } }, message: "An invoice can't fall due before it is issued." } }),
           ),
+          // Asked for exactly when there is something to explain. Marked
+          // `required` outright it would block every draft; left optional it
+          // would let an invoice be cancelled with no record of why, which is
+          // the one thing an auditor comes back for.
+          text("void_reason", {
+            label: "Reason for voiding",
+            conditions: [
+              when("status", "_eq", "void", "required"),
+              when("status", "_neq", "void", "hidden"),
+            ],
+          }),
         ]),
         sec("Amounts", [
           hint("invoice_balance", "Balance due is generated as total − amount paid; record money in as a Payment rather than editing it here."),
@@ -117,8 +137,8 @@ export const invoicing: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { number: "INV-2026-001", customer: { ref: "customers:0" }, status: "paid", issue_date: ms("2026-06-01"), due_date: ms("2026-07-01"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208, amount_paid: 5208 },
-        { number: "INV-2026-002", customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-20"), due_date: ms("2026-07-05"), currency: "EUR", subtotal: 1500, tax_total: 300, total: 1800, amount_paid: 0 },
+        { customer: { ref: "customers:0" }, status: "paid", issue_date: ms("2026-06-01"), due_date: ms("2026-07-01"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208, amount_paid: 5208 },
+        { customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-20"), due_date: ms("2026-07-05"), currency: "EUR", subtotal: 1500, tax_total: 300, total: 1800, amount_paid: 0 },
       ],
     },
     {
@@ -170,7 +190,7 @@ export const invoicing: SchemaTemplate = {
       slug: "credit_notes", group: "Billing", singular: "Credit note", plural: "Credit notes", defaultSort: "-issued_at",
       fields: stacked(
         sec("Credit note", [
-          ...half(text("number", { required: true, unique: true }), money("amount")),
+          ...half(seq("number", "CN-{YYYY}-{####}"), money("amount")),
           ...half(rel("invoice", "invoices"), rel("customer", "customers")),
         ]),
         sec("Reason", [
@@ -181,7 +201,7 @@ export const invoicing: SchemaTemplate = {
           ...half(date("issued_at", { indexed: true, label: "Issued at" }), notes("note")),
         ]),
       ),
-      samples: [{ number: "CN-2026-001", invoice: { ref: "invoices:0" }, customer: { ref: "customers:0" }, amount: 150, status: "applied", reason: "correction", issued_at: ms("2026-06-30"), note: "Overbilled one consulting hour." }],
+      samples: [{ invoice: { ref: "invoices:0" }, customer: { ref: "customers:0" }, amount: 150, status: "applied", reason: "correction", issued_at: ms("2026-06-30"), note: "Overbilled one consulting hour." }],
     },
     {
       slug: "payment_reminders", group: "Billing", singular: "Payment reminder", plural: "Payment reminders", defaultSort: "-sent_at",
@@ -225,7 +245,7 @@ export const invoicing: SchemaTemplate = {
       slug: "purchase_orders", group: "Payables", singular: "Purchase order", plural: "Purchase orders", defaultSort: "-issue_date",
       fields: stacked(
         sec("Order", [
-          ...half(text("number", { required: true, unique: true }), rel("vendor", "vendors")),
+          ...half(seq("number", "PO-{#####}"), rel("vendor", "vendors")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("billed", C.teal), ch("cancelled", C.red)], { default: "draft" }),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
@@ -236,13 +256,17 @@ export const invoicing: SchemaTemplate = {
           ...half(moneyIn("total"), notes("notes")),
         ]),
       ),
-      samples: [{ number: "PO-2026-007", vendor: { ref: "vendors:1" }, status: "accepted", issue_date: ms("2026-06-18"), expected_date: ms("2026-06-25"), currency: "USD", total: 227.85 }],
+      samples: [{ vendor: { ref: "vendors:1" }, status: "accepted", issue_date: ms("2026-06-18"), expected_date: ms("2026-06-25"), currency: "USD", total: 227.85 }],
     },
     {
       slug: "bills", group: "Payables", singular: "Bill", plural: "Bills", defaultSort: "-issue_date",
       fields: stacked(
         sec("Bill", [
-          ...half(text("number", { required: true, unique: true }), rel("vendor", "vendors")),
+          // NOT a sequence, and that is the distinction worth keeping: a bill
+          // carries the number the VENDOR put on it. Every other document here
+          // is one this business issues, so the server owns those; this one is
+          // typed in off a piece of paper somebody else printed.
+          ...half(text("number", { required: true, unique: true, label: "Vendor's number" }), rel("vendor", "vendors")),
           ...half(
             select("status", [ch("draft", C.gray), ch("awaiting_payment", C.amber, "Awaiting payment"), ch("paid", C.green), ch("overdue", C.red)], { default: "draft" }),
             rel("purchase_order", "purchase_orders", { label: "Against PO" }),

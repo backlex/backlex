@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, flow, half, hint, int, money, moneyIn, ms, notes, num, pct, position, rel, sec, select, slugField, stacked, text, ts, url } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, flow, half, hint, int, money, moneyIn, ms, notes, num, pct, position, rel, sec, select, seq, slugField, stacked, text, ts, url, when } from "../dsl";
 
 export const saas: SchemaTemplate = {
   id: "saas",
@@ -174,6 +174,7 @@ export const saas: SchemaTemplate = {
     },
     {
       slug: "subscriptions", group: "Billing", singular: "Subscription", plural: "Subscriptions", defaultSort: "-current_period_end",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Subscription", [
           ...half(
@@ -190,7 +191,7 @@ export const saas: SchemaTemplate = {
           ...half(ts("trial_end", { label: "Trial ends" }), bool("cancel_at_period_end", { default: false, label: "Cancel at period end" })),
         ]),
         sec("Churn", [
-          ...half(ts("canceled_at", { label: "Canceled at" }), rel("cancellation_reason", "cancellation_reasons", { label: "Cancellation reason" })),
+          ...half(ts("canceled_at", { label: "Canceled at", conditions: [when("status", "_eq", "canceled", "required"), when("status", "_neq", "canceled", "hidden")] }), rel("cancellation_reason", "cancellation_reasons", { label: "Cancellation reason" })),
         ], { folded: true }),
       ),
       samples: [{ account: { ref: "accounts:0" }, status: "active", collection_method: "charge_automatically", coupon: { ref: "coupons:0" }, current_period_start: ms("2026-06-01"), current_period_end: ms("2026-07-01") }],
@@ -207,9 +208,10 @@ export const saas: SchemaTemplate = {
     },
     {
       slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issued_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Invoice", [
-          ...half(text("number", { unique: true }), select("status", [ch("draft", C.gray), ch("open", C.blue), ch("paid", C.green), ch("void", C.slate), ch("uncollectible", C.red)], {
+          ...half(seq("number", "INV-{YYYY}-{####}"), select("status", [ch("draft", C.gray), ch("open", C.blue), ch("paid", C.green), ch("void", C.slate), ch("uncollectible", C.red)], {
             default: "draft",
             ...flow(
               { draft: ["open", "void"], open: ["paid", "void", "uncollectible"] },
@@ -228,7 +230,7 @@ export const saas: SchemaTemplate = {
           ...half(ts("period_start", { range: { end: "period_end" }, label: "Period start" }), ts("period_end", { label: "Period end" })),
         ]),
       ),
-      samples: [{ account: { ref: "accounts:0" }, subscription: { ref: "subscriptions:0" }, number: "INV-1001", status: "paid", amount_due: 49, amount_paid: 49, currency: "USD", billing_reason: "subscription_cycle", issued_at: ms("2026-06-01") }],
+      samples: [{ account: { ref: "accounts:0" }, subscription: { ref: "subscriptions:0" }, status: "paid", amount_due: 49, amount_paid: 49, currency: "USD", billing_reason: "subscription_cycle", issued_at: ms("2026-06-01") }],
     },
     {
       slug: "invoice_lines", group: "Billing", singular: "Invoice line", plural: "Invoice lines",
@@ -248,7 +250,7 @@ export const saas: SchemaTemplate = {
       slug: "credit_notes", group: "Billing", singular: "Credit note", plural: "Credit notes", defaultSort: "-issued_at",
       fields: stacked(
         sec("Credit note", [
-          ...half(text("number", { unique: true }), rel("invoice", "invoices")),
+          ...half(seq("number", "CN-{YYYY}-{####}"), rel("invoice", "invoices")),
           ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
         ]),
         sec("Reason", [
@@ -259,7 +261,7 @@ export const saas: SchemaTemplate = {
           ...half(ts("issued_at", { indexed: true, label: "Issued at" }), notes("note")),
         ]),
       ),
-      samples: [{ number: "CN-1001", invoice: { ref: "invoices:0" }, amount: 10, currency: "USD", reason: "order_change", status: "issued", issued_at: ms("2026-06-05") }],
+      samples: [{ invoice: { ref: "invoices:0" }, amount: 10, currency: "USD", reason: "order_change", status: "issued", issued_at: ms("2026-06-05") }],
     },
     {
       slug: "payments", group: "Billing", singular: "Payment", plural: "Payments", defaultSort: "-created_at",
@@ -270,7 +272,7 @@ export const saas: SchemaTemplate = {
           select("status", [ch("succeeded", C.green), ch("pending", C.amber), ch("failed", C.red)], { default: "succeeded" }),
           select("payment_method", [ch("card", C.blue), ch("bank_transfer", C.teal, "Bank transfer"), ch("ach_debit", C.slate, "ACH debit")], { default: "card", label: "Payment method" }),
         ),
-        ...half(rel("method", "payment_methods", { label: "Stored method" }), text("failure_reason", { label: "Failure reason" })),
+        ...half(rel("method", "payment_methods", { label: "Stored method" }), text("failure_reason", { label: "Failure reason", conditions: [when("status", "_eq", "failed", "required"), when("status", "_neq", "failed", "hidden")] })),
       ],
       samples: [{ account: { ref: "accounts:0" }, invoice: { ref: "invoices:0" }, amount: 49, currency: "USD", status: "succeeded", payment_method: "card", method: { ref: "payment_methods:0" } }],
     },
@@ -398,6 +400,316 @@ export const saas: SchemaTemplate = {
         { name: "Payments by method", kind: "items-aggregate", viz: "bars", config: { collection: "payments", agg: "count", groupBy: "payment_method" } },
         { name: "Dunning by status", kind: "items-aggregate", viz: "bars", config: { collection: "dunning_attempts", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * The rules a subscription-billing operation runs on, already running.
+   *
+   * Two things are deliberately absent, both for the same reason — a flow's
+   * `data` is ONE row and it cannot join:
+   *
+   * - **"a payment failed, so put the subscription into past_due".** A payment
+   *   carries `account` and `invoice`; which SUBSCRIPTION the money was for is
+   *   on the invoice, one hop away. A step that guessed would move the wrong
+   *   subscription on any account holding two, so the flow opens the dunning
+   *   attempt it CAN address (the payment knows its invoice) and reports the
+   *   rest.
+   * - **"the period rolled over, so raise the next invoice".** An invoice's
+   *   lines come from `subscription_items` × `prices` — two collections the
+   *   triggering row cannot reach — so a flow could only ever produce an empty
+   *   invoice with a confident number on it.
+   */
+  flows: [
+    {
+      name: "Warn three days before a trial converts",
+      // Fires once per subscription, three days before `trial_end`, at 09:00,
+      // and only for the ones still trialing. The account's NAME is not on the
+      // subscription row, so the notice names what the row itself knows — how
+      // it will be collected — and links to the list rather than inventing a
+      // label for a company it cannot read.
+      trigger: `schedule:${JSON.stringify({
+        collection: "subscriptions",
+        field: "trial_end",
+        offset: { value: 3, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "trialing" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "A trial ends in three days",
+          body: "Collection is set to {{ data.collection_method }}. Check a payment method is on file before it converts — a trial that ends without one lands in dunning on day one.",
+          url: "/collections/subscriptions",
+        },
+      ],
+    },
+    {
+      name: "Open a dunning retry when a payment fails",
+      // `…:created` rather than `…:updated` + a condition, and that is the
+      // careful choice here: `payments.status` declares no lifecycle, so there
+      // is no transition trigger to use, and an update trigger cannot tell
+      // "just failed" from "was saved again while failed" — it would append
+      // another retry every time somebody typed into the failure reason.
+      trigger: "event:items:payments:created",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "failed" } },
+          then: [
+            {
+              // `attempt_number` is deliberately NOT written: the right value is
+              // "one more than the attempts already logged against this
+              // invoice", which is a count across sibling rows a flow cannot
+              // read. Left off, the column's own default stands and an operator
+              // renumbers a ladder that was already running.
+              type: "item.create",
+              collection: "dunning_attempts",
+              data: {
+                invoice: "{{ data.invoice }}",
+                status: "scheduled",
+                failure_message: "{{ data.failure_reason }}",
+              },
+            },
+            {
+              type: "notification",
+              title: "A payment failed",
+              body: "{{ data.failure_reason }} — a retry is scheduled against the invoice. The subscription's own status is not touched; open the invoice to see which one is affected.",
+              url: "/collections/dunning_attempts",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Sweep invoices that are open past their due date",
+      trigger: "cron:0 7 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "invoices",
+          filter: { status: { _eq: "open" }, due_date: { _lt: "$now" } },
+          // Oldest debt first, and capped — an uncollectible-heavy year would
+          // otherwise post a morning digest nobody reads to the bottom of.
+          sort: "due_date",
+          limit: 25,
+          do: [
+            {
+              // Reported, not moved. The invoice lifecycle offers no "overdue"
+              // value — the only state past `open` that says nobody paid is
+              // `uncollectible`, and writing a debt off is a decision a person
+              // makes, not one a nightly sweep makes for them.
+              type: "notification",
+              title: "Past due: invoice {{ $item.number }}",
+              body: "Still open after its due date, {{ $item.amount_due }} {{ $item.currency }} due. Chase it, or write it off as uncollectible.",
+              url: "/collections/invoices",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Warn a week before an API key expires",
+      // The failure this prevents is the one nobody sees coming: a key with an
+      // expiry set months ago stops authenticating at midnight and the
+      // customer's integration goes dark. Only `active` keys are worth a
+      // notice — a revoked one expiring is already over.
+      trigger: `schedule:${JSON.stringify({
+        collection: "api_keys",
+        field: "expires_at",
+        offset: { value: 7, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "active" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "API key {{ data.prefix }} expires in seven days",
+          body: "Issue the replacement and let the customer cut over before this one stops authenticating.",
+          url: "/collections/api_keys",
+        },
+      ],
+    },
+    {
+      name: "Email the invoice when it is finalized (needs email + a PDF renderer)",
+      // Off until both are configured — the name carries the prerequisite so
+      // nobody has to open it to find out why nothing arrived.
+      active: false,
+      // A TRANSITION trigger rather than `…:updated` plus a condition on the
+      // status: a flow sees the row as it now stands with no before-image, so
+      // an update trigger cannot tell "just became open" from "was saved again
+      // while open" — and this one MAILS a customer. `invoices.status` declares
+      // its lifecycle (draft → open is the Finalize edge), so the move
+      // announces itself, once.
+      trigger: "event:items:invoices:transition:status:*:open",
+      operations: [
+        { type: "document.render", templateKey: "subscription_invoice" },
+        {
+          type: "email",
+          to: "{{ data.account.billing_email }}",
+          subject: "Invoice {{ data.number }}",
+          html: "<p>Your invoice is attached.</p>",
+          attach: ["{{ $last.key }}"],
+        },
+      ],
+    },
+    {
+      name: "Monthly recurring-revenue report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:SaaS billing overview",
+          subject: "Subscriptions and collections — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "subscription_invoice",
+      name: "Subscription invoice",
+      description: "The invoice as the account receives it, with the period it covers.",
+      filename: "subscription-invoice-{{ data.number }}",
+      variables: ["number", "amount_due", "currency"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:18px}" +
+        "th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #e5e5e5}" +
+        "td.n,th.n{text-align:right}" +
+        ".totals{margin-top:14px;width:100%}" +
+        ".totals td{border:0;padding:3px 6px}" +
+        "</style></head><body>" +
+        "<h1>Invoice {{ data.number }}</h1>" +
+        '<p class="muted">Issued {{ data.issued_at }} · Due {{ data.due_date }}</p>' +
+        '<p class="muted">Billing period {{ data.period_start }} — {{ data.period_end }} ' +
+        "· {{ data.billing_reason }}</p>" +
+        "<p><strong>{{ data.account.name }}</strong><br>{{ data.account.billing_email }}</p>" +
+        '<table><thead><tr><th>Description</th><th class="n">Qty</th>' +
+        '<th class="n">Unit</th><th class="n">Amount</th></tr></thead><tbody>' +
+        "<!-- one row per invoice line; fill from your own query or a foreach -->" +
+        "</tbody></table>" +
+        '<table class="totals">' +
+        '<tr><td class="n"><strong>Amount due {{ data.currency }}</strong></td>' +
+        '<td class="n"><strong>{{ data.amount_due }}</strong></td></tr>' +
+        '<tr><td class="n">Paid</td><td class="n">{{ data.amount_paid }}</td></tr></table>' +
+        '<p class="muted">Charged automatically to the stored payment method unless ' +
+        "this account is billed by invoice. Tax is applied per line at the rate " +
+        "recorded against it.</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "credit_note",
+      name: "Credit note",
+      description: "A correction against an issued invoice, which cannot itself be edited.",
+      filename: "credit-note-{{ data.number }}",
+      variables: ["number", "amount", "currency"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>Credit note {{ data.number }}</h1>" +
+        '<p class="muted">Issued {{ data.issued_at }} · {{ data.status }}</p>' +
+        "<table>" +
+        "<tr><th>Against invoice</th><td>{{ data.invoice.number }}</td></tr>" +
+        "<tr><th>Account</th><td>{{ data.invoice.account.name }}</td></tr>" +
+        "<tr><th>Reason</th><td>{{ data.reason }}</td></tr>" +
+        "<tr><th>Amount</th><td>{{ data.amount }} {{ data.currency }}</td></tr>" +
+        "</table>" +
+        "<p>{{ data.note }}</p>" +
+        '<p class="muted">An issued invoice is immutable, so this document — not an ' +
+        "edit — is the record of the reduction. Apply it against the next invoice " +
+        "or refund it against the original payment.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "New billing account details",
+      collection: "accounts",
+      settings: {
+        submitLabel: "Send billing details",
+        successMessage: "Thank you — your account is set up and your first invoice will follow.",
+      },
+      fields: [
+        // `name` is exposed because the schema requires it — a required field
+        // left off the form makes the whole apply fail. `slug` is left off
+        // deliberately: it is folded from the name on write, and asking an
+        // outsider for a URL handle invites two accounts fighting over one.
+        { name: "name", label: "Company or organisation" },
+        { name: "billing_email", label: "Billing email", help: "Where invoices and receipts are sent." },
+        { name: "currency", label: "Billing currency", help: "Every invoice on this account is denominated in it." },
+        { name: "tax_status", label: "Tax treatment", help: "Choose reverse charge only if you are VAT-registered in another EU state." },
+      ],
+    },
+    {
+      // Lands unattached on purpose, and the team attaches it: `account` is a
+      // relation, which no public form may expose — an anonymous submitter
+      // choosing which account a billing contact joins is the whole of the
+      // problem. So this is a link sent TO one customer, and the row it
+      // produces is claimed once.
+      name: "Billing contact details",
+      collection: "account_members",
+      settings: {
+        submitLabel: "Send contact",
+        successMessage: "Received — we'll add this contact to your account's billing notices.",
+      },
+      fields: [
+        { name: "name", label: "Full name" },
+        { name: "email", label: "Email", help: "Invoices and dunning notices go here." },
+        { name: "role", label: "Role on the account", help: "Pick “billing” for someone who only handles invoices." },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Subscription analyst",
+      handle: "subscription-analyst",
+      description: "Answers questions about recurring revenue, churn and what is not being collected.",
+      systemPrompt:
+        "You help a SaaS billing team read its own book. Answer questions about " +
+        "accounts, subscriptions, invoices, payments, refunds, dunning and " +
+        "metered usage from the workspace's own data. A subscription is earning " +
+        "while its status is trialing, active or past_due; canceled, unpaid and " +
+        "incomplete ones are not, and past_due means the money is late rather " +
+        "than gone. Read collection from invoices — amount_due against " +
+        "amount_paid — never from a subscription's price, because coupons, " +
+        "add-ons and credit notes all land on the invoice. Amounts are " +
+        "denominated by each row's own currency, so never add two currencies " +
+        "together; give a figure per currency. Metered usage lives in " +
+        "usage_records against a subscription item, so a usage question is " +
+        "always about an item, not an account. When a figure has a seeded KPI — " +
+        "invoiced amount, collected amount, active subscriptions, cancelled " +
+        "subscriptions, failed dunning attempts — run that definition instead of " +
+        "adding rows up your own way, so your answer matches the dashboard. Be " +
+        "brief, name the account or invoice number you mean, and say plainly " +
+        "when the data does not answer the question.",
+      tools: [
+        "collections.list",
+        "collections.read",
+        "collections.aggregate",
+        "collections.search",
+        "kpis.run",
+        "dashboards.run",
+      ],
+      maxSteps: 8,
     },
   ],
 };

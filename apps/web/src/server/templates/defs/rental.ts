@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, ch, computedNum, date, email, file, flag, half, hint, int, money, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts } from "../dsl";
+import { C, ch, computedNum, date, email, file, flag, half, hint, int, money, ms, notes, num, phone, rel, rollup, sec, select, seq, stacked, tabbed, text, ts, when } from "../dsl";
 
 export const rental: SchemaTemplate = {
   id: "rental",
@@ -17,6 +17,14 @@ export const rental: SchemaTemplate = {
             select("category", [ch("tools", C.blue), ch("vehicles", C.teal), ch("av_equipment", C.purple, "A/V equipment"), ch("event", C.amber, "Event & party"), ch("other", C.gray)], { default: "other" }),
           ),
           notes("description", { searchable: true }),
+          // How many of these we actually own, kept by the server from the
+          // serialized units. It is the first half of every availability
+          // question — the second half is which of them are out right now.
+          rollup(
+            "unit_count",
+            { from: "units", via: "product", fn: "count" },
+            { label: "Units owned" },
+          ),
         ]),
         sec("Rates", [
           ...half(money("rate_hourly", { label: "Hourly rate" }), money("rate_daily", { label: "Daily rate" })),
@@ -37,6 +45,7 @@ export const rental: SchemaTemplate = {
     },
     {
       slug: "units", group: "Catalog", singular: "Unit", plural: "Units", defaultSort: "serial",
+      kanbanGroupBy: "condition",
       fields: [
         ...half(rel("product", "rental_products"), text("serial", { required: true, unique: true, label: "Serial no." })),
         ...half(
@@ -61,9 +70,10 @@ export const rental: SchemaTemplate = {
     },
     {
       slug: "rental_orders", group: "Rentals", singular: "Rental order", plural: "Rental orders", defaultSort: "-starts_at",
+      kanbanGroupBy: "status",
       fields: tabbed(
         sec("Order", [
-          ...half(text("number", { required: true, unique: true }), rel("customer", "customers")),
+          ...half(seq("number", "RO-{#####}"), rel("customer", "customers")),
           select("status", [ch("quote", C.gray), ch("reserved", C.blue), ch("picked_up", C.amber, "Picked up"), ch("returned", C.green), ch("late", C.red), ch("cancelled", C.slate)], { default: "quote" }),
         ]),
         sec("Period", [
@@ -71,7 +81,12 @@ export const rental: SchemaTemplate = {
             ts("starts_at", { indexed: true, label: "Pickup at" }),
             ts("due_back_at", { indexed: true, label: "Due back at", validation: { rule: { due_back_at: { _gte: "$field.starts_at" } }, message: "The return must be due after pickup." } }),
           ),
-          ts("returned_at", { label: "Returned at" }),
+          // "Returned" without the hour it came back is the row that makes a
+          // late fee unarguable one way or the other.
+          ts("returned_at", {
+            label: "Returned at",
+            conditions: [when("status", "_eq", "returned", "required")],
+          }),
         ]),
         sec("Totals", [
           ...half(money("subtotal"), money("deposit_held", { label: "Deposit held" })),
@@ -79,8 +94,8 @@ export const rental: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { number: "RO-3001", customer: { ref: "customers:0" }, status: "picked_up", starts_at: ms("2026-07-08T08:00:00Z"), due_back_at: ms("2026-07-15T08:00:00Z"), subtotal: 1250, deposit_held: 500, late_fees: 0, total: 1250 },
-        { number: "RO-3002", customer: { ref: "customers:0" }, status: "returned", starts_at: ms("2026-06-20T09:00:00Z"), due_back_at: ms("2026-06-22T09:00:00Z"), returned_at: ms("2026-06-23T11:00:00Z"), subtotal: 180, deposit_held: 150, late_fees: 30, total: 210 },
+        { customer: { ref: "customers:0" }, status: "picked_up", starts_at: ms("2026-07-08T08:00:00Z"), due_back_at: ms("2026-07-15T08:00:00Z"), subtotal: 1250, deposit_held: 500, late_fees: 0, total: 1250 },
+        { customer: { ref: "customers:0" }, status: "returned", starts_at: ms("2026-06-20T09:00:00Z"), due_back_at: ms("2026-06-22T09:00:00Z"), returned_at: ms("2026-06-23T11:00:00Z"), subtotal: 180, deposit_held: 150, late_fees: 30, total: 210 },
       ],
     },
     {
@@ -111,7 +126,15 @@ export const rental: SchemaTemplate = {
           ),
         ]),
         sec("Findings", [
-          ...half(money("damage_charge", { label: "Damage charge" }), ts("inspected_at", { indexed: true, label: "Inspected at" })),
+          ...half(
+            // Calling it damage and leaving the charge blank is how a deposit
+            // gets returned in full by accident.
+            money("damage_charge", {
+              label: "Damage charge",
+              conditions: [when("result", "_eq", "damage", "required")],
+            }),
+            ts("inspected_at", { indexed: true, label: "Inspected at" }),
+          ),
           notes("notes"),
           file("photo"),
         ]),
@@ -141,7 +164,13 @@ export const rental: SchemaTemplate = {
       slug: "agreements", group: "Billing", singular: "Agreement", plural: "Agreements", defaultSort: "-signed_at",
       fields: [
         ...half(rel("order", "rental_orders"), select("status", [ch("draft", C.gray), ch("signed", C.green), ch("void", C.red)], { default: "draft" })),
-        ...half(text("signed_by", { label: "Signed by" }), ts("signed_at", { indexed: true, label: "Signed at" })),
+        ...half(
+          text("signed_by", {
+            label: "Signed by",
+            conditions: [when("status", "_eq", "signed", "required")],
+          }),
+          ts("signed_at", { indexed: true, label: "Signed at" }),
+        ),
         file("file", { label: "Signed document" }),
       ],
       samples: [{ order: { ref: "rental_orders:0" }, signed_by: "L. Hartley", signed_at: ms("2026-07-08T08:02:00Z"), status: "signed" }],
@@ -238,6 +267,301 @@ export const rental: SchemaTemplate = {
         { name: "Units by condition", kind: "items-aggregate", viz: "bars", config: { collection: "units", agg: "count", groupBy: "condition" } },
         { name: "Payments by kind", kind: "items-aggregate", viz: "bars", config: { collection: "payments", agg: "count", groupBy: "kind" } },
       ],
+    },
+  ],
+  /**
+   * A rental desk's standing rules — mostly about time, because that is what
+   * this business sells.
+   *
+   * Deliberately absent: holding a unit for turnaround after it comes back.
+   * `rental_products.padding_hours` says how long to hold it and
+   * `availability_blocks` is where the hold would go, but the UNIT is named on
+   * the rental LINE, not on the order — so the flow that sees a returned order
+   * has no unit to block. The inspection rule below works precisely because an
+   * inspection does name its unit.
+   */
+  flows: [
+    {
+      name: "Announce a new rental order",
+      trigger: "event:items:rental_orders:created",
+      operations: [
+        {
+          type: "notification",
+          title: "New rental order {{ data.number }}",
+          body: "{{ data.customer.name }} — out {{ data.starts_at }}, back {{ data.due_back_at }}.",
+          url: "/collections/rental_orders",
+        },
+      ],
+    },
+    {
+      name: "Mark overdue rentals late every morning",
+      // The one rule that pays for itself. A unit still out past its due time
+      // is revenue nobody is billing and stock nobody can re-let, and `late`
+      // is a status the board already has a column for.
+      trigger: "cron:0 7 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "rental_orders",
+          filter: { status: { _eq: "picked_up" }, due_back_at: { _lt: "$now" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "rental_orders",
+              id: "{{ $item.id }}",
+              data: { status: "late" },
+            },
+            {
+              type: "notification",
+              title: "Overdue: {{ $item.number }}",
+              body: "Due back {{ $item.due_back_at }} and still out. Late fees apply from today.",
+              url: "/collections/rental_orders",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Remind the desk a day before a return is due",
+      trigger: `schedule:${JSON.stringify({
+        collection: "rental_orders",
+        field: "due_back_at",
+        offset: { value: 1, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "picked_up" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "{{ data.number }} is due back tomorrow",
+          body: "{{ data.customer.name }} — call ahead if the unit is wanted for the next booking.",
+          url: "/collections/rental_orders",
+        },
+      ],
+    },
+    {
+      name: "Take a damaged unit out of service",
+      // An inspection names its unit, so this one can act rather than just
+      // announce: a unit that came back damaged stops being rentable the
+      // moment somebody records the damage, not the next time it is noticed.
+      trigger: "event:items:inspections:created",
+      operations: [
+        {
+          type: "condition",
+          filter: { result: { _eq: "damage" } },
+          then: [
+            {
+              type: "item.update",
+              collection: "units",
+              id: "{{ data.unit }}",
+              data: { condition: "maintenance" },
+            },
+            {
+              type: "notification",
+              title: "Damage found — unit pulled from the fleet",
+              body: "{{ data.damage_charge }} charged against order {{ data.order.number }}. The unit is in maintenance until somebody clears it.",
+              url: "/collections/units",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Check the agreement before a unit leaves",
+      trigger: "event:items:rental_orders:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "picked_up" } },
+          then: [
+            {
+              type: "notification",
+              title: "{{ data.number }} has gone out — is it signed?",
+              body: "Deposit held {{ data.deposit_held }}. A signed agreement is what makes the damage charge collectable, so check it exists before this scrolls away.",
+              url: "/collections/agreements",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Email the customer their return reminder (needs email)",
+      active: false,
+      trigger: `schedule:${JSON.stringify({
+        collection: "rental_orders",
+        field: "due_back_at",
+        offset: { value: 1, unit: "days", direction: "before" },
+        at: 600,
+        timeZone: null,
+        where: { status: { _eq: "picked_up" } },
+      })}`,
+      operations: [
+        {
+          type: "email",
+          to: "{{ data.customer.email }}",
+          subject: "Your rental {{ data.number }} is due back tomorrow",
+          html: "<p>Please return by {{ data.due_back_at }} to avoid late fees.</p>",
+        },
+      ],
+    },
+    {
+      name: "Monthly rental report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Rental overview",
+          subject: "Rental — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "rental_agreement",
+      name: "Rental agreement",
+      description: "The terms a customer signs before the unit leaves.",
+      filename: "agreement-{{ data.number }}",
+      variables: ["number", "starts_at"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:12.5px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:21px;margin:0 0 2px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:14px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #eee}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "h2{font-size:13px;margin:18px 0 4px}" +
+        ".sign{margin-top:30px;border-top:1px solid #333;width:55%;padding-top:6px}" +
+        "</style></head><body>" +
+        "<h1>Rental agreement {{ data.number }}</h1>" +
+        '<p class="muted">{{ data.customer.name }} · {{ data.customer.id_document }}</p>' +
+        "<table>" +
+        "<tr><th>Pickup</th><td>{{ data.starts_at }}</td></tr>" +
+        "<tr><th>Due back</th><td>{{ data.due_back_at }}</td></tr>" +
+        "<tr><th>Rental charge</th><td>{{ data.subtotal }}</td></tr>" +
+        "<tr><th>Security deposit</th><td>{{ data.deposit_held }}</td></tr>" +
+        "</table>" +
+        "<h2>Terms</h2>" +
+        "<p>The equipment is returned by the due time above and in the condition it left in. " +
+        "Late returns are charged at the daily late fee set for each product. " +
+        "Damage found at post-return inspection is charged against the deposit.</p>" +
+        "<!-- the rented items themselves are rows in `rental_lines` -->" +
+        '<div class="sign">Customer signature · date</div>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "rental_return_receipt",
+      name: "Return receipt",
+      description: "What the customer walks away with — including late fees.",
+      filename: "return-{{ data.number }}",
+      variables: ["number", "total"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:21px;margin:0 0 2px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:14px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #eee}" +
+        "th{width:40%;color:#555;font-weight:600}" +
+        ".total{margin-top:16px;font-size:17px;font-weight:600;text-align:right}" +
+        "</style></head><body>" +
+        "<h1>Return receipt {{ data.number }}</h1>" +
+        '<p class="muted">{{ data.customer.name }}</p>' +
+        "<table>" +
+        "<tr><th>Out</th><td>{{ data.starts_at }}</td></tr>" +
+        "<tr><th>Due back</th><td>{{ data.due_back_at }}</td></tr>" +
+        "<tr><th>Returned</th><td>{{ data.returned_at }}</td></tr>" +
+        "<tr><th>Rental charge</th><td>{{ data.subtotal }}</td></tr>" +
+        "<tr><th>Late fees</th><td>{{ data.late_fees }}</td></tr>" +
+        "<tr><th>Deposit held</th><td>{{ data.deposit_held }}</td></tr>" +
+        "</table>" +
+        '<div class="total">Total {{ data.total }}</div>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "rental_inspection_report",
+      name: "Inspection report",
+      description: "The record a damage charge rests on.",
+      filename: "inspection-{{ data.id }}",
+      variables: ["stage", "result"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:18mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 10px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #eee}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "h2{font-size:13px;margin:18px 0 4px}" +
+        "</style></head><body>" +
+        "<h1>Unit inspection</h1>" +
+        '<p class="muted">Order {{ data.order.number }} · unit {{ data.unit.serial }}</p>' +
+        "<table>" +
+        "<tr><th>Stage</th><td>{{ data.stage }}</td></tr>" +
+        "<tr><th>Result</th><td>{{ data.result }}</td></tr>" +
+        "<tr><th>Inspected at</th><td>{{ data.inspected_at }}</td></tr>" +
+        "<tr><th>Damage charge</th><td>{{ data.damage_charge }}</td></tr>" +
+        "</table>" +
+        "<h2>Notes</h2><p>{{ data.notes }}</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "18mm" },
+    },
+  ],
+  /*
+   * One form, not two. A "request a quote" form would have to write a
+   * `rental_orders` row, and the customer it is for is a RELATION — not a
+   * form-eligible field — so every enquiry would arrive belonging to nobody.
+   * Registering the customer first is the step that actually unblocks the
+   * desk, and the order is raised against a real account afterwards.
+   */
+  forms: [
+    {
+      name: "Register as a rental customer",
+      collection: "customers",
+      settings: {
+        submitLabel: "Register",
+        successMessage: "Thanks — you're on file. Bring photo ID when you collect and we'll finish the paperwork there.",
+      },
+      // `id_document` is deliberately NOT on this form. The desk checks the
+      // document physically at pickup, so asking a stranger to type a licence
+      // or registration number into a public page collects a government ID
+      // over the internet for no operational gain — and the column is not
+      // `private`, so anything typed here is readable by every role with read
+      // on customers. The desk fills it in with the document in hand.
+      fields: [
+        { name: "name", label: "Name or company" },
+        { name: "email", label: "Email" },
+        { name: "phone" },
+        { name: "notes", label: "Anything we should know?" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Rental desk assistant",
+      handle: "rental-desk-assistant",
+      description: "Answers questions about what is out, what is late and what a unit has earned.",
+      systemPrompt:
+        "You help a rental desk. Answer questions about products, units, " +
+        "orders, lines, inspections, payments and agreements using the " +
+        "workspace's own data. `picked_up` and `late` both mean the unit is " +
+        "OUT — only `returned` is back, and `quote` is not a commitment. " +
+        "A product's `unit_count` is how many are owned, which is not how " +
+        "many are free: availability is owned units minus the ones on open " +
+        "orders and minus anything in `availability_blocks`, and you should " +
+        "show that subtraction rather than a bare number. Money on an order " +
+        "is `subtotal` plus `late_fees`; the deposit is held, not earned, so " +
+        "never add it to revenue. Be brief and name the order number.",
+      tools: ["collections.list", "collections.read", "collections.aggregate", "collections.search"],
+      maxSteps: 8,
     },
   ],
 };

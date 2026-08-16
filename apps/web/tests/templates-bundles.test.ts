@@ -325,6 +325,7 @@ describe("bundled artifacts are consistent with their own template", () => {
  */
 describe("a catalog template arrives with its numbering already running", () => {
   let h: TestHarness;
+  let result: Record<string, string[]>;
 
   const json = (body: unknown): RequestInit => ({
     method: "POST",
@@ -337,9 +338,23 @@ describe("a catalog template arrives with its numbering already running", () => 
     await seedAdmin(h);
     const applied = await h.fetch("/api/admin/templates/apply", json({ templateId: "invoicing" }));
     expect(applied.status).toBe(201);
+    result = ((await applied.json()) as { data: Record<string, string[]> }).data;
   });
 
   afterAll(() => h.cleanup());
+
+  test("every bundle the template declares actually lands", () => {
+    // Each seeder is best-effort — a throw is caught and logged so a bundle
+    // failure cannot fail an apply that already created collections. Which is
+    // right, and is exactly why it has to be asserted: without this, a seeder
+    // that broke would show up as a quieter log line and an empty page.
+    const invoicing = TEMPLATES.find((t) => t.id === "invoicing")!;
+    expect(result.flows).toEqual((invoicing.flows ?? []).map((f) => f.name));
+    expect(result.documents).toEqual((invoicing.documents ?? []).map((d) => d.key));
+    expect(result.forms).toEqual((invoicing.forms ?? []).map((f) => f.name));
+    expect(result.agents).toEqual((invoicing.agents ?? []).map((a) => a.name));
+    expect(result.kpis).toEqual((invoicing.kpis ?? []).map((k) => k.slug));
+  });
 
   test("the seeded invoices are numbered by the counter, and the next one follows", async () => {
     const seeded = (

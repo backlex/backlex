@@ -16,6 +16,16 @@ const SYSTEM_COLLECTION_CATEGORY: Record<string, string> = {
   system_flows: "flow",
   system_functions: "function",
   system_roles: "role",
+  // A permission IS a role's grant, so it shares the `role` chip rather than
+  // getting one of its own — an operator auditing authorization wants role
+  // CRUD and the grants attached to those roles in the same filter. Without
+  // an entry here a grant would fall through to `item.create` and be lost
+  // among ordinary row writes, which is exactly what used to happen.
+  system_permissions: "role",
+  // Administering a person's access — suspend, invite, revoke sessions, reset
+  // 2FA, remove from the workspace — is about who can get in, so it joins the
+  // `auth` chip beside the sign-in events it explains.
+  system_users: "auth",
   files: "storage",
 };
 

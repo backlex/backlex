@@ -52,6 +52,28 @@ Table-view category chip, and the `/api/activity?action=<prefix>` filter is a
 | `mcp` | **Agents** | `mcp.call`, `mcp.denied` |
 | `request.error` | HTTP | 5xx errors |
 
+### Authorization writes
+
+Everything that changes *who may do what* lands under `role.*`, and everything
+that changes *who may get in* under `auth.*` — so an access review is two
+filters, not a hunt.
+
+| Action | What happened |
+|---|---|
+| `role.create` / `role.update` / `role.delete` | Role CRUD. The update row carries `adminFrom` / `adminTo` when the privilege flag flipped, because "changed: [admin]" does not say which direction. |
+| `role.create` / `role.delete` on a permission id | A grant was attached to or revoked from a role. |
+| `role.create` / `role.delete` on a **user** id | A role was handed to or taken from a person. Filed under the user, because an auditor asks what *this account* was given. |
+| `auth.create` | A workspace invite was issued. |
+| `auth.update` | Suspend, reactivate, rename, or a two-factor reset. |
+| `auth.delete` | Sessions revoked, an invite revoked, or a member removed from the workspace. |
+
+**Grants are recorded by shape, never by content.** A permission row's
+`condition` DSL and its `fields` allow-list are *not* stored — the log keeps
+`hasCondition` and `fieldCount` instead. [Redaction](#redaction) only inspects
+key *names*, so an email address or identifier written inside a condition
+string would pass straight through it. For the same reason an invite token, a
+session id, and anything from a two-factor enrolment are all absent.
+
 ## Sensitive-read auditing (opt-in)
 
 Some data (health records, PII, financial rows) is subject to "who *viewed* this

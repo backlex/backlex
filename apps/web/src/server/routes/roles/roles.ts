@@ -7,6 +7,7 @@ import { and, eq, } from "drizzle-orm";
 import type { AppBindings } from "../../app";
 import { errorResponses, OkSchema, SECURITY } from "../../lib/openapi";
 import { requireUser } from "../../middleware/session";
+import { logActivity } from "../../services/activity";
 import {
   invalidateTenantPermissions,
   invalidateTenantRoles,
@@ -101,6 +102,20 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         mcpReadOnly: body.mcpReadOnly ?? false,
         orgAssignable: body.orgAssignable ?? false,
       });
+      // `mcpTools` is an unbounded allow-list — record its SIZE, not its
+      // contents, so one role with 300 tools can't dominate the audit table.
+      await logActivity(c, {
+        action: "create",
+        collection: "system_roles",
+        itemId: id,
+        payload: {
+          name: body.name,
+          admin: body.admin ?? false,
+          orgAssignable: body.orgAssignable ?? false,
+          mcpReadOnly: body.mcpReadOnly ?? false,
+          mcpToolCount: body.mcpTools?.length ?? null,
+        },
+      });
       return c.json(
         {
           data: {
@@ -147,7 +162,11 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      await ensureRoleInTenant({ db: ctx.db, dialect: ctx.dialect }, tenantId, id);
+      const before = await ensureRoleInTenant(
+        { db: ctx.db, dialect: ctx.dialect },
+        tenantId,
+        id,
+      );
       const t = tableFor(ctx.dialect);
       await (ctx.db as any)
         .update(t.roles)
@@ -172,6 +191,24 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // is cheap and removes the foot-gun.
       invalidateTenantRoles(tenantId);
       invalidateTenantPermissions(tenantId);
+      // Which keys were touched, plus the admin flag BEFORE and AFTER — a role
+      // gaining `admin` is the privilege-escalation event this log exists for,
+      // and "changed" alone does not say which direction it went.
+      await logActivity(c, {
+        action: "update",
+        collection: "system_roles",
+        itemId: id,
+        payload: {
+          name: before.name,
+          changed: Object.keys(body),
+          ...(body.admin !== undefined && body.admin !== before.admin
+            ? { adminFrom: before.admin, adminTo: body.admin }
+            : {}),
+          ...(body.mcpTools !== undefined
+            ? { mcpToolCount: body.mcpTools?.length ?? null }
+            : {}),
+        },
+      });
       return c.json({ ok: true });
     },
   )
@@ -214,6 +251,12 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // dropped role ID are now ghosts. Flush both slices.
       invalidateTenantRoles(tenantId);
       invalidateTenantPermissions(tenantId);
+      await logActivity(c, {
+        action: "delete",
+        collection: "system_roles",
+        itemId: id,
+        payload: { name: row.name, admin: row.admin },
+      });
       return c.json({ ok: true });
     },
   )
@@ -307,6 +350,22 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         condition: body.condition ?? null,
       });
       invalidateTenantPermissions(tenantId);
+      // The `condition` DSL and the `fields` allow-list are recorded by SHAPE,
+      // never verbatim. A condition can embed literal identifiers and email
+      // addresses, and `redact()` only inspects KEY names — a value smuggled
+      // inside a condition string would sail straight into the audit table.
+      await logActivity(c, {
+        action: "create",
+        collection: "system_permissions",
+        itemId: permId,
+        payload: {
+          roleId: body.roleId,
+          collection: body.collection,
+          action: body.action,
+          hasCondition: body.condition != null,
+          fieldCount: body.fields?.length ?? null,
+        },
+      });
       return c.json({ data: { id: permId, ...body } }, 201);
     },
   );

@@ -6,6 +6,7 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { AppBindings } from "../../app";
 import { errorResponses, OkSchema, SECURITY } from "../../lib/openapi";
 import { requireUser } from "../../middleware/session";
+import { logActivity } from "../../services/activity";
 import {
   invalidateTenantMembership,
   invalidateUserRoles,
@@ -241,7 +242,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const { id: userId } = c.req.valid("param");
       const body = c.req.valid("json");
       // Role must belong to active tenant.
-      await ensureRoleInTenant(
+      const role = await ensureRoleInTenant(
         { db: ctx.db, dialect: ctx.dialect },
         tenantId,
         body.roleId,
@@ -265,6 +266,14 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         .values({ userId, roleId: body.roleId })
         .onConflictDoNothing();
       invalidateUserRoles(tenantId, userId);
+      // `itemId` is the USER — this row answers "who was granted what", so it
+      // has to be findable by the person it changed, not by the role.
+      await logActivity(c, {
+        action: "create",
+        collection: "system_roles",
+        itemId: userId,
+        payload: { roleId: body.roleId, roleName: role.name, admin: role.admin },
+      });
       return c.json({ ok: true });
     },
   )
@@ -290,7 +299,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
       const { id, roleId } = c.req.valid("param");
-      await ensureRoleInTenant(
+      const role = await ensureRoleInTenant(
         { db: ctx.db, dialect: ctx.dialect },
         tenantId,
         roleId,
@@ -300,6 +309,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         .delete(t.userRoles)
         .where(and(eq(t.userRoles.userId, id), eq(t.userRoles.roleId, roleId)));
       invalidateUserRoles(tenantId, id);
+      await logActivity(c, {
+        action: "delete",
+        collection: "system_roles",
+        itemId: id,
+        payload: { roleId, roleName: role.name, admin: role.admin },
+      });
       return c.json({ ok: true });
     },
   )
@@ -377,6 +392,15 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           return transport.provider !== "console";
         })
         .catch(() => false);
+      // The invite TOKEN is a bearer credential — whoever holds it can seat an
+      // account, so it never reaches the audit log. `redact()` would catch the
+      // key name, but not the `url` it is embedded in, so neither is recorded.
+      await logActivity(c, {
+        action: "create",
+        collection: "system_users",
+        itemId: id,
+        payload: { email: body.email, role: body.role ?? null, sent },
+      });
       return c.json({ data: { id, email: body.email, token, url, sent } });
     },
   )
@@ -419,6 +443,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await (ctx.db as any)
         .delete(t.tenantMembers)
         .where(eq(t.tenantMembers.id, memberId));
+      await logActivity(c, {
+        action: "delete",
+        collection: "system_users",
+        itemId: memberId,
+        payload: { invite: "revoked" },
+      });
       return c.json({ ok: true });
     },
   )
@@ -481,6 +511,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             isNull(t.apiKeys.revokedAt),
           ),
         );
+      await logActivity(c, {
+        action: "update",
+        collection: "system_users",
+        itemId: id,
+        payload: { suspended: true },
+      });
       return c.json({ ok: true });
     },
   )
@@ -526,6 +562,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // TTL. (Their API keys stay revoked — re-issue is a deliberate step.)
       invalidateTenantMembership(tenantId);
       invalidateUserRoles(tenantId, id);
+      await logActivity(c, {
+        action: "update",
+        collection: "system_users",
+        itemId: id,
+        payload: { suspended: false },
+      });
       return c.json({ ok: true });
     },
   )
@@ -558,7 +600,15 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const t = tableFor(ctx.dialect);
       const { id } = c.req.valid("param");
       await assertTenantMember(ctx, tenantId, id);
+      // The session ROWS are deliberately not recorded — an id set is not
+      // useful to an auditor and a session id is a bearer credential.
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      await logActivity(c, {
+        action: "delete",
+        collection: "system_users",
+        itemId: id,
+        payload: { sessionsRevoked: "all" },
+      });
       return c.json({ ok: true });
     },
   )
@@ -603,6 +653,13 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         .set({ twoFactorEnabled: false })
         .where(eq(t.users.id, id));
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      // No secret, no backup codes — the fact of the reset is the audit event.
+      await logActivity(c, {
+        action: "update",
+        collection: "system_users",
+        itemId: id,
+        payload: { twoFactorReset: true },
+      });
       return c.json({ ok: true });
     },
   )
@@ -648,6 +705,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
         .where(eq(t.users.id, id));
+      await logActivity(c, {
+        action: "update",
+        collection: "system_users",
+        itemId: id,
+        payload: { changed: Object.keys(body) },
+      });
       return c.json({ ok: true });
     },
   )
@@ -733,6 +796,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await (ctx.db as any)
         .delete(t.sessions)
         .where(and(eq(t.sessions.id, sessionId), eq(t.sessions.userId, id)));
+      await logActivity(c, {
+        action: "delete",
+        collection: "system_users",
+        itemId: id,
+        payload: { sessionsRevoked: 1 },
+      });
       return c.json({ ok: true });
     },
   )
@@ -793,6 +862,11 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         );
       invalidateUserRoles(tenantId, id);
       invalidateTenantMembership(tenantId);
+      await logActivity(c, {
+        action: "delete",
+        collection: "system_users",
+        itemId: id,
+      });
       return c.json({ ok: true });
     },
   );

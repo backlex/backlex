@@ -6,6 +6,7 @@ import { eq, } from "drizzle-orm";
 import type { AppBindings } from "../../app";
 import { errorResponses, OkSchema, SECURITY } from "../../lib/openapi";
 import { requireUser } from "../../middleware/session";
+import { logActivity } from "../../services/activity";
 import {
   invalidateTenantPermissions,
 } from "../../services/permissions-cache";
@@ -48,17 +49,41 @@ export const permissionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
     // A permission belongs to a role which belongs to a tenant. Look it up
     // through the role to make sure the caller isn't deleting a permission
     // in another workspace by guessing the id.
+    // The scope check already reads this row, so widening the select is free —
+    // and it has to happen HERE, because after the DELETE there is nothing
+    // left to say which grant was revoked.
     const row = (await (ctx.db as any)
-      .select({ tenantId: t.roles.tenantId })
+      .select({
+        tenantId: t.roles.tenantId,
+        roleId: t.permissions.roleId,
+        collection: t.permissions.collection,
+        action: t.permissions.action,
+      })
       .from(t.permissions)
       .innerJoin(t.roles, eq(t.permissions.roleId, t.roles.id))
       .where(eq(t.permissions.id, id))
-      .limit(1)) as { tenantId: string | null }[];
-    if (!row[0] || row[0].tenantId !== tenantId) {
+      .limit(1)) as {
+      tenantId: string | null;
+      roleId: string;
+      collection: string;
+      action: string;
+    }[];
+    const found = row[0];
+    if (!found || found.tenantId !== tenantId) {
       throw new AppError("NOT_FOUND", "Permission not found in this workspace");
     }
     await (ctx.db as any).delete(t.permissions).where(eq(t.permissions.id, id));
     invalidateTenantPermissions(tenantId);
+    await logActivity(c, {
+      action: "delete",
+      collection: "system_permissions",
+      itemId: id,
+      payload: {
+        roleId: found.roleId,
+        collection: found.collection,
+        action: found.action,
+      },
+    });
     return c.json({ ok: true });
   },
 ).openapi(

@@ -295,6 +295,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Date ranges (a period, and what overlaps it) | `docs/date-ranges.md` |
 | Number/percent display formatting | `docs/number-formatting.md` |
 | Status transitions (which value a status may move to) | `docs/status-transitions.md` |
+| Item views (Table / Kanban / Gallery / Calendar) | `docs/item-views.md` |
 | Migrating an external DB in (`backlex import-db`) | `docs/migrating-in.md` |
 | Schema versions (migration diffing / branching) | `docs/schema-versions.md` |
 | Locale + timezone | `docs/locale-timezone.md` |

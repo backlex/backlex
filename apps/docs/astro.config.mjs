@@ -105,6 +105,7 @@ export default defineConfig({
             { slug: "date-ranges" },
             { slug: "number-formatting" },
             { slug: "status-transitions" },
+            { slug: "item-views" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },
             { slug: "schema-versions" },

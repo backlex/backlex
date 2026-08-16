@@ -99,7 +99,27 @@ change it.
 | `apikey-expired`         | `info`  | an API key is past its `expires_at` but `revoked_at` is still null — harmless but stale                  |
 | `oauth-incomplete`       | `warn`  | exactly one of `OAUTH_<PROVIDER>_CLIENT_ID` / `_CLIENT_SECRET` is set — the provider silently won't wire |
 | `email-console-fallback` | `info`  | no workspace `email_config` and no env email credentials — mail logs to stdout instead of sending       |
+| `sms-console-fallback`   | `warn`  | no workspace `sms_config` and no env SMS credentials — the console adapter reports every recipient as sent |
+| `push-console-fallback`  | `warn`  | no workspace `push_config` and no env FCM/APNs/Web Push credentials — same, and it returns no invalid tokens |
 | `no-admin`               | `warn`  | no user in the tenant holds the `admin` role — admin surfaces have no operator                          |
+
+**Why SMS and push are `warn` where email is `info`.** All three console
+adapters log the message instead of sending it, but only the messaging ones
+*assert* that they delivered: `{ sent: recipients.length, failed: 0 }` is
+byte-for-byte what a real provider returns on a perfect send, so the API
+response, the activity row and the usage counters all agree that it went out.
+An undelivered verification mail is eventually noticed by the person waiting
+for it; an undelivered SMS is reported as delivered and nothing ever corrects
+it. Push additionally returns no invalid tokens, so a device that should have
+been pruned stays on the list.
+
+**None of the three fires on managed cloud.** `buildContext` swaps the console
+adapter for the control-plane gateway whenever the resolved spec is `console`
+and the project is a managed one, so the fallback cannot happen there. Note
+this is a *different* judgement from `backups-off`, which deliberately does not
+skip on tenancy alone — a managed plan can exclude backups, so that rule keys on
+`CLOUD_MANAGED_BACKUPS` (whether the platform really takes them) rather than on
+who the tenant is. Ask what the platform does, not who is asking.
 
 ### Performance
 
@@ -112,6 +132,7 @@ query paths the *schema implies*. They fire on a workspace with zero traffic.
 | rule            | level  | triggers when…                                                                                       |
 |-----------------|--------|------------------------------------------------------------------------------------------------------|
 | `owner-index`   | `warn` | an owner-scoped collection's physical table has no index covering `owner_id`                          |
+| `image-passthrough` | `warn` | no in-process image transformer loaded and no edge resize backend — `?w=`/`?h=` are accepted and ignored |
 | `created-index` | `info` | a collection with a `created_at` column has no index covering it (the items query default-sorts `-created_at`) |
 
 **Runtime, traffic-derived.** These aggregate the `spans` rows the request

@@ -37,6 +37,11 @@ import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { loadEmailConfigRow } from "./email-config";
+import { loadSmsConfigRow } from "./sms-config";
+import { loadPushConfigRow } from "./push-config";
+import { selectSmsSpec } from "../lib/sms-select";
+import { selectPushSpec } from "../lib/push-select";
+import { cloudConfigured } from "../lib/cloud-report";
 import { loadBackupConfig } from "./backup";
 import { recordActivity } from "./activity";
 import {
@@ -115,6 +120,20 @@ interface AdvisorCtx {
   db: PgDb | SqliteDb;
   dialect: "pg" | "sqlite";
   env: Env;
+  /**
+   * The resolved image transformer, when the caller has one to give.
+   *
+   * Optional because every call site hand-builds a narrow `{db, dialect, env}`
+   * rather than passing the whole `Ctx`, and because the one rule that reads it
+   * is allowed to say nothing when it cannot tell. `name` is the adapter's own
+   * diagnostic id (`bun-image`, `sharp`, `passthrough`) — the contract already
+   * declares it for exactly this purpose.
+   */
+  image?: { name: string };
+  /** URL-based edge resize backend (CF Images / Netlify Image CDN), when the
+   *  runtime has one. Its presence is what makes a `passthrough` in-process
+   *  adapter harmless, so the rule below has to see it. */
+  edgeImage?: unknown;
 }
 
 /** Thresholds for the traffic-derived rules. Deliberately conservative: a rule
@@ -576,11 +595,29 @@ export const runAdvisorChecks = async (
     // api_keys table not migrated — skip.
   }
 
-  // Email provider falls back to console: verification / reset mail logs to
-  // stdout instead of actually being delivered.
+  // ── Console transports: the three ways a message can be "sent" nowhere ──
+  //
+  // Each of email / SMS / push falls back to a console adapter that logs the
+  // message and reports success. The SMS and push ones are the sharper edge:
+  // `{ sent: recipients.length, failed: 0 }` is indistinguishable, to every
+  // caller and every metric, from a delivery that actually happened. So a
+  // workspace can run a whole notification feature, watch it report 100%
+  // delivery, and have sent nothing.
+  //
+  // **All three skip on managed cloud, and that is a correctness fix, not a
+  // courtesy.** `buildContext` swaps in the control-plane gateway whenever the
+  // resolved spec is `console` and `cloudConfigured(env)` — so on a managed
+  // project the console adapter is never the one that runs, and the finding
+  // would be describing a fallback that cannot happen. Note this is a DIFFERENT
+  // judgement from `sec-backups-off` below: there, being a cloud tenant does not
+  // mean the platform takes backups (a plan can exclude them, hence
+  // `CLOUD_MANAGED_BACKUPS`), whereas here the swap is unconditional in the
+  // code path. Ask what the platform actually does, not who the tenant is.
+  const managedTransports = cloudConfigured(ctx.env);
+
   try {
     const row = await loadEmailConfigRow(ctx, tenantId);
-    if (!row && !envHasRealEmailProvider(ctx.env)) {
+    if (!row && !envHasRealEmailProvider(ctx.env) && !managedTransports) {
       out.push({
         id: "sec-email-console-fallback",
         kind: "security",
@@ -596,6 +633,53 @@ export const runAdvisorChecks = async (
     }
   } catch {
     // email_config read failed — skip.
+  }
+
+  // SMS. `warn`, not `info` like email: an undelivered verification mail is
+  // usually noticed by the person waiting for it, whereas the SMS adapter's
+  // answer actively asserts the opposite — a caller reading `{sent: 3,
+  // failed: 0}` has been told the messages went, and nothing downstream will
+  // ever correct that.
+  try {
+    const row = await loadSmsConfigRow(ctx, tenantId);
+    if (!row && selectSmsSpec(ctx.env).provider === "console" && !managedTransports) {
+      out.push({
+        id: "sec-sms-console-fallback",
+        kind: "security",
+        level: "warn",
+        rule: "sms-console-fallback",
+        groupTitle: "SMS transport falls back to the console",
+        title: "SMS provider falls back to the console adapter",
+        body: "No workspace sms_config and no deployment SMS credentials are set, so messages are logged to stdout. The console adapter reports every recipient as sent and none as failed, so a send looks successful in the API response, the activity log and the usage counters alike — there is nothing to notice.",
+        fix: "Configure Twilio, Amazon SNS, Netgsm or İletimerkezi under Settings → SMS (or set the matching credentials in the deployment env).",
+        resource: "sms_config · provider",
+        link: "/settings",
+      });
+    }
+  } catch {
+    // sms_config read failed — skip.
+  }
+
+  // Push. Same shape, same reasoning; the console adapter answers
+  // `{ sent: tokens.length, failed: 0, invalidTokens: [] }`.
+  try {
+    const row = await loadPushConfigRow(ctx, tenantId);
+    if (!row && selectPushSpec(ctx.env).provider === "console" && !managedTransports) {
+      out.push({
+        id: "sec-push-console-fallback",
+        kind: "security",
+        level: "warn",
+        rule: "push-console-fallback",
+        groupTitle: "Push transport falls back to the console",
+        title: "Push provider falls back to the console adapter",
+        body: "No workspace push_config and no deployment FCM / APNs / Web Push credentials are set, so notifications are logged to stdout. The console adapter reports every token as sent and none as failed, and returns no invalid tokens — so a device that would have been pruned stays on the list too.",
+        fix: "Configure FCM, APNs or Web Push under Settings → Push (or set the matching credentials in the deployment env).",
+        resource: "push_config · provider",
+        link: "/settings",
+      });
+    }
+  } catch {
+    // push_config read failed — skip.
   }
 
   // No automatic backups. Scheduling defaults to `off` and nothing ever
@@ -685,6 +769,39 @@ export const runAdvisorChecks = async (
     }
   } catch {
     // user_roles / roles table not migrated — skip.
+  }
+
+  // Image transforms are silently not happening.
+  //
+  // `passthroughImage` is the last link of `bunImage() ?? sharpImage() ??
+  // wasmImage() ?? passthroughImage()`, and it returns the source body
+  // untouched. It is a legitimate choice — a runtime with no image API has to
+  // serve SOMETHING — but it is indistinguishable from a working transform
+  // from the outside: `?w=200` answers 200 OK with the original bytes, so a
+  // thumbnail grid quietly downloads full-size originals and only the bill
+  // says so.
+  //
+  // Skipped when an edge backend exists (`ctx.edgeImage`): Cloudflare and
+  // Netlify resize at the CDN and never reach the in-process adapter, so a
+  // `passthrough` there costs nothing. Skipped too when the caller gave no
+  // `image` at all — a rule that cannot tell should say nothing rather than
+  // guess.
+  //
+  // Filed under `performance`, not `security`: nothing is exposed, an image is
+  // simply many times larger than it was asked to be.
+  if (ctx.image?.name === "passthrough" && !ctx.edgeImage) {
+    out.push({
+      id: "perf-image-passthrough",
+      kind: "performance",
+      level: "warn",
+      rule: "image-passthrough",
+      groupTitle: "Image transforms are not being applied",
+      title: "The image adapter passes the original bytes through",
+      body: "No in-process image transformer loaded (Bun's image API, sharp, or the wasm fallback) and this runtime has no edge resize backend, so `?w=`/`?h=`/`?fit=` are accepted and ignored. Every request answers 200 with the full-size original, which looks correct in the browser and is not.",
+      fix: "Run on Bun (its built-in image API needs nothing installed), install sharp on a Node host, or deploy behind Cloudflare Images / the Netlify Image CDN, which resize at the edge.",
+      resource: "image · passthrough",
+      link: "/storage",
+    });
   }
 
   // --- PERFORMANCE (runtime, traffic-derived) ----------------------------

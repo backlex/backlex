@@ -152,7 +152,13 @@ export const advisorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const result = await runAdvisorChecks(
-        { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+        {
+          db: ctx.db,
+          dialect: ctx.dialect,
+          env: ctx.env,
+          image: ctx.image,
+          edgeImage: ctx.edgeImage,
+        },
         auth.tenantId ?? null,
         { windowDays: c.req.valid("query").days },
       );
@@ -241,7 +247,16 @@ export const advisorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // The shared service re-derives the finding and executes its OWN
       // statement — the client only names which finding to fix.
       const { applied } = await applyAdvisorFix(
-        { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+        // `image`/`edgeImage` ride along because apply RE-RUNS the checks and
+        // matches by finding id — a ctx that resolves a different set of
+        // findings than the GET did is how an id stops being found.
+        {
+          db: ctx.db,
+          dialect: ctx.dialect,
+          env: ctx.env,
+          image: ctx.image,
+          edgeImage: ctx.edgeImage,
+        },
         auth.tenantId ?? null,
         { id, windowDays: days, userId: auth.userId, ...meta },
       );

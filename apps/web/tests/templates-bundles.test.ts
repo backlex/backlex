@@ -406,6 +406,91 @@ describe("bundled artifacts are consistent with their own template", () => {
 });
 
 /**
+ * Two templates in one workspace.
+ *
+ * The "Add from template" dialog is additive by design and says so, so this is
+ * an ordinary thing for an operator to do — and it is where a bundle's
+ * skip-by-name turns from a safety property into a hazard. Every bundle is
+ * skipped when something already holds its name or key, which is right for a
+ * RE-apply of the same template and wrong across two different ones: the second
+ * template would silently keep the first's form, still pointing at the first's
+ * collection. A static check refuses colliding names in the catalog; this is
+ * the runtime half, and it is what would catch a collision arriving through
+ * `applyCustomTemplate` where no static check runs.
+ */
+describe("two templates land side by side without eating each other", () => {
+  let h: TestHarness;
+
+  const json = (body: unknown): RequestInit => ({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const apply = async (id: string) => {
+    const r = await h.fetch("/api/admin/templates/apply", json({ templateId: id }));
+    expect(r.status).toBe(201);
+    return ((await r.json()) as { data: Record<string, string[]> }).data;
+  };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  test("each template installs its own bundle in full", async () => {
+    const a = await apply("invoicing");
+    const b = await apply("crm");
+    for (const [id, res] of [
+      ["invoicing", a],
+      ["crm", b],
+    ] as const) {
+      const tpl = TEMPLATES.find((t) => t.id === id)!;
+      expect(res.flows, `${id} flows`).toEqual((tpl.flows ?? []).map((f) => f.name));
+      expect(res.documents, `${id} documents`).toEqual((tpl.documents ?? []).map((d) => d.key));
+      expect(res.forms, `${id} forms`).toEqual((tpl.forms ?? []).map((f) => f.name));
+      expect(res.agents, `${id} agents`).toEqual((tpl.agents ?? []).map((x) => x.name));
+    }
+  });
+
+  test("each seeded form still points at its own template's collection", async () => {
+    // The failure this exists for does not raise anything: the second apply
+    // reports the form as skipped-because-it-exists, and the workspace keeps a
+    // form writing into the wrong vertical.
+    const forms = (
+      (await (await h.fetch("/api/admin/forms")).json()) as {
+        data: { name: string; collection: string }[];
+      }
+    ).data;
+    const expected = new Map<string, string>();
+    for (const id of ["invoicing", "crm"]) {
+      for (const f of TEMPLATES.find((t) => t.id === id)!.forms ?? []) {
+        expected.set(f.name, f.collection);
+      }
+    }
+    expect(expected.size).toBeGreaterThan(1);
+    for (const [name, collection] of expected) {
+      const row = forms.find((f) => f.name === name);
+      expect(row, `form "${name}" is missing`).toBeTruthy();
+      expect(row?.collection, `form "${name}" points at the wrong collection`).toBe(collection);
+    }
+  });
+
+  test("both document templates survive, under their own keys", async () => {
+    const docs = (
+      (await (await h.fetch("/api/admin/documents/templates")).json()) as {
+        data: { key: string }[];
+      }
+    ).data.map((d) => d.key);
+    for (const id of ["invoicing", "crm"]) {
+      for (const d of TEMPLATES.find((t) => t.id === id)!.documents ?? []) {
+        expect(docs, `document "${d.key}"`).toContain(d.key);
+      }
+    }
+  });
+});
+
+/**
  * The invoicing vertical, applied for real through the REST route.
  *
  * The synthetic fixture below proves the seeder; this proves the CATALOG — that

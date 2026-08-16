@@ -38,12 +38,12 @@ export const applyTemplate: McpTool = {
   name: "templates.apply",
   description:
     "Seed a vertical template's collections (grouped, with realistic sample " +
-    "data and any bundled roles/dashboards) into the active workspace. Pass a " +
-    "catalog `templateId` OR an inline `template` object (the " +
+    "data and any bundled roles/dashboards/KPIs) into the active workspace. " +
+    "Pass a catalog `templateId` OR an inline `template` object (the " +
     "`templates.extract` shape) to apply a custom schema. Idempotent — " +
     "collections that already exist are skipped. Returns `{ templateId, " +
-    "created, skipped, seeded, roles, dashboards }`. Requires `create` on " +
-    "`system_collections` (admin).",
+    "created, skipped, seeded, roles, dashboards, kpis }`. Requires `create` " +
+    "on `system_collections` (admin).",
   inputSchema: {
     type: "object",
     properties: {

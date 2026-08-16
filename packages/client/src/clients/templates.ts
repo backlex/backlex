@@ -40,8 +40,8 @@ export interface TemplateCatalog {
 }
 
 /** Result of applying a template. Idempotent — `skipped` are collections that
- *  already existed; `seeded` counts sample rows inserted; `roles`/`dashboards`
- *  are bundled artifacts created by this apply. */
+ *  already existed; `seeded` counts sample rows inserted; `roles`/`dashboards`/
+ *  `kpis` are bundled artifacts created by this apply. */
 export interface ApplyTemplateResult {
   templateId: string;
   created: string[];
@@ -49,6 +49,9 @@ export interface ApplyTemplateResult {
   seeded: number;
   roles: string[];
   dashboards: string[];
+  /** Slugs of bundled KPI definitions installed by this apply. Skipped per
+   *  slug, so a re-apply keeps a definition an admin has tuned. */
+  kpis: string[];
 }
 
 /** Result of `templates.clearSamples()`. */

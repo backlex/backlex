@@ -39,6 +39,7 @@ interface ApplyResult {
   seeded: number;
   roles?: string[];
   dashboards?: string[];
+  kpis?: string[];
 }
 
 const TEMPLATES_HELP = `backlex templates <list|apply|extract|clear-samples>
@@ -70,6 +71,7 @@ const printApply = (data: ApplyResult, json: boolean): void => {
     seeded: String(data.seeded),
     roles: data.roles?.length ? data.roles.join(", ") : "—",
     dashboards: data.dashboards?.length ? data.dashboards.join(", ") : "—",
+    kpis: data.kpis?.length ? data.kpis.join(", ") : "—",
   });
 };
 

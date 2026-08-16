@@ -14,6 +14,8 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 const blogTemplate = TEMPLATES.find((t) => t.id === "blog")!;
 const blogGroups = blogTemplate.groups!;
 const blogSamples = blogTemplate.collections.reduce((n, c) => n + (c.samples?.length ?? 0), 0);
+/** Derived, never frozen as literals — the catalog is what these describe. */
+const blogKpiSlugs = (blogTemplate.kpis ?? []).map((k) => k.slug);
 
 const json = (body: unknown): RequestInit => ({
   method: "POST",
@@ -56,12 +58,18 @@ describe("templates — GraphQL surface", () => {
 
   test("applyTemplate seeds collections + sample data (idempotent)", async () => {
     const applied = await gql(
-      `mutation($id:String!){ applyTemplate(templateId:$id){ templateId created skipped seeded } }`,
+      `mutation($id:String!){ applyTemplate(templateId:$id){ templateId created skipped seeded kpis } }`,
       { id: "blog" },
     );
     expect(applied.errors).toBeUndefined();
     expect(applied.data?.applyTemplate.created).toContain("posts");
     expect(applied.data?.applyTemplate.seeded).toBeGreaterThan(0);
+    // `kpis` used to be missing from the GraphQL result type while REST, the
+    // service and the docs all carried it — so a GraphQL caller could not tell
+    // whether a KPI had been installed. Asserted against the catalog rather
+    // than a literal list, which is what keeps it true as blog gains KPIs.
+    expect(blogKpiSlugs.length).toBeGreaterThan(0);
+    expect(applied.data?.applyTemplate.kpis).toEqual(blogKpiSlugs);
 
     // Re-apply → everything skipped, nothing re-seeded.
     const again = await gql(
@@ -139,6 +147,9 @@ describe("templates — SDK surface", () => {
     expect(applied.data.seeded).toBeGreaterThan(0);
     expect(applied.data.roles).toEqual(["Store staff"]);
     expect(applied.data.dashboards).toEqual(["Store overview"]);
+    expect(applied.data.kpis).toEqual(
+      (TEMPLATES.find((t) => t.id === "ecommerce")?.kpis ?? []).map((k) => k.slug),
+    );
 
     // Catalog now reports the workspace as non-empty + the seed manifest.
     const after = await client.templates.list();

@@ -72,6 +72,7 @@ const ApplyTemplateResultType = new GraphQLObjectType({
     seeded: { type: new GraphQLNonNull(GraphQLInt) },
     roles: { type: nonNullStrings },
     dashboards: { type: nonNullStrings },
+    kpis: { type: nonNullStrings },
   },
 });
 

@@ -608,16 +608,17 @@ export const runAdvisorChecks = async (
   // purpose — widening AdvisorKind for one rule would mean touching the advisor
   // UI's grouping and its surfaces test for no gain to the reader.
   //
-  // Skipped on a managed cloud tenant. There, backups are taken by the control
-  // plane (D1 Time Travel bookmarks, on its own schedule) and the instance-side
-  // schedule is expected to stay `off` — so this rule would warn every managed
-  // workspace about a gap that does not exist, forever, with no action its admin
-  // could usefully take. `CLOUD_PROJECT_ID` is bound only by the provisioner,
-  // which is the same discriminator BLOCK_PRIVATE_FETCH_HOSTS already uses to
-  // tell a managed tenant from a self-hosted one (see env.ts).
+  // Skipped when the control plane is taking backups for this instance. There
+  // the instance-side schedule is expected to stay `off`, so the rule would warn
+  // that workspace forever about a gap that does not exist.
+  //
+  // Keyed on CLOUD_MANAGED_BACKUPS, NOT on "is this a cloud tenant": managed
+  // plans without backups exist, and a tenant on one has no backups at either
+  // layer. For them this warning is the only thing that would say so, and it
+  // must keep firing.
   try {
     const cfg = await loadBackupConfig(ctx, tenantId);
-    if (cfg.schedule === "off" && !ctx.env.CLOUD_PROJECT_ID) {
+    if (cfg.schedule === "off" && ctx.env.CLOUD_MANAGED_BACKUPS !== "true") {
       out.push({
         id: "sec-backups-off",
         kind: "security",

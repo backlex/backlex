@@ -168,6 +168,12 @@ export interface Env {
   CLOUD_REPORT_URL?: string;
   CLOUD_REPORT_SECRET?: string;
   CLOUD_PROJECT_ID?: string;
+  /** `"true"` when the control plane takes backups of this instance on the
+   *  tenant's behalf. Bound only for plans that actually include managed
+   *  backups — a managed tenant on a plan WITHOUT them has no backups at either
+   *  layer, so this is deliberately narrower than "is this a cloud tenant".
+   *  Read by the advisor to decide whether `backups-off` is a real gap here. */
+  CLOUD_MANAGED_BACKUPS?: string;
   /** When set (any non-empty value), server-side fetches to admin-supplied URLs
    *  (outbound webhooks, flow `request`/`webhook` ops) refuse private/internal/
    *  metadata hosts and re-validate redirects — an SSRF guard. Auto-enabled on
@@ -677,6 +683,7 @@ export const STRING_ENV_KEYS = [
   "CLOUD_REPORT_URL",
   "CLOUD_REPORT_SECRET",
   "CLOUD_PROJECT_ID",
+  "CLOUD_MANAGED_BACKUPS",
   "BLOCK_PRIVATE_FETCH_HOSTS",
   "OPENAI_API_KEY",
   "AI_GATEWAY_API_KEY",

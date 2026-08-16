@@ -49,6 +49,8 @@ const SUPPORTED_ACTIONS = new Set([
   "notification",
   "push",
   "sms",
+  "ai.generate",
+  "ai.classify",
   "payment.checkout",
   "payment.refund",
   "document.render",
@@ -481,6 +483,56 @@ const compileAction = (node: GraphNode): Operation => {
       const to = String(c.to ?? "").trim();
       if (!to) throw new FlowCompileError("SMS step needs a recipient number");
       return { type: "sms", body, to, ...from };
+    }
+    case "ai.generate": {
+      const prompt = String(c.prompt ?? "").trim();
+      if (!prompt) throw new FlowCompileError("AI step needs a prompt");
+      const system = String(c.system ?? "").trim();
+      const model = String(c.model ?? "").trim();
+      const maxTokens = Number(c.maxTokens);
+      return {
+        type: "ai.generate",
+        prompt,
+        ...(system ? { system } : {}),
+        // An empty model means "the workspace default", which is what the op
+        // means by omitting the field — emitting `model: ""` would instead ask
+        // the provider for a model with no name.
+        ...(model ? { model } : {}),
+        ...(Number.isFinite(maxTokens) && maxTokens > 0 ? { maxTokens: Math.floor(maxTokens) } : {}),
+        ...(c.effort === "low" || c.effort === "medium" || c.effort === "high"
+          ? { effort: c.effort }
+          : {}),
+      };
+    }
+    case "ai.classify": {
+      const input = String(c.input ?? "").trim();
+      if (!input) throw new FlowCompileError("Classify step needs some text to classify");
+      // The inspector edits the label set as one newline-separated field,
+      // because a repeating row editor for a list of short strings is more
+      // chrome than the thing it edits. The split happens here so the op always
+      // stores the array its schema declares.
+      const labels = String(c.labels ?? "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (labels.length < 2) throw new FlowCompileError("Classify step needs at least two labels");
+      if (new Set(labels.map((l) => l.toLowerCase())).size !== labels.length) {
+        throw new FlowCompileError("Classify step labels must be distinct");
+      }
+      const fallback = String(c.fallback ?? "").trim();
+      if (fallback && !labels.some((l) => l.toLowerCase() === fallback.toLowerCase())) {
+        throw new FlowCompileError("Classify step fallback must be one of the labels");
+      }
+      const instructions = String(c.instructions ?? "").trim();
+      const model = String(c.model ?? "").trim();
+      return {
+        type: "ai.classify",
+        input,
+        labels,
+        ...(instructions ? { instructions } : {}),
+        ...(model ? { model } : {}),
+        ...(fallback ? { fallback } : {}),
+      };
     }
     case "payment.checkout": {
       const amount = String(c.amount ?? "").trim();
@@ -1058,6 +1110,24 @@ const opToConfig = (op: Operation): Record<string, any> => {
         userId: op.userId ?? "",
         body: op.body,
         from: op.from ?? "",
+      };
+    case "ai.generate":
+      return {
+        prompt: op.prompt,
+        system: op.system ?? "",
+        model: op.model ?? "",
+        maxTokens: op.maxTokens ?? "",
+        effort: op.effort ?? "",
+      };
+    case "ai.classify":
+      // The inverse of the compile step's split: the op stores an array, the
+      // inspector edits one newline-separated field.
+      return {
+        input: op.input,
+        labels: op.labels.join("\n"),
+        instructions: op.instructions ?? "",
+        model: op.model ?? "",
+        fallback: op.fallback ?? "",
       };
     case "payment.checkout":
       // Flattened for the inspector: the nested `writeBack` object becomes

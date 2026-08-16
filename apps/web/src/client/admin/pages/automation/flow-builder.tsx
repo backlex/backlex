@@ -3,7 +3,7 @@ import type { PushToast } from "../../types";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { FOREACH_MAX_ROWS } from "@backlex/core";
+import { AI_OP_DEFAULT_MAX_TOKENS, FOREACH_MAX_ROWS } from "@backlex/core";
 import { I, type IconComponent, type IconKey } from "../../icons";
 import { Badge, Button, IconButton, Switch } from "../../ui";
 import { Select } from "../../select";
@@ -15,6 +15,11 @@ import { timezoneOptions } from "../../preferences";
 
 /** Just what the payment-link step needs off `/api/admin/payments/providers`. */
 type PaymentProviderOption = { id: string; provider: string; status: string };
+/** One entry of the model catalog `GET /api/admin/ai-config` returns. Not
+ *  filtered by provider the way Settings · AI filters it: a flow is saved once
+ *  and may outlive the provider the workspace is on today, so the step offers
+ *  the whole catalog and the run-time resolver has the last word. */
+type AiModelOption = { id: string; label: string; hint?: string };
 
 /**
  * One task a provider declares, as the catalog hands it over.
@@ -41,6 +46,10 @@ const dataInterpolationExample = "{{ data.* }}";
 const itemInterpolationExample = "{{ $item.* }}";
 const itemIdInterpolationExample = "{{ data.id }}";
 const smsBodyExample = "Reminder: your appointment is at {{ data.starts_at }}.";
+const aiPromptExample = "Write a one-line summary of: {{ data.body }}";
+const aiClassifyInputExample = "{{ data.subject }}\n{{ data.body }}";
+const aiLastTextExample = "{{ $last.text }}";
+const aiLastLabelExample = "{{ $last.label }}";
 
 // `pending` marks steps the runtime doesn't execute yet. The compiler will
 // drop them with a warning, so the palette disables the entries entirely
@@ -63,6 +72,8 @@ const ACTIONS = [
   { id: "notification", label: "In-app notification", desc: "Drop a row in the notifications table", icon: "Bell" },
   { id: "push", label: "Push notification", desc: "Send to a user's registered devices", icon: "Send" },
   { id: "sms", label: "Send SMS", desc: "Text a number on the row, or a user", icon: "MessageSquare" },
+  { id: "ai.generate", label: "Generate with AI", desc: "Write something from the row — lands on $last.text", icon: "Sparkles" },
+  { id: "ai.classify", label: "Classify with AI", desc: "Pick one of your labels — lands on $last.label", icon: "Filter" },
   { id: "payment.checkout", label: "Payment link", desc: "Open a checkout and write the link onto the row", icon: "CreditCard" },
   { id: "payment.refund", label: "Refund payment", desc: "Give back some or all of a payment", icon: "CreditCard" },
   { id: "document.render", label: "Render document", desc: "Row + HTML template → a stored PDF", icon: "ScrollText" },
@@ -171,11 +182,15 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   // Connected payment providers, so the payment-link step offers the ones this
   // workspace actually has rather than a free-text provider name.
   const [paymentProviders, setPaymentProviders] = useState<PaymentProviderOption[]>([]);
+  // The model catalog the two AI steps pick from — the same list Settings · AI
+  // builds its picker from, so an id offered here is one the deployment can
+  // actually resolve. Free text would only be found wrong when a run failed.
+  const [aiModels, setAiModels] = useState<AiModelOption[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [tpls, funcs, cols, docs, ints, pays, dashes, cat] = await Promise.all([
+        const [tpls, funcs, cols, docs, ints, pays, dashes, cat, ai] = await Promise.all([
           emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
           functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
           collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
@@ -188,6 +203,9 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
           api<{ data: { tasks?: Record<string, TaskDef[]> } }>(
             "/api/admin/integrations/catalog",
           ).catch(() => ({ data: {} as { tasks?: Record<string, TaskDef[]> } })),
+          api<{ data: { models?: AiModelOption[] } }>("/api/admin/ai-config").catch(() => ({
+            data: {} as { models?: AiModelOption[] },
+          })),
         ]);
         if (cancelled) return;
         if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
@@ -197,6 +215,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         if (Array.isArray(ints.data)) setIntegrations(ints.data);
         if (Array.isArray(dashes.data)) setDashboards(dashes.data);
         if (cat.data?.tasks) setTaskCatalog(cat.data.tasks);
+        if (Array.isArray(ai.data?.models)) setAiModels(ai.data.models);
         if (Array.isArray(pays.data)) {
           setPaymentProviders(pays.data.filter((p) => p.status === "connected"));
         }
@@ -559,6 +578,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             paymentProviders={paymentProviders}
             docTemplates={docTemplates}
             dashboards={dashboards}
+            aiModels={aiModels}
           />
         </div>
       </div>
@@ -730,6 +750,10 @@ function defaultConfigFor(kind: string, type: string) {
   // Defaults to the row-carried number — the reminder case, and the reason the
   // op has a `to` mode at all.
   if (kind === "action" && type === "sms") return { mode: "to", to: "{{ data.phone }}", userId: "", body: "", from: "" };
+  if (kind === "action" && type === "ai.generate")
+    return { prompt: aiPromptExample, system: "", model: "", maxTokens: "", effort: "" };
+  if (kind === "action" && type === "ai.classify")
+    return { input: aiClassifyInputExample, labels: "", instructions: "", model: "", fallback: "" };
   // Seeded for the invoicing shape the op exists for: an invoice row carries
   // its own total, its own customer email, and a field to hold the link.
   if (kind === "action" && type === "payment.checkout")
@@ -813,7 +837,63 @@ function defaultConfigFor(kind: string, type: string) {
   return {};
 }
 
-function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], taskCatalog = {}, paymentProviders = [], docTemplates = [], dashboards = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; taskCatalog?: Record<string, TaskDef[]>; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[] }) {
+const MODEL_CUSTOM = "__custom__";
+
+/**
+ * The model picker both AI steps share.
+ *
+ * A Select rather than free text because the value set is finite and knowable —
+ * it is the same catalog Settings · AI builds its picker from — and a mistyped
+ * id is only discovered when a real run 404s, hours later, inside an automation
+ * nobody is watching. `Custom…` is the escape hatch, because the backend really
+ * does accept any id the resolved provider knows and no shipped catalog can
+ * list a model released this morning.
+ *
+ * Unlike Settings · AI this does NOT filter by the workspace's current
+ * provider: a flow is saved once and may outlive the key it was written under,
+ * so the run-time resolver has the last word. A value that is not in the
+ * catalog is offered as its own option rather than silently blanking the
+ * Select — which is also what keeps the field correct while the catalog is
+ * still loading.
+ */
+function AiModelField({
+  value,
+  onChange,
+  models,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  models: AiModelOption[];
+}) {
+  const { t } = useLingui();
+  const [typing, setTyping] = useState(false);
+  const known = models.some((m) => m.id === value);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Model</Trans></label>
+      <Select
+        value={typing ? MODEL_CUSTOM : value}
+        onChange={(v) => {
+          setTyping(v === MODEL_CUSTOM);
+          if (v !== MODEL_CUSTOM) onChange(v);
+        }}
+        className="min-w-0"
+        options={[
+          { value: "", label: t`Workspace default`, hint: t`set under Settings · AI` },
+          ...models.map((m) => ({ value: m.id, label: m.label, ...(m.hint ? { hint: m.hint } : {}) })),
+          ...(value && !known ? [{ value, label: value, hint: t`custom` }] : []),
+          { value: MODEL_CUSTOM, label: t`Custom…`, hint: t`any provider model id` },
+        ]}
+      />
+      {typing && (
+        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="anthropic/claude-haiku-4-5" />
+      )}
+      <span className="text-[11.5px] text-muted-foreground"><Trans>On managed cloud, generation runs on the platform gateway and this pick is ignored.</Trans></span>
+    </div>
+  );
+}
+
+function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], taskCatalog = {}, paymentProviders = [], docTemplates = [], dashboards = [], aiModels = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; taskCatalog?: Record<string, TaskDef[]>; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[]; aiModels?: AiModelOption[] }) {
   const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
@@ -1256,6 +1336,40 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
             )}
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Message</Trans></label><Textarea rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder={smsBodyExample} /></div>
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Sender (optional)</Trans></label><Input value={node.config.from || ""} onChange={(e) => onChange({ config: { from: e.target.value } })} placeholder={t`transport default`} /><span className="text-[11.5px] text-muted-foreground"><Trans>Overrides the workspace transport's configured sender id.</Trans></span></div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "ai.generate" && (
+          <>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Prompt</Trans></label><Textarea rows={4} value={node.config.prompt || ""} onChange={(e) => onChange({ config: { prompt: e.target.value } })} placeholder={aiPromptExample} /><span className="text-[11.5px] text-muted-foreground"><Trans>The answer lands on {aiLastTextExample} for the steps that follow.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>System prompt (optional)</Trans></label><Textarea rows={2} value={node.config.system || ""} onChange={(e) => onChange({ config: { system: e.target.value } })} placeholder={t`You write short, plain replies for support staff.`} /><span className="text-[11.5px] text-muted-foreground"><Trans>Steering that is about the role rather than this row.</Trans></span></div>
+            <AiModelField value={node.config.model || ""} onChange={(v) => onChange({ config: { model: v } })} models={aiModels} />
+            <div className="grid grid-cols-2 gap-2.5 [&>*]:min-w-0">
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Max tokens</Trans></label><Input value={node.config.maxTokens ?? ""} onChange={(e) => onChange({ config: { maxTokens: e.target.value } })} placeholder={String(AI_OP_DEFAULT_MAX_TOKENS)} /></div>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Reasoning effort</Trans></label>
+                <Select
+                  value={node.config.effort || ""}
+                  onChange={(v) => onChange({ config: { effort: v } })}
+                  className="min-w-0"
+                  options={[
+                    { value: "", label: t`Model default` },
+                    { value: "low", label: t`Low` },
+                    { value: "medium", label: t`Medium` },
+                    { value: "high", label: t`High` },
+                  ]}
+                />
+              </div>
+            </div>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Generations are counted against this workspace under Usage. A step inside a loop generates once per row.</Trans></span>
+          </>
+        )}
+        {node.kind === "action" && node.type === "ai.classify" && (
+          <>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Text to classify</Trans></label><Textarea rows={3} value={node.config.input || ""} onChange={(e) => onChange({ config: { input: e.target.value } })} placeholder={aiClassifyInputExample} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Labels, one per line</Trans></label><Textarea rows={4} value={node.config.labels || ""} onChange={(e) => onChange({ config: { labels: e.target.value } })} placeholder={"billing\ntechnical\nother"} /><span className="text-[11.5px] text-muted-foreground"><Trans>The answer is checked against this list and lands on {aiLastLabelExample}, so a later If/else step can branch on it. At least two, and they must differ by more than case.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Guidance (optional)</Trans></label><Textarea rows={2} value={node.config.instructions || ""} onChange={(e) => onChange({ config: { instructions: e.target.value } })} placeholder={t`A refund request counts as billing.`} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>If nothing matches (optional)</Trans></label><Input value={node.config.fallback || ""} onChange={(e) => onChange({ config: { fallback: e.target.value } })} placeholder={t`one of the labels above`} /><span className="text-[11.5px] text-muted-foreground"><Trans>Left empty, an answer outside the list fails the step instead of guessing.</Trans></span></div>
+            <AiModelField value={node.config.model || ""} onChange={(v) => onChange({ config: { model: v } })} models={aiModels} />
           </>
         )}
         {node.kind === "action" && node.type === "payment.checkout" && (

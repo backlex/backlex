@@ -3,10 +3,15 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { compileCondition, matchesCondition } from "@backlex/db";
 import {
+  AI_OP_DEFAULT_MAX_TOKENS,
+  AI_OP_DEFAULT_TIMEOUT_MS,
+  AI_OP_MAX_TIMEOUT_MS,
+  AI_OP_MAX_TOKENS,
   E164_PATTERN,
   FOREACH_MAX_ROWS,
   INLINE_DELAY_MS,
   buildIcs,
+  foldLabel,
   icsContentType,
 } from "@backlex/core";
 import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backlex/core";
@@ -29,6 +34,10 @@ import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
 import { recordActivity } from "./activity";
 import { fetchOutbound } from "./storage/hosts";
+import { resolveAiRuntime } from "./ai-config";
+import { aiMeterForTenant } from "./usage";
+import { aiAvailable, callClaude } from "../mcp/ai-client";
+import type { ClaudeRequest, ClaudeResponse } from "../mcp/ai-client";
 
 /** Inline-sleep cap. Anything longer is enqueued so the worker isn't
  *  blocked for minutes/hours at a time. Shared with the save-time `foreach`
@@ -402,6 +411,127 @@ const parseWhen = (rendered: string, template: string, field: string): Date => {
   const at = Number.isFinite(ms) ? new Date(ms) : Number.isFinite(asNumber) ? new Date(asNumber) : null;
   if (!at) throw new FlowOpError(`ics ${field} "${template}" did not render to a date`);
   return at;
+};
+
+/**
+ * The generation both AI ops make.
+ *
+ * One helper rather than two copies, because everything except the prompt is
+ * the same four decisions each time and each of the four has already been got
+ * wrong somewhere in this repo:
+ *
+ *  - the gate asks `aiAvailable`, not `hasDirectAiCredential`. The latter is
+ *    false on EVERY managed-cloud project — the deployment where AI is a
+ *    platform feature nobody configures — and asking it is how the `ai.*` MCP
+ *    tools came to refuse on exactly the installs that needed no setup.
+ *  - the env comes from `resolveAiRuntime`, not `ctx.ctx.env`. A workspace that
+ *    brought its own key in Settings · AI is billed to that key; reading the
+ *    deployment env instead silently bills the operator and ignores the
+ *    workspace's chosen model.
+ *  - the gate runs on the RESOLVED env, after the overlay. A self-host
+ *    deployment with no key of its own is still able to generate for a
+ *    workspace that supplied one, and checking before the overlay would refuse
+ *    that workspace.
+ *  - the meter is a required argument. `null` is the "not attributable" answer
+ *    and is not what a flow run is: it has a tenant, so it has a payer.
+ */
+const generateForFlow = async (
+  ctx: RunCtx,
+  what: "ai.generate" | "ai.classify",
+  req: Omit<ClaudeRequest, "signal">,
+  timeoutMs: number,
+): Promise<ClaudeResponse> => {
+  const tenantId = ctx.authSubject.tenantId ?? null;
+  if (!tenantId) {
+    // The same fail-closed rule every credential-touching op here follows. A
+    // run we cannot attribute to a workspace must not spend one's AI budget.
+    throw new FlowOpError(`${what} requires a workspace-scoped run`);
+  }
+  const runtime = await resolveAiRuntime(ctx.ctx, tenantId);
+  if (!aiAvailable(runtime.env)) {
+    throw new FlowOpError(
+      `${what}: no AI provider is configured — set a key under Settings · AI, or run on managed cloud where generation is included`,
+    );
+  }
+  // A flow run is dispatched fire-and-forget with no retry and no dead-letter
+  // queue, so nothing above this reclaims a generation that never returns.
+  // Until this op, `request`/`webhook` was the only branch in the engine with a
+  // wall-clock ceiling and the AI path had none at all.
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    return await callClaude(
+      runtime.env,
+      { ...req, model: req.model ?? runtime.model, signal: controller.signal },
+      aiMeterForTenant(ctx.ctx, tenantId),
+    );
+  } catch (e) {
+    if (e instanceof FlowOpError) throw e;
+    if (timedOut) throw new FlowOpError(`${what}: the model did not answer within ${timeoutMs}ms`);
+    throw new FlowOpError(`${what} failed: ${(e as Error).message}`);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+/**
+ * A template, cut short enough to name in an error.
+ *
+ * Every other op names its misconfigured field in full because those fields are
+ * a phone number or a column path. An AI prompt is up to twenty thousand
+ * characters of author-written instruction, and flow-op errors are persisted
+ * onto the `flow.run` activity row — so naming it in full turns one bad
+ * template into a database write per run.
+ *
+ * Takes `unknown` rather than `string` for the reason every guard in
+ * `flow-validation.ts` does: GraphQL stores `operations` as an opaque JSON
+ * scalar, so a saved op's field is only a string on the REST path.
+ */
+const clip = (s: unknown, max = 80): string => {
+  const v = typeof s === "string" ? s : String(s ?? "");
+  return v.length <= max ? v : `${v.slice(0, max)}…`;
+};
+
+/** An optional op field that must be a non-empty string to be worth sending on.
+ *  Same `unknown` reason as {@link clip}. */
+const optionalText = (v: unknown): string | undefined =>
+  typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+
+/**
+ * A numeric op bound, taken from the op when it is one and defaulted when it is
+ * not.
+ *
+ * The schema already caps `maxTokens` and `timeoutMs`, and that cap binds REST
+ * only — GraphQL stores `operations` as an opaque JSON scalar, so a flow
+ * authored there can carry `maxTokens: 999999` or a string where a number
+ * belongs. On the managed-cloud gateway an oversized budget is harmless (it
+ * pins its own ceiling and ignores ours); on a direct provider key it is
+ * forwarded and paid for. So the ceiling is re-applied where it actually binds.
+ */
+const clampBound = (value: unknown, fallback: number, max: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return fallback;
+  return Math.min(Math.floor(value), max);
+};
+
+/**
+ * Which label a classification answer means, or null.
+ *
+ * Two attempts, on purpose. The first is the contract: fold both sides and
+ * compare. The second forgives the one thing a model reliably does anyway —
+ * answering `"Billing."` when asked for `Billing` — by stripping surrounding
+ * quotes and trailing sentence punctuation from the ANSWER. It is never applied
+ * to the author's labels, where `v1.0` and `n/a` are legitimate values that
+ * stripping would quietly rewrite.
+ */
+const matchLabel = (answer: string, labels: string[]): string | null => {
+  const direct = labels.find((l) => foldLabel(l) === foldLabel(answer));
+  if (direct) return direct;
+  const loose = foldLabel(answer.replace(/^[\s"'`]+/, "").replace(/[\s"'`.!]+$/, ""));
+  return labels.find((l) => foldLabel(l) === loose) ?? null;
 };
 
 /**
@@ -1003,6 +1133,117 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       if (e instanceof FlowOpError) throw e;
       throw new FlowOpError(`sms send failed: ${(e as Error).message}`);
     }
+  }
+
+  if (op.type === "ai.generate") {
+    const prompt = String(interpolate(op.prompt, ctx) ?? "").trim();
+    // Interpolation never fails — a template pointing at a column the row does
+    // not carry renders to an empty string. Catching that here is the
+    // difference between "the flow is misconfigured" and paying for a
+    // generation on whitespace and putting its answer on `$last`.
+    if (!prompt) throw new FlowOpError(`ai.generate prompt "${clip(op.prompt)}" rendered empty`);
+    const system = op.system ? String(interpolate(op.system, ctx) ?? "").trim() || undefined : undefined;
+    const model = optionalText(op.model);
+    // Only the three the provider layer knows. A GraphQL-authored op can carry
+    // anything here, and an unrecognised effort reaching an effort-capable
+    // model is a provider 400 rather than a no-op.
+    const effort =
+      op.effort === "low" || op.effort === "medium" || op.effort === "high" ? op.effort : undefined;
+    const reply = await generateForFlow(
+      ctx,
+      "ai.generate",
+      {
+        ...(system ? { system } : {}),
+        user: prompt,
+        ...(model ? { model } : {}),
+        maxTokens: clampBound(op.maxTokens, AI_OP_DEFAULT_MAX_TOKENS, AI_OP_MAX_TOKENS),
+        ...(effort ? { effort } : {}),
+      },
+      clampBound(op.timeoutMs, AI_OP_DEFAULT_TIMEOUT_MS, AI_OP_MAX_TIMEOUT_MS),
+    );
+    const text = reply.text.trim();
+    // An empty completion is a step that reported success and produced nothing
+    // for the next one to read. Say so here rather than letting `{{ $last.text }}`
+    // render blank three ops later.
+    if (!text) throw new FlowOpError("ai.generate: the model returned an empty answer");
+    // `usage` is passed through exactly as it arrived: tokens on a direct
+    // provider, neurons on the managed-cloud gateway, and ABSENT when the
+    // provider said nothing. A zero here would read as "this was free".
+    return reply.usage ? { text, usage: reply.usage } : { text };
+  }
+
+  if (op.type === "ai.classify") {
+    // The schema rejects these at save time, and re-checking them here is what
+    // makes them hold on GraphQL too: `operations` arrives there as an opaque
+    // JSON scalar that never meets zod, so a `.refine()` binds REST alone. It
+    // also covers a row written before the op existed. Same reason `sms`
+    // re-checks its two addressing modes.
+    // Every field is treated as `unknown`: on the GraphQL path none of them met
+    // zod, so `labels` can be a string and an element can be a number, and an
+    // unguarded `.trim()` here would be a TypeError where a named refusal
+    // belongs.
+    if (!Array.isArray(op.labels) || op.labels.length < 2 || !op.labels.every((l) => typeof l === "string" && l.trim() !== "")) {
+      throw new FlowOpError("ai.classify needs at least two labels, each a non-empty string");
+    }
+    if (new Set(op.labels.map(foldLabel)).size !== op.labels.length) {
+      throw new FlowOpError(
+        "ai.classify labels must be distinct (they are matched case-insensitively)",
+      );
+    }
+    const fallback = optionalText(op.fallback);
+    if (op.fallback != null && !fallback) {
+      throw new FlowOpError("ai.classify fallback must be a non-empty string");
+    }
+    if (fallback && !op.labels.some((l) => foldLabel(l) === foldLabel(fallback))) {
+      throw new FlowOpError("ai.classify fallback must be one of labels");
+    }
+    const input = String(interpolate(op.input, ctx) ?? "").trim();
+    if (!input) throw new FlowOpError(`ai.classify input "${clip(op.input)}" rendered empty`);
+    const instructions = op.instructions
+      ? String(interpolate(op.instructions, ctx) ?? "").trim() || undefined
+      : undefined;
+    // Labels are NOT interpolated, deliberately. The set is the contract with
+    // whatever `condition` op reads `{{ $last.label }}` next; a set that
+    // changed per row would make that condition unwritable.
+    const reply = await generateForFlow(
+      ctx,
+      "ai.classify",
+      {
+        system: [
+          "You are a classifier. Answer with EXACTLY one of the labels below and nothing else — no punctuation, no explanation, no reasoning.",
+          `Labels: ${op.labels.join(" | ")}`,
+          ...(instructions ? [instructions] : []),
+        ].join("\n"),
+        user: input,
+        ...(optionalText(op.model) ? { model: optionalText(op.model) as string } : {}),
+        // A label is a handful of tokens. The ceiling is what stops a model
+        // that decides to explain itself from being billed for the essay.
+        maxTokens: 32,
+        // Mechanical extraction, the same call `agents/memory.ts` makes.
+        effort: "low",
+      },
+      clampBound(op.timeoutMs, AI_OP_DEFAULT_TIMEOUT_MS, AI_OP_MAX_TIMEOUT_MS),
+    );
+    const label = matchLabel(reply.text, op.labels);
+    if (label) return { label, matched: true };
+    if (fallback) {
+      // Resolve the fallback back to the label AS WRITTEN in `labels`, not as
+      // typed in `fallback`. The two are allowed to differ in case (the check
+      // above folds), and returning the author's `fallback` spelling would put
+      // a value on `$last.label` that is not literally in the set — so a
+      // following `condition` written against the set would not match it. The
+      // whole promise of this op is that `$last.label` is one of `labels`.
+      const fell = op.labels.find((l) => foldLabel(l) === foldLabel(fallback));
+      if (fell) return { label: fell, matched: false };
+    }
+    // The answer itself is NOT named. This message is persisted on the
+    // `flow.run` activity row, and a model asked to classify a support ticket
+    // can echo the ticket back. The labels are the author's own config and are
+    // the half that says what to go fix.
+    throw new FlowOpError(
+      `ai.classify: the model's answer matched none of [${op.labels.join(" | ")}] — ` +
+        "set `fallback` to one of them if that should not fail the run",
+    );
   }
 
   if (op.type === "payment.checkout") {

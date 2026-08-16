@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import { AppError, ConditionSchema, OperationSchema, SYSTEM_ROLES } from "@backlex/core";
+import { AppError, ConditionSchema, OPERATION_TYPES, OperationSchema, SYSTEM_ROLES } from "@backlex/core";
 import { assertFlowShape } from "../services/flow-validation";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -49,13 +49,17 @@ ConditionSchema.openapi("FlowCondition", {
     "objects.",
 });
 
+// The type list is DERIVED, not retyped. It used to be a hand-written prose
+// list and had drifted to naming 13 of 25 — every op added since `delay` was
+// missing from the document integrators read, and nothing tests a description
+// string, so its silence was not coverage. Interpolating `OPERATION_TYPES`
+// makes the spec wrong only if the grammar itself is.
 const FlowOperation = OperationSchema.openapi("FlowOperation", {
   description:
-    "One flow operation (`log`, `webhook`, `request`, `email`, `transform`, " +
-    "`run-script`, `condition`, `notification`, `push`, `function`, " +
-    "`item.create`, `item.update`, `delay`). Recursive: `onSuccess` / " +
-    "`onError` (and `condition`'s `then` / `else`) hold nested arrays of " +
-    "FlowOperation.",
+    `One flow operation. \`type\` is one of: ${OPERATION_TYPES.map((t) => `\`${t}\``).join(", ")}. ` +
+    "Recursive: `onSuccess` / `onError` (and `condition`'s `then` / `else`, " +
+    "`approval.request`'s `onRejected`, `foreach`'s `do`) hold nested arrays " +
+    "of FlowOperation.",
 });
 
 const FlowOperations = z

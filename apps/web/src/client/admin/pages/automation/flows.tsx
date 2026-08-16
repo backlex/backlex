@@ -248,6 +248,12 @@ function describeOpShort(op: any): string {
     case "push": return (op.title ?? "").toString().slice(0, 22) || "push";
     // Whichever addressing mode the op uses is the useful thing to show.
     case "sms": return `sms ${(op.to ?? op.userId ?? "").toString().slice(0, 18)}`.trim();
+    // The prompt as written, not the model: two AI steps in one flow differ by
+    // what they are asked, and the model is usually the workspace default.
+    case "ai.generate": return `ai ${(op.prompt ?? "").toString().slice(0, 20)}`.trim();
+    // The label set is what a following If/else is written against, so it is
+    // the half that says what this step is for.
+    case "ai.classify": return `classify ${(Array.isArray(op.labels) ? op.labels.join("/") : "").slice(0, 18)}`.trim();
     // The amount is the thing that identifies one payment step from another;
     // it is usually a template, so show it as written.
     case "payment.checkout": return `pay ${(op.amount ?? "").toString().slice(0, 16)} ${op.currency ?? ""}`.trim();

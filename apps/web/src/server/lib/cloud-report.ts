@@ -62,7 +62,12 @@ function cloudChannel(env: Env | undefined): CloudChannel | null {
 /** True when this install is a managed cloud project (control-plane reachable). */
 export const cloudConfigured = (env: Env | undefined): boolean => cloudChannel(env) !== null;
 
-async function signedPost(ch: CloudChannel, path: string, body: string): Promise<Response> {
+async function signedPost(
+  ch: CloudChannel,
+  path: string,
+  body: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   const sig = await hmacHex(ch.secret, body);
   const init: RequestInit = {
     method: "POST",
@@ -72,6 +77,7 @@ async function signedPost(ch: CloudChannel, path: string, body: string): Promise
       "X-Backlex-Signature": sig,
     },
     body,
+    ...(signal ? { signal } : {}),
   };
   const target = `${ch.base}${path}`;
   return ch.service ? ch.service.fetch(new Request(target, init)) : fetch(target, init);
@@ -79,15 +85,22 @@ async function signedPost(ch: CloudChannel, path: string, body: string): Promise
 
 /** Signed POST to a control-plane path, awaiting the Response. Throws when the
  *  cloud channel isn't configured (callers should guard with `cloudConfigured`).
- *  Used by the managed-AI gateway client where the response body is needed. */
+ *  Used by the managed-AI gateway client where the response body is needed.
+ *
+ *  `signal` is honoured on both channels — the plain `fetch` and the
+ *  Workers-for-Platforms service binding, which takes a `Request` and therefore
+ *  carries the signal on its init the same way. A caller that sets a deadline
+ *  on a generation must get it on managed cloud too, or the ceiling exists only
+ *  where the deployment happened to have its own key. */
 export async function cloudPost(
   env: Env | undefined,
   path: string,
   payload: unknown,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const ch = cloudChannel(env);
   if (!ch) throw new Error("cloud channel not configured");
-  return signedPost(ch, path, JSON.stringify(payload));
+  return signedPost(ch, path, JSON.stringify(payload), signal);
 }
 
 /** Returns the fetch promise (caller can keepAlive it), or undefined if disabled. */

@@ -1387,6 +1387,10 @@ msgstr "A read-only view of one record from <0>{collection}</0>."
 msgid "A reconnect aid, not an event store — 25 per page, 72 hours at most. Write rows to a collection for real history."
 msgstr "A reconnect aid, not an event store — 25 per page, 72 hours at most. Write rows to a collection for real history."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "A refund request counts as billing."
+msgstr "A refund request counts as billing."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 msgstr "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
@@ -2527,6 +2531,7 @@ msgstr "Any OAuth-capable client connects with no key — the browser handles di
 msgid "any order"
 msgstr "any order"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "any provider model id"
 msgstr "any provider model id"
@@ -5238,6 +5243,10 @@ msgstr "Currently editing this field"
 msgid "Cursor"
 msgstr "Cursor"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "custom"
+msgstr "custom"
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Custom CA PEM (optional)"
 msgstr "Custom CA PEM (optional)"
@@ -5288,6 +5297,7 @@ msgstr "custom rule"
 
 #: src/client/admin/fields/field-money-editor.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
@@ -8121,6 +8131,10 @@ msgstr "Generated DSL — saved to <0>role_permissions</0> on save."
 msgid "Generating…"
 msgstr "Generating…"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Generations are counted against this workspace under Usage. A step inside a loop generates once per row."
+msgstr "Generations are counted against this workspace under Usage. A step inside a loop generates once per row."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Get a new link"
 #~ msgstr "Get a new link"
@@ -8257,6 +8271,10 @@ msgstr "Guards updated"
 msgid "Guests"
 msgstr "Guests"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Guidance (optional)"
+msgstr "Guidance (optional)"
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 msgid "Half width"
@@ -8381,6 +8399,10 @@ msgstr "Hide variables"
 #: src/client/admin/collections/collections-index.tsx
 msgid "Hiding off"
 msgstr "Hiding off"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "High"
+msgstr "High"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "High label"
@@ -8578,6 +8600,10 @@ msgstr "if"
 #: src/client/pages/magic-link.tsx
 msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 msgstr "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "If nothing matches (optional)"
+msgstr "If nothing matches (optional)"
 
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "If set, visitors are sent there instead of seeing the message."
@@ -9378,6 +9404,10 @@ msgid "Label shown in the item form. Falls back to the column name."
 msgstr "Label shown in the item form. Falls back to the column name."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Labels, one per line"
+msgstr "Labels, one per line"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Lands in {pending}"
 msgstr "Lands in {pending}"
 
@@ -9694,6 +9724,10 @@ msgstr "Leave this on unless the two dates are genuinely independent. An empty e
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Leave to user"
 msgstr "Leave to user"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Left empty, an answer outside the list fails the step instead of guessing."
+msgstr "Left empty, an answer outside the list fails the step instead of guessing."
 
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "Left empty, this is built from"
@@ -10044,6 +10078,10 @@ msgstr "Looking up…"
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Low"
+msgstr "Low"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Low label"
 msgstr "Low label"
@@ -10255,6 +10293,10 @@ msgstr "Max steps"
 msgid "Max storage (bytes)"
 msgstr "Max storage (bytes)"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Max tokens"
+msgstr "Max tokens"
+
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Maximum"
 msgstr "Maximum"
@@ -10313,6 +10355,10 @@ msgstr "mean value"
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "measured"
 msgstr "measured"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Medium"
+msgstr "Medium"
 
 #: src/client/admin/pages/access/members-panel.tsx
 msgid "Member"
@@ -10546,8 +10592,13 @@ msgstr "Mode"
 
 #: src/client/admin/pages/ask-ai/shared.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Model"
 msgstr "Model"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Model default"
+msgstr "Model default"
 
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Moment"
@@ -12500,6 +12551,10 @@ msgstr "On error"
 msgid "On expiry the request rejects — nobody answering is not the same as approval."
 msgstr "On expiry the request rejects — nobody answering is not the same as approval."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "On managed cloud, generation runs on the platform gateway and this pick is ignored."
+msgstr "On managed cloud, generation runs on the platform gateway and this pick is ignored."
+
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "On submit"
 msgstr "On submit"
@@ -12536,6 +12591,10 @@ msgstr "One moment while we get things ready."
 #: src/client/pages/invite.tsx
 msgid "One moment."
 msgstr "One moment."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "one of the labels above"
+msgstr "one of the labels above"
 
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "One or more adopted FKs are missing a target collection."
@@ -14121,6 +14180,10 @@ msgstr "Promote"
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "promoters {0} · passives {1} · detractors {2}"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Prompt"
+msgstr "Prompt"
+
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Protect"
 msgstr "Protect"
@@ -14676,6 +14739,7 @@ msgid "Reason for visit"
 msgstr "Reason for visit"
 
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Reasoning effort"
 msgstr "Reasoning effort"
 
@@ -17084,6 +17148,10 @@ msgstr "Set this field to NULL"
 msgid "Set this to send a real invitation with accept/decline. Left empty it attaches a plain event."
 msgstr "Set this to send a real invitation with accept/decline. Left empty it attaches a plain event."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "set under Settings · AI"
+msgstr "set under Settings · AI"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Set up"
 msgstr "Set up"
@@ -17993,6 +18061,10 @@ msgstr "Status refreshed."
 msgid "Stay connected without re-approving"
 msgstr "Stay connected without re-approving"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Steering that is about the role rather than this row."
+msgstr "Steering that is about the role rather than this row."
+
 #. placeholder {0}: step + 1
 #: src/client/admin/collections/collections-index.tsx
 msgid "step {0} of 2"
@@ -18369,6 +18441,10 @@ msgstr "System fields"
 msgid "System prompt"
 msgstr "System prompt"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "System prompt (optional)"
+msgstr "System prompt (optional)"
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "System prompt shapes the persona; the tool allow-list is what it can do."
 msgstr "System prompt shapes the persona; the tool allow-list is what it can do."
@@ -18575,6 +18651,10 @@ msgid "Testing…"
 msgstr "Testing…"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Text to classify"
+msgstr "Text to classify"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Texts every active number the user registered. None is a silent no-op."
 msgstr "Texts every active number the user registered. None is a silent no-op."
 
@@ -18619,6 +18699,14 @@ msgstr "The agent's standing instructions — its persona, tone, and rules. Sent
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "The analytics endpoint returned an error. Refresh to try again."
 msgstr "The analytics endpoint returned an error. Refresh to try again."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "The answer is checked against this list and lands on {aiLastLabelExample}, so a later If/else step can branch on it. At least two, and they must differ by more than case."
+msgstr "The answer is checked against this list and lands on {aiLastLabelExample}, so a later If/else step can branch on it. At least two, and they must differ by more than case."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "The answer lands on {aiLastTextExample} for the steps that follow."
+msgstr "The answer lands on {aiLastTextExample} for the steps that follow."
 
 #: src/client/pages/oauth-consent.tsx
 msgid "The authorization flow returned no redirect — start over from the client."
@@ -20943,6 +21031,10 @@ msgstr "Workspace \"{slug}\" already exists."
 msgid "Workspace auth API <0>· auth as a service</0>"
 msgstr "Workspace auth API <0>· auth as a service</0>"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Workspace default"
+msgstr "Workspace default"
+
 #. placeholder {0}: localeLabel(workspace.defaultLocale)
 #. placeholder {0}: workspace.timezone
 #: src/client/admin/pages/account-page.tsx
@@ -21117,6 +21209,10 @@ msgstr "You signed in with a social provider. Setting a password lets you also s
 #: src/client/pages/sign-document.tsx
 msgid "You will be emailed as soon as it is your turn to sign."
 msgstr "You will be emailed as soon as it is your turn to sign."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "You write short, plain replies for support staff."
+msgstr "You write short, plain replies for support staff."
 
 #: src/client/pages/sign-up.tsx
 msgid "You'll get the authenticated role by default."

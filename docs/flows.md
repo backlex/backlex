@@ -139,6 +139,8 @@ are nested operation arrays run after the op succeeds / throws.
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
 | `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
+| `ai.generate` | Generates text with the workspace's [AI provider](/ask-ai/) and returns `{ text, usage? }` into `{{ $last }}`. See below | `prompt`, `system?`, `model?`, `maxTokens?` (≤8192), `effort?`, `timeoutMs?` (≤120s) |
+| `ai.classify` | Picks one of `labels` for `input` and returns `{ label, matched }` into `{{ $last }}` — the value a following `condition` branches on. An answer outside the set fails the step unless `fallback` says otherwise. See below | `input`, `labels` (≥2, distinct), `instructions?`, `model?`, `fallback?`, `timeoutMs?` (≤120s) |
 | `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
 | `payment.refund` | Gives back some or all of a payment through the [provider](/payments/) that took it. Returns `{ amount, currency, status, … }` into `{{ $last }}` | one of `paymentRowId` \| `externalId` \| `reference`, `amount?` (minor units; omitted = the whole balance), `provider?` \| `providerId?`, `reason?`, `description?` |
 | `document.render` | Renders a [document template](/documents/) against the row and stores the PDF. Returns `{ key, filename, size }` into `{{ $last }}` | `templateKey?` \| `html?`, `vars?`, `filename?`, `writeBack?` |
@@ -279,6 +281,78 @@ you pick exactly one:
 
 Setting both, or neither, is rejected when the flow is saved. `from` overrides
 the transport's configured sender id where the provider supports it.
+
+### Asking the model, and branching on what it said
+
+Two AI steps, deliberately separate rather than one step with a mode, because
+what they promise the *next* step is different.
+
+`ai.generate` writes something. Its answer is prose, and prose is not something
+a `condition` can branch on:
+
+```json
+{
+  "type": "ai.generate",
+  "prompt": "Write a one-line summary of this ticket: {{ data.body }}",
+  "system": "You write for support staff. Plain, no greeting."
+}
+```
+
+`{{ $last.text }}` is the answer, and `{{ $last.usage }}` is what it cost —
+tokens on a direct provider key, [neurons](/usage-metering/) on managed cloud,
+and **absent** when the provider reported nothing (a zero there would read as
+free).
+
+`ai.classify` decides. Its answer is one of a set you wrote down, which is
+exactly what the step after it can switch on:
+
+```json
+[
+  {
+    "type": "ai.classify",
+    "input": "{{ data.subject }}\n{{ data.body }}",
+    "labels": ["billing", "technical", "other"],
+    "instructions": "A refund request counts as billing.",
+    "fallback": "other"
+  },
+  {
+    "type": "condition",
+    "filter": { "$last.label": "billing" },
+    "then": [{ "type": "notification", "title": "Billing ticket", "userId": null }]
+  }
+]
+```
+
+The executor **checks** the answer against `labels` rather than trusting it. A
+model that answers outside the set fails the step, unless `fallback` names the
+label that should mean "none of these" — and `fallback` must itself be one of
+`labels`, so the `condition` after it only ever sees a value somebody wrote a
+branch for. `{{ $last.matched }}` is `false` when the fallback was used, so a
+flow can treat "the model was unsure" differently from "the model said other".
+
+Worth knowing before you build on these:
+
+- **Naming a `model` is a hint, not a guarantee.** Omitted, the workspace's
+  Settings · AI choice applies. On **managed cloud** generation runs on the
+  platform gateway, which forwards only Workers AI (`@cf/…`) ids and uses its
+  own default for anything else — so a Claude id picked here is honoured on
+  self-host and quietly ignored on cloud.
+- **Every generation is metered** against the workspace under
+  [Usage](/usage-metering/) as an AI call, separately from requests — a flow
+  step generates with no request of its own. It is metered but **not capped**:
+  an AI step inside a `foreach` generates once per row, up to the loop's 500-row
+  ceiling, and nothing counts across the loop.
+- **There is a deadline, and it is the only one in the engine besides
+  `request`.** `timeoutMs` defaults to 60s. A flow run has no retry and no
+  dead-letter queue above it, so a generation that never returns would be a run
+  that never ends.
+- **Errors name the template, never the rendered value.** A failing step is
+  persisted on the `flow.run` activity row, and a model asked to classify a
+  support ticket can echo the ticket back — so an unmatched classification
+  reports the label set, not the answer.
+
+For a conversation rather than a single call — tools, memory, a transcript —
+the feature is [agents](/agents/), not a flow op.
 
 ### Billing the row that just landed
 

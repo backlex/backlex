@@ -330,6 +330,79 @@ export type Operation =
       onError?: Operation[];
     }
   /**
+   * Generate text with the workspace's configured model, and put it on
+   * `{{ $last.text }}` for the steps that follow.
+   *
+   * The flow grammar had twenty-three operations and none of them could think:
+   * a flow could move a row, bill it, sign it and text somebody about it, but
+   * the sentence a human would have written about it had to come from a human.
+   * This is the op that closes that, and it is deliberately the *dumbest*
+   * possible shape — one prompt in, one string out — because everything richer
+   * (tools, memory, a conversation) already exists as an agent, and an op that
+   * grew into a second agent runtime would be the wrong place for it.
+   *
+   * `model` is optional and usually should be: omitted, the workspace's
+   * Settings · AI choice applies, and on a managed-cloud project the platform
+   * gateway picks anyway (it forwards only `@cf/…` ids and ignores the rest).
+   * Naming a model here is therefore a hint on self-host and a no-op on cloud.
+   */
+  | {
+      type: "ai.generate";
+      /** The instruction, usually templated: `Summarise: {{ data.body }}`. */
+      prompt: string;
+      /** Steering that is about the ROLE rather than this row. Optional
+       *  because a one-shot instruction rarely needs it. */
+      system?: string;
+      /** Gateway-style model id (`anthropic/claude-haiku-4-5`). Omit to use
+       *  the workspace default. */
+      model?: string;
+      /** Output ceiling. Bounded here because whatever comes back travels on
+       *  `$last` into every later step — and into a `scheduled_tasks` payload
+       *  if one of them checkpoints. */
+      maxTokens?: number;
+      /** Reasoning effort; ignored by models that do not support it. */
+      effort?: "low" | "medium" | "high";
+      /** Wall-clock ceiling for the generation. A flow run has no retry and no
+       *  dead-letter queue, so a generation that never returns is a run that
+       *  never ends. */
+      timeoutMs?: number;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /**
+   * Decide which of a fixed set of labels a piece of text belongs to.
+   *
+   * Separate from `ai.generate` rather than a mode of it, because the two have
+   * different contracts with what comes next. A generation's output is prose
+   * nothing downstream can branch on; a classification's output is one of a set
+   * the flow author wrote down, which is exactly what a following `condition`
+   * op can switch on. That guarantee is the feature — so the executor *checks*
+   * the answer against `labels` instead of trusting it, and a model that
+   * answers outside the set fails the step (or falls back, if the author said
+   * which label that means).
+   */
+  | {
+      type: "ai.classify";
+      /** The text being classified, usually templated. */
+      input: string;
+      /** The permitted answers. Compared case-insensitively, so they must stay
+       *  distinct after folding. */
+      labels: string[];
+      /** Extra guidance ("a refund request counts as billing"). */
+      instructions?: string;
+      /** Gateway-style model id. Omit to use the workspace default —
+       *  classification is the cheap tier's job. */
+      model?: string;
+      /** Which label an unmatched answer means. Without one, an unmatched
+       *  answer fails the step. Must itself be one of `labels`, so that a
+       *  downstream `condition` only ever sees a value it was written for. */
+      fallback?: string;
+      /** Wall-clock ceiling for the generation. */
+      timeoutMs?: number;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /**
    * Open a hosted checkout with a connected payment provider and (optionally)
    * write the link back onto the row that triggered the flow.
    *
@@ -531,6 +604,8 @@ export const OPERATION_TYPES: OperationType[] = [
   "notification",
   "push",
   "sms",
+  "ai.generate",
+  "ai.classify",
   "document.render",
   "document.sign",
   "report.deliver",
@@ -557,6 +632,50 @@ export const OPERATION_TYPES: OperationType[] = [
  * outgrew it is visible rather than silently truncated.
  */
 export const FOREACH_MAX_ROWS = 500;
+
+/**
+ * Bounds on an AI step.
+ *
+ * The timeout exists because a flow run has neither retry nor a dead-letter
+ * queue — an event-triggered run is dispatched fire-and-forget, so a generation
+ * that never returns is not a job that gets picked up again, it is a run that
+ * never ends. Until this op, `request`/`webhook` was the ONLY branch in the
+ * whole engine with a wall-clock ceiling, and the AI path had none anywhere:
+ * `callClaude` passed no abort signal to the provider. Two minutes is the
+ * ceiling because a slower generation than that is a flow-design problem, not a
+ * slow model; sixty seconds is the default because it is already twice what an
+ * HTTP step gets.
+ *
+ * The token default is deliberately BELOW the AI client's own 4096: what an
+ * `ai.generate` step produces is read by the next step — a subject line, a
+ * summary, a label — and it travels on `{{ $last }}` into every later op and
+ * into a `scheduled_tasks` payload if one of them checkpoints. An author who
+ * wants an essay can ask for one; nobody should get one by default.
+ */
+export const AI_OP_DEFAULT_TIMEOUT_MS = 60_000;
+export const AI_OP_MAX_TIMEOUT_MS = 120_000;
+export const AI_OP_DEFAULT_MAX_TOKENS = 1024;
+export const AI_OP_MAX_TOKENS = 8192;
+/** How many labels one `ai.classify` may choose between. A set this large is
+ *  already past what a model picks reliably; the cap is a guard rail, not a
+ *  recommendation. */
+export const AI_CLASSIFY_MAX_LABELS = 50;
+
+/**
+ * How an `ai.classify` label is compared.
+ *
+ * Trim and case-fold, nothing else. Exported so the schema's "labels must be
+ * distinct" check and the executor's matching cannot drift apart — two
+ * different notions of sameness would let a pair of labels pass validation and
+ * then collide at run time, and the loser would be whichever one the matching
+ * loop reached second.
+ *
+ * Deliberately NOT punctuation-stripping: a label may legitimately be `v1.0` or
+ * `n/a`, and mangling the author's own set to be forgiving about the model's
+ * reply is fixing the wrong side. The executor is where a reply's stray quotes
+ * and trailing period get a second, explicit attempt.
+ */
+export const foldLabel = (s: string): string => s.trim().toLowerCase();
 
 export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
   z.union([
@@ -830,6 +949,48 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       .refine((op) => (op.to == null) !== (op.userId == null), {
         message: "sms needs exactly one of `to` or `userId`",
       }),
+    z.object({
+      type: z.literal("ai.generate"),
+      prompt: z.string().min(1).max(20_000),
+      system: z.string().min(1).max(20_000).optional(),
+      // Not checked against the model registry: which ids are legal depends on
+      // the credential this deployment resolves at run time (a direct OpenAI
+      // key, a direct Anthropic key, or the cloud gateway), and a save-time
+      // check has no env to ask. The executor names the model in its failure
+      // instead, which is where the answer is actually knowable.
+      model: z.string().min(1).max(200).optional(),
+      maxTokens: z.number().int().positive().max(AI_OP_MAX_TOKENS).optional(),
+      effort: z.enum(["low", "medium", "high"]).optional(),
+      timeoutMs: z.number().int().positive().max(AI_OP_MAX_TIMEOUT_MS).optional(),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z
+      .object({
+        type: z.literal("ai.classify"),
+        input: z.string().min(1).max(20_000),
+        labels: z.array(z.string().min(1).max(120)).min(2).max(AI_CLASSIFY_MAX_LABELS),
+        instructions: z.string().min(1).max(4_000).optional(),
+        model: z.string().min(1).max(200).optional(),
+        fallback: z.string().min(1).max(120).optional(),
+        timeoutMs: z.number().int().positive().max(AI_OP_MAX_TIMEOUT_MS).optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      // Two labels that differ only in case are one label with two spellings:
+      // the executor folds before matching, so `Billing` and `billing` would
+      // make which one lands on `$last.label` a coin toss.
+      .refine((op) => new Set(op.labels.map(foldLabel)).size === op.labels.length, {
+        message: "ai.classify labels must be distinct (they are matched case-insensitively)",
+      })
+      // The whole point of a fixed label set is that a following `condition` op
+      // can be written against it. A fallback outside the set would hand that
+      // condition a value nobody wrote a branch for — which is the silent
+      // no-match this op exists to prevent, reintroduced one field later.
+      .refine(
+        (op) => op.fallback == null || op.labels.some((l) => foldLabel(l) === foldLabel(op.fallback as string)),
+        { message: "ai.classify fallback must be one of labels" },
+      ),
     z
       .object({
         type: z.literal("payment.checkout"),

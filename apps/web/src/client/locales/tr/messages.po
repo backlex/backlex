@@ -1387,6 +1387,10 @@ msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü
 msgid "A reconnect aid, not an event store — 25 per page, 72 hours at most. Write rows to a collection for real history."
 msgstr "Yeniden bağlanma yardımcısı, olay deposu değil — sayfa başına 25, en fazla 72 saat. Gerçek geçmiş için bir koleksiyona satır yazın."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "A refund request counts as billing."
+msgstr "İade talebi faturalandırma sayılır."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 msgstr "Kaynak, insanların rezerve ettiği şeydir — bir kişi, bir oda, bir masa — ve çalışma saatlerini, bir rezervasyonun ne kadar sürdüğünü ve aynı anda kaç kişi sığdığını taşır."
@@ -2527,6 +2531,7 @@ msgstr "OAuth destekleyen her istemci anahtar olmadan bağlanır — keşif, ona
 msgid "any order"
 msgstr "sıra farketmez"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "any provider model id"
 msgstr "herhangi bir sağlayıcı model id'si"
@@ -5238,6 +5243,10 @@ msgstr "Şu anda bu alanı düzenliyor"
 msgid "Cursor"
 msgstr "Cursor"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "custom"
+msgstr "özel"
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Custom CA PEM (optional)"
 msgstr "Özel CA PEM (isteğe bağlı)"
@@ -5288,6 +5297,7 @@ msgstr "özel kural"
 
 #: src/client/admin/fields/field-money-editor.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
@@ -8121,6 +8131,10 @@ msgstr "Oluşturulan DSL — kayıt sırasında <0>role_permissions</0> tablosun
 msgid "Generating…"
 msgstr "Oluşturuluyor…"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Generations are counted against this workspace under Usage. A step inside a loop generates once per row."
+msgstr "Üretimler bu çalışma alanına Kullanım altında sayılır. Döngü içindeki bir adım her satır için bir kez üretir."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Get a new link"
 #~ msgstr "Yeni bağlantı al"
@@ -8257,6 +8271,10 @@ msgstr "Koruyucular güncellendi"
 msgid "Guests"
 msgstr "Konuklar"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Guidance (optional)"
+msgstr "Yönlendirme (isteğe bağlı)"
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 msgid "Half width"
@@ -8381,6 +8399,10 @@ msgstr "Değişkenleri gizle"
 #: src/client/admin/collections/collections-index.tsx
 msgid "Hiding off"
 msgstr "Gizleme kapalı"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "High"
+msgstr "Yüksek"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "High label"
@@ -8578,6 +8600,10 @@ msgstr "eğer"
 #: src/client/pages/magic-link.tsx
 msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çıktı. 15 dakika içinde geçerliliğini yitirir."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "If nothing matches (optional)"
+msgstr "Hiçbiri eşleşmezse (isteğe bağlı)"
 
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "If set, visitors are sent there instead of seeing the message."
@@ -9378,6 +9404,10 @@ msgid "Label shown in the item form. Falls back to the column name."
 msgstr "Öğe formunda gösterilen etiket. Ayarlanmazsa sütun adına döner."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Labels, one per line"
+msgstr "Etiketler, her satıra bir tane"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Lands in {pending}"
 msgstr "{pending} içine düşer"
 
@@ -9694,6 +9724,10 @@ msgstr "İki tarih gerçekten bağımsız olmadıkça açık bırakın. Boş bir
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Leave to user"
 msgstr "Kullanıcıya bırak"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Left empty, an answer outside the list fails the step instead of guessing."
+msgstr "Boş bırakılırsa, listede olmayan bir yanıt tahmin etmek yerine adımı başarısız kılar."
 
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "Left empty, this is built from"
@@ -10044,6 +10078,10 @@ msgstr "Aranıyor…"
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Kodlarınızı kaybettiniz veya azaldı mı? Yeni bir set oluşturun — eski kodlar hemen çalışmayı durdurur."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Low"
+msgstr "Düşük"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Low label"
 msgstr "Alt uç etiketi"
@@ -10255,6 +10293,10 @@ msgstr "Maksimum adım"
 msgid "Max storage (bytes)"
 msgstr "Maksimum depolama (bayt)"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Max tokens"
+msgstr "En fazla token"
+
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Maximum"
 msgstr "En büyük"
@@ -10313,6 +10355,10 @@ msgstr "ortalama değer"
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "measured"
 msgstr "ölçüldü"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Medium"
+msgstr "Orta"
 
 #: src/client/admin/pages/access/members-panel.tsx
 msgid "Member"
@@ -10546,8 +10592,13 @@ msgstr "Mod"
 
 #: src/client/admin/pages/ask-ai/shared.tsx
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Model"
 msgstr "Model"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Model default"
+msgstr "Model varsayılanı"
 
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Moment"
@@ -12500,6 +12551,10 @@ msgstr "Hata durumunda"
 msgid "On expiry the request rejects — nobody answering is not the same as approval."
 msgstr "Süre dolunca istek reddedilir — kimsenin yanıtlamaması onay anlamına gelmez."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "On managed cloud, generation runs on the platform gateway and this pick is ignored."
+msgstr "Yönetilen bulutta üretim platform ağ geçidinde çalışır ve bu seçim dikkate alınmaz."
+
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "On submit"
 msgstr "Gönderimde"
@@ -12536,6 +12591,10 @@ msgstr "Her şeyi hazırlarken bir saniye."
 #: src/client/pages/invite.tsx
 msgid "One moment."
 msgstr "Bir saniye."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "one of the labels above"
+msgstr "yukarıdaki etiketlerden biri"
 
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "One or more adopted FKs are missing a target collection."
@@ -14121,6 +14180,10 @@ msgstr "Yükselt"
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "destekleyici {0} · nötr {1} · eleştiren {2}"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Prompt"
+msgstr "İstem"
+
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Protect"
 msgstr "Koru"
@@ -14676,6 +14739,7 @@ msgid "Reason for visit"
 msgstr "Geliş nedeni"
 
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Reasoning effort"
 msgstr "Akıl yürütme eforu"
 
@@ -17084,6 +17148,10 @@ msgstr "Bu alanı NULL yap"
 msgid "Set this to send a real invitation with accept/decline. Left empty it attaches a plain event."
 msgstr "Kabul et/reddet seçenekli gerçek bir davet göndermek için doldurun. Boş bırakılırsa düz bir etkinlik eklenir."
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "set under Settings · AI"
+msgstr "Ayarlar · Yapay Zekâ altında belirlenir"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Set up"
 msgstr "Kur"
@@ -17993,6 +18061,10 @@ msgstr "Durum yenilendi."
 msgid "Stay connected without re-approving"
 msgstr "Yeniden onaylamadan bağlı kalma"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Steering that is about the role rather than this row."
+msgstr "Bu satırla değil, rolle ilgili yönlendirme."
+
 #. placeholder {0}: step + 1
 #: src/client/admin/collections/collections-index.tsx
 msgid "step {0} of 2"
@@ -18369,6 +18441,10 @@ msgstr "Sistem alanları"
 msgid "System prompt"
 msgstr "Sistem komutu"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "System prompt (optional)"
+msgstr "Sistem istemi (isteğe bağlı)"
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "System prompt shapes the persona; the tool allow-list is what it can do."
 msgstr "Sistem komutu kişiliği belirler; araç izin listesi ise yapabileceklerini."
@@ -18575,6 +18651,10 @@ msgid "Testing…"
 msgstr "Test ediliyor…"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Text to classify"
+msgstr "Sınıflandırılacak metin"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Texts every active number the user registered. None is a silent no-op."
 msgstr "Kullanıcının kayıtlı tüm aktif numaralarına SMS gider. Numara yoksa sessizce atlanır."
 
@@ -18619,6 +18699,14 @@ msgstr "Ajanın kalıcı talimatları — kişiliği, üslubu ve kuralları. Her
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "The analytics endpoint returned an error. Refresh to try again."
 msgstr "Analitik uç noktası hata döndürdü. Yenileyip tekrar deneyin."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "The answer is checked against this list and lands on {aiLastLabelExample}, so a later If/else step can branch on it. At least two, and they must differ by more than case."
+msgstr "Yanıt bu listeye karşı denetlenir ve {aiLastLabelExample} üzerine düşer; böylece sonraki bir Eğer/değilse adımı buna göre dallanabilir. En az iki tane olmalı ve yalnızca büyük/küçük harf farkıyla ayrışmamalılar."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "The answer lands on {aiLastTextExample} for the steps that follow."
+msgstr "Yanıt, kendisinden sonraki adımlar için {aiLastTextExample} üzerine düşer."
 
 #: src/client/pages/oauth-consent.tsx
 msgid "The authorization flow returned no redirect — start over from the client."
@@ -20943,6 +21031,10 @@ msgstr "\"{slug}\" çalışma alanı zaten mevcut."
 msgid "Workspace auth API <0>· auth as a service</0>"
 msgstr "Çalışma alanı auth API'si <0>· hizmet olarak kimlik doğrulama</0>"
 
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "Workspace default"
+msgstr "Çalışma alanı varsayılanı"
+
 #. placeholder {0}: localeLabel(workspace.defaultLocale)
 #. placeholder {0}: workspace.timezone
 #: src/client/admin/pages/account-page.tsx
@@ -21117,6 +21209,10 @@ msgstr "Sosyal sağlayıcıyla giriş yaptınız. Parola belirleyerek e-posta + 
 #: src/client/pages/sign-document.tsx
 msgid "You will be emailed as soon as it is your turn to sign."
 msgstr "Sıra size geldiğinde e-posta ile bilgilendirileceksiniz."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "You write short, plain replies for support staff."
+msgstr "Destek ekibi için kısa, sade yanıtlar yazıyorsun."
 
 #: src/client/pages/sign-up.tsx
 msgid "You'll get the authenticated role by default."

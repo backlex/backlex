@@ -40,6 +40,16 @@ export interface ClaudeRequest {
   maxTokens?: number;
   /** Reasoning effort; ignored on models that don't support it. */
   effort?: AiEffort;
+  /** Abort the generation when this fires.
+   *
+   *  Optional because most callers sit inside something that already has a
+   *  ceiling above them — a Worker invocation, an MCP tool call, an HTTP
+   *  request. The caller that needs it is the one with nothing above it: a flow
+   *  step is dispatched fire-and-forget with no retry and no dead-letter queue,
+   *  so a generation that never returns is a run that never ends. Honoured on
+   *  BOTH transports; a ceiling that bound only the direct path would be a
+   *  ceiling that silently disappeared on managed cloud. */
+  signal?: AbortSignal;
 }
 
 export interface ClaudeResponse {
@@ -263,7 +273,7 @@ const callCloudGeneration = async (
   // reasoning models it fronts spend a large part of any smaller budget on
   // their thinking pass and return an empty answer. Named here so the next
   // reader does not go looking for where the caller's value went.
-  { system, user, model }: ClaudeRequest,
+  { system, user, model, signal }: ClaudeRequest,
 ): Promise<ClaudeResponse> => {
   const messages = [
     ...(system ? [{ role: "system", content: system }] : []),
@@ -272,7 +282,7 @@ const callCloudGeneration = async (
   const cfModel = model && model.startsWith("@cf/") ? model : undefined;
   let res: Response;
   try {
-    res = await cloudPost(env, "/api/internal/ai/generate", { messages, ...(cfModel ? { model: cfModel } : {}) });
+    res = await cloudPost(env, "/api/internal/ai/generate", { messages, ...(cfModel ? { model: cfModel } : {}) }, signal);
   } catch (e) {
     throw new AppError("UNAVAILABLE", `Cloud AI gateway unreachable: ${e instanceof Error ? e.message : "error"}`);
   }
@@ -334,7 +344,7 @@ export const callClaude = async (
 
 const generate = async (
   env: Env,
-  { system, user, model, maxTokens, effort }: ClaudeRequest,
+  { system, user, model, maxTokens, effort, signal }: ClaudeRequest,
 ): Promise<ClaudeResponse> => {
   // A direct provider key wins over the managed cloud gateway. On self-host
   // that's the deployment's env key; on managed cloud it only appears when a
@@ -344,7 +354,7 @@ const generate = async (
   // gateway; self-host with no key throws the helpful "set a key" error below.
   const hasDirectKey = hasDirectAiCredential(env);
   if (!hasDirectKey && cloudConfigured(env))
-    return callCloudGeneration(env, { system, user, model, maxTokens });
+    return callCloudGeneration(env, { system, user, model, maxTokens, signal });
 
   const provider = pickProvider(env);
   const modelId = resolveModelId(provider.kind, model);
@@ -359,6 +369,7 @@ const generate = async (
       messages: [{ role: "user", content: user }],
       maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
       providerOptions: anthropicProviderOptions(modelId, effort, provider.oauth),
+      ...(signal ? { abortSignal: signal } : {}),
     });
     // Opt-in: self-report token usage to the cloud control plane (no-op
     // unless provisioned). Fire-and-forget — never blocks the response.

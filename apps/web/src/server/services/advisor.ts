@@ -607,9 +607,17 @@ export const runAdvisorChecks = async (
   // Filed under `kind: "security"` rather than a new `"resilience"` kind on
   // purpose — widening AdvisorKind for one rule would mean touching the advisor
   // UI's grouping and its surfaces test for no gain to the reader.
+  //
+  // Skipped on a managed cloud tenant. There, backups are taken by the control
+  // plane (D1 Time Travel bookmarks, on its own schedule) and the instance-side
+  // schedule is expected to stay `off` — so this rule would warn every managed
+  // workspace about a gap that does not exist, forever, with no action its admin
+  // could usefully take. `CLOUD_PROJECT_ID` is bound only by the provisioner,
+  // which is the same discriminator BLOCK_PRIVATE_FETCH_HOSTS already uses to
+  // tell a managed tenant from a self-hosted one (see env.ts).
   try {
     const cfg = await loadBackupConfig(ctx, tenantId);
-    if (cfg.schedule === "off") {
+    if (cfg.schedule === "off" && !ctx.env.CLOUD_PROJECT_ID) {
       out.push({
         id: "sec-backups-off",
         kind: "security",

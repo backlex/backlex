@@ -265,3 +265,45 @@ describe("advisor: findings are tenant-scoped", () => {
     expect(leaked).toBeUndefined();
   });
 });
+
+/**
+ * `sec-backups-off` fires when the instance-side backup schedule is `off`,
+ * which is the default. On a managed cloud tenant that is the *expected* state:
+ * backups are taken by the control plane, on its own schedule, where this
+ * advisor cannot see them. Without the skip, every managed workspace would be
+ * warned forever about a gap that does not exist and could not usefully act on.
+ */
+describe("advisor: backups-off is self-host only", () => {
+  let h: TestHarness;
+
+  afterAll(() => {
+    h?.cleanup();
+  });
+
+  const backupsFinding = async (harness: TestHarness) => {
+    const res = await harness.fetch("/api/admin/advisor");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as AdvisorResult;
+    return body.data.find((c) => c.rule === "backups-off");
+  };
+
+  test("a self-hosted instance is warned that backups are off", async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+
+    const finding = await backupsFinding(h);
+
+    expect(finding).toBeDefined();
+    expect(finding?.level).toBe("warn");
+    h.cleanup();
+  });
+
+  test("a managed cloud tenant is not — its backups live a layer up", async () => {
+    // CLOUD_PROJECT_ID is bound only by the cloud provisioner; it is the same
+    // discriminator BLOCK_PRIVATE_FETCH_HOSTS uses to tell the two apart.
+    h = makeHarness({ CLOUD_PROJECT_ID: "proj-1234" });
+    await seedAdmin(h);
+
+    expect(await backupsFinding(h)).toBeUndefined();
+  });
+});

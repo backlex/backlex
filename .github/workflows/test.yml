@@ -263,3 +263,79 @@ jobs:
           SMOKE_RUNTIME: ${{ matrix.runtime }}
           PORT: 8787
         run: bun apps/web/tests/smoke/orchestrate.ts
+
+  # ── The pre-deploy gate ────────────────────────────────────────────────
+  #
+  # Cloudflare Workers Builds deploys on push to `main`, and this workflow runs
+  # on push to `main`, and neither waits for the other. So the deploy that ships
+  # a broken commit finishes while its own tests are still running, and the red
+  # X arrives after the bad bundle is live. The suite is a tripwire, not a gate.
+  #
+  # It cannot be fixed inside the Cloudflare build either: measured, the `test`
+  # job takes ~16 minutes and Cloudflare terminates a build at 20, so a build
+  # that waited for the suite would be killed before doing its own work.
+  #
+  # The fix is to invert the trigger — let the suite start the build, instead of
+  # the push starting both. Cloudflare documents a manual-build endpoint that
+  # pins an exact commit, which is precisely this case.
+  #
+  # ⚠ INERT UNTIL CONFIGURED, on purpose. It needs three things that only a
+  # human with dashboard access can provide, and it skips (green, with a note)
+  # until they exist rather than failing every run:
+  #
+  #   1. secret  CF_API_TOKEN     — a USER-scoped token (account-scoped is not
+  #                                 supported) with Workers Builds Configuration
+  #                                 = Edit.
+  #   2. secret  CF_ACCOUNT_ID
+  #   3. secret  CF_BUILD_TRIGGER_UUID — from
+  #      GET /accounts/{id}/builds/workers/{worker_tag}/triggers
+  #
+  # And one dashboard change, WITHOUT which this only adds a duplicate build:
+  # turn the automatic branch trigger OFF for `main` (Worker → Settings →
+  # Build). Then set PREDEPLOY_GATE_STRICT=1 in the build environment so
+  # `scripts/require-green-checks.ts` refuses anything that reaches the builder
+  # by another route.
+  deploy:
+    name: deploy (cloudflare, after tests)
+    needs: [test, changes, build, runtime-smoke]
+    # `always()` so a SKIPPED heavy path (build/runtime-smoke do not run on a
+    # docs-only push) does not skip the deploy with it — but every job that DID
+    # run must have succeeded. Without the explicit result checks, `always()`
+    # would deploy on a red `test`, which is the one thing this job exists to
+    # prevent.
+    if: >-
+      always()
+      && github.event_name == 'push'
+      && github.ref == 'refs/heads/main'
+      && needs.test.result == 'success'
+      && needs.changes.result == 'success'
+      && needs.build.result != 'failure'
+      && needs.build.result != 'cancelled'
+      && needs['runtime-smoke'].result != 'failure'
+      && needs['runtime-smoke'].result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the Cloudflare build for this exact commit
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_BUILD_TRIGGER_UUID: ${{ secrets.CF_BUILD_TRIGGER_UUID }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ] || [ -z "$CF_ACCOUNT_ID" ] || [ -z "$CF_BUILD_TRIGGER_UUID" ]; then
+            echo "::notice::Pre-deploy gate not configured — Cloudflare is still deploying on push, alongside these tests rather than after them. See the comment above this job."
+            exit 0
+          fi
+          echo "Triggering a Cloudflare build pinned to ${SHA}"
+          code=$(curl -sS -o /tmp/cf.json -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"branch\":\"main\",\"commit_hash\":\"${SHA}\"}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/builds/triggers/${CF_BUILD_TRIGGER_UUID}/builds")
+          echo "HTTP ${code}"
+          cat /tmp/cf.json
+          # A failed trigger must fail this job. A deploy that silently did not
+          # happen is worse than one that did not happen loudly — the whole
+          # point of moving the trigger here is that somebody is watching it.
+          [ "$code" -ge 200 ] && [ "$code" -lt 300 ]

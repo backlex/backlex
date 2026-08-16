@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "bun run --cwd apps/web dev",
     "dev:bun": "bun run --cwd apps/web dev:bun",
-    "build": "bun run --cwd apps/web build",
+    "build": "bun scripts/require-green-checks.ts && bun run --cwd apps/web build",
     "typecheck": "bun run --filter '*' typecheck",
     "typecheck:native": "node_modules/typescript-7/bin/tsc --noEmit -p apps/web/tsconfig.client.json && node_modules/typescript-7/bin/tsc --noEmit -p apps/web/tsconfig.server.json",
     "db:generate:pg": "bun run --cwd packages/db generate:pg",

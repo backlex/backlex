@@ -12,7 +12,7 @@ what the layer above can't see.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Layer 3 — runtime-smoke (CI matrix: bun, vercel, netlify)   │
+│ Layer 3 — runtime-smoke (CI matrix: 8 runtimes)             │
 │   Boots each runtime end-to-end, exercises real HTTP        │
 │   Catches: bundle import errors, runtime-conditional        │
 │   adapter selection, cookie / auth round-trips, cron auth   │
@@ -141,9 +141,13 @@ bun run build:targets
 
 Warm run: ~6 seconds. Cold: ~15. Wired into:
 - `lefthook.yml::pre-push` — maintainer pushes get the gate locally.
-- `.github/workflows/test.yml::build-targets` — every PR.
-- `.github/workflows/deploy.yml::build-targets` — gates production
-  deploys (so a force-merged PR can't ship a broken bundle).
+- `.github/workflows/test.yml::build` — every PR, and every push to
+  `main` when a build-relevant path changed (the `changes` filter).
+
+There is **no `deploy.yml`**. This page used to claim one gated
+production deploys; it never existed, and believing it is how the
+gap in "CI gates" below went unnoticed — the platforms deploy
+themselves, from their own git integrations.
 
 **Layer 2 doesn't catch:** runtime behavior. The bundle building
 doesn't prove the bundle SERVES correctly. A regression that picks
@@ -234,12 +238,41 @@ migrations just ran against).
 
 | Workflow | Jobs | Triggered by |
 |---|---|---|
-| `test.yml` | `test`, `build-targets`, `runtime-smoke (bun/vercel/netlify/cloudflare)` | every PR + push to `main` |
+| `test.yml` | `test`, `changes`, `build`, `runtime-smoke (×8 runtimes)`, `deploy` | every PR + push to `main` |
 
 All three platforms deploy from `main` natively via their own git
-integrations (Vercel, Netlify, and Cloudflare Workers Builds) — there
-is no separate deploy workflow. `test.yml` running on `push: main` is
-the post-merge tripwire, not a pre-deploy gate; platforms start
-shipping as soon as the commit lands. The real gate is the pre-push
-hook (lefthook) for the maintainer and the PR status checks for
-contributors (where branch protection requires them).
+integrations (Vercel, Netlify, and Cloudflare Workers Builds), so the
+push starts the deploy and this workflow at the same moment — neither
+waiting for the other. That makes `test.yml` a **tripwire**: it says
+what happened, which is a different job from stopping it.
+
+### Making it an actual gate
+
+**The fix cannot be "make the build wait".** Measured: the `test` job
+takes ~16 minutes on `main`, and Cloudflare terminates a build at 20.
+A build that waited for the suite would be killed before doing its own
+work. So the trigger is inverted instead — the suite starts the build.
+
+Two halves, and only one of them is automatic:
+
+1. **`scripts/require-green-checks.ts`**, wired as the first thing in
+   `bun run build` (the only hook the repo controls; Cloudflare's build
+   and deploy commands live in its dashboard). It asks GitHub for the
+   `test.yml` run of the exact commit being built and **refuses a
+   commit whose run is already known red** — a re-run, a superseded
+   build, a manual trigger on a stale commit. It is inert locally and
+   in CI, and it does not block a run still in progress unless
+   `PREDEPLOY_GATE_STRICT=1`.
+2. **The `deploy` job in `test.yml`**, which calls Cloudflare's
+   manual-build endpoint pinned to the commit, after every job that ran
+   has succeeded. **Inert until three secrets exist** (`CF_API_TOKEN` —
+   user-scoped, Workers Builds Configuration = Edit — plus
+   `CF_ACCOUNT_ID` and `CF_BUILD_TRIGGER_UUID`), and it needs one
+   dashboard change to be worth anything: turn the automatic branch
+   trigger OFF for `main`, or it merely adds a second build alongside
+   the first. Then set `PREDEPLOY_GATE_STRICT=1` in the build
+   environment so anything reaching the builder by another route is
+   refused.
+
+Until step 2 is configured, the pre-push hook (lefthook) is still the
+maintainer's real gate and PR status checks are the contributors'.

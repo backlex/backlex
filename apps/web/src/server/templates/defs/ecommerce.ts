@@ -1065,4 +1065,39 @@ export const ecommerce: SchemaTemplate = {
       maxSteps: 8,
     },
   ],
+  /**
+   * Remote config the STOREFRONT reads, not internal toggles.
+   *
+   * That distinction is the whole reason there are only three: a template
+   * cannot know which experiments a merchant wants to run, and seeding
+   * invented ones would be noise an operator has to clear out. These three are
+   * decisions every store has already made and currently hard-codes in its
+   * front end — so they arrive as something a deploy can change without a
+   * deploy, which is what the feature is for.
+   *
+   * Defaults are the safe reading of each: guest checkout on because refusing
+   * it costs sales, reviews on because the collection exists, wholesale off
+   * because the pricing it exposes is not for everybody.
+   */
+  flags: [
+    {
+      key: "storefront.guest-checkout",
+      enabled: true,
+      description: "Let a buyer complete an order without creating an account.",
+    },
+    {
+      key: "storefront.reviews",
+      enabled: true,
+      description: "Show product reviews, and accept new ones.",
+    },
+    {
+      key: "storefront.wholesale-pricing",
+      enabled: false,
+      // The payload is what a storefront reads once the flag is on: which
+      // customer group's standing discount applies. A flag that only said
+      // on/off would leave the front end hard-coding the group anyway.
+      value: { customerGroupCode: "wholesale" },
+      description: "Show customer-group pricing to signed-in buyers in that group.",
+    },
+  ],
 };

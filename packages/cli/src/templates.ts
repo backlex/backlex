@@ -39,6 +39,13 @@ interface ApplyResult {
   seeded: number;
   roles?: string[];
   dashboards?: string[];
+  kpis?: string[];
+  flows?: string[];
+  documents?: string[];
+  forms?: string[];
+  agents?: string[];
+  flags?: string[];
+  channels?: string[];
 }
 
 const TEMPLATES_HELP = `backlex templates <list|apply|extract|clear-samples>
@@ -70,6 +77,15 @@ const printApply = (data: ApplyResult, json: boolean): void => {
     seeded: String(data.seeded),
     roles: data.roles?.length ? data.roles.join(", ") : "—",
     dashboards: data.dashboards?.length ? data.dashboards.join(", ") : "—",
+    kpis: data.kpis?.length ? data.kpis.join(", ") : "—",
+    flows: data.flows?.length ? data.flows.join(", ") : "—",
+    documents: data.documents?.length ? data.documents.join(", ") : "—",
+    // Names, not links: the form's token is minted once and only its hash is
+    // kept, so `backlex forms rotate` is how you get a URL.
+    forms: data.forms?.length ? data.forms.join(", ") : "—",
+    agents: data.agents?.length ? data.agents.join(", ") : "—",
+    flags: data.flags?.length ? data.flags.join(", ") : "—",
+    channels: data.channels?.length ? data.channels.join(", ") : "—",
   });
 };
 

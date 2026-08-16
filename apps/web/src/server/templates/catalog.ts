@@ -15,8 +15,14 @@ export type {
   SampleRow,
   SampleValue,
   SchemaTemplate,
+  TemplateAgent,
+  TemplateChannel,
   TemplateCollection,
   TemplateDashboard,
+  TemplateDocument,
+  TemplateFlag,
+  TemplateFlow,
+  TemplateForm,
   TemplateKpi,
   TemplatePanel,
   TemplatePermission,
@@ -91,6 +97,23 @@ export const templateSummaries = () =>
     roles: (t.roles ?? []).map((r) => r.name),
     /** Bundled dashboard names seeded on apply. */
     dashboards: (t.dashboards ?? []).map((d) => d.name),
+    /**
+     * What else arrives with the collections, as counts.
+     *
+     * Counts rather than names: the picker's job is to say how much of a
+     * working application this is, and six more comma-separated lists in a
+     * preview pane is a wall nobody reads. The names are on the pages the
+     * things land on.
+     */
+    bundles: {
+      kpis: (t.kpis ?? []).length,
+      flows: (t.flows ?? []).length,
+      documents: (t.documents ?? []).length,
+      forms: (t.forms ?? []).length,
+      agents: (t.agents ?? []).length,
+      flags: (t.flags ?? []).length,
+      channels: (t.channels ?? []).length,
+    },
     collections: t.collections.map((c) => ({
       slug: c.slug,
       label: c.plural ?? c.slug,

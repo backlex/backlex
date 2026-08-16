@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const hr: SchemaTemplate = {
   id: "hr",
@@ -88,7 +88,7 @@ export const hr: SchemaTemplate = {
       portalLink: { emailField: "work_email", role: "Employee (self-service)" },
       fields: tabbed(
         sec("Identity", [
-          ...half(text("employee_number", { unique: true, label: "Employee #" }), computedText("full_name", "first_name || ' ' || last_name", { label: "Full name" })),
+          ...half(seq("employee_number", "E-{####}", { label: "Employee #" }), computedText("full_name", "first_name || ' ' || last_name", { label: "Full name" })),
           ...half(text("first_name", { label: "First name", searchable: true }), text("last_name", { label: "Last name", searchable: true })),
           text("preferred_name", { label: "Preferred name" }),
         ]),
@@ -107,7 +107,10 @@ export const hr: SchemaTemplate = {
             select("employment_type", [ch("full_time", C.green, "Full time"), ch("part_time", C.blue, "Part time"), ch("contract", C.amber), ch("intern", C.teal), ch("temporary", C.gray)], { default: "full_time", label: "Employment type" }),
             select("status", [ch("active", C.green), ch("on_leave", C.amber, "On leave"), ch("terminated", C.red)], { default: "active" }),
           ),
-          ...half(date("hire_date", { indexed: true, label: "Hire date" }), date("termination_date", { label: "Termination date" })),
+          ...half(
+            date("hire_date", { indexed: true, label: "Hire date" }),
+            date("termination_date", { label: "Termination date", conditions: [when("status", "_eq", "terminated", "required")] }),
+          ),
         ]),
         sec("Compensation", [
           hint("employees_comp", "This is the current headline figure. Every change is kept as its own row under Compensation history."),
@@ -116,8 +119,8 @@ export const hr: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { employee_number: "E-001", first_name: "Ada", last_name: "Lovelace", work_email: "ada@company.example", job_title: "Software Engineer", department: { ref: "departments:0" }, position: { ref: "positions:0" }, location: { ref: "locations:0" }, employment_type: "full_time", status: "active", hire_date: ms("2024-03-01"), compensation_amount: 145000 },
-        { employee_number: "E-002", first_name: "Sam", last_name: "Taylor", work_email: "sam@company.example", job_title: "Account Executive", department: { ref: "departments:1" }, position: { ref: "positions:1" }, location: { ref: "locations:0" }, employment_type: "full_time", status: "active", hire_date: ms("2025-09-15"), compensation_amount: 110000 },
+        { first_name: "Ada", last_name: "Lovelace", work_email: "ada@company.example", job_title: "Software Engineer", department: { ref: "departments:0" }, position: { ref: "positions:0" }, location: { ref: "locations:0" }, employment_type: "full_time", status: "active", hire_date: ms("2024-03-01"), compensation_amount: 145000 },
+        { first_name: "Sam", last_name: "Taylor", work_email: "sam@company.example", job_title: "Account Executive", department: { ref: "departments:1" }, position: { ref: "positions:1" }, location: { ref: "locations:0" }, employment_type: "full_time", status: "active", hire_date: ms("2025-09-15"), compensation_amount: 110000 },
       ],
     },
     {
@@ -149,6 +152,7 @@ export const hr: SchemaTemplate = {
     },
     {
       slug: "leave_requests", group: "Operations", singular: "Time off", plural: "Time off", defaultSort: "-start_date",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Request", [
           rel("employee", "employees"),
@@ -239,6 +243,7 @@ export const hr: SchemaTemplate = {
     },
     {
       slug: "performance_reviews", group: "Operations", singular: "Review", plural: "Reviews", defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Review", [
           ...half(rel("employee", "employees"), rel("reviewer", "employees")),
@@ -380,6 +385,7 @@ export const hr: SchemaTemplate = {
     },
     {
       slug: "expense_claims", group: "Payroll", singular: "Expense claim", plural: "Expense claims", defaultSort: "-spent_on",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Claim", [
           ...half(rel("employee", "employees", { required: true }), date("spent_on", { indexed: true, label: "Spent on" })),
@@ -395,7 +401,16 @@ export const hr: SchemaTemplate = {
             select("status", [ch("draft", C.gray), ch("submitted", C.blue), ch("approved", C.green), ch("rejected", C.red), ch("reimbursed", C.teal)], { default: "draft" }),
             rel("approver", "employees"),
           ),
-          ...half(date("reimbursed_on", { label: "Reimbursed on" }), file("receipt")),
+          ...half(
+            date("reimbursed_on", {
+              label: "Reimbursed on",
+              conditions: [
+                when("status", "_eq", "reimbursed", "required"),
+                when("status", "_neq", "reimbursed", "hidden"),
+              ],
+            }),
+            file("receipt"),
+          ),
         ]),
       ),
       samples: [
@@ -427,7 +442,7 @@ export const hr: SchemaTemplate = {
         ...half(rel("training", "trainings", { required: true }), rel("employee", "employees", { required: true })),
         ...half(
           select("status", [ch("invited", C.gray), ch("registered", C.blue), ch("attended", C.green), ch("no_show", C.red, "No-show"), ch("completed", C.teal)], { default: "invited" }),
-          date("completed_on", { label: "Completed on" }),
+          date("completed_on", { label: "Completed on", conditions: [when("status", "_eq", "completed", "required")] }),
         ),
         ...half(int("score", { validation: { min: 0, max: 100 } }), file("certificate")),
       ],
@@ -576,6 +591,295 @@ export const hr: SchemaTemplate = {
         { name: "Attendance by status", kind: "items-aggregate", viz: "bars", config: { collection: "attendance_records", agg: "count", groupBy: "status" } },
         { name: "Goals by status", kind: "items-aggregate", viz: "donut", config: { collection: "goals", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * The rules a people operation runs on, already running.
+   *
+   * Deliberately absent: "time off was approved, so take the days off the
+   * allocation". The balance lives on a `leave_allocations` row keyed by
+   * employee, leave type AND year — a different row from the request, which is
+   * all a flow's `data` holds. A step that guessed which allocation to debit
+   * would corrupt a balance silently, and a wrong balance is discovered a year
+   * later. So the flow reports the request and leaves the subtraction where the
+   * allocation is.
+   */
+  flows: [
+    {
+      name: "Open the standard onboarding checklist for a new hire",
+      trigger: "event:items:employees:created",
+      operations: [
+        // The three things every hire needs, split by who actually does them.
+        // Deliberately undated: an employee record is routinely created before
+        // the start date is settled, and a task dated from an empty `hire_date`
+        // is a deadline in 1970.
+        {
+          type: "item.create",
+          collection: "onboarding_tasks",
+          data: { employee: "{{ data.id }}", task: "Sign the contract and tax forms", owner: "hr" },
+        },
+        {
+          type: "item.create",
+          collection: "onboarding_tasks",
+          data: { employee: "{{ data.id }}", task: "Provision laptop, accounts and building access", owner: "it" },
+        },
+        {
+          type: "item.create",
+          collection: "onboarding_tasks",
+          data: { employee: "{{ data.id }}", task: "Day-one welcome and team walkthrough", owner: "manager" },
+        },
+        {
+          type: "notification",
+          title: "{{ data.first_name }} {{ data.last_name }} has been added",
+          body: "Three onboarding tasks are open. Set their due dates once the start date is confirmed.",
+          url: "/collections/onboarding_tasks",
+        },
+      ],
+    },
+    {
+      name: "Tell the team a time-off request is waiting on a decision",
+      trigger: "event:items:leave_requests:created",
+      operations: [
+        // Reports it and stops there. Whether the employee HAS the days is on
+        // their allocation row, which this run cannot see — so the body says
+        // what to check rather than approving on a number it does not have.
+        {
+          type: "notification",
+          title: "A time-off request needs a decision",
+          body: "Check the employee's remaining balance for this leave type and year, then approve or deny.",
+          url: "/collections/leave_requests",
+        },
+      ],
+    },
+    {
+      name: "Warn thirty days before an employee document expires",
+      // Right-to-work papers, certifications and visas are the ones that lapse
+      // quietly. Fires once per row, at 09:00 — rows with no expiry never fire,
+      // because a null date names no instant.
+      trigger: `schedule:${JSON.stringify({
+        collection: "documents",
+        field: "expires_at",
+        offset: { value: 30, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: null,
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "{{ data.title }} expires in 30 days",
+          body: "Ask for the renewed copy before it lapses — an expired right-to-work paper or certification stops somebody working.",
+          url: "/collections/documents",
+        },
+      ],
+    },
+    {
+      name: "Open a probation review ninety days after a hire date",
+      // `after`, not `before`: this is the one schedule in the vertical that
+      // counts forward from a date already in the past. Terminated and on-leave
+      // records are filtered out in SQL rather than re-checked per row.
+      trigger: `schedule:${JSON.stringify({
+        collection: "employees",
+        field: "hire_date",
+        offset: { value: 90, unit: "days", direction: "after" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "active" } },
+      })}`,
+      operations: [
+        {
+          type: "item.create",
+          collection: "performance_reviews",
+          data: {
+            employee: "{{ data.id }}",
+            period: "Probation — first 90 days",
+            review_type: "probationary",
+            status: "not_started",
+          },
+        },
+        {
+          type: "notification",
+          title: "Probation review due for {{ data.first_name }} {{ data.last_name }}",
+          body: "Ninety days in. The review has been opened as not started — assign a reviewer.",
+          url: "/collections/performance_reviews",
+        },
+      ],
+    },
+    {
+      name: "Expire a contract the morning after its end date",
+      trigger: "cron:0 6 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "contracts",
+          // A contract with no end date is permanent and never matches: a NULL
+          // fails the comparison rather than reading as long past.
+          filter: { status: { _eq: "active" }, end_date: { _lt: "$now" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "contracts",
+              id: "{{ $item.id }}",
+              data: { status: "expired" },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Email the payslip when it is issued (needs email + a PDF renderer)",
+      // Off until both are configured — the name carries the prerequisite so
+      // nobody has to open it to find out.
+      active: false,
+      trigger: "event:items:payslips:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "issued" } },
+          then: [
+            { type: "document.render", templateKey: "payslip" },
+            {
+              type: "email",
+              to: "{{ data.employee.work_email }}",
+              subject: "Your payslip",
+              html: "<p>Your payslip for this run is attached. Questions go to HR.</p>",
+              attach: ["{{ $last.key }}"],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "payslip",
+      name: "Payslip",
+      description: "One employee's pay for one run, as they receive it.",
+      filename: "payslip-{{ data.id }}",
+      variables: ["gross_pay", "net_pay", "tax"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:18mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "td.n,th.n{text-align:right}" +
+        "tr.net td{border-top:2px solid #111;border-bottom:0;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>Payslip</h1>" +
+        '<p class="muted">{{ data.payroll_run.name }} · paid {{ data.payroll_run.pay_date }}</p>' +
+        "<p><strong>{{ data.employee.first_name }} {{ data.employee.last_name }}</strong><br>" +
+        "Employee {{ data.employee.employee_number }} · {{ data.employee.job_title }}<br>" +
+        "Days worked: {{ data.worked_days }}</p>" +
+        '<table><thead><tr><th>Earnings</th><th class="n">Amount</th></tr></thead><tbody>' +
+        '<tr><td>Base pay</td><td class="n">{{ data.base_pay }}</td></tr>' +
+        '<tr><td>Overtime</td><td class="n">{{ data.overtime_pay }}</td></tr>' +
+        '<tr><td>Bonus</td><td class="n">{{ data.bonus }}</td></tr>' +
+        '<tr><td><strong>Gross pay</strong></td>' +
+        '<td class="n"><strong>{{ data.gross_pay }}</strong></td></tr>' +
+        "</tbody></table>" +
+        '<table><thead><tr><th>Deductions</th><th class="n">Amount</th></tr></thead><tbody>' +
+        '<tr><td>Tax</td><td class="n">{{ data.tax }}</td></tr>' +
+        '<tr><td>Social security</td><td class="n">{{ data.social_security }}</td></tr>' +
+        '<tr><td>Other deductions</td><td class="n">{{ data.other_deductions }}</td></tr>' +
+        '<tr class="net"><td>Net pay</td><td class="n">{{ data.net_pay }}</td></tr>' +
+        "</tbody></table>" +
+        '<p class="muted">Queries about this payslip go to People Operations.</p>' +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "18mm" },
+    },
+    {
+      // Rendered against an EMPLOYEE row, not a payslip — this is the letter a
+      // bank or a consulate asks for, and it deliberately states employment
+      // only. Pay belongs in it when the employee asks for it to be there, not
+      // by default: the letter is handed to a third party.
+      key: "employment_verification",
+      name: "Employment verification letter",
+      description: "Confirms that someone works here, for a bank, a landlord or a consulate.",
+      filename: "employment-verification-{{ data.employee_number }}",
+      variables: ["first_name", "last_name", "job_title", "hire_date"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:22mm}" +
+        "body{font:13px/1.7 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:19px;margin:0 0 18px}" +
+        ".muted{color:#666}" +
+        ".sig{margin-top:48px}" +
+        "</style></head><body>" +
+        "<h1>Confirmation of employment</h1>" +
+        "<p>To whom it may concern,</p>" +
+        "<p>This letter confirms that <strong>{{ data.first_name }} {{ data.last_name }}</strong> " +
+        "(employee {{ data.employee_number }}) is employed by this company as " +
+        "<strong>{{ data.job_title }}</strong>, and has been since {{ data.hire_date }}.</p>" +
+        "<p>The engagement is {{ data.employment_type }} and the record is currently " +
+        "{{ data.status }}.</p>" +
+        '<p class="muted">This letter states employment only. It is not an offer, ' +
+        "a contract, or a statement of pay.</p>" +
+        '<p class="sig">_____________________________<br>People Operations · date</p>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "22mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "New hire details",
+      collection: "employees",
+      settings: {
+        submitLabel: "Send my details",
+        successMessage: "Thank you — HR has your details and will be in touch before your first day.",
+      },
+      // Personal side only. The work email, the department and the pay are the
+      // company's to set, and a public link that could write them is a public
+      // link that can put somebody on the payroll.
+      fields: [
+        { name: "first_name", label: "First name" },
+        { name: "last_name", label: "Last name" },
+        { name: "preferred_name", label: "Preferred name", help: "What you would like colleagues to call you." },
+        { name: "personal_email", label: "Personal email", help: "Where we write before your work account exists." },
+        { name: "phone", label: "Mobile", help: "Include the country code — numbers are stored in international form." },
+        { name: "date_of_birth", label: "Date of birth", help: "Used for payroll and benefits enrolment." },
+      ],
+    },
+    {
+      name: "Emergency contact",
+      collection: "emergency_contacts",
+      settings: {
+        submitLabel: "Save contact",
+        successMessage: "Thank you — HR will attach this to your employee record.",
+      },
+      fields: [
+        { name: "name", label: "Contact's full name" },
+        { name: "relationship", help: "Spouse, parent, friend — whatever fits." },
+        { name: "phone", label: "Phone", help: "Include the country code, e.g. +1 555 010 0100." },
+        { name: "email", label: "Email", help: "Optional — used only if we cannot reach them by phone." },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "People assistant",
+      handle: "people-assistant",
+      description: "Answers questions about headcount, time off and payroll totals.",
+      systemPrompt:
+        "You help a people team read its own HR records. Answer from the " +
+        "workspace's data and nothing else.\n\n" +
+        "Privacy comes first: never disclose an individual's pay, date of birth, " +
+        "personal email, phone number or emergency contacts. Asked about pay, " +
+        "answer with a total, an average or a headcount instead, and say why. " +
+        "Job title, department, manager and start date are ordinary directory " +
+        "facts and may be named.\n\n" +
+        "A leave balance is per employee, per leave type and per YEAR — always " +
+        "say which year a figure covers, and never add balances across types. " +
+        "Payroll amounts are denominated by each run's own currency, so report " +
+        "one figure per currency rather than one sum. Be brief and specific, and " +
+        "say plainly when the data does not answer the question.",
+      tools: ["collections.list", "collections.read", "collections.aggregate", "collections.search", "kpis.run"],
+      maxSteps: 8,
     },
   ],
 };

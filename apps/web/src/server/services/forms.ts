@@ -51,11 +51,23 @@ const randomHex = (bytes: number): string => {
   return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
 };
 
-/** Field types a form may expose. Dropdowns are `text` + `options.choices`;
- *  `file` blocks write the storage key minted by the public upload endpoint. */
+/**
+ * Field types a form may expose. Dropdowns are `text` + `options.choices`;
+ * `file` blocks write the storage key minted by the public upload endpoint.
+ *
+ * `email`, `phone` and `url` are here because they used to be — they were all
+ * `text` columns until the field-type work converted them, and this list did
+ * not follow. The effect was that a public form could not ask for an email
+ * address, which is the single most common thing a public form asks for. They
+ * are as safe to expose as the `text` they were: scalar, writable, and folded
+ * to a canonical form by the same write path every other value goes through.
+ */
 const ALLOWED_TYPES = new Set<string>([
   "text",
   "longtext",
+  "email",
+  "phone",
+  "url",
   "integer",
   "number",
   "boolean",
@@ -231,13 +243,27 @@ export interface FormInput {
  * types (divider/notice) are excluded implicitly by the type allow-list.
  * `json` fields qualify ONLY when they define choices — that's the
  * multi-select shape (stored as an array of the chosen values).
+ *
+ * The exclusion list is exactly the set the item write path refuses a value
+ * for (`services/items/validate.ts`), and it has to stay that way: a field
+ * this function calls eligible but the writer rejects makes a form that cannot
+ * be built OR submitted. `rollup` and `sequence` were missing, and `sequence`
+ * is the one that deadlocks — it is a `text` field, so it passed the type
+ * gate, and a document number is normally declared `required`, which
+ * `assertFieldsEligible` reads as "must be on the form". Include it and every
+ * submission 422s on a server-issued column; leave it off and the form itself
+ * is refused. `onUpdate` is here for the same reason as `onCreate`: the writer
+ * rejects a payload naming either.
  */
 export const isFormEligible = (f: FieldDef): boolean =>
   (ALLOWED_TYPES.has(f.type) || (f.type === "json" && getChoices(f).length > 0)) &&
   !f.computed &&
   !f.private &&
   !f.localized &&
-  !f.onCreate;
+  !f.onCreate &&
+  !f.onUpdate &&
+  !f.rollup &&
+  !f.sequence;
 
 /** The collection's form-eligible fields, in schema order. */
 export const formEligibleFields = (collection: CollectionRow): FieldDef[] =>

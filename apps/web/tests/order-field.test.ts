@@ -278,6 +278,13 @@ describe("order fields", () => {
       const ids: Record<string, string> = {};
       for (const name of ["x", "y", "z"]) {
         ids[name] = (await create(lessons, { name, module: m, position: 0 })).body.data.id as string;
+        // Spaced for the same reason the test above spaces its five rows, and
+        // this is what made this one fail about one run in ten: every position
+        // is 0, so the repair breaks the tie on `created_at` — which is
+        // millisecond-resolution, so three rows written in one tight loop share
+        // a timestamp and fall through to the primary key, a random UUID. The
+        // repaired order was then a coin flip and so was the assertion.
+        await Bun.sleep(2);
       }
       // Without the repair the shift matches nothing (every row holds 0) and the
       // row would land at the end instead of where it was dropped.

@@ -659,3 +659,168 @@ describe("public forms — versioned collections", () => {
     expect(rows[0]!._status).toBe("draft");
   });
 });
+
+/**
+ * Server-maintained columns and the form eligibility fence.
+ *
+ * `isFormEligible` has to name exactly the fields the item write path refuses a
+ * value for, and it was missing `sequence`, `rollup` and `onUpdate`. `sequence`
+ * is the one that deadlocks a collection out of having a public form at all: a
+ * document number is a `text` column, so it passed the type gate, and it is
+ * normally `required`, which `assertFieldsEligible` reads as "must be on the
+ * form". Putting it on meant every submission 422'd on a server-issued column;
+ * leaving it off meant the form could not be created. Neither branch had an
+ * escape, and both failures pointed at the wrong thing.
+ */
+describe("forms — fields the server maintains are never form fields", () => {
+  let h: TestHarness;
+  const slug = `docs_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const res = await h.fetch(
+      "/api/collections",
+      json({
+        slug,
+        fields: [
+          { name: "title", type: "text", required: true },
+          {
+            name: "number",
+            type: "text",
+            required: true,
+            unique: true,
+            sequence: { pattern: "DOC-{####}" },
+          },
+          { name: "touched_at", type: "timestamp", onUpdate: "now" },
+        ],
+      }),
+    );
+    expect(res.status).toBe(201);
+  });
+
+  afterAll(() => h.cleanup());
+
+  test("eligible-fields omits a sequence and an onUpdate column", async () => {
+    const res = await h.fetch(`/api/admin/forms/eligible-fields/${slug}`);
+    expect(res.status).toBe(200);
+    const names = ((await res.json()) as { data: { name: string }[] }).data.map((f) => f.name);
+    expect(names).toContain("title");
+    expect(names).not.toContain("number");
+    expect(names).not.toContain("touched_at");
+  });
+
+  test("a form over the collection is creatable, and its submissions land", async () => {
+    // Before the fix this 422'd — `number` is required AND was eligible, so
+    // the "schema-required fields cannot be left off" rule demanded a column
+    // the writer would then reject.
+    const created = await h.fetch(
+      "/api/admin/forms",
+      json({ name: "Request a doc", collection: slug, fields: [{ name: "title" }] }),
+    );
+    expect(created.status).toBe(201);
+    const token = ((await created.json()) as { data: { token: string } }).data.token;
+
+    const submit = await h.app.fetch(
+      new Request(`${h.env.APP_URL}/api/public/forms/${token}/submit`, {
+        ...json({ data: { title: "Warranty letter" } }),
+      }),
+    );
+    expect(submit.status).toBe(201);
+
+    // The number the submitter never saw was issued by the server anyway.
+    const rows = (
+      (await (await h.fetch(`/api/items/${slug}`)).json()) as {
+        data: Record<string, unknown>[];
+      }
+    ).data;
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.title).toBe("Warranty letter");
+    expect(rows[0]!.number).toBe("DOC-0001");
+  });
+});
+
+/**
+ * A public form can ask for an email address.
+ *
+ * It could not, for as long as `email` / `phone` / `url` have been field types.
+ * All three used to be `text` columns and the form builder's type allow-list
+ * never followed them across, so the most common question a public form asks —
+ * "what is your email?" — had no answer: the field was not offerable, and a
+ * form over a collection that made it `required` could not be created at all.
+ */
+describe("forms — the typed contact fields", () => {
+  let h: TestHarness;
+  const slug = `lead_${Date.now()}`;
+
+  const publicFetch = (path: string, init?: RequestInit) =>
+    h.app.fetch(new Request(`${h.env.APP_URL}${path}`, init));
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const res = await h.fetch(
+      "/api/collections",
+      json({
+        slug,
+        fields: [
+          { name: "name", type: "text", required: true },
+          { name: "email", type: "email", required: true },
+          { name: "phone", type: "phone" },
+          { name: "website", type: "url" },
+        ],
+      }),
+    );
+    expect(res.status).toBe(201);
+  });
+
+  afterAll(() => h.cleanup());
+
+  test("they are offerable, and the public page gets their type", async () => {
+    const eligible = await h.fetch(`/api/admin/forms/eligible-fields/${slug}`);
+    const names = ((await eligible.json()) as { data: { name: string }[] }).data.map((f) => f.name);
+    expect(names).toEqual(["name", "email", "phone", "website"]);
+
+    const created = await h.fetch(
+      "/api/admin/forms",
+      json({
+        name: "Get in touch",
+        collection: slug,
+        fields: [{ name: "name" }, { name: "email" }, { name: "phone" }, { name: "website" }],
+      }),
+    );
+    expect(created.status).toBe(201);
+    const token = ((await created.json()) as { data: { token: string } }).data.token;
+
+    const def = await publicFetch(`/api/public/forms/${token}`);
+    const blocks = ((await def.json()) as { data: { blocks: { name?: string; type?: string }[] } })
+      .data.blocks;
+    // The page picks its input (and the phone's keyboard) off this.
+    expect(blocks.map((b) => b.type)).toEqual(["text", "email", "phone", "url"]);
+
+    // And a submitted value is folded by the ordinary write path — the whole
+    // reason these are types rather than a regex on a text column.
+    const submit = await publicFetch(
+      `/api/public/forms/${token}/submit`,
+      json({
+        data: {
+          name: "Ada",
+          email: "  Ada@EXAMPLE.com ",
+          phone: "+90 532 111 22 33",
+          website: "acme.com",
+        },
+      }),
+    );
+    expect(submit.status).toBe(201);
+
+    const rows = (
+      (await (await h.fetch(`/api/items/${slug}`)).json()) as {
+        data: Record<string, unknown>[];
+      }
+    ).data;
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.email).toBe("ada@example.com");
+    expect(rows[0]!.phone).toBe("+905321112233");
+    expect(rows[0]!.website).toBe("https://acme.com/");
+  });
+});

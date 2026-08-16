@@ -691,9 +691,18 @@ export const runAdvisorChecks = async (
   // Filed under `kind: "security"` rather than a new `"resilience"` kind on
   // purpose — widening AdvisorKind for one rule would mean touching the advisor
   // UI's grouping and its surfaces test for no gain to the reader.
+  //
+  // Skipped when the control plane is taking backups for this instance. There
+  // the instance-side schedule is expected to stay `off`, so the rule would warn
+  // that workspace forever about a gap that does not exist.
+  //
+  // Keyed on CLOUD_MANAGED_BACKUPS, NOT on "is this a cloud tenant": managed
+  // plans without backups exist, and a tenant on one has no backups at either
+  // layer. For them this warning is the only thing that would say so, and it
+  // must keep firing.
   try {
     const cfg = await loadBackupConfig(ctx, tenantId);
-    if (cfg.schedule === "off") {
+    if (cfg.schedule === "off" && ctx.env.CLOUD_MANAGED_BACKUPS !== "true") {
       out.push({
         id: "sec-backups-off",
         kind: "security",

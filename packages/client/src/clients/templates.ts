@@ -24,7 +24,21 @@ export interface TemplateSummary {
   roles: string[];
   /** Bundled insights-dashboard names seeded on apply. */
   dashboards: string[];
+  /** How much of a working application arrives with the collections. */
+  bundles: TemplateBundleCounts;
   collections: TemplateCollectionSummary[];
+}
+
+/** Counts of the non-collection artifacts a template seeds. Counts rather than
+ *  names — the names live on the pages the things land on. */
+export interface TemplateBundleCounts {
+  kpis: number;
+  flows: number;
+  documents: number;
+  forms: number;
+  agents: number;
+  flags: number;
+  channels: number;
 }
 
 /** Catalog response from `GET /api/admin/templates`. */
@@ -40,8 +54,8 @@ export interface TemplateCatalog {
 }
 
 /** Result of applying a template. Idempotent — `skipped` are collections that
- *  already existed; `seeded` counts sample rows inserted; `roles`/`dashboards`
- *  are bundled artifacts created by this apply. */
+ *  already existed; `seeded` counts sample rows inserted; `roles`/`dashboards`/
+ *  `kpis` are bundled artifacts created by this apply. */
 export interface ApplyTemplateResult {
   templateId: string;
   created: string[];
@@ -49,6 +63,22 @@ export interface ApplyTemplateResult {
   seeded: number;
   roles: string[];
   dashboards: string[];
+  /** Slugs of bundled KPI definitions installed by this apply. Skipped per
+   *  slug, so a re-apply keeps a definition an admin has tuned. */
+  kpis: string[];
+  /** Names of bundled automation flows created by this apply. */
+  flows: string[];
+  /** Keys of bundled PDF document templates created by this apply. */
+  documents: string[];
+  /** NAMES of bundled public forms created by this apply. The one-time token
+   *  is deliberately never returned — rotate the form to obtain a link. */
+  forms: string[];
+  /** Names of bundled AI agents created by this apply. */
+  agents: string[];
+  /** Keys of bundled feature flags created by this apply. */
+  flags: string[];
+  /** Patterns of bundled broadcast channels created by this apply. */
+  channels: string[];
 }
 
 /** Result of `templates.clearSamples()`. */

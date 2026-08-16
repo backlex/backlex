@@ -2177,6 +2177,10 @@ msgstr "ago"
 msgid "AI"
 msgstr "AI"
 
+#: src/client/admin/pages/data/template-onboarding.tsx
+msgid "AI agents"
+msgstr "AI agents"
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "AI agents that reason, call your tools, and answer — built on your collections."
 msgstr "AI agents that reason, call your tools, and answer — built on your collections."
@@ -2362,6 +2366,10 @@ msgstr "already set"
 #: src/client/pages/sign-up.tsx
 msgid "Already verified?"
 msgstr "Already verified?"
+
+#: src/client/admin/pages/data/template-onboarding.tsx
+msgid "Also arrives ready to run"
+msgstr "Also arrives ready to run"
 
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Also show rows that are out of play"
@@ -3723,6 +3731,10 @@ msgstr "Changes the live schema would receive if you apply this version."
 #: src/client/admin/extras.tsx
 msgid "Channel"
 msgstr "Channel"
+
+#: src/client/admin/pages/data/template-onboarding.tsx
+msgid "Channels"
+msgstr "Channels"
 
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "Channels refreshed."
@@ -7432,6 +7444,7 @@ msgid "Favicon"
 msgstr "Favicon"
 
 #: src/client/admin/pages/automation/feature-flags.tsx
+#: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/ui.tsx
 msgid "Feature flags"
 msgstr "Feature flags"
@@ -7767,6 +7780,7 @@ msgid "Flow resumed."
 msgstr "Flow resumed."
 
 #: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/ui.tsx
 msgid "Flows"
 msgstr "Flows"
@@ -9335,6 +9349,7 @@ msgid "KPI"
 msgstr "KPI"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/ui.tsx
 msgid "KPIs"
@@ -13269,6 +13284,10 @@ msgstr "PayTR and iyzico both require one."
 msgid "PDF"
 msgstr "PDF"
 
+#: src/client/admin/pages/data/template-onboarding.tsx
+msgid "PDF templates"
+msgstr "PDF templates"
+
 #: src/client/admin/pages/access/members-panel.tsx
 msgid "pending"
 msgstr "pending"
@@ -14197,6 +14216,10 @@ msgstr "Public embed enabled."
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Public form submissions"
 msgstr "Public form submissions"
+
+#: src/client/admin/pages/data/template-onboarding.tsx
+msgid "Public forms"
+msgstr "Public forms"
 
 #: src/client/pages/shared-record.tsx
 msgid "public link"

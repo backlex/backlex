@@ -87,8 +87,26 @@ Reference a sibling field's value with `"$field.<name>"`:
 - Field references (both the compared field and any `$field.*`) are checked at
   collection create/patch — an unknown field is rejected `422`.
 - Ordered comparisons (`_gt`, `_gte`, `_lt`, `_lte`, `_between`) sort dates by
-  instant, so `_gte` works on timestamp fields. A rule is only meaningful when
-  the referenced fields are present.
+  instant, so `_gte` works on timestamp fields.
+- **An ordering with a missing operand is skipped, not failed.** A draft that
+  has neither date yet has not put them in the wrong order, so the rule above
+  says nothing about it; the same goes for a row with only one of the two, and
+  for clearing a date (the admin form sends `""`, which is absent — not the
+  epoch). Use `required` for "this must be filled in"; a cross-field rule is
+  for "these must agree".
+- The skip is **per operator, not per rule**, so a rule keeps whatever it can
+  still answer: with `{ "amount": { "_gte": "$field.floor", "_lte": 100 } }`
+  and no floor set, the ceiling is still enforced. Inside `$or` or `$not` an
+  unanswerable part makes the whole expression unanswerable, because a branch
+  that could not be judged might have been the one that satisfied it.
+- Equality is not affected: `_eq` against an absent column is `false`, and that
+  is a real verdict rather than a missing one.
+
+Note this differs from the same DSL used as a **permission** filter, on
+purpose. There, a row with no amount must not match `amount >= 100` — a filter
+that fell open on absence would be a hole. A validation rule asks the opposite
+question ("is this row invalid?"), and refusing a row for a comparison that
+never happened reports something that did not.
 
 ## Admin UI
 

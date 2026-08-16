@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, flow, geo, half, hint, image, int, money, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, url, userLink } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, flow, geo, half, hint, image, int, money, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
 
 export const ecommerce: SchemaTemplate = {
   id: "ecommerce",
@@ -471,9 +471,10 @@ export const ecommerce: SchemaTemplate = {
     },
     {
       slug: "orders", group: "Orders", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
+      kanbanGroupBy: "fulfillment_status",
       fields: tabbed(
         sec("Order", [
-          ...half(text("number", { unique: true }), ts("placed_at", { indexed: true, label: "Placed at" })),
+          ...half(seq("number", "ORD-{YYYY}-{#####}"), ts("placed_at", { indexed: true, label: "Placed at" })),
           ...half(rel("customer", "customers"), email("email")),
           // `status` = payment state (Shopify financial_status). Kept under this
           // name so existing apply/choice-membership tests stay valid.
@@ -505,14 +506,20 @@ export const ecommerce: SchemaTemplate = {
           tags("tags"),
           notes("note"),
           ...half(
-            select("cancel_reason", [ch("customer", C.gray), ch("fraud", C.red), ch("inventory", C.amber), ch("declined", C.red), ch("other", C.slate)], { label: "Cancel reason" }),
-            ts("cancelled_at", { label: "Cancelled at" }),
+            select("cancel_reason", [ch("customer", C.gray), ch("fraud", C.red), ch("inventory", C.amber), ch("declined", C.red), ch("other", C.slate)], {
+              label: "Cancel reason",
+              // Asked for exactly when an order is being voided, and out of the
+              // way otherwise — a permanent "why was this cancelled?" box on a
+              // live order is a question with no answer.
+              conditions: [when("status", "_eq", "voided", "required"), when("status", "_neq", "voided", "hidden")],
+            }),
+            ts("cancelled_at", { label: "Cancelled at", conditions: [when("status", "_neq", "voided", "hidden")] }),
           ),
         ]),
       ),
       samples: [
-        { number: "ORD-1001", customer: { ref: "customers:0" }, email: "jordan@example.com", status: "paid", fulfillment_status: "fulfilled", shipping_address: { ref: "addresses:0" }, shipping_rate: { ref: "shipping_rates:0" }, subtotal: 43, total_shipping: 6.5, total: 49.5, currency: "USD", placed_at: ms("2026-01-12") },
-        { number: "ORD-1002", customer: { ref: "customers:1" }, email: "sam@example.com", status: "pending", fulfillment_status: "unfulfilled", subtotal: 18, total: 18, currency: "USD", placed_at: ms("2026-01-14") },
+        { customer: { ref: "customers:0" }, email: "jordan@example.com", status: "paid", fulfillment_status: "fulfilled", shipping_address: { ref: "addresses:0" }, shipping_rate: { ref: "shipping_rates:0" }, subtotal: 43, total_shipping: 6.5, total: 49.5, currency: "USD", placed_at: ms("2026-01-12") },
+        { customer: { ref: "customers:1" }, email: "sam@example.com", status: "pending", fulfillment_status: "unfulfilled", subtotal: 18, total: 18, currency: "USD", placed_at: ms("2026-01-14") },
       ],
     },
     {
@@ -571,9 +578,10 @@ export const ecommerce: SchemaTemplate = {
       // RMA (Medusa Return / Shopify Return) — the request, separate from the
       // money movement, because goods come back before a refund is issued.
       slug: "returns", group: "Orders", singular: "Return", plural: "Returns", defaultSort: "-requested_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Return", [
-          ...half(text("number", { unique: true, label: "RMA number" }), rel("order", "orders")),
+          ...half(seq("number", "RMA-{#####}", { label: "RMA number" }), rel("order", "orders")),
           ...half(
             select("status", [ch("requested", C.amber), ch("approved", C.blue), ch("received", C.teal), ch("completed", C.green), ch("cancelled", C.gray)], {
               default: "requested",
@@ -595,7 +603,7 @@ export const ecommerce: SchemaTemplate = {
           notes("note"),
         ]),
       ),
-      samples: [{ number: "RMA-1001", order: { ref: "orders:0" }, status: "completed", refund: { ref: "refunds:0" }, requested_at: ms("2026-01-17"), received_at: ms("2026-01-19"), note: "Customer returned the tote." }],
+      samples: [{ order: { ref: "orders:0" }, status: "completed", refund: { ref: "refunds:0" }, requested_at: ms("2026-01-17"), received_at: ms("2026-01-19"), note: "Customer returned the tote." }],
     },
     {
       slug: "return_items", group: "Orders", singular: "Return item", plural: "Return items",
@@ -614,7 +622,12 @@ export const ecommerce: SchemaTemplate = {
           select("status", [ch("pending", C.amber), ch("open", C.blue), ch("success", C.green), ch("cancelled", C.red)], { default: "pending" }),
         ]),
         sec("Tracking", [
-          ...half(text("tracking_number", { label: "Tracking number" }), text("tracking_company", { label: "Carrier" })),
+          ...half(
+            // A fulfillment that succeeded went somewhere; one that has not shipped
+            // yet has nothing to track.
+            text("tracking_number", { label: "Tracking number", conditions: [when("status", "_eq", "success", "required")] }),
+            text("tracking_company", { label: "Carrier" }),
+          ),
           url("tracking_url", { label: "Tracking URL" }),
           ...half(ts("shipped_at", { indexed: true, label: "Shipped at" }), ts("delivered_at", { label: "Delivered at" })),
         ]),
@@ -663,6 +676,7 @@ export const ecommerce: SchemaTemplate = {
     },
     {
       slug: "reviews", group: "Customers", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Review", [
           ...half(rel("product", "products"), rel("customer", "customers")),
@@ -740,6 +754,315 @@ export const ecommerce: SchemaTemplate = {
         { name: "Returns by status", kind: "items-aggregate", viz: "donut", config: { collection: "returns", agg: "count", groupBy: "status" } },
         { name: "Carts by status", kind: "items-aggregate", viz: "donut", config: { collection: "carts", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * The rules a store runs on, already running.
+   *
+   * Deliberately absent: "an order was paid, so take the stock down". Which
+   * units an order consumed lives on its `order_items`, and where they were
+   * held lives on `inventory_levels` — a flow's `data` is the order row and can
+   * see neither. A step that decremented something would have to guess the
+   * location, and a wrong location is worse than no adjustment because it reads
+   * as done. So the flows below report the fact and leave the count to whoever
+   * is holding the box.
+   */
+  flows: [
+    {
+      name: "Tell the team when an order is placed",
+      trigger: "event:items:orders:created",
+      operations: [
+        {
+          type: "notification",
+          title: "Order {{ data.number }} placed",
+          body: "{{ data.total }} {{ data.currency }} via {{ data.channel }}. Check the items are in stock before it is picked.",
+          url: "/collections/orders",
+        },
+      ],
+    },
+    {
+      name: "Chase an order that was paid a day ago and still has not gone out",
+      // A schedule rather than `event:items:orders:updated`, and that is the
+      // whole point: a flow sees the row as it now stands, with no before-image,
+      // so an update trigger cannot tell "just became paid" from "was saved
+      // again while paid" and would re-announce every edit. Anchored on
+      // `placed_at` it fires once per order, the morning after, and only for the
+      // ones still sitting there.
+      trigger: `schedule:${JSON.stringify({
+        collection: "orders",
+        field: "placed_at",
+        offset: { value: 1, unit: "days", direction: "after" },
+        at: 540,
+        timeZone: null,
+        where: {
+          status: { _eq: "paid" },
+          fulfillment_status: { _in: ["unfulfilled", "partial"] },
+        },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "Order {{ data.number }} is paid and still unshipped",
+          body: "Paid a day ago, nothing fulfilled yet. Pick it or say why it is held.",
+          url: "/collections/orders",
+        },
+      ],
+    },
+    {
+      name: "Keep a discount's status in step with its schedule",
+      trigger: "cron:0 3 * * *",
+      operations: [
+        // Open first, close second — on purpose. A `foreach` queries when it
+        // runs rather than from a snapshot taken at the top of the flow, so a
+        // discount whose whole window has already gone by is activated by the
+        // first loop and expired by the second in the same run, instead of
+        // being left showing `scheduled` for ever.
+        {
+          type: "foreach",
+          collection: "discounts",
+          filter: { status: { _eq: "scheduled" }, starts_at: { _lte: "$now" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "discounts",
+              id: "{{ $item.id }}",
+              data: { status: "active" },
+            },
+          ],
+        },
+        {
+          type: "foreach",
+          collection: "discounts",
+          filter: { ends_at: { _lt: "$now" }, status: { _neq: "expired" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "discounts",
+              id: "{{ $item.id }}",
+              data: { status: "expired" },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Ask for a received return to be put back into stock",
+      // A TRANSITION trigger, which `returns.status` can carry because it is
+      // the one status in this template that declares a lifecycle. It fires
+      // once, on the move itself — an `…:updated` trigger with a condition
+      // cannot tell "just arrived" from "was saved again after arriving", so
+      // it would ask for the same box to be put away every time anybody edited
+      // the row. The other update-triggered flows here keep their condition
+      // because their fields declare no lifecycle to announce.
+      trigger: "event:items:returns:transition:status:*:received",
+      operations: [
+        {
+          type: "notification",
+          title: "Return {{ data.number }} is back",
+          body: "Its return items say which units came back and in what condition — only the resellable ones go back onto a location's inventory level.",
+          url: "/collections/returns",
+        },
+      ],
+    },
+    {
+      name: "Win back an abandoned cart the next morning (needs email)",
+      // Off until a mail transport is configured. The cart carries its own
+      // `email`, so no relation has to resolve for the message to address
+      // somebody — a guest cart is recoverable too.
+      active: false,
+      trigger: `schedule:${JSON.stringify({
+        collection: "carts",
+        field: "abandoned_at",
+        offset: { value: 1, unit: "days", direction: "after" },
+        at: 600,
+        timeZone: null,
+        where: { status: { _eq: "abandoned" }, recovery_email_sent: { _eq: false } },
+      })}`,
+      operations: [
+        {
+          type: "email",
+          to: "{{ data.email }}",
+          subject: "You left something in your basket",
+          html: "<p>Your basket is still here — {{ data.item_count }} item(s), {{ data.subtotal }} {{ data.currency }}.</p><p>Pick up where you left off whenever you like.</p>",
+        },
+        // Flagged on the row as well as excluded by the trigger's `where`: the
+        // flag is what an operator reads off the cart to know it was chased,
+        // and it survives the flow being edited or re-pointed later.
+        {
+          type: "item.update",
+          collection: "carts",
+          id: "{{ data.id }}",
+          data: { recovery_email_sent: true },
+        },
+      ],
+    },
+    {
+      name: "Monthly store report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Store overview",
+          subject: "Store — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "packing_slip",
+      name: "Packing slip",
+      description: "What goes in the box with the order.",
+      filename: "packing-slip-{{ data.number }}",
+      variables: ["number", "placed_at"],
+      // No prices anywhere on it, deliberately: a packing slip travels with the
+      // goods and is routinely read by the recipient of a gift, so the amounts
+      // belong on the receipt below and nowhere near this one.
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:16mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        ".cols{display:flex;gap:40px;margin-top:18px}" +
+        "table{width:100%;border-collapse:collapse;margin-top:20px}" +
+        "th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #e5e5e5}" +
+        "td.n,th.n{text-align:right}" +
+        "</style></head><body>" +
+        "<h1>Packing slip — {{ data.number }}</h1>" +
+        '<p class="muted">Placed {{ data.placed_at }} · {{ data.channel }}</p>' +
+        '<div class="cols">' +
+        "<div><strong>Ship to</strong><br>" +
+        "{{ data.shipping_address.first_name }} {{ data.shipping_address.last_name }}<br>" +
+        "{{ data.shipping_address.company }}<br>" +
+        "{{ data.shipping_address.line1 }}<br>{{ data.shipping_address.line2 }}<br>" +
+        "{{ data.shipping_address.city }} {{ data.shipping_address.province }} " +
+        "{{ data.shipping_address.postal_code }}<br>{{ data.shipping_address.country }}</div>" +
+        "<div><strong>Shipping</strong><br>{{ data.shipping_rate.name }}<br>" +
+        "{{ data.shipping_rate.carrier }}</div>" +
+        "</div>" +
+        '<table><thead><tr><th>SKU</th><th>Item</th><th class="n">Qty</th></tr></thead><tbody>' +
+        "<!-- one row per order item; fill from your own query or a foreach -->" +
+        "</tbody></table>" +
+        '<p class="muted">{{ data.note }}</p>' +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "16mm" },
+    },
+    {
+      key: "order_receipt",
+      name: "Order receipt",
+      description: "The order as the customer receives it, with the amounts.",
+      filename: "receipt-{{ data.number }}",
+      variables: ["number", "total", "currency"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:18px}" +
+        "th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #e5e5e5}" +
+        "td.n,th.n{text-align:right}" +
+        ".totals{margin-top:14px;width:100%}" +
+        ".totals td{border:0;padding:3px 6px}" +
+        "</style></head><body>" +
+        "<h1>Receipt — {{ data.number }}</h1>" +
+        '<p class="muted">Placed {{ data.placed_at }}</p>' +
+        "<p><strong>{{ data.customer.first_name }} {{ data.customer.last_name }}</strong><br>" +
+        "{{ data.email }}</p>" +
+        '<table><thead><tr><th>Item</th><th class="n">Qty</th>' +
+        '<th class="n">Unit</th><th class="n">Line total</th></tr></thead><tbody>' +
+        "<!-- one row per order item; fill from your own query or a foreach -->" +
+        "</tbody></table>" +
+        '<table class="totals">' +
+        '<tr><td class="n">Subtotal</td><td class="n">{{ data.subtotal }}</td></tr>' +
+        '<tr><td class="n">Discounts</td><td class="n">{{ data.total_discounts }}</td></tr>' +
+        '<tr><td class="n">Shipping</td><td class="n">{{ data.total_shipping }}</td></tr>' +
+        '<tr><td class="n">Tax</td><td class="n">{{ data.total_tax }}</td></tr>' +
+        '<tr><td class="n"><strong>Total {{ data.currency }}</strong></td>' +
+        '<td class="n"><strong>{{ data.total }}</strong></td></tr></table>' +
+        '<p class="muted">Keep this with your order — a return quotes the order number above.</p>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      // The `Wholesale` customer group already ships in this template, but a
+      // group is a relation and a public form cannot set one — so an applicant
+      // lands as an ordinary customer and staff move them into the group when
+      // they approve the account. `note` is the collection's own internal note
+      // column, which is exactly where whoever reviews this will look.
+      name: "Wholesale account application",
+      collection: "customers",
+      settings: {
+        submitLabel: "Apply",
+        successMessage: "Thanks — we review applications within two business days.",
+      },
+      fields: [
+        { name: "first_name", label: "First name" },
+        { name: "last_name", label: "Last name" },
+        { name: "email", label: "Work email", help: "Where account details and invoices will be sent." },
+        { name: "phone" },
+        {
+          name: "note",
+          label: "Tell us about your business",
+          help: "Where you sell, and roughly what volume you expect per month.",
+        },
+      ],
+    },
+    {
+      // `status` is deliberately off the form: it defaults to `pending`, and
+      // that default is the only thing keeping an unmoderated review off the
+      // storefront. Which product a review is about is a relation the public
+      // page cannot set either, so the moderator attaches it on approval —
+      // which is the same pass they were already making.
+      name: "Write a review",
+      collection: "reviews",
+      settings: {
+        submitLabel: "Post review",
+        successMessage: "Thank you — we read every review before it goes up.",
+      },
+      fields: [
+        { name: "rating", label: "Rating", help: "1 to 5." },
+        { name: "title", label: "Headline" },
+        { name: "body", label: "Your review" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Store analyst",
+      handle: "store-analyst",
+      description: "Answers questions about orders, stock and what is selling.",
+      systemPrompt:
+        "You help a store team read its own numbers. Answer using the " +
+        "workspace's data only. Four rules this store's schema makes " +
+        "necessary: payment status and fulfillment status are separate " +
+        "columns on an order — never report one as the other, and 'paid' says " +
+        "nothing about whether it shipped. Money carries its own currency; " +
+        "amounts in different currencies are never added together. Refunds are " +
+        "their own rows, so revenue net of refunds is the orders total minus " +
+        "the refunds total, not a single column. What a shopper can actually " +
+        "buy is 'available' on an inventory level, per location — a product's " +
+        "own stock number is a reporting roll-up and may lag. Name the order " +
+        "number, be brief, and say plainly when the data does not answer the " +
+        "question.",
+      // `dashboards.run` rather than a KPI tool: this template bundles the
+      // "Store overview" dashboard and no KPI definitions, so that is where the
+      // agreed figures actually live.
+      tools: [
+        "collections.list",
+        "collections.read",
+        "collections.aggregate",
+        "collections.search",
+        "dashboards.run",
+      ],
+      maxSteps: 8,
     },
   ],
 };

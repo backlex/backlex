@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, geo, half, hint, image, int, money, moneyIn, ms, notes, phone, position, rel, relMany, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedNum, date, email, flag, geo, half, hint, image, int, money, moneyIn, ms, notes, phone, position, rel, relMany, sec, select, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const appointments: SchemaTemplate = {
   id: "appointments",
@@ -116,6 +116,7 @@ export const appointments: SchemaTemplate = {
     },
     {
       slug: "bookings", group: "Scheduling", singular: "Booking", plural: "Bookings", defaultSort: "-starts_at",
+      kanbanGroupBy: "status",
       fields: tabbed(
         sec("Booking", [
           ...half(rel("service", "services"), rel("customer", "customers")),
@@ -151,7 +152,7 @@ export const appointments: SchemaTemplate = {
           int("minutes_before", { default: 60, validation: { min: 0 }, label: "Minutes before" }),
           select("status", [ch("scheduled", C.amber), ch("sent", C.green), ch("failed", C.red)], { default: "scheduled" }),
         ),
-        ts("sent_at", { label: "Sent at" }),
+        ts("sent_at", { label: "Sent at", conditions: [when("status", "_neq", "sent", "hidden")] }),
       ],
       samples: [{ booking: { ref: "bookings:0" }, channel: "email", minutes_before: 60, status: "scheduled" }],
     },
@@ -161,7 +162,12 @@ export const appointments: SchemaTemplate = {
         ...half(rel("service", "services"), text("label", { required: true })),
         ...half(
           select("type", [ch("short_text", C.blue, "Short text"), ch("choice", C.purple), ch("yes_no", C.teal, "Yes / No")], { default: "short_text" }),
-          text("choices", { label: "Choices (comma-separated)" }),
+          // Only a choice question has choices — on every other kind the box is
+          // a prompt for something that does not exist.
+          text("choices", {
+            label: "Choices (comma-separated)",
+            conditions: [when("type", "_eq", "choice", "required"), when("type", "_neq", "choice", "hidden")],
+          }),
         ),
         ...half(bool("required", { default: false, label: "Required" }), position("service")),
       ],
@@ -206,6 +212,7 @@ export const appointments: SchemaTemplate = {
     },
     {
       slug: "waitlist_entries", group: "Scheduling", singular: "Waitlist entry", plural: "Waitlist", defaultSort: "-requested_at",
+      kanbanGroupBy: "status",
       fields: [
         ...half(rel("service", "services"), rel("customer", "customers")),
         text("preferred_window", { label: "Preferred window" }),
@@ -306,6 +313,315 @@ export const appointments: SchemaTemplate = {
         { name: "Bookings by payment", kind: "items-aggregate", viz: "bars", config: { collection: "bookings", agg: "count", groupBy: "payment_status" } },
         { name: "Blocked time by reason", kind: "items-aggregate", viz: "bars", config: { collection: "blocked_times", agg: "count", groupBy: "reason" } },
       ],
+    },
+  ],
+  /**
+   * The rules a booking desk runs on, already running.
+   *
+   * Deliberately absent: "a booking was cancelled, so promote whoever is next
+   * on the waitlist". Matching an entry needs this booking's service AND
+   * whether the freed time falls inside an entry's `preferred_window`, which is
+   * free text nothing can compare — and a flow's `data` is the booking row
+   * alone. A step that offered the slot to the oldest waiting entry would offer
+   * Tuesday morning to somebody who asked for evenings. So the flow reports the
+   * slot and leaves the choice with the desk.
+   */
+  flows: [
+    {
+      name: "Queue a reminder as soon as a booking is taken",
+      // The `reminders` collection is the record of intent, and nothing else
+      // would ever put a row in it: a booking taken at the desk is exactly the
+      // moment somebody decides the customer gets a nudge the day before. The
+      // row is queued here; SENDING it needs a mail or SMS transport, which is
+      // why the one flow below that actually leaves the workspace ships off.
+      trigger: "event:items:bookings:created",
+      operations: [
+        {
+          type: "item.create",
+          collection: "reminders",
+          data: {
+            booking: "{{ data.id }}",
+            channel: "email",
+            minutes_before: 1440,
+            status: "scheduled",
+          },
+        },
+        {
+          type: "notification",
+          title: "A booking was taken",
+          body: "It starts {{ data.starts_at }}, is {{ data.status }}, and payment is {{ data.payment_status }}. A 24-hour reminder is queued in Reminders.",
+          url: "/collections/bookings",
+        },
+      ],
+    },
+    {
+      name: "Chase a booking that is still unconfirmed the day before",
+      // Fires once per booking, one day before `starts_at`, at 09:00 — and only
+      // for the ones nobody has confirmed. That is the slot most likely to be
+      // wasted: it is held, it is not agreed, and by tomorrow morning it is too
+      // late to offer it to anyone else.
+      trigger: `schedule:${JSON.stringify({
+        collection: "bookings",
+        field: "starts_at",
+        offset: { value: 1, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "pending" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "Tomorrow's booking is still unconfirmed",
+          body: "It starts {{ data.starts_at }} and has never moved off pending. Confirm it, or release the slot to the waitlist.",
+          url: "/collections/bookings",
+        },
+      ],
+    },
+    {
+      name: "Ask for an outcome once an appointment has finished",
+      // Two hours AFTER `ends_at`, and with no time of day: a wall clock may
+      // only pair with a day or week offset, since "two hours before, at 09:00"
+      // names two different instants.
+      //
+      // Deliberately a notification rather than an `item.update` to
+      // `completed`. The row cannot tell a finished appointment from one the
+      // customer never turned up to — `completed` and `no_show` differ only in
+      // what happened in the room — and quietly completing every no-show would
+      // erase the one signal a cancellation policy is charged on.
+      trigger: `schedule:${JSON.stringify({
+        collection: "bookings",
+        field: "ends_at",
+        offset: { value: 2, unit: "hours", direction: "after" },
+        at: null,
+        timeZone: null,
+        where: { status: { _in: ["pending", "confirmed"] } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "An appointment has finished with no outcome",
+          body: "It ended {{ data.ends_at }} and is still {{ data.status }}. Mark it completed, or a no-show.",
+          url: "/collections/bookings",
+        },
+      ],
+    },
+    {
+      name: "Offer a cancelled slot to the waitlist",
+      trigger: "event:items:bookings:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "cancelled" } },
+          then: [
+            {
+              type: "notification",
+              title: "A booking was cancelled — the slot is free",
+              body: "It ran {{ data.starts_at }} to {{ data.ends_at }}. Check who is waiting for this service before the time is re-opened publicly.",
+              url: "/collections/waitlist_entries",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Flag a package that is nearly used up",
+      trigger: "event:items:package_purchases:updated",
+      operations: [
+        {
+          type: "condition",
+          // `sessions_left` is generated on the purchase row itself, which is
+          // what makes this one of the few cross-row-looking rules a flow can
+          // state honestly. Every later save at or below one notifies again; a
+          // repeated line in the feed costs nothing to read past, and nothing
+          // irreversible happens here.
+          filter: { sessions_left: { _lte: 1 } },
+          then: [
+            {
+              type: "notification",
+              title: "A package is nearly used up",
+              body: "{{ data.sessions_used }} of {{ data.sessions_total }} sessions used, {{ data.sessions_left }} left, and it expires {{ data.expires_at }}. Offer a renewal at the next appointment.",
+              url: "/collections/package_purchases",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Email the confirmation and a calendar invite (needs email + a PDF renderer)",
+      // Off until both are configured — the name carries the prerequisite so
+      // nobody has to open it to find out. The `.ics` is the piece worth having
+      // in this vertical: it reaches Google, Outlook and Apple Calendar with no
+      // account connected anywhere, and `uid` is the booking's own id, so a
+      // re-send updates the entry the customer already has rather than leaving
+      // two appointments in their week.
+      active: false,
+      trigger: "event:items:bookings:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "confirmed" } },
+          then: [
+            { type: "document.render", templateKey: "appointment_confirmation" },
+            {
+              type: "email",
+              to: "{{ data.customer.email }}",
+              subject: "Your appointment is confirmed",
+              html: "<p>Your appointment is confirmed — the details are attached, along with a calendar invite.</p>",
+              attach: ["{{ $last.key }}"],
+              ics: {
+                summary: "{{ data.service.name }}",
+                start: "{{ data.starts_at }}",
+                end: "{{ data.ends_at }}",
+                location: "{{ data.location.address }} {{ data.location.city }}",
+                uid: "{{ data.id }}",
+              },
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "appointment_confirmation",
+      name: "Appointment confirmation",
+      description: "The one page a customer is sent when a booking is agreed.",
+      filename: "appointment-{{ data.starts_at }}",
+      variables: ["starts_at", "ends_at"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:30%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>Appointment confirmed</h1>" +
+        '<p class="muted">{{ data.service.name }}</p>' +
+        "<table>" +
+        "<tr><th>Who</th><td>{{ data.customer.name }}</td></tr>" +
+        "<tr><th>With</th><td>{{ data.staff.name }}</td></tr>" +
+        "<tr><th>When</th><td>{{ data.starts_at }} — {{ data.ends_at }}</td></tr>" +
+        "<tr><th>Where</th><td>{{ data.location.name }}<br>{{ data.location.address }} {{ data.location.city }}</td></tr>" +
+        "<tr><th>Room</th><td>{{ data.resource.name }}</td></tr>" +
+        "<tr><th>Payment</th><td>{{ data.payment_status }} · {{ data.amount }}</td></tr>" +
+        "</table>" +
+        '<p class="muted">{{ data.notes }}</p>' +
+        '<p class="muted">Times are shown in the timezone of the location above. ' +
+        "Tell us as early as you can if you need to move it — the slot is held for you until then.</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "package_card",
+      name: "Package card",
+      description: "What is left on a prepaid block of sessions, and until when.",
+      filename: "package-{{ data.purchased_at }}",
+      variables: ["sessions_total", "sessions_used", "expires_at"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>{{ data.package.name }}</h1>" +
+        '<p class="muted">Prepaid sessions for {{ data.customer.name }}</p>' +
+        "<table>" +
+        "<tr><th>Purchased</th><td>{{ data.purchased_at }}</td></tr>" +
+        "<tr><th>Sessions</th><td>{{ data.sessions_total }}</td></tr>" +
+        "<tr><th>Used</th><td>{{ data.sessions_used }}</td></tr>" +
+        "<tr><th>Left</th><td><strong>{{ data.sessions_left }}</strong></td></tr>" +
+        "<tr><th>Expires</th><td>{{ data.expires_at }}</td></tr>" +
+        "<tr><th>Paid</th><td>{{ data.price_paid }}</td></tr>" +
+        "</table>" +
+        '<p class="muted">Unused sessions lapse on the expiry date. Bring this card, ' +
+        "or just give your name — we hold the same figures here.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      // Named for its collection, not generically: bundles are skipped by NAME
+      // and a workspace can apply more than one template, so two forms sharing
+      // a name means the second is silently skipped and the workspace keeps one
+      // pointing at the other vertical's collection.
+      name: "New customer details (bookings)",
+      collection: "customers",
+      settings: {
+        submitLabel: "Send my details",
+        successMessage: "Thank you — we have your details and will confirm your first appointment.",
+      },
+      fields: [
+        { name: "name", label: "Full name" },
+        { name: "email", label: "Email", help: "Where the confirmation and reminders are sent." },
+        { name: "phone" },
+        { name: "notes", label: "Anything we should know?", help: "Access needs, preferred times, or what you'd like to cover." },
+      ],
+    },
+    {
+      // A link rather than an admin screen on purpose: in this vertical the
+      // people who need time off are practitioners, and practitioners are
+      // rarely given a workspace login. The request lands with no `staff` on it
+      // — a relation cannot appear on a public form — so whoever owns the
+      // schedule attaches the person before the block counts against
+      // availability, which is what `description` says out loud rather than
+      // leaving somebody to discover it.
+      name: "Time-off request",
+      collection: "blocked_times",
+      settings: {
+        description: "Ask for time off. It only blocks the calendar once the schedule owner attaches your name to it.",
+        submitLabel: "Request time off",
+        successMessage: "Sent — you'll hear back once it has been approved.",
+      },
+      fields: [
+        { name: "reason", label: "Reason" },
+        { name: "starts_at", label: "From" },
+        { name: "ends_at", label: "Until" },
+        { name: "note", label: "Note", help: "Anything the desk needs to know while you're away." },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Schedule assistant",
+      handle: "schedule-assistant",
+      description: "Answers questions about the diary, who is free, and what is still unconfirmed.",
+      systemPrompt:
+        "You help a booking desk run its diary. Answer questions about services, " +
+        "staff, customers, bookings, packages and the waitlist using the " +
+        "workspace's own data. A slot is only genuinely free when an availability " +
+        "rule covers it AND no blocked time overlaps it AND no booking already " +
+        "holds it — check all three before telling anyone somebody is available. " +
+        "A booking still occupies the calendar while it is pending or confirmed; " +
+        "cancelled and no-show do not, and completed is in the past. What a " +
+        "booking really consumes is the service's duration_minutes plus its " +
+        "buffer_minutes, so never fit a second appointment into the buffer. " +
+        "Times are stored as instants and read against the location's own " +
+        "timezone — say which zone you mean whenever an answer is an hour. " +
+        "Amounts in different currencies are never added together. When a figure " +
+        "has a seeded KPI — bookings taken, booking revenue, cancellations — run " +
+        "that definition rather than adding rows up your own way, so your answer " +
+        "matches the dashboard. Be brief, name the customer and the time you " +
+        "mean, and say plainly when the data does not answer the question.",
+      tools: [
+        "collections.list",
+        "collections.read",
+        "collections.aggregate",
+        "collections.search",
+        "kpis.run",
+        "dashboards.run",
+      ],
+      maxSteps: 8,
     },
   ],
 };

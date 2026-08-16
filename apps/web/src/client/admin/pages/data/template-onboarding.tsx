@@ -5,7 +5,7 @@
 //     page; apply is additive + idempotent, so it also works on a non-empty
 //     workspace (existing collections are skipped).
 import type { PushToast } from "../../types";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -177,6 +177,48 @@ function TemplateBrowser({
   );
 }
 
+/**
+ * What arrives besides the tables — the difference between a schema and an
+ * application that runs.
+ *
+ * Rendered as labelled counts rather than name lists: seven more
+ * comma-separated sentences is a wall nobody reads, and the names are on the
+ * pages the things land on anyway. Each label is its own `<Trans>` with no
+ * interpolation, so no catalog string ever carries a brace.
+ */
+function BundleBadges({ tpl }: { tpl: TemplateSummary }) {
+  // `bundles` is absent on a workspace still served by an older worker, and a
+  // preview that throws is worse than one that says less.
+  const b = tpl.bundles;
+  if (!b) return null;
+  const items: [number, ReactNode][] = [
+    [b.flows ?? 0, <Trans key="f">Flows</Trans>],
+    [b.documents ?? 0, <Trans key="d">PDF templates</Trans>],
+    [b.forms ?? 0, <Trans key="fm">Public forms</Trans>],
+    [b.agents ?? 0, <Trans key="a">AI agents</Trans>],
+    [b.kpis ?? 0, <Trans key="k">KPIs</Trans>],
+    [b.flags ?? 0, <Trans key="fl">Feature flags</Trans>],
+    [b.channels ?? 0, <Trans key="c">Channels</Trans>],
+  ];
+  const shown = items.filter(([n]) => n > 0);
+  if (shown.length === 0) return null;
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-1.5 mb-1 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <I.Zap size={11} />
+        <Trans>Also arrives ready to run</Trans>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {shown.map(([n, label], i) => (
+          <Badge key={i} variant="default">
+            {label} · {n}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Template detail (right pane): description, collections grouped exactly as
  *  they'll land on the Collections page, sample + bundle notes. */
 function TemplatePreview({ tpl }: { tpl: TemplateSummary }) {
@@ -212,6 +254,7 @@ function TemplatePreview({ tpl }: { tpl: TemplateSummary }) {
               </div>
             </div>
           ))}
+          <BundleBadges tpl={tpl} />
           <div className="flex flex-col gap-1 mb-4">
             {tpl.sampleRows > 0 && (
               <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">

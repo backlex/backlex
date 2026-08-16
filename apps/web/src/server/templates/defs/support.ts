@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, email, flag, flow, half, host, int, ms, notes, phone, position, rating, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, userLink } from "../dsl";
+import { C, bool, ch, email, flag, flow, half, host, int, ms, notes, phone, position, rating, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, userLink, when } from "../dsl";
 
 export const support: SchemaTemplate = {
   id: "support",
@@ -137,6 +137,7 @@ export const support: SchemaTemplate = {
     },
     {
       slug: "problems", group: "Tickets", singular: "Problem", plural: "Problems", defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: [
         ...half(
           text("title", { required: true }),
@@ -144,12 +145,19 @@ export const support: SchemaTemplate = {
         ),
         notes("body", { label: "Details" }),
         notes("linked_tickets_note", { label: "Linked tickets note" }),
-        ts("resolved_at", { label: "Resolved at" }),
+        ts("resolved_at", {
+          label: "Resolved at",
+          conditions: [
+            when("status", "_eq", "resolved", "required"),
+            when("status", "_neq", "resolved", "hidden"),
+          ],
+        }),
       ],
       samples: [{ title: "Password reset emails delayed", status: "identified", body: "Email provider incident; retry queue draining.", linked_tickets_note: "Link all reset-email tickets here for a bulk close on resolution." }],
     },
     {
       slug: "tickets", group: "Tickets", singular: "Ticket", plural: "Tickets", fts: true, defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: tabbed(
         sec("Ticket", [
           text("subject", { required: true, searchable: true }),
@@ -185,7 +193,12 @@ export const support: SchemaTemplate = {
           ...half(rel("problem", "problems", { label: "Linked problem" }), select("satisfaction", [ch("offered", C.gray), ch("good", C.green), ch("bad", C.red)], { default: "offered" })),
           tags("tags"),
           relMany("managed_tags", "ticket_tags", { label: "Tags (managed)" }),
-          ...half(ts("first_replied_at", { label: "First replied at" }), ts("solved_at", { label: "Solved at" })),
+          ...half(
+            ts("first_replied_at", { label: "First replied at" }),
+            // When it was solved is the figure every SLA report is built on, so a
+            // ticket cannot reach a closed state without it.
+            ts("solved_at", { label: "Solved at", conditions: [when("status", "_in", ["solved", "closed"], "required")] }),
+          ),
         ]),
       ),
       samples: [
@@ -292,6 +305,288 @@ export const support: SchemaTemplate = {
         { name: "Tickets by channel", kind: "items-aggregate", viz: "bars", config: { collection: "tickets", agg: "count", groupBy: "channel" } },
         { name: "Tickets by type", kind: "items-aggregate", viz: "donut", config: { collection: "tickets", agg: "count", groupBy: "type" } },
       ],
+    },
+  ],
+  /**
+   * The rules a helpdesk runs on, already running.
+   *
+   * Deliberately absent: "this ticket has breached its SLA". The target lives on
+   * the `slas` row the ticket points at (`first_reply_mins`), and a flow's
+   * `data` is the ticket — it cannot read the policy to compare against. The
+   * escalation below writes its threshold into the filter instead, matching the
+   * seeded "Urgent unanswered 30m" rule, and an operator who edits that rule has
+   * to edit this flow too. Said here because the alternative — a flow that
+   * looked like it honoured the policy table and did not — is worse.
+   *
+   * Absent for a different reason: "a problem was resolved, so solve every
+   * ticket linked to it". A `foreach` filter is compiled from the SAVED flow and
+   * is never interpolated, so it cannot be narrowed to `{{ data.id }}` — the
+   * loop would walk every ticket in the workspace. That one reports the fact and
+   * leaves the sweep to the person holding the list.
+   */
+  flows: [
+    {
+      name: "Tell the queue when a ticket arrives",
+      trigger: "event:items:tickets:created",
+      operations: [
+        {
+          // One flow, two voices. Everything lands in the feed; an urgent one
+          // says so in the title, because a queue notification that reads the
+          // same for every ticket is a queue notification nobody reads.
+          type: "condition",
+          filter: { priority: { _eq: "urgent" } },
+          then: [
+            {
+              type: "notification",
+              title: "Urgent ticket: {{ data.subject }}",
+              body: "Arrived via {{ data.channel }} as a {{ data.type }}. Assign it and reply before the urgent SLA runs out.",
+              url: "/collections/tickets",
+            },
+          ],
+          else: [
+            {
+              type: "notification",
+              title: "New ticket: {{ data.subject }}",
+              body: "{{ data.priority }} priority, {{ data.type }}, via {{ data.channel }}. Triage it and pick a team.",
+              url: "/collections/tickets",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Chase an urgent ticket nobody has answered",
+      // Hourly, and it repeats until somebody replies — which is what an
+      // escalation is. `first_replied_at` is the thing that stops it, so it has
+      // to be stamped on the first public reply or this never goes quiet.
+      trigger: "cron:0 * * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "tickets",
+          // Thirty minutes is the seeded "Urgent unanswered 30m" escalation
+          // rule, spelled out here because a flow cannot read that row.
+          filter: {
+            priority: { _eq: "urgent" },
+            status: { _in: ["new", "open"] },
+            first_replied_at: { _null: true },
+            created_at: { _lt: { $now: { sub: { minutes: 30 } } } },
+          },
+          sort: "created_at",
+          limit: 50,
+          do: [
+            {
+              type: "notification",
+              title: "Still unanswered: {{ $item.subject }}",
+              body: "An urgent ticket has been waiting over half an hour with no reply. Take it or hand it to the escalation team.",
+              url: "/collections/tickets",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Close a ticket that has been solved for three days",
+      // Fires once per row, three days after `solved_at`, at 03:00 — and only
+      // for tickets still sitting in `solved`, so one the requester reopened in
+      // the meantime is left alone. `solved` → `closed` is an allowed
+      // transition; every other status here is not, which is why the filter
+      // matters as much as the offset.
+      trigger: `schedule:${JSON.stringify({
+        collection: "tickets",
+        field: "solved_at",
+        offset: { value: 3, unit: "days", direction: "after" },
+        at: 180,
+        timeZone: null,
+        where: { status: { _eq: "solved" } },
+      })}`,
+      operations: [
+        {
+          type: "item.update",
+          collection: "tickets",
+          id: "{{ data.id }}",
+          data: { status: "closed" },
+        },
+      ],
+    },
+    {
+      name: "Say when a known issue is resolved",
+      trigger: "event:items:problems:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "resolved" } },
+          then: [
+            {
+              // Reports the fact rather than closing the tickets itself — see
+              // the note above the list. The problem row's own note is carried
+              // through because that is where the list of what to close lives.
+              type: "notification",
+              title: "Problem resolved: {{ data.title }}",
+              body: "Work through the tickets linked to it and solve them. {{ data.linked_tickets_note }}",
+              url: "/collections/tickets",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Acknowledge a new ticket to the person who raised it (needs email)",
+      // Off until a transport is configured. The wording an operator maintains
+      // lives in the `email_templates` collection — copy the `ticket_received`
+      // row into the workspace's own email templates and point `templateKey` at
+      // it, and this stops carrying its copy inline.
+      active: false,
+      trigger: "event:items:tickets:created",
+      operations: [
+        {
+          type: "email",
+          to: "{{ data.requester.email }}",
+          subject: "We have your request: {{ data.subject }}",
+          html:
+            "<p>Thanks for getting in touch — your request is logged and an agent " +
+            "will reply within the target for its priority.</p>" +
+            "<p><strong>{{ data.subject }}</strong><br>{{ data.description }}</p>" +
+            "<p>Reply to this message to add anything else.</p>",
+        },
+      ],
+    },
+    {
+      name: "Weekly helpdesk report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 7 * * 1",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Helpdesk overview",
+          subject: "Helpdesk — last week",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "ticket_summary",
+      name: "Ticket record",
+      description: "One ticket as a printable record — what was asked, who handled it, how it ended.",
+      filename: "ticket-{{ data.id }}",
+      variables: ["subject", "status", "priority"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:21px;margin:0 0 4px}" +
+        "h2{font-size:14px;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.04em;color:#555}" +
+        ".muted{color:#666}" +
+        "table.meta{width:100%;border-collapse:collapse;margin-top:14px}" +
+        "table.meta td{padding:4px 6px;border-bottom:1px solid #eee;vertical-align:top}" +
+        "table.meta td.k{width:32%;color:#666}" +
+        ".body{white-space:pre-wrap;margin-top:6px}" +
+        "</style></head><body>" +
+        "<h1>{{ data.subject }}</h1>" +
+        '<p class="muted">{{ data.status }} · {{ data.priority }} priority · ' +
+        "{{ data.type }} · arrived via {{ data.channel }}</p>" +
+        '<table class="meta">' +
+        '<tr><td class="k">Requester</td><td>{{ data.requester.name }} ' +
+        "&lt;{{ data.requester.email }}&gt;</td></tr>" +
+        '<tr><td class="k">Organization</td><td>{{ data.organization.name }}</td></tr>' +
+        '<tr><td class="k">Assignee</td><td>{{ data.assignee.name }}</td></tr>' +
+        '<tr><td class="k">Team</td><td>{{ data.team.name }}</td></tr>' +
+        '<tr><td class="k">Category</td><td>{{ data.category.name }}</td></tr>' +
+        '<tr><td class="k">SLA policy</td><td>{{ data.sla.name }}</td></tr>' +
+        '<tr><td class="k">First replied</td><td>{{ data.first_replied_at }}</td></tr>' +
+        '<tr><td class="k">Solved</td><td>{{ data.solved_at }}</td></tr>' +
+        '<tr><td class="k">Satisfaction</td><td>{{ data.satisfaction }}</td></tr>' +
+        "</table>" +
+        "<h2>What was asked</h2>" +
+        '<div class="body">{{ data.description }}</div>' +
+        "<h2>Conversation</h2>" +
+        "<!-- one block per public message; fill from your own query or a foreach -->" +
+        '<p class="muted">Internal notes are deliberately not printed here — this ' +
+        "record is the one a requester may be sent.</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "problem_report",
+      name: "Known-issue report",
+      description: "The write-up of one problem — what broke, where it stands, what it affected.",
+      filename: "known-issue-{{ data.id }}",
+      variables: ["title", "status"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        "h2{font-size:13px;margin:18px 0 4px;text-transform:uppercase;letter-spacing:.04em;color:#555}" +
+        ".muted{color:#666}" +
+        ".body{white-space:pre-wrap}" +
+        "</style></head><body>" +
+        "<h1>{{ data.title }}</h1>" +
+        '<p class="muted">Status: {{ data.status }} · Resolved {{ data.resolved_at }}</p>' +
+        "<h2>Details</h2>" +
+        '<div class="body">{{ data.body }}</div>' +
+        "<h2>Affected tickets</h2>" +
+        '<div class="body">{{ data.linked_tickets_note }}</div>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "Submit a support request",
+      collection: "tickets",
+      settings: {
+        submitLabel: "Send request",
+        successMessage: "Thanks — it's logged and an agent will reply.",
+      },
+      // `type` is deliberately not exposed: question / incident / problem / task
+      // is agent vocabulary for routing, and a requester picking "problem"
+      // means something else by it than the queue does.
+      fields: [
+        { name: "subject", label: "What do you need help with?" },
+        { name: "description", label: "Tell us what happened", help: "What you tried, and what you saw instead." },
+        { name: "priority", help: "Pick urgent only when work is stopped." },
+      ],
+    },
+    {
+      name: "Tell us how we did",
+      collection: "csat_ratings",
+      settings: {
+        submitLabel: "Send rating",
+        successMessage: "Thank you — every rating is read.",
+      },
+      // A relation is never form-eligible, so a rating arrives unlinked and an
+      // agent attaches it to its ticket. That is on purpose rather than a gap:
+      // the link is the one thing a public respondent must not be able to pick.
+      fields: [
+        { name: "rating", label: "How was the support you got?" },
+        { name: "comment", label: "Anything you want to add?" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Support analyst",
+      handle: "support-analyst",
+      description: "Answers questions about the queue, the backlog and how it is being handled.",
+      systemPrompt:
+        "You help a support team read its own queue. Answer questions about " +
+        "tickets, problems and satisfaction using the workspace's own data. " +
+        "Status, priority and type are three separate axes: urgent says nothing " +
+        "about whether a ticket is still open, and problem is a ticket type " +
+        "rather than a status — never collapse them into one. A ticket is " +
+        "waiting until first_replied_at is set, and open until its status is " +
+        "solved or closed. Rank a backlog by how long a ticket has been waiting, " +
+        "not by priority alone. Satisfaction is an average over the few " +
+        "requesters who answered, so always give the number of responses beside " +
+        "it. Be brief and specific, and say plainly when the data does not " +
+        "answer the question.",
+      tools: ["collections.list", "collections.read", "collections.aggregate", "collections.search", "kpis.run"],
+      maxSteps: 8,
     },
   ],
 };

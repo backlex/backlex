@@ -242,6 +242,101 @@ export const position = (scope?: string, extra: Partial<FieldDef> = {}): FieldDe
  */
 export const pct = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", interface: "slider", validation: { min: 0, max: 100 }, format: { style: "percent100" }, ...extra });
 
+/**
+ * A document number the SERVER issues — `INV-2026-0001`, `PO-00042`.
+ *
+ * Seventeen of these templates declare a `required + unique` number column and
+ * every one of them left the caller to invent the value. Two clients creating
+ * an invoice in the same second both compute "highest + 1", and the lucky
+ * outcome is the UNIQUE violation; the unlucky one is a collection without the
+ * index, where both documents simply carry the same number.
+ *
+ * `required` and `unique` SURVIVE the conversion and are kept deliberately —
+ * they are the two flags a sequence field is explicitly allowed to carry, and
+ * the unique index is what makes the guarantee enforceable rather than merely
+ * intended. What must NOT come along is `default` or `onCreate`: both name a
+ * second author for a value the counter owns.
+ *
+ * `{#}` is the counter, zero-padded to the number of hashes, and it widens
+ * rather than truncating once it outgrows them. Uniqueness and monotonicity
+ * are guaranteed; **contiguity is not** — a failed insert spends its number,
+ * exactly like a Postgres SEQUENCE. See docs/sequences.md.
+ */
+export const seq = (
+  name: string,
+  pattern: string,
+  extra: Partial<FieldDef> = {},
+): FieldDef => ({
+  name,
+  type: "text",
+  required: true,
+  unique: true,
+  indexed: true,
+  sequence: { pattern },
+  ...extra,
+});
+
+/**
+ * A number on THIS row that the server keeps from rows in another collection —
+ * an invoice's line count, a campaign's donation total.
+ *
+ * Not a `computed` column: a generated column is strictly same-row, and no
+ * dialect can make one read elsewhere. A rollup is a plain stored column the
+ * server restates whenever a child row changes, which is also what lets a
+ * generated column sit on top of it.
+ *
+ * **Money is deliberately out of reach here, and that is correct.** A rollup
+ * refuses any money field that takes its currency from a sibling column — on
+ * the parent because the server writes the total and nothing would keep the
+ * currency column in step, and on the child because summing per-row currencies
+ * adds denominations together. Every `moneyIn()` in this catalog does exactly
+ * that, so the invoice and order totals stay as they are. Roll up counts and
+ * plain quantities; leave the money to the people who know what it is in.
+ *
+ * `count` takes no `field` and needs an `integer` column; `avg` needs a
+ * `number` one, because an average falls between whole units.
+ */
+export const rollup = (
+  name: string,
+  spec: { from: string; via: string; fn: "count" | "sum" | "avg" | "min" | "max"; field?: string; filter?: Record<string, unknown> },
+  extra: Partial<FieldDef> = {},
+): FieldDef => ({
+  name,
+  // `count` counts rows, so it is whole by construction and the spec refuses
+  // anything else. Everything else lands on `number`: `avg` is required to,
+  // and `sum`/`min`/`max` take it so a quantity that turns out to be fractional
+  // does not truncate the day somebody sells half a metre.
+  type: spec.fn === "count" ? "integer" : "number",
+  rollup: spec as FieldDef["rollup"],
+  ...extra,
+});
+
+/**
+ * Make a field required / read-only / hidden only when the row says so.
+ *
+ * The condition is the permission DSL over the row being edited, so
+ * `when("status", "_eq", "shipped", "required")` on `tracking_number` means an
+ * operator is asked for it exactly when there is something to track — instead
+ * of a column marked required that nobody can fill on a draft, or one marked
+ * optional that quietly ships an order nobody can find.
+ *
+ * The operator is spelled out rather than fixed at `_eq` because the useful
+ * pair is usually "required when it IS this" plus "hidden when it is NOT" —
+ * two rules on one field, and only one of them is an equality.
+ *
+ * `required` is enforced server-side as well as drawn in the form; `readonly`
+ * and `hidden` are the editor's business.
+ */
+export const when = (
+  field: string,
+  op: "_eq" | "_neq" | "_in" | "_nin",
+  value: string | string[],
+  effect: "required" | "readonly" | "hidden",
+): NonNullable<FieldDef["conditions"]>[number] =>
+  ({ rule: { [field]: { [op]: value } }, [effect]: true }) as NonNullable<
+    FieldDef["conditions"]
+  >[number];
+
 /** Colored dropdown. `values` may be plain strings or `{ value, color, label }`. */
 export const select = (
   name: string,

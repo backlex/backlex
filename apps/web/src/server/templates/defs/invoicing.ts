@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedMoneyIn, computedNum, date, email, file, flag, flow, half, hint, money, moneyIn, ms, notes, num, phone, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, computedMoneyIn, computedNum, date, email, file, flag, flow, half, hint, money, moneyIn, ms, notes, num, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const invoicing: SchemaTemplate = {
   id: "invoicing",
@@ -46,7 +46,7 @@ export const invoicing: SchemaTemplate = {
       slug: "quotes", group: "Sales", singular: "Quote", plural: "Quotes", defaultSort: "-valid_until",
       fields: stacked(
         sec("Quote", [
-          ...half(text("number", { required: true, unique: true }), rel("customer", "customers")),
+          ...half(seq("number", "Q-{YYYY}-{####}"), rel("customer", "customers")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], {
               default: "draft",
@@ -67,8 +67,11 @@ export const invoicing: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { number: "Q-2026-014", customer: { ref: "customers:0" }, status: "accepted", issue_date: ms("2026-05-18"), valid_until: ms("2026-06-18"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208 },
-        { number: "Q-2026-015", customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-25"), valid_until: ms("2026-07-25"), currency: "EUR", subtotal: 6200, tax_total: 1240, total: 7440, notes: "Two-phase rollout; phase 2 optional." },
+        // No `number` here, and none in any sample of a collection that issues
+        // one: the value is allocated by the counter at seed time, so a literal
+        // would be silently dropped AND leave the series looking wrong.
+        { customer: { ref: "customers:0" }, status: "accepted", issue_date: ms("2026-05-18"), valid_until: ms("2026-06-18"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208 },
+        { customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-25"), valid_until: ms("2026-07-25"), currency: "EUR", subtotal: 6200, tax_total: 1240, total: 7440, notes: "Two-phase rollout; phase 2 optional." },
       ],
     },
     {
@@ -85,9 +88,15 @@ export const invoicing: SchemaTemplate = {
     },
     {
       slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issue_date",
+      // An invoice ledger is something people work through a column at a time —
+      // what is still a draft, what has been sent, what has gone overdue. Named
+      // rather than left to auto-detect: this collection has exactly one
+      // dropdown today, but the moment a second one arrives the board would
+      // silently regroup around whichever came first.
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Invoice", [
-          ...half(text("number", { required: true, unique: true }), rel("customer", "customers")),
+          ...half(seq("number", "INV-{YYYY}-{####}"), rel("customer", "customers")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("partial", C.amber, "Partially paid"), ch("paid", C.green), ch("overdue", C.red), ch("void", C.slate)], {
               default: "draft",
@@ -107,6 +116,17 @@ export const invoicing: SchemaTemplate = {
             date("issue_date", { indexed: true, label: "Issue date" }),
             date("due_date", { indexed: true, label: "Due date", validation: { rule: { due_date: { _gte: "$field.issue_date" } }, message: "An invoice can't fall due before it is issued." } }),
           ),
+          // Asked for exactly when there is something to explain. Marked
+          // `required` outright it would block every draft; left optional it
+          // would let an invoice be cancelled with no record of why, which is
+          // the one thing an auditor comes back for.
+          text("void_reason", {
+            label: "Reason for voiding",
+            conditions: [
+              when("status", "_eq", "void", "required"),
+              when("status", "_neq", "void", "hidden"),
+            ],
+          }),
         ]),
         sec("Amounts", [
           hint("invoice_balance", "Balance due is generated as total − amount paid; record money in as a Payment rather than editing it here."),
@@ -117,8 +137,8 @@ export const invoicing: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { number: "INV-2026-001", customer: { ref: "customers:0" }, status: "paid", issue_date: ms("2026-06-01"), due_date: ms("2026-07-01"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208, amount_paid: 5208 },
-        { number: "INV-2026-002", customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-20"), due_date: ms("2026-07-05"), currency: "EUR", subtotal: 1500, tax_total: 300, total: 1800, amount_paid: 0 },
+        { customer: { ref: "customers:0" }, status: "paid", issue_date: ms("2026-06-01"), due_date: ms("2026-07-01"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208, amount_paid: 5208 },
+        { customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-20"), due_date: ms("2026-07-05"), currency: "EUR", subtotal: 1500, tax_total: 300, total: 1800, amount_paid: 0 },
       ],
     },
     {
@@ -170,7 +190,7 @@ export const invoicing: SchemaTemplate = {
       slug: "credit_notes", group: "Billing", singular: "Credit note", plural: "Credit notes", defaultSort: "-issued_at",
       fields: stacked(
         sec("Credit note", [
-          ...half(text("number", { required: true, unique: true }), money("amount")),
+          ...half(seq("number", "CN-{YYYY}-{####}"), money("amount")),
           ...half(rel("invoice", "invoices"), rel("customer", "customers")),
         ]),
         sec("Reason", [
@@ -181,7 +201,7 @@ export const invoicing: SchemaTemplate = {
           ...half(date("issued_at", { indexed: true, label: "Issued at" }), notes("note")),
         ]),
       ),
-      samples: [{ number: "CN-2026-001", invoice: { ref: "invoices:0" }, customer: { ref: "customers:0" }, amount: 150, status: "applied", reason: "correction", issued_at: ms("2026-06-30"), note: "Overbilled one consulting hour." }],
+      samples: [{ invoice: { ref: "invoices:0" }, customer: { ref: "customers:0" }, amount: 150, status: "applied", reason: "correction", issued_at: ms("2026-06-30"), note: "Overbilled one consulting hour." }],
     },
     {
       slug: "payment_reminders", group: "Billing", singular: "Payment reminder", plural: "Payment reminders", defaultSort: "-sent_at",
@@ -225,7 +245,7 @@ export const invoicing: SchemaTemplate = {
       slug: "purchase_orders", group: "Payables", singular: "Purchase order", plural: "Purchase orders", defaultSort: "-issue_date",
       fields: stacked(
         sec("Order", [
-          ...half(text("number", { required: true, unique: true }), rel("vendor", "vendors")),
+          ...half(seq("number", "PO-{#####}"), rel("vendor", "vendors")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("billed", C.teal), ch("cancelled", C.red)], { default: "draft" }),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
@@ -236,13 +256,17 @@ export const invoicing: SchemaTemplate = {
           ...half(moneyIn("total"), notes("notes")),
         ]),
       ),
-      samples: [{ number: "PO-2026-007", vendor: { ref: "vendors:1" }, status: "accepted", issue_date: ms("2026-06-18"), expected_date: ms("2026-06-25"), currency: "USD", total: 227.85 }],
+      samples: [{ vendor: { ref: "vendors:1" }, status: "accepted", issue_date: ms("2026-06-18"), expected_date: ms("2026-06-25"), currency: "USD", total: 227.85 }],
     },
     {
       slug: "bills", group: "Payables", singular: "Bill", plural: "Bills", defaultSort: "-issue_date",
       fields: stacked(
         sec("Bill", [
-          ...half(text("number", { required: true, unique: true }), rel("vendor", "vendors")),
+          // NOT a sequence, and that is the distinction worth keeping: a bill
+          // carries the number the VENDOR put on it. Every other document here
+          // is one this business issues, so the server owns those; this one is
+          // typed in off a piece of paper somebody else printed.
+          ...half(text("number", { required: true, unique: true, label: "Vendor's number" }), rel("vendor", "vendors")),
           ...half(
             select("status", [ch("draft", C.gray), ch("awaiting_payment", C.amber, "Awaiting payment"), ch("paid", C.green), ch("overdue", C.red)], { default: "draft" }),
             rel("purchase_order", "purchase_orders", { label: "Against PO" }),
@@ -377,6 +401,224 @@ export const invoicing: SchemaTemplate = {
         { name: "Payments by method", kind: "items-aggregate", viz: "bars", config: { collection: "payments", agg: "count", groupBy: "method" } },
         { name: "Expenses by category", kind: "items-aggregate", viz: "bars", config: { collection: "expenses", agg: "count", groupBy: "category" } },
       ],
+    },
+  ],
+  /**
+   * The rules a billing operation runs on, already running.
+   *
+   * Deliberately absent: "a payment landed, so mark the invoice paid". Whether
+   * a payment settles an invoice or only part of it depends on the invoice's
+   * own total, and a flow's `data` is the payment row — it cannot see across.
+   * A step that set `paid` on every payment would be wrong on every instalment,
+   * which is worse than the operator doing it. So the flow reports the payment
+   * and leaves the judgement where the figures are.
+   */
+  flows: [
+    {
+      name: "Tell the team when an invoice is issued",
+      trigger: "event:items:invoices:created",
+      operations: [
+        {
+          type: "notification",
+          title: "Invoice {{ data.number }} created",
+          body: "A new invoice was raised. Open it to review the lines before sending.",
+          url: "/collections/invoices",
+        },
+      ],
+    },
+    {
+      name: "Chase an invoice three days before it falls due",
+      // Fires once per row, three days before `due_date`, at 09:00 — and only
+      // for invoices that are still owed. `_nin` rather than `_neq`, because
+      // "not paid" has to also exclude the ones that were voided.
+      trigger: `schedule:${JSON.stringify({
+        collection: "invoices",
+        field: "due_date",
+        offset: { value: 3, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _nin: ["paid", "void"] } },
+      })}`,
+      operations: [
+        {
+          type: "item.create",
+          collection: "payment_reminders",
+          data: {
+            invoice: "{{ data.id }}",
+            level: "friendly",
+            channel: "email",
+            note: "Due in three days.",
+          },
+        },
+        {
+          type: "notification",
+          title: "Invoice {{ data.number }} is due in three days",
+          body: "A friendly reminder has been logged against it.",
+          url: "/collections/invoices",
+        },
+      ],
+    },
+    {
+      name: "Move an invoice to overdue the morning after it was due",
+      trigger: "cron:0 6 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "invoices",
+          filter: { status: { _in: ["sent", "partial"] }, due_date: { _lt: "$now" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "invoices",
+              id: "{{ $item.id }}",
+              data: { status: "overdue" },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Log every payment against its invoice",
+      trigger: "event:items:payments:created",
+      operations: [
+        {
+          type: "notification",
+          title: "Payment received",
+          body: "{{ data.amount }} recorded via {{ data.method }}. Check the invoice balance and set its status.",
+          url: "/collections/payments",
+        },
+      ],
+    },
+    {
+      name: "Email the invoice PDF when it is sent (needs email + a PDF renderer)",
+      // Off until both are configured — see the note in docs/templates.md. The
+      // name carries the prerequisite so nobody has to open it to find out.
+      active: false,
+      // A TRANSITION trigger rather than `…:updated` with a condition on the
+      // status: a flow sees the row as it now stands, with no before-image, so
+      // an update trigger cannot tell "just became sent" from "was saved again
+      // while sent" — and this one MAILS somebody. The status declares its
+      // lifecycle, so the move announces itself, once.
+      trigger: "event:items:invoices:transition:status:*:sent",
+      operations: [
+        { type: "document.render", templateKey: "invoice" },
+        {
+          type: "email",
+          to: "{{ data.customer.email }}",
+          subject: "Invoice {{ data.number }}",
+          html: "<p>Your invoice is attached.</p>",
+          attach: ["{{ $last.key }}"],
+        },
+      ],
+    },
+    {
+      name: "Monthly billing report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Billing overview",
+          subject: "Billing — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "invoice",
+      name: "Invoice",
+      description: "The invoice as the customer receives it.",
+      filename: "invoice-{{ data.number }}",
+      variables: ["number", "total", "currency"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:18px}" +
+        "th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #e5e5e5}" +
+        "td.n,th.n{text-align:right}" +
+        ".totals{margin-top:14px;width:100%}" +
+        ".totals td{border:0;padding:3px 6px}" +
+        "</style></head><body>" +
+        "<h1>Invoice {{ data.number }}</h1>" +
+        '<p class="muted">Issued {{ data.issue_date }} · Due {{ data.due_date }}</p>' +
+        "<p><strong>{{ data.customer.name }}</strong><br>{{ data.customer.address }}<br>" +
+        "{{ data.customer.city }} {{ data.customer.country }}</p>" +
+        "<table><thead><tr><th>Description</th><th class=\"n\">Qty</th>" +
+        '<th class="n">Unit</th><th class="n">Line total</th></tr></thead><tbody>' +
+        "<!-- one row per line item; fill from your own query or a foreach -->" +
+        "</tbody></table>" +
+        '<table class="totals"><tr><td class="n">Subtotal</td><td class="n">{{ data.subtotal }}</td></tr>' +
+        '<tr><td class="n">Tax</td><td class="n">{{ data.tax_total }}</td></tr>' +
+        '<tr><td class="n"><strong>Total {{ data.currency }}</strong></td>' +
+        '<td class="n"><strong>{{ data.total }}</strong></td></tr>' +
+        '<tr><td class="n">Paid</td><td class="n">{{ data.amount_paid }}</td></tr>' +
+        '<tr><td class="n"><strong>Balance due</strong></td>' +
+        '<td class="n"><strong>{{ data.balance_due }}</strong></td></tr></table>' +
+        "<p class=\"muted\">{{ data.notes }}</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "payment_receipt",
+      name: "Payment receipt",
+      description: "Confirmation of one payment against an invoice.",
+      filename: "receipt-{{ data.reference }}",
+      variables: ["amount", "method"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 12px}" +
+        "</style></head><body>" +
+        "<h1>Payment receipt</h1>" +
+        "<p>Received <strong>{{ data.amount }}</strong> on {{ data.received_at }} " +
+        "by {{ data.method }}.</p>" +
+        "<p>Reference: {{ data.reference }}</p>" +
+        "<p>Thank you.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "New customer details",
+      collection: "customers",
+      settings: {
+        submitLabel: "Send details",
+        successMessage: "Thank you — we'll set you up and send your first invoice.",
+      },
+      fields: [
+        { name: "name", label: "Company or full name" },
+        { name: "email", label: "Billing email", help: "Where invoices should be sent." },
+        { name: "phone" },
+        { name: "tax_number", label: "Tax number", help: "Leave blank if you have none." },
+        { name: "address" },
+        { name: "city" },
+        { name: "country" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Collections assistant",
+      handle: "collections-assistant",
+      description: "Answers questions about who owes what.",
+      systemPrompt:
+        "You help a billing team chase money. Answer questions about invoices, " +
+        "payments and outstanding balances using the workspace's own data. " +
+        "Always name the invoice number and the currency; amounts in different " +
+        "currencies are never added together. When asked what to chase, rank by " +
+        "how far past due an invoice is, not by size. Be brief and specific, and " +
+        "say plainly when the data does not answer the question.",
+      tools: ["collections.list", "collections.read", "collections.aggregate", "kpis.run"],
+      maxSteps: 8,
     },
   ],
 };

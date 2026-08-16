@@ -271,6 +271,17 @@ export interface TemplateSummary {
   roles: string[];
   /** Bundled insights-dashboard names seeded on apply. */
   dashboards: string[];
+  /** How much of a working application arrives with the collections — counts,
+   *  because the preview pane has no room for six more name lists. */
+  bundles: {
+    kpis: number;
+    flows: number;
+    documents: number;
+    forms: number;
+    agents: number;
+    flags: number;
+    channels: number;
+  };
   collections: { slug: string; label: string; fieldCount: number; group: string | null }[];
 }
 
@@ -290,6 +301,14 @@ export interface ApplyTemplateResult {
   seeded: number;
   roles: string[];
   dashboards: string[];
+  kpis: string[];
+  flows: string[];
+  documents: string[];
+  /** Form NAMES — the one-time token is never returned by any surface. */
+  forms: string[];
+  agents: string[];
+  flags: string[];
+  channels: string[];
 }
 
 export const templatesApi = {

@@ -14,10 +14,9 @@
  * skip rather than a red gate that says nothing about this code.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 
 const BASE = "/api/admin/auth-hooks";
@@ -30,16 +29,8 @@ const post = (path: string, body: unknown, method = "POST") =>
   });
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn(
-      "[auth-hooks-pg] harness setup failed — skipping pg path tests:",
-      setupError.message,
-    );
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("auth-hooks-pg")) ?? undefined;
+  if (!harness) return;
   // First user of a fresh DB is auto-promoted to admin, which these
   // admin-gated routes require.
   const signUp = await post("/api/auth/sign-up/email", {

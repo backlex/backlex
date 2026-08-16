@@ -47,9 +47,35 @@ bun test                 # all suites
 bun test tests/auth.test.ts   # single suite
 ```
 
-The `pg-smoke.test.ts` file covers the Postgres dialect path via
-`pglite` (WASM Postgres + pgvector) so dual-dialect bugs surface in
-the same suite.
+### The Postgres dialect (`*-pg.test.ts`, ~18 specs)
+
+The pg specs run against **`pglite`** — a WASM Postgres that boots in-process,
+with pgvector shipped in the same npm package. There is no Docker, no server,
+and no connection string: the `DATABASE_URL` the harness writes
+(`postgres://pglite-in-memory`) is a placeholder that exists only so
+`buildContext` takes the pg branch, and the real client is injected directly.
+So these run everywhere `bun test` runs, including a laptop on a plane.
+
+**A harness that cannot boot FAILS the run.** It used to skip: each spec caught
+the boot error, logged "skipping", and returned early from every test. bun has
+no notion of "returned early" — such a test is reported as a **pass** — so a run
+where the whole pg dialect went untested looked exactly like one where it all
+worked. Fifty-one tests, zero coverage, green summary. Since nothing external
+is required, a boot failure is a defect (a driver call, a migration pglite
+cannot take, a dependency bump), and it has been one before: a positional
+`drizzle(pg)` call silently ran every query against an empty database, and the
+skip is why it survived.
+
+One helper does this for every spec — `makeHarnessPgOrFail(tag)` in
+`tests/setup-pg.ts` — and `tests/pg-specs-fail-loudly.test.ts` is the gate that
+keeps the eighteenth copy from reintroducing a private `catch`. To skip the pg
+dialect deliberately:
+
+```bash
+BACKLEX_PG_TESTS=optional bun test    # says "asserted NOTHING" on stderr
+```
+
+CI never sets it, so the escape hatch cannot be the accident.
 
 ### Client render tests (`tests/client/*.test.tsx`)
 

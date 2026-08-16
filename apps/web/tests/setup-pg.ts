@@ -173,3 +173,54 @@ export const makeHarnessPg = async (
     },
   };
 };
+
+/**
+ * Boot the Postgres harness, and **fail loudly** when it cannot.
+ *
+ * Every `*-pg.test.ts` used to hand-roll the same block: `try { harness = await
+ * makeHarnessPg() } catch { console.warn("skipping"); return }`, then guard each
+ * test with `if (!harness) return`. Seventeen copies of it, and the effect was
+ * that a broken harness turned fifty-one Postgres specs into fifty-one passes.
+ * bun does not report those as skipped — a test that registers and returns early
+ * is a **pass** — so a run in which the entire pg dialect went untested is
+ * indistinguishable, in the summary line and in CI, from one where it all
+ * worked. A gate that goes green with nothing behind it is not a gate.
+ *
+ * The reason to fail rather than skip is specific to this harness: it needs
+ * nothing external. `@electric-sql/pglite` is a WASM Postgres in the dependency
+ * tree, with pgvector shipped in the same package — no Docker, no server, no
+ * `DATABASE_URL` (the one the harness writes is a placeholder that is never
+ * dialled). So a boot failure is not "this machine lacks Postgres", it is a real
+ * defect: a bad driver call, a migration pglite cannot take, a dependency bump.
+ * That has already happened once — the beta-22 positional `drizzle(pg)` call
+ * silently produced an empty database, and the silence is why it survived.
+ *
+ * `BACKLEX_PG_TESTS=optional` restores the old behaviour for someone genuinely
+ * stuck (an unsupported arch, a locked-down sandbox). It is opt-in, it says so
+ * on stderr, and CI never sets it — so the escape hatch cannot be the accident.
+ */
+export const PG_TESTS_OPTIONAL =
+  (process.env.BACKLEX_PG_TESTS ?? "").trim().toLowerCase() === "optional";
+
+export const makeHarnessPgOrFail = async (
+  tag: string,
+  overrides: Partial<Env> = {},
+): Promise<PgTestHarness | null> => {
+  try {
+    return await makeHarnessPg(overrides);
+  } catch (err) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    if (PG_TESTS_OPTIONAL) {
+      console.warn(
+        `[${tag}] pglite harness unavailable and BACKLEX_PG_TESTS=optional — this spec asserted NOTHING: ${e.message}`,
+      );
+      return null;
+    }
+    throw new Error(
+      `[${tag}] the in-process Postgres harness failed to boot. This is a real failure, not a missing environment — ` +
+        `pglite ships the server and pgvector in the dependency tree, so nothing external is required. ` +
+        `Fix the cause, or re-run with BACKLEX_PG_TESTS=optional to skip the pg dialect deliberately. Cause: ${e.message}`,
+      { cause: e },
+    );
+  }
+};

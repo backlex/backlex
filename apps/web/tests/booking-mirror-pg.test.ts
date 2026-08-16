@@ -20,11 +20,10 @@
  * skip rather than a red gate that says nothing about this code.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 import { BOOKING_COLLECTION_SLUG } from "../src/server/services/booking-collection";
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 
 const BASE = "/api/admin/booking";
@@ -68,16 +67,8 @@ const records = async (): Promise<any[]> => {
 };
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn(
-      "[booking-mirror-pg] harness setup failed — skipping pg path tests:",
-      setupError.message,
-    );
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("booking-mirror-pg")) ?? undefined;
+  if (!harness) return;
   const signUp = await post("/api/auth/sign-up/email", {
     email: `pg-booking-${Date.now()}@example.test`,
     password: "correct-horse-battery",
@@ -100,13 +91,9 @@ afterAll(async () => {
   await harness?.cleanup();
 }, PGLITE_BOOT_TIMEOUT_MS);
 
-const skipped = (): boolean => {
-  if (setupError || !harness) {
-    expect(setupError).toBeDefined();
-    return true;
-  }
-  return false;
-};
+/** Only reachable under `BACKLEX_PG_TESTS=optional` — otherwise a harness that
+ *  cannot boot has already failed the run in `beforeAll`. */
+const skipped = (): boolean => !harness;
 
 test("pg: the collection is provisioned and a booking lands in it", async () => {
   if (skipped()) return;

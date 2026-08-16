@@ -15,28 +15,19 @@
  * than failing the whole suite.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 const DAY = 86_400_000;
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 const anchor = Date.now();
 const slug = `pgseries_${anchor}`;
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn(
-      "[kpis-series-pg] harness setup failed — skipping pg path tests:",
-      setupError.message,
-    );
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("kpis-series-pg")) ?? undefined;
+  if (!harness) return;
   const post = (path: string, body: unknown) =>
     harness!.fetch(path, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
 

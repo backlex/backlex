@@ -6,29 +6,25 @@
  * (jsonb columns, pgvector tables) that the SQLite suite never exercises.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
-/** Set when harness setup fails — pglite's pgvector extension load is
- *  environment-sensitive (its WASM .tar.gz needs to be fetched at boot,
- *  which doesn't always work cleanly under Bun's test runner). When it
- *  trips we still want the *rest* of the suite green; the harness file
- *  proves the wiring is in place, and a real CI runner with a network /
- *  Docker pg can flip these tests on. */
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 
 // pglite unpacks a WASM postgres + pgvector tarball at boot; on a cold CI
 // runner that can easily exceed bun-test's default 5s beforeAll timeout, so
-// bump generously. When pgvector can't load we still want the catch path —
-// not a hook-timeout panic that fails the whole suite.
+// bump generously.
+//
+// A boot failure now FAILS rather than skipping — see `makeHarnessPgOrFail`.
+// The comment that used to sit here said pgvector's load is
+// "environment-sensitive" and that a real CI runner "can flip these tests
+// on". Both halves were wrong, and together they are how this spec spent a
+// stretch silently asserting nothing: pglite ships the server and the
+// extension inside the dependency tree, there is nothing for a runner to
+// provide, and the real cause was a positional `drizzle(pg)` call that
+// handed every query an empty database.
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn("[pg-smoke] harness setup failed — skipping pg path tests:", setupError.message);
-  }
+  harness = (await makeHarnessPgOrFail("pg-smoke")) ?? undefined;
 }, PGLITE_BOOT_TIMEOUT_MS);
 
 afterAll(async () => {
@@ -36,15 +32,12 @@ afterAll(async () => {
 }, PGLITE_BOOT_TIMEOUT_MS);
 
 test("pg: sign-up + list collections", async () => {
-  if (setupError || !harness) {
-    // Harness setup failed at boot (pglite/pgvector environment issue);
-    // logged in beforeAll. Treat as a no-op so the rest of the suite stays
-    // green while still surfacing the failure in logs. The bun test runner
-    // exits non-zero (100) for tests with zero expect() calls, so assert
-    // the setup-error sentinel to keep the suite passing.
-    expect(setupError).toBeDefined();
-    return;
-  }
+  // Only reachable under `BACKLEX_PG_TESTS=optional`; otherwise `beforeAll`
+  // has already failed the run. (The old comment here claimed bun exits 100
+  // for a test with zero `expect()` calls, which motivated a sentinel
+  // assertion — measured on bun 1.4 and it does not. The real exit-100 hazard
+  // is an unclosed PGlite handle, which `makeHarnessPg` already guards.)
+  if (!harness) return;
   const email = `pg-admin-${Date.now()}@example.test`;
   const password = "correct-horse-battery";
 

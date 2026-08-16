@@ -12,28 +12,19 @@
  * the whole suite.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
 const DAY = 86_400_000;
 const STACK =
   "TypeError: boom\n  at doThing (/app/src/x.ts:12:9)\n  at main (/app/src/y.ts:3:1)";
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 const now = Date.now();
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn(
-      "[analytics-pg] harness setup failed — skipping pg path tests:",
-      setupError.message,
-    );
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("analytics-pg")) ?? undefined;
+  if (!harness) return;
   const email = `pg-analytics-${Date.now()}@example.test`;
   const signUp = await harness.fetch("/api/auth/sign-up/email", {
     method: "POST",
@@ -71,15 +62,9 @@ afterAll(async () => {
   await harness?.cleanup();
 }, PGLITE_BOOT_TIMEOUT_MS);
 
-/** Assert the sentinel when pglite couldn't boot, so bun-test still sees an
- *  expect() call and the run stays green (mirrors `pg-smoke.test.ts`). */
-const skipped = (): boolean => {
-  if (setupError || !harness) {
-    expect(setupError).toBeDefined();
-    return true;
-  }
-  return false;
-};
+/** Only reachable under `BACKLEX_PG_TESTS=optional` — otherwise a harness that
+ *  cannot boot has already failed the run in `beforeAll`. */
+const skipped = (): boolean => !harness;
 
 test("pg: overview counts and zero-fills like sqlite", async () => {
   if (skipped()) return;

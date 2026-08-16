@@ -19,10 +19,9 @@
  * the whole suite.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 
 const slug = "retpg_parts";
@@ -36,16 +35,8 @@ const json = (body: unknown, method = "POST"): RequestInit => ({
 });
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn(
-      "[retirement-pg] harness setup failed — skipping pg path tests:",
-      setupError.message,
-    );
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("retirement-pg")) ?? undefined;
+  if (!harness) return;
   const email = `pg-retire-${Date.now()}@example.test`;
   const signUp = await harness.fetch("/api/auth/sign-up/email", json({
     email,
@@ -87,15 +78,9 @@ afterAll(async () => {
   await harness?.cleanup();
 }, PGLITE_BOOT_TIMEOUT_MS);
 
-/** Assert the sentinel when pglite couldn't boot, so bun-test still sees an
- *  expect() call and the run stays green (mirrors `pg-smoke.test.ts`). */
-const skipped = (): boolean => {
-  if (setupError || !harness) {
-    expect(setupError).toBeDefined();
-    return true;
-  }
-  return false;
-};
+/** Only reachable under `BACKLEX_PG_TESTS=optional` — otherwise a harness that
+ *  cannot boot has already failed the run in `beforeAll`. */
+const skipped = (): boolean => !harness;
 
 const names = async (qs: string): Promise<string[]> => {
   const r = await harness!.fetch(`/api/items/${slug}?sort=name&limit=50${qs}`);

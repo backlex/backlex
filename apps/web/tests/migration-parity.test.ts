@@ -35,6 +35,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import * as pgSchemaNs from "@backlex/db/pg";
 import * as sqliteSchemaNs from "@backlex/db/sqlite";
+import { PG_TESTS_OPTIONAL } from "./setup-pg";
 
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
 const SQLITE_MIGRATIONS = resolve(ROOT, "packages/db/drizzle/sqlite");
@@ -293,16 +294,28 @@ try {
   }
   migratedPg = await introspectPg(pgInstance);
 } catch (err) {
-  console.warn(
-    `[migration-parity] pglite setup failed — skipping pg-side checks: ${
-      (err as Error).message
-    }`,
-  );
   try {
     await pgInstance?.close();
   } catch {
     // already closing
   }
+  // A pglite that cannot boot is a defect, not a missing environment — it ships
+  // the server and pgvector inside the dependency tree. Skipping here left the
+  // pg half of migration parity asserting nothing while the file still reported
+  // green, which is the same shape `pg-specs-fail-loudly.test.ts` exists to
+  // forbid. Escape hatch is opt-in and says what it costs.
+  if (!PG_TESTS_OPTIONAL) {
+    throw new Error(
+      `[migration-parity] pglite setup failed, so the pg migrations were never compared against pg/schema.ts. ` +
+        `Fix the cause, or re-run with BACKLEX_PG_TESTS=optional. Cause: ${(err as Error).message}`,
+      { cause: err },
+    );
+  }
+  console.warn(
+    `[migration-parity] BACKLEX_PG_TESTS=optional — the pg-side checks asserted NOTHING: ${
+      (err as Error).message
+    }`,
+  );
   pgInstance = null;
 }
 
@@ -328,10 +341,8 @@ describe("sqlite migrations ↔ sqlite schema.ts", () => {
 
 describe("pg migrations ↔ pg schema.ts", () => {
   test("migrated database matches the declared schema", () => {
-    if (!migratedPg) {
-      console.warn("[migration-parity] skipped (pglite unavailable)");
-      return;
-    }
+    // Only reachable under `BACKLEX_PG_TESTS=optional`.
+    if (!migratedPg) return;
     const declaredPg = schemaShape(
       pgSchemaNs.schema as unknown as Record<string, unknown>,
       pgTableConfig as never,
@@ -349,10 +360,8 @@ describe("pg migrations ↔ pg schema.ts", () => {
 
 describe("migrated pg ↔ migrated sqlite", () => {
   test("both migration chains produce the same structure", () => {
-    if (!migratedPg) {
-      console.warn("[migration-parity] skipped (pglite unavailable)");
-      return;
-    }
+    // Only reachable under `BACKLEX_PG_TESTS=optional`.
+    if (!migratedPg) return;
     expect(
       diffShapes(migratedSqlite, "sqlite", migratedPg, "pg", {
         onlyA: SQLITE_LEDGER_TABLES,

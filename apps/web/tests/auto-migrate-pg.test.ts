@@ -35,6 +35,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { ensureMigrations, type AutoMigrateDb } from "@backlex/db";
 import { MIGRATIONS as PG_MIGRATIONS } from "@backlex/db/pg/migrations-bundle";
 import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
+import { PG_TESTS_OPTIONAL } from "./setup-pg";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 1 — error classifier + per-migration loop, no pglite
@@ -232,18 +233,26 @@ beforeAll(async () => {
     await probe.close();
   } catch (err) {
     setupErr = err instanceof Error ? err : new Error(String(err));
+    // Same rule as `makeHarnessPgOrFail`: pglite needs nothing external, so a
+    // probe that cannot boot is a defect and not an environment. Skipping is
+    // opt-in and loud.
+    if (!PG_TESTS_OPTIONAL) {
+      throw new Error(
+        "[auto-migrate-pg] pglite could not boot, so layer 2 (the real PG bundle replayed end to end) " +
+          "would have asserted nothing. pglite ships the server and pgvector in the dependency tree — " +
+          "fix the cause, or re-run with BACKLEX_PG_TESTS=optional. Cause: " +
+          setupErr.message,
+        { cause: setupErr },
+      );
+    }
   }
 }, PGLITE_BOOT_TIMEOUT_MS);
 
 describe("auto-migrate (pg) — end-to-end pglite", () => {
   test("real PG bundle replays against pglite without throwing", async () => {
-    if (!pgliteWorks) {
-      // pglite/pgvector genuinely couldn't boot here (e.g. a future Bun/WASM
-      // regression). Layer 1 covers the migration logic in any environment;
-      // don't fail the suite on an environment we can't control.
-      expect(setupErr ?? new Error("pglite unavailable")).toBeDefined();
-      return;
-    }
+    // Only reachable under `BACKLEX_PG_TESTS=optional` — otherwise `beforeAll`
+    // has already failed. Layer 1 above still covers the migration logic.
+    if (!pgliteWorks) return;
     const { PGlite } = await import("@electric-sql/pglite");
     const { vector } = await import("@electric-sql/pglite/vector");
     const { drizzle } = await import("drizzle-orm/pglite");

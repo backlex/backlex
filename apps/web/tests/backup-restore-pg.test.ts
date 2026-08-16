@@ -12,10 +12,9 @@
  * harness that fails to boot degrades to a logged skip rather than a red suite.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -58,13 +57,8 @@ const backupNow = async (label: string): Promise<string> => {
 let itemId = "";
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn("[backup-restore-pg] harness setup failed — skipping:", setupError.message);
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("backup-restore-pg")) ?? undefined;
+  if (!harness) return;
   const signUp = await post("/api/auth/sign-up/email", {
     email: `pg-backup-${Date.now()}@example.test`,
     password: "correct-horse-battery",

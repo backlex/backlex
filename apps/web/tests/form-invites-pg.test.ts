@@ -14,10 +14,9 @@
  * skip rather than a red gate that says nothing about this code.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 let formId = "";
 let formToken = "";
@@ -42,16 +41,8 @@ const submit = (data: Record<string, unknown>, invite: string) =>
   });
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn(
-      "[form-invites-pg] harness setup failed — skipping pg path tests:",
-      setupError.message,
-    );
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("form-invites-pg")) ?? undefined;
+  if (!harness) return;
   const signUp = await post("/api/auth/sign-up/email", {
     email: `pg-invites-${Date.now()}@example.test`,
     password: "correct-horse-battery",
@@ -81,13 +72,9 @@ afterAll(async () => {
   await harness?.cleanup();
 }, PGLITE_BOOT_TIMEOUT_MS);
 
-const skipped = (): boolean => {
-  if (setupError || !harness) {
-    expect(setupError).toBeDefined();
-    return true;
-  }
-  return false;
-};
+/** Only reachable under `BACKLEX_PG_TESTS=optional` — otherwise a harness that
+ *  cannot boot has already failed the run in `beforeAll`. */
+const skipped = (): boolean => !harness;
 
 test("pg: a reminder's link resolves to the invite, and spends the same turn", async () => {
   if (skipped()) return;

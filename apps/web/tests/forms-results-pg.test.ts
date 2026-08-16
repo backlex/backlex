@@ -12,10 +12,9 @@
  * so a harness that fails to boot degrades to a logged skip.
  */
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
+import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
 
-let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 const slug = `pg_survey_${Date.now()}`;
 
@@ -27,16 +26,8 @@ const post = async (path: string, body: unknown) =>
   });
 
 beforeAll(async () => {
-  try {
-    harness = await makeHarnessPg();
-  } catch (err) {
-    setupError = err instanceof Error ? err : new Error(String(err));
-    console.warn(
-      "[forms-results-pg] harness setup failed — skipping pg path tests:",
-      setupError.message,
-    );
-    return;
-  }
+  harness = (await makeHarnessPgOrFail("forms-results-pg")) ?? undefined;
+  if (!harness) return;
   const signUp = await post("/api/auth/sign-up/email", {
     email: `pg-forms-${Date.now()}@example.test`,
     password: "correct-horse-battery",
@@ -72,13 +63,9 @@ afterAll(async () => {
   await harness?.cleanup();
 }, PGLITE_BOOT_TIMEOUT_MS);
 
-const skipped = (): boolean => {
-  if (setupError || !harness) {
-    expect(setupError).toBeDefined();
-    return true;
-  }
-  return false;
-};
+/** Only reachable under `BACKLEX_PG_TESTS=optional` — otherwise a harness that
+ *  cannot boot has already failed the run in `beforeAll`. */
+const skipped = (): boolean => !harness;
 
 test("pg: an array-valued json column round-trips", async () => {
   if (skipped()) return;

@@ -115,6 +115,49 @@ describe("bundled artifacts are consistent with their own template", () => {
     }
   });
 
+  test("what a flow writes is a real column, holding a real value", () => {
+    // The op names its collection, so the previous test catches a bad slug —
+    // but a bad KEY inside `data` is dropped by the write path and the flow
+    // reports success having written nothing. Same for a status string that is
+    // not one of the field's choices: the row is refused at run time, hours
+    // after anybody was watching.
+    let checked = 0;
+    for (const tpl of withBundles) {
+      const bySlug = new Map(tpl.collections.map((c) => [c.slug, c]));
+      for (const flow of tpl.flows ?? []) {
+        for (const op of walkOps(flow.operations)) {
+          if (op.type !== "item.create" && op.type !== "item.update") continue;
+          checked++;
+          const o = op as unknown as { collection: string; data?: unknown };
+          const col = bySlug.get(o.collection);
+          if (!col || !o.data || typeof o.data !== "object") continue;
+          for (const [key, value] of Object.entries(o.data as Record<string, unknown>)) {
+            const where = `${tpl.id}/${flow.name} → ${o.collection}.${key}`;
+            const def = col.fields.find((f) => f.name === key);
+            expect(def, `${where}: not a column of ${o.collection}`).toBeTruthy();
+            if (!def) continue;
+            expect(
+              !def.computed && !def.rollup && !def.sequence,
+              `${where}: the server owns this column — a write to it is refused`,
+            ).toBe(true);
+            // A literal written into a dropdown has to be one of its choices.
+            const choices = def.options?.choices?.map((c) => c.value);
+            if (
+              choices?.length &&
+              typeof value === "string" &&
+              !value.includes("{{")
+            ) {
+              expect(choices, `${where}: "${value}" is not a declared choice`).toContain(value);
+            }
+          }
+        }
+      }
+    }
+    // A catalog whose flows stopped writing rows would make every assertion
+    // above vacuous while the test stayed green.
+    expect(checked, "no item.create/item.update op was checked").toBeGreaterThan(0);
+  });
+
   test("every bundled flow's trigger names a collection the template creates", () => {
     for (const tpl of withBundles) {
       const slugs = new Set(tpl.collections.map((c) => c.slug));

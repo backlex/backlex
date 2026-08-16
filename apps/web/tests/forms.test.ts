@@ -659,3 +659,83 @@ describe("public forms — versioned collections", () => {
     expect(rows[0]!._status).toBe("draft");
   });
 });
+
+/**
+ * Server-maintained columns and the form eligibility fence.
+ *
+ * `isFormEligible` has to name exactly the fields the item write path refuses a
+ * value for, and it was missing `sequence`, `rollup` and `onUpdate`. `sequence`
+ * is the one that deadlocks a collection out of having a public form at all: a
+ * document number is a `text` column, so it passed the type gate, and it is
+ * normally `required`, which `assertFieldsEligible` reads as "must be on the
+ * form". Putting it on meant every submission 422'd on a server-issued column;
+ * leaving it off meant the form could not be created. Neither branch had an
+ * escape, and both failures pointed at the wrong thing.
+ */
+describe("forms — fields the server maintains are never form fields", () => {
+  let h: TestHarness;
+  const slug = `docs_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const res = await h.fetch(
+      "/api/collections",
+      json({
+        slug,
+        fields: [
+          { name: "title", type: "text", required: true },
+          {
+            name: "number",
+            type: "text",
+            required: true,
+            unique: true,
+            sequence: { pattern: "DOC-{####}" },
+          },
+          { name: "touched_at", type: "timestamp", onUpdate: "now" },
+        ],
+      }),
+    );
+    expect(res.status).toBe(201);
+  });
+
+  afterAll(() => h.cleanup());
+
+  test("eligible-fields omits a sequence and an onUpdate column", async () => {
+    const res = await h.fetch(`/api/admin/forms/eligible-fields/${slug}`);
+    expect(res.status).toBe(200);
+    const names = ((await res.json()) as { data: { name: string }[] }).data.map((f) => f.name);
+    expect(names).toContain("title");
+    expect(names).not.toContain("number");
+    expect(names).not.toContain("touched_at");
+  });
+
+  test("a form over the collection is creatable, and its submissions land", async () => {
+    // Before the fix this 422'd — `number` is required AND was eligible, so
+    // the "schema-required fields cannot be left off" rule demanded a column
+    // the writer would then reject.
+    const created = await h.fetch(
+      "/api/admin/forms",
+      json({ name: "Request a doc", collection: slug, fields: [{ name: "title" }] }),
+    );
+    expect(created.status).toBe(201);
+    const token = ((await created.json()) as { data: { token: string } }).data.token;
+
+    const submit = await h.app.fetch(
+      new Request(`${h.env.APP_URL}/api/public/forms/${token}/submit`, {
+        ...json({ data: { title: "Warranty letter" } }),
+      }),
+    );
+    expect(submit.status).toBe(201);
+
+    // The number the submitter never saw was issued by the server anyway.
+    const rows = (
+      (await (await h.fetch(`/api/items/${slug}`)).json()) as {
+        data: Record<string, unknown>[];
+      }
+    ).data;
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.title).toBe("Warranty letter");
+    expect(rows[0]!.number).toBe("DOC-0001");
+  });
+});

@@ -591,7 +591,7 @@ export const fitness: SchemaTemplate = {
         { name: "name", label: "Full name" },
         { name: "email", label: "Email" },
         { name: "phone" },
-        { name: "emergency_contact", label: "Emergency contact", description: "Name and number of someone we can call." },
+        { name: "emergency_contact", label: "Emergency contact", help: "Name and number of someone we can call." },
       ],
     },
   ],

@@ -507,7 +507,7 @@ export const maintenance: SchemaTemplate = {
       // the asset in words and the team links it at triage. Better than making
       // somebody on the floor pick from a register they cannot see.
       fields: [
-        { name: "title", label: "What is wrong?", description: "Include the machine or the room." },
+        { name: "title", label: "What is wrong?", help: "Include the machine or the room." },
         { name: "description", label: "What did you see or hear?" },
         { name: "priority", label: "How urgent?" },
       ],

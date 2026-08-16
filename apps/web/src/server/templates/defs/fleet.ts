@@ -556,7 +556,7 @@ export const fleet: SchemaTemplate = {
         { name: "email", label: "Work email" },
         { name: "phone" },
         { name: "license_no", label: "Licence number" },
-        { name: "license_expires", label: "Licence expiry", description: "We warn you a month before it runs out." },
+        { name: "license_expires", label: "Licence expiry", help: "We warn you a month before it runs out." },
       ],
     },
   ],

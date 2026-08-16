@@ -326,6 +326,33 @@ describe("bundled artifacts are consistent with their own template", () => {
     expect(checked, "no conditional field was checked").toBeGreaterThan(0);
   });
 
+  test("two templates cannot collide on a bundle's natural key", () => {
+    // Every bundle is skipped by name or key, and a workspace may apply more
+    // than one template. So a name shared by two verticals does not produce a
+    // conflict anybody sees — it produces a workspace holding ONE of them,
+    // pointing at the other vertical's collection, which is the shape of bug
+    // that gets reported as "the form saves to the wrong place".
+    const seen = new Map<string, string[]>();
+    const claim = (kind: string, key: string, tpl: string): void => {
+      const k = `${kind} "${key}"`;
+      seen.set(k, [...(seen.get(k) ?? []), tpl]);
+    };
+    for (const tpl of TEMPLATES) {
+      for (const d of tpl.documents ?? []) claim("document key", d.key, tpl.id);
+      for (const f of tpl.flows ?? []) claim("flow name", f.name, tpl.id);
+      for (const f of tpl.forms ?? []) claim("form name", f.name, tpl.id);
+      for (const a of tpl.agents ?? []) claim("agent name", a.name, tpl.id);
+      for (const f of tpl.flags ?? []) claim("flag key", f.key, tpl.id);
+      for (const c of tpl.channels ?? []) claim("channel pattern", c.pattern, tpl.id);
+    }
+    const clashes = [...seen].filter(([, v]) => v.length > 1);
+    expect(
+      clashes.map(([k, v]) => `${k} in ${v.join(" + ")}`),
+      "two templates share a bundle key",
+    ).toEqual([]);
+    expect(seen.size, "no bundle keys were collected").toBeGreaterThan(0);
+  });
+
   test("no sample writes a column the server owns", () => {
     // A literal in one of these is dropped by the seeder, so it is not a bug
     // that shows up — it is a line of the catalog that reads as if it does

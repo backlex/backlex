@@ -551,7 +551,11 @@ export const appointments: SchemaTemplate = {
   ],
   forms: [
     {
-      name: "New client details",
+      // Named for its collection, not generically: bundles are skipped by NAME
+      // and a workspace can apply more than one template, so two forms sharing
+      // a name means the second is silently skipped and the workspace keeps one
+      // pointing at the other vertical's collection.
+      name: "New customer details (bookings)",
       collection: "customers",
       settings: {
         submitLabel: "Send my details",

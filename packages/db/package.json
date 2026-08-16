@@ -36,6 +36,7 @@
     "migrate:sqlite": "bun run src/sqlite/migrate.ts",
     "migrate:libsql": "bun run src/sqlite/migrate-libsql.ts",
     "migrate:d1": "bun run src/sqlite/migrate-d1.ts",
+    "compact:d1-ledger": "bun run src/sqlite/compact-d1-ledger.ts",
     "studio:pg": "drizzle-kit studio --config=drizzle.pg.config.ts"
   },
   "dependencies": {

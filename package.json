@@ -22,6 +22,7 @@
     "db:migrate:sqlite": "bun run --cwd packages/db migrate:sqlite",
     "db:migrate:d1": "bun run --cwd packages/db migrate:d1",
     "db:migrate:d1:remote": "bun run --cwd packages/db migrate:d1 -- --remote",
+    "db:compact:d1-ledger": "bun run --cwd packages/db compact:d1-ledger --",
     "db:studio": "bun run --cwd packages/db studio",
     "deploy": "bun run --cwd apps/web deploy",
     "dev:site": "bun run --cwd apps/site dev",

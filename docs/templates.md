@@ -134,6 +134,34 @@ with failures on day one. Operations that address an external endpoint —
 `webhook`, `request`, `integration*`, `payment.*` — are **refused in the
 catalog** by `templates-bundles.test.ts`.
 
+**A flow notification with no `userId` is a broadcast to the whole
+workspace.** There is no role targeting — one tenant-scoped row is written and
+everybody in the workspace can read its title and body. That matters most in
+templates whose roles are the point: `clinic` builds a Reception role that
+deliberately cannot see visit notes, vitals, labs or prescriptions, so a
+notification body carrying a test name or a medication would route clinical
+data straight past that boundary, in a place nobody thinks to audit. Its
+bundled lab and prescription rules therefore say only that something needs
+attention and where to look — no patient, no clinical detail — while its
+scheduling and billing rules do name patients, because Reception holds the
+appointment book and the ledger. **A document is the opposite case and may
+carry the detail**: a render is requested by somebody who already holds
+permission on the record. When you write a bundled flow, check what the
+template's most restricted role is allowed to see, and keep the body inside it.
+
+**An ordered comparison against `$field.` must guard that the operand
+exists.** The matcher coerces both sides with `Number()`, and `Number(null)` is
+**0** — not `NaN`. So `{used: {_gte: "$field.cap"}}` on a row whose `cap` is
+empty reads as `used >= 0` and is true for every row the flow ever sees; it
+does not error, it just fires constantly, and the filter that was meant to
+narrow it looks correct. Write the guard beside it — `{cap: {_gt: 0}}` is
+usually best, since it also excludes a cap of zero and doubles as the opt-in
+for rows that never set a threshold; `{_null: false}` or `{_nempty: true}` work
+too, and `{_gte: 0}` does **not**. `templates-bundles.test.ts` enforces this
+across the catalog. Cross-field *validation* rules are already immune —
+`checkableRule` drops a comparison whose operand is absent before judging the
+row — but flow conditions run the raw matcher.
+
 **Safety rails:** apply never drops or alters existing columns (the schema
 applier is additive-only), never touches rows it didn't create, and there is
 no rollback — a mid-apply failure leaves already-created collections in place

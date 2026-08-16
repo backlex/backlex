@@ -37,13 +37,17 @@ export const listTemplates: McpTool = {
 export const applyTemplate: McpTool = {
   name: "templates.apply",
   description:
-    "Seed a vertical template's collections (grouped, with realistic sample " +
-    "data and any bundled roles/dashboards/KPIs) into the active workspace. " +
-    "Pass a catalog `templateId` OR an inline `template` object (the " +
-    "`templates.extract` shape) to apply a custom schema. Idempotent — " +
-    "collections that already exist are skipped. Returns `{ templateId, " +
-    "created, skipped, seeded, roles, dashboards, kpis }`. Requires `create` " +
-    "on `system_collections` (admin).",
+    "Seed a vertical template into the active workspace: grouped collections " +
+    "with realistic sample data, plus whatever it bundles — roles, an " +
+    "insights dashboard, KPI definitions, automation flows, PDF document " +
+    "templates, public forms, AI agents, feature flags and broadcast " +
+    "channels. Pass a catalog `templateId` OR an inline `template` object " +
+    "(the `templates.extract` shape) to apply a custom schema. Idempotent — " +
+    "anything that already exists (by slug/name/key) is skipped. Returns " +
+    "`{ templateId, created, skipped, seeded, roles, dashboards, kpis, " +
+    "flows, documents, forms, agents, flags, channels }`; a seeded form's " +
+    "one-time token is never returned, rotate the form to get its link. " +
+    "Requires `create` on `system_collections` (admin).",
   inputSchema: {
     type: "object",
     properties: {

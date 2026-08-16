@@ -16,8 +16,14 @@ import {
   type SampleRow,
   type SampleValue,
   type SchemaTemplate,
+  type TemplateAgent,
+  type TemplateChannel,
   type TemplateCollection,
   type TemplateDashboard,
+  type TemplateDocument,
+  type TemplateFlag,
+  type TemplateFlow,
+  type TemplateForm,
   type TemplateKpi,
   type TemplateRole,
 } from "../templates/catalog";
@@ -25,6 +31,10 @@ import type { Ctx } from "../context";
 import { createManagedCollection } from "./collections";
 import { invalidateTenantCollections } from "./collections-cache";
 import { invalidateTenantPermissions } from "./permissions-cache";
+import { createAgent } from "./agents/store";
+import { createForm } from "./forms";
+import { refreshCollectionRollups, rollupRefreshAllStatements } from "./items/rollup";
+import { allocateSequenceValues, sequenceFieldsOf } from "./items/sequence";
 import { indexFts, isSearchable } from "./fts";
 import {
   deleteVectors,
@@ -75,6 +85,20 @@ export interface ApplyTemplateResult {
   /** Slugs of bundled KPI definitions created by this apply (existing slugs
    *  skipped, so a re-apply never overwrites one an admin has tuned). */
   kpis: string[];
+  /** Names of bundled automation flows created by this apply. */
+  flows: string[];
+  /** Keys of bundled PDF document templates created by this apply. */
+  documents: string[];
+  /** Names of bundled public forms created by this apply. The one-time token
+   *  is deliberately NOT reported — this result is written verbatim into the
+   *  activity log, and a form's link is a credential. Rotate to get one. */
+  forms: string[];
+  /** Names of bundled AI agents created by this apply. */
+  agents: string[];
+  /** Keys of bundled feature flags created by this apply. */
+  flags: string[];
+  /** Patterns of bundled broadcast channels created by this apply. */
+  channels: string[];
 }
 
 /** Map of `slug -> [insertedId, …]` for already-seeded collections, used to
@@ -230,6 +254,22 @@ async function seedSamples(
   const fieldByName = new Map(col.fields.map((f) => [f.name, f]));
   const ids: string[] = [];
   const seededRows: Array<{ id: string; row: Record<string, unknown> }> = [];
+  // Document numbers are ALLOCATED for the sample block, never written by the
+  // sample. This insert goes straight at the physical table, so a literal
+  // `INV-2026-001` in a sample would leave the counter untouched — and the
+  // first invoice the workspace actually creates would be issued `INV-0001`
+  // against a row that already holds it. One statement per sequence field for
+  // the whole block, the same call the batch and CSV-import paths make.
+  const seqFields = sequenceFieldsOf(col.fields as FieldDef[]);
+  const seqPool = await allocateSequenceValues(
+    ctx as unknown as Ctx,
+    tenantId,
+    col.slug,
+    seqFields,
+    rows.length,
+    new Date(),
+  );
+  const seqTaken = new Map<string, number>();
   const ftsTarget = { fts: !!col.fts, physicalTable, pkColumn: "id", fields: col.fields };
   const searchable = isSearchable(ftsTarget);
 
@@ -274,7 +314,22 @@ async function seedSamples(
       // plaintext where the API stores a scrypt digest — and presentational
       // layout blocks, which own no column at all (custom templates can send
       // anything; catalog templates never sample either).
-      if (!def || def.computed || def.type === "hash" || isPresentational(def)) continue;
+      //
+      // `sequence` and `rollup` join them for the same reason the item write
+      // path refuses a value for either: both columns are the server's. A
+      // sequence sample would go around the counter (see the allocation
+      // above); a rollup sample is a number that contradicts its own children
+      // until the refresh pass overwrites it, and silently disagrees with them
+      // forever if that pass never runs.
+      if (
+        !def ||
+        def.computed ||
+        def.rollup ||
+        def.sequence ||
+        def.type === "hash" ||
+        isPresentational(def)
+      )
+        continue;
       const resolved =
         def.type === "money" ? moneySample[key] : resolveSample(value, seeded);
       raw[def.name] = resolved;
@@ -293,6 +348,19 @@ async function seedSamples(
       }
       cols.push(def.name);
       vals.push(serialized);
+    }
+
+    // The allocated document numbers, one per sequence field, consumed in
+    // sample order so the seeded rows read 0001, 0002, … and the counter is
+    // left standing after the last of them.
+    for (const f of seqFields) {
+      const taken = seqTaken.get(f.name) ?? 0;
+      const value = seqPool.get(f.name)?.[taken];
+      if (value === undefined) continue;
+      seqTaken.set(f.name, taken + 1);
+      raw[f.name] = value;
+      cols.push(f.name);
+      vals.push(value);
     }
 
     const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
@@ -355,27 +423,40 @@ async function seedRoles(
   return created;
 }
 
-/** Seed bundled insights dashboards + panels. A dashboard whose name already
- *  exists in the workspace is skipped wholesale, mirroring `seedRoles`. */
+/**
+ * Seed bundled insights dashboards + panels. A dashboard whose name already
+ * exists in the workspace is skipped wholesale, mirroring `seedRoles`.
+ *
+ * Returns the names it created AND a name→id map covering the skipped ones
+ * too. The map is what lets a bundled `report.deliver` flow name a dashboard:
+ * the id cannot be known when the catalog is written, and on a re-apply — the
+ * case where every dashboard is skipped — an id the seeder never read would
+ * leave the flow pointing at nothing.
+ */
 async function seedDashboards(
   ctx: DbCtx,
   tenantId: string,
   dashboards: TemplateDashboard[],
-): Promise<string[]> {
-  if (dashboards.length === 0) return [];
+): Promise<{ created: string[]; ids: Map<string, string> }> {
+  const ids = new Map<string, string>();
+  if (dashboards.length === 0) return { created: [], ids };
   const t =
     ctx.dialect === "pg"
       ? { dashboards: pg.schema.dashboards, panels: pg.schema.savedPanels }
       : { dashboards: sqlite.schema.dashboards, panels: sqlite.schema.savedPanels };
   const created: string[] = [];
   for (const dash of dashboards) {
-    const existing = await (ctx.db as never as { select: Function })
+    const existing = (await (ctx.db as never as { select: Function })
       .select({ id: t.dashboards.id })
       .from(t.dashboards)
       .where(and(eq(t.dashboards.tenantId, tenantId), eq(t.dashboards.name, dash.name)))
-      .limit(1);
-    if (existing[0]) continue;
+      .limit(1)) as { id: string }[];
+    if (existing[0]) {
+      ids.set(dash.name, existing[0].id);
+      continue;
+    }
     const dashboardId = crypto.randomUUID();
+    ids.set(dash.name, dashboardId);
     const now = nowFor(ctx.dialect);
     await (ctx.db as never as { insert: Function }).insert(t.dashboards).values({
       id: dashboardId,
@@ -410,7 +491,7 @@ async function seedDashboards(
     }
     created.push(dash.name);
   }
-  return created;
+  return { created, ids };
 }
 
 /**
@@ -458,6 +539,15 @@ async function seedKpis(
       unit: kpi.unit ?? null,
       decimals: kpi.decimals ?? null,
       direction: kpi.direction ?? "neutral",
+      // A watched figure comes and finds the admins instead of waiting for
+      // someone to open the page. Both halves or neither — `validateInput`
+      // enforces that on the API and this path inserts directly, so the
+      // catalog test enforces it here.
+      alertOperator: kpi.alertOperator ?? null,
+      alertValue: kpi.alertValue ?? null,
+      alertFiring: false,
+      pinTo: kpi.pinTo ?? null,
+      pinField: kpi.pinField ?? null,
       createdBy: null,
       createdAt: now,
       updatedAt: now,
@@ -465,6 +555,320 @@ async function seedKpis(
     created.push(kpi.slug);
   }
   return created;
+}
+
+/**
+ * Prefix a bundled flow uses to name a dashboard THIS template also bundles,
+ * in an op field that wants an id (`report.deliver`'s `dashboardId`).
+ *
+ * A dashboard id does not exist when the catalog is written, and the field is
+ * otherwise a run-time template resolved against the triggering row — which
+ * knows nothing about the catalog. So the seeder substitutes. The prefix is
+ * safe to key off because a real value there is either a UUID or a `{{ }}`
+ * expression; neither can begin with this.
+ */
+const DASHBOARD_REF = "@dashboard:";
+
+/** Rewrite every `@dashboard:<name>` in an operation tree to the seeded id.
+ *  Walks nested branches (`then`/`else`/`do`/`onSuccess`/`onError`) so a ref
+ *  inside a condition is resolved too. An unresolvable name is left as-is:
+ *  the flow then fails visibly at run time rather than silently delivering a
+ *  report built from whatever dashboard happened to answer to an empty id. */
+const resolveDashboardRefs = (value: unknown, ids: Map<string, string>): unknown => {
+  if (typeof value === "string") {
+    if (!value.startsWith(DASHBOARD_REF)) return value;
+    return ids.get(value.slice(DASHBOARD_REF.length)) ?? value;
+  }
+  if (Array.isArray(value)) return value.map((v) => resolveDashboardRefs(v, ids));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+        k,
+        resolveDashboardRefs(v, ids),
+      ]),
+    );
+  }
+  return value;
+};
+
+/**
+ * Seed bundled automation flows — the piece that makes a seeded schema *run*.
+ *
+ * Skipped by name. `flows` carries no unique index on the name (unlike agents,
+ * documents, flags and channels, which all do), so the SELECT is the only
+ * thing standing between a re-apply and a second copy of every flow.
+ */
+async function seedFlows(
+  ctx: DbCtx,
+  tenantId: string,
+  flows: TemplateFlow[],
+  dashboardIds: Map<string, string>,
+): Promise<string[]> {
+  if (flows.length === 0) return [];
+  const t = ctx.dialect === "pg" ? pg.schema.flows : sqlite.schema.flows;
+  const created: string[] = [];
+  for (const flow of flows) {
+    const existing = await (ctx.db as never as { select: Function })
+      .select({ id: t.id })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.name, flow.name)))
+      .limit(1);
+    if (existing[0]) continue;
+    const now = nowFor(ctx.dialect);
+    await (ctx.db as never as { insert: Function }).insert(t).values({
+      id: crypto.randomUUID(),
+      tenantId,
+      name: flow.name,
+      trigger: flow.trigger,
+      operations: resolveDashboardRefs(flow.operations, dashboardIds),
+      layout: null,
+      active: flow.active ?? true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created.push(flow.name);
+  }
+  return created;
+}
+
+/** Seed bundled PDF document templates. Skipped per key — `upsertTemplate`
+ *  would overwrite a body an admin has since edited, which is the one thing a
+ *  re-apply must never do. */
+async function seedDocuments(
+  ctx: DbCtx,
+  tenantId: string,
+  documents: TemplateDocument[],
+): Promise<string[]> {
+  if (documents.length === 0) return [];
+  const t = ctx.dialect === "pg" ? pg.schema.documentTemplates : sqlite.schema.documentTemplates;
+  const created: string[] = [];
+  for (const doc of documents) {
+    const existing = await (ctx.db as never as { select: Function })
+      .select({ id: t.id })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.key, doc.key)))
+      .limit(1);
+    if (existing[0]) continue;
+    const now = nowFor(ctx.dialect);
+    await (ctx.db as never as { insert: Function }).insert(t).values({
+      id: crypto.randomUUID(),
+      tenantId,
+      key: doc.key,
+      name: doc.name,
+      description: doc.description ?? null,
+      bodyHtml: doc.bodyHtml,
+      headerHtml: doc.headerHtml ?? null,
+      footerHtml: doc.footerHtml ?? null,
+      pageOptions: doc.pageOptions ?? null,
+      filename: doc.filename ?? null,
+      variables: doc.variables ?? null,
+      updatedBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created.push(doc.key);
+  }
+  return created;
+}
+
+/**
+ * Seed bundled public forms.
+ *
+ * Goes through `createForm` rather than inserting, on purpose: that is where
+ * `assertFieldsEligible` lives, and it checks four things the pure
+ * `isFormEligible` predicate cannot (duplicate fields, matrix/scale shape, at
+ * least one field, and every schema-`required` field present). A template that
+ * drifts from its own collection should fail here, loudly, not ship a form
+ * whose every submission 422s.
+ *
+ * The minted token's plaintext is DISCARDED. Only its hash is stored and there
+ * is no reveal path, so the admin presses "Rotate token" to get a link. That
+ * is deliberate: this result is written verbatim into the activity log.
+ */
+async function seedForms(
+  ctx: DbCtx,
+  tenantId: string,
+  forms: TemplateForm[],
+): Promise<string[]> {
+  if (forms.length === 0) return [];
+  const t = ctx.dialect === "pg" ? pg.schema.forms : sqlite.schema.forms;
+  const created: string[] = [];
+  for (const form of forms) {
+    const existing = await (ctx.db as never as { select: Function })
+      .select({ id: t.id })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.name, form.name)))
+      .limit(1);
+    if (existing[0]) continue;
+    await createForm(ctx as unknown as Ctx, {
+      name: form.name,
+      collection: form.collection,
+      fields: form.fields,
+      ...(form.settings ? { settings: form.settings } : {}),
+      active: form.active ?? true,
+      tenantId,
+      createdBy: null,
+    });
+    created.push(form.name);
+  }
+  return created;
+}
+
+/** Seed bundled AI agents. Skipped by name (which carries a unique index).
+ *  `createAgent` derives a free `@handle` itself, so two templates whose
+ *  agents would collide on one still both land. */
+async function seedAgents(
+  ctx: DbCtx,
+  tenantId: string,
+  agents: TemplateAgent[],
+): Promise<string[]> {
+  if (agents.length === 0) return [];
+  const t = ctx.dialect === "pg" ? pg.schema.agents : sqlite.schema.agents;
+  const created: string[] = [];
+  for (const agent of agents) {
+    const existing = await (ctx.db as never as { select: Function })
+      .select({ id: t.id })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.name, agent.name)))
+      .limit(1);
+    if (existing[0]) continue;
+    await createAgent(ctx as unknown as Ctx, tenantId, {
+      name: agent.name,
+      ...(agent.handle ? { handle: agent.handle } : {}),
+      description: agent.description ?? null,
+      systemPrompt: agent.systemPrompt,
+      ...(agent.model ? { model: agent.model } : {}),
+      tools: agent.tools,
+      ...(agent.maxSteps !== undefined ? { maxSteps: agent.maxSteps } : {}),
+      ...(agent.memory !== undefined ? { memory: agent.memory } : {}),
+      active: agent.active ?? true,
+      // Never opened to end users by a template. Exposure is a decision an
+      // operator makes per agent, and a seeded prompt is not their decision.
+      appAccess: false,
+    });
+    created.push(agent.name);
+  }
+  return created;
+}
+
+/** Seed bundled feature flags. Skipped per key rather than upserted, so a
+ *  re-apply keeps a flag an admin has since switched. */
+async function seedFlags(
+  ctx: DbCtx,
+  tenantId: string,
+  flags: TemplateFlag[],
+): Promise<string[]> {
+  if (flags.length === 0) return [];
+  const t = ctx.dialect === "pg" ? pg.schema.featureFlags : sqlite.schema.featureFlags;
+  const created: string[] = [];
+  for (const flag of flags) {
+    const existing = await (ctx.db as never as { select: Function })
+      .select({ id: t.id })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.key, flag.key)))
+      .limit(1);
+    if (existing[0]) continue;
+    const now = nowFor(ctx.dialect);
+    await (ctx.db as never as { insert: Function }).insert(t).values({
+      id: crypto.randomUUID(),
+      tenantId,
+      key: flag.key,
+      enabled: flag.enabled ?? false,
+      value: flag.value ?? null,
+      rules: flag.rules ?? null,
+      description: flag.description ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created.push(flag.key);
+  }
+  return created;
+}
+
+/**
+ * Seed bundled broadcast channels. Skipped per pattern (its unique key).
+ *
+ * `subscribe` / `publish` are TEXT columns holding serialized JSON — not
+ * `jsonb`, on either dialect — so they are stringified here. Binding the
+ * object would store `[object Object]` on SQLite and be rejected outright by
+ * the pg driver.
+ */
+async function seedChannels(
+  ctx: DbCtx,
+  tenantId: string,
+  channels: TemplateChannel[],
+): Promise<string[]> {
+  if (channels.length === 0) return [];
+  const t =
+    ctx.dialect === "pg" ? pg.schema.broadcastChannels : sqlite.schema.broadcastChannels;
+  const created: string[] = [];
+  for (const ch of channels) {
+    const existing = await (ctx.db as never as { select: Function })
+      .select({ id: t.id })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.pattern, ch.pattern)))
+      .limit(1);
+    if (existing[0]) continue;
+    const now = nowFor(ctx.dialect);
+    await (ctx.db as never as { insert: Function }).insert(t).values({
+      id: crypto.randomUUID(),
+      tenantId,
+      name: ch.name,
+      pattern: ch.pattern,
+      subscribe: JSON.stringify(ch.subscribe),
+      publish: JSON.stringify(ch.publish),
+      presence: ch.presence ?? false,
+      replay: ch.replay ?? false,
+      retentionHours: ch.retentionHours ?? 24,
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created.push(ch.pattern);
+  }
+  return created;
+}
+
+/**
+ * Restate every rollup column the template declares, once the whole template
+ * is on disk.
+ *
+ * A separate pass rather than part of the collection loop, because a rollup
+ * names its CHILD collection and the template array is relation-target-first —
+ * `invoices` is created before `invoice_lines`, so refreshing inside the loop
+ * would look for a table that does not exist yet.
+ *
+ * `refreshCollectionRollups` rather than a hand-built statement, because the
+ * statement it builds carries `childPredicate`: the child's tenant scoping,
+ * its soft-delete filter and the rollup's own `filter`. Dropping that would
+ * total another workspace's rows into this one's column — a cross-tenant leak
+ * wearing a number, which is the hardest kind to notice.
+ */
+async function refreshTemplateRollups(
+  ctx: DbCtx,
+  tenantId: string,
+  template: SchemaTemplate,
+  createdSlugs: Set<string>,
+): Promise<void> {
+  for (const col of template.collections) {
+    if (!createdSlugs.has(col.slug)) continue;
+    if (!col.fields.some((f) => (f as FieldDef).rollup)) continue;
+    try {
+      await refreshCollectionRollups(ctx as unknown as Ctx, tenantId, {
+        slug: col.slug,
+        physicalTable: derivePhysicalTable(tenantId, col.slug),
+        tenantScoped: true,
+        softDelete: !!col.softDelete,
+        fields: col.fields as FieldDef[],
+        pkColumn: "id",
+      });
+    } catch (e) {
+      console.error(
+        `[templates] rollup refresh failed for ${col.slug}:`,
+        (e as Error).message,
+      );
+    }
+  }
 }
 
 /**
@@ -570,9 +974,38 @@ export async function applyTemplateDefinition(
   );
   await mergeCollectionGroups(ctx, tenantId, headers.filter((h) => createdGroups.has(h)));
 
+  // Every rollup column the template declares, restated from the rows that
+  // were just seeded. After the whole loop — see the function's own note.
+  await refreshTemplateRollups(ctx, tenantId, template, new Set(created));
+
   const roles = await seedRoles(ctx, tenantId, template.roles ?? []);
   const dashboards = await seedDashboards(ctx, tenantId, template.dashboards ?? []);
   const kpis = await seedKpis(ctx, tenantId, template.kpis ?? []);
+
+  // The rest of the bundle — what turns the schema into something that runs.
+  // Each is best-effort for the same reason the portal-link merge is: an apply
+  // that already created collections must not be reported as a failure
+  // because one flow named a collection somebody renamed. The catalog test is
+  // what keeps the built-in templates from ever reaching this branch.
+  const bundle = { flows: [] as string[], documents: [] as string[], forms: [] as string[], agents: [] as string[], flags: [] as string[], channels: [] as string[] };
+  const seedBundle = async (
+    what: keyof typeof bundle,
+    run: () => Promise<string[]>,
+  ): Promise<void> => {
+    try {
+      bundle[what] = await run();
+    } catch (e) {
+      console.error(`[templates] ${what} seeding failed:`, (e as Error).message);
+    }
+  };
+  await seedBundle("flows", () =>
+    seedFlows(ctx, tenantId, template.flows ?? [], dashboards.ids),
+  );
+  await seedBundle("documents", () => seedDocuments(ctx, tenantId, template.documents ?? []));
+  await seedBundle("forms", () => seedForms(ctx, tenantId, template.forms ?? []));
+  await seedBundle("agents", () => seedAgents(ctx, tenantId, template.agents ?? []));
+  await seedBundle("flags", () => seedFlags(ctx, tenantId, template.flags ?? []));
+  await seedBundle("channels", () => seedChannels(ctx, tenantId, template.channels ?? []));
 
   // Portal auto-link rules bundled with person collections. Merge is
   // idempotent per collection (an existing — possibly admin-edited — rule is
@@ -599,7 +1032,16 @@ export async function applyTemplateDefinition(
   // and the SEED_TEMPLATE auto-apply in context.ts which previously relied on
   // cold caches). Cross-isolate convergence stays on the cache TTL.
   invalidateTenantCollections(tenantId);
-  return { templateId: template.id, created, skipped, seeded, roles, dashboards, kpis };
+  return {
+    templateId: template.id,
+    created,
+    skipped,
+    seeded,
+    roles,
+    dashboards: dashboards.created,
+    kpis,
+    ...bundle,
+  };
 }
 
 /** Seed a catalog template by id — thin wrapper over
@@ -731,6 +1173,22 @@ export async function clearTemplateSamples(
     }
     if (removedHere > 0) touched.push(slug);
     removed += removedHere;
+  }
+
+  // Restate any parent total the deleted children fed. This path deletes rows
+  // as a set, so there is no per-row write for the usual targeted refresh to
+  // hang off — `rollupRefreshAllStatements` is the blunt instrument built for
+  // exactly that (the app-layer ON DELETE triggers use it too). Without it,
+  // "Remove sample data" leaves every seeded invoice still showing the total
+  // of line items that are gone.
+  for (const slug of touched) {
+    try {
+      for (const stmt of await rollupRefreshAllStatements(ctx, tenantId, slug)) {
+        await exec(ctx, stmt);
+      }
+    } catch (e) {
+      console.error(`[templates] rollup refresh after clear failed for ${slug}:`, (e as Error).message);
+    }
   }
 
   // Re-read and subtract only what we processed (instead of writing `{}`):
@@ -919,7 +1377,21 @@ export async function extractTemplate(
           // Hash samples would seed plaintext where the API stores a digest;
           // file values are storage keys that don't exist in the target
           // workspace; computed columns re-derive on write.
-          if (f.computed || f.type === "hash" || f.type === "file") continue;
+          //
+          // `sequence` and `rollup` are excluded for the same reason the apply
+          // side refuses to write them: exporting the literal document numbers
+          // would carry them into the next workspace around its counter, and
+          // exporting a total would carry a number that contradicts the child
+          // rows the extract may not even have taken. Both are re-derived on
+          // apply — the numbers are allocated, the totals are refreshed.
+          if (
+            f.computed ||
+            f.rollup ||
+            f.sequence ||
+            f.type === "hash" ||
+            f.type === "file"
+          )
+            continue;
           let v = row[f.name];
           if (v == null) continue;
           if (f.type === "relation") {

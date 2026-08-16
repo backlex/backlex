@@ -43,6 +43,21 @@ const TemplateCollectionSummaryType = new GraphQLObjectType({
   },
 });
 
+/** How much of a working application a template brings, as counts — the same
+ *  shape `templateSummaries()` returns for the admin picker. */
+const TemplateBundlesType = new GraphQLObjectType({
+  name: "TemplateBundles",
+  fields: {
+    kpis: { type: new GraphQLNonNull(GraphQLInt) },
+    flows: { type: new GraphQLNonNull(GraphQLInt) },
+    documents: { type: new GraphQLNonNull(GraphQLInt) },
+    forms: { type: new GraphQLNonNull(GraphQLInt) },
+    agents: { type: new GraphQLNonNull(GraphQLInt) },
+    flags: { type: new GraphQLNonNull(GraphQLInt) },
+    channels: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
 const TemplateSummaryType = new GraphQLObjectType({
   name: "TemplateSummary",
   fields: {
@@ -55,6 +70,7 @@ const TemplateSummaryType = new GraphQLObjectType({
     groups: { type: nonNullStrings },
     roles: { type: nonNullStrings },
     dashboards: { type: nonNullStrings },
+    bundles: { type: new GraphQLNonNull(TemplateBundlesType) },
     collections: {
       type: new GraphQLNonNull(
         new GraphQLList(new GraphQLNonNull(TemplateCollectionSummaryType)),
@@ -73,6 +89,13 @@ const ApplyTemplateResultType = new GraphQLObjectType({
     roles: { type: nonNullStrings },
     dashboards: { type: nonNullStrings },
     kpis: { type: nonNullStrings },
+    flows: { type: nonNullStrings },
+    documents: { type: nonNullStrings },
+    /** Form NAMES. The one-time token is never reported on any surface. */
+    forms: { type: nonNullStrings },
+    agents: { type: nonNullStrings },
+    flags: { type: nonNullStrings },
+    channels: { type: nonNullStrings },
   },
 });
 

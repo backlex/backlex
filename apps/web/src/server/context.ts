@@ -142,6 +142,16 @@ export interface Ctx {
    *  instance `_global` row → the deployment env adapter. Memoized per isolate. */
   smsFor: (tenantId: string | null | undefined) => Promise<SMSAdapter>;
   storage: StorageAdapter;
+  /**
+   * The second bucket, holding only what is meant for the open web.
+   *
+   * `undefined` on every deployment that has not opted in, and that case is
+   * the behaviour this product has always had: one bucket, and a public base
+   * URL exposes all of it. Never reach for this directly — ask
+   * `services/storage/bucket-for.ts::bucketFor(ctx, acl)`, which is the one
+   * place that decides, so a new caller cannot invent a second answer.
+   */
+  publicStorage?: StorageAdapter;
   vector: VectorAdapter;
   /** Text → vector embedding. Routes to Workers AI or OpenAI based on the
    *  requested model (see `EMBEDDING_MODELS`). Throws if the model's
@@ -777,8 +787,20 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   //   3. Local fs — serverful self-host only (Bun / Node / Deno `deno run`),
   //      NOT serverless functions (their fs is ephemeral per-invocation).
   let storage: StorageAdapter;
+  /**
+   * The bucket whose objects are meant for the open web, when there is one.
+   *
+   * `undefined` is the single-bucket deployment every install has today, and
+   * everything below behaves exactly as it did. When it IS set, `acl: "public"`
+   * files live here and NOTHING else does — because `r2.dev` (and a public S3
+   * bucket policy) serves every object in a bucket to anyone who can guess its
+   * key, so a private file and a CDN-served one cannot share one. See
+   * `services/storage/bucket-for.ts` for the single routing decision.
+   */
+  let publicStorage: StorageAdapter | undefined;
   if (env.R2) {
     storage = r2Storage(env.R2);
+    if (env.R2_PUBLIC) publicStorage = r2Storage(env.R2_PUBLIC);
   } else if (
     env.S3_BUCKET &&
     env.S3_ACCESS_KEY_ID &&
@@ -792,6 +814,13 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       endpoint: env.S3_ENDPOINT,
     };
     storage = bunS3Storage(s3Cfg) ?? s3FetchStorage(s3Cfg);
+    // Same credentials, same endpoint, different bucket. A separate key pair
+    // would be a second config surface for no gain — the split is about which
+    // bucket is world-readable, not about who may write.
+    if (env.S3_PUBLIC_BUCKET && env.S3_PUBLIC_BUCKET !== env.S3_BUCKET) {
+      const pubCfg = { ...s3Cfg, bucket: env.S3_PUBLIC_BUCKET };
+      publicStorage = bunS3Storage(pubCfg) ?? s3FetchStorage(pubCfg);
+    }
   } else if (
     isStatelessEdge() ||
     isCloudflareWorkers() ||
@@ -980,6 +1009,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     sms,
     smsFor,
     storage,
+    publicStorage,
     vector,
     embedding,
     vectorCaps,

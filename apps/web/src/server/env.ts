@@ -106,6 +106,20 @@ export interface Env {
   // Cloudflare bindings — present only when running on Workers.
   D1?: D1Database;
   R2?: R2Bucket;
+  /**
+   * A SECOND R2 bucket holding only the objects meant for the open web.
+   *
+   * Optional, and its absence is the old single-bucket behaviour exactly. When
+   * it IS bound, `acl: "public"` files live here and everything else — private
+   * files, backups, generated documents, avatars, CDC exports — stays in `R2`.
+   * That is the whole point: `r2.dev` makes every object in a bucket fetchable
+   * by anyone who can guess its key, so the only way to keep a private object
+   * private while serving a public one from the CDN is for them not to share a
+   * bucket. Enable the dev URL on THIS one and never on `R2`.
+   *
+   * `R2_PUBLIC_BASE` must point at this bucket's origin once it exists.
+   */
+  R2_PUBLIC?: R2Bucket;
   /** Static Assets binding (CF Workers). Used to serve the SPA `index.html`
    *  for worker-handled SPA paths like the public dashboard embed, so the
    *  Worker controls their security headers (framable CSP). */
@@ -542,6 +556,10 @@ export interface Env {
   S3_ENDPOINT?: string;
   S3_ACCESS_KEY_ID?: string;
   S3_SECRET_ACCESS_KEY?: string;
+  /** The S3 twin of `R2_PUBLIC`: a second bucket, same credentials/region/
+   *  endpoint, holding only `acl: "public"` files. Absent = one bucket, which
+   *  is the behaviour every existing deployment has. See `R2_PUBLIC`. */
+  S3_PUBLIC_BUCKET?: string;
   /** Days of audit-log history to keep. Rows older than this are pruned by
    *  the daily cron tick. Defaults to 90. Set to `0` to disable pruning. */
   ACTIVITY_RETENTION_DAYS?: string;
@@ -789,6 +807,7 @@ export const STRING_ENV_KEYS = [
   "IMPERSONATION_DISABLED",
   "OAUTH_DYNAMIC_REGISTRATION",
   "S3_BUCKET",
+  "S3_PUBLIC_BUCKET",
   "S3_REGION",
   "S3_ENDPOINT",
   "S3_ACCESS_KEY_ID",

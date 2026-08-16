@@ -26,6 +26,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
+import { deleteEverywhere } from "./storage/bucket-for";
 import type { Ctx } from "../context";
 import { loadCollection } from "./items/collection-loader";
 import { execute, queryAll } from "./items/sql-helpers";
@@ -572,11 +573,13 @@ async function eraseEverywhere(
     .where(and(eq(s.files.tenantId, tenantId), eq(s.files.ownerId, uid)))) as { key: string }[];
   let objectsLeft = 0;
   for (const f of fileRows) {
-    try {
-      await ctx.storage.delete(f.key);
-    } catch {
-      objectsLeft++;
-    }
+    // Every bucket, not the one this row's ACL names — the row is selected as
+    // `{ key }` alone and has no ACL to route on. On a deployment that keeps
+    // public objects in a second, world-readable bucket, deleting only from the
+    // private one would report a complete erasure while leaving the person's
+    // files fetchable forever, with the row that pointed at them destroyed. See
+    // `services/storage/bucket-for.ts::deleteEverywhere`.
+    if (!(await deleteEverywhere(ctx, f.key)).ok) objectsLeft++;
   }
   done.files = await removeAll(
     s.files,

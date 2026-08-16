@@ -217,14 +217,65 @@ ACL is `public`, but the bucket itself is wide open. Someone who can
 guess `tenants/<uuid>/<logical-key>` can fetch a private file directly
 from r2.dev, bypassing the Worker.
 
-If that matters for your deployment:
+If that matters for your deployment, there are two answers:
 
-- Drop `R2_PUBLIC_BASE` — transforms then reject on Workers with
+- **Drop `R2_PUBLIC_BASE`.** Transforms then reject on Workers with
   `VALIDATION`, but private files stay private.
-- Or split into two buckets — one fully public for assets meant for the
-  open web, one fully private for tenant data — and bind only the public
-  one to the cf.image path. (No code for this yet; would need
-  `R2_PUBLIC_BUCKET` + a per-row routing decision.)
+- **Or split into two buckets** — the supported fix, described below.
+
+## Splitting public and private into two buckets
+
+Bind a second bucket and `acl: "public"` files move into it. Nothing else does:
+private files, backups (`backups/…`), generated documents, avatars and CDC
+exports all stay in the private bucket, because they have no ACL to consult and
+defaulting them to private is a rule that cannot rot as new writers appear.
+
+```toml
+# apps/web/wrangler.toml
+[[r2_buckets]]
+binding = "R2"            # private — never enable its dev URL
+bucket_name = "my-files"
+
+[[r2_buckets]]
+binding = "R2_PUBLIC"     # public — this is the one r2.dev may serve
+bucket_name = "my-public"
+```
+
+On S3-compatible storage the twin is `S3_PUBLIC_BUCKET` (same credentials,
+same endpoint, different bucket).
+
+**Leaving it unset is the single-bucket behaviour every install has today.**
+Nothing moves and nothing changes until you opt in.
+
+### Turning it on, in this order
+
+1. Create the bucket and bind it as `R2_PUBLIC`, then deploy.
+2. Enable the dev URL on the **new** bucket, and point `R2_PUBLIC_BASE` at it.
+3. Move what is already there:
+
+   ```http
+   POST /api/storage/_split-buckets   { "dryRun": true }
+   POST /api/storage/_split-buckets   { "limit": 100 }
+   POST /api/storage/_split-buckets   { "limit": 100, "after": "<cursor>" }
+   ```
+
+   Admin-only, cursor-paged over `files.key`, and copy-then-delete — an
+   interrupted run leaves a duplicate rather than a gap, and re-running tidies
+   it. Repeat until `cursor` is `null`.
+4. **Last**, disable the dev URL on the old bucket. In the other order every
+   public asset 404s until step 3 finishes.
+
+### What changes once it is on
+
+| Path | Behaviour |
+|---|---|
+| `PUT /api/storage/{key}` | Writes to the bucket the **existing row's** ACL names, so an overwrite of a public file does not silently leave the old copy serving. A new file is private. |
+| `POST /api/storage/from-url` | Places by the `acl` it is given, and removes any copy the other bucket still holds under that key. |
+| `PATCH /api/storage/{key}` with `acl` | Becomes a **move**: the bytes are copied to the other bucket and deleted from the first, before the row is updated. It throws rather than leaving a row whose ACL and bytes disagree. |
+| `GET /api/storage/{key}` | Reads from the bucket the row's ACL names. |
+| `DELETE` | Deletes from that same bucket — deleting from the wrong one is a silent no-op, which would leave the bytes public with no row to find them by. |
+
+Objects keep their key across the move, so outstanding signed URLs stay valid.
 
 ## Upload reference
 

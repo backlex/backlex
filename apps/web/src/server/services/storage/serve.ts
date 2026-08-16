@@ -4,6 +4,7 @@ import type { AppBindings } from "../../app";
 import { safeServeHeaders } from "./content-type";
 import { filesTable } from "./folders";
 import { keyCandidates } from "./keys";
+import { bucketFor, type FileAcl } from "./bucket-for";
 import {
   canonicalizeTransformQuery,
   computeEtag,
@@ -44,6 +45,10 @@ export async function serveObject(
   // legacy rows without the tenant prefix kept their R2/fs object at the
   // un-prefixed location, so we must follow it.
   const key = row.key;
+  // …and from whichever bucket the row's ACL puts it in. One answer, asked
+  // once: reading "from either bucket" is how a half-migrated pair stays half
+  // migrated. On a single-bucket deployment this is `ctx.storage`, unchanged.
+  const bucket = bucketFor(ctx, row.acl as FileAcl);
 
   const parsed = parseTransform({
     width: c.req.query("width"),
@@ -56,7 +61,7 @@ export async function serveObject(
 
   // Fast path — no transform requested, stream the raw object.
   if (!parsed.any) {
-    const obj = await ctx.storage.get(key);
+    const obj = await bucket.get(key);
     if (!obj) throw new AppError("NOT_FOUND", "Object not found");
     const contentType =
       obj.meta.contentType ?? row.contentType ?? "application/octet-stream";
@@ -132,7 +137,7 @@ export async function serveObject(
     );
   }
 
-  const source = await ctx.storage.get(key);
+  const source = await bucket.get(key);
   if (!source) throw new AppError("NOT_FOUND", "Object not found");
   const transformed = await ctx.image.transform(
     source.body,

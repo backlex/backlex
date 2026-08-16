@@ -69,6 +69,41 @@ export const BackfillResponse = z
   })
   .openapi("StorageBackfillResponse");
 
+export const SplitBucketsInput = z
+  .object({
+    limit: z.number().int().min(1).max(500).optional().openapi({
+      description:
+        "Rows to examine in this call. Default 100. Each moved object is copied and then deleted, so this is a byte budget as much as a row budget — keep it small on an edge runtime.",
+    }),
+    after: z.string().max(1024).optional().openapi({
+      description: "The `cursor` from the previous call. Omit to start.",
+    }),
+    dryRun: z.boolean().optional().openapi({
+      description:
+        "Report what would move without moving anything. The default is `false` — this endpoint moves bytes, so the caller says so explicitly either way.",
+    }),
+  })
+  .openapi("StorageSplitBucketsInput");
+
+export const SplitBucketsResponse = z
+  .object({
+    scanned: z.number().int().nonnegative(),
+    moved: z.number().int().nonnegative(),
+    alreadySited: z.number().int().nonnegative().openapi({
+      description: "Rows already in the right bucket — the steady state.",
+    }),
+    failed: z.number().int().nonnegative(),
+    failedKeys: z.array(z.string()).openapi({
+      description:
+        "Keys whose bytes could not be moved, capped at 50. A missing source object lands here rather than being counted as moved.",
+    }),
+    cursor: z.string().nullable().openapi({
+      description: "Pass as `after` to continue. `null` means the walk is done.",
+    }),
+    dryRun: z.boolean(),
+  })
+  .openapi("StorageSplitBucketsResponse");
+
 export const tags = ["storage"];
 
 export interface FileRow {

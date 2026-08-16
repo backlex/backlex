@@ -123,6 +123,29 @@ database_id = "5053e4b4-bd46-4bde-b4c2-48dbaed12ce2"
 binding = "R2"
 bucket_name = "workeros-files"
 
+# R2 — the SECOND bucket, holding only `acl: "public"` files.
+#
+# Optional. Without it everything lives in `R2` above, which is what this
+# deployment does today — and it is why `R2_PUBLIC_BASE` currently exposes more
+# than it should: `wrangler r2 bucket dev-url enable` makes EVERY object in a
+# bucket fetchable at `https://pub-<hash>.r2.dev/<key>` by anyone who can guess
+# the key, and that URL does not pass through the Worker where `acl` is
+# enforced. Private files, backups, generated PDFs and avatars all share that
+# bucket.
+#
+# To close it:
+#   1. wrangler r2 bucket create workeros-public
+#   2. uncomment the block below and deploy
+#   3. wrangler r2 bucket dev-url enable workeros-public
+#   4. point R2_PUBLIC_BASE at the NEW bucket's pub-*.r2.dev origin
+#   5. POST /api/storage/_split-buckets (dryRun first) until `cursor` is null
+#   6. wrangler r2 bucket dev-url disable workeros-files  ← last, not first:
+#      in the other order every public asset 404s until step 5 finishes.
+#
+# [[r2_buckets]]
+# binding = "R2_PUBLIC"
+# bucket_name = "workeros-public"
+
 # Vectorize — one index per embedding model. The model registry in
 # packages/core/src/embedding-models.ts pins each binding to a specific
 # dimension; the routes/adapter pick the right index by model name.

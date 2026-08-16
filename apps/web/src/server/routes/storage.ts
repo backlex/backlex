@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, count, eq, inArray, isNull, type SQL } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNull, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
@@ -28,6 +28,8 @@ import {
 } from "../services/storage/constants";
 import {
   BackfillResponse,
+  SplitBucketsInput,
+  SplitBucketsResponse,
   FileListMeta,
   FileRowSchema,
   FolderCounts,
@@ -43,7 +45,14 @@ import {
   deleteFileScoped,
   listFilesScoped,
   patchFileScoped,
+  aclForKey,
 } from "../services/storage/files";
+import {
+  bucketFor,
+  dropStaleCopy,
+  hasSplitBuckets,
+  moveBetweenBuckets,
+} from "../services/storage/bucket-for";
 import { FILES_COLLECTION } from "../services/storage/constants";
 import { assertStorageWithinLimit } from "../services/usage";
 import { defaultHook } from "../lib/openapi-router";
@@ -241,6 +250,134 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     },
   )
   /**
+   * Move existing public objects into the public bucket, a page at a time.
+   *
+   * The split is opt-in and arrives after the objects do, so turning it on
+   * leaves every `acl: "public"` file sitting in the private bucket, where the
+   * CDN path cannot reach it. This walks them across.
+   *
+   * Deliberately NOT shaped like `_backfill-folders` above, which sweeps a
+   * whole tenant in one unbounded synchronous pass. That is survivable for a
+   * column update; this one copies BYTES, and a workspace with fifty thousand
+   * objects would exhaust the runtime on the first call. So it takes the shape
+   * `phone.ts`'s normalizer uses: a `files.key` cursor, a small page, and a dry
+   * run — because the first thing anyone sensibly does before moving data is
+   * ask what would move.
+   *
+   * Admin-only, like the folder backfill, because it touches every user's rows.
+   */
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/_split-buckets",
+      tags,
+      summary: "Move public objects into the public bucket (admin)",
+      description:
+        "Walks this workspace's files in key order and moves each `acl: \"public\"` object into the public bucket, page by page. Copy-then-delete, so an interrupted run leaves a duplicate rather than a gap and re-running tidies it. Requires a public bucket to be configured (`R2_PUBLIC` / `S3_PUBLIC_BUCKET`); without one there is nowhere to move to and the call is refused.",
+      security: SECURITY,
+      middleware: [requirePermission(filesCollection, "update")],
+      request: {
+        body: {
+          content: { "application/json": { schema: SplitBucketsInput } },
+        },
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: SplitBucketsResponse } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = requireTenantId(auth);
+      if (!auth.roles?.includes("admin")) {
+        throw new AppError("FORBIDDEN", "Admin role required to move objects between buckets");
+      }
+      if (!hasSplitBuckets(ctx)) {
+        throw new AppError(
+          "VALIDATION",
+          "No public bucket is configured — bind R2_PUBLIC (Cloudflare) or set S3_PUBLIC_BUCKET before splitting. Without a second bucket there is nowhere to move to, and the r2.dev URL keeps exposing everything.",
+        );
+      }
+      let body: { limit?: number; after?: string; dryRun?: boolean } = {};
+      try {
+        body = c.req.valid("json");
+      } catch {
+        body = {};
+      }
+      const batch = Math.min(Math.max(body.limit ?? 100, 1), 500);
+      const dryRun = body.dryRun === true;
+
+      const t = filesTable(ctx.dialect);
+      const conds = [eq(t.tenantId, tenantId)];
+      if (body.after) conds.push(gt(t.key, body.after));
+      const rows = (await (ctx.db as any)
+        .select({ key: t.key, acl: t.acl })
+        .from(t)
+        .where(and(...conds))
+        .orderBy(t.key)
+        .limit(batch)) as { key: string; acl: string | null }[];
+
+      let moved = 0;
+      let alreadySited = 0;
+      const failedKeys: string[] = [];
+      for (const row of rows) {
+        const acl = (row.acl ?? "private") as "public" | "private";
+        // Only public rows have anywhere to go: private is already the private
+        // bucket's job, and every non-`files` writer (backups, documents,
+        // avatars) never leaves it at all.
+        if (acl !== "public") {
+          alreadySited += 1;
+          continue;
+        }
+        if (dryRun) {
+          moved += 1;
+          continue;
+        }
+        try {
+          // `from: "private"` is the claim being repaired — the object is in
+          // the private bucket precisely because it predates the split.
+          const did = await moveBetweenBuckets(ctx, row.key, "private", "public");
+          if (did) moved += 1;
+          else alreadySited += 1;
+        } catch (e) {
+          // A missing source is the interesting failure: the row says the
+          // object exists and it does not. Recorded by key rather than
+          // aborting, so one broken row cannot stop the migration.
+          if (failedKeys.length < 50) failedKeys.push(row.key);
+          console.error(`[storage] split-buckets could not move "${row.key}"`, e);
+        }
+      }
+
+      // A short page is the last page — same rule as every other cursor walk
+      // in this repo.
+      const last = rows[rows.length - 1];
+      const cursor = rows.length === batch && last ? last.key : null;
+      const result = {
+        scanned: rows.length,
+        moved,
+        alreadySited,
+        failed: failedKeys.length,
+        failedKeys,
+        cursor,
+        dryRun,
+      };
+      if (!dryRun && moved > 0) {
+        await logActivity(c, {
+          action: "update",
+          collection: FILES_COLLECTION,
+          itemId: "__split_buckets__",
+          payload: { moved, failed: failedKeys.length, cursor },
+          response: { ok: true },
+        });
+      }
+      return c.json(result);
+    },
+  )
+  /**
    * Server-side import: pull an HTTP(S) URL into storage. Avoids the CORS
    * tax of a client-side fetch + PUT — the Worker fetches the source
    * directly. Useful for migrating remote assets, OG-image scrapes,
@@ -363,9 +500,19 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId,
         Number(contentLengthHeader ?? 0) || 0,
       );
-      const obj = await ctx.storage.put({ key, body: resp.body, contentType });
       const t = filesTable(ctx.dialect);
       const aclValue = body.acl === "public" ? "public" : "private";
+      // `/from-url` is the one write path that DOES set an ACL, so it decides
+      // the bucket outright. It also resets the ACL on re-import, which can
+      // flip an existing object's side — `dropStaleCopy` removes whatever the
+      // other bucket still holds under this key, so a re-import to `private`
+      // cannot leave the old public copy fetchable.
+      const obj = await bucketFor(ctx, aclValue).put({
+        key,
+        body: resp.body,
+        contentType,
+      });
+      await dropStaleCopy(ctx, key, aclValue);
       await (ctx.db as any)
         .insert(t)
         .values({
@@ -498,8 +645,18 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tenantId,
       Number(c.req.header("content-length") ?? 0) || 0,
     );
-    const obj = await ctx.storage.put({ key, body, contentType });
     const t = filesTable(ctx.dialect);
+    // A PUT cannot set the ACL — but it CAN overwrite a row that already has
+    // one, and when public objects live in their own bucket the new bytes have
+    // to land where the row says they are. Writing them to the private bucket
+    // while the row still says `public` would leave the old copy serving from
+    // the CDN forever, with no error anywhere. One SELECT on a path that is
+    // already doing an upsert.
+    // Keyed on the EXACT key about to be written, not on the candidate set a
+    // read would match — see `aclForKey`. Routing an upload by a legacy
+    // un-prefixed row's ACL would put private bytes in the public bucket.
+    const priorAcl = await aclForKey(ctx, key);
+    const obj = await bucketFor(ctx, priorAcl).put({ key, body, contentType });
     await (ctx.db as any)
       .insert(t)
       .values({
@@ -509,6 +666,11 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId,
         size: obj.size,
         contentType: obj.contentType ?? null,
+        // Stated, not left to the column default, so the row can never disagree
+        // with the bucket the bytes actually went into. On the insert path this
+        // IS the default (`private`); on the conflict path it restates what the
+        // row already said. Either way the two are written from one value.
+        acl: priorAcl ?? "private",
       })
       .onConflictDoUpdate({
         target: t.key,
@@ -518,6 +680,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           tenantId,
           size: obj.size,
           contentType: obj.contentType ?? null,
+          acl: priorAcl ?? "private",
         },
       });
     const uploaded = {

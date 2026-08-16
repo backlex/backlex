@@ -6,6 +6,7 @@ import { and, eq, ne } from "drizzle-orm";
 import type { Env } from "../env";
 import type { Ctx } from "../context";
 import { invalidateTenantCollections } from "./collections-cache";
+import { deleteEverywhere } from "./storage/bucket-for";
 import { invalidateAllPermissions } from "./permissions-cache";
 import {
   type DbCtx,
@@ -249,11 +250,10 @@ export const resetDemoWorkspace = async (
       .from(ft)
       .limit(1000)) as Array<{ key: string }>;
     for (const f of files) {
-      try {
-        await ctx.storage.delete(f.key);
-      } catch {
-        // object already gone / adapter hiccup — metadata wipe below still runs.
-      }
+      // Every bucket — the select carries no ACL to route on, and a reset that
+      // leaves public objects behind is a playground that slowly fills with
+      // orphaned, world-readable files nothing references.
+      await deleteEverywhere(ctx, f.key);
     }
   } catch (e) {
     console.error("[demo-reset] file cleanup failed", (e as Error).message);

@@ -14,6 +14,7 @@ import { AppError } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { filesTable } from "./folders";
 import { guardLogicalKey, keyCandidates, physicalKey, stripTenantPrefix } from "./keys";
+import { bucketFor, moveBetweenBuckets, type FileAcl } from "./bucket-for";
 import type { FileRow } from "./schemas";
 
 // ── Shared surface helpers ───────────────────────────────────────────────────
@@ -145,10 +146,14 @@ export const patchFileScoped = async (
   ];
   if (opts.permWhere) conds.push(opts.permWhere);
   const existing = (await (ctx.db as any)
-    .select({ key: t.key, metadata: t.metadata })
+    .select({ key: t.key, acl: t.acl, metadata: t.metadata })
     .from(t)
     .where(and(...conds))
-    .limit(1)) as { key: string; metadata: Record<string, unknown> | null }[];
+    .limit(1)) as {
+    key: string;
+    acl: string | null;
+    metadata: Record<string, unknown> | null;
+  }[];
   if (!existing[0]) throw new AppError("NOT_FOUND", "Object not found");
   const matchedKey = existing[0].key;
 
@@ -168,11 +173,51 @@ export const patchFileScoped = async (
       patch.metadata = Object.keys(merged).length > 0 ? merged : null;
     }
   }
+  // Flipping the ACL is a MOVE when the deployment keeps public objects in
+  // their own bucket, because the exposure is a property of the bucket: leaving
+  // a now-private object in the world-readable one is the exact hole the split
+  // exists to close, and leaving a now-public one behind means the CDN path
+  // 404s. Done BEFORE the row is updated, and it throws — a row that claims
+  // `public` while its bytes sit in the private bucket is worse than a refused
+  // PATCH, because nothing afterwards would notice.
+  const fromAcl = (existing[0].acl ?? "private") as FileAcl;
+  const toAcl = (opts.patch.acl ?? existing[0].acl ?? "private") as FileAcl;
+  if (opts.patch.acl && toAcl !== fromAcl) {
+    await moveBetweenBuckets(ctx, matchedKey, fromAcl, toAcl);
+  }
+
   await (ctx.db as any)
     .update(t)
     .set(patch)
     .where(and(eq(t.key, matchedKey), eq(t.tenantId, opts.tenantId)));
   return { key: opts.logicalKey, ...patch };
+};
+
+/**
+ * The ACL of the row stored under EXACTLY this physical key, or `"private"`
+ * when there is no such row.
+ *
+ * Used by write paths that need to know which bucket to put bytes in, and the
+ * exactness is the whole point. Every *read* here resolves through
+ * `keyCandidates`, which deliberately matches two keys — the tenant-prefixed
+ * one and the legacy un-prefixed one, because rows written before the prefix
+ * existed kept their object at the bare location. That is right for a read and
+ * wrong for a write: an upload writes to the PREFIXED key, so routing it by an
+ * ACL that may have come from the legacy row lands private bytes in the public
+ * bucket while the new row says `private`. The API then 404s the file (it looks
+ * in the private bucket) while the object is served to anyone at the public
+ * URL, and nothing reports the disagreement.
+ *
+ * So: match the key that is about to be written, and nothing else.
+ */
+export const aclForKey = async (ctx: Ctx, physicalKeyValue: string): Promise<FileAcl> => {
+  const t = filesTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ acl: t.acl })
+    .from(t)
+    .where(eq(t.key, physicalKeyValue))
+    .limit(1)) as { acl: string | null }[];
+  return (rows[0]?.acl ?? "private") as FileAcl;
 };
 
 /** Delete the object bytes + tracking row. Throws NOT_FOUND when the key
@@ -189,14 +234,18 @@ export const deleteFileScoped = async (
   ];
   if (opts.permWhere) conds.push(opts.permWhere);
   const rows = (await (ctx.db as any)
-    .select({ key: t.key })
+    .select({ key: t.key, acl: t.acl })
     .from(t)
     .where(and(...conds))
-    .limit(1)) as { key: string }[];
+    .limit(1)) as { key: string; acl: string | null }[];
   if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
   const matchedKey = rows[0].key;
 
-  await ctx.storage.delete(matchedKey);
+  // Delete from the bucket the row says it is in. Deleting from the wrong one
+  // is a silent no-op on both adapters (delete is idempotent by contract), so
+  // the row would vanish and the bytes would stay world-readable — which is
+  // precisely the failure the split exists to prevent.
+  await bucketFor(ctx, rows[0].acl as FileAcl).delete(matchedKey);
   await (ctx.db as any)
     .delete(t)
     .where(and(eq(t.key, matchedKey), eq(t.tenantId, opts.tenantId)));

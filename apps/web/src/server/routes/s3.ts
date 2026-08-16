@@ -49,6 +49,8 @@ import {
   type S3CredentialRow,
 } from "../services/s3/credentials";
 import { guardLogicalKey, physicalKey, stripTenantPrefix } from "../services/storage/keys";
+import { bucketFor, deleteEverywhere } from "../services/storage/bucket-for";
+import { aclForKey } from "../services/storage/files";
 import { assertStorageWithinLimit } from "../services/usage";
 import { filesTable } from "../services/storage/folders";
 import { xml, xmlError, escapeXml } from "../services/s3/xml";
@@ -383,10 +385,16 @@ s3Routes.all("/*", async (c) => {
   const outOfScope = keyAllowed(credential, key);
   if (outOfScope) return outOfScope;
   const physical = physicalKey(tenantId, key);
+  // Which bucket this object lives in, on a deployment that keeps public files
+  // in their own. The REST surface routes on the row's ACL; this endpoint is its
+  // twin over the same objects and has to ask the same question — otherwise a
+  // public object 404s on GET, an overwrite leaves the old bytes serving from
+  // the CDN, and a DELETE removes the row while the bytes stay world-readable.
+  const acl = await aclForKey(ctx, physical);
 
   if (method === "GET" || method === "HEAD") {
     if (qs.has("uploadId")) return listParts(qs);
-    const got = await ctx.storage.get(physical);
+    const got = await bucketFor(ctx, acl).get(physical);
     if (!got) return xmlError("NoSuchKey", "The specified key does not exist", 404);
     const headers = new Headers({
       "content-type": got.meta.contentType ?? "application/octet-stream",
@@ -418,7 +426,7 @@ s3Routes.all("/*", async (c) => {
     // endpoint would be a way around a workspace's storage limit — a hole that
     // only appears once somebody points a sync tool at it.
     await assertStorageWithinLimit(ctx, ctx.env, tenantId, authed.body?.length ?? 0);
-    const stored = await ctx.storage.put({
+    const stored = await bucketFor(ctx, acl).put({
       key: physical,
       body: authed.body ?? new Uint8Array(0),
       contentType: contentType ?? undefined,
@@ -448,7 +456,10 @@ s3Routes.all("/*", async (c) => {
       await ctx.storage.abortMultipart?.(physical, uploadId);
       return new Response(null, { status: 204 });
     }
-    await ctx.storage.delete(physical);
+    // Every bucket: deleting from the wrong one is a silent no-op, and the row
+    // is about to be removed, so the bytes would be left with nothing pointing
+    // at them. See `bucket-for.ts::deleteEverywhere`.
+    await deleteEverywhere(ctx, physical);
     await unregisterFile(ctx, physical);
     // S3 returns 204 whether or not the object existed — deleting an absent
     // key is not an error, and clients rely on that for idempotent cleanup.
@@ -557,7 +568,9 @@ const deleteObjects = async (
     try {
       guardLogicalKey(key);
       if (!withinPrefix(credential, key)) throw new Error("out of scope");
-      await ctx.storage.delete(physicalKey(tenantId, key));
+      // Every bucket — same reason as the single-object DELETE above: the row
+      // is about to go, and a delete aimed at the wrong bucket is silent.
+      await deleteEverywhere(ctx, physicalKey(tenantId, key));
       await unregisterFile(ctx, physicalKey(tenantId, key));
       deleted.push(`<Deleted><Key>${escapeXml(key)}</Key></Deleted>`);
     } catch {

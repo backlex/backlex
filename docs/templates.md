@@ -1,6 +1,6 @@
 ---
 title: Schema templates
-description: Ready-made vertical collection sets — grouped collections, realistic sample data, and bundled roles/dashboards — applied into a workspace in one click, plus extract/apply-custom for turning any workspace into a reusable template. Reachable over REST, the SDK, GraphQL, MCP, and the CLI.
+description: Ready-made verticals applied into a workspace in one click — grouped collections and realistic sample data, plus the roles, dashboards, KPIs, automation flows, PDF templates, public forms and agents that make it a working application rather than a schema. Includes extract/apply-custom for turning any workspace into a reusable template. Reachable over REST, the SDK, GraphQL, MCP, and the CLI.
 ---
 
 **Schema templates** seed a complete vertical data model into a workspace in

@@ -112,6 +112,29 @@ const buildCtx = (body: RunBody, rpc: ReturnType<typeof buildRpc>) => ({
     send: (msg: { to: string; subject: string; text: string; html?: string }) =>
       rpc("email.send", msg),
   },
+  // `push.send` was supported by the host bridge and the callback route from the
+  // day it shipped and was never added HERE, so `ctx.push` was undefined on
+  // every remote executor while working on bun. That is what a five-copy op list
+  // does when only four of the copies get edited.
+  push: {
+    send: (msg: {
+      userId?: string;
+      userIds?: string[];
+      title: string;
+      body: string;
+      url?: string;
+      data?: Record<string, string>;
+    }) => rpc("push.send", msg),
+  },
+  ai: {
+    generate: (req: {
+      prompt: string;
+      system?: string;
+      model?: string;
+      maxTokens?: number;
+      timeoutMs?: number;
+    }) => rpc("ai.generate", req),
+  },
 });
 
 const handleRun = async (req: Request): Promise<Response> => {

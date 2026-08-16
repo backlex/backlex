@@ -522,7 +522,7 @@ function NewFunctionDialog({
               spellCheck={false}
             />
             <span className="text-[11.5px] text-muted-foreground">
-              <Trans>Globals: <span className="font-mono">ctx.data</span>, <span className="font-mono">ctx.user</span>, <span className="font-mono">console.log</span>. Sync-only in v1; runs in QuickJS-WASM sandbox.</Trans>
+              <Trans>Globals: <span className="font-mono">ctx.data</span>, <span className="font-mono">ctx.user</span>, <span className="font-mono">console.log</span>. On Bun or with an executor configured, also <span className="font-mono">await ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai</span> — on the in-isolate QuickJS fallback those refuse by name.</Trans>
             </span>
           </div>
 

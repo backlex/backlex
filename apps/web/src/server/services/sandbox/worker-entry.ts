@@ -71,6 +71,15 @@ const buildCtx = (data: unknown, user: WorkerRunMessage["user"]) => ({
       data?: Record<string, string>;
     }) => rpc("push.send", msg),
   },
+  ai: {
+    generate: (req: {
+      prompt: string;
+      system?: string;
+      model?: string;
+      maxTokens?: number;
+      timeoutMs?: number;
+    }) => rpc("ai.generate", req),
+  },
 });
 
 const buildConsole = () => ({

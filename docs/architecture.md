@@ -87,10 +87,12 @@ priority 3: quickjs      → anywhere else (Workers, Vercel, Netlify, Node)
 ```
 
 The host bridge (`apps/web/src/server/services/sandbox/host-bridge.ts`) is the
-single dispatcher for `ctx.fetch / ctx.db / ctx.email`. bun-worker calls
-it in-process; remote-http calls it over HTTP at
+single dispatcher for `ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai`.
+bun-worker calls it in-process; remote-http calls it over HTTP at
 `/api/_internal/sandbox-rpc` with a Bearer token. Both paths funnel
-through the same permission pipeline.
+through the same permission pipeline. quickjs reaches it not at all — the
+bundled WASM is sync-only, so that provider installs each host call as a
+function that refuses by name rather than leaving it undefined.
 
 ## Event flow
 

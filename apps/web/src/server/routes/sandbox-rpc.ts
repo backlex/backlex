@@ -6,16 +6,21 @@ import { dispatchRpc } from "../services/sandbox/host-bridge";
 import type { RpcOp } from "../services/sandbox/types";
 
 const Body = z.object({
-  op: z.enum(["fetch", "db.list", "db.one", "email.send", "push.send"]),
+  // A copy of `RpcOp` (services/sandbox/types.ts), which is the canonical list.
+  // Forgetting an op here breaks it on the remote-http executor ALONE — the
+  // callback 422s — and on no other provider.
+  op: z.enum(["fetch", "db.list", "db.one", "email.send", "push.send", "ai.generate"]),
   args: z.unknown().optional(),
   auth: z.object({
     userId: z.string().nullable(),
     email: z.string().nullable(),
     roles: z.array(z.string()),
-    // Workspace scope for tenant-scoped ops (db.*, email.send, push.send).
-    // Optional for back-compat with older executors that don't send it —
-    // those fail closed exactly like before (collection lookups resolve
-    // against a null tenant and answer "not found").
+    // Workspace scope for tenant-scoped ops (db.*, email.send, push.send,
+    // ai.generate). Optional for back-compat with older executors that don't
+    // send it — those fail closed exactly like before (collection lookups
+    // resolve against a null tenant and answer "not found"; `ai.generate`
+    // refuses outright rather than falling back to the deployment's own key,
+    // which would bill the operator for a workspace it cannot name).
     tenantId: z.string().nullable().optional(),
   }),
 });

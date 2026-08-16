@@ -35,12 +35,24 @@ export interface SandboxProvider {
   ): Promise<SandboxResult>;
 }
 
+/**
+ * The host calls a sandboxed function can make.
+ *
+ * This is the CANONICAL list and every other copy of it is a copy: the zod enum
+ * in `routes/sandbox-rpc.ts` (the remote executor's callback), the guest shim in
+ * `worker-entry.ts` (bun), and the guest shim in
+ * `apps/web/templates/fn-exec-server/index.ts` (the remote executor). Adding an
+ * op to fewer than all four breaks it on exactly one provider and nowhere else,
+ * which is how `push.send` came to be missing from the remote executor while
+ * working everywhere its tests looked.
+ */
 export type RpcOp =
   | "fetch"
   | "db.list"
   | "db.one"
   | "email.send"
-  | "push.send";
+  | "push.send"
+  | "ai.generate";
 
 export interface RpcRequest {
   kind: "rpc";

@@ -79,6 +79,48 @@ const fromQuick = (vm: QuickJSContext, handle: QuickJSHandle): unknown => {
   }
 };
 
+/** The one message every unreachable `ctx.*` host call answers with. */
+export const HOST_IO_UNAVAILABLE =
+  "host I/O is not available on the in-isolate QuickJS runtime (no ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai) — set FUNCTIONS_EXEC_URL to an out-of-isolate executor, or self-host on Bun";
+
+/**
+ * Install every host call as a function that REFUSES, rather than leaving it
+ * absent.
+ *
+ * Absent is what it used to be, and absent reads as a typo: a function written
+ * against the documented `ctx.*` surface fails here with "undefined is not an
+ * object", which sends the author to look at their own code. This provider is
+ * the default on stock Cloudflare Workers, Vercel and Netlify — the deployments
+ * most likely to be running a function copied out of the docs — so the runtime
+ * has to say that the call is real and this is the wrong place for it.
+ *
+ * It cannot be made to work here instead: `@cf-wasm/quickjs` ships only the SYNC
+ * wasm variants, so there is no way to suspend the guest while a host promise
+ * settles. That is a dependency change, not a code change.
+ */
+const installRefusingHostIo = (vm: QuickJSContext, ctxHandle: QuickJSHandle): void => {
+  const thrower = (name: string): QuickJSHandle =>
+    vm.newFunction(name, () => {
+      throw new Error(HOST_IO_UNAVAILABLE);
+    });
+  const setFn = (target: QuickJSHandle, name: string) => {
+    const fn = thrower(name);
+    vm.setProp(target, name, fn);
+    fn.dispose();
+  };
+  const setNamespace = (name: string, methods: string[]) => {
+    const obj = vm.newObject();
+    for (const m of methods) setFn(obj, m);
+    vm.setProp(ctxHandle, name, obj);
+    obj.dispose();
+  };
+  setFn(ctxHandle, "fetch");
+  setNamespace("db", ["list", "one"]);
+  setNamespace("email", ["send"]);
+  setNamespace("push", ["send"]);
+  setNamespace("ai", ["generate"]);
+};
+
 /**
  * QuickJS-WASM sandbox — sync only, no host I/O bridge. True isolation
  * (WASM sandbox) but cannot do `ctx.fetch` / `ctx.db` / `ctx.email`. This is
@@ -131,6 +173,7 @@ export const quickjsProvider: SandboxProvider = {
         roles: bindings.auth.roles,
       },
     });
+    installRefusingHostIo(vm, ctxHandle);
     vm.setProp(vm.global, "ctx", ctxHandle);
     ctxHandle.dispose();
 

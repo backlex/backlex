@@ -6,9 +6,18 @@ import {
   type FieldDef,
 } from "@backlex/db";
 import type { Condition } from "@backlex/core";
+import {
+  AI_OP_DEFAULT_MAX_TOKENS,
+  AI_OP_DEFAULT_TIMEOUT_MS,
+  AI_OP_MAX_TIMEOUT_MS,
+  AI_OP_MAX_TOKENS,
+} from "@backlex/core";
 import { resolvePermission } from "../permissions";
 import { sendPushToUsers } from "../push";
 import { fetchOutbound } from "../storage/hosts";
+import { resolveAiRuntime } from "../ai-config";
+import { aiMeterForTenant } from "../usage";
+import { aiAvailable, callClaude } from "../../mcp/ai-client";
 import type { Ctx } from "../../context";
 import type { RpcOp, SandboxBindings } from "./types";
 import { deserialize, deserializeField } from "../items/serialize";
@@ -232,6 +241,87 @@ export const dispatchRpc = async (
       url: a.url,
       data: a.data,
     });
+  }
+
+  if (op === "ai.generate") {
+    // Nothing validates `args` anywhere on this path — `RpcRequest.args` is
+    // `unknown`, the callback route's zod says `z.unknown()`, and the dispatcher
+    // does one blanket cast. The guest shim's TypeScript signature is not a
+    // check; user code never sees it. So every field is read defensively here,
+    // and the two numeric bounds are applied rather than forwarded.
+    const a = (args ?? {}) as {
+      prompt?: unknown;
+      system?: unknown;
+      model?: unknown;
+      maxTokens?: unknown;
+      timeoutMs?: unknown;
+    };
+    const prompt = typeof a.prompt === "string" ? a.prompt.trim() : "";
+    if (!prompt) throw new Error("ctx.ai.generate needs a non-empty prompt");
+
+    const tenantId = bindings.auth.tenantId ?? null;
+    if (!tenantId) {
+      // Fail closed exactly like the db ops do on this bridge. A remote
+      // executor's `auth` body is trusted wholesale behind a shared secret, and
+      // `tenantId` is optional there for back-compat with older executors — so
+      // "no workspace" must never fall back to the deployment's own key.
+      throw new Error("ctx.ai.generate requires a workspace-scoped run");
+    }
+    // The workspace's Settings · AI key, overlaid onto the deployment env. Using
+    // `bindings.ctx.env` directly would bill the operator for a tenant that
+    // brought its own key, and ignore the model that tenant chose.
+    const runtime = await resolveAiRuntime(bindings.ctx, tenantId);
+    // "Can this deployment generate at all", not "whose key pays" — the second
+    // question is false on every managed-cloud project, where generation needs
+    // no setup at all.
+    if (!aiAvailable(runtime.env)) {
+      throw new Error(
+        "ctx.ai.generate: no AI provider is configured — set a key under Settings · AI, or run on managed cloud where generation is included",
+      );
+    }
+
+    const clamp = (v: unknown, fallback: number, max: number): number =>
+      typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(Math.floor(v), max) : fallback;
+    // The function's own `timeoutMs` bounds the GUEST, not this host call: a
+    // bun-worker timeout terminates the worker thread and leaves the promise
+    // here running. So the generation carries its own deadline, the same one
+    // the AI flow ops use.
+    const controller = new AbortController();
+    let timedOut = false;
+    const ms = clamp(a.timeoutMs, AI_OP_DEFAULT_TIMEOUT_MS, AI_OP_MAX_TIMEOUT_MS);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, ms);
+    try {
+      const reply = await callClaude(
+        runtime.env,
+        {
+          user: prompt,
+          ...(typeof a.system === "string" && a.system.trim() ? { system: a.system.trim() } : {}),
+          ...(typeof a.model === "string" && a.model.trim()
+            ? { model: a.model.trim() }
+            : runtime.model
+              ? { model: runtime.model }
+              : {}),
+          maxTokens: clamp(a.maxTokens, AI_OP_DEFAULT_MAX_TOKENS, AI_OP_MAX_TOKENS),
+          signal: controller.signal,
+        },
+        aiMeterForTenant(bindings.ctx, tenantId),
+      );
+      // A plain serializable object: this crosses the boundary as JSON on the
+      // remote executor and as a structured clone on bun. `usage` is passed
+      // through unchanged — tokens on a direct key, neurons on the managed
+      // gateway, and absent when the provider reported nothing.
+      return reply.usage ? { text: reply.text, usage: reply.usage } : { text: reply.text };
+    } catch (e) {
+      // An AppError's code does not survive this boundary — the guest receives
+      // `new Error(message)` — so the message has to be actionable on its own.
+      if (timedOut) throw new Error(`ctx.ai.generate: the model did not answer within ${ms}ms`);
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   throw new Error(`unknown rpc op: ${op}`);

@@ -8168,8 +8168,12 @@ msgid "Global default"
 msgstr "Global default"
 
 #: src/client/admin/pages/automation/functions.tsx
-msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
-msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
+msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. On Bun or with an executor configured, also <3>await ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai</3> — on the in-isolate QuickJS fallback those refuse by name."
+msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. On Bun or with an executor configured, also <3>await ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai</3> — on the in-isolate QuickJS fallback those refuse by name."
+
+#: src/client/admin/pages/automation/functions.tsx
+#~ msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
+#~ msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
 
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Go live"

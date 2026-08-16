@@ -385,6 +385,64 @@ describe("a catalog template arrives with its numbering already running", () => 
     expect(row.number).toMatch(/^INV-\d{4}-0003$/);
   });
 
+  test("a seeded flow actually runs when its event fires", async () => {
+    // Everything else here proves the bundle was STORED. This is the one that
+    // proves it works: raise an invoice and the flow the template shipped
+    // fires, completes, and leaves the notification it promised. A flow that
+    // stores cleanly and then throws at run time is the failure this whole
+    // feature is most likely to have.
+    const before = (
+      (await (await h.fetch("/api/notifications?limit=100")).json()) as {
+        data: { title: string }[];
+      }
+    ).data.length;
+
+    const created = await h.fetch(
+      "/api/items/invoices",
+      json({
+        status: "draft",
+        currency: "USD",
+        issue_date: 1_760_000_000_000,
+        due_date: 1_762_000_000_000,
+      }),
+    );
+    expect(created.status).toBe(201);
+    const number = ((await created.json()) as { data: { number: string } }).data.number;
+
+    // `publishEvent` dispatches flows fire-and-forget, so poll rather than
+    // assume the write and the run are ordered.
+    let run: { response?: unknown } | undefined;
+    let notice: { title: string } | undefined;
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const acts = (
+        (await (await h.fetch("/api/activity?limit=50&collection=system_flows")).json()) as {
+          data: { action: string; response?: unknown }[];
+        }
+      ).data;
+      run = acts.find((r) => r.action.includes("run"));
+      const notices = (
+        (await (await h.fetch("/api/notifications?limit=100")).json()) as {
+          data: { title: string }[];
+        }
+      ).data;
+      notice = notices.find((n) => n.title.includes(number));
+      if (run && notice) break;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    expect(run, "the flow never ran").toBeTruthy();
+    expect((run?.response as { ok?: boolean } | null)?.ok, "the run failed").toBe(true);
+    // …and the templated title resolved against the real row, rather than
+    // rendering `{{ data.number }}` as literal text.
+    expect(notice?.title).toBe(`Invoice ${number} created`);
+    expect(
+      (
+        (await (await h.fetch("/api/notifications?limit=100")).json()) as { data: unknown[] }
+      ).data.length,
+    ).toBeGreaterThan(before);
+  });
+
   test("a client cannot write the number itself", async () => {
     const res = await h.fetch(
       "/api/items/invoices",

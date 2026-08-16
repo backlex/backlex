@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, half, hint, host, int, money, moneyIn, ms, notes, num, pct, phone, position, rel, sec, select, stacked, text, ts } from "../dsl";
+import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, half, hint, host, int, money, moneyIn, ms, notes, num, pct, phone, position, rel, sec, select, seq, stacked, text, ts, when } from "../dsl";
 
 export const crm: SchemaTemplate = {
   id: "crm",
@@ -105,6 +105,7 @@ export const crm: SchemaTemplate = {
     },
     {
       slug: "leads", group: "Sales", singular: "Lead", plural: "Leads", ownerScoped: true, defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Lead", [
           ...half(text("first_name", { label: "First name" }), text("last_name", { label: "Last name" })),
@@ -179,8 +180,9 @@ export const crm: SchemaTemplate = {
     },
     {
       slug: "quotes", group: "Sales", singular: "Quote", plural: "Quotes", defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: [
-        ...half(text("number", { required: true, unique: true }), rel("deal", "deals")),
+        ...half(seq("number", "Q-{YYYY}-{####}"), rel("deal", "deals")),
         ...half(
           select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], {
               default: "draft",
@@ -189,11 +191,12 @@ export const crm: SchemaTemplate = {
                 { initial: ["draft"], labels: { sent: "Send", accepted: "Mark accepted", declined: "Mark declined" } },
               ),
             }),
-          date("valid_until", { indexed: true, label: "Valid until" }),
+          // A quote that has gone out has to say how long the price holds.
+          date("valid_until", { indexed: true, label: "Valid until", conditions: [when("status", "_eq", "sent", "required")] }),
         ),
         ...half(moneyIn("total"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
       ],
-      samples: [{ number: "Q-2026-042", deal: { ref: "deals:0" }, status: "sent", currency: "USD", total: 24000, valid_until: ms("2026-07-31") }],
+      samples: [{ deal: { ref: "deals:0" }, status: "sent", currency: "USD", total: 24000, valid_until: ms("2026-07-31") }],
     },
     {
       slug: "quote_lines", group: "Sales", singular: "Quote line", plural: "Quote lines",
@@ -212,9 +215,10 @@ export const crm: SchemaTemplate = {
       // The signed agreement a won deal turns into (SuiteCRM AOS_Contracts) —
       // where renewal dates actually live.
       slug: "contracts", group: "Sales", singular: "Contract", plural: "Contracts", defaultSort: "-end_date",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Contract", [
-          ...half(text("number", { required: true, unique: true }), text("title")),
+          ...half(seq("number", "CTR-{YYYY}-{####}"), text("title")),
           ...half(rel("company", "companies"), rel("deal", "deals")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("signed", C.green), ch("active", C.green), ch("expired", C.slate), ch("terminated", C.red)], { default: "draft" }),
@@ -224,10 +228,11 @@ export const crm: SchemaTemplate = {
         sec("Term", [
           ...half(date("start_date", { range: { end: "end_date", bounds: "[]" }, label: "Start date" }), date("end_date", { indexed: true, label: "End date" })),
           ...half(bool("auto_renew", { default: false, label: "Auto-renew" }), int("notice_days", { label: "Notice period (days)" })),
-          file("document", { label: "Signed document" }),
+          // A contract that is signed or running should have the paper behind it.
+          file("document", { label: "Signed document", conditions: [when("status", "_in", ["signed", "active"], "required")] }),
         ]),
       ),
-      samples: [{ number: "CTR-2026-011", title: "Acme annual platform agreement", company: { ref: "companies:0" }, deal: { ref: "deals:0" }, status: "active", value: 24000, start_date: ms("2026-08-01"), end_date: ms("2027-07-31"), auto_renew: true, notice_days: 30 }],
+      samples: [{ title: "Acme annual platform agreement", company: { ref: "companies:0" }, deal: { ref: "deals:0" }, status: "active", value: 24000, start_date: ms("2026-08-01"), end_date: ms("2027-07-31"), auto_renew: true, notice_days: 30 }],
     },
     {
       slug: "campaigns", group: "Marketing", singular: "Campaign", plural: "Campaigns", defaultSort: "-start_date",
@@ -241,7 +246,11 @@ export const crm: SchemaTemplate = {
           notes("description"),
         ]),
         sec("Budget & results", [
-          ...half(money("budget"), money("actual_cost", { label: "Actual cost" })),
+          ...half(
+            money("budget"),
+            // What it actually cost is the number a finished campaign is judged on.
+            money("actual_cost", { label: "Actual cost", conditions: [when("status", "_eq", "completed", "required")] }),
+          ),
           ...half(int("expected_leads", { label: "Expected leads" }), money("pipeline_generated", { label: "Pipeline generated" })),
           ...half(date("start_date", { range: { end: "end_date", bounds: "[]" }, indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
         ]),
@@ -257,7 +266,13 @@ export const crm: SchemaTemplate = {
       fields: [
         ...half(rel("campaign", "campaigns"), rel("contact", "contacts")),
         ...half(rel("lead", "leads"), select("status", [ch("targeted", C.gray), ch("sent", C.blue), ch("opened", C.teal), ch("clicked", C.amber), ch("responded", C.green), ch("converted", C.purple), ch("bounced", C.red)], { default: "targeted" })),
-        ts("responded_at", { label: "Responded at" }),
+        ts("responded_at", {
+          label: "Responded at",
+          conditions: [
+            when("status", "_in", ["responded", "converted"], "required"),
+            when("status", "_nin", ["responded", "converted"], "hidden"),
+          ],
+        }),
       ],
       samples: [
         { campaign: { ref: "campaigns:0" }, contact: { ref: "contacts:1" }, status: "responded", responded_at: ms("2026-07-08") },
@@ -370,6 +385,318 @@ export const crm: SchemaTemplate = {
         { name: "Activities by type", kind: "items-aggregate", viz: "bars", config: { collection: "activities", agg: "count", groupBy: "type" } },
         { name: "Campaign members by status", kind: "items-aggregate", viz: "bars", config: { collection: "campaign_members", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * The rules a sales operation runs on, already running.
+   *
+   * Deliberately absent: "the deal reached a won stage, so close it out and
+   * raise the contract". Whether a deal is won is not on the deal — it is
+   * `is_won` on the `pipeline_stages` row the deal points at, and a flow's
+   * `data` is the deal row alone. A step that fired on every stage change
+   * would congratulate the team for reaching Negotiation. So the closest thing
+   * a flow can honestly read is the deal's OWN `probability`, and where that
+   * is not enough the flow reports the fact and leaves the judgement with the
+   * rep.
+   */
+  flows: [
+    {
+      name: "Open a first-touch task for every new lead",
+      trigger: "event:items:leads:created",
+      operations: [
+        {
+          type: "condition",
+          filter: { rating: { _eq: "hot" } },
+          then: [
+            {
+              type: "item.create",
+              collection: "tasks",
+              data: {
+                title: "Call hot lead {{ data.first_name }} {{ data.last_name }} — {{ data.company }}",
+                priority: "high",
+                done: false,
+              },
+            },
+          ],
+          else: [
+            {
+              type: "item.create",
+              collection: "tasks",
+              data: {
+                title: "Qualify {{ data.first_name }} {{ data.last_name }} — {{ data.company }}",
+                priority: "normal",
+                done: false,
+              },
+            },
+          ],
+        },
+        {
+          type: "notification",
+          title: "New lead: {{ data.first_name }} {{ data.last_name }}",
+          body: "Arrived via {{ data.source }}, rated {{ data.rating }}. A follow-up task is waiting in Tasks.",
+          url: "/collections/leads",
+        },
+      ],
+    },
+    {
+      name: "Nudge a deal a week before its expected close",
+      // Fires once per deal, seven days before `expected_close_date`, at 09:00.
+      // `probability` is the filter because it is the only signal of "still
+      // open" that lives on the deal itself: won/lost is `is_won` / `is_lost`
+      // on the stage row, and a schedule's `where` compiles to SQL over ONE
+      // collection. The convention the pipeline already sets up is that a
+      // closed-won stage carries 100 and a closed-lost one 0, so a deal
+      // strictly between the two is still being worked.
+      trigger: `schedule:${JSON.stringify({
+        collection: "deals",
+        field: "expected_close_date",
+        offset: { value: 7, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { probability: { _gt: 0, _lt: 100 } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "{{ data.name }} is due to close in a week",
+          body: "{{ data.amount }} {{ data.currency }} at {{ data.probability }}%. Confirm the close plan or re-date it.",
+          url: "/collections/deals",
+        },
+      ],
+    },
+    {
+      name: "Sweep deals whose close date has slipped",
+      trigger: "cron:0 7 * * 1",
+      operations: [
+        {
+          type: "foreach",
+          collection: "deals",
+          filter: { expected_close_date: { _lt: "$now" }, probability: { _gt: 0, _lt: 100 } },
+          // Oldest slip first, and capped: switched on over a pipeline that has
+          // been running for a year, an uncapped sweep would post a Monday
+          // digest nobody reads to the bottom of.
+          sort: "expected_close_date",
+          limit: 25,
+          do: [
+            {
+              type: "notification",
+              title: "Past its close date: {{ $item.name }}",
+              body: "Expected close has passed and the deal is still open. Re-date it, or move it to a closed stage.",
+              url: "/collections/deals",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Write an accepted quote onto the deal's timeline",
+      // A TRANSITION trigger, not `…:updated` plus a condition on the status.
+      // The difference is once-per-move: a flow sees the row as it now stands
+      // with no before-image, so an update trigger cannot tell "just became
+      // accepted" from "was saved again while accepted" and would append
+      // another identical note every time somebody edited the total. The
+      // status field declares its lifecycle, so the move announces itself —
+      // and `*` as the `from` segment accepts whichever state it came from.
+      trigger: "event:items:quotes:transition:status:*:accepted",
+      operations: [
+        {
+          type: "item.create",
+          collection: "activities",
+          data: {
+            type: "note",
+            direction: "inbound",
+            subject: "Quote {{ data.number }} accepted",
+            body: "Accepted at {{ data.total }} {{ data.currency }}.",
+            deal: "{{ data.deal }}",
+          },
+        },
+        {
+          type: "notification",
+          title: "Quote {{ data.number }} was accepted",
+          body: "Raise the contract from this quote — the number has to be allocated by hand, so the flow stops here.",
+          url: "/collections/quotes",
+        },
+      ],
+    },
+    {
+      name: "Start the renewal conversation 60 days before a contract ends",
+      // 60 days is the earliest warning that is useful rather than the right
+      // one for every row: `notice_days` differs per contract and a schedule's
+      // offset is fixed, so the body prints this contract's own notice period
+      // instead of pretending the offset knew it.
+      trigger: `schedule:${JSON.stringify({
+        collection: "contracts",
+        field: "end_date",
+        offset: { value: 60, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _in: ["signed", "active"] } },
+      })}`,
+      operations: [
+        {
+          type: "item.create",
+          collection: "tasks",
+          data: {
+            title: "Renewal conversation — {{ data.title }} ({{ data.number }})",
+            priority: "high",
+            done: false,
+          },
+        },
+        {
+          type: "notification",
+          title: "{{ data.number }} ends in 60 days",
+          body: "Auto-renew is {{ data.auto_renew }} and notice is {{ data.notice_days }} days. A renewal task has been opened.",
+          url: "/collections/contracts",
+        },
+      ],
+    },
+    {
+      name: "Monthly pipeline report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Sales overview",
+          subject: "Pipeline — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "quote",
+      name: "Quote",
+      description: "The quote as the prospect receives it.",
+      filename: "quote-{{ data.number }}",
+      variables: ["number", "total", "currency"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:18px}" +
+        "th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #e5e5e5}" +
+        "td.n,th.n{text-align:right}" +
+        ".totals{margin-top:14px;width:100%}" +
+        ".totals td{border:0;padding:3px 6px}" +
+        "</style></head><body>" +
+        "<h1>Quote {{ data.number }}</h1>" +
+        '<p class="muted">Valid until {{ data.valid_until }}</p>' +
+        "<p><strong>{{ data.deal.name }}</strong></p>" +
+        '<table><thead><tr><th>Item</th><th class="n">Qty</th>' +
+        '<th class="n">Unit</th><th class="n">Line total</th></tr></thead><tbody>' +
+        "<!-- one row per quote line; fill from your own query or a foreach -->" +
+        "</tbody></table>" +
+        '<table class="totals"><tr><td class="n"><strong>Total {{ data.currency }}</strong></td>' +
+        '<td class="n"><strong>{{ data.total }}</strong></td></tr></table>' +
+        '<p class="muted">Prices hold until the date above. Discounts shown on a ' +
+        "line are recorded for reporting and are already reflected in the total.</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "contract_summary",
+      name: "Contract summary",
+      description: "The one page a renewal conversation is held over.",
+      filename: "contract-{{ data.number }}",
+      variables: ["number", "value", "start_date", "end_date"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>{{ data.title }}</h1>" +
+        '<p class="muted">Contract {{ data.number }} · {{ data.company.name }}</p>' +
+        "<table>" +
+        "<tr><th>Status</th><td>{{ data.status }}</td></tr>" +
+        "<tr><th>Term</th><td>{{ data.start_date }} — {{ data.end_date }}</td></tr>" +
+        "<tr><th>Value</th><td>{{ data.value }}</td></tr>" +
+        "<tr><th>Auto-renew</th><td>{{ data.auto_renew }}</td></tr>" +
+        "<tr><th>Notice period</th><td>{{ data.notice_days }} days</td></tr>" +
+        "</table>" +
+        '<p class="muted">Notice has to be given the stated number of days before ' +
+        "the end date — count back from it before agreeing anything.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "Request a demo",
+      collection: "leads",
+      settings: {
+        submitLabel: "Request a demo",
+        successMessage: "Thanks — someone from the team will be in touch shortly.",
+      },
+      fields: [
+        { name: "first_name", label: "First name" },
+        { name: "last_name", label: "Last name" },
+        { name: "email", label: "Work email" },
+        { name: "phone" },
+        { name: "company", label: "Company" },
+        { name: "title", label: "Job title" },
+      ],
+    },
+    {
+      // Lands as a `prospect` company rather than a lead on purpose: a partner
+      // application is about the firm, and the team retypes `type` once they
+      // have decided. `name` is exposed because the schema requires it — a
+      // required field left off the form makes the whole apply fail.
+      name: "Partner application",
+      collection: "companies",
+      settings: {
+        submitLabel: "Apply",
+        successMessage: "Received — we review partner applications weekly.",
+      },
+      fields: [
+        { name: "name", label: "Company name" },
+        { name: "domain", label: "Website", help: "Just the domain — acme.com." },
+        { name: "industry" },
+        { name: "employees", label: "Employees" },
+        { name: "phone" },
+        { name: "city" },
+        { name: "country" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Pipeline assistant",
+      handle: "pipeline-assistant",
+      description: "Answers questions about the pipeline and what to work next.",
+      systemPrompt:
+        "You help a sales team run its pipeline. Answer questions about " +
+        "companies, contacts, leads, deals, quotes and contracts using the " +
+        "workspace's own data. A deal is open only while its stage is neither " +
+        "won nor lost — read `is_won` / `is_lost` on the pipeline stage before " +
+        "calling anything closed. Weight a forecast by each deal's own " +
+        "probability, and never add amounts in different currencies together. " +
+        "Keep leads and contacts apart: a lead has not been qualified onto a " +
+        "company yet. When asked what to work on, rank by expected close date " +
+        "and then by amount. When a figure has a seeded KPI — open pipeline " +
+        "value, deals by stage, new leads, quotes sent — run that definition " +
+        "rather than adding rows up your own way, so your answer matches the " +
+        "dashboard. Be brief, name the deal or the company you mean, and say " +
+        "plainly when the data does not answer the question.",
+      tools: [
+        "collections.list",
+        "collections.read",
+        "collections.aggregate",
+        "collections.search",
+        "kpis.run",
+        "dashboards.run",
+      ],
+      maxSteps: 8,
     },
   ],
 };

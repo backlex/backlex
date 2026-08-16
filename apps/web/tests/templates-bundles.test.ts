@@ -263,6 +263,69 @@ describe("bundled artifacts are consistent with their own template", () => {
     }
   });
 
+  test("a declared Kanban board groups by a real dropdown of its own collection", () => {
+    // Naming the field is the whole point of declaring it — left null the admin
+    // auto-detects, and auto-detect picks the first dropdown, which on an order
+    // is the payment status rather than the fulfillment one anybody arranges a
+    // board around. A name that does not resolve is worse than no name: the
+    // board silently falls back to the guess it was written to override.
+    let checked = 0;
+    for (const tpl of TEMPLATES) {
+      for (const col of tpl.collections) {
+        const by = col.kanbanGroupBy;
+        if (!by) continue;
+        checked++;
+        const where = `${tpl.id}/${col.slug}`;
+        if (by === "_status") {
+          expect(col.versioned, `${where}: _status needs a versioned collection`).toBe(true);
+          continue;
+        }
+        const def = col.fields.find((f) => f.name === by);
+        expect(def, `${where}: kanbanGroupBy "${by}" is not a column`).toBeTruthy();
+        expect(
+          (def?.options?.choices?.length ?? 0) > 0,
+          `${where}: kanbanGroupBy "${by}" has no choices — a board needs columns`,
+        ).toBe(true);
+      }
+    }
+    expect(checked, "no collection declared a board").toBeGreaterThan(0);
+  });
+
+  test("a conditional field keys off a real sibling and a real value", () => {
+    // `required` here is enforced server-side, so a rule pointing at a column
+    // that does not exist — or at a status value the dropdown never offers —
+    // is not a stricter form, it is one that can never fire. That failure is
+    // invisible: the field simply behaves as if the condition were not there.
+    let checked = 0;
+    for (const tpl of TEMPLATES) {
+      for (const col of tpl.collections) {
+        const byName = new Map(col.fields.map((f) => [f.name, f]));
+        for (const f of col.fields) {
+          for (const cond of f.conditions ?? []) {
+            checked++;
+            const where = `${tpl.id}/${col.slug}.${f.name}`;
+            for (const [sibling, cmp] of Object.entries(
+              cond.rule as Record<string, Record<string, unknown>>,
+            )) {
+              const def = byName.get(sibling);
+              expect(def, `${where}: condition names "${sibling}", not a column here`).toBeTruthy();
+              const choices = def?.options?.choices?.map((c) => c.value);
+              if (!choices?.length) continue;
+              for (const value of Object.values(cmp ?? {}).flat()) {
+                if (typeof value !== "string" || value.startsWith("$")) continue;
+                expect(
+                  choices,
+                  `${where}: "${value}" is not a value "${sibling}" offers`,
+                ).toContain(value);
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(checked, "no conditional field was checked").toBeGreaterThan(0);
+  });
+
   test("no sample writes a column the server owns", () => {
     // A literal in one of these is dropped by the seeder, so it is not a bug
     // that shows up — it is a line of the catalog that reads as if it does

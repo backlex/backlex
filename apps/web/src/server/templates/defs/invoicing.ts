@@ -494,21 +494,20 @@ export const invoicing: SchemaTemplate = {
       // Off until both are configured — see the note in docs/templates.md. The
       // name carries the prerequisite so nobody has to open it to find out.
       active: false,
-      trigger: "event:items:invoices:updated",
+      // A TRANSITION trigger rather than `…:updated` with a condition on the
+      // status: a flow sees the row as it now stands, with no before-image, so
+      // an update trigger cannot tell "just became sent" from "was saved again
+      // while sent" — and this one MAILS somebody. The status declares its
+      // lifecycle, so the move announces itself, once.
+      trigger: "event:items:invoices:transition:status:*:sent",
       operations: [
+        { type: "document.render", templateKey: "invoice" },
         {
-          type: "condition",
-          filter: { status: { _eq: "sent" } },
-          then: [
-            { type: "document.render", templateKey: "invoice" },
-            {
-              type: "email",
-              to: "{{ data.customer.email }}",
-              subject: "Invoice {{ data.number }}",
-              html: "<p>Your invoice is attached.</p>",
-              attach: ["{{ $last.key }}"],
-            },
-          ],
+          type: "email",
+          to: "{{ data.customer.email }}",
+          subject: "Invoice {{ data.number }}",
+          html: "<p>Your invoice is attached.</p>",
+          attach: ["{{ $last.key }}"],
         },
       ],
     },

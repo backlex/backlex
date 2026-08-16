@@ -189,9 +189,12 @@ describe("schema template sample seeding", () => {
     expect((await post("products", { name: "Bad", price: -5, sku: "NEG-1" })).status).toBe(422);
     expect((await post("reviews", { rating: 6 })).status).toBe(422);
 
-    // Colored dropdown enforces choice membership.
-    expect((await post("orders", { number: "X-1", status: "not-a-status" })).status).toBe(422);
-    expect((await post("orders", { number: "X-2", status: "paid" })).status).toBeLessThan(300);
+    // Colored dropdown enforces choice membership. No `number` in either
+    // payload: it is a sequence now, so sending one would be refused for being
+    // server-issued — which would have made the first assertion below pass for
+    // a reason that has nothing to do with choice membership.
+    expect((await post("orders", { status: "not-a-status" })).status).toBe(422);
+    expect((await post("orders", { status: "paid" })).status).toBeLessThan(300);
 
     h2.cleanup();
   });

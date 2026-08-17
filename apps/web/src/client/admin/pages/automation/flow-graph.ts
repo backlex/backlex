@@ -454,16 +454,21 @@ const compileAction = (node: GraphNode): Operation => {
       };
     }
     case "push": {
+      const templateKey = String(c.templateKey ?? "").trim();
       const title = String(c.title ?? "").trim();
       const body = String(c.body ?? "").trim();
       const userId = String(c.userId ?? "").trim();
-      if (!title) throw new FlowCompileError("Push step needs a Title");
-      if (!body) throw new FlowCompileError("Push step needs a message");
+      // A key stands in for both, exactly as the email step's does. Without
+      // one they are still required — the same message the builder gave before
+      // push templates had a send path.
+      if (!templateKey && !title) throw new FlowCompileError("Push step needs a Title");
+      if (!templateKey && !body) throw new FlowCompileError("Push step needs a message");
       if (!userId) throw new FlowCompileError("Push step needs a recipient user");
       return {
         type: "push",
-        title,
-        body,
+        ...(templateKey ? { templateKey } : {}),
+        ...(title ? { title } : {}),
+        ...(body ? { body } : {}),
         userId,
         ...(c.url ? { url: String(c.url).trim() } : {}),
       };
@@ -1096,8 +1101,10 @@ const opToConfig = (op: Operation): Record<string, any> => {
       };
     case "push":
       return {
-        title: op.title,
-        body: op.body,
+        templateKey: op.templateKey ?? "",
+        vars: op.vars,
+        title: op.title ?? "",
+        body: op.body ?? "",
         url: op.url ?? "",
         userId: op.userId,
       };

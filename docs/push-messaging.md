@@ -108,7 +108,41 @@ await ctx.push.send({ userId: ctx.data.author, title: "Order shipped", body: "Tr
 
 Reusable `push_templates` (title/body/url with `{{ var }}` interpolation) are
 managed under the admin API (`/api/admin/push-templates`) and rendered at send
-time, same as email templates.
+time, same as email templates: a key resolves to the workspace's own row, and
+falls back to a global (`tenant_id IS NULL`) one.
+
+Pass `templateKey` wherever you would pass `title`/`body`. Those two stay
+allowed alongside it and become the **fallback** if the key resolves to
+nothing — the same contract `email` has.
+
+```bash
+# REST
+curl -X POST $APP_URL/api/messaging/push -H 'content-type: application/json' \
+  -d '{"userId":"usr_1","templateKey":"order_shipped","vars":{"order":{"id":"A-42"}}}'
+
+# CLI
+bun backlex messaging send-push --user usr_1 --template order_shipped \
+  --vars '{"order":{"id":"A-42"}}'
+```
+
+```ts
+// SDK
+await client.messaging.sendPush({ userId, templateKey: "order_shipped", vars: { order } });
+```
+
+```json
+// flow op — `vars` is interpolated with the flow payload first, then the
+// template renders against the result
+{ "type": "push", "userId": "{{ data.author }}", "templateKey": "order_shipped",
+  "vars": { "order": "{{ data.order }}" } }
+```
+
+`POST /api/admin/push-templates/{id}/send-test` renders the same way through
+the same code path, so the preview is the send.
+
+Not on the `push` MCP tool: `messaging.send_push` posts to `/api/notifications`,
+which writes an in-app row whose own title/body is the message — a different
+surface with a different store, not this one.
 
 ## In-app vs push
 

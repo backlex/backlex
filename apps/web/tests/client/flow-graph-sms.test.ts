@@ -103,4 +103,20 @@ describe("push step", () => {
     expect(() => compileGraph(graphWith("push", { title: "t", body: "", userId: "u1" }))).toThrow(/needs a message/);
     expect(() => compileGraph(graphWith("push", { title: "t", body: "b", userId: "" }))).toThrow(/needs a recipient user/);
   });
+
+  test("a template key stands in for title + body, as the email step's does", () => {
+    const op = { type: "push", templateKey: "order_shipped", userId: "{{ data.author }}" };
+    const out = compileGraph(
+      graphWith("push", { templateKey: "order_shipped", title: "", body: "", url: "", userId: "{{ data.author }}" }),
+    );
+    expect(out.warnings).toEqual([]);
+    expect(out.operations[0]).toEqual(op);
+    expect(compileGraph(back([op])).operations[0]).toEqual(op);
+  });
+
+  test("a recipient is still required with a template — it is not in the template", () => {
+    expect(() =>
+      compileGraph(graphWith("push", { templateKey: "k", title: "", body: "", userId: "" })),
+    ).toThrow(/needs a recipient user/);
+  });
 });

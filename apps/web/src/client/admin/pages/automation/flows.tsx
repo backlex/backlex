@@ -245,7 +245,10 @@ function describeOpShort(op: any): string {
       try { return Object.keys(op.filter ?? {})[0] ?? "if"; } catch { return "if"; }
     }
     case "notification": return (op.title ?? "").toString().slice(0, 22) || "notify";
-    case "push": return (op.title ?? "").toString().slice(0, 22) || "push";
+    // A templated push has no literal title, so reading `title` alone printed
+    // the bare op type on the list — the same gap `196a3570` closed for five
+    // other ops.
+    case "push": return (op.templateKey ?? op.title ?? "").toString().slice(0, 22) || "push";
     // Whichever addressing mode the op uses is the useful thing to show.
     case "sms": return `sms ${(op.to ?? op.userId ?? "").toString().slice(0, 18)}`.trim();
     // The prompt as written, not the model: two AI steps in one flow differ by

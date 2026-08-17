@@ -301,8 +301,16 @@ export type Operation =
    *  devices are a silent no-op. Distinct from `notification` (in-app feed). */
   | {
       type: "push";
-      title: string;
-      body: string;
+      /** When set, title/body/url are rendered from the matching
+       *  `push_templates` row (tenant override → global), exactly as `email`
+       *  does with `email_templates`. The literal fields below are then the
+       *  fallback if the key resolves to nothing. */
+      templateKey?: string;
+      /** Extra vars merged into the render context on top of the flow `data`
+       *  payload. Values may be templates themselves. */
+      vars?: Record<string, unknown>;
+      title?: string;
+      body?: string;
       url?: string;
       userId: string;
       onSuccess?: Operation[];
@@ -942,15 +950,24 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),
-    z.object({
-      type: z.literal("push"),
-      title: z.string().min(1),
-      body: z.string().min(1),
-      url: z.string().optional(),
-      userId: z.string().min(1),
-      onSuccess: z.array(OperationSchema).optional(),
-      onError: z.array(OperationSchema).optional(),
-    }),
+    z
+      .object({
+        type: z.literal("push"),
+        templateKey: z.string().min(1).max(40).optional(),
+        vars: z.record(z.string(), z.unknown()).optional(),
+        title: z.string().min(1).optional(),
+        body: z.string().min(1).optional(),
+        url: z.string().optional(),
+        userId: z.string().min(1),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      // `title`/`body` were required until push templates gained a send path,
+      // so every flow already saved still validates. The new shape's one bad
+      // case — no key and no text — is what this refuses.
+      .refine((op) => Boolean(op.templateKey) || (Boolean(op.title) && Boolean(op.body)), {
+        message: "push needs a templateKey, or both title and body",
+      }),
     z
       .object({
         type: z.literal("sms"),

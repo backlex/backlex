@@ -52,6 +52,38 @@ export const emailTemplatesApi = {
     }),
 };
 
+export interface ApiPushTemplate {
+  id: string;
+  tenantId: string | null;
+  key: string;
+  name: string;
+  title: string;
+  body: string;
+  url: string | null;
+  variables: string[] | null;
+}
+
+export const pushTemplatesApi = {
+  list: () => api<Envelope<ApiPushTemplate[]>>(`/api/admin/push-templates`),
+  create: (body: Omit<ApiPushTemplate, "id" | "tenantId">) =>
+    api<Envelope<ApiPushTemplate>>(`/api/admin/push-templates`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patch: (id: string, body: Partial<ApiPushTemplate>) =>
+    api<{ ok: true }>(`/api/admin/push-templates/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/push-templates/${id}`, { method: "DELETE" }),
+  sendTest: (id: string, vars?: Record<string, unknown>) =>
+    api<{ ok: true }>(`/api/admin/push-templates/${id}/send-test`, {
+      method: "POST",
+      body: JSON.stringify({ vars }),
+    }),
+};
+
 export const emailConfigApi = {
   get: () => api<Envelope<ApiEmailConfig>>(`/api/admin/email-config`),
   put: (body: {

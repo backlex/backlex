@@ -10,7 +10,7 @@
 import { z } from "zod";
 import { AppError, type AuthSubject } from "@backlex/core";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
-import { sendPushToUsers } from "./push";
+import { sendTemplatedPush } from "./push";
 import { sendSmsToUsers } from "./sms";
 import type { Ctx } from "../context";
 
@@ -19,13 +19,24 @@ import type { Ctx } from "../context";
 export const SMS_SEND_RATE_MAX = 30;
 export const PUSH_SEND_RATE_MAX = 60;
 
-export const PushDispatchInput = z.object({
-  userId: z.string().min(1),
-  title: z.string().min(1).max(200),
-  body: z.string().min(1).max(2000),
-  url: z.string().url().optional(),
-  data: z.record(z.string(), z.string()).optional(),
-});
+export const PushDispatchInput = z
+  .object({
+    userId: z.string().min(1),
+    /** Render title/body/url from the matching `push_templates` row (tenant
+     *  override → global). Literal `title`/`body` then act as the fallback. */
+    templateKey: z.string().min(1).max(40).optional(),
+    vars: z.record(z.string(), z.unknown()).optional(),
+    title: z.string().min(1).max(200).optional(),
+    body: z.string().min(1).max(2000).optional(),
+    url: z.string().url().optional(),
+    data: z.record(z.string(), z.string()).optional(),
+  })
+  // `title`/`body` were required before templates had a send path, and every
+  // existing caller still sends them. What this refuses is the new shape's one
+  // bad case: neither a key nor any text, which used to be impossible.
+  .refine((v) => Boolean(v.templateKey) || (Boolean(v.title) && Boolean(v.body)), {
+    message: "Provide a templateKey, or both title and body",
+  });
 export type PushDispatchInput = z.infer<typeof PushDispatchInput>;
 
 export const SmsDispatchInput = z.object({
@@ -68,11 +79,19 @@ export const dispatchPush = async (
   await enforceIpRateLimit(rateCtx, "push-send", PUSH_SEND_RATE_MAX);
   const input = parseOrThrow(PushDispatchInput, raw);
   assertMayTarget(auth, input.userId);
-  const r = await sendPushToUsers(ctx, auth.tenantId ?? null, {
+  // Naming a template is an admin act, even when the recipient is yourself.
+  // `push_templates` is admin-only config (`/api/admin/push-templates`), and a
+  // caller-chosen key is the first surface anywhere that would let a workspace
+  // member render one and read the result off their own device — email has no
+  // equivalent, because its only template callers are flows an admin authored.
+  if (input.templateKey && !auth.roles.includes("admin")) {
+    throw new AppError("FORBIDDEN", "Only admins may send by template key");
+  }
+  const r = await sendTemplatedPush(ctx, auth.tenantId ?? null, {
     userIds: [input.userId],
-    title: input.title,
-    body: input.body,
-    url: input.url,
+    templateKey: input.templateKey,
+    vars: input.vars,
+    fallback: { title: input.title, body: input.body, url: input.url },
     data: input.data,
   });
   return { ok: true, sent: r.sent, failed: r.failed };

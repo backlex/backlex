@@ -9,7 +9,7 @@ import { Badge, Button, IconButton, Switch } from "../../ui";
 import { Select } from "../../select";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
-import { dashboardsApi, documentsApi, emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiDashboard, type ApiDocumentTemplate, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "../../api";
+import { dashboardsApi, documentsApi, emailTemplatesApi, pushTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiDashboard, type ApiDocumentTemplate, type ApiEmailTemplate, type ApiPushTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "../../api";
 import { api } from "@/lib/api";
 import { timezoneOptions } from "../../preferences";
 
@@ -166,6 +166,9 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   // Live email-template catalog. The inspector picks templateKey from this so
   // the same key the flow runtime resolves at execution is what the admin saw.
   const [emailTemplates, setEmailTemplates] = useState<ApiEmailTemplate[]>([]);
+  // Push templates, for the same reason: the push step picks a key from the
+  // workspace's own rows rather than typing one that resolves to nothing.
+  const [pushTemplates, setPushTemplates] = useState<ApiPushTemplate[]>([]);
   const [fns, setFns] = useState<ApiFunction[]>([]);
   const [collections, setCollections] = useState<ApiCollection[]>([]);
   // Document templates, so the two document steps offer the keys this
@@ -190,8 +193,9 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     let cancelled = false;
     void (async () => {
       try {
-        const [tpls, funcs, cols, docs, ints, pays, dashes, cat, ai] = await Promise.all([
+        const [tpls, pushTpls, funcs, cols, docs, ints, pays, dashes, cat, ai] = await Promise.all([
           emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
+          pushTemplatesApi.list().catch(() => ({ data: [] as ApiPushTemplate[] })),
           functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
           collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
           documentsApi.list().catch(() => ({ data: [] as ApiDocumentTemplate[] })),
@@ -209,6 +213,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         ]);
         if (cancelled) return;
         if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
+        if (Array.isArray(pushTpls.data)) setPushTemplates(pushTpls.data);
         if (Array.isArray(funcs.data)) setFns(funcs.data);
         if (Array.isArray(cols.data)) setCollections(cols.data);
         if (Array.isArray(docs.data)) setDocTemplates(docs.data);
@@ -571,6 +576,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             node={selected}
             onChange={(patch: any) => selected && updateNode(selected.id, patch)}
             emailTemplates={emailTemplates}
+            pushTemplates={pushTemplates}
             fns={fns}
             collections={collections}
             integrations={integrations}
@@ -893,7 +899,7 @@ function AiModelField({
   );
 }
 
-function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], taskCatalog = {}, paymentProviders = [], docTemplates = [], dashboards = [], aiModels = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; taskCatalog?: Record<string, TaskDef[]>; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[]; aiModels?: AiModelOption[] }) {
+function FlowInspector({ node, onChange, emailTemplates = [], pushTemplates = [], fns = [], collections = [], integrations = [], taskCatalog = {}, paymentProviders = [], docTemplates = [], dashboards = [], aiModels = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; pushTemplates?: ApiPushTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; taskCatalog?: Record<string, TaskDef[]>; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[]; aiModels?: AiModelOption[] }) {
   const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
@@ -1309,9 +1315,25 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
         )}
         {node.kind === "action" && node.type === "push" && (
           <>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Title</Trans></label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body</Trans></label><Textarea rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>URL</Trans></label><Input value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Template</Trans></label>
+              <Select
+                value={node.config.templateKey || ""}
+                onChange={(v) => onChange({ config: { templateKey: v } })}
+                options={[
+                  { value: "", label: pushTemplates.length === 0 ? t`(none — no templates yet)` : t`(none — use literal title/body)` },
+                  ...pushTemplates.map((p) => ({ value: p.key, label: `${p.name} · ${p.key}` })),
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>When set, title and body are rendered from the stored template at run time. Otherwise the literal fields below are used.</Trans></span>
+            </div>
+            {!node.config.templateKey && (
+              <>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Title</Trans></label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body</Trans></label><Textarea rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>URL</Trans></label><Input value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
+              </>
+            )}
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Recipient (userId)</Trans></label><Input value={node.config.userId || ""} onChange={(e) => onChange({ config: { userId: e.target.value } })} placeholder="{{ data.author }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Goes to that user's registered devices. No devices is a silent no-op.</Trans></span></div>
           </>
         )}

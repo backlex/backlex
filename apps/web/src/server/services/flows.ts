@@ -25,7 +25,7 @@ import { renderDocument } from "./documents";
 import { createSignatureRequest } from "./signatures";
 import { createApprovalRequest } from "./approvals";
 import { deliverReport } from "./reports";
-import { sendPushToUsers } from "./push";
+import { sendPushToUsers, sendTemplatedPush } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { connectedIntegrationIdByKind, deliverIntegrationByKind } from "./integrations";
 import { runTask } from "./integration-tasks";
@@ -1064,17 +1064,20 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   }
 
   if (op.type === "push") {
-    const title = interpolate(op.title, ctx) as string;
-    const body = interpolate(op.body, ctx) as string;
+    const title = op.title ? (interpolate(op.title, ctx) as string) : undefined;
+    const body = op.body ? (interpolate(op.body, ctx) as string) : undefined;
     const url = op.url ? (interpolate(op.url, ctx) as string) : undefined;
     const userId = interpolate(op.userId, ctx) as string;
     const tenantId = ctx.authSubject.tenantId ?? null;
     try {
-      const result = await sendPushToUsers(ctx.ctx, tenantId, {
+      // Same two-layer render as the `email` op: the flow's own `{{ … }}`
+      // interpolation runs over the op's fields here, and `sendTemplatedPush`
+      // then renders the stored template against `vars`.
+      const result = await sendTemplatedPush(ctx.ctx, tenantId, {
         userIds: userId ? [userId] : [],
-        title,
-        body,
-        url,
+        templateKey: op.templateKey,
+        vars: (interpolate(op.vars ?? {}, ctx) as Record<string, unknown>) ?? {},
+        fallback: { title, body, url },
       });
       return { sent: result.sent, failed: result.failed };
     } catch (e) {

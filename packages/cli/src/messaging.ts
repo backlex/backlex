@@ -12,12 +12,16 @@ import {
   printKeyValues,
   printTable,
   resolveContext,
+  resolvePayload,
 } from "./client";
 
 const MESSAGING_HELP = `backlex messaging <send-push|send-sms|devices|phones>
 
-  send-push --user <id> --title <t> --body <b> [--url <link>]
-                                 push to a user's registered devices
+  send-push --user <id> [--template <key> [--vars <json|@file|->]]
+            [--title <t>] [--body <b>] [--url <link>]
+                                 push to a user's registered devices.
+                                 --title/--body are required without a
+                                 --template, and are its fallback with one
   send-sms  --user <id> --body <b>
                                  SMS to a user's registered phone numbers
   devices                        the caller's registered push devices
@@ -52,10 +56,19 @@ export const runMessaging = async (args: string[]): Promise<void> => {
   try {
     switch (sub) {
       case "send-push": {
+        const templateKey = flag(rest, "--template");
+        const rawVars = flag(rest, "--vars");
         const res = await client.messaging.sendPush({
           userId: need(flag(rest, "--user"), "--user"),
-          title: need(flag(rest, "--title"), "--title"),
-          body: need(flag(rest, "--body"), "--body"),
+          ...(templateKey ? { templateKey } : {}),
+          ...(rawVars
+            ? { vars: JSON.parse(await resolvePayload(rawVars)) as Record<string, unknown> }
+            : {}),
+          // Still required without a template, and still allowed WITH one —
+          // the server treats them as the fallback when the key resolves to
+          // nothing, which is the same contract `sendTemplatedEmail` has.
+          title: templateKey ? flag(rest, "--title") : need(flag(rest, "--title"), "--title"),
+          body: templateKey ? flag(rest, "--body") : need(flag(rest, "--body"), "--body"),
           url: flag(rest, "--url"),
         });
         if (json) printJson(res);

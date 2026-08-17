@@ -22,11 +22,17 @@ export interface MessagingClient {
   listPhones(): Promise<{ data: PhoneNumber[] }>;
   /** Send a push notification to a user's registered devices (dispatch-only —
    *  no in-app notification row). Admins may target any user; non-admins only
-   *  themselves. */
+   *  themselves.
+   *
+   *  Pass `templateKey` to render title/body/url from a stored push template
+   *  (tenant override → global); `title`/`body` are then the fallback if the
+   *  key resolves to nothing. Without a key, both are required. */
   sendPush(input: {
     userId: string;
-    title: string;
-    body: string;
+    templateKey?: string;
+    vars?: Record<string, unknown>;
+    title?: string;
+    body?: string;
     url?: string;
     data?: Record<string, string>;
   }): Promise<{ ok: boolean; sent: number; failed: number }>;
@@ -67,8 +73,10 @@ export const makeMessaging = (core: ClientCore): MessagingClient => {
      *  row. Admins may target any user; non-admins only themselves. */
     sendPush: (input: {
       userId: string;
-      title: string;
-      body: string;
+      templateKey?: string;
+      vars?: Record<string, unknown>;
+      title?: string;
+      body?: string;
       url?: string;
       data?: Record<string, string>;
     }) =>

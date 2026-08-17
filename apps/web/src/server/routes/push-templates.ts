@@ -1,13 +1,13 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, eq, isNull, or } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES, renderTemplate } from "@backlex/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { sendPushToUsers } from "../services/push";
+import { sendTemplatedPush } from "../services/push";
 import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -238,11 +238,15 @@ export const pushTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!tpl) throw new AppError("NOT_FOUND", "Template not found");
 
       const vars = { user: { email: auth.email ?? "user@example.com" }, ...(body.vars ?? {}) };
-      const result = await sendPushToUsers(ctx, tenantId, {
+      // Renders through `sendTemplatedPush` by key rather than rendering the
+      // row it just read: the whole point of this endpoint is answering "what
+      // will the real send look like", and it can only answer that by BEING
+      // the real send. Rendering here is how the preview and the send were two
+      // different code paths for as long as one of them did not exist.
+      const result = await sendTemplatedPush(ctx, tenantId, {
         userIds: [auth.userId],
-        title: renderTemplate(tpl.title as string, vars),
-        body: renderTemplate(tpl.body as string, vars),
-        url: tpl.url ? renderTemplate(tpl.url as string, vars) : undefined,
+        templateKey: tpl.key as string,
+        vars,
       });
       if (result.sent === 0 && result.failed === 0) {
         throw new AppError(

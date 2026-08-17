@@ -33,6 +33,9 @@ const SYSTEM_TABLES_PG: Record<string, unknown> = {
   revisions: pg.schema.revisions,
   activity: pg.schema.activity,
   email_templates: pg.schema.emailTemplates,
+  // Absent since the table shipped, so an operator's push templates were
+  // silently outside every backup while their email ones were inside.
+  push_templates: pg.schema.pushTemplates,
   i18n_strings: pg.schema.i18nStrings,
   app_settings: pg.schema.appSettings,
   saved_panels: pg.schema.savedPanels,
@@ -64,6 +67,7 @@ const SYSTEM_TABLES_SQLITE: Record<string, unknown> = {
   revisions: sqlite.schema.revisions,
   activity: sqlite.schema.activity,
   email_templates: sqlite.schema.emailTemplates,
+  push_templates: sqlite.schema.pushTemplates,
   i18n_strings: sqlite.schema.i18nStrings,
   app_settings: sqlite.schema.appSettings,
   saved_panels: sqlite.schema.savedPanels,

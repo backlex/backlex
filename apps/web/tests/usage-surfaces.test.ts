@@ -21,6 +21,10 @@ const LIMITS = {
   maxRequestsPerMonth: 4242,
   maxStorageBytes: null,
   maxDbRows: null,
+  // A number rather than the `null` the other unset limits carry: this is the
+  // newest limit and it had no round-trip coverage at all, so a value proves it
+  // survives the save and comes back on both surfaces.
+  maxAiCallsPerMonth: 500,
 };
 
 describe("usage — REST + SDK surface", () => {

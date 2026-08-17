@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
-import { dispatchPush, dispatchSms } from "../services/messaging";
+import { PushDispatchInput, dispatchPush, dispatchSms } from "../services/messaging";
 import { defaultHook } from "../lib/openapi-router";
 
 const SendSmsInput = z
@@ -12,15 +12,13 @@ const SendSmsInput = z
   })
   .openapi("SendSmsInput");
 
-const SendPushInput = z
-  .object({
-    userId: z.string().min(1).openapi({ description: "Recipient user id." }),
-    title: z.string().min(1).max(200),
-    body: z.string().min(1).max(2000),
-    url: z.string().url().optional().openapi({ description: "Optional deep-link URL." }),
-    data: z.record(z.string(), z.string()).optional(),
-  })
-  .openapi("SendPushInput");
+// Not a second copy. The route used to declare its own, narrower version of
+// this — `title`/`body` unconditionally required — which ran BEFORE
+// `dispatchPush` and so decided the contract, while the file's own comment
+// said validation lived in the service "so the GraphQL mutations stay in
+// lockstep". They did not: `templateKey` was accepted over GraphQL and refused
+// over REST.
+const SendPushInput = PushDispatchInput.openapi("SendPushInput");
 
 const DispatchResult = z.object({
   ok: z.boolean(),

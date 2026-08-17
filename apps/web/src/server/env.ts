@@ -414,6 +414,10 @@ export interface Env {
   /** Max total collection rows per workspace (enforced on item create,
    *  against the sweep gauge — approximate by design). */
   USAGE_LIMIT_DB_ROWS?: string;
+  /** Monthly generation cap injected by the platform (cloud plans), overriding
+   *  whatever the workspace set. Calls, not tokens — the two provider paths
+   *  report different quantities. */
+  USAGE_LIMIT_AI_CALLS?: string;
   // Failed-login account lockout (abuse protection). Layered on top of the
   // per-IP auth rate limiter: tracks failed password attempts per identifier
   // and temporarily locks that account (across IPs) after MAX_FAILS failures
@@ -778,6 +782,7 @@ export const STRING_ENV_KEYS = [
   "USAGE_LIMIT_REQUESTS_MONTH",
   "USAGE_LIMIT_STORAGE_BYTES",
   "USAGE_LIMIT_DB_ROWS",
+  "USAGE_LIMIT_AI_CALLS",
   "AUTH_LOCKOUT_DISABLED",
   "AUTH_LOCKOUT_MAX_FAILS",
   "AUTH_LOCKOUT_WINDOW_MS",

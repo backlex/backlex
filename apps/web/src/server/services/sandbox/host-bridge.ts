@@ -16,7 +16,7 @@ import { resolvePermission } from "../permissions";
 import { sendPushToUsers } from "../push";
 import { fetchOutbound } from "../storage/hosts";
 import { resolveAiRuntime } from "../ai-config";
-import { aiMeterForTenant } from "../usage";
+import { aiMeterForTenant, assertAiQuota } from "../usage";
 import { aiAvailable, callClaude } from "../../mcp/ai-client";
 import type { Ctx } from "../../context";
 import type { RpcOp, SandboxBindings } from "./types";
@@ -279,6 +279,10 @@ export const dispatchRpc = async (
         "ctx.ai.generate: no AI provider is configured — set a key under Settings · AI, or run on managed cloud where generation is included",
       );
     }
+    // Same reason as the flow ops: a cron- or event-triggered function
+    // generates with nobody watching, so the budget is checked before the
+    // spend rather than reported after it.
+    await assertAiQuota(bindings.ctx, bindings.ctx.env, tenantId);
 
     const clamp = (v: unknown, fallback: number, max: number): number =>
       typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(Math.floor(v), max) : fallback;

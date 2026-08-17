@@ -26,6 +26,7 @@ import { callClaude, extractJson } from "../mcp/ai-client";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
 import { allTools } from "../mcp/tools";
 import { aiMeterFor } from "../lib/usage-meter";
+import { assertAiQuota } from "../services/usage";
 import { makeInternalFetch, readJson } from "../mcp/internal-fetch";
 import type { ToolCtx } from "../mcp/types";
 import { recordActivity, requestMeta } from "../services/activity";
@@ -459,6 +460,10 @@ const planHandler = async (
       ? body.model.trim()
       : (configModel ?? DEFAULT_PLAN_MODEL);
 
+  // Asked once for the planner and its retry together: they are one answer to
+  // one question, and refusing the retry after paying for the plan would spend
+  // the budget and deliver nothing.
+  await assertAiQuota(ctx, env, auth.tenantId);
   const meter = aiMeterFor(c);
   const reply = await callClaude(
     aiEnv,
@@ -568,6 +573,9 @@ const runHandler = async (
     // Ask AI runs as the signed-in admin; no per-key MCP guards apply here.
     guards: { allowlist: null, readOnly: false },
     meterAi: aiMeterFor(c),
+    // A tool invoked from Ask AI can generate on its own (`ai.query` and its
+    // two siblings do), so it asks the same budget the planner already asked.
+    assertAiBudget: () => assertAiQuota(c.get("ctx"), env, c.get("auth").tenantId),
   };
 
   const start = Date.now();

@@ -55,6 +55,11 @@ export interface UsageLimits {
   maxRequestsPerMonth: number | null;
   maxStorageBytes: number | null;
   maxDbRows: number | null;
+  /** Generations per month. CALLS rather than tokens, because the two provider
+   *  paths report different quantities — a direct key returns tokens, the
+   *  managed-cloud gateway returns neurons and no tokens — so a call is the
+   *  only unit both can be held to. */
+  maxAiCallsPerMonth: number | null;
 }
 
 export const USAGE_LIMITS_DEFAULTS: UsageLimits = {
@@ -62,6 +67,7 @@ export const USAGE_LIMITS_DEFAULTS: UsageLimits = {
   maxRequestsPerMonth: null,
   maxStorageBytes: null,
   maxDbRows: null,
+  maxAiCallsPerMonth: null,
 };
 
 const nullablePosInt = (v: unknown): number | null =>
@@ -76,6 +82,7 @@ export const parseUsageLimits = (v: unknown): UsageLimits => {
     maxRequestsPerMonth: nullablePosInt(o.maxRequestsPerMonth),
     maxStorageBytes: nullablePosInt(o.maxStorageBytes),
     maxDbRows: nullablePosInt(o.maxDbRows),
+    maxAiCallsPerMonth: nullablePosInt(o.maxAiCallsPerMonth),
   };
 };
 

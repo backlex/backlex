@@ -24,7 +24,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import { isEmbeddingModel, type EmbeddingModel } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { callClaude } from "../../mcp/ai-client";
-import { aiMeterForTenant } from "../usage";
+import { aiMeterForTenant, assertAiQuota } from "../usage";
 
 const memoriesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.agentMemories : sqlite.schema.agentMemories;
@@ -624,6 +624,7 @@ export const distillSemantic = async (
 
   let facts: string[];
   try {
+    await assertAiQuota(ctx, ctx.env, input.tenantId);
     const reply = await callClaude(ctx.env, {
       system: DISTILL_SYSTEM,
       user: transcript,

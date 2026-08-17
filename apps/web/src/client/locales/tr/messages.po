@@ -8135,6 +8135,10 @@ msgstr "Oluşturuluyor…"
 msgid "Generations are counted against this workspace under Usage. A step inside a loop generates once per row."
 msgstr "Üretimler bu çalışma alanına Kullanım altında sayılır. Döngü içindeki bir adım her satır için bir kez üretir."
 
+#: src/client/admin/pages/observability/usage.tsx
+msgid "Generations, not tokens — a direct provider key reports tokens and the managed gateway reports neurons, so a call is the one unit both can be held to."
+msgstr "Token değil, üretim sayısı — doğrudan sağlayıcı anahtarı token, yönetilen ağ geçidi neuron bildiriyor; dolayısıyla ikisinin de tabi tutulabileceği tek birim çağrı."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Get a new link"
 #~ msgstr "Yeni bağlantı al"
@@ -10263,6 +10267,10 @@ msgstr "En fazla 500 karakter."
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Max 80 characters."
 msgstr "En fazla 80 karakter."
+
+#: src/client/admin/pages/observability/usage.tsx
+msgid "Max AI calls / month"
+msgstr "Aylık en fazla AI çağrısı"
 
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "Max attempts"

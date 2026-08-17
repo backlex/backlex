@@ -32,7 +32,7 @@ import {
   scheduleDistillation,
   storeEpisodic,
 } from "./memory";
-import { aiMeterForTenant } from "../usage";
+import { aiMeterForTenant, assertAiQuota } from "../usage";
 import {
   appendMessage,
   getAgent,
@@ -287,6 +287,7 @@ export const runAgentTurn = async (
     // request of its own to be billed against, which is exactly why the ledger
     // counts generations rather than requests.
     meterAi: aiMeterForTenant(ctx, tenantId),
+    assertAiBudget: () => assertAiQuota(ctx, ctx.env, tenantId),
   };
 
   // Memory (opt-in), in two passes. They're folded in under separate headings
@@ -344,6 +345,11 @@ export const runAgentTurn = async (
       // Heartbeat the run so a long-but-healthy turn isn't mistaken for a dead
       // isolate and taken over (see STALE_RUN_MS in the store).
       await touchRun(ctx, runId);
+      // Checked EVERY step, not once per turn: a reason-act loop is the
+      // heaviest spender in the product and each step is another generation,
+      // so a turn that starts inside budget must not be allowed to run the
+      // rest of the month out.
+      await assertAiQuota(ctx, ctx.env, tenantId);
       const reply = await callClaudeTools(aiEnv, {
         system,
         messages,

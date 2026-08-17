@@ -31,13 +31,16 @@ import { readJson } from "../internal-fetch";
  *  "No AI provider configured" precisely where AI is a platform feature the
  *  customer never configures, and where the call one line later would have
  *  gone to the gateway. */
-const requireAiKey = (ctx: ToolCtx): void => {
+const requireAiKey = async (ctx: ToolCtx): Promise<void> => {
   if (!aiAvailable(ctx.env)) {
     throw new AppError(
       "UNAVAILABLE",
       "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider), the legacy ANTHROPIC_API_KEY, or a short-lived ANTHROPIC_AUTH_TOKEN on the backlex deployment.",
     );
   }
+  // "Can this deployment generate" and "may this workspace generate any more
+  // this month" are two different refusals, and both belong before the spend.
+  await ctx.assertAiBudget();
 };
 
 const textResult = (value: unknown, usage?: unknown): ToolResult => ({
@@ -101,7 +104,7 @@ export const aiQuery: McpTool = {
     if (!collection || !prompt) {
       throw new Error("VALIDATION: collection and prompt are required");
     }
-    requireAiKey(ctx);
+    await requireAiKey(ctx);
     const hardLimit = typeof args.limit === "number" ? Math.min(200, args.limit) : 200;
 
     const meta = await loadCollectionMeta(ctx, collection);
@@ -186,7 +189,7 @@ export const aiSuggestSchema: McpTool = {
   handler: async (args, ctx) => {
     const description = String(args.description ?? "");
     if (!description) throw new Error("VALIDATION: description is required");
-    requireAiKey(ctx);
+    await requireAiKey(ctx);
     const slugHint = typeof args.slug === "string" ? args.slug : null;
 
     const system =
@@ -366,7 +369,7 @@ export const aiImportCsv: McpTool = {
     // rather than a downstream auth failure. The insert path above does
     // NOT need any model, so it has no such requirement — callers can
     // bulk-insert pre-parsed CSV into an existing collection without one.
-    requireAiKey(ctx);
+    await requireAiKey(ctx);
     // Inference path — ask Claude to propose a schema based on headers + a
     // sample. Return the schema; agent applies via schema.create_collection.
     const sampleRows = rows.slice(0, sampleSize).map((cells) => {

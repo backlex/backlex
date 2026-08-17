@@ -215,6 +215,7 @@ export interface ApiUsageLimits {
   maxRequestsPerMonth: number | null;
   maxStorageBytes: number | null;
   maxDbRows: number | null;
+  maxAiCallsPerMonth: number | null;
 }
 
 export interface ApiUsageOverview {
@@ -242,7 +243,7 @@ export interface ApiUsageOverview {
   };
   limits: ApiUsageLimits;
   settingsLimits: ApiUsageLimits;
-  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows")[];
+  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows" | "maxAiCallsPerMonth")[];
   over: ("requests" | "storage" | "rows")[];
 }
 

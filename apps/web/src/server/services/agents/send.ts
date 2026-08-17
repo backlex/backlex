@@ -27,7 +27,7 @@ import { publishEvent } from "../events";
 import { enqueueAgentTurn, runQueuedAgentTurn } from "./async-run";
 import { resolveResponders } from "./mentions";
 import { runAgentTurn, type RunTurnResult } from "./runner";
-import { aiMeterForTenant } from "../usage";
+import { aiMeterForTenant, assertAiQuota } from "../usage";
 import {
   appendMessage,
   claimRun,
@@ -114,6 +114,11 @@ export const sendMessage = async (
     }
     responders = input.forceAgentIds;
   } else {
+    // The mention router GENERATES to decide who should answer, so it is a
+    // spend like any other. Checked here rather than inside `resolveResponders`
+    // for the same reason that function takes its meter as a parameter: it is
+    // deliberately context-free, and the workspace is known at this seam.
+    await assertAiQuota(ctx, env, tenantId);
     responders = await resolveResponders({
       env,
       thread,

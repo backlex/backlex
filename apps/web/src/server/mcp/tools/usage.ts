@@ -81,6 +81,7 @@ export const usageSetLimits: McpTool = {
       maxRequestsPerMonth: { type: ["number", "null"] },
       maxStorageBytes: { type: ["number", "null"] },
       maxDbRows: { type: ["number", "null"] },
+      maxAiCallsPerMonth: { type: ["number", "null"] },
     },
     required: ["mode"],
     additionalProperties: false,
@@ -94,6 +95,7 @@ export const usageSetLimits: McpTool = {
         maxRequestsPerMonth: args.maxRequestsPerMonth ?? null,
         maxStorageBytes: args.maxStorageBytes ?? null,
         maxDbRows: args.maxDbRows ?? null,
+        maxAiCallsPerMonth: args.maxAiCallsPerMonth ?? null,
       }),
     });
     const body = await readJson<unknown>(res);

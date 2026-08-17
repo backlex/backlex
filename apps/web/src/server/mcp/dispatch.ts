@@ -8,7 +8,7 @@ import {
   type ToolCtx,
 } from "./types";
 import { makeInternalFetch } from "./internal-fetch";
-import { aiMeterForTenant } from "../services/usage";
+import { aiMeterForTenant, assertAiQuota } from "../services/usage";
 import {
   checkToolCall,
   filterByAllowlist,
@@ -193,6 +193,12 @@ export const dispatch = async (
       auth.tenantId,
       auth.apiKeyId,
     ),
+    assertAiBudget: () =>
+      assertAiQuota(
+        honoCtx.get("ctx") as Parameters<typeof assertAiQuota>[0],
+        wiring.env,
+        auth.tenantId,
+      ),
   };
 
   // Stateless transport: every request stands alone, so `initialize` is

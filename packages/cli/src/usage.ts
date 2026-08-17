@@ -37,6 +37,7 @@ interface UsageOverviewData {
     maxRequestsPerMonth: number | null;
     maxStorageBytes: number | null;
     maxDbRows: number | null;
+    maxAiCallsPerMonth: number | null;
   };
   envPinned: string[];
   over: string[];
@@ -52,7 +53,8 @@ const HELP = `backlex usage <overview|series|export|limits|set-limits>
   limits                          effective workspace limits (env pins marked)
   set-limits --data <json|@file|->  persist limits, e.g.
                                   '{"mode":"hard","maxRequestsPerMonth":100000,
-                                    "maxStorageBytes":null,"maxDbRows":null}'
+                                    "maxStorageBytes":null,"maxDbRows":null,
+                                    "maxAiCallsPerMonth":null}'
 `;
 
 const BASE = "/api/admin/usage";

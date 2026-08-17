@@ -479,20 +479,29 @@ function LimitsDialog({
   const [reqs, setReqs] = useState(s.maxRequestsPerMonth?.toString() ?? "");
   const [storage, setStorage] = useState(s.maxStorageBytes?.toString() ?? "");
   const [rows, setRows] = useState(s.maxDbRows?.toString() ?? "");
+  const [aiCalls, setAiCalls] = useState(s.maxAiCallsPerMonth?.toString() ?? "");
 
   const save = async () => {
     const maxRequestsPerMonth = parseLimit(reqs);
     const maxStorageBytes = parseLimit(storage);
     const maxDbRows = parseLimit(rows);
+    const maxAiCallsPerMonth = parseLimit(aiCalls);
     if (
       maxRequestsPerMonth === undefined ||
       maxStorageBytes === undefined ||
-      maxDbRows === undefined
+      maxDbRows === undefined ||
+      maxAiCallsPerMonth === undefined
     ) {
       pushToast(t`Limits must be positive numbers (or empty for unlimited).`, "error");
       return;
     }
-    const next: ApiUsageLimits = { mode, maxRequestsPerMonth, maxStorageBytes, maxDbRows };
+    const next: ApiUsageLimits = {
+      mode,
+      maxRequestsPerMonth,
+      maxStorageBytes,
+      maxDbRows,
+      maxAiCallsPerMonth,
+    };
     // Optimistic: patch the cached overview + close, reconcile in background.
     const key = queryKeys.usage(days);
     const prev = qc.getQueryData(key);
@@ -579,6 +588,20 @@ function LimitsDialog({
               <Trans>Checked against the half-hourly row gauge — approximate by design.</Trans>
             </span>
             {pinnedHint("maxDbRows")}
+          </label>
+          <label className="flex flex-col gap-1.5 text-[13px] font-medium">
+            <Trans>Max AI calls / month</Trans>
+            <Input
+              value={aiCalls}
+              onChange={(e) => setAiCalls(e.target.value)}
+              inputMode="numeric"
+              placeholder={t`unlimited`}
+              disabled={pinned.has("maxAiCallsPerMonth")}
+            />
+            <span className="text-[11px] text-muted-foreground">
+              <Trans>Generations, not tokens — a direct provider key reports tokens and the managed gateway reports neurons, so a call is the one unit both can be held to.</Trans>
+            </span>
+            {pinnedHint("maxAiCallsPerMonth")}
           </label>
         </div>
         </DialogBody>

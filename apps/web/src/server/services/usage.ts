@@ -298,6 +298,83 @@ export interface MonthKeyUsage {
 
 /** Per-key totals for the current UTC month (uncached — admin UI read, not a
  *  hot path). Key `""` is the session/no-key bucket. */
+/**
+ * Generations this workspace has made this month.
+ *
+ * CALLS, not tokens, and that is the whole reason a cap can exist at all: the
+ * two provider paths measure different quantities — a direct key returns token
+ * counts, the managed-cloud gateway returns neurons and no tokens — so a token
+ * ceiling would be unenforceable on cloud and a neuron one unenforceable on
+ * self-host. `aiCalls` is the one figure both paths produce, because
+ * `callClaude` counts the call even when the provider reported no figures.
+ *
+ * Same 60s cache as {@link monthUsage}, and for the same reason: this is read
+ * before generations, and a fresh SUM per call would put a query in front of
+ * every one of them.
+ */
+export const monthAiCalls = async (ctx: UsageDbCtx, tenantId: string): Promise<number> => {
+  const month = utcMonth();
+  const cacheKey = `${tenantId}\nai\n${month}`;
+  const hit = monthCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < MONTH_CACHE_TTL_MS) return hit.value;
+  const t = tableFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ n: sql<number>`COALESCE(SUM(${t.aiCalls}), 0)` })
+    .from(t)
+    .where(
+      and(eq(t.tenantId, tenantId), gte(t.day, `${month}-01`), lte(t.day, `${month}-31`)),
+    )) as { n: number | string }[];
+  const value = Number(rows[0]?.n ?? 0);
+  if (monthCache.size >= MONTH_CACHE_CAP) monthCache.clear();
+  monthCache.set(cacheKey, { value, at: Date.now() });
+  return value;
+};
+
+/**
+ * Refuse a generation when the workspace is over its monthly AI budget.
+ *
+ * The AI twin of {@link assertWorkspaceRequestQuota}, and it exists because AI
+ * was metered but never gated: `usageOverview` weighed requests, storage and
+ * rows, and a workspace could generate without limit. That mattered more once
+ * AI reached paths nobody is watching — a cron-triggered flow with an AI step
+ * inside a `foreach` generates once per row, up to the loop's 500-row ceiling,
+ * with no human in the loop to notice.
+ *
+ * Called BEFORE the generation, so an over-budget workspace is refused rather
+ * than billed and then told. `soft` mode surfaces the overage in the usage API
+ * and blocks nothing, matching the request cap's two modes exactly.
+ */
+export const assertAiQuota = async (
+  ctx: UsageDbCtx & { env?: unknown },
+  env: Parameters<typeof effectiveUsageLimits>[1],
+  tenantId: string | null | undefined,
+): Promise<void> => {
+  // No workspace, no workspace budget — the same answer `aiMeterForTenant`
+  // gives, where a null tenant yields a null sink because the spend is
+  // genuinely unattributable. Said out loud because it IS a pass: every gated
+  // path already refuses a tenant-less run on its own (a flow op throws
+  // "requires a workspace-scoped run", the sandbox op the same), so what
+  // reaches here with no tenant is a platform-admin session with no active
+  // workspace — which the request cap exempts too, and for the same reason.
+  if (!tenantId) return;
+  const limits = await effectiveUsageLimits(ctx, env, tenantId);
+  if (limits.mode !== "hard" || limits.maxAiCallsPerMonth == null) return;
+  // Read through the 60s cache, so a burst inside one minute can overshoot the
+  // cap by whatever it fits in that window. Deliberate, and the same trade-off
+  // the request cap and the row gauge already make: a monthly budget does not
+  // need second-level precision, and a fresh SUM per generation would put a
+  // query in front of every one of them.
+  const used = await monthAiCalls(ctx, tenantId);
+  if (used >= limits.maxAiCallsPerMonth) {
+    throw new AppError("QUOTA_EXCEEDED", "Workspace monthly AI limit reached", {
+      scope: "workspace",
+      unit: "aiCalls",
+      limit: limits.maxAiCallsPerMonth,
+      used,
+    });
+  }
+};
+
 export const monthUsageByKey = async (
   ctx: UsageDbCtx,
   tenantId: string,
@@ -558,6 +635,8 @@ export const resolveUsageLimits = (
     maxStorageBytes:
       envPosInt(env.USAGE_LIMIT_STORAGE_BYTES) ?? settingsLimits.maxStorageBytes,
     maxDbRows: envPosInt(env.USAGE_LIMIT_DB_ROWS) ?? settingsLimits.maxDbRows,
+    maxAiCallsPerMonth:
+      envPosInt(env.USAGE_LIMIT_AI_CALLS) ?? settingsLimits.maxAiCallsPerMonth,
   };
 };
 
@@ -640,8 +719,8 @@ export interface UsageOverview {
   gauges: { storageBytes: number | null; dbRows: number | null; measuredAt: number | null };
   limits: UsageLimits;
   settingsLimits: UsageLimits;
-  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows")[];
-  over: ("requests" | "storage" | "rows")[];
+  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows" | "maxAiCallsPerMonth")[];
+  over: ("requests" | "storage" | "rows" | "ai")[];
 }
 
 /**
@@ -743,6 +822,7 @@ export const usageOverview = async (
   if (ctx.env.USAGE_LIMIT_REQUESTS_MONTH) envPinned.push("maxRequestsPerMonth");
   if (ctx.env.USAGE_LIMIT_STORAGE_BYTES) envPinned.push("maxStorageBytes");
   if (ctx.env.USAGE_LIMIT_DB_ROWS) envPinned.push("maxDbRows");
+  if (ctx.env.USAGE_LIMIT_AI_CALLS) envPinned.push("maxAiCallsPerMonth");
 
   let monthRequests = 0;
   let monthErrors = 0;
@@ -775,6 +855,11 @@ export const usageOverview = async (
       gauges.dbRows >= limits.maxDbRows
     )
       over.push("rows");
+    // AI was metered from the day the counters landed and gated by nothing —
+    // this list weighed requests, storage and rows while a workspace could
+    // generate without limit.
+    if (limits.maxAiCallsPerMonth != null && monthAiCalls >= limits.maxAiCallsPerMonth)
+      over.push("ai");
   }
 
   return {

@@ -119,6 +119,12 @@ export interface ToolCtx {
    *  request has no workspace to bill. Required rather than optional — a
    *  generation nobody counted is the failure the ledger exists to end. */
   meterAi: AiMeterSink;
+  /** The other half of {@link meterAi}: "may this workspace generate at all".
+   *  Throws `QUOTA_EXCEEDED` when it is over its monthly AI budget in `hard`
+   *  mode, and does nothing otherwise. Built from the same request for the
+   *  same reason the meter is — the workspace is known there and not inside a
+   *  tool — so a tool asks before it spends rather than reporting after. */
+  assertAiBudget: () => Promise<void>;
 }
 
 export type McpMode = "tenant" | "admin";

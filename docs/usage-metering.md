@@ -107,7 +107,8 @@ The `usageLimits` setting (admin-editable on the Usage page, stored in
   "mode": "off" | "soft" | "hard",
   "maxRequestsPerMonth": 100000,   // or null = unlimited
   "maxStorageBytes": 1073741824,   // or null
-  "maxDbRows": 50000               // or null
+  "maxDbRows": 50000,              // or null
+  "maxAiCallsPerMonth": 2000       // or null
 }
 ```
 
@@ -124,10 +125,41 @@ The `usageLimits` setting (admin-editable on the Usage page, stored in
   - rows → item creates are rejected while the row gauge is at/over the cap.
     The gauge refreshes on the sweep, so this fence is **approximate by
     design** — a burst can overshoot until the next sweep.
+  - AI → a generation is refused **before** the provider is called, so an
+    over-budget workspace is not billed and then told about it.
+
+**The AI cap counts CALLS, not tokens**, and that is not a simplification: a
+direct provider key reports token counts while the managed-cloud gateway reports
+neurons and no tokens, so a token ceiling would be unenforceable on cloud and a
+neuron one unenforceable on self-host. `aiCalls` is the one figure both paths
+produce — `callClaude` counts the call even when the provider reported nothing.
+
+It is checked on every path that can generate: the `ai.generate` /
+`ai.classify` [flow operations](/flows/), `ctx.ai.generate` in the
+[sandbox](/sandbox/), **every step** of an [agent](/agents/) turn (each step is
+another generation, so a turn that starts inside budget cannot run the rest of
+the month out), the `ai.*` MCP tools, [Ask AI](/ask-ai/), auto-translate, and
+the mention router.
+
+Like the request cap, it is read through the 60-second monthly-sum cache, so a
+burst inside one minute can overshoot — a monthly budget does not need
+second-level precision, and a fresh `SUM` per generation would put a query in
+front of every one of them. A run with no workspace bound is not gated either,
+because there is no workspace budget to charge it to; every gated path already
+refuses a tenant-less run on its own.
+
+Settings · AI's **test key** action is the one exemption. It generates sixteen
+tokens to prove a key an admin has just typed actually works, and gating it
+would stop an out-of-budget workspace fixing the very credential it needs —
+the same lockout the request cap already refuses to create when it exempts
+platform-admin sessions. `apps/web/tests/ai-quota-gate.test.ts` is a source
+scan that fails when a new generating file neither asks nor writes down why it
+does not.
 
 ### Env pinning (managed cloud)
 
-`USAGE_LIMIT_MODE`, `USAGE_LIMIT_REQUESTS_MONTH`, `USAGE_LIMIT_STORAGE_BYTES`
+`USAGE_LIMIT_MODE`, `USAGE_LIMIT_REQUESTS_MONTH`, `USAGE_LIMIT_STORAGE_BYTES`,
+`USAGE_LIMIT_AI_CALLS`
 and `USAGE_LIMIT_DB_ROWS` override the setting **field-by-field** — this is
 how a control plane injects a tenant's plan. Pinned fields render read-only in
 the admin editor and are reported as `envPinned` by the usage API.

@@ -6,6 +6,9 @@ export interface UsageLimits {
   maxRequestsPerMonth: number | null;
   maxStorageBytes: number | null;
   maxDbRows: number | null;
+  /** Generations per month. Calls, not tokens — the two provider paths report
+   *  different quantities, so a call is the only unit both can be held to. */
+  maxAiCallsPerMonth: number | null;
 }
 
 /** Admin usage overview — mirrors `GET /api/admin/usage/overview`. */
@@ -38,7 +41,7 @@ export interface UsageOverview {
   /** The admin-editable setting values, before env overrides. */
   settingsLimits: UsageLimits;
   /** Limit fields pinned by env (read-only — the platform plan wins). */
-  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows")[];
+  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows" | "maxAiCallsPerMonth")[];
   /** Dimensions currently over their effective limit. */
   over: ("requests" | "storage" | "rows")[];
 }

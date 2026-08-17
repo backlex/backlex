@@ -6,6 +6,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { assertAiQuota } from "../services/usage";
 import {
   bulkUpsertI18nStrings,
   deleteI18nString,
@@ -339,6 +340,9 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const slice = pool.slice(0, MAX);
       const items = slice.map((k) => ({ key: k, value: idx.get(k)!.get(source)! }));
 
+      // A translation run is one request and as many generations as there are
+      // batches, so the budget is asked before the first one.
+      await assertAiQuota(ctx, ctx.env, auth.tenantId);
       const translated = await autoTranslateBatch({
         env: aiEnv,
         model: aiModel,

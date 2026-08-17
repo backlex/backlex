@@ -35,7 +35,7 @@ import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
 import { recordActivity } from "./activity";
 import { fetchOutbound } from "./storage/hosts";
 import { resolveAiRuntime } from "./ai-config";
-import { aiMeterForTenant } from "./usage";
+import { aiMeterForTenant, assertAiQuota } from "./usage";
 import { aiAvailable, callClaude } from "../mcp/ai-client";
 import type { ClaudeRequest, ClaudeResponse } from "../mcp/ai-client";
 
@@ -452,6 +452,15 @@ const generateForFlow = async (
     throw new FlowOpError(
       `${what}: no AI provider is configured — set a key under Settings · AI, or run on managed cloud where generation is included`,
     );
+  }
+  // Before the generation, not after: a workspace over its monthly AI budget
+  // is refused rather than billed and then told. This path is the reason the
+  // budget exists — a cron-triggered flow with an AI step inside a `foreach`
+  // generates once per row with nobody watching.
+  try {
+    await assertAiQuota(ctx.ctx, ctx.ctx.env, tenantId);
+  } catch (e) {
+    throw new FlowOpError(`${what}: ${(e as Error).message}`);
   }
   // A flow run is dispatched fire-and-forget with no retry and no dead-letter
   // queue, so nothing above this reclaims a generation that never returns.

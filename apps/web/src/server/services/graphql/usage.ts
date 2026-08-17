@@ -99,6 +99,7 @@ export const usageMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
           maxRequestsPerMonth: posOrNull(raw.maxRequestsPerMonth, "maxRequestsPerMonth"),
           maxStorageBytes: posOrNull(raw.maxStorageBytes, "maxStorageBytes"),
           maxDbRows: posOrNull(raw.maxDbRows, "maxDbRows"),
+          maxAiCallsPerMonth: posOrNull(raw.maxAiCallsPerMonth, "maxAiCallsPerMonth"),
         }),
       );
       return true;

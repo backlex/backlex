@@ -49,6 +49,7 @@ const UsageLimitsShape = z
     maxRequestsPerMonth: z.number().int().nullable(),
     maxStorageBytes: z.number().int().nullable(),
     maxDbRows: z.number().int().nullable(),
+    maxAiCallsPerMonth: z.number().int().nullable(),
   })
   .openapi("UsageLimits");
 
@@ -86,9 +87,9 @@ const UsageOverviewResponse = z
       description: "Admin-editable setting values, before env overrides.",
     }),
     envPinned: z.array(
-      z.enum(["mode", "maxRequestsPerMonth", "maxStorageBytes", "maxDbRows"]),
+      z.enum(["mode", "maxRequestsPerMonth", "maxStorageBytes", "maxDbRows", "maxAiCallsPerMonth"]),
     ),
-    over: z.array(z.enum(["requests", "storage", "rows"])),
+    over: z.array(z.enum(["requests", "storage", "rows", "ai"])),
   })
   .openapi("UsageOverviewResponse");
 
@@ -126,6 +127,12 @@ const LimitsInput = z
     maxRequestsPerMonth: z.number().int().min(1).nullable(),
     maxStorageBytes: z.number().int().min(1).nullable(),
     maxDbRows: z.number().int().min(1).nullable(),
+    // OPTIONAL where the other three are required, because this dimension
+    // arrived after the endpoint did: every existing caller — the SDK, the CLI,
+    // the cloud control plane pinning a plan — sends the original four, and
+    // making the fifth mandatory would 422 all of them. Absent means "no AI
+    // cap", which is exactly the behaviour those callers already had.
+    maxAiCallsPerMonth: z.number().int().min(1).nullable().optional(),
   })
   .openapi("UsageLimitsInput");
 
@@ -255,7 +262,11 @@ export const usageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c.get("auth"));
-      await saveUsageLimits(ctx, tenantId, c.req.valid("json"));
+      const body = c.req.valid("json");
+      await saveUsageLimits(ctx, tenantId, {
+        ...body,
+        maxAiCallsPerMonth: body.maxAiCallsPerMonth ?? null,
+      });
       return c.json({ ok: true });
     },
   );

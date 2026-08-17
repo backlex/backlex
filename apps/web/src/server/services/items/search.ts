@@ -5,8 +5,10 @@ import type { Ctx } from "../../context";
 import {
   collapseChunkMatches,
   isVectorizable,
+  passagesByItem,
   resolveModel,
   vectorNamespace,
+  type Passage,
 } from "../vectorize";
 
 import { ftsRankedIds, isSearchable } from "../fts";
@@ -44,6 +46,15 @@ export interface SearchItemsInput {
   mode?: SearchMode;
   limit?: number;
   locale?: string | null;
+  /**
+   * Attach the passages that matched to each row, as `_passages`.
+   *
+   * Opt-in, because it is both extra payload and a wider read: a passage is
+   * text as EMBEDDED, so it can contain a field the caller's field allow-list
+   * would strip from the row itself. Where such an allow-list is in force this
+   * returns nothing rather than a filtered guess — see the refusal below.
+   */
+  passages?: boolean;
 }
 
 export interface SearchItemsGates {
@@ -120,6 +131,11 @@ export const searchCollectionItems = async (
   const wantFts = mode === "fts" || mode === "hybrid";
   const wantVec = mode === "vector" || mode === "hybrid";
 
+  // Filled by the vector pass when the caller asked for passages, so the
+  // matched text survives into the response instead of being discarded once
+  // its id has been read off it.
+  let passages = new Map<string, Passage[]>();
+
   const vectorRankedIds = async (): Promise<string[]> => {
     const model = resolveModel(collection, ctx.env);
     if (!model) return [];
@@ -140,6 +156,15 @@ export const searchCollectionItems = async (
       // "no matches" and "wrong namespace" are the same empty array here.
       namespace: vectorNamespace(collection.slug, auth.tenantId ?? null),
     });
+    // A passage is the chunk text as embedded, which is built from every
+    // field flagged `vectorize` — including ones a field allow-list would
+    // strip from the row at `projectFields`. Returning it anyway would route
+    // around that clamp, so a restricted caller gets no passages at all rather
+    // than a filtered guess: chunk boundaries do not follow field boundaries,
+    // so a chunk cannot be reliably attributed to one field and censored.
+    if (input.passages && gates.permFields === null) {
+      passages = passagesByItem(matches);
+    }
     // Chunk ids (`<itemId>#3`) must become item ids before anything downstream
     // sees them: they feed RRF below, and then a `WHERE pk IN (…)` that a
     // chunk id matches nothing in.
@@ -232,7 +257,16 @@ export const searchCollectionItems = async (
   // hydration may have dropped ids the caller can't see.
   const data = fusedIds
     .map((id) => byId.get(id))
-    .filter((r): r is Record<string, unknown> => r != null);
+    .filter((r): r is Record<string, unknown> => r != null)
+    // Attached after the permission clamp and only to rows that survived it,
+    // so a passage can never accompany a row the caller was not allowed to
+    // see. A row matched by full-text alone has no passages and gets none —
+    // an empty array would read as "this row matched no text".
+    .map((r) =>
+      input.passages && passages.has(String(r.id))
+        ? { ...r, _passages: passages.get(String(r.id)) }
+        : r,
+    );
 
   return { data, mode, limit };
 };

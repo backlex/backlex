@@ -187,6 +187,48 @@ export const collapseChunkMatches = (
   return ids;
 };
 
+/** One passage that matched, as retrieval returns it. */
+export interface Passage {
+  /** The chunk's own text — what belongs in an LLM prompt. */
+  text: string;
+  /** The store's similarity score for this chunk, not for the row. */
+  score: number;
+  /** Which chunk of the row this is; `0` for a row short enough not to split. */
+  index: number;
+}
+
+/**
+ * Group matches into passages per item, best first, at most `perItem` each.
+ *
+ * This is the half of chunking that makes it USEFUL rather than merely
+ * correct. `/…/search` hydrates and returns whole rows, so a caller building a
+ * prompt gets the entire document back and has to re-chunk it client-side to
+ * find the part that actually matched — which is the work this server just
+ * did and then threw away.
+ *
+ * The text comes from the vector record's `content` metadata, which is the
+ * chunk as embedded. A match with no readable `content` contributes a score
+ * but no text rather than an empty passage, so a store whose metadata was
+ * written by an older version degrades instead of lying.
+ */
+export const passagesByItem = (
+  matches: ReadonlyArray<{ id: string; score: number; metadata?: Record<string, unknown> }>,
+  perItem = 3,
+): Map<string, Passage[]> => {
+  const out = new Map<string, Passage[]>();
+  for (const m of matches) {
+    const itemId = itemIdOf(m.id);
+    const list = out.get(itemId) ?? [];
+    if (list.length >= perItem) continue;
+    const text = m.metadata?.content;
+    if (typeof text !== "string" || !text) continue;
+    const raw = m.metadata?.chunkIndex;
+    list.push({ text, score: m.score, index: typeof raw === "number" ? raw : 0 });
+    out.set(itemId, list);
+  }
+  return out;
+};
+
 /** Resolve the embedding model: row-level → env default → null (skip). */
 export const resolveModel = (
   meta: { vectorizeModel: string | null },

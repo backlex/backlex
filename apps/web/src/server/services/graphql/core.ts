@@ -373,11 +373,25 @@ export const buildCollectionType = (
         {
           type: GraphQLOutputType;
           resolve?: GraphQLFieldConfig<unknown, GqlCtx>["resolve"];
+          /** Surfaced by introspection, so a field whose behaviour is not
+           *  obvious from its name can explain itself in the schema. */
+          description?: string;
         }
       > = {
         id: { type: new GraphQLNonNull(GraphQLID) },
         createdAt: { type: new GraphQLNonNull(GraphQLString) },
         updatedAt: { type: new GraphQLNonNull(GraphQLString) },
+        // Retrieval-only, and null everywhere else. A row is many vectors once
+        // it is long enough to chunk, and this is the passage that actually
+        // matched — the text to put in an LLM prompt instead of the whole
+        // document. Populated only by `<name>Search(passages: true)`; the
+        // underscore key is REST's shape, mapped here so GraphQL's is camel.
+        passages: {
+          type: JSONScalar,
+          description:
+            "The chunks that matched, best first (`{ text, score, index }`). Non-null only on a `Search` query with `passages: true`, and omitted for callers whose permission carries a field allow-list.",
+          resolve: (parent) => (parent as Record<string, unknown>)._passages ?? null,
+        },
       };
       if (collection.ownerScoped) {
         fields.ownerId = { type: GraphQLString };
@@ -1788,7 +1802,13 @@ export const aggregateResolver = async (
 export const searchResolver = async (
   gqlCtx: GqlCtx,
   collection: CollectionRow,
-  args: { q: string; mode?: string | null; limit?: number | null; locale?: string | null },
+  args: {
+    q: string;
+    mode?: string | null;
+    limit?: number | null;
+    locale?: string | null;
+    passages?: boolean | null;
+  },
 ) => {
   const { ctx, auth, permCache } = gqlCtx;
   const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
@@ -1821,6 +1841,7 @@ export const searchResolver = async (
         mode: (args.mode ?? undefined) as "fts" | "vector" | "hybrid" | undefined,
         limit: args.limit ?? undefined,
         locale: args.locale ?? undefined,
+        passages: args.passages ?? undefined,
       },
       {
         permWhere: perm.whereSql,

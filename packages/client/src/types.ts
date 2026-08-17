@@ -151,6 +151,26 @@ export interface SearchQuery {
   limit?: number;
   /** Collapse `localized` fields to one locale, or `"*"` for the full map. */
   locale?: string;
+  /**
+   * Attach the passages that matched to each row as `_passages` — the text to
+   * put in an LLM prompt, instead of the whole document.
+   *
+   * A long row is stored as several overlapping chunks, and this is which of
+   * them the query hit. Vector/hybrid only, and omitted for callers whose
+   * permission carries a field allow-list: a passage is text as embedded, so
+   * it could carry a field the row itself is stripped of.
+   */
+  passages?: boolean;
+}
+
+/** One chunk that matched, as `passages: true` returns it. */
+export interface SearchPassage {
+  /** The chunk's own text. */
+  text: string;
+  /** Similarity for this chunk, not for the row. */
+  score: number;
+  /** Which chunk of the row it is; `0` for a row short enough not to split. */
+  index: number;
 }
 
 /** Response from `from(slug).search(...)` — rows ordered best-first. */

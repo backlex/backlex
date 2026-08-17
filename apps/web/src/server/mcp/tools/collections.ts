@@ -359,6 +359,11 @@ export const searchItems: McpTool = {
         type: "string",
         description: "Collapse localized fields to one locale, or `*` for the full map.",
       },
+      passages: {
+        type: "boolean",
+        description:
+          "Attach `_passages` to each row — the chunks of it that actually matched, best-first, each with its own score. Set this when you are about to quote or summarise: a long row is stored as several passages and this hands you the relevant one instead of the whole document, which is both more accurate and far fewer tokens. Vector/hybrid only; silently absent when the caller's permission carries a field allow-list.",
+      },
     },
     required: ["collection", "q"],
     additionalProperties: false,

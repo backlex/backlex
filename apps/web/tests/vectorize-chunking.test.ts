@@ -27,6 +27,7 @@ import {
   deleteVector,
   embedAndUpsert,
   itemIdOf,
+  passagesByItem,
   staleChunkIds,
   type VectorizeMeta,
 } from "../src/server/services/vectorize";
@@ -173,6 +174,85 @@ describe("collapsing matches back to items", () => {
   test("the limit counts items, not chunks", () => {
     const matches = [{ id: "a#0" }, { id: "a#1" }, { id: "b#0" }, { id: "c" }];
     expect(collapseChunkMatches(matches, 2)).toEqual(["a", "b"]);
+  });
+});
+
+describe("passages — what chunking is FOR", () => {
+  // Chunking is only correctness until the matched passage comes back. Without
+  // this, `/search` hydrates and returns the whole document and a caller
+  // building a prompt has to re-chunk it client-side — redoing the work the
+  // server just did and threw away.
+  const match = (id: string, score: number, content: string, chunkIndex?: number) => ({
+    id,
+    score,
+    metadata: { content, ...(chunkIndex === undefined ? {} : { chunkIndex }) },
+  });
+
+  test("passages group by item, best first", () => {
+    const got = passagesByItem([
+      match("a#2", 0.9, "second best of a", 2),
+      match("b", 0.7, "all of b"),
+      match("a#0", 0.5, "worse of a", 0),
+    ]);
+    expect(got.get("a")).toEqual([
+      { text: "second best of a", score: 0.9, index: 2 },
+      { text: "worse of a", score: 0.5, index: 0 },
+    ]);
+    expect(got.get("b")).toEqual([{ text: "all of b", score: 0.7, index: 0 }]);
+  });
+
+  test("at most `perItem` passages, so one long row cannot fill a prompt", () => {
+    const got = passagesByItem(
+      [0, 1, 2, 3, 4].map((i) => match(`a#${i}`, 1 - i / 10, `chunk ${i}`, i)),
+      2,
+    );
+    expect(got.get("a")).toHaveLength(2);
+  });
+
+  test("a match with no stored content contributes nothing rather than an empty passage", () => {
+    // A store written by a version before chunk metadata existed degrades
+    // instead of returning `{ text: "" }`, which a prompt builder would
+    // faithfully include.
+    const got = passagesByItem([{ id: "a", score: 0.9 }, match("b", 0.8, "real text")]);
+    expect(got.has("a")).toBe(false);
+    expect(got.get("b")).toHaveLength(1);
+  });
+});
+
+describe("a passage cannot route around the field allow-list", () => {
+  /**
+   * A source scan, not a behavioural test, and the reason is worth stating: the
+   * bun harness runs on plain SQLite with no embedding provider and no vector
+   * store, so `searchCollectionItems` can never reach its vector branch here.
+   * The repo already uses source scans for exactly this kind of "condition that
+   * must not be quietly loosened" (`ai-quota-gate.test.ts`,
+   * `admin-ui-conventions.test.ts`).
+   *
+   * What it guards: a passage is the chunk text AS EMBEDDED, built from every
+   * field flagged `vectorize`. The row itself is clamped by `projectFields`
+   * against the caller's readable-field allow-list — so returning the passage
+   * regardless would hand back, in full, a field the row was stripped of.
+   * Chunk boundaries do not follow field boundaries, so the passage cannot be
+   * censored per field either; the only correct answer is to withhold it.
+   */
+  test("the refusal is still in the vector branch", async () => {
+    const src = await Bun.file(
+      new URL("../src/server/services/items/search.ts", import.meta.url),
+    ).text();
+    expect(src).toContain("input.passages && gates.permFields === null");
+  });
+
+  test("passages are attached only to rows that survived hydration", async () => {
+    // The other half: hydration is what re-applies tenant scope, row
+    // permission, soft-delete and draft visibility to vector-sourced ids, so
+    // the attach has to happen AFTER it and only for ids that came back.
+    const src = await Bun.file(
+      new URL("../src/server/services/items/search.ts", import.meta.url),
+    ).text();
+    const attachAt = src.indexOf("_passages:");
+    const hydrateAt = src.indexOf("const rows = await queryAll");
+    expect(hydrateAt).toBeGreaterThan(-1);
+    expect(attachAt).toBeGreaterThan(hydrateAt);
   });
 });
 

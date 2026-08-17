@@ -99,6 +99,7 @@ export type {
   ItemEvent,
   AggregateQuery,
   AggregateRow,
+  SearchPassage,
   SearchQuery,
   SearchResponse,
   ChangesQuery,

@@ -131,6 +131,13 @@ export const itemsQueryRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
                 mode: z.enum(["fts", "vector", "hybrid"]).optional(),
                 limit: z.number().int().positive().max(100).optional(),
                 locale: z.string().optional(),
+                passages: z
+                  .boolean()
+                  .optional()
+                  .openapi({
+                    description:
+                      "Attach the chunks that matched to each row as `_passages` — the text to put in an LLM prompt, rather than the whole document. Vector/hybrid only, and omitted for callers whose permission carries a field allow-list, since a passage is text as embedded and could carry a field the row itself is stripped of.",
+                  }),
               }),
             },
           },

@@ -354,6 +354,11 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
         mode: { type: GraphQLString },
         limit: { type: GraphQLInt },
         locale: { type: GraphQLString },
+        passages: {
+          type: GraphQLBoolean,
+          description:
+            "Populate each row's `passages` with the chunks that matched, rather than leaving the caller to re-chunk the whole document. Vector/hybrid only.",
+        },
       },
       resolve: async (_src, rawArgs, gqlCtx) =>
         searchResolver(gqlCtx, c, rawArgs as Parameters<typeof searchResolver>[2]),

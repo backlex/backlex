@@ -160,6 +160,50 @@ silently on both: OpenAI rejects the request, so the row ended up with **no**
 vector and was invisible to `mode: "vector"` forever, while Workers AI truncates,
 so only the opening of the document was searchable.
 
+### Retrieval: ask for the passage, not the document
+
+Search returns whole rows. For RAG that is the wrong unit — you want the
+passage that matched, to put in a prompt. Pass `passages: true` and each row
+carries the chunks it matched on, best first:
+
+```bash
+curl -X POST $APP_URL/api/items/articles/search \
+  -H 'content-type: application/json' \
+  -d '{"q":"how do refunds work","mode":"vector","passages":true}'
+```
+
+```jsonc
+{
+  "data": [
+    {
+      "id": "…", "title": "Billing handbook", "body": "…the whole document…",
+      "_passages": [
+        { "text": "Refunds are issued to the original method within…", "score": 0.83, "index": 4 },
+        { "text": "A partial refund leaves the subscription active…", "score": 0.71, "index": 5 }
+      ]
+    }
+  ],
+  "mode": "vector", "limit": 20
+}
+```
+
+Also on `client.from("articles").search({ q, passages: true })`, on the
+`collections.search` MCP tool, and in GraphQL as a `passages` argument feeding a
+`passages` field on the row.
+
+Three things to know:
+
+- **Vector and hybrid only.** A row matched by the keyword index alone has no
+  passages and is returned without the key — an empty array would read as
+  "this row matched no text".
+- **At most three passages per row**, so one long document cannot fill a
+  prompt on its own.
+- **Withheld when the caller's permission carries a field allow-list.** A
+  passage is text as embedded — every `vectorize` field concatenated — so
+  returning it would hand back in full a field the row itself is stripped of.
+  Chunk boundaries do not follow field boundaries, so it cannot be censored per
+  field; the honest answer is to omit it.
+
 In the admin UI: toggle **Vector search (semantic)** on the collection's
 Settings card (it also hosts the embedding-model picker and warns when the
 chosen model's provider or the vector store isn't configured — readiness comes

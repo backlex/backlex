@@ -269,6 +269,17 @@ function describeOpShort(op: any): string {
     case "item.create": return `+${op.collection ?? ""}`;
     case "item.update": return `~${op.collection ?? ""}`;
     case "delay": return `wait ${op.durationMs}ms`;
+    // The five below had no case and fell through to `default`, which returns
+    // the raw type string — so a document step read "document.render" where
+    // every step beside it read what it does. The template key / dashboard /
+    // collection is the half that distinguishes two of the same step.
+    case "document.render": return `pdf ${(op.templateKey ?? "inline").toString().slice(0, 18)}`;
+    case "document.sign": return `sign ${(op.templateKey ?? "inline").toString().slice(0, 16)}`;
+    case "report.deliver": return `report ${(op.dashboardId ?? "").toString().replace(/^@dashboard:/, "").slice(0, 16)}`.trim();
+    // Who it waits on, not that it waits — every approval step waits.
+    case "approval.request": return `approve ${(Array.isArray(op.approvers) ? op.approvers.length : 0)} approver(s)`;
+    // The collection it walks; the body is drawn as its own nested steps.
+    case "foreach": return `each ${(op.collection ?? "").toString().slice(0, 18)}`.trim();
     default: return t ?? "step";
   }
 }

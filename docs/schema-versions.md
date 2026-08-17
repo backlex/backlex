@@ -15,11 +15,58 @@ This is the productized answer to "what changed between these two schema states,
 and is it safe to apply?" — without leaving the dynamic-schema model for
 hand-written migration files.
 
+## Config as code
+
+A snapshot carries more than tables. Alongside its collections it holds the
+workspace's **roles** (with their grants), **feature flags**, **document
+templates** and **broadcast channels** — so `capture` → edit in git → `import` →
+`diff` → `apply` reconciles config the same way it reconciles schema.
+
+This is the half [schema templates](/templates/) cannot do. `templates
+extract`/`apply` MOVES config between workspaces, but it is a seeder: additive,
+skip-by-natural-key, and it never says what would change or removes what should
+not be there. A reconciler does both — which is why applying a snapshot that
+does not contain a role **removes** that role, behind the same
+`confirmDestructive` gate a dropped column gets.
+
+A resource is here only if it answers four questions cleanly, and the absences
+are deliberate:
+
+| | |
+|---|---|
+| **A real natural key** | `roles` has a unique (tenant, name). `flows`, `webhooks`, `sync_hooks`, `cdc_sinks`, `saved_panels` and `integrations` have no unique index and no service-level guard, so "the same row somewhere else" is not a question they can answer yet. |
+| **Portable config only** | No raw foreign keys that mean nothing elsewhere — which is why `dashboards` is absent (its embed viewer is a role UUID). A role's grants travel by collection slug, which is what they already are. |
+| **No secrets** | Nothing here has one. Every resource that does — a webhook's signing secret, an integration's credentials, a form's token hash — is excluded outright rather than redacted, because a reconciler that applied a redacted secret would overwrite a real one with a placeholder. |
+| **No runtime state** | `kpis` is absent for this reason alone: otherwise perfect, but `alertFiring` is another workspace's alarm and promoting it would import it ringing. |
+
+Two behaviours worth knowing before you apply one:
+
+- **A role's grants are replaced, not merged.** Making the target match the
+  document is the job; merging would leave a grant the document removed in
+  place, and that is the one direction that widens access silently.
+- **The three system roles are never captured.** They exist in every workspace
+  before anything is applied, so carrying them would be rows every apply must
+  recognise as no-ops — and one that could delete `admin` from a workspace that
+  had drifted.
+
+Config severities follow the same taxonomy: an added row is `additive`, a
+**changed** row is `additive` too (`metadata` means "free to apply", which is
+the wrong thing to say about a permission), and a removed row is
+`destructive` — it disappears, and for a role that cascades into `user_roles`.
+
+### Older snapshots keep working
+
+Snapshots used to be a bare `SchemaCollection[]`, and rows written then still
+are. Both shapes are read, the envelope is written, and a snapshot carrying no
+config hashes to **exactly** what the bare array hashed to — so every `hash`
+already stored stays valid and a collections-only capture does not change its
+identity the day config shipped.
+
 ## Concepts
 
 | Concept | What it is |
 |---|---|
-| **Snapshot** | An immutable, content-hashed capture of the schema-relevant subset of a workspace's collections (`SchemaCollection[]`). A checkpoint you can diff or restore. |
+| **Snapshot** | An immutable, content-hashed capture of a workspace's collections **and its config resources**. A checkpoint you can diff or restore. |
 | **Branch** | A named, mutable pointer into snapshot history with a `head` (the working schema) and a `base` (the fork point). Stage changes off to the side, then apply. |
 | **Ref** | Where a schema state comes from: `live`, `snapshot:<id>`, or `branch:<id>`. Every diff/apply operates on refs. |
 | **Diff** | The categorized change list between two refs — every change tagged **additive**, **destructive**, or **metadata**, with the DDL it would emit per dialect. |

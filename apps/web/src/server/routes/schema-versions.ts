@@ -93,7 +93,21 @@ export const schemaVersionsRoutes = new Hono<AppBindings>()
       .object({
         name: z.string().min(1).max(120),
         note: z.string().max(2000).nullable().optional(),
-        snapshot: z.array(SnapshotCollectionSchema),
+        // Both shapes: a bare collections array (what an export was before
+        // config joined, and what every existing caller sends) or a whole
+        // document. Accepting only the array would mean an export this very
+        // service produces could not be imported back — which is the loop the
+        // endpoint exists for.
+        snapshot: z.union([
+          z.array(SnapshotCollectionSchema),
+          z.object({
+            collections: z.array(SnapshotCollectionSchema),
+            // Loose here on purpose: the service checks each entry has a natural
+            // key and names a known resource, and the resource itself validates
+            // its own shape when the apply reaches it.
+            config: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).optional(),
+          }),
+        ]),
       })
       .parse(await c.req.json());
     const snap = await importSnapshot(ctxOf(c), requireTenant(c), {

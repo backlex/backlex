@@ -45,6 +45,42 @@ export interface SchemaCollection {
 export type SchemaSnapshot = SchemaCollection[];
 
 /**
+ * One config row as it travels: its natural key plus whatever portable fields
+ * its resource declares. Deliberately open — the registry that owns a resource
+ * decides its shape, and this module only ever compares two of them.
+ */
+export type ConfigItem = Record<string, unknown> & { key: string };
+
+/**
+ * What a snapshot holds.
+ *
+ * Snapshots began as a bare `SchemaCollection[]` and every row written before
+ * config joined still IS one, so this is read from both shapes and written as
+ * the envelope. The distinction never reaches a caller: {@link readDocument}
+ * normalizes on the way in.
+ */
+export interface SchemaDocument {
+  collections: SchemaCollection[];
+  /** Config rows by resource key — `{ roles: [...], flags: [...] }`. */
+  config?: Record<string, ConfigItem[]>;
+}
+
+/** Read a stored snapshot column, whichever shape it is in. */
+export const readDocument = (stored: unknown): SchemaDocument => {
+  if (Array.isArray(stored)) return { collections: stored as SchemaCollection[] };
+  const d = (stored ?? {}) as Partial<SchemaDocument>;
+  return {
+    collections: Array.isArray(d.collections) ? d.collections : [],
+    ...(d.config && typeof d.config === "object" ? { config: d.config } : {}),
+  };
+};
+
+/** True when a document carries no config — the shape every pre-envelope row
+ *  has, and the shape a collections-only capture still produces. */
+const configless = (doc: SchemaDocument): boolean =>
+  !doc.config || Object.keys(doc.config).every((k) => (doc.config?.[k] ?? []).length === 0);
+
+/**
  * Severity of a single change, mapping directly to how it can be applied:
  * - `additive` — safe to auto-apply (CREATE TABLE, nullable ADD COLUMN, CREATE
  *   INDEX, enabling a versioned/softDelete/fts flag). The applier is additive
@@ -68,7 +104,11 @@ export type SchemaChangeKind =
   | "field.type"
   | "field.constraint"
   | "field.index"
-  | "field.metadata";
+  | "field.metadata"
+  // Config rows, identified by natural key rather than by slug + field.
+  | "config.add"
+  | "config.update"
+  | "config.drop";
 
 export interface SchemaChange {
   kind: SchemaChangeKind;
@@ -206,6 +246,80 @@ export const diffSchema = (from: SchemaSnapshot, to: SchemaSnapshot): SchemaDiff
   }
 
   return summarize(changes);
+};
+
+/**
+ * Diff two documents — the collections exactly as {@link diffSchema} always
+ * has, plus every config resource, compared by natural key.
+ *
+ * The severity taxonomy carries over unchanged, and the mapping is worth
+ * stating because the middle one is a judgement:
+ *
+ * - **add** → `additive`. A row that was not there arrives.
+ * - **update** → `additive` too, NOT `metadata`. A changed role grant or flag
+ *   rule is a real change somebody has to apply on purpose; `metadata` means
+ *   "free to apply", which would be the wrong thing to say about a permission.
+ *   It loses no data, so it is not `destructive` either.
+ * - **drop** → `destructive`. The row disappears, and for a role that cascades
+ *   into `user_roles` — people lose access. Gated behind `confirmDestructive`
+ *   for the same reason a dropped column is.
+ */
+export const diffDocument = (from: SchemaDocument, to: SchemaDocument): SchemaDiff => {
+  const base = diffSchema(from.collections, to.collections);
+  const changes = [...base.changes];
+
+  // Every resource named by either side — a resource present in `from` and
+  // absent from `to` still has rows to reconcile.
+  const keys = new Set([...Object.keys(from.config ?? {}), ...Object.keys(to.config ?? {})]);
+  for (const resource of [...keys].sort()) {
+    const prev = byNaturalKey(from.config?.[resource] ?? []);
+    const next = byNaturalKey(to.config?.[resource] ?? []);
+    for (const [key, item] of next) {
+      const before = prev.get(key);
+      if (!before) {
+        changes.push({
+          kind: "config.add",
+          severity: "additive",
+          collection: resource,
+          field: key,
+          summary: `Add ${resource} "${key}"`,
+          after: item,
+        });
+        continue;
+      }
+      // Compared canonically so key order in the stored JSON never reads as a
+      // change — the same reason snapshots are hashed canonically.
+      if (JSON.stringify(sortKeysDeep(before)) === JSON.stringify(sortKeysDeep(item))) continue;
+      changes.push({
+        kind: "config.update",
+        severity: "additive",
+        collection: resource,
+        field: key,
+        summary: `Update ${resource} "${key}"`,
+        before,
+        after: item,
+      });
+    }
+    for (const [key, item] of prev) {
+      if (next.has(key)) continue;
+      changes.push({
+        kind: "config.drop",
+        severity: "destructive",
+        collection: resource,
+        field: key,
+        summary: `Remove ${resource} "${key}"`,
+        before: item,
+      });
+    }
+  }
+
+  return summarize(changes);
+};
+
+const byNaturalKey = (items: ConfigItem[]): Map<string, ConfigItem> => {
+  const m = new Map<string, ConfigItem>();
+  for (const i of items) m.set(i.key, i);
+  return m;
 };
 
 const diffFields = (
@@ -432,6 +546,33 @@ export const canonicalizeSnapshot = (snap: SchemaSnapshot): string => {
     }))
     .sort((a, b) => a.slug.localeCompare(b.slug));
   return JSON.stringify(sortKeysDeep(norm));
+};
+
+/**
+ * The same, for a document.
+ *
+ * A configless document canonicalizes to EXACTLY what
+ * {@link canonicalizeSnapshot} produced before the envelope existed. That is
+ * not a convenience — it is what keeps every `hash` already in
+ * `schema_snapshots` valid, and what stops a collections-only capture changing
+ * its hash the day config shipped. `schema-document.test.ts` pins it.
+ */
+export const canonicalizeDocument = (doc: SchemaDocument): string => {
+  if (configless(doc)) return canonicalizeSnapshot(doc.collections);
+  const config: Record<string, ConfigItem[]> = {};
+  for (const key of Object.keys(doc.config ?? {}).sort()) {
+    const items = doc.config?.[key] ?? [];
+    if (items.length === 0) continue;
+    config[key] = [...items].sort((a, b) => a.key.localeCompare(b.key));
+  }
+  return JSON.stringify(
+    sortKeysDeep({
+      collections: [...doc.collections]
+        .map((c) => ({ ...c, fields: [...c.fields].sort((a, b) => a.name.localeCompare(b.name)) }))
+        .sort((a, b) => a.slug.localeCompare(b.slug)),
+      config,
+    }),
+  );
 };
 
 /** Convenience: the SQL column type a field maps to, re-exported so apply

@@ -23,14 +23,16 @@
 import { AppError } from "@backlex/core";
 import {
   applyCollection,
-  canonicalizeSnapshot,
+  canonicalizeDocument,
   derivePhysicalTable,
-  diffSchema,
+  diffDocument,
   dropCollection,
   dropField,
   type FieldDef,
+  readDocument,
   type SchemaCollection,
   type SchemaDiff,
+  type SchemaDocument,
   type SchemaSnapshot,
   validateFields,
 } from "@backlex/db";
@@ -38,6 +40,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, desc, eq } from "drizzle-orm";
 import { invalidateTenantCollections } from "./collections-cache";
+import { CONFIG_RESOURCES, configResource, loadLiveConfig } from "./config-resources";
 import { invalidateTenantPermissions } from "./permissions-cache";
 import { seedOwnerScopedPermissions } from "./seed";
 import { snapshotBeforeDrop } from "./backup";
@@ -191,6 +194,40 @@ export const loadLiveSchema = async (
   return rows.map(rowToSchemaCollection);
 };
 
+/**
+ * The whole live workspace — its collections AND its config resources.
+ *
+ * `loadLiveSchema` above is the collections half and stays exactly what it was,
+ * because `executeDiff` and every existing caller are written against it. This
+ * is the pair, and it is what a snapshot now captures.
+ */
+export const loadLiveDocument = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+): Promise<SchemaDocument> => ({
+  collections: await loadLiveSchema(ctx, tenantId),
+  config: await loadLiveConfig(ctx, tenantId),
+});
+
+/** {@link resolveRef}, returning both halves. */
+export const resolveDocument = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  ref: SchemaRef,
+): Promise<{ data: SchemaDocument; label: string }> => {
+  if (ref.kind === "live") {
+    return { data: await loadLiveDocument(ctx, tenantId), label: "live" };
+  }
+  if (ref.kind === "snapshot") {
+    const s = await getSnapshot(ctx, tenantId, ref.id);
+    return { data: readDocument(s.snapshot), label: `snapshot:${s.name}` };
+  }
+  const b = await getBranch(ctx, tenantId, ref.id);
+  if (!b.headSnapshotId) return { data: { collections: [] }, label: `branch:${b.name}` };
+  const s = await getSnapshot(ctx, tenantId, b.headSnapshotId);
+  return { data: readDocument(s.snapshot), label: `branch:${b.name}` };
+};
+
 const sha256Hex = async (text: string): Promise<string> => {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -206,7 +243,7 @@ const toSummary = (r: Record<string, unknown>): SnapshotSummary => ({
   parentSnapshotId: (r.parentSnapshotId as string | null) ?? null,
   createdBy: (r.createdBy as string | null) ?? null,
   createdAt: r.createdAt,
-  collectionCount: Array.isArray(r.snapshot) ? r.snapshot.length : 0,
+  collectionCount: readDocument(r.snapshot).collections.length,
 });
 
 // ── Snapshots ──────────────────────────────────────────────────────────────
@@ -221,12 +258,18 @@ export const captureSnapshot = async (
     kind?: "manual" | "branch" | "auto" | "scheduled";
     branchId?: string | null;
     parentSnapshotId?: string | null;
-    /** Pre-resolved schema to store; defaults to the live schema. */
-    data?: SchemaSnapshot;
+    /** Pre-resolved state to store; defaults to the live document. Accepts a
+     *  bare collections array too, which is what every caller passed before
+     *  config joined. */
+    data?: SchemaSnapshot | SchemaDocument;
   },
 ): Promise<SnapshotRecord> => {
-  const snapshot = opts.data ?? (await loadLiveSchema(ctx, tenantId));
-  const hash = await sha256Hex(canonicalizeSnapshot(snapshot));
+  const doc = opts.data ? readDocument(opts.data) : await loadLiveDocument(ctx, tenantId);
+  // A configless document canonicalizes to exactly what a bare array did, so
+  // hashes already in this table stay valid and a collections-only capture is
+  // byte-identical to the one it would have produced yesterday.
+  const hash = await sha256Hex(canonicalizeDocument(doc));
+  const snapshot = doc;
   const id = crypto.randomUUID();
   const t = snapshotsTable(ctx.dialect);
   await ctx.db.insert(t).values({
@@ -256,13 +299,51 @@ const SLUG_RE = /^[a-z][a-z0-9_]*$/;
 export const importSnapshot = async (
   ctx: SchemaVersionsCtx,
   tenantId: string,
-  opts: { name: string; snapshot: SchemaSnapshot; note?: string | null; createdBy?: string | null },
+  opts: {
+    name: string;
+    /** A bare collections array (what an export was before config joined) or a
+     *  whole document. Both are accepted, because this is the GitOps entry
+     *  point: an admin exports the JSON, edits it in git, and imports it back —
+     *  and a document that could be exported but not re-imported would break
+     *  exactly the loop this function exists for. */
+    snapshot: SchemaSnapshot | SchemaDocument;
+    note?: string | null;
+    createdBy?: string | null;
+  },
 ): Promise<SnapshotRecord> => {
-  if (!Array.isArray(opts.snapshot)) {
-    throw new AppError("VALIDATION", "snapshot must be an array of collections");
+  if (!opts.snapshot || typeof opts.snapshot !== "object") {
+    throw new AppError("VALIDATION", "snapshot must be an array of collections or a document");
+  }
+  const doc = readDocument(opts.snapshot);
+  if (!Array.isArray(opts.snapshot) && !Array.isArray((opts.snapshot as SchemaDocument).collections)) {
+    throw new AppError("VALIDATION", "snapshot.collections must be an array");
+  }
+  // Config rows are checked for the one thing this layer can check without
+  // knowing a resource: that each is an object carrying a natural key. The
+  // resource itself validates its own shape when the apply reaches it, which is
+  // the same split the collection half uses (`validateFields` here, the applier
+  // later).
+  for (const [resource, items] of Object.entries(doc.config ?? {})) {
+    if (!Array.isArray(items)) {
+      throw new AppError("VALIDATION", `config.${resource} must be an array`);
+    }
+    if (!configResource(resource)) {
+      throw new AppError("VALIDATION", `Unknown config resource: ${resource}`);
+    }
+    const keys = new Set<string>();
+    for (const item of items) {
+      const key = (item as { key?: unknown })?.key;
+      if (typeof key !== "string" || key === "") {
+        throw new AppError("VALIDATION", `config.${resource}: every entry needs a "key"`);
+      }
+      if (keys.has(key)) {
+        throw new AppError("VALIDATION", `config.${resource}: duplicate key "${key}"`);
+      }
+      keys.add(key);
+    }
   }
   const seen = new Set<string>();
-  for (const c of opts.snapshot) {
+  for (const c of doc.collections) {
     if (!c || typeof c.slug !== "string" || !SLUG_RE.test(c.slug)) {
       throw new AppError("VALIDATION", `Invalid collection slug: ${JSON.stringify(c?.slug)}`);
     }
@@ -282,7 +363,10 @@ export const importSnapshot = async (
     note: opts.note,
     createdBy: opts.createdBy,
     kind: "manual",
-    data: normalizeSnapshot(opts.snapshot),
+    data: {
+      collections: normalizeSnapshot(doc.collections),
+      ...(doc.config ? { config: doc.config } : {}),
+    },
   });
 };
 
@@ -482,15 +566,19 @@ export const resolveRef = async (
   tenantId: string,
   ref: SchemaRef,
 ): Promise<{ data: SchemaSnapshot; label: string }> => {
+  // Reads through `readDocument` so a stored envelope and a pre-envelope bare
+  // array both answer, and hands back the COLLECTIONS half — every caller of
+  // this function is written against a snapshot, and `resolveDocument` is the
+  // one that wants both.
   if (ref.kind === "snapshot") {
     const s = await getSnapshot(ctx, tenantId, ref.id);
-    return { data: s.snapshot, label: `snapshot:${s.name}` };
+    return { data: readDocument(s.snapshot).collections, label: `snapshot:${s.name}` };
   }
   if (ref.kind === "branch") {
     const b = await getBranch(ctx, tenantId, ref.id);
     if (!b.headSnapshotId) return { data: [], label: `branch:${b.name}` };
     const s = await getSnapshot(ctx, tenantId, b.headSnapshotId);
-    return { data: s.snapshot, label: `branch:${b.name}` };
+    return { data: readDocument(s.snapshot).collections, label: `branch:${b.name}` };
   }
   return { data: await loadLiveSchema(ctx, tenantId), label: "live" };
 };
@@ -501,9 +589,9 @@ export const diff = async (
   from: SchemaRef,
   to: SchemaRef,
 ): Promise<{ from: string; to: string; diff: SchemaDiff }> => {
-  const a = await resolveRef(ctx, tenantId, from);
-  const b = await resolveRef(ctx, tenantId, to);
-  return { from: a.label, to: b.label, diff: diffSchema(a.data, b.data) };
+  const a = await resolveDocument(ctx, tenantId, from);
+  const b = await resolveDocument(ctx, tenantId, to);
+  return { from: a.label, to: b.label, diff: diffDocument(a.data, b.data) };
 };
 
 // ── Apply ────────────────────────────────────────────────────────────────────
@@ -669,14 +757,58 @@ const executeDiff = async (
   return { dataSnapshotIds };
 };
 
+/**
+ * Apply the config half of a diff.
+ *
+ * Walks the categorised changes rather than reconciling from scratch, so what
+ * runs is exactly what the operator saw and confirmed — a resource whose rows
+ * did not change is never written to, and a `config.drop` only happens because
+ * the gate let it.
+ *
+ * Permission caches are invalidated after a role change for the same reason the
+ * collections half invalidates its own: the next request must not answer from a
+ * grant this apply just replaced.
+ */
+const applyConfigChanges = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  d: SchemaDiff,
+  target: SchemaDocument,
+): Promise<void> => {
+  const configChanges = d.changes.filter((c) => c.kind.startsWith("config."));
+  if (configChanges.length === 0) return;
+  let touchedRoles = false;
+  // In registry order, so a resource that names a role is applied after it.
+  for (const resource of CONFIG_RESOURCES) {
+    const mine = configChanges.filter((c) => c.collection === resource.key);
+    if (mine.length === 0) continue;
+    const wanted = new Map(
+      (target.config?.[resource.key] ?? []).map((i) => [i.key, i] as const),
+    );
+    for (const c of mine) {
+      const key = c.field as string;
+      if (c.kind === "config.drop") {
+        await resource.remove(ctx, tenantId, key);
+      } else {
+        const item = wanted.get(key);
+        if (item) await resource.upsert(ctx, tenantId, item);
+      }
+    }
+    if (resource.key === "roles") touchedRoles = true;
+  }
+  if (touchedRoles) invalidateTenantPermissions(tenantId);
+};
+
 export const applySchema = async (
   ctx: SchemaVersionsCtx,
   tenantId: string,
   opts: { target: SchemaRef; confirmDestructive?: boolean; createdBy?: string | null },
 ): Promise<ApplyResult> => {
-  const live = await loadLiveSchema(ctx, tenantId);
-  const { data: targetData } = await resolveRef(ctx, tenantId, opts.target);
-  const d = diffSchema(live, targetData);
+  const liveDoc = await loadLiveDocument(ctx, tenantId);
+  const { data: targetDoc } = await resolveDocument(ctx, tenantId, opts.target);
+  const live = liveDoc.collections;
+  const targetData = targetDoc.collections;
+  const d = diffDocument(liveDoc, targetDoc);
 
   if (d.counts.total === 0) {
     return { diff: d, applied: [], safetySnapshotId: null, dataSnapshotIds: [], noop: true };
@@ -695,7 +827,9 @@ export const applySchema = async (
   const safety = await captureSnapshot(ctx, tenantId, {
     name: "Pre-apply safety snapshot",
     kind: "auto",
-    data: live,
+    // The whole document, not just the collections — otherwise rolling back an
+    // apply that changed a role would restore the tables and leave the grant.
+    data: liveDoc,
     createdBy: opts.createdBy,
   });
 
@@ -709,6 +843,7 @@ export const applySchema = async (
     d,
     opts.createdBy,
   );
+  await applyConfigChanges(ctx, tenantId, d, targetDoc);
   invalidateTenantCollections(tenantId);
 
   return {

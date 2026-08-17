@@ -53,6 +53,35 @@ const interfaceBody = (src: string, name: string): string => {
 };
 
 /**
+ * Every member a caller can reach from `name`, as dotted paths.
+ *
+ * A domain client may hand out a SUB-client — `FormsClient.public:
+ * PublicFormFillClient` — and a member one level down is just as shipped as one
+ * at the top. Reading only the named interface is how `missing: ["submit"]` sat
+ * green while `forms.public.submit` had existed since `f944f1b4`: the regex
+ * searched `FormsClient`, `submit` was on the sub-client, and a tripwire aimed
+ * at something that cannot happen never fires.
+ *
+ * `seen` is copied down each branch rather than shared across siblings: it is
+ * there to stop a self-referencing interface from recursing forever, and a
+ * shared set would silently drop the second use of a type — which loosens the
+ * check in exactly the direction that produced the bug.
+ */
+const reachableMembers = (src: string, name: string, seen: Set<string> = new Set()): Set<string> => {
+  const out = new Set<string>();
+  if (seen.has(name)) return out;
+  const here = new Set(seen).add(name);
+  const body = interfaceBody(src, name);
+  for (const m of body.matchAll(/^ {2}(\w+)\??[(<:]/gm)) out.add(m[1]!);
+  for (const m of body.matchAll(/^ {2}(\w+)\??:\s*(\w+Client)\b/gm)) {
+    const [, field, type] = m as unknown as [string, string, string];
+    if (!new RegExp(`^export interface ${type}\\b`, "m").test(src)) continue;
+    for (const sub of reachableMembers(src, type, here)) out.add(`${field}.${sub}`);
+  }
+  return out;
+};
+
+/**
  * How one surface is answered for. Exactly one of `client` / `core` /
  * `deferred` / `serverOnly` is set.
  *
@@ -275,28 +304,27 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/permissions": { client: "permissions" },
   "/api/phone": { core: "from" },
   "/api/phone-numbers": { client: "messaging" },
-  // Same reclassification as `/api/public/forms`, and for the same reason its
-  // own text gives: it is the visitor half of a feature whose client already
-  // exists, so the gap is a member on `approvals`, not a missing module.
+  // Was `client: "approvals", missing: ["actOnToken"]` — an entry that DEMANDED
+  // the member `clients/approvals.ts` deliberately refuses: "deciding is the
+  // approver's act, authenticated by their link token and nothing else." Two
+  // statements, one of them had to go, and the client's is the reasoned one.
+  // Same shape and same reason as `/api/public/sign`.
   "/api/public/approve": {
-    client: "approvals",
-    missing: ["actOnToken"],
-    until: "wave-19-phase-4",
+    serverOnly:
+      "Deciding is the approver's act, authenticated by the link token mailed to them and nothing else — a token an application deliberately never holds. An admin-authenticated decision would also fire whatever the waiting flow does next, so the absent method is the design, not a gap.",
   },
   "/api/public/book": { client: "booking" },
   "/api/public/dashboards": {
     serverOnly:
       "A public dashboard embed is consumed as an iframe or an image, not as a typed method call, so the SDK is not the surface that makes it usable. Was deferred-until-wave-21 while saying, in the same sentence, that no client belongs here.",
   },
-  // `missing`, not `deferred`: the client exists and covers authoring, so the
-  // gap is a member rather than a module — and `missing` is the half of this
-  // file that actually goes red when the member lands. As a deferral it could
-  // not, because `clients/forms.ts` is already claimed by the `forms` entry.
-  "/api/public/forms": {
-    client: "forms",
-    missing: ["submit"],
-    until: "wave-19-phase-4",
-  },
+  // Covered outright: `forms.public.fill` / `.saveDraft` / `.submit` shipped in
+  // `f944f1b4`. The entry briefly said `missing: ["submit"]`, which was not
+  // merely stale — it could never have fired, because the member lives on
+  // `FormsClient.public` and the check read only `FormsClient`. That is the
+  // exact failure this file exists to prevent, so the reader now walks
+  // sub-clients (see `reachableMembers`).
+  "/api/public/forms": { client: "forms" },
   "/api/public/sign": {
     serverOnly:
       "The signer's journey is a hosted page reached from an email link, and the token that authorises it is deliberately not something an application holds. A client method would need the one credential the design refuses to hand out, so this is permanent rather than pending.",
@@ -679,21 +707,28 @@ describe("SDK parity — every claim of coverage is true", () => {
   test("a `missing` member is genuinely still missing", () => {
     for (const [key, cov] of covered) {
       if (!cov.missing) continue;
-      // Search the INTERFACE the caller is handed, not the whole file — a
-      // module-private helper or an unrelated option named `url` would
-      // otherwise read as coverage that does not exist.
-      const surface = cov.client
-        ? interfaceBody(
+      // Search the INTERFACES the caller is handed — the named one and every
+      // sub-client reachable from it — not the whole file, so a module-private
+      // helper or an unrelated option named `url` does not read as coverage
+      // that does not exist. A member one level down is spelled `public.submit`.
+      const members = cov.client
+        ? reachableMembers(
             read(join(SDK_DIR, "clients", `${cov.client}.ts`)),
             `${factoryFor(cov.client).slice(4)}Client`,
           )
-        : interfaceBody(coreSrc, "CollectionClient");
+        : reachableMembers(coreSrc, "CollectionClient");
       for (const member of cov.missing) {
         // When the phase lands, this fails — and deleting the entry is how
         // the phase reports itself finished. An excuse cannot outlive the gap
         // it excuses.
-        expect(`${key}.${member}: ${new RegExp(`^\\s{2}${member}[(<:?]`, "m").test(surface)}`).toBe(
-          `${key}.${member}: false`,
+        expect(`${key}.${member}: ${members.has(member)}`).toBe(`${key}.${member}: false`);
+        // And the failure that made the walk necessary: a bare name that IS
+        // shipped one level down. The line above passes on it — `submit` is
+        // genuinely not a member of `FormsClient` — while the member the entry
+        // means has been callable for two waves. Naming the path is the fix.
+        const deeper = [...members].filter((m) => m.endsWith(`.${member}`));
+        expect(`${key}.${member} also shipped as: ${deeper.join(", ")}`).toBe(
+          `${key}.${member} also shipped as: `,
         );
       }
     }

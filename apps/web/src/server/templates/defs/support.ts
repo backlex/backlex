@@ -589,4 +589,32 @@ export const support: SchemaTemplate = {
       maxSteps: 8,
     },
   ],
+  /**
+   * One channel, for the thing a helpdesk screen is always waiting on: whether
+   * anything has happened on the ticket in front of you. `{ticket}` is a
+   * capture, so a subscriber names the ticket it cares about rather than every
+   * agent receiving every ticket's traffic.
+   *
+   * **Both sides are held to the people who work the queue, and subscribing is
+   * NOT opened to `authenticated`** — which is the tempting version, because a
+   * requester watching their own ticket move is exactly what a portal wants.
+   * It cannot be written safely here: a channel condition compares the
+   * pattern's CAPTURES against `$user.*` / `$org.*` / `$tenant.id`, and
+   * "this ticket is yours" is a fact about a ROW, which it cannot look up. So
+   * `authenticated` would mean any signed-in end user could subscribe to any
+   * ticket's feed by naming its id. A customer-facing version needs the
+   * requester's own id IN the pattern (`support:{requester}:tickets`) so the
+   * condition has something to compare — a different channel, and a modelling
+   * decision a workspace should make deliberately rather than inherit.
+   */
+  channels: [
+    {
+      name: "Ticket activity",
+      pattern: "support:{ticket}:activity",
+      subscribe: { access: "roles", roles: ["admin", "Support agent"] },
+      publish: { access: "roles", roles: ["admin", "Support agent"] },
+      presence: true,
+      retentionHours: 24,
+    },
+  ],
 };

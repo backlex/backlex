@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, ch, computedNum, date, email, file, flag, geo, half, int, money, ms, notes, num, phone, position, rating, rel, sec, select, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, ch, computedNum, date, email, file, flag, geo, half, int, money, ms, notes, num, phone, position, rating, rel, rollup, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const fieldService: SchemaTemplate = {
   id: "field-service",
@@ -83,9 +83,10 @@ export const fieldService: SchemaTemplate = {
     },
     {
       slug: "work_orders", group: "Work orders", singular: "Work order", plural: "Work orders", fts: true, defaultSort: "-scheduled_at",
+      kanbanGroupBy: "status",
       fields: tabbed(
         sec("Job", [
-          ...half(text("number", { required: true, unique: true }), text("title", { required: true, searchable: true })),
+          ...half(seq("number", "WO-{#####}"), text("title", { required: true, searchable: true })),
           notes("description", { searchable: true }),
           ...half(rel("customer", "customers"), rel("contract", "service_contracts", { label: "Service contract" })),
           rel("checklist", "checklists"),
@@ -102,12 +103,28 @@ export const fieldService: SchemaTemplate = {
             ts("scheduled_at", { indexed: true, label: "Scheduled at" }),
             int("estimated_minutes", { default: 60, validation: { min: 0 }, label: "Estimate (min)" }),
           ),
-          ts("completed_at", { label: "Completed at" }),
+          ...half(
+            // A job is not done until somebody says WHEN, because that stamp is
+            // what the contract's next visit and the invoice both date from.
+            ts("completed_at", {
+              label: "Completed at",
+              conditions: [when("status", "_eq", "done", "required")],
+            }),
+            // The catalog's first rollup, and a non-money one on purpose: the
+            // server totals this job's visits so "90 minutes estimated, 145
+            // logged" is a number somebody can read off the row rather than a
+            // sum they have to do by hand.
+            rollup(
+              "minutes_logged",
+              { from: "visits", via: "work_order", fn: "sum", field: "minutes_on_site" },
+              { label: "Minutes logged", description: "Totalled from this job's visits — compare against the estimate." },
+            ),
+          ),
         ]),
       ),
       samples: [
-        { number: "WO-1001", title: "AC unit not cooling — building B", description: "Tenant reports warm air from unit 2B.", customer: { ref: "customers:0" }, technician: { ref: "technicians:0" }, priority: "high", status: "scheduled", scheduled_at: ms("2026-07-15T13:00:00Z"), estimated_minutes: 90 },
-        { number: "WO-1002", title: "Quarterly boiler inspection", customer: { ref: "customers:0" }, contract: { ref: "service_contracts:0" }, checklist: { ref: "checklists:0" }, technician: { ref: "technicians:1" }, priority: "normal", status: "done", scheduled_at: ms("2026-07-01T09:00:00Z"), estimated_minutes: 60, completed_at: ms("2026-07-01T10:05:00Z") },
+        { title: "AC unit not cooling — building B", description: "Tenant reports warm air from unit 2B.", customer: { ref: "customers:0" }, technician: { ref: "technicians:0" }, priority: "high", status: "scheduled", scheduled_at: ms("2026-07-15T13:00:00Z"), estimated_minutes: 90 },
+        { title: "Quarterly boiler inspection", customer: { ref: "customers:0" }, contract: { ref: "service_contracts:0" }, checklist: { ref: "checklists:0" }, technician: { ref: "technicians:1" }, priority: "normal", status: "done", scheduled_at: ms("2026-07-01T09:00:00Z"), estimated_minutes: 60, completed_at: ms("2026-07-01T10:05:00Z") },
       ],
     },
     {
@@ -135,7 +152,11 @@ export const fieldService: SchemaTemplate = {
         sec("Work performed", [
           rel("work_order", "work_orders"),
           notes("work_performed", { label: "Work performed" }),
-          notes("recommendations"),
+          // "Needs follow-up" with no note is the sentence that loses the second
+          // visit — say what is outstanding while standing in front of it.
+          notes("recommendations", {
+            conditions: [when("outcome", "_eq", "follow_up", "required")],
+          }),
           ...half(
             select("outcome", [ch("resolved", C.green), ch("follow_up", C.amber, "Needs follow-up"), ch("unresolved", C.red)], { default: "resolved" }),
             rating("customer_rating", { label: "Customer rating" }),
@@ -150,8 +171,9 @@ export const fieldService: SchemaTemplate = {
     },
     {
       slug: "estimates", group: "Billing", singular: "Estimate", plural: "Estimates", defaultSort: "number",
+      kanbanGroupBy: "status",
       fields: [
-        ...half(rel("customer", "customers"), text("number", { required: true, unique: true })),
+        ...half(rel("customer", "customers"), seq("number", "EST-{#####}")),
         ...half(
           select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("approved", C.green), ch("declined", C.red)], { default: "draft", indexed: true }),
           money("total"),
@@ -159,8 +181,8 @@ export const fieldService: SchemaTemplate = {
         notes("scope_notes", { label: "Scope notes" }),
       ],
       samples: [
-        { customer: { ref: "customers:0" }, number: "EST-2001", status: "approved", total: 1240, scope_notes: "Replace rooftop condenser fan assembly, building B." },
-        { customer: { ref: "customers:0" }, number: "EST-2002", status: "sent", total: 380 },
+        { customer: { ref: "customers:0" }, status: "approved", total: 1240, scope_notes: "Replace rooftop condenser fan assembly, building B." },
+        { customer: { ref: "customers:0" }, status: "sent", total: 380 },
       ],
     },
     {
@@ -177,15 +199,16 @@ export const fieldService: SchemaTemplate = {
     },
     {
       slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issued_at",
+      kanbanGroupBy: "status",
       fields: [
         ...half(rel("work_order", "work_orders"), rel("customer", "customers")),
-        ...half(text("number", { required: true, unique: true }), money("amount")),
+        ...half(seq("number", "INV-{#####}"), money("amount")),
         ...half(
           select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("paid", C.green)], { default: "draft", indexed: true }),
           date("issued_at", { indexed: true, label: "Issued" }),
         ),
       ],
-      samples: [{ work_order: { ref: "work_orders:1" }, customer: { ref: "customers:0" }, number: "INV-5001", amount: 184, status: "paid", issued_at: ms("2026-07-02") }],
+      samples: [{ work_order: { ref: "work_orders:1" }, customer: { ref: "customers:0" }, amount: 184, status: "paid", issued_at: ms("2026-07-02") }],
     },
   ],
   roles: [
@@ -267,6 +290,311 @@ export const fieldService: SchemaTemplate = {
         { name: "Orders by priority", kind: "items-aggregate", viz: "bars", config: { collection: "work_orders", agg: "count", groupBy: "priority" } },
         { name: "Estimates by status", kind: "items-aggregate", viz: "bars", config: { collection: "estimates", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * The dispatch rules a service desk keeps in somebody's head, written down.
+   *
+   * `work_orders.status` declares no `flow()` lifecycle, so the completion rule
+   * is an `updated` trigger narrowed by a condition rather than a transition
+   * one. That re-fires if a finished job is saved again, which for a feed line
+   * costs a reread — and none of these flows mails anybody while active, which
+   * is the case where re-firing would actually hurt.
+   *
+   * Deliberately absent: routing a job to the nearest technician. `customers`
+   * carries a real map pin and `technicians` a home REGION — a word, not a
+   * point — so there is nothing to measure a distance against. Distance
+   * filtering is a query the dispatcher runs (see docs/geo.md), not a rule the
+   * server can apply on its own.
+   */
+  flows: [
+    {
+      name: "Put a new job on the board",
+      trigger: "event:items:work_orders:created",
+      operations: [
+        {
+          type: "condition",
+          filter: { priority: { _eq: "urgent" } },
+          then: [
+            {
+              type: "notification",
+              title: "URGENT job raised: {{ data.title }}",
+              body: "{{ data.number }} for {{ data.customer.name }}. Urgent means today — assign a technician before this scrolls.",
+              url: "/collections/work_orders",
+            },
+          ],
+          else: [
+            {
+              type: "notification",
+              title: "New job: {{ data.title }}",
+              body: "{{ data.number }} for {{ data.customer.name }}, {{ data.priority }} priority.",
+              url: "/collections/work_orders",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Ask for the invoice when a job is finished",
+      trigger: "event:items:work_orders:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "done" } },
+          then: [
+            {
+              type: "notification",
+              title: "{{ data.number }} is done — invoice it",
+              body: "{{ data.title }} for {{ data.customer.name }}, finished {{ data.completed_at }}. Estimated {{ data.estimated_minutes }} minutes against {{ data.minutes_logged }} logged.",
+              url: "/collections/invoices",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Sweep jobs nobody has scheduled",
+      // Every weekday morning, before the vans leave. A job sitting at `new`
+      // with no date is the one failure mode of a dispatch board: it is not
+      // late yet, so nothing else complains about it.
+      trigger: "cron:0 7 * * 1-5",
+      operations: [
+        {
+          type: "foreach",
+          collection: "work_orders",
+          filter: { status: { _eq: "new" }, scheduled_at: { _null: true } },
+          do: [
+            {
+              type: "notification",
+              title: "Unscheduled: {{ $item.title }}",
+              body: "Raised as {{ $item.number }} and still has no date on it.",
+              url: "/collections/work_orders",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Raise the next contract visit a week ahead",
+      // The contract is the promise; this is what turns it into dispatched
+      // work. One job per contract, seven days before it falls due, and only
+      // while the contract is live — a paused plan should not keep generating.
+      trigger: `schedule:${JSON.stringify({
+        collection: "service_contracts",
+        field: "next_visit_due",
+        offset: { value: 7, unit: "days", direction: "before" },
+        at: 480,
+        timeZone: null,
+        where: { status: { _eq: "active" } },
+      })}`,
+      operations: [
+        {
+          type: "item.create",
+          collection: "work_orders",
+          data: {
+            title: "{{ data.name }}",
+            description: "Scheduled visit under the {{ data.frequency }} service contract.",
+            customer: "{{ data.customer }}",
+            contract: "{{ data.id }}",
+            status: "new",
+            priority: "normal",
+          },
+        },
+        {
+          type: "notification",
+          title: "Contract visit raised: {{ data.name }}",
+          body: "Due {{ data.next_visit_due }}. The job is on the board unassigned — give it a technician and a date.",
+          url: "/collections/work_orders",
+        },
+      ],
+    },
+    {
+      name: "Chase an invoice still unpaid after two weeks",
+      trigger: `schedule:${JSON.stringify({
+        collection: "invoices",
+        field: "issued_at",
+        offset: { value: 14, unit: "days", direction: "after" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "sent" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "{{ data.number }} is two weeks old and unpaid",
+          body: "{{ data.amount }} from {{ data.customer.name }}, issued {{ data.issued_at }}.",
+          url: "/collections/invoices",
+        },
+      ],
+    },
+    {
+      name: "Email the invoice to the customer (needs email)",
+      active: false,
+      trigger: "event:items:invoices:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "sent" } },
+          then: [
+            {
+              type: "email",
+              to: "{{ data.customer.email }}",
+              subject: "Invoice {{ data.number }}",
+              html: "<p>Your invoice for {{ data.amount }} is attached to your account.</p>",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Monthly field operations report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Field operations",
+          subject: "Field service — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "field_work_order",
+      name: "Job sheet",
+      description: "What a technician takes to site.",
+      filename: "job-{{ data.number }}",
+      variables: ["number", "title"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:16mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 2px}" +
+        ".muted{color:#666}" +
+        ".box{border:1px solid #ddd;border-radius:6px;padding:10px;margin-top:14px}" +
+        "table{width:100%;border-collapse:collapse}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #eee;vertical-align:top}" +
+        "th{width:32%;color:#555;font-weight:600}" +
+        ".sign{margin-top:28px;border-top:1px solid #333;width:60%;padding-top:6px}" +
+        "</style></head><body>" +
+        "<h1>{{ data.title }}</h1>" +
+        '<p class="muted">{{ data.number }} · {{ data.priority }} priority</p>' +
+        "<table>" +
+        "<tr><th>Customer</th><td>{{ data.customer.name }}</td></tr>" +
+        "<tr><th>Address</th><td>{{ data.customer.address }}, {{ data.customer.city }}</td></tr>" +
+        "<tr><th>Access</th><td>{{ data.customer.access_notes }}</td></tr>" +
+        "<tr><th>Technician</th><td>{{ data.technician.name }}</td></tr>" +
+        "<tr><th>Scheduled</th><td>{{ data.scheduled_at }}</td></tr>" +
+        "<tr><th>Estimate</th><td>{{ data.estimated_minutes }} minutes</td></tr>" +
+        "</table>" +
+        '<div class="box"><strong>Reported problem</strong><p>{{ data.description }}</p></div>' +
+        '<div class="box"><strong>Work performed</strong><p class="muted">Write on site.</p></div>' +
+        '<div class="sign">Customer signature</div>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "16mm" },
+    },
+    {
+      key: "field_worksheet",
+      name: "Completion worksheet",
+      description: "The signed record of what was done.",
+      filename: "worksheet-{{ data.id }}",
+      variables: ["work_performed", "outcome"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:18mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 10px}" +
+        ".muted{color:#666}" +
+        "h2{font-size:14px;margin:18px 0 4px}" +
+        ".sign{margin-top:26px;border-top:1px solid #333;width:55%;padding-top:6px}" +
+        "</style></head><body>" +
+        "<h1>Completion worksheet</h1>" +
+        '<p class="muted">Job {{ data.work_order.number }} — {{ data.work_order.title }}</p>' +
+        "<h2>Work performed</h2><p>{{ data.work_performed }}</p>" +
+        "<h2>Recommendations</h2><p>{{ data.recommendations }}</p>" +
+        "<h2>Outcome</h2><p>{{ data.outcome }}</p>" +
+        '<div class="sign">{{ data.signed_by }} · {{ data.signed_at }}</div>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "18mm" },
+    },
+    {
+      key: "field_estimate",
+      name: "Estimate",
+      description: "The quoted scope a customer approves before work starts.",
+      filename: "estimate-{{ data.number }}",
+      variables: ["number", "total"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:22px;margin:0 0 2px}" +
+        ".muted{color:#666}" +
+        ".total{margin-top:18px;font-size:17px;font-weight:600;text-align:right}" +
+        ".sign{margin-top:30px;border-top:1px solid #333;width:55%;padding-top:6px}" +
+        "</style></head><body>" +
+        "<h1>Estimate {{ data.number }}</h1>" +
+        '<p class="muted">{{ data.customer.name }}</p>' +
+        "<p>{{ data.scope_notes }}</p>" +
+        "<!-- line items live in `estimate_lines`, one row per line -->" +
+        '<div class="total">Total {{ data.total }}</div>' +
+        '<div class="sign">Approved by / date</div>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "Request a service call",
+      collection: "work_orders",
+      settings: {
+        submitLabel: "Request a visit",
+        successMessage: "Thanks — your request is on the dispatch board and we'll confirm a date shortly.",
+      },
+      fields: [
+        { name: "title", label: "What needs looking at?" },
+        { name: "description", label: "Tell us more" },
+        { name: "priority", label: "How urgent is it?" },
+      ],
+    },
+    {
+      name: "New service customer",
+      collection: "customers",
+      settings: {
+        submitLabel: "Register",
+        successMessage: "Thanks — we have your details and your service address.",
+      },
+      fields: [
+        { name: "name", label: "Name" },
+        { name: "email", label: "Email" },
+        { name: "phone" },
+        { name: "address", label: "Service address" },
+        { name: "city" },
+        { name: "postal_code", label: "Postal code" },
+        { name: "access_notes", label: "How do we get in?" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Dispatch assistant",
+      handle: "dispatch-assistant",
+      description: "Answers questions about job load, technician time and what is still unbilled.",
+      systemPrompt:
+        "You help a field service desk run its board. Answer questions about " +
+        "work orders, visits, technicians, parts, contracts, estimates and " +
+        "invoices using the workspace's own data. A job's real time is " +
+        "`minutes_logged`, which the server totals from its visits — " +
+        "`estimated_minutes` is what somebody guessed beforehand, and the gap " +
+        "between them is usually the interesting part. `en_route` and " +
+        "`in_progress` both mean the job is live today; only `done` is " +
+        "finished, and `cancelled` is not a completion. Unbilled work is a job " +
+        "that is done with no invoice pointing at it. Technicians have a home " +
+        "REGION, not a location, so you cannot answer who is nearest — say so " +
+        "and suggest filtering by distance from the customer's map pin " +
+        "instead. Be brief and name the job number you mean.",
+      tools: ["collections.list", "collections.read", "collections.aggregate", "collections.search"],
+      maxSteps: 8,
     },
   ],
 };

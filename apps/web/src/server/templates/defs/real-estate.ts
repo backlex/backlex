@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, divider, email, file, geo, half, hint, image, int, money, ms, notes, num, pct, phone, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts } from "../dsl";
+import { C, bool, ch, computedNum, date, divider, email, file, geo, half, hint, image, int, money, ms, notes, num, pct, phone, rel, relMany, sec, select, slugField, stacked, tabbed, tags, text, ts, when } from "../dsl";
 
 export const realEstate: SchemaTemplate = {
   id: "real-estate",
@@ -32,6 +32,7 @@ export const realEstate: SchemaTemplate = {
     },
     {
       slug: "properties", group: "Listings", singular: "Property", plural: "Properties", versioned: true, vectorize: true, fts: true, defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: tabbed(
         sec("Listing", [
           ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField("title")),
@@ -81,6 +82,7 @@ export const realEstate: SchemaTemplate = {
     },
     {
       slug: "inquiries", group: "Deals", singular: "Inquiry", plural: "Inquiries", ownerScoped: true, defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: [
         rel("property", "properties"),
         ...half(text("name"), email("email")),
@@ -101,13 +103,14 @@ export const realEstate: SchemaTemplate = {
             ts("scheduled_at", { indexed: true, label: "Scheduled at" }),
             select("status", [ch("scheduled", C.blue), ch("completed", C.green), ch("no_show", C.red, "No show"), ch("cancelled", C.gray)], { default: "scheduled" }),
           ),
-          notes("feedback"),
+          notes("feedback", { conditions: [when("status", "_eq", "completed", "required")] }),
         ]),
       ),
       samples: [{ property: { ref: "properties:0" }, agent: { ref: "agents:0" }, name: "Jordan Reed", email: "jordan@example.com", scheduled_at: ms("2026-07-10T15:00:00Z"), status: "scheduled" }],
     },
     {
       slug: "offers", group: "Deals", singular: "Offer", plural: "Offers", defaultSort: "-submitted_at", displayTemplate: "{{buyer_name}}",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Offer", [
           rel("property", "properties"),
@@ -175,7 +178,7 @@ export const realEstate: SchemaTemplate = {
       slug: "rent_payments", group: "Management", singular: "Rent payment", plural: "Rent payments", defaultSort: "-created_at",
       fields: [
         ...half(rel("lease", "leases"), text("period", { indexed: true, label: "Period (YYYY-MM)" })),
-        ...half(money("amount"), ts("paid_at", { label: "Paid at" })),
+        ...half(money("amount"), ts("paid_at", { label: "Paid at", conditions: [when("status", "_eq", "paid", "required"), when("status", "_neq", "paid", "hidden")] })),
         select("status", [ch("due", C.amber), ch("paid", C.green), ch("late", C.red)], { default: "due" }),
       ],
       samples: [
@@ -185,6 +188,7 @@ export const realEstate: SchemaTemplate = {
     },
     {
       slug: "property_maintenance", group: "Management", singular: "Maintenance request", plural: "Maintenance", defaultSort: "-reported_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Request", [
           ...half(rel("property", "properties"), rel("lease", "leases")),
@@ -259,6 +263,338 @@ export const realEstate: SchemaTemplate = {
         { name: "Offers by status", kind: "items-aggregate", viz: "donut", config: { collection: "offers", agg: "count", groupBy: "status" } },
         { name: "Maintenance by status", kind: "items-aggregate", viz: "bars", config: { collection: "property_maintenance", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * The rules a brokerage runs on, already running.
+   *
+   * Deliberately absent: "the offer was accepted, so take the listing off the
+   * market and open the transaction". Two things stop it being written
+   * honestly. `offers.status` declares no lifecycle, so the only trigger
+   * available is `…:updated` plus a condition — which cannot tell "just became
+   * accepted" from "was saved again while accepted", and would re-fire every
+   * time somebody corrected the buyer's email. And a transaction needs the
+   * sale price and the listing agent, which live on the `properties` and
+   * `agents` rows; a flow's `data` is the offer row alone and cannot join to
+   * them. A step that guessed would open a transaction at the OFFER amount,
+   * which is the number that is wrong once the counter lands. So the offer
+   * stays where a person can see it, and flow 1 makes sure they do.
+   *
+   * Same reason, different shape, for "open next month's rent row when the
+   * last one is paid": `rent_payments.period` is the month as `YYYY-MM` and a
+   * flow has no clock arithmetic to produce it, so the row would arrive
+   * without the one column the rent ledger is read by.
+   */
+  flows: [
+    {
+      name: "Tell the desk when a listing inquiry arrives",
+      trigger: "event:items:inquiries:created",
+      operations: [
+        {
+          type: "notification",
+          title: "New inquiry from {{ data.name }}",
+          body: "{{ data.message }} — reply to {{ data.email }}. Open the inquiry to see which listing it names.",
+          url: "/collections/inquiries",
+        },
+      ],
+    },
+    {
+      name: "Remind the agent the day before a viewing",
+      // Fires once per row, one day before `scheduled_at`, at 08:00 — early
+      // enough that access to an occupied property can still be arranged.
+      // `status` filters to the ones still standing, so a cancelled viewing
+      // does not wake anybody up.
+      trigger: `schedule:${JSON.stringify({
+        collection: "viewings",
+        field: "scheduled_at",
+        offset: { value: 1, unit: "days", direction: "before" },
+        at: 480,
+        timeZone: null,
+        where: { status: { _eq: "scheduled" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "Viewing tomorrow — {{ data.name }}",
+          body: "Booked for {{ data.scheduled_at }}. Confirm access with the occupier and check the visitor is still coming: {{ data.email }}.",
+          url: "/collections/viewings",
+        },
+      ],
+    },
+    {
+      name: "Sweep viewings nobody recorded an outcome for",
+      // The seller is owed feedback after every viewing, and a viewing left on
+      // `scheduled` after its date is the one place that promise silently
+      // breaks. Oldest first and capped: switched on over a year of history an
+      // uncapped sweep posts a Monday digest nobody reads to the bottom of.
+      trigger: "cron:0 7 * * 1",
+      operations: [
+        {
+          type: "foreach",
+          collection: "viewings",
+          filter: { status: { _eq: "scheduled" }, scheduled_at: { _lt: "$now" } },
+          sort: "scheduled_at",
+          limit: 25,
+          do: [
+            {
+              type: "notification",
+              title: "No outcome recorded for {{ $item.name }}'s viewing",
+              body: "It was set for {{ $item.scheduled_at }} and still reads scheduled. Mark it completed, no show or cancelled, and write the feedback the seller is waiting on.",
+              url: "/collections/viewings",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Open the renewal window sixty days before a lease ends",
+      // Sixty days is the point at which a renewal is still a conversation
+      // rather than a notice. The status move is safe to automate because
+      // `expiring` is a warning rather than a decision — `ended` is the one a
+      // person has to take, and this flow deliberately never reaches for it.
+      trigger: `schedule:${JSON.stringify({
+        collection: "leases",
+        field: "ends_at",
+        offset: { value: 60, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "active" } },
+      })}`,
+      operations: [
+        {
+          type: "item.update",
+          collection: "leases",
+          id: "{{ data.id }}",
+          data: { status: "expiring" },
+        },
+        {
+          type: "notification",
+          title: "{{ data.tenant_name }}'s lease ends in 60 days",
+          body: "Rent is {{ data.rent }} and the lease now reads expiring. Agree a renewal or serve notice before {{ data.ends_at }}.",
+          url: "/collections/leases",
+        },
+      ],
+    },
+    {
+      name: "Escalate an urgent maintenance request the moment it is logged",
+      // Only the top two priorities. A board that pings for every dripping tap
+      // is a board people mute, and then the burst pipe goes unread with it.
+      trigger: "event:items:property_maintenance:created",
+      operations: [
+        {
+          type: "condition",
+          filter: { priority: { _in: ["high", "urgent"] } },
+          then: [
+            {
+              type: "notification",
+              title: "{{ data.priority }} maintenance: {{ data.title }}",
+              body: "Reported at {{ data.reported_at }}. Dispatch a contractor and move it to scheduled — open the request for the property and the lease it came in against.",
+              url: "/collections/property_maintenance",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Monthly real-estate report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Real estate overview",
+          subject: "Real estate — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "listing_sheet",
+      name: "Listing sheet",
+      description: "The one page handed out at a viewing or an open house.",
+      filename: "listing-{{ data.mls_number }}",
+      variables: ["title", "price", "bedrooms", "bathrooms", "area_sqm"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:18mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:24px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        ".price{font-size:22px;font-weight:700;margin:10px 0 2px}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        ".agent{margin-top:20px;padding-top:12px;border-top:2px solid #111}" +
+        "</style></head><body>" +
+        "<h1>{{ data.title }}</h1>" +
+        '<p class="muted">{{ data.address }}, {{ data.city }} {{ data.state }} ' +
+        "{{ data.postal_code }} {{ data.country }}</p>" +
+        '<p class="price">{{ data.price }}</p>' +
+        '<p class="muted">{{ data.listing_type }} · {{ data.type }} · MLS {{ data.mls_number }} ' +
+        "· currently {{ data.status }}</p>" +
+        "<p>{{ data.description }}</p>" +
+        "<table>" +
+        "<tr><th>Bedrooms</th><td>{{ data.bedrooms }}</td></tr>" +
+        "<tr><th>Bathrooms</th><td>{{ data.bathrooms }}</td></tr>" +
+        "<tr><th>Living area</th><td>{{ data.area_sqm }} m&sup2;</td></tr>" +
+        "<tr><th>Lot size</th><td>{{ data.lot_sqm }} m&sup2;</td></tr>" +
+        "<tr><th>Year built</th><td>{{ data.year_built }}</td></tr>" +
+        "<tr><th>Garage spaces</th><td>{{ data.garage_spaces }}</td></tr>" +
+        "</table>" +
+        '<div class="agent"><strong>{{ data.agent.name }}</strong> · {{ data.agent.agency }}<br>' +
+        "{{ data.agent.phone }} · {{ data.agent.email }}<br>" +
+        '<span class="muted">License {{ data.agent.license_number }}</span></div>' +
+        '<p class="muted">Figures are taken from the listing record on the day this ' +
+        "sheet was printed and are not a representation of fact. Verify area, year " +
+        "built and taxes independently before making an offer.</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "18mm" },
+    },
+    {
+      key: "lease_summary",
+      name: "Lease summary",
+      description: "The terms of one tenancy on a single page, for a renewal conversation or a handover.",
+      filename: "lease-{{ data.tenant_name }}",
+      variables: ["tenant_name", "rent", "starts_at", "ends_at"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>Lease summary — {{ data.tenant_name }}</h1>" +
+        '<p class="muted">{{ data.property.title }} · {{ data.property.address }}, ' +
+        "{{ data.property.city }}</p>" +
+        "<table>" +
+        "<tr><th>Tenant</th><td>{{ data.tenant_name }}</td></tr>" +
+        "<tr><th>Contact</th><td>{{ data.tenant_email }} · {{ data.tenant_phone }}</td></tr>" +
+        "<tr><th>Term</th><td>{{ data.starts_at }} &mdash; {{ data.ends_at }}</td></tr>" +
+        "<tr><th>Monthly rent</th><td>{{ data.rent }}</td></tr>" +
+        "<tr><th>Deposit held</th><td>{{ data.deposit }}</td></tr>" +
+        "<tr><th>Status</th><td>{{ data.status }}</td></tr>" +
+        "</table>" +
+        '<p class="muted">Rent received against this lease is recorded month by ' +
+        "month in Rent payments; this page states the terms, not the balance.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "open_house_signin",
+      name: "Open house sign-in sheet",
+      description: "The clipboard page for the door — printed with the event's own details and blank rows for visitors.",
+      filename: "open-house-{{ data.starts_at }}",
+      variables: ["starts_at", "ends_at"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:15mm}" +
+        "body{font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 2px}" +
+        ".muted{color:#666;margin:0 0 14px}" +
+        "table{width:100%;border-collapse:collapse}" +
+        "th,td{text-align:left;padding:9px 6px;border-bottom:1px solid #bbb}" +
+        "th{background:#f4f4f4;font-weight:600}" +
+        "td{height:22px}" +
+        "</style></head><body>" +
+        "<h1>Open house — {{ data.property.title }}</h1>" +
+        '<p class="muted">{{ data.property.address }}, {{ data.property.city }} · ' +
+        "{{ data.starts_at }} to {{ data.ends_at }} · hosted by {{ data.host.name }}</p>" +
+        "<table><thead><tr><th>Name</th><th>Phone</th><th>Email</th>" +
+        "<th>Own agent?</th></tr></thead><tbody>" +
+        // Twelve blank rows — a sheet with room for one more visitor than turned
+        // up is the point of printing it.
+        "<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>".repeat(12) +
+        "</tbody></table>" +
+        '<p class="muted">Enter each visitor as an Inquiry afterwards and update ' +
+        "the event's visitor count — the sheet itself is not the record.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "15mm" },
+    },
+  ],
+  forms: [
+    {
+      // A relation is never form-eligible, so the inquiry arrives unlinked and
+      // the desk attaches it to a listing. That is on purpose rather than a
+      // gap: the MLS number belongs in the message, where a member of the
+      // public can be wrong about it without repointing a record.
+      name: "Property listing inquiry",
+      collection: "inquiries",
+      settings: {
+        submitLabel: "Send inquiry",
+        successMessage: "Thanks — an agent will come back to you, usually the same day.",
+      },
+      fields: [
+        { name: "name", label: "Your name" },
+        { name: "email", label: "Email" },
+        {
+          name: "message",
+          label: "Which property, and what would you like to know?",
+          help: "Include the MLS number or the address so we can find the listing.",
+        },
+      ],
+    },
+    {
+      // `title` is exposed because the schema requires it — a required field
+      // left off the form makes the whole apply fail. `status` and `cost` are
+      // deliberately not: a tenant does not triage the queue or price the job.
+      name: "Property maintenance request",
+      collection: "property_maintenance",
+      settings: {
+        submitLabel: "Send request",
+        successMessage: "Logged — you'll hear from us once a contractor is booked.",
+      },
+      fields: [
+        { name: "title", label: "What needs fixing?" },
+        {
+          name: "description",
+          label: "Tell us more",
+          help: "Include the property address and unit — the form cannot link to a lease, so the office attaches it.",
+        },
+        { name: "priority", help: "Pick urgent only when the property is unsafe or unusable." },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Real estate assistant",
+      handle: "real-estate-assistant",
+      description: "Answers questions about the listing book, the deal pipeline and the rental portfolio.",
+      systemPrompt:
+        "You help a brokerage that also manages rentals. Answer questions about " +
+        "properties, inquiries, viewings, offers, transactions, leases, rent and " +
+        "maintenance using the workspace's own data. Sale and rental are two " +
+        "different books and must never be added together: `listing_type` says " +
+        "which one a property is on, and `price` means an asking price on a sale " +
+        "listing and a monthly rent on a rental one. A listing is live only while " +
+        "its status is active, pending or under offer — sold, rented and off " +
+        "market are not. An offer's amount is what was asked, not what was got; " +
+        "only a transaction's sale price is a result, and commission is that " +
+        "price times the deal's own rate, so never recompute it your own way. A " +
+        "lease reads expiring for the sixty days before it ends, which is a " +
+        "warning and not a termination. When asked what needs attention, rank " +
+        "viewings with no recorded outcome, offers past their expiry date, rent " +
+        "that is late, and urgent maintenance ahead of everything else. When a " +
+        "figure has a seeded KPI — closed sale value, commission earned, rent " +
+        "collected, listings by status, maintenance cost — run that definition " +
+        "rather than adding rows up yourself, so your answer matches the " +
+        "dashboard. Be brief, name the property or the MLS number you mean, and " +
+        "say plainly when the data does not answer the question.",
+      tools: [
+        "collections.list",
+        "collections.read",
+        "collections.aggregate",
+        "collections.search",
+        "kpis.run",
+        "dashboards.run",
+      ],
+      maxSteps: 8,
     },
   ],
 };

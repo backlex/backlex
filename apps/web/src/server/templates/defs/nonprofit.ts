@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, email, flag, half, int, money, moneyIn, ms, notes, num, phone, rel, sec, select, slugField, stacked, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, date, email, flag, half, int, money, moneyIn, ms, notes, num, phone, rel, sec, select, slugField, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const nonprofit: SchemaTemplate = {
   id: "nonprofit",
@@ -112,7 +112,7 @@ export const nonprofit: SchemaTemplate = {
         ...half(money("amount"), date("due_on", { indexed: true, label: "Due on" })),
         ...half(
           select("status", [ch("scheduled", C.blue), ch("paid", C.green), ch("overdue", C.red), ch("written_off", C.gray, "Written off")], { default: "scheduled" }),
-          date("paid_on", { label: "Paid on" }),
+          date("paid_on", { label: "Paid on", conditions: [when("status", "_eq", "paid", "required"), when("status", "_neq", "paid", "hidden")] }),
         ),
       ],
       samples: [
@@ -122,6 +122,7 @@ export const nonprofit: SchemaTemplate = {
     },
     {
       slug: "grants", group: "Fundraising", singular: "Grant", plural: "Grants", defaultSort: "-applied_at",
+      kanbanGroupBy: "status",
       fields: [
         ...half(text("name", { required: true }), text("funder")),
         ...half(
@@ -134,6 +135,7 @@ export const nonprofit: SchemaTemplate = {
     },
     {
       slug: "grant_reports", group: "Fundraising", singular: "Grant report", plural: "Grant reports", defaultSort: "due_date",
+      kanbanGroupBy: "status",
       fields: [
         ...half(rel("grant", "grants"), text("title", { required: true })),
         ...half(date("due_date", { indexed: true, label: "Due date" }), ts("submitted_at", { label: "Submitted at" })),
@@ -307,6 +309,346 @@ export const nonprofit: SchemaTemplate = {
         { name: "Grants by status", kind: "items-aggregate", viz: "bars", config: { collection: "grants", agg: "count", groupBy: "status" } },
         { name: "Memberships by status", kind: "items-aggregate", viz: "donut", config: { collection: "memberships", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * The rules a fundraising office runs on, already running.
+   *
+   * Deliberately absent: "a gift landed, so add it to the donor's total and to
+   * the campaign's raised amount". Both are running totals, and a running total
+   * needs the figure already there PLUS this one — a flow's `data` is the
+   * donation row alone, and `item.update` writes a value rather than adding to
+   * one. A step that set `total_donated` to this gift's amount would replace a
+   * lifetime of giving with the last cheque. So the flow records the gift, logs
+   * the acknowledgement it owes, and leaves the totals to whoever keeps them.
+   *
+   * Absent for the opposite reason: a `…:transition:` trigger. Not one status
+   * field in this template declares a lifecycle, so there is no move to hang off
+   * — `…:updated` plus a condition is what is available, and it cannot tell
+   * "just became completed" from "was saved again while completed". That is why
+   * nothing below writes a row on an update: the two flows that act on a status
+   * act on the CREATE, which happens once.
+   */
+  flows: [
+    {
+      name: "Log the thank-you a completed gift owes its donor",
+      trigger: "event:items:donations:created",
+      operations: [
+        {
+          // `sent_at` is deliberately left empty: the row records an
+          // acknowledgement that is OWED, not one that went out, and whoever
+          // sends it fills the date in. The donor id is on the donation itself,
+          // so this is the one link a flow here can make honestly.
+          type: "condition",
+          filter: { status: { _eq: "completed" } },
+          then: [
+            {
+              type: "item.create",
+              collection: "communications",
+              data: {
+                donor: "{{ data.donor }}",
+                channel: "email",
+                subject: "Thank-you for the gift of {{ data.amount }} {{ data.currency }}",
+              },
+            },
+          ],
+        },
+        {
+          type: "notification",
+          title: "Gift recorded: {{ data.amount }} {{ data.currency }}",
+          body: "Taken by {{ data.payment_method }}, status {{ data.status }}. A completed gift has an acknowledgement waiting in Communications.",
+          url: "/collections/donations",
+        },
+      ],
+    },
+    {
+      name: "Chase a pledge instalment three days before it falls due",
+      // Fires once per instalment, three days before `due_on`, at 09:00, and
+      // only for the ones still owed.
+      //
+      // No communication row is written here, and that is not an omission: the
+      // donor is on the PLEDGE, not on the instalment, and a flow's `data` is
+      // one row with nothing to join through. Writing `donor: null` would put a
+      // dangling acknowledgement in the donor timeline, so the flow reports the
+      // instalment and leaves the reminder to the person who can see who it is.
+      trigger: `schedule:${JSON.stringify({
+        collection: "pledge_payments",
+        field: "due_on",
+        offset: { value: 3, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "scheduled" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "Pledge instalment of {{ data.amount }} is due in three days",
+          body: "Open the instalment, follow it to its pledge and its donor, and send the reminder that donor prefers.",
+          url: "/collections/pledge_payments",
+        },
+      ],
+    },
+    {
+      name: "Sweep overnight: instalments past due, memberships past renewal",
+      // One flow because it is one fact twice: a date has passed and the row
+      // still says otherwise. Both filters exclude the rows already moved, so
+      // the sweep is safe to run every night and writes nothing on a quiet one.
+      //
+      // No grace period is assumed on either — a workspace that gives members a
+      // fortnight widens the second filter rather than discovering later that a
+      // renewal it had already banked was marked lapsed at 6am.
+      trigger: "cron:0 6 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "pledge_payments",
+          filter: { status: { _eq: "scheduled" }, due_on: { _lt: "$now" } },
+          sort: "due_on",
+          do: [
+            {
+              type: "item.update",
+              collection: "pledge_payments",
+              id: "{{ $item.id }}",
+              data: { status: "overdue" },
+            },
+          ],
+        },
+        {
+          type: "foreach",
+          collection: "memberships",
+          filter: { status: { _eq: "active" }, renews_at: { _lt: "$now" } },
+          sort: "renews_at",
+          do: [
+            {
+              type: "item.update",
+              collection: "memberships",
+              id: "{{ $item.id }}",
+              data: { status: "lapsed" },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Warn thirty days before a grant report is due",
+      // Thirty days rather than three: a grant report is written from programme
+      // figures somebody else holds, and the cost of missing one is not a late
+      // fee, it is the next grant. `upcoming` is the only status that can still
+      // be late — a submitted or approved report has nothing left to chase.
+      trigger: `schedule:${JSON.stringify({
+        collection: "grant_reports",
+        field: "due_date",
+        offset: { value: 30, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "upcoming" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "Grant report due in 30 days: {{ data.title }}",
+          body: "Due {{ data.due_date }}. Ask the programme for its figures now — the cover sheet is the quick part.",
+          url: "/collections/grant_reports",
+        },
+      ],
+    },
+    {
+      name: "Email the donor's receipt for a completed gift (needs email + a PDF renderer)",
+      // Off until both are configured; the name carries the prerequisite so
+      // nobody has to open it to find out.
+      active: false,
+      // On the CREATE, not on `tax_receipt_sent` being ticked — which is the
+      // version that reads better and would be wrong. `status` declares no
+      // lifecycle here, so there is no transition trigger to use, and an
+      // `…:updated` one cannot tell a first tick from the fifth save afterwards:
+      // every corrected typo would post the donor another receipt. A gift is
+      // recorded `completed` by default, so the create IS the receiptable
+      // moment, and it happens exactly once.
+      trigger: "event:items:donations:created",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "completed" } },
+          then: [
+            { type: "document.render", templateKey: "donation_receipt" },
+            {
+              type: "email",
+              to: "{{ data.donor.email }}",
+              subject: "Your donation receipt",
+              html: "<p>Thank you for your gift. Your receipt is attached.</p>",
+              attach: ["{{ $last.key }}"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Monthly fundraising report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Fundraising overview",
+          subject: "Fundraising — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "donation_receipt",
+      name: "Donation receipt",
+      description: "The receipt a donor keeps for their own tax return.",
+      // Keyed on the row id rather than a receipt number, because this template
+      // does not issue one yet. Point both at the number the day the column
+      // exists — a receipt an auditor can find twice is the whole point of it.
+      filename: "donation-receipt-{{ data.id }}",
+      variables: ["amount", "currency", "donated_at"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:21px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:36%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>Donation receipt</h1>" +
+        '<p class="muted">Reference {{ data.id }} · Received {{ data.donated_at }}</p>' +
+        "<p><strong>{{ data.donor.name }}</strong><br>{{ data.donor.address }}<br>" +
+        "{{ data.donor.city }} {{ data.donor.country }}</p>" +
+        "<table>" +
+        "<tr><th>Amount</th><td>{{ data.amount }} {{ data.currency }}</td></tr>" +
+        "<tr><th>Received by</th><td>{{ data.payment_method }}</td></tr>" +
+        "<tr><th>Gift type</th><td>{{ data.type }}</td></tr>" +
+        "<tr><th>Appeal</th><td>{{ data.campaign.name }}</td></tr>" +
+        "<tr><th>Fund</th><td>{{ data.fund.name }} ({{ data.fund.restriction }})</td></tr>" +
+        "</table>" +
+        '<p class="muted">No goods or services were provided in return for this gift ' +
+        "unless stated above. Which registration this is receipted under, and whether " +
+        "it is deductible, is for your organisation to state here before the first one " +
+        "goes out — nobody else can say it for you.</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "grant_report_cover",
+      name: "Grant report cover sheet",
+      description: "The page a grant report is submitted behind.",
+      filename: "grant-report-{{ data.id }}",
+      variables: ["title", "due_date"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:16px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>{{ data.title }}</h1>" +
+        '<p class="muted">Report on {{ data.grant.name }} · {{ data.grant.funder }}</p>' +
+        "<table>" +
+        "<tr><th>Grant</th><td>{{ data.grant.name }}</td></tr>" +
+        "<tr><th>Funder</th><td>{{ data.grant.funder }}</td></tr>" +
+        "<tr><th>Awarded</th><td>{{ data.grant.amount }}</td></tr>" +
+        "<tr><th>Report due</th><td>{{ data.due_date }}</td></tr>" +
+        "<tr><th>Status</th><td>{{ data.status }}</td></tr>" +
+        "<tr><th>Submitted</th><td>{{ data.submitted_at }}</td></tr>" +
+        "</table>" +
+        "<p>{{ data.note }}</p>" +
+        '<p class="muted">What the money did belongs on the pages after this one. ' +
+        "A cover sheet reads one row, and programme spend sits on the programme — " +
+        "the two are never added together on the way out of here.</p>" +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      // `status` and the login link are deliberately off: a public link that
+      // could set either is a public link that admits somebody to the workspace.
+      // The column's default puts a sign-up in as active, which is where the
+      // coordinator picks it up.
+      name: "Volunteer sign-up",
+      collection: "volunteers",
+      settings: {
+        submitLabel: "Sign me up",
+        successMessage: "Thank you — the volunteer coordinator will be in touch before the next shift.",
+      },
+      fields: [
+        { name: "name", label: "Full name" },
+        { name: "email", label: "Email", help: "Where shift confirmations are sent." },
+        { name: "phone", label: "Phone", help: "Include the country code — numbers are stored in international form." },
+        { name: "skills", label: "What can you help with?", help: "Anything you have done before, and when you are usually free." },
+      ],
+    },
+    {
+      // `annual_fee` is asked of nobody: what a level costs is the
+      // organisation's to state, not the applicant's to offer. The dates and
+      // `status` are the membership team's for the same reason — an applicant
+      // cannot make themselves active by ticking a box.
+      name: "Membership application",
+      collection: "memberships",
+      settings: {
+        submitLabel: "Apply to join",
+        successMessage: "Thank you — we'll confirm your membership and its fee before anything is charged.",
+      },
+      fields: [
+        { name: "member_name", label: "Full name" },
+        { name: "member_email", label: "Email" },
+        { name: "level", label: "Membership level", help: "Pick the one that fits — we'll confirm what it costs." },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Fundraising analyst",
+      handle: "fundraising-analyst",
+      description: "Answers what was given, what was only promised, and what is still owed to a funder.",
+      systemPrompt:
+        "You help a fundraising team read its own giving. Answer from the " +
+        "workspace's data and nothing else.\n\n" +
+        "Money given and money promised are different things: a donation is " +
+        "received, a pledge is a promise, and its instalments live in pledge " +
+        "payments. Never add pledged amounts into a giving total — report them " +
+        "side by side and say which is which. Only a donation whose status is " +
+        "completed has been received; pending and refunded have not. Amounts in " +
+        "different currencies are never added together.\n\n" +
+        "Restricted money is not spendable money. The restriction is on the " +
+        "fund a gift points at, so name the fund behind any figure and never " +
+        "present temporarily or permanently restricted gifts as available to " +
+        "the general programme.\n\n" +
+        "Two confidences hold however the question is put. A gift marked " +
+        "anonymous counts in a total but its donor is never named. " +
+        "Beneficiaries are recorded under an alias on purpose — report them as " +
+        "counts by programme and status, never as people.\n\n" +
+        "Grant reporting is judged on dates: rank grant reports by due date, " +
+        "soonest first, and treat anything still upcoming past its due date as " +
+        "late. Volunteer effort is the hours on completed shifts — a scheduled " +
+        "shift has not happened yet. The workspace's agreed figures are the " +
+        "Fundraising overview dashboard, so read them there rather than adding " +
+        "rows up your own way. Be brief, name the campaign, fund or grant you " +
+        "mean, and say plainly when the data does not answer the question.",
+      // No KPI tool: this template bundles a dashboard and no KPI definitions,
+      // so that dashboard is where its agreed figures actually live.
+      tools: [
+        "collections.list",
+        "collections.read",
+        "collections.aggregate",
+        "collections.search",
+        "dashboards.run",
+      ],
+      maxSteps: 8,
     },
   ],
 };

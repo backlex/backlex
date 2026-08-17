@@ -63,6 +63,27 @@ const NEEDS_CONFIG_OPS = new Set([
   "report.deliver",
 ]);
 
+/**
+ * Every event name something actually publishes on an `items:<slug>` channel.
+ *
+ * Three come from an ordinary write (`services/items/write.ts`), five more from
+ * the lifecycle route (`routes/items/write.ts` — publish, unpublish, archive
+ * and the two scheduling moves), and the scheduled-publish tick re-emits
+ * `published`/`unpublished` when a scheduled move lands. `*` is the wildcard
+ * segment the trigger grammar allows.
+ */
+const ITEM_EVENTS = [
+  "created",
+  "updated",
+  "deleted",
+  "published",
+  "unpublished",
+  "archived",
+  "scheduled",
+  "unpublish_scheduled",
+  "*",
+];
+
 /** Every op in a tree, including nested branches. */
 const walkOps = (ops: Operation[] | undefined): Operation[] => {
   const out: Operation[] = [];
@@ -169,9 +190,28 @@ describe("bundled artifacts are consistent with their own template", () => {
           `${where}: unrecognised trigger "${t}"`,
         ).toBe(true);
         if (t.startsWith("event:items:")) {
-          const slug = t.split(":")[2] ?? "";
+          const [, , slug = "", ...rest] = t.split(":");
           if (slug !== "*") {
             expect(slugs, `${where}: trigger names unknown collection "${slug}"`).toContain(slug);
+          }
+          // The EVENT segment too. A trigger on an event nothing emits — a
+          // plausible-looking `:archive` for `:archived`, say — is not an
+          // error anywhere: the flow saves, lists, and never once runs.
+          const evt = rest[0] ?? "";
+          if (evt === "transition") {
+            // `transition:<field>:<from>:<to>` — the field must declare one.
+            const [, field = ""] = rest;
+            const col = tpl.collections.find((c) => c.slug === slug);
+            const def = col?.fields.find((f) => f.name === field);
+            expect(
+              !!def?.transitions,
+              `${where}: "${field}" declares no lifecycle, so no transition event is emitted for it`,
+            ).toBe(true);
+          } else {
+            expect(
+              ITEM_EVENTS,
+              `${where}: nothing emits an item event called "${evt}"`,
+            ).toContain(evt);
           }
         }
         if (t.startsWith("schedule:")) {
@@ -261,6 +301,87 @@ describe("bundled artifacts are consistent with their own template", () => {
         }
       }
     }
+  });
+
+  test("an ordered comparison against $field guards that the operand exists", () => {
+    // `matchesCondition` coerces both sides with `Number()`, and `Number(null)`
+    // is 0 — not NaN. So `{used: {_gte: "$field.cap"}}` on a row whose `cap` is
+    // empty reads as `used >= 0` and is TRUE for every row the flow ever sees.
+    // The failure is the worst shape: the flow does not error, it just fires
+    // constantly, and the filter that was supposed to narrow it looks right.
+    //
+    // Cross-field VALIDATION is already immune — `checkableRule` drops a
+    // comparison whose operand is absent before it is judged. Flow conditions
+    // run the raw matcher, so the guard has to be written into the filter:
+    // `{cap: {_null: false}}` or `{cap: {_nempty: true}}` beside it.
+    const ORDERED = ["_gt", "_gte", "_lt", "_lte", "_between"] as const;
+    let checked = 0;
+
+    // Guards are collected across the WHOLE filter rather than per-object: an
+    // `_and` branch guarding a field protects its siblings, and no catalog
+    // filter puts a guard inside an `_or` branch where that would not hold.
+    const guarded = (node: unknown, into: Set<string>): void => {
+      if (!node || typeof node !== "object") return;
+      for (const [key, val] of Object.entries(node as Record<string, unknown>)) {
+        if (key === "_and" || key === "_or") {
+          for (const sub of Array.isArray(val) ? val : []) guarded(sub, into);
+          continue;
+        }
+        if (!val || typeof val !== "object") continue;
+        const cmp = val as Record<string, unknown>;
+        // Anything that makes the filter FAIL when the operand is empty counts,
+        // because null coerces to 0 and that is the only value in play. So a
+        // range guard is as good as a null check and often better: `_gt: 0`
+        // rejects both an unset cap and one deliberately set to zero, which is
+        // why the catalog reaches for it. `_gte: 0` is NOT a guard — 0 >= 0
+        // passes and the hole stays open.
+        if (cmp._null === false || cmp._nempty === true) into.add(key);
+        if (typeof cmp._gt === "number" && cmp._gt >= 0) into.add(key);
+        if (typeof cmp._gte === "number" && cmp._gte > 0) into.add(key);
+      }
+    };
+
+    const refs = (node: unknown, out: string[]): void => {
+      if (!node || typeof node !== "object") return;
+      for (const [key, val] of Object.entries(node as Record<string, unknown>)) {
+        if (key === "_and" || key === "_or") {
+          for (const sub of Array.isArray(val) ? val : []) refs(sub, out);
+          continue;
+        }
+        if (!val || typeof val !== "object") continue;
+        const cmp = val as Record<string, unknown>;
+        for (const op of ORDERED) {
+          const raw = cmp[op];
+          for (const v of Array.isArray(raw) ? raw : [raw]) {
+            if (typeof v === "string" && v.startsWith("$field.")) {
+              out.push(v.slice("$field.".length));
+            }
+          }
+        }
+      }
+    };
+
+    for (const tpl of withBundles) {
+      for (const flow of tpl.flows ?? []) {
+        for (const op of walkOps(flow.operations)) {
+          const filter = (op as unknown as { filter?: unknown }).filter;
+          if (!filter) continue;
+          const found: string[] = [];
+          refs(filter, found);
+          if (found.length === 0) continue;
+          const guards = new Set<string>();
+          guarded(filter, guards);
+          for (const name of found) {
+            checked++;
+            expect(
+              guards,
+              `${tpl.id}/${flow.name}: "$field.${name}" is compared with an ordered operator but nothing asserts ${name} is present — an empty ${name} reads as 0 and the filter is always true`,
+            ).toContain(name);
+          }
+        }
+      }
+    }
+    expect(checked, "no flow compared against a sibling column").toBeGreaterThan(0);
   });
 
   test("a declared Kanban board groups by a real dropdown of its own collection", () => {
@@ -400,6 +521,91 @@ describe("bundled artifacts are consistent with their own template", () => {
           );
           expect(rel?.to, `${where}: pinField must point at ${kpi.pinTo}`).toBe(kpi.pinTo);
         }
+      }
+    }
+  });
+});
+
+/**
+ * Two templates in one workspace.
+ *
+ * The "Add from template" dialog is additive by design and says so, so this is
+ * an ordinary thing for an operator to do — and it is where a bundle's
+ * skip-by-name turns from a safety property into a hazard. Every bundle is
+ * skipped when something already holds its name or key, which is right for a
+ * RE-apply of the same template and wrong across two different ones: the second
+ * template would silently keep the first's form, still pointing at the first's
+ * collection. A static check refuses colliding names in the catalog; this is
+ * the runtime half, and it is what would catch a collision arriving through
+ * `applyCustomTemplate` where no static check runs.
+ */
+describe("two templates land side by side without eating each other", () => {
+  let h: TestHarness;
+
+  const json = (body: unknown): RequestInit => ({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const apply = async (id: string) => {
+    const r = await h.fetch("/api/admin/templates/apply", json({ templateId: id }));
+    expect(r.status).toBe(201);
+    return ((await r.json()) as { data: Record<string, string[]> }).data;
+  };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  test("each template installs its own bundle in full", async () => {
+    const a = await apply("invoicing");
+    const b = await apply("crm");
+    for (const [id, res] of [
+      ["invoicing", a],
+      ["crm", b],
+    ] as const) {
+      const tpl = TEMPLATES.find((t) => t.id === id)!;
+      expect(res.flows, `${id} flows`).toEqual((tpl.flows ?? []).map((f) => f.name));
+      expect(res.documents, `${id} documents`).toEqual((tpl.documents ?? []).map((d) => d.key));
+      expect(res.forms, `${id} forms`).toEqual((tpl.forms ?? []).map((f) => f.name));
+      expect(res.agents, `${id} agents`).toEqual((tpl.agents ?? []).map((x) => x.name));
+    }
+  });
+
+  test("each seeded form still points at its own template's collection", async () => {
+    // The failure this exists for does not raise anything: the second apply
+    // reports the form as skipped-because-it-exists, and the workspace keeps a
+    // form writing into the wrong vertical.
+    const forms = (
+      (await (await h.fetch("/api/admin/forms")).json()) as {
+        data: { name: string; collection: string }[];
+      }
+    ).data;
+    const expected = new Map<string, string>();
+    for (const id of ["invoicing", "crm"]) {
+      for (const f of TEMPLATES.find((t) => t.id === id)!.forms ?? []) {
+        expected.set(f.name, f.collection);
+      }
+    }
+    expect(expected.size).toBeGreaterThan(1);
+    for (const [name, collection] of expected) {
+      const row = forms.find((f) => f.name === name);
+      expect(row, `form "${name}" is missing`).toBeTruthy();
+      expect(row?.collection, `form "${name}" points at the wrong collection`).toBe(collection);
+    }
+  });
+
+  test("both document templates survive, under their own keys", async () => {
+    const docs = (
+      (await (await h.fetch("/api/admin/documents/templates")).json()) as {
+        data: { key: string }[];
+      }
+    ).data.map((d) => d.key);
+    for (const id of ["invoicing", "crm"]) {
+      for (const d of TEMPLATES.find((t) => t.id === id)!.documents ?? []) {
+        expect(docs, `document "${d.key}"`).toContain(d.key);
       }
     }
   });

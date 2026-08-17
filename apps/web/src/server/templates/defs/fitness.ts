@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, email, file, flag, half, int, money, ms, notes, num, pct, phone, rel, sec, select, tabbed, text, ts, userLink } from "../dsl";
+import { C, bool, ch, date, email, file, flag, half, int, money, ms, notes, num, pct, phone, rel, rollup, sec, select, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const fitness: SchemaTemplate = {
   id: "fitness",
@@ -38,6 +38,7 @@ export const fitness: SchemaTemplate = {
     {
       slug: "members", group: "Members", singular: "Member", plural: "Members", fts: true, defaultSort: "name",
       portalLink: { emailField: "email", role: "Member (self-service)" },
+      kanbanGroupBy: "status",
       fields: tabbed(
         sec("Member", [
           ...half(text("name", { required: true, searchable: true }), email("email")),
@@ -50,6 +51,21 @@ export const fitness: SchemaTemplate = {
             select("status", [ch("active", C.green), ch("paused", C.amber), ch("cancelled", C.red), ch("trial", C.blue)], { default: "active" }),
           ),
           ...half(date("joined_at", { indexed: true, label: "Joined" }), date("renews_at", { indexed: true, label: "Renews" })),
+          // Two counts the server keeps, because the single best predictor of
+          // whether somebody cancels is whether they turn up. A member on the
+          // top plan with four visits all year is the one to call.
+          ...half(
+            rollup(
+              "visit_count",
+              { from: "check_ins", via: "member", fn: "count" },
+              { label: "Visits", description: "Every front-door check-in on record." },
+            ),
+            rollup(
+              "pt_sessions_done",
+              { from: "pt_sessions", via: "member", fn: "count", filter: { status: { _eq: "completed" } } },
+              { label: "PT sessions done", description: "Completed only — booked and no-show sessions are not training." },
+            ),
+          ),
           notes("notes"),
         ]),
       ),
@@ -124,6 +140,7 @@ export const fitness: SchemaTemplate = {
     },
     {
       slug: "pt_sessions", group: "Training", singular: "PT session", plural: "PT sessions", defaultSort: "-scheduled_at",
+      kanbanGroupBy: "status",
       fields: [
         ...half(rel("member", "members"), rel("trainer", "trainers")),
         ...half(rel("package", "pt_packages"), ts("scheduled_at", { required: true, indexed: true, label: "Scheduled" })),
@@ -155,7 +172,12 @@ export const fitness: SchemaTemplate = {
           select("kind", [ch("liability", C.red), ch("health", C.teal)], { default: "liability" }),
         ),
         ...half(
-          date("signed_at", { indexed: true, label: "Signed" }),
+          // A waiver marked signed with no date is not a defence.
+          date("signed_at", {
+            indexed: true,
+            label: "Signed",
+            conditions: [when("status", "_eq", "signed", "required")],
+          }),
           select("status", [ch("signed", C.green), ch("pending", C.amber)], { default: "pending" }),
         ),
         file("file"),
@@ -167,11 +189,21 @@ export const fitness: SchemaTemplate = {
     },
     {
       slug: "membership_freezes", group: "Members", singular: "Freeze", plural: "Membership freezes", defaultSort: "-starts_on",
+      // Named because auto-detect would pick `reason` — travel or medical is
+      // WHY, and the board is about where the request has got to.
+      kanbanGroupBy: "status",
       fields: [
         rel("member", "members"),
         ...half(
           date("starts_on", { range: { end: "ends_on", bounds: "[]" }, required: true, indexed: true, label: "Starts" }),
-          date("ends_on", { label: "Ends", validation: { rule: { ends_on: { _gte: "$field.starts_on" } }, message: "A freeze must end on or after it starts." } }),
+          // An open-ended freeze is a cancelled membership nobody billed for.
+          // The sweep below can only put somebody back on the floor if there
+          // is a date to put them back on.
+          date("ends_on", {
+            label: "Ends",
+            validation: { rule: { ends_on: { _gte: "$field.starts_on" } }, message: "A freeze must end on or after it starts." },
+            conditions: [when("status", "_in", ["active", "ended"], "required")],
+          }),
         ),
         ...half(
           select("reason", [ch("travel", C.blue), ch("medical", C.red), ch("financial", C.amber), ch("other", C.gray)], { default: "travel" }),
@@ -282,6 +314,309 @@ export const fitness: SchemaTemplate = {
         { name: "Payments by kind", kind: "items-aggregate", viz: "donut", config: { collection: "payments", agg: "count", groupBy: "kind" } },
         { name: "PT sessions by status", kind: "items-aggregate", viz: "bars", config: { collection: "pt_sessions", agg: "count", groupBy: "status" } },
       ],
+    },
+  ],
+  /**
+   * A gym's month runs on renewal dates and who turned up, so that is what
+   * these watch.
+   *
+   * NO sequence in this template. Nothing here is a numbered document — a gym
+   * issues receipts against payments it already recorded, and inventing a
+   * membership number would add an identifier nobody at the front desk asks
+   * for. Same reading as `fleet`, for a different reason.
+   */
+  flows: [
+    {
+      name: "Warn a week before a membership renews",
+      trigger: `schedule:${JSON.stringify({
+        collection: "members",
+        field: "renews_at",
+        offset: { value: 7, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "active" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "{{ data.name }} renews in a week",
+          body: "On {{ data.plan.name }}, renewing {{ data.renews_at }}. {{ data.visit_count }} visits on record — worth a word if that number is low.",
+          url: "/collections/members",
+        },
+      ],
+    },
+    {
+      name: "Catch a trial three days before it ends",
+      // Separate from the renewal rule and deliberately earlier: a trial that
+      // lapses quietly is a member who was never asked to join.
+      trigger: `schedule:${JSON.stringify({
+        collection: "members",
+        field: "renews_at",
+        offset: { value: 3, unit: "days", direction: "before" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "trial" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "{{ data.name }}'s trial ends {{ data.renews_at }}",
+          body: "{{ data.visit_count }} visits so far. Ask them in person before the trial runs out — nobody converts from an email alone.",
+          url: "/collections/members",
+        },
+      ],
+    },
+    {
+      name: "Start and end membership freezes",
+      // The one flow here that CHANGES something. A freeze is a promise about
+      // billing, and a promise nobody actions is just a note: this puts the
+      // member on hold on the day it starts and back on the floor on the day
+      // it ends, so the status column and the freeze always agree.
+      trigger: "cron:0 5 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "membership_freezes",
+          filter: { starts_on: { _lte: "$now" }, status: { _eq: "requested" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "membership_freezes",
+              id: "{{ $item.id }}",
+              data: { status: "active" },
+            },
+            {
+              type: "item.update",
+              collection: "members",
+              id: "{{ $item.member }}",
+              data: { status: "paused" },
+            },
+          ],
+        },
+        {
+          type: "foreach",
+          collection: "membership_freezes",
+          filter: { ends_on: { _lt: "$now" }, status: { _eq: "active" } },
+          do: [
+            {
+              type: "item.update",
+              collection: "membership_freezes",
+              id: "{{ $item.id }}",
+              data: { status: "ended" },
+            },
+            {
+              type: "item.update",
+              collection: "members",
+              id: "{{ $item.member }}",
+              data: { status: "active" },
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Chase waivers nobody has signed",
+      trigger: "cron:0 9 * * 1",
+      operations: [
+        {
+          type: "foreach",
+          collection: "waivers",
+          filter: { status: { _eq: "pending" } },
+          do: [
+            {
+              type: "notification",
+              title: "Unsigned {{ $item.kind }} waiver: {{ $item.member.name }}",
+              body: "They are training without it. Catch them at the desk on the next visit.",
+              url: "/collections/waivers",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Follow up a class no-show",
+      trigger: "event:items:class_bookings:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "no_show" } },
+          then: [
+            {
+              type: "notification",
+              title: "No-show: {{ data.member.name }}",
+              body: "Booked {{ data.session.class.name }} and did not come. One is nothing; a pattern is somebody about to cancel.",
+              url: "/collections/class_bookings",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Email the member their renewal reminder (needs email)",
+      active: false,
+      trigger: `schedule:${JSON.stringify({
+        collection: "members",
+        field: "renews_at",
+        offset: { value: 7, unit: "days", direction: "before" },
+        at: 600,
+        timeZone: null,
+        where: { status: { _eq: "active" } },
+      })}`,
+      operations: [
+        {
+          type: "email",
+          to: "{{ data.email }}",
+          subject: "Your membership renews on {{ data.renews_at }}",
+          html: "<p>Your {{ data.plan.name }} membership renews next week. Nothing to do — get in touch if you would like to change plan.</p>",
+        },
+      ],
+    },
+    {
+      name: "Monthly gym report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 1 * *",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Gym overview",
+          subject: "Gym — last month",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      key: "fitness_waiver",
+      name: "Liability waiver",
+      description: "What a member signs before their first session.",
+      filename: "waiver-{{ data.id }}",
+      variables: ["kind"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:12.5px/1.7 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:14px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #eee}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        "h2{font-size:13px;margin:18px 0 4px}" +
+        ".sign{margin-top:30px;border-top:1px solid #333;width:55%;padding-top:6px}" +
+        "</style></head><body>" +
+        "<h1>{{ data.kind }} waiver</h1>" +
+        '<p class="muted">{{ data.member.name }}</p>' +
+        "<table>" +
+        "<tr><th>Email</th><td>{{ data.member.email }}</td></tr>" +
+        "<tr><th>Emergency contact</th><td>{{ data.member.emergency_contact }}</td></tr>" +
+        "<tr><th>Plan</th><td>{{ data.member.plan.name }}</td></tr>" +
+        "</table>" +
+        "<h2>Acknowledgement</h2>" +
+        "<p>I confirm I am fit to take part in the activities offered here, that " +
+        "I have declared any condition that affects my training, and that I take " +
+        "part at my own risk. I will follow instruction from staff and report any " +
+        "injury on the day it happens.</p>" +
+        '<div class="sign">Member signature · date</div>' +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+    {
+      key: "fitness_payment_receipt",
+      name: "Payment receipt",
+      description: "Proof of a membership or package payment.",
+      filename: "receipt-{{ data.id }}",
+      variables: ["amount", "kind"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A5;margin:14mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:19px;margin:0 0 10px}" +
+        "table{width:100%;border-collapse:collapse}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #eee}" +
+        "th{width:40%;color:#555;font-weight:600}" +
+        ".total{margin-top:14px;font-size:17px;font-weight:600;text-align:right}" +
+        "</style></head><body>" +
+        "<h1>Receipt</h1>" +
+        "<table>" +
+        "<tr><th>Member</th><td>{{ data.member.name }}</td></tr>" +
+        "<tr><th>For</th><td>{{ data.kind }}</td></tr>" +
+        "<tr><th>Period</th><td>{{ data.period }}</td></tr>" +
+        "<tr><th>Paid</th><td>{{ data.paid_at }} by {{ data.method }}</td></tr>" +
+        "</table>" +
+        '<div class="total">{{ data.amount }}</div>' +
+        "</body></html>",
+      pageOptions: { format: "A5", margin: "14mm" },
+    },
+    {
+      key: "fitness_progress_sheet",
+      name: "Progress sheet",
+      description: "A measurement a trainer hands to a member.",
+      filename: "progress-{{ data.id }}",
+      variables: ["measured_at"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A5;margin:14mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:19px;margin:0 0 2px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin-top:12px}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #eee}" +
+        "th{width:46%;color:#555;font-weight:600}" +
+        "</style></head><body>" +
+        "<h1>{{ data.member.name }}</h1>" +
+        '<p class="muted">Measured {{ data.measured_at }}</p>' +
+        "<table>" +
+        "<tr><th>Weight</th><td>{{ data.weight_kg }} kg</td></tr>" +
+        "<tr><th>Body fat</th><td>{{ data.body_fat_pct }}</td></tr>" +
+        "<tr><th>Muscle mass</th><td>{{ data.muscle_kg }} kg</td></tr>" +
+        "<tr><th>PT sessions done</th><td>{{ data.member.pt_sessions_done }}</td></tr>" +
+        "</table>" +
+        "<p>{{ data.notes }}</p>" +
+        '<p class="muted">One measurement is a point, not a trend — compare against ' +
+        "the last one rather than reading this on its own.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A5", margin: "14mm" },
+    },
+  ],
+  forms: [
+    {
+      name: "Join the gym",
+      collection: "members",
+      settings: {
+        submitLabel: "Join",
+        successMessage: "Welcome — the front desk will set your plan and get your waiver signed on your first visit.",
+      },
+      // `plan` is a relation and cannot go on a form, which is the right shape
+      // anyway: the desk sets the plan when they take payment.
+      fields: [
+        { name: "name", label: "Full name" },
+        { name: "email", label: "Email" },
+        { name: "phone" },
+        { name: "emergency_contact", label: "Emergency contact", help: "Name and number of someone we can call." },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Gym manager assistant",
+      handle: "gym-manager-assistant",
+      description: "Answers questions about retention, attendance and revenue.",
+      systemPrompt:
+        "You help a gym manager read their own numbers. Answer questions " +
+        "about members, plans, classes, sessions, bookings, check-ins, PT, " +
+        "waivers, freezes and payments using the workspace's own data. " +
+        "Attendance is the retention signal: a member's `visit_count` is " +
+        "kept by the server from check-ins, and a member on an expensive " +
+        "plan with few visits is the one about to cancel — surface those " +
+        "before anybody asks. `paused` is a frozen membership, not a lost " +
+        "one, so never count it as churn; `cancelled` is churn. A class " +
+        "booking is only attendance when its status is `attended` — `booked` " +
+        "is an intention and `no_show` is the opposite of attendance. " +
+        "Revenue comes from `payments`, not from plan prices, because a plan " +
+        "price is a list price nobody may have paid. Be brief, name the " +
+        "member, and never speculate about anybody's health from a body " +
+        "measurement — report the figures and leave the reading to a trainer.",
+      tools: ["collections.list", "collections.read", "collections.aggregate", "collections.search"],
+      maxSteps: 8,
     },
   ],
 };

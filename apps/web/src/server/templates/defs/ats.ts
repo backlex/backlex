@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, ch, date, email, file, half, int, money, moneyIn, ms, notes, phone, position, rating, rel, sec, select, slugField, stacked, tabbed, text, ts, url } from "../dsl";
+import { C, ch, date, email, file, half, int, money, moneyIn, ms, notes, phone, position, rating, rel, sec, select, seq, slugField, stacked, tabbed, text, ts, url, when } from "../dsl";
 
 export const ats: SchemaTemplate = {
   id: "ats",
@@ -30,10 +30,11 @@ export const ats: SchemaTemplate = {
     },
     {
       slug: "jobs", group: "Jobs", singular: "Job", plural: "Jobs", versioned: true, fts: true, defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: tabbed(
         sec("Job", [
           ...half(text("title", { required: true, searchable: true }), slugField("title")),
-          ...half(text("requisition_id", { label: "Requisition ID" }), rel("department", "departments")),
+          ...half(seq("requisition_id", "REQ-{YYYY}-{####}", { label: "Requisition ID" }), rel("department", "departments")),
           { name: "description", type: "longtext", interface: "richtext", searchable: true },
         ]),
         sec("Details", [
@@ -55,7 +56,7 @@ export const ats: SchemaTemplate = {
           select("salary_currency", ["USD", "EUR", "GBP"], { default: "USD", label: "Currency" }),
         ]),
       ),
-      samples: [{ title: "Senior Backend Engineer", slug: "senior-backend-engineer", requisition_id: "REQ-001", description: "Build our API platform.", department: { ref: "departments:0" }, location: "Remote", employment_type: "full_time", status: "open", openings: 2, hiring_manager: "Grace Hopper", salary_min: 120000, salary_max: 160000 }],
+      samples: [{ title: "Senior Backend Engineer", slug: "senior-backend-engineer", description: "Build our API platform.", department: { ref: "departments:0" }, location: "Remote", employment_type: "full_time", status: "open", openings: 2, hiring_manager: "Grace Hopper", salary_min: 120000, salary_max: 160000 }],
     },
     {
       slug: "stages", group: "Hiring", singular: "Stage", plural: "Stages", defaultSort: "position",
@@ -133,6 +134,7 @@ export const ats: SchemaTemplate = {
     },
     {
       slug: "applications", group: "Candidates", singular: "Application", plural: "Applications", ownerScoped: true, defaultSort: "-applied_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Application", [
           ...half(rel("job", "jobs"), rel("candidate", "candidates")),
@@ -145,7 +147,7 @@ export const ats: SchemaTemplate = {
           ),
           ...half(
             select("source", [ch("inbound", C.blue), ch("referral", C.green), ch("sourced", C.purple), ch("agency", C.amber), ch("job_board", C.teal, "Job board")], { default: "inbound" }),
-            text("rejection_reason", { label: "Rejection reason" }),
+            text("rejection_reason", { label: "Rejection reason", conditions: [when("status", "_eq", "rejected", "required"), when("status", "_neq", "rejected", "hidden")] }),
           ),
           notes("notes"),
         ]),
@@ -184,6 +186,7 @@ export const ats: SchemaTemplate = {
     },
     {
       slug: "offers", group: "Hiring", singular: "Offer", plural: "Offers", defaultSort: "-created_at",
+      kanbanGroupBy: "status",
       fields: stacked(
         sec("Offer", [
           ...half(rel("application", "applications"), rel("candidate", "candidates")),
@@ -288,6 +291,360 @@ export const ats: SchemaTemplate = {
         { name: "Offers by status", kind: "items-aggregate", viz: "donut", config: { collection: "offers", agg: "count", groupBy: "status" } },
         { name: "Scorecards by recommendation", kind: "items-aggregate", viz: "bars", config: { collection: "scorecards", agg: "count", groupBy: "recommendation" } },
       ],
+    },
+  ],
+  /**
+   * The rules a recruiting operation runs on, already running.
+   *
+   * Deliberately absent: "the offer was accepted, so pay the referral bonus and
+   * close the requisition". Both need a row a flow cannot reach. A `referrals`
+   * row is keyed by CANDIDATE, not by offer, and for most hires there is no
+   * such row at all; a job is filled when accepted offers reach its `openings`,
+   * and that count lives on neither the offer nor the job. A step that guessed
+   * would pay a bonus nobody earned, or close a req with a seat still open. So
+   * the flows report and leave the judgement where the figures are.
+   *
+   * Also absent: a reminder addressed to the interviewer. `interviews.interviewer`
+   * is a NAME typed into a text column, not a workspace user — a notification
+   * has nobody to deliver to and an email has no address. Everything here is
+   * addressed to the recruiting team, which is who the workspace actually knows.
+   */
+  flows: [
+    {
+      name: "Tell the recruiter when an application lands",
+      trigger: "event:items:applications:created",
+      operations: [
+        // Referrals first is not decoration — it is the one SLA nearly every
+        // recruiting team actually keeps, and it is the reason `source` is on
+        // the application as well as on the candidate.
+        {
+          type: "condition",
+          filter: { source: { _eq: "referral" } },
+          then: [
+            {
+              type: "notification",
+              title: "Referred candidate applied: {{ data.candidate.first_name }} {{ data.candidate.last_name }}",
+              body: "Referrals are screened first. Read it today, then move it onto the first stage of the job's own pipeline.",
+              url: "/collections/applications",
+            },
+          ],
+          else: [
+            {
+              type: "notification",
+              title: "New application: {{ data.candidate.first_name }} {{ data.candidate.last_name }}",
+              body: "Arrived via {{ data.source }} for {{ data.job.title }}. Move it onto the first stage of that job's pipeline once it has been read.",
+              url: "/collections/applications",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Chase an interview whose slot has passed with no outcome recorded",
+      // An interview left on `scheduled` after its slot is the single most
+      // common gap in an ATS: the loop happened, nobody closed the record, and
+      // the debrief runs on memory. Capped and oldest-first, like every sweep
+      // here — switched on over a year of history an uncapped one would post a
+      // digest nobody reads to the bottom of.
+      //
+      // Deliberately does NOT check whether a scorecard exists: a scorecard is
+      // a row in another collection and a flow's `data` is one row with no
+      // join, so the body asks for it rather than pretending to know.
+      trigger: "cron:0 7 * * *",
+      operations: [
+        {
+          type: "foreach",
+          collection: "interviews",
+          filter: { status: { _eq: "scheduled" }, scheduled_at: { _lt: "$now" } },
+          sort: "scheduled_at",
+          limit: 25,
+          do: [
+            {
+              type: "notification",
+              title: "No outcome recorded: {{ $item.interviewer }}",
+              body: "The slot has passed and this interview is still marked scheduled. Set it to completed, cancelled or no show, and file the scorecard while it is fresh.",
+              url: "/collections/interviews",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Chase an offer nobody has answered five days after it went out",
+      // Fires once per offer, five days after `sent_at`, at 09:00 — and only
+      // for the ones still sitting on `sent`. An offer that was never sent has
+      // a null `sent_at`, which names no instant, so it never fires.
+      trigger: `schedule:${JSON.stringify({
+        collection: "offers",
+        field: "sent_at",
+        offset: { value: 5, unit: "days", direction: "after" },
+        at: 540,
+        timeZone: null,
+        where: { status: { _eq: "sent" } },
+      })}`,
+      operations: [
+        {
+          type: "notification",
+          title: "Offer to {{ data.candidate.first_name }} {{ data.candidate.last_name }} is five days old",
+          body: "Still unanswered. Chase it today — the start date on it is {{ data.start_date }}, and a silent offer is usually a competing one.",
+          url: "/collections/offers",
+        },
+      ],
+    },
+    {
+      name: "Mark the application hired when its offer is accepted",
+      // An `…:updated` trigger with a condition, NOT a transition trigger: a
+      // transition trigger only exists where the status field declares a
+      // lifecycle, and `offers.status` deliberately declares none. So this
+      // re-fires on every later edit made while the offer sits on `accepted`.
+      // It survives that because the write is idempotent — setting `hired` on
+      // an application already hired changes nothing — and the only thing that
+      // repeats is the notification.
+      //
+      // The stage is left alone on purpose: the hired stage is a `stages` row
+      // belonging to that job, and this run holds the offer row alone.
+      trigger: "event:items:offers:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "accepted" } },
+          then: [
+            {
+              type: "item.update",
+              collection: "applications",
+              id: "{{ data.application }}",
+              data: { status: "hired" },
+            },
+            {
+              type: "notification",
+              title: "Offer accepted by {{ data.candidate.first_name }} {{ data.candidate.last_name }}",
+              body: "The application is now hired. Move it to the hired stage of {{ data.job.title }}'s pipeline, and close or re-post the requisition if the last seat has gone.",
+              url: "/collections/offers",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Email the offer letter when the offer goes out (needs email + a PDF renderer)",
+      // Off until both are configured — the name carries the prerequisite so
+      // nobody has to open it to find out. Same trigger shape as above and the
+      // same caveat, which matters more here because this one MAILS somebody:
+      // give `offers.status` a lifecycle and this should become
+      // `event:items:offers:transition:status:*:sent`, which fires once on the
+      // real move instead of on every save made while the offer reads `sent`.
+      active: false,
+      trigger: "event:items:offers:updated",
+      operations: [
+        {
+          type: "condition",
+          filter: { status: { _eq: "sent" } },
+          then: [
+            { type: "document.render", templateKey: "offer_letter" },
+            {
+              type: "email",
+              to: "{{ data.candidate.email }}",
+              subject: "Your offer for {{ data.job.title }}",
+              html: "<p>Your offer letter is attached. Reply to this message to accept or decline — your recruiter records the answer against the offer.</p>",
+              attach: ["{{ $last.key }}"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Weekly recruiting report (needs a PDF renderer)",
+      active: false,
+      trigger: "cron:0 8 * * 1",
+      operations: [
+        {
+          type: "report.deliver",
+          dashboardId: "@dashboard:Recruiting pipeline",
+          subject: "Recruiting — last week",
+        },
+      ],
+    },
+  ],
+  documents: [
+    {
+      // Rendered against an OFFER row. The three variables are the three facts
+      // that make it an offer rather than a letter: without a salary, a
+      // currency and a start date it must not render at all.
+      key: "offer_letter",
+      name: "Offer letter",
+      description: "The offer as the candidate receives it.",
+      filename: "offer-{{ data.id }}",
+      variables: ["salary", "currency", "start_date"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:22mm}" +
+        "body{font:13px/1.7 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 16px}" +
+        ".muted{color:#666}" +
+        "table{width:100%;border-collapse:collapse;margin:18px 0}" +
+        "th,td{text-align:left;padding:6px;border-bottom:1px solid #e5e5e5}" +
+        "th{width:34%;color:#555;font-weight:600}" +
+        ".sig{margin-top:44px}" +
+        "</style></head><body>" +
+        "<h1>Offer of employment</h1>" +
+        "<p>Dear {{ data.candidate.first_name }},</p>" +
+        "<p>Following your conversations with the team, we are pleased to offer you " +
+        "the position of <strong>{{ data.job.title }}</strong> on the terms below.</p>" +
+        "<table>" +
+        "<tr><th>Position</th><td>{{ data.job.title }}</td></tr>" +
+        "<tr><th>Engagement</th><td>{{ data.job.employment_type }}</td></tr>" +
+        "<tr><th>Location</th><td>{{ data.job.location }}</td></tr>" +
+        "<tr><th>Salary</th><td>{{ data.salary }} {{ data.currency }} per year</td></tr>" +
+        "<tr><th>Start date</th><td>{{ data.start_date }}</td></tr>" +
+        "<tr><th>Hiring manager</th><td>{{ data.job.hiring_manager }}</td></tr>" +
+        "</table>" +
+        "<p>The offer is made subject to the checks discussed during the process, " +
+        "and it lapses if it has not been accepted by the start date above.</p>" +
+        '<p class="muted">Reply to your recruiter to accept or decline. Your answer ' +
+        "is recorded against this offer — this letter is not itself a signature.</p>" +
+        '<p class="sig">_____________________________<br>For the company · date</p>' +
+        "</body></html>",
+      footerHtml:
+        '<span style="font-size:9px;color:#888;width:100%;text-align:center">' +
+        'Page <span class="pageNumber"></span> / <span class="totalPages"></span></span>',
+      pageOptions: { format: "A4", margin: "22mm" },
+    },
+    {
+      // Rendered against an INTERVIEW KIT row — the sheet an interviewer takes
+      // into the room. `rubric_hint` is deliberately not a required variable:
+      // a kit written this morning may not have one yet, and refusing to print
+      // the questions over a missing hint helps nobody.
+      key: "interview_kit",
+      name: "Interview kit",
+      description: "The question pack and rubric an interviewer runs the loop from.",
+      filename: "interview-kit-{{ data.name }}",
+      variables: ["name", "questions"],
+      bodyHtml:
+        '<html><head><meta charset="utf-8"><style>' +
+        "@page{size:A4;margin:20mm}" +
+        "body{font:13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#111}" +
+        "h1{font-size:20px;margin:0 0 4px}" +
+        "h2{font-size:14px;margin:22px 0 6px}" +
+        ".muted{color:#666}" +
+        ".q{white-space:pre-wrap}" +
+        "table{width:100%;border-collapse:collapse;margin-top:10px}" +
+        "th,td{text-align:left;padding:7px 6px;border-bottom:1px solid #e5e5e5}" +
+        "td.box{width:12%;text-align:center;color:#999}" +
+        ".rule{border-bottom:1px solid #ccc;height:22px}" +
+        "</style></head><body>" +
+        "<h1>{{ data.name }}</h1>" +
+        '<p class="muted">Stage: {{ data.stage.name }} · {{ data.stage.type }}</p>' +
+        "<h2>Questions</h2>" +
+        '<p class="q">{{ data.questions }}</p>' +
+        "<h2>What a strong answer looks like</h2>" +
+        '<p class="q">{{ data.rubric_hint }}</p>' +
+        "<h2>Evidence</h2>" +
+        '<div class="rule"></div><div class="rule"></div><div class="rule"></div>' +
+        '<div class="rule"></div>' +
+        "<h2>Recommendation</h2>" +
+        "<table><tbody>" +
+        '<tr><td>Strong yes</td><td class="box">[ ]</td><td>No</td><td class="box">[ ]</td></tr>' +
+        '<tr><td>Yes</td><td class="box">[ ]</td><td>Strong no</td><td class="box">[ ]</td></tr>' +
+        '<tr><td>No decision</td><td class="box">[ ]</td><td></td><td class="box"></td></tr>' +
+        "</tbody></table>" +
+        '<p class="muted">File this as a scorecard against the interview as soon as ' +
+        "the loop ends. The debrief reads the scorecard's recommendation, not this sheet.</p>" +
+        "</body></html>",
+      pageOptions: { format: "A4", margin: "20mm" },
+    },
+  ],
+  forms: [
+    {
+      // Creates a CANDIDATE, not an application: a public link cannot know
+      // which requisition it was opened from, and guessing one would file
+      // people against the wrong job. The recruiter attaches the person to the
+      // job, which is also where the source channel gets set.
+      //
+      // A returning candidate's second submission is refused by the unique
+      // email, and that is the right answer rather than a gap — the person
+      // already exists, and what they need is another application, not another
+      // record of themselves.
+      name: "Apply for a job",
+      collection: "candidates",
+      settings: {
+        submitLabel: "Send application",
+        successMessage: "Thank you — every application is read, and we come back either way.",
+      },
+      fields: [
+        { name: "first_name", label: "First name" },
+        { name: "last_name", label: "Last name" },
+        { name: "email", label: "Email", help: "Where we reply — use an address you check." },
+        { name: "phone", label: "Phone", help: "Include the country code, e.g. +1 555 010 0100." },
+        { name: "location", label: "Where you are based", help: "City and country is enough." },
+        { name: "current_company", label: "Current company" },
+        { name: "current_title", label: "Current title" },
+        { name: "linkedin", label: "LinkedIn", help: "Optional." },
+        { name: "resume", label: "CV", help: "PDF travels best." },
+      ],
+    },
+    {
+      // The requisition-intake link a hiring manager fills in without an admin
+      // seat. Safe as a link because `jobs` is versioned: a submission lands as
+      // a DRAFT and nothing is live until recruiting publishes it. The
+      // requisition id, the recruiter, the department and the status stay
+      // recruiting's to set — a request is not an open role.
+      name: "Request a new requisition",
+      collection: "jobs",
+      settings: {
+        submitLabel: "Send request",
+        successMessage: "Thanks — recruiting picks these up and comes back with a requisition number.",
+      },
+      fields: [
+        { name: "title", label: "Role title" },
+        { name: "description", label: "What the role does", help: "The work itself, not the ideal person." },
+        { name: "location", label: "Location", help: "An office, a city, or Remote." },
+        { name: "employment_type", label: "Employment type" },
+        { name: "openings", label: "How many people", help: "One requisition can cover several seats." },
+        { name: "hiring_manager", label: "Hiring manager" },
+        { name: "salary_min", label: "Band minimum" },
+        { name: "salary_max", label: "Band maximum", help: "Must be at least the minimum." },
+        { name: "salary_currency", label: "Currency" },
+      ],
+    },
+  ],
+  agents: [
+    {
+      name: "Recruiting assistant",
+      handle: "recruiting-assistant",
+      description: "Answers questions about the pipeline, the loop and where each candidate stands.",
+      systemPrompt:
+        "You help a recruiting team run its hiring. Answer questions about jobs, " +
+        "candidates, applications, interviews, scorecards and offers using the " +
+        "workspace's own data.\n\n" +
+        "Keep the three nouns apart. A CANDIDATE is a person; an APPLICATION is " +
+        "that person against one job; a JOB is one requisition. One candidate can " +
+        "hold several applications, so never count people by counting " +
+        "applications, and never call a candidate rejected when what was " +
+        "rejected is one of their applications.\n\n" +
+        "Status and stage are different columns meaning different things. An " +
+        "application's `status` is only active, rejected or hired; how far it has " +
+        "actually got is its `stage`, a row belonging to that job and ordered by " +
+        "`position`. Stages are per job, so a stage on one job never compares " +
+        "with a stage on another. An interview counts as done when its own " +
+        "`status` says completed — a slot in the past proves nothing. A hiring " +
+        "opinion is the `recommendation` on a scorecard, never the rating on an " +
+        "application.\n\n" +
+        "Offers each carry their own currency, so report one figure per currency " +
+        "and never add across them. Asked where hires come from, say which column " +
+        "you read: the candidate carries a `source` and so does the application, " +
+        "and the two can disagree. Candidate contact details and CVs belong to " +
+        "the hiring team — give them when someone asks about that candidate, not " +
+        "in a list or a digest. Be brief, name the candidate and the job you " +
+        "mean, and say plainly when the data does not answer the question.",
+      tools: [
+        "collections.list",
+        "collections.read",
+        "collections.aggregate",
+        "collections.search",
+        "kpis.run",
+        "dashboards.run",
+      ],
+      maxSteps: 8,
     },
   ],
 };

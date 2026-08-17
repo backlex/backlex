@@ -7,6 +7,7 @@
  * test through four HTTP surfaces, so it lives on its own — same split as
  * `booking.ts`, where the slot math is pure and the DB half is a service.
  */
+import { OPERATION_BRANCH_KEYS } from "./flows";
 
 /** How many approvals settle a request. */
 export const APPROVAL_POLICIES = ["all", "any", "quorum"] as const;
@@ -134,11 +135,11 @@ export const canDecide = (
  */
 export const findNestedApproval = (operations: unknown, path = "operations"): string | null => {
   if (!Array.isArray(operations)) return null;
-  // `do` is a `foreach` body. It is listed here for the same reason as the
+  // `do` (a `foreach` body) is in the shared list for the same reason as the
   // rest: the runner would park the top-level remainder, and everything the
   // author wrote inside the loop — including the iterations not yet run —
   // would be dropped on the floor.
-  const BRANCHES = ["onSuccess", "onError", "then", "else", "onRejected", "do"] as const;
+  const BRANCHES = OPERATION_BRANCH_KEYS;
   for (let i = 0; i < operations.length; i++) {
     const op = operations[i] as Record<string, unknown> | null;
     if (!op || typeof op !== "object") continue;

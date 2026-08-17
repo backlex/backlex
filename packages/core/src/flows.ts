@@ -677,6 +677,26 @@ export const AI_CLASSIFY_MAX_LABELS = 50;
  */
 export const foldLabel = (s: string): string => s.trim().toLowerCase();
 
+/**
+ * Every key under which an operation holds nested operations.
+ *
+ * ONE list, because a walker that forgets a branch is a walker that silently
+ * does not see the steps somebody put there — and this list had already been
+ * retyped in three places (`findForeachViolation` here, `findNestedApproval` in
+ * approvals.ts, `walkOps` in the server's flow-validation) before a fourth
+ * caller wanted it. Three copies that agree today are three copies that can
+ * disagree tomorrow, and the half that disagrees is the half nobody is looking
+ * at. A new op with a new branch key adds it HERE and every walker follows.
+ */
+export const OPERATION_BRANCH_KEYS = [
+  "onSuccess",
+  "onError",
+  "then",
+  "else",
+  "onRejected",
+  "do",
+] as const;
+
 export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
   z.union([
     z.object({ $and: z.array(ConditionSchema) }),
@@ -1160,7 +1180,7 @@ export const findForeachViolation = (
   insideForeach = false,
 ): string | null => {
   if (!Array.isArray(operations)) return null;
-  const BRANCHES = ["onSuccess", "onError", "then", "else", "onRejected", "do"] as const;
+  const BRANCHES = OPERATION_BRANCH_KEYS;
   for (let i = 0; i < operations.length; i++) {
     const op = operations[i] as Record<string, unknown> | null;
     if (!op || typeof op !== "object") continue;

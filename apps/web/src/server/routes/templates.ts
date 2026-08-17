@@ -105,9 +105,14 @@ export const templatesRoutes = new Hono<AppBindings>()
       }
       sampleRows = n;
     }
+    // Bundles are on by default — an export that carried only tables unless
+    // you asked is what made a round-trip lose every role, flow and form the
+    // workspace had. `?bundles=0` asks for the old collections-only document.
+    const rawBundles = c.req.query("bundles");
     const template = await extractTemplate({ db, dialect }, tenantId, {
       collections,
       sampleRows,
+      ...(rawBundles === "0" || rawBundles === "false" ? { bundles: false } : {}),
     });
     return c.json({ data: template });
   });

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -10,7 +10,7 @@ import {
   validateFields,
   type FieldDef,
 } from "@backlex/db";
-import { AppError } from "@backlex/core";
+import { AppError, OPERATION_BRANCH_KEYS, SYSTEM_ROLES } from "@backlex/core";
 import {
   getTemplate,
   type SampleRow,
@@ -46,7 +46,7 @@ import { nowFor } from "./items-helpers";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
 import { ensureSystemRoles, type DbCtx } from "./seed";
-import { mergePortalLink } from "./portal-links";
+import { PORTAL_LINKS_KEY, mergePortalLink, type PortalLink } from "./portal-links";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
@@ -1221,11 +1221,42 @@ const queryIds = async (ctx: DbCtx, query: unknown): Promise<string[]> => {
 
 /** A workspace schema exported in template format — apply it elsewhere via
  *  `POST /api/admin/templates/apply` with `{ template }`. */
+/**
+ * One thing the export could not carry, said out loud.
+ *
+ * Borrowed from `rls.plan`'s omissions list, whose own file says it "is not a
+ * footnote": an export that silently drops half of what it found is worse than
+ * one that refuses, because the loss only surfaces in the target workspace,
+ * later, as a feature that quietly does nothing. Every secret, every piece of
+ * runtime state and every reference that cannot survive the trip is named here
+ * instead of vanishing.
+ */
+export interface TemplateOmission {
+  /** `form:Contact us`, `dashboard:Revenue` — kind and natural key. */
+  resource: string;
+  /** The field or part that was left out. */
+  what: string;
+  /** Why it could not travel, and what the target has to do about it. */
+  reason: string;
+}
+
 export interface ExtractedTemplate {
   label: string;
   description: string;
   groups: string[];
   collections: TemplateCollection[];
+  roles?: TemplateRole[];
+  dashboards?: TemplateDashboard[];
+  kpis?: TemplateKpi[];
+  flows?: TemplateFlow[];
+  documents?: TemplateDocument[];
+  forms?: TemplateForm[];
+  agents?: TemplateAgent[];
+  flags?: TemplateFlag[];
+  channels?: TemplateChannel[];
+  /** Present whenever anything was left behind. Empty is omitted entirely, so
+   *  a clean export stays a clean document. */
+  omissions?: TemplateOmission[];
 }
 
 interface ExtractRow {
@@ -1249,6 +1280,9 @@ interface ExtractRow {
   singleton: boolean | number;
   softDelete: boolean | number;
   auditReads: boolean | number;
+  kanbanGroupBy: string | null;
+  kanbanActionMap: Record<string, string> | null;
+  stagedEdits: boolean | number;
   fields: FieldDef[];
 }
 
@@ -1265,6 +1299,508 @@ const relationDeps = (row: ExtractRow): string[] => {
 };
 
 /**
+ * The bundle half of {@link extractTemplate}.
+ *
+ * `apply` could seed nine kinds of thing beyond collections; `extract` emitted
+ * none of them, so a workspace that exported its own setup and applied it
+ * somewhere else got the tables and nothing that made them work — no roles, no
+ * automation, no forms, no boards. This closes that, and the shape of the job
+ * is the same four questions for every resource:
+ *
+ *  1. **Natural key** — what identifies this row somewhere else. Every kind
+ *     here already has one that `apply`'s seeder skips on, so nothing is
+ *     invented: role/flow/form/agent/dashboard by `name`, KPI by `slug`,
+ *     document/flag by `key`, channel by `pattern`.
+ *  2. **Portable config** — what actually travels.
+ *  3. **Secrets** — never exported, in any form. A hashed token cannot be
+ *     exported usefully AND must not be promoted (two workspaces answering one
+ *     URL token), so it is dropped and NAMED.
+ *  4. **Runtime state** — never promoted. A KPI's `alertFiring` would import
+ *     another workspace's alarm as already ringing; a form's submission count
+ *     would import somebody else's traffic.
+ *
+ * Anything that fails 3 or 4, and every reference that cannot survive the trip,
+ * lands in {@link TemplateOmission} rather than disappearing.
+ */
+const extractBundles = async (
+  ctx: DbCtx,
+  tenantId: string,
+  slugs: Set<string>,
+  omit: (o: TemplateOmission) => void,
+): Promise<Omit<ExtractedTemplate, "label" | "description" | "groups" | "collections" | "omissions">> => {
+  const s = ctx.dialect === "pg" ? pg.schema : sqlite.schema;
+  const db = ctx.db as never as { select: Function };
+  // The pg and sqlite schemas are structurally distinct types with the same
+  // shape, so a generic over both does not narrow — the same reason this file
+  // already casts `ctx.db`. Through `unknown`, per the compiler's own advice.
+  const mine = (t: unknown) => eq((t as unknown as { tenantId: never }).tenantId, tenantId as never);
+  const bool = (v: unknown): boolean => v === true || v === 1;
+  const json = <T>(v: unknown, fallback: T): T => {
+    if (v == null) return fallback;
+    if (typeof v !== "string") return v as T;
+    try {
+      return JSON.parse(v) as T;
+    } catch {
+      return fallback;
+    }
+  };
+  /** A collection this export does not carry — a reference into it would land
+   *  in a workspace where the slug may mean something else, or nothing. */
+  const outside = (slug: string) => !slugs.has(slug);
+
+  // ---- roles + permissions ------------------------------------------------
+  // The system roles are excluded: `ensureSystemRoles` creates admin /
+  // authenticated / public in every workspace before a template is applied, so
+  // exporting them would emit three rows the seeder is guaranteed to skip.
+  const roleRows = (await db
+    .select({ id: s.roles.id, name: s.roles.name, description: s.roles.description })
+    .from(s.roles)
+    .where(mine(s.roles))) as { id: string; name: string; description: string | null }[];
+  const custom = roleRows.filter(
+    (r) => r.name !== SYSTEM_ROLES.admin && r.name !== SYSTEM_ROLES.authenticated && r.name !== SYSTEM_ROLES.public,
+  );
+  const roleNameById = new Map(roleRows.map((r) => [r.id, r.name]));
+  // `permissions` carries no tenant_id — it is scoped only transitively through
+  // `role_id`. Constraining the QUERY to this workspace's own role ids rather
+  // than reading every row and filtering afterwards: the filter would be
+  // correct, but "select everything, discard what is not ours" is the shape a
+  // later refactor turns into a leak, and on a shared deployment it reads every
+  // workspace's grants to answer a question about one.
+  const perms = custom.length
+    ? ((await db
+        .select({
+          roleId: s.permissions.roleId,
+          collection: s.permissions.collection,
+          action: s.permissions.action,
+          fields: s.permissions.fields,
+          condition: s.permissions.condition,
+        })
+        .from(s.permissions)
+        .where(inArray(s.permissions.roleId, custom.map((r) => r.id)))) as {
+        roleId: string;
+        collection: string;
+        action: string;
+        fields: unknown;
+        condition: unknown;
+      }[])
+    : [];
+  const roles: TemplateRole[] = custom.map((r) => {
+    const grants = perms.filter((p) => p.roleId === r.id);
+    const kept = grants.filter((p) => {
+      // A grant naming a collection this export leaves behind would apply into
+      // a workspace where that slug is absent — or, worse, is somebody else's
+      // collection with the same name.
+      if (outside(p.collection)) {
+        omit({
+          resource: `role:${r.name}`,
+          what: `permission on "${p.collection}"`,
+          reason: "that collection is not part of this export; grant it by hand in the target",
+        });
+        return false;
+      }
+      return true;
+    });
+    return {
+      name: r.name,
+      ...(r.description ? { description: r.description } : {}),
+      permissions: kept.map((p) => ({
+        collection: p.collection,
+        action: p.action as TemplateRole["permissions"][number]["action"],
+        ...(Array.isArray(json(p.fields, null)) ? { fields: json<string[]>(p.fields, []) } : {}),
+        ...(json(p.condition, null) != null ? { condition: json<unknown>(p.condition, null) } : {}),
+      })),
+    };
+  });
+
+  // ---- dashboards + panels ------------------------------------------------
+  const dashRows = (await db
+    .select({
+      id: s.dashboards.id,
+      name: s.dashboards.name,
+      description: s.dashboards.description,
+      embedEnabled: s.dashboards.embedEnabled,
+      embedRoleId: s.dashboards.embedRoleId,
+    })
+    .from(s.dashboards)
+    .where(mine(s.dashboards))) as {
+    id: string;
+    name: string;
+    description: string | null;
+    embedEnabled: unknown;
+    embedRoleId: string | null;
+  }[];
+  const panelRows = dashRows.length
+    ? ((await db
+        .select({
+          name: s.savedPanels.name,
+          description: s.savedPanels.description,
+          kind: s.savedPanels.kind,
+          viz: s.savedPanels.viz,
+          config: s.savedPanels.config,
+          layout: s.savedPanels.layout,
+          dashboardId: s.savedPanels.dashboardId,
+        })
+        .from(s.savedPanels)
+        .where(mine(s.savedPanels))) as {
+        name: string;
+        description: string | null;
+        kind: string;
+        viz: string;
+        config: unknown;
+        layout: unknown;
+        dashboardId: string | null;
+      }[])
+    : [];
+  const dashboards: TemplateDashboard[] = dashRows.map((d) => {
+    if (bool(d.embedEnabled)) {
+      // The embed token is a hash of a credential shown once; there is nothing
+      // to export and promoting it would point two workspaces' public embeds at
+      // one token.
+      omit({
+        resource: `dashboard:${d.name}`,
+        what: "public embed (token, enabled flag, viewer role)",
+        reason: "the embed token is a one-way hash — re-enable the embed in the target to mint a new one",
+      });
+    }
+    if (d.embedRoleId && roleNameById.has(d.embedRoleId)) {
+      // Recorded separately: even with a fresh token, the viewer role is a raw
+      // id here and the template format has no slot to name it.
+      omit({
+        resource: `dashboard:${d.name}`,
+        what: `embed viewer role "${roleNameById.get(d.embedRoleId)}"`,
+        reason: "the template format carries no embed settings; set it again after re-enabling the embed",
+      });
+    }
+    const panels = panelRows.filter((p) => p.dashboardId === d.id);
+    const usable = panels.filter((p) => {
+      if (p.kind !== "items-aggregate" && p.kind !== "static") {
+        // Raw-SQL panels are refused on the apply side for every runtime, so
+        // emitting one would produce a template that cannot be applied.
+        omit({
+          resource: `dashboard:${d.name}`,
+          what: `panel "${p.name}" (kind ${p.kind})`,
+          reason: "only items-aggregate and static panels are portable — a raw SQL panel is bound to this database",
+        });
+        return false;
+      }
+      return true;
+    });
+    return {
+      name: d.name,
+      ...(d.description ? { description: d.description } : {}),
+      panels: usable.map((p) => ({
+        name: p.name,
+        ...(p.description ? { description: p.description } : {}),
+        kind: p.kind as TemplateDashboard["panels"][number]["kind"],
+        viz: p.viz as TemplateDashboard["panels"][number]["viz"],
+        config: json<Record<string, unknown>>(p.config, {}),
+        ...(json(p.layout, null) ? { layout: json<{ x: number; y: number; w: number; h: number }>(p.layout, { x: 0, y: 0, w: 4, h: 2 }) } : {}),
+      })),
+    };
+  });
+
+  // ---- KPIs ----------------------------------------------------------------
+  const kpiRows = (await db
+    .select({
+      slug: s.kpis.slug,
+      name: s.kpis.name,
+      description: s.kpis.description,
+      collection: s.kpis.collection,
+      agg: s.kpis.agg,
+      field: s.kpis.field,
+      filter: s.kpis.filter,
+      dateField: s.kpis.dateField,
+      groupBy: s.kpis.groupBy,
+      topN: s.kpis.topN,
+      format: s.kpis.format,
+      unit: s.kpis.unit,
+      decimals: s.kpis.decimals,
+      direction: s.kpis.direction,
+      alertOperator: s.kpis.alertOperator,
+      alertValue: s.kpis.alertValue,
+      pinTo: s.kpis.pinTo,
+      pinField: s.kpis.pinField,
+    })
+    .from(s.kpis)
+    .where(mine(s.kpis))) as Record<string, never>[];
+  const kpis: TemplateKpi[] = [];
+  for (const k of kpiRows as unknown as (TemplateKpi & { collection: string; pinTo?: string | null })[]) {
+    if (outside(k.collection)) {
+      omit({
+        resource: `kpi:${k.slug}`,
+        what: "the whole KPI",
+        reason: `it aggregates "${k.collection}", which is not part of this export`,
+      });
+      continue;
+    }
+    const { pinTo, ...rest } = k;
+    const pinnable = pinTo && !outside(pinTo);
+    if (pinTo && !pinnable) {
+      omit({
+        resource: `kpi:${k.slug}`,
+        what: `pin to "${pinTo}"`,
+        reason: "the pinned collection is not part of this export; the figure still works, it just is not pinned",
+      });
+    }
+    kpis.push(
+      compact({
+        ...rest,
+        ...(pinnable ? { pinTo } : { pinTo: undefined, pinField: undefined }),
+      }) as TemplateKpi,
+    );
+  }
+
+  // ---- flows ---------------------------------------------------------------
+  const flowRows = (await db
+    .select({
+      name: s.flows.name,
+      trigger: s.flows.trigger,
+      operations: s.flows.operations,
+      active: s.flows.active,
+    })
+    .from(s.flows)
+    .where(mine(s.flows))) as {
+    name: string;
+    trigger: string;
+    operations: unknown;
+    active: unknown;
+  }[];
+  const dashboardNameById = new Map(dashRows.map((d) => [d.id, d.name]));
+  const flows: TemplateFlow[] = flowRows.map((f) => {
+    // Cloned before the walk below mutates it: on a json-mode column the driver
+    // hands back a live object, and rewriting a dashboard id or stripping a
+    // header in place would edit whatever else holds that reference.
+    const ops = JSON.parse(JSON.stringify(json<unknown[]>(f.operations, []))) as unknown[];
+    // A `report.deliver` step holds a concrete dashboard UUID, which means
+    // nothing anywhere else. `apply` already understands `@dashboard:<name>`
+    // and resolves it after seeding, so the export inverts that mapping —
+    // otherwise the seeded flow would deliver a dashboard that does not exist.
+    walkTemplateOps(ops, (op) => {
+      // A step's request headers are the one place a SECRET hides inside
+      // otherwise-portable config: `headers` is a free-form Record<string,string>
+      // on `webhook` / `request`, and an author putting `Authorization: Bearer …`
+      // there is the normal way to call an authenticated API. The columns this
+      // export reads are all secret-free; without this, the op tree would carry
+      // one out anyway.
+      if (op.headers && typeof op.headers === "object") {
+        const names = Object.keys(op.headers as Record<string, unknown>);
+        delete op.headers;
+        if (names.length) {
+          omit({
+            resource: `flow:${f.name}`,
+            what: `request headers on a ${String(op.type)} step (${names.join(", ")})`,
+            reason: "a header can carry a credential, so headers are never exported — set them again in the target",
+          });
+        }
+      }
+      if (op.type !== "report.deliver") return;
+      const id = (op as { dashboardId?: unknown }).dashboardId;
+      if (typeof id !== "string" || id.startsWith("@dashboard:")) return;
+      const named = dashboardNameById.get(id);
+      if (named) (op as { dashboardId?: unknown }).dashboardId = `@dashboard:${named}`;
+      else
+        omit({
+          resource: `flow:${f.name}`,
+          what: "the dashboard a report.deliver step delivers",
+          reason: "it names a dashboard this export does not carry; point the step at one in the target",
+        });
+    });
+    return {
+      name: f.name,
+      trigger: f.trigger,
+      operations: ops as TemplateFlow["operations"],
+      ...(bool(f.active) ? {} : { active: false }),
+    };
+  });
+
+  // ---- document templates --------------------------------------------------
+  const documents = ((await db
+    .select({
+      key: s.documentTemplates.key,
+      name: s.documentTemplates.name,
+      description: s.documentTemplates.description,
+      bodyHtml: s.documentTemplates.bodyHtml,
+      headerHtml: s.documentTemplates.headerHtml,
+      footerHtml: s.documentTemplates.footerHtml,
+      pageOptions: s.documentTemplates.pageOptions,
+      filename: s.documentTemplates.filename,
+      variables: s.documentTemplates.variables,
+    })
+    .from(s.documentTemplates)
+    .where(mine(s.documentTemplates))) as Record<string, unknown>[]).map(
+    (d) => compact({ ...d, pageOptions: json(d.pageOptions, undefined), variables: json(d.variables, undefined) }) as TemplateDocument,
+  );
+
+  // ---- forms ---------------------------------------------------------------
+  const formRows = (await db
+    .select({
+      name: s.forms.name,
+      collection: s.forms.collection,
+      fields: s.forms.fields,
+      settings: s.forms.settings,
+      active: s.forms.active,
+    })
+    .from(s.forms)
+    .where(mine(s.forms))) as {
+    name: string;
+    collection: string;
+    fields: unknown;
+    settings: unknown;
+    active: unknown;
+  }[];
+  const forms: TemplateForm[] = [];
+  for (const f of formRows) {
+    if (outside(f.collection)) {
+      omit({
+        resource: `form:${f.name}`,
+        what: "the whole form",
+        reason: `it writes into "${f.collection}", which is not part of this export`,
+      });
+      continue;
+    }
+    // Every export of a form loses its public link, and that is not a bug to
+    // work around: the token is stored as a one-way hash, so there is nothing
+    // to carry, and carrying it would make two workspaces' forms answer to one
+    // URL. The target rotates the token to get a shareable link.
+    omit({
+      resource: `form:${f.name}`,
+      what: "the public link token",
+      reason: "stored as a one-way hash — press Rotate token in the target to mint a shareable URL",
+    });
+    forms.push({
+      name: f.name,
+      collection: f.collection,
+      fields: json<TemplateForm["fields"]>(f.fields, []),
+      ...(json(f.settings, null) ? { settings: json<Record<string, unknown>>(f.settings, {}) } : {}),
+      ...(bool(f.active) ? {} : { active: false }),
+    });
+  }
+
+  // ---- agents --------------------------------------------------------------
+  const agentRows = (await db
+    .select({
+      name: s.agents.name,
+      handle: s.agents.handle,
+      description: s.agents.description,
+      systemPrompt: s.agents.systemPrompt,
+      model: s.agents.model,
+      tools: s.agents.tools,
+      maxSteps: s.agents.maxSteps,
+      memory: s.agents.memory,
+      active: s.agents.active,
+      appAccess: s.agents.appAccess,
+    })
+    .from(s.agents)
+    .where(mine(s.agents))) as Record<string, unknown>[];
+  const agents: TemplateAgent[] = agentRows.map((a) => {
+    if (bool(a.appAccess)) {
+      // Exposure to end users is the one setting whose blast radius leaves the
+      // workspace, so it is re-decided in the target rather than inherited —
+      // the seeder forces it false for the same reason.
+      omit({
+        resource: `agent:${a.name as string}`,
+        what: "open to end users",
+        reason: "exposure is re-decided per workspace; the agent arrives closed and an admin opens it",
+      });
+    }
+    return compact({
+      name: a.name,
+      handle: a.handle,
+      description: a.description,
+      systemPrompt: a.systemPrompt ?? "",
+      tools: json<string[]>(a.tools, []),
+      model: a.model,
+      maxSteps: a.maxSteps,
+      memory: bool(a.memory) ? true : undefined,
+      active: bool(a.active) ? undefined : false,
+    }) as TemplateAgent;
+  });
+
+  // ---- feature flags -------------------------------------------------------
+  const flags = ((await db
+    .select({
+      key: s.featureFlags.key,
+      enabled: s.featureFlags.enabled,
+      value: s.featureFlags.value,
+      rules: s.featureFlags.rules,
+      description: s.featureFlags.description,
+    })
+    .from(s.featureFlags)
+    .where(mine(s.featureFlags))) as Record<string, unknown>[]).map(
+    (f) =>
+      compact({
+        key: f.key,
+        enabled: bool(f.enabled) ? true : undefined,
+        value: json(f.value, undefined),
+        rules: json(f.rules, undefined),
+        description: f.description,
+      }) as TemplateFlag,
+  );
+
+  // ---- broadcast channels --------------------------------------------------
+  const channels = ((await db
+    .select({
+      name: s.broadcastChannels.name,
+      pattern: s.broadcastChannels.pattern,
+      subscribe: s.broadcastChannels.subscribe,
+      publish: s.broadcastChannels.publish,
+      presence: s.broadcastChannels.presence,
+      replay: s.broadcastChannels.replay,
+      retentionHours: s.broadcastChannels.retentionHours,
+    })
+    .from(s.broadcastChannels)
+    .where(mine(s.broadcastChannels))) as Record<string, unknown>[]).map(
+    (c) =>
+      compact({
+        name: c.name,
+        pattern: c.pattern,
+        // subscribe/publish are TEXT columns holding JSON, not json-mode
+        // columns — the seeder stringifies on the way in, so the export parses
+        // on the way out or the target stores a string of a string.
+        subscribe: json(c.subscribe, {}),
+        publish: json(c.publish, {}),
+        presence: bool(c.presence) ? true : undefined,
+        replay: bool(c.replay) ? true : undefined,
+        retentionHours: c.retentionHours,
+      }) as TemplateChannel,
+  );
+
+  return {
+    ...(roles.length ? { roles } : {}),
+    ...(dashboards.length ? { dashboards } : {}),
+    ...(kpis.length ? { kpis } : {}),
+    ...(flows.length ? { flows } : {}),
+    ...(documents.length ? { documents } : {}),
+    ...(forms.length ? { forms } : {}),
+    ...(agents.length ? { agents } : {}),
+    ...(flags.length ? { flags } : {}),
+    ...(channels.length ? { channels } : {}),
+  };
+};
+
+/** Drop `undefined`/`null` keys so an exported document carries only what the
+ *  workspace actually set — the same shape the hand-written catalog defs have,
+ *  which is what makes an extract diffable against one in git. */
+const compact = <T extends Record<string, unknown>>(o: T): Partial<T> => {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== null) out[k] = v;
+  return out as Partial<T>;
+};
+
+/** Walk every operation in a flow, including nested branches. Uses the one
+ *  shared branch list so an op kind with a new branch key cannot be invisible
+ *  here while being visible to the validator. */
+const walkTemplateOps = (ops: unknown, visit: (op: Record<string, unknown>) => void): void => {
+  if (!Array.isArray(ops)) return;
+  for (const raw of ops) {
+    if (!raw || typeof raw !== "object") continue;
+    const op = raw as Record<string, unknown>;
+    visit(op);
+    for (const branch of OPERATION_BRANCH_KEYS) walkTemplateOps(op[branch], visit);
+  }
+};
+
+/**
  * Export the workspace's managed collections as a reusable schema template:
  * collection defs (fields, flags, admin group) + the saved group-header order.
  * Collections are emitted in dependency order (relation targets first) so the
@@ -1276,7 +1812,7 @@ const relationDeps = (row: ExtractRow): string[] => {
 export async function extractTemplate(
   ctx: DbCtx,
   tenantId: string,
-  opts: { collections?: string[]; sampleRows?: number } = {},
+  opts: { collections?: string[]; sampleRows?: number; bundles?: boolean } = {},
 ): Promise<ExtractedTemplate> {
   const t = collectionsTable(ctx.dialect);
   const all = (await (ctx.db as never as { select: Function })
@@ -1301,6 +1837,9 @@ export async function extractTemplate(
       singleton: t.singleton,
       softDelete: t.softDelete,
       auditReads: t.auditReads,
+      kanbanGroupBy: t.kanbanGroupBy,
+      kanbanActionMap: t.kanbanActionMap,
+      stagedEdits: t.stagedEdits,
       fields: t.fields,
     })
     .from(t)
@@ -1434,12 +1973,40 @@ export async function extractTemplate(
     }
   }
 
+  // Portal links do not live on the collection row — they are one workspace
+  // setting holding a rule per person collection, which is why an extract that
+  // only read `collections` could not see them at all.
+  const savedPortal = await readSetting(ctx, tenantId, PORTAL_LINKS_KEY);
+  const portalBySlug = new Map<string, { emailField: string; role: string }>();
+  if (Array.isArray(savedPortal)) {
+    for (const raw of savedPortal) {
+      const p = raw as Partial<PortalLink>;
+      if (typeof p?.collection === "string" && typeof p.emailField === "string" && typeof p.role === "string") {
+        portalBySlug.set(p.collection, { emailField: p.emailField, role: p.role });
+      }
+    }
+  }
+
   const savedGroups = await readSetting(ctx, tenantId, "collectionGroups");
   const usedGroups = new Set(ordered.map((r) => r.group).filter((g): g is string => !!g));
   const groups = (isStringArray(savedGroups) ? savedGroups : []).filter((g) =>
     usedGroups.has(g),
   );
   for (const g of usedGroups) if (!groups.includes(g)) groups.push(g);
+
+  // Bundles are ON by default. An export that carried only tables unless you
+  // asked is the shape that made a round-trip lose every role, flow and form a
+  // workspace had — the default has to be "everything that can travel".
+  const omissions: TemplateOmission[] = [];
+  const bundles =
+    opts.bundles === false
+      ? {}
+      : await extractBundles(
+          ctx,
+          tenantId,
+          new Set(ordered.map((r) => r.slug)),
+          (o) => omissions.push(o),
+        );
 
   return {
     label: "Extracted schema",
@@ -1466,9 +2033,18 @@ export async function extractTemplate(
       ...(r.singleton ? { singleton: true } : {}),
       ...(r.softDelete ? { softDelete: true } : {}),
       ...(r.auditReads ? { auditReads: true } : {}),
+      // The four an apply seeds and an extract used to drop on the floor. 21
+      // catalog collections declare a Kanban grouping and 13 a portal link, so
+      // a round-trip through extract silently un-configured both.
+      ...(r.kanbanGroupBy ? { kanbanGroupBy: r.kanbanGroupBy } : {}),
+      ...(r.kanbanActionMap ? { kanbanActionMap: r.kanbanActionMap } : {}),
+      ...(r.stagedEdits ? { stagedEdits: true } : {}),
+      ...(portalBySlug.has(r.slug) ? { portalLink: portalBySlug.get(r.slug) } : {}),
       fields: r.fields ?? [],
       ...(samplesBySlug.has(r.slug) ? { samples: samplesBySlug.get(r.slug) } : {}),
     })),
+    ...bundles,
+    ...(omissions.length ? { omissions } : {}),
   };
 }
 
@@ -1509,12 +2085,223 @@ export const CustomTemplateInput = z.object({
         singleton: z.boolean().optional(),
         softDelete: z.boolean().optional(),
         auditReads: z.boolean().optional(),
+        kanbanGroupBy: z.string().max(60).optional(),
+        // The same enum PATCH /collections enforces. A round-trip schema wider
+        // than the endpoint that WRITES the column would let an apply store a
+        // value the collection editor then refuses.
+        kanbanActionMap: z.record(z.string(), z.enum(["publish", "unpublish", "archive"])).optional(),
+        stagedEdits: z.boolean().optional(),
+        portalLink: z
+          .object({ emailField: z.string().min(1).max(60), role: z.string().min(1).max(60) })
+          .optional(),
         fields: z.array(z.record(z.string(), z.unknown())).min(1).max(500),
         samples: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
       }),
     )
     .min(1)
     .max(1000),
+  // The bundle half. Everything `applyTemplateDefinition` can seed is accepted
+  // here, because this schema is what a round-trip has to survive: it is a
+  // plain `z.object`, so a key it does not name is STRIPPED IN SILENCE — which
+  // is how an extract could grow nine new sections and still apply as bare
+  // tables. Caps are generous sanity bounds; the shapes themselves are
+  // re-validated by the seeders, which is where the real rules live (a form's
+  // fields must be form-eligible, an agent's tools must exist, a flow's ops
+  // must parse).
+  roles: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(60),
+        description: z.string().max(500).optional(),
+        permissions: z
+          .array(
+            z.object({
+              collection: z.string().min(1).max(60),
+              action: z.enum(["read", "create", "update", "delete", "publish"]),
+              fields: z.array(z.string().max(60)).max(500).optional(),
+              condition: z.unknown().optional(),
+            }),
+          )
+          .max(2000),
+      }),
+    )
+    .max(200)
+    .optional(),
+  dashboards: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        description: z.string().max(500).optional(),
+        panels: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(120),
+              description: z.string().max(500).optional(),
+              // Raw SQL is deliberately absent: a `sql` panel is bound to the
+              // database it was written against, and the seeder refuses it.
+              kind: z.enum(["items-aggregate", "static"]),
+              viz: z.enum([
+                "sparkline",
+                "line",
+                "area",
+                "bars",
+                "stacked-bars",
+                "donut",
+                "pie",
+                "radar",
+                "radial",
+                "counter",
+                "table",
+              ]),
+              config: z.record(z.string(), z.unknown()),
+              layout: z
+                .object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() })
+                .optional(),
+            }),
+          )
+          .max(100),
+      }),
+    )
+    .max(100)
+    .optional(),
+  kpis: z
+    .array(
+      z.object({
+        slug: z.string().min(1).max(60),
+        name: z.string().min(1).max(120),
+        description: z.string().max(500).optional(),
+        collection: z.string().min(1).max(60),
+        agg: z.enum(["count", "sum", "avg", "min", "max"]),
+        field: z.string().max(60).optional(),
+        filter: z.record(z.string(), z.unknown()).optional(),
+        dateField: z.string().max(60).optional(),
+        groupBy: z.string().max(60).optional(),
+        topN: z.number().int().min(1).max(1000).optional(),
+        format: z.enum(["number", "money", "percent", "duration"]).optional(),
+        unit: z.string().max(20).optional(),
+        decimals: z.number().int().min(0).max(10).optional(),
+        direction: z.enum(["up", "down", "neutral"]).optional(),
+        alertOperator: z.enum(["above", "below", "change_above", "change_below"]).optional(),
+        alertValue: z.number().optional(),
+        pinTo: z.string().max(60).optional(),
+        pinField: z.string().max(60).optional(),
+      }),
+    )
+    .max(500)
+    .optional(),
+  flows: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        // POST /api/flows caps `trigger` at nothing, and a `schedule:` trigger
+        // carries a JSON spec — the longest in the shipped catalog is already
+        // 221 chars. A round-trip bound narrower than the endpoint that CREATES
+        // the row makes a legitimate flow un-appliable, so this is a payload
+        // guard, not a validity rule.
+        trigger: z.string().min(1).max(4000),
+        // Not `OperationSchema`: a flow authored elsewhere may carry an op this
+        // deployment does not know, and the seeder's own validation is the
+        // place that decides. Parsing here would refuse the whole template for
+        // one unknown step.
+        operations: z.array(z.record(z.string(), z.unknown())).min(1).max(200),
+        active: z.boolean().optional(),
+      }),
+    )
+    .max(200)
+    .optional(),
+  documents: z
+    .array(
+      z.object({
+        key: z.string().min(1).max(60),
+        name: z.string().min(1).max(120),
+        description: z.string().max(500).optional(),
+        bodyHtml: z.string().min(1).max(200_000),
+        headerHtml: z.string().max(50_000).optional(),
+        footerHtml: z.string().max(50_000).optional(),
+        pageOptions: z.record(z.string(), z.unknown()).optional(),
+        filename: z.string().max(200).optional(),
+        variables: z.array(z.string().max(60)).max(100).optional(),
+      }),
+    )
+    .max(100)
+    .optional(),
+  forms: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        collection: z.string().min(1).max(60),
+        fields: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(60),
+              label: z.string().max(120).optional(),
+              help: z.string().max(500).optional(),
+            }),
+          )
+          .min(1)
+          .max(100),
+        settings: z.record(z.string(), z.unknown()).optional(),
+        active: z.boolean().optional(),
+      }),
+    )
+    .max(100)
+    .optional(),
+  agents: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        handle: z.string().max(60).optional(),
+        description: z.string().max(500).optional(),
+        systemPrompt: z.string().min(1).max(50_000),
+        tools: z.array(z.string().max(80)).max(400),
+        model: z.string().max(200).optional(),
+        maxSteps: z.number().int().min(1).max(50).optional(),
+        memory: z.boolean().optional(),
+        active: z.boolean().optional(),
+      }),
+    )
+    .max(100)
+    .optional(),
+  flags: z
+    .array(
+      z.object({
+        key: z.string().min(1).max(60),
+        enabled: z.boolean().optional(),
+        value: z.unknown().optional(),
+        rules: z.record(z.string(), z.unknown()).optional(),
+        description: z.string().max(500).optional(),
+      }),
+    )
+    .max(500)
+    .optional(),
+  channels: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        pattern: z.string().min(1).max(200),
+        subscribe: z.record(z.string(), z.unknown()),
+        publish: z.record(z.string(), z.unknown()),
+        presence: z.boolean().optional(),
+        replay: z.boolean().optional(),
+        retentionHours: z.number().int().min(1).max(8760).optional(),
+      }),
+    )
+    .max(200)
+    .optional(),
+  // Accepted and ignored: an extract emits its omissions so a human reading the
+  // file knows what did not come with it, and re-applying that same file must
+  // not fail on a key the exporter wrote. Stripping it silently would be the
+  // very behaviour this commit exists to end, so it is named and dropped.
+  omissions: z
+    .array(
+      z.object({
+        resource: z.string().max(200),
+        what: z.string().max(500),
+        reason: z.string().max(1000),
+      }),
+    )
+    .max(2000)
+    .optional(),
 });
 
 /** Valid field-type tokens, from the canonical list in @backlex/db
@@ -1544,14 +2331,29 @@ export const parseCustomTemplate = (input: unknown): SchemaTemplate => {
       throw new AppError("VALIDATION", `Collection "${col.slug}": ${(e as Error).message}`);
     }
   }
+  const d = parsed.data;
   return {
     id: "custom",
-    label: parsed.data.label ?? "Custom template",
-    description: parsed.data.description ?? "",
-    groups: parsed.data.groups,
-    collections: parsed.data.collections.map((col) => ({
+    label: d.label ?? "Custom template",
+    description: d.description ?? "",
+    groups: d.groups,
+    collections: d.collections.map((col) => ({
       ...col,
       fields: col.fields as unknown as FieldDef[],
     })),
+    // Every bundle the payload carried, forwarded to the same seeders a catalog
+    // apply uses. Listing them one by one rather than spreading `d` is
+    // deliberate: `omissions` is accepted for round-trip reasons and must NOT
+    // reach the engine, and a spread would carry it plus anything a later zod
+    // key adds.
+    ...(d.roles ? { roles: d.roles as unknown as TemplateRole[] } : {}),
+    ...(d.dashboards ? { dashboards: d.dashboards as unknown as TemplateDashboard[] } : {}),
+    ...(d.kpis ? { kpis: d.kpis as unknown as TemplateKpi[] } : {}),
+    ...(d.flows ? { flows: d.flows as unknown as TemplateFlow[] } : {}),
+    ...(d.documents ? { documents: d.documents as unknown as TemplateDocument[] } : {}),
+    ...(d.forms ? { forms: d.forms as unknown as TemplateForm[] } : {}),
+    ...(d.agents ? { agents: d.agents as unknown as TemplateAgent[] } : {}),
+    ...(d.flags ? { flags: d.flags as unknown as TemplateFlag[] } : {}),
+    ...(d.channels ? { channels: d.channels as unknown as TemplateChannel[] } : {}),
   };
 };

@@ -1,5 +1,6 @@
 import {
   AppError,
+  OPERATION_BRANCH_KEYS,
   type Operation,
   findForeachViolation,
   findNestedApproval,
@@ -182,7 +183,7 @@ const walkOps = (operations: unknown, visit: (op: Operation) => void): void => {
   for (const op of operations as Operation[]) {
     if (!op || typeof op !== "object") continue;
     visit(op);
-    for (const branch of ["onSuccess", "onError", "then", "else", "onRejected", "do"]) {
+    for (const branch of OPERATION_BRANCH_KEYS) {
       walkOps((op as unknown as Record<string, unknown>)[branch], visit);
     }
   }

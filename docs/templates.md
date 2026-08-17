@@ -184,15 +184,53 @@ relation fields pointing at collections outside the exported set stay as
 plain (unlinked) columns until their target exists, since relations carry no
 hard FK constraint.
 
-**Extract is narrower than apply, deliberately for now.** It emits collections
-and the group order — not the roles, dashboards, KPIs, flows, documents, forms,
-agents, flags or channels an apply seeds. Closing that gap is its own design
-problem, because each resource has to separate four different things: its
-natural key (`flows.name` is not unique, unlike an agent's or a document's),
-its portable config, its **secrets** (a form's and a booking resource's token
-hash, a webhook's signing secret — never exportable) and its runtime state
-(submission counts, failure counters — never promoted). Until then, treat an
-extract as a schema transport, not a workspace transport.
+**Extract carries the bundles too.** Alongside the collections and the group
+order it emits the roles (with their grants), dashboards, KPIs, flows, document
+templates, forms, agents, flags and channels the workspace has — the same nine
+kinds an apply seeds — so an extract is a **workspace** transport, not just a
+schema one. Add `?bundles=0` for the old collections-only document.
+
+Each resource separates four things, and that split is what decides what
+travels:
+
+| | |
+|---|---|
+| **Natural key** | What identifies the row somewhere else, and the same key the seeder skips on: role/flow/form/agent/dashboard by `name`, KPI by `slug`, document/flag by `key`, channel by `pattern`. |
+| **Portable config** | What is emitted. |
+| **Secrets** | Never emitted, in any form. A form's token and a dashboard's embed token are one-way hashes: there is nothing to export, and promoting one would make two workspaces answer to a single URL token. |
+| **Runtime state** | Never promoted. A KPI's `alertFiring` would import another workspace's alarm as already ringing; a form's submission count would import somebody else's traffic. |
+
+**What could not travel is named, not dropped.** Anything the four-way split
+excludes, plus every reference that cannot survive the trip, is listed under
+`omissions`:
+
+```json
+{
+  "collections": [ … ],
+  "forms": [{ "name": "Report a problem", "collection": "tickets", "fields": [ … ] }],
+  "omissions": [
+    {
+      "resource": "form:Report a problem",
+      "what": "the public link token",
+      "reason": "stored as a one-way hash — press Rotate token in the target to mint a shareable URL"
+    }
+  ]
+}
+```
+
+The cases you will actually meet: a form's public link (always — rotate the
+token in the target), a dashboard's public embed, a raw-SQL panel (only
+`items-aggregate` and `static` panels are portable — a `sql` panel is bound to
+the database it was written against), an agent that was open to end users
+(exposure is re-decided per workspace), and — when you narrow with
+`?collections=` — any role grant, KPI or form that pointed at a collection left
+behind. Re-applying the document extract emitted is safe: `omissions` is
+accepted and ignored on the way back in.
+
+**Still not carried, and not planned here:** webhooks, integrations, payment
+providers, sync hooks, SSO providers and booking resources. Each holds a live
+credential or an external registration, so promoting one moves a secret or
+points a second workspace at another's remote webhook.
 
 Add `?samples=N` (1–50, matching the apply-side per-collection cap) to also
 export the first N rows of each collection as template `samples`: relation

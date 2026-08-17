@@ -96,10 +96,24 @@ MemoryRouter) for components that need app context. Keep tests isolated: any spe
 that mutates a global (e.g. `navigator`) must restore it in `afterAll`, or it
 leaks into the render tests later in the run.
 
-**Known follow-ups:** the `@/` path alias isn't resolved under bun test yet, so
-render tests currently import components by relative path and cover components
-that don't import via `@/`. Wiring the alias (and generated row types to kill
-snake_case/camelCase drift) would widen coverage.
+~~The `@/` path alias isn't resolved under bun test~~ — **it is.** Render tests
+still import the component under test by relative path (they sit outside
+`src/`), but the component's own `@/` imports resolve fine: `ask-ai/index.tsx`
+and `storage/index.tsx` both import `@/lib/api` and both render under the
+harness. The note survived past its own fix and was steering new tests away
+from pages it had no reason to.
+
+**Known follow-up:** generated row types, to kill the snake_case/camelCase
+drift a render test currently has to know about by hand.
+
+**Where the coverage actually is not.** `admin/collections/` and
+`admin/fields/` are 18,861 lines — about a quarter of the admin client — and
+they are mounted straight from `app.tsx`, not from `admin/pages/`. A census of
+"the busiest pages" walks `pages/` and misses them entirely, which is how the
+five largest files in there had no test referencing them at all. Measured
+across the routed admin: 30 of 42 pages, 53% of the lines, have no test. The
+convention that a touched page gains a test is a convention — nothing enforces
+it, and `admin-ui-conventions.test.ts`'s cases are all about chrome.
 
 ## Lint ratchet (next targets)
 

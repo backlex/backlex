@@ -8,6 +8,20 @@ import { normalizePhoneOperands } from "../services/items/phone-fields";
 import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
 import { normalizeTemporalOperands } from "../services/items/temporal-fields";
 
+/**
+ * Dots allowed in a nested filter/sort key — `3` means up to three relation
+ * hops plus a leaf (`a.b.c.d`).
+ *
+ * A readability limit, not a correctness one. It used to be `2`, justified by
+ * keeping SQL aliases under Postgres's 63-character identifier ceiling — a job
+ * it never did, because field names have no length limit of their own, so two
+ * long ones overflowed at two hops and PG silently truncated the two aliases
+ * into one. `relationAlias` measures the real alias and refuses per path, so
+ * the depth cap is now only about how long a JOIN ladder stays legible in
+ * `EXPLAIN`.
+ */
+export const MAX_NESTED_DOTS = 3;
+
 export interface SortClause {
   field: string;
   dir: "asc" | "desc";
@@ -109,12 +123,17 @@ const validateFilterFields = (
     // time. We only enforce identifier shape on every segment.
     if (k.includes(".")) {
       const dotCount = (k.match(/\./g) || []).length;
-      // Hard ceiling: keys may have up to 3 segments (= 2 hops + leaf).
-      // `a.b` is 1-hop (head `a`, leaf `b`). `a.b.c` is 2-hop (chain
-      // `[a, b]`, leaf `c`). `a.b.c.d` is 3-hop — rejected. The ceiling
-      // keeps generated aliases under the PG 63-char identifier limit
-      // and the JOIN ladder readable in EXPLAIN.
-      if (dotCount > 2) {
+      // Ceiling: keys may have up to 4 segments (= 3 hops + leaf). `a.b` is
+      // 1-hop, `a.b.c` 2-hop, `a.b.c.d` 3-hop; `a.b.c.d.e` is rejected.
+      //
+      // The old ceiling was 2 hops and its stated reason — keeping generated
+      // aliases under Postgres's 63-character identifier limit — was not
+      // something it actually did: field names have no length limit, so two
+      // long ones already overflowed at two hops. `relationAlias` is what
+      // enforces that now, per path and by measurement, so depth is free to
+      // be a readability limit instead of a correctness one. The JOIN-ladder
+      // walker in `routes/items/list.ts` was always generic over chain length.
+      if (dotCount > MAX_NESTED_DOTS) {
         throw new AppError(
           "VALIDATION",
           `Nested filter exceeds max depth: ${k}`,
@@ -396,7 +415,7 @@ export const parseQuery = (
       // by items.ts when it walks the chain and loads target collections.
       if (field.includes(".")) {
         const dotCount = (field.match(/\./g) || []).length;
-        if (dotCount > 2) {
+        if (dotCount > MAX_NESTED_DOTS) {
           throw new AppError("VALIDATION", `Nested sort exceeds max depth: ${field}`);
         }
         const segments = field.split(".");

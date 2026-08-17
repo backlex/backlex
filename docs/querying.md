@@ -289,7 +289,7 @@ produces one join, not two.
 
 ### Limits
 
-- **Up to 2 hops** (3 dotted segments). `a.b.c.d` returns `422`. Each
+- **Up to 3 hops** (4 dotted segments). `a.b.c.d.e` returns `422`. Each
   hop's target collection is loaded and read-permission-checked at
   compile time.
 - **`relation_many` filters lower to `EXISTS`, not a JOIN.** See
@@ -352,7 +352,9 @@ lowering happens per leaf and respects the tree's boolean structure.
 
 | Situation                                                       | Status | Message                                                            |
 |-----------------------------------------------------------------|--------|--------------------------------------------------------------------|
-| More than 2 hops (`a.b.c.d`)                                    | 422    | `Nested filter exceeds max depth: a.b.c.d`                         |
+| More than 3 hops (`a.b.c.d.e`)                                  | 422    | `Nested filter exceeds max depth: a.b.c.d.e`                       |
+| Relation path whose SQL alias would exceed 63 chars (Postgres)  | 422    | `Relation path "…" is too deeply nested to query: …`                |
+| More than 20 distinct relation paths in one query               | 422    | `Filter and sort reach through N different relation paths; …`      |
 | Nested sort through a `relation_many` field                     | 422    | `Nested sort on relation_many is not supported: <field>`           |
 | Multi-hop chain through a `relation_many` field                 | 422    | `Multi-hop nested filter through relation_many is not supported: "<slug>.<segment>"` |
 | Head is not a relation field                                    | 422    | `Nested filter only works on relation fields — "<head>" is <type>` |
@@ -582,11 +584,15 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
 
 ## What's not yet supported
 
-- **Beyond 2 hops** — `a.b.c.d` and deeper return `422`. The hard
-  ceiling exists to keep alias lengths well under PG's 63-char
-  identifier limit and to keep the JOIN ladder readable in `EXPLAIN`.
-  A 3rd hop can be added by lifting the `dotCount > 2` cap in
-  `parseQuery` — the JOIN builder in `items.ts` is already recursive.
+- **Beyond 3 hops** — `a.b.c.d.e` and deeper return `422`. The ceiling is
+  about how legible a JOIN ladder stays in `EXPLAIN`, and nothing else.
+  It used to be 2 hops and used to claim it kept alias lengths under
+  Postgres's 63-character identifier limit; it did not, because field names
+  have no length limit of their own, so two long ones already overflowed at
+  two hops and PG silently truncated the two aliases into one — wrong rows,
+  no error. `relationAlias` measures the alias per path now and refuses one
+  Postgres would truncate (SQLite has no such limit, so the check is
+  Postgres-only rather than a limit invented for every dialect).
 - **Multi-hop through `relation_many`** — only single-hop
   `relation_many` filters lower to `EXISTS`. A multi-hop chain whose
   middle (or last) segment is a `relation_many` field returns `422` —
@@ -601,10 +607,10 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
   (per-hop target collection load + read-permission gate + nested JOIN)
   are the same as for nested filter; the lowering just hasn't been
   wired up yet. Tracked as a follow-up.
-- **`?expand=` on a `relation_many` field** — expanding an array of
-  foreign ids would emit `array<object>` rather than `object`, which
-  needs a different SQL strategy (PG: `LATERAL` + `jsonb_agg`; SQLite:
-  correlated sub-`SELECT json_group_array(…)`). Returns `422` for now.
+~~**`?expand=` on a `relation_many` field**~~ — **shipped.** To-many heads are
+  batch-fetched after the page is materialized rather than joined, so no
+  `LATERAL`/`json_group_array` lowering was needed after all. This entry
+  described a limit that had already been lifted.
 
 ## SDK fluent query builder
 

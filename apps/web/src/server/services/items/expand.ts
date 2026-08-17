@@ -8,6 +8,46 @@ import { deserialize, deserializeField } from "./serialize";
 import { queryAll } from "./sql-helpers";
 
 /**
+ * Postgres truncates any identifier past 63 bytes — silently, with only a
+ * NOTICE — so two relation chains whose aliases agree for 63 characters
+ * become the SAME alias in the emitted SQL. The JOIN ladder then reads
+ * columns off whichever table won, which is wrong answers rather than an
+ * error.
+ *
+ * The comment on the alias builder claimed the 2-hop depth cap kept this
+ * impossible. It did not: field names carry no length limit of their own
+ * (`USER_FIELD_NAME` is `/^[a-z][a-z0-9_]*$/`), so `rel_` plus two
+ * thirty-character names is already 66. The cap was never the guard; this is.
+ */
+export const MAX_ALIAS_CHARS = 63;
+
+/**
+ * The JOIN alias for a relation chain prefix, refusing one Postgres would
+ * truncate. Shared by the filter/sort chain walker and the expand resolver so
+ * the two cannot disagree about what an alias is called.
+ *
+ * **Postgres only.** SQLite has no identifier-length limit, so the failure
+ * this prevents cannot happen there — and refusing anyway would break queries
+ * that work today on the D1 deployments this ships to most. A dialect
+ * difference is the honest answer when the underlying limit is a dialect
+ * difference; the alternative is breaking working callers to protect them
+ * from nothing.
+ */
+export const relationAlias = (
+  segments: readonly string[],
+  dialect: "pg" | "sqlite",
+): string => {
+  const alias = `rel_${segments.join("__")}`;
+  if (dialect === "pg" && alias.length > MAX_ALIAS_CHARS) {
+    throw new AppError(
+      "VALIDATION",
+      `Relation path "${segments.join(".")}" is too deeply nested to query: it needs a ${alias.length}-character SQL alias and the limit is ${MAX_ALIAS_CHARS}. Shorten the field names, or filter in fewer hops.`,
+    );
+  }
+  return alias;
+};
+
+/**
  * Build the SELECT expression for one `?expand=<head>` entry:
  *
  *   CASE WHEN base.<head> IS NULL
@@ -120,7 +160,7 @@ export const resolveExpands = async (
     // shares one join). Otherwise emit a fresh LEFT JOIN.
     let alias = joinMap.get(head)?.alias;
     if (!alias) {
-      alias = `rel_${head}`;
+      alias = relationAlias([head], ctx.dialect);
       const aliasId = sql.identifier(alias);
       const targetTbl = sql.identifier(target.physicalTable);
       const onParts: SQL[] = [

@@ -38,6 +38,7 @@ import {
 import {
   resolveExpands,
   applyExpandToRow,
+  relationAlias,
   resolveManyExpands,
   applyManyExpandsToRows,
 } from "../../services/items/expand";
@@ -73,6 +74,11 @@ import {
 import { auditRead, canSeeDraftsFor } from "./shared";
 import { stagedIdsFor } from "../../services/items/staged";
 import { defaultHook } from "../../lib/openapi-router";
+
+/** Distinct relation paths one query may reach through. Each is a JOIN ladder
+ *  whose every hop costs a collection load and a permission resolution before
+ *  any SQL runs; twenty is far past any real filter. */
+const MAX_NESTED_CHAINS = 20;
 
 export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
@@ -196,6 +202,18 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           const key = chain.join(".");
           if (!nestedChains.has(key)) nestedChains.set(key, chain);
         }
+      }
+      // Each distinct chain is its own JOIN ladder, and each hop in it costs a
+      // collection load and a permission resolution before any SQL runs. That
+      // was unbounded, and lifting the depth cap to three hops raised the
+      // worst case per chain by half again — so bound the count. Twenty is far
+      // past any real filter (a busy admin screen uses two or three) and turns
+      // a query that would grind into a 422 that says what to do.
+      if (nestedChains.size > MAX_NESTED_CHAINS) {
+        throw new AppError(
+          "VALIDATION",
+          `Filter and sort reach through ${nestedChains.size} different relation paths; the limit is ${MAX_NESTED_CHAINS}. Narrow the query, or fetch in two calls.`,
+        );
       }
       // Snapshot every (chain, leaf) pair used by the filter so we can
       // verify the leaf exists on the FINAL target collection — otherwise
@@ -425,9 +443,15 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           // Plain `relation`: emit a LEFT JOIN.
           // Alias = `rel_<seg1>__<seg2>__…__<segN>` (full prefix). The
           // `__` separator keeps it unique against shorter prefixes
-          // (`rel_a` vs `rel_a__b`) and PG-identifier-safe up to 63
-          // chars (3-hop alias is ≤ ~45 chars in practice).
-          const alias = `rel_${chain.slice(0, i + 1).join("__")}`;
+          // (`rel_a` vs `rel_a__b`).
+          //
+          // Built through `relationAlias`, which refuses one Postgres would
+          // truncate. This comment used to claim the depth cap kept aliases
+          // "PG-identifier-safe up to 63 chars" — it did not, because field
+          // names have no length limit of their own, so two thirty-character
+          // names already overflow at TWO hops and PG silently collapses the
+          // two aliases into one.
+          const alias = relationAlias(chain.slice(0, i + 1), ctx.dialect);
           const targetTbl = sql.identifier(target.physicalTable);
           const aliasId = sql.identifier(alias);
           const onParts: SQL[] = [

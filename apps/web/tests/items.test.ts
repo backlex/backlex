@@ -231,14 +231,28 @@ describe("multi-hop nested filter + sort", () => {
     expect(asc.data[asc.data.length - 1]?.title).toBe("Order-2");
   });
 
-  test("4-segment key (a.b.c.d) returns 422", async () => {
+  test("a 4-segment key is now walked, and fails on the hop that is not a relation", async () => {
+    // The ceiling moved from 2 hops to 3, so `a.b.c.d` is no longer refused
+    // for its depth — it is walked, and `city` is a text field, which is the
+    // honest complaint. See `relation-depth.test.ts` for a 3-hop chain that
+    // resolves.
     const res = await h.fetch(
       `/api/items/orders?filter=${encodeURIComponent(JSON.stringify({ "customer_id.address_id.city.x": { _eq: "Berlin" } }))}`,
     );
     expect(res.status).toBe(422);
     const body = (await res.json()) as { error: { code: string; message: string } };
     expect(body.error.code).toBe("VALIDATION");
-    expect(body.error.message).toMatch(/exceeds max depth/);
+    expect(body.error.message).toMatch(/is not a relation field/);
+  });
+
+  test("5-segment key (a.b.c.d.e) is over the ceiling", async () => {
+    const res = await h.fetch(
+      `/api/items/orders?filter=${encodeURIComponent(JSON.stringify({ "customer_id.address_id.city.x.y": { _eq: "Berlin" } }))}`,
+    );
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: { message: string } }).error.message).toMatch(
+      /exceeds max depth/,
+    );
   });
 
   test("filter+sort sharing prefix produces one ladder (count + filter_count still correct)", async () => {

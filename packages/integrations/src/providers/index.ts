@@ -26,6 +26,7 @@ import { dhlExpress } from "./dhl-express";
 import { discord } from "./discord";
 import { easypost } from "./easypost";
 import { ebay } from "./ebay";
+import { etsy } from "./etsy";
 import { elasticsearch } from "./elasticsearch";
 import { github } from "./github";
 import { googleCalendar } from "./google-calendar";
@@ -112,6 +113,7 @@ export const INTEGRATION_KINDS = [
   // carriers (book a shipment, read where it is, cancel it)
   "easypost",
   "ebay",
+  "etsy",
   "allegro",
   "otto",
   "bol",
@@ -166,6 +168,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   amazon,
   easypost,
   ebay,
+  etsy,
   allegro,
   otto,
   bol,

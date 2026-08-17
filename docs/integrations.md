@@ -22,7 +22,7 @@ backlex signs what it sends.
 
 ## Providers
 
-Forty-nine providers ship in the registry, grouped by category:
+Fifty providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -36,8 +36,8 @@ Forty-nine providers ship in the registry, grouped by category:
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
-| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Otto — a source, a task and a listing; Allegro — a source, a task and a listing (browsed a level at a time); bol.com — a source, a DESTINATION and a task |
-| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); DHL Express — book with a label, and **no cancel, because DHL Express has none**; PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
+| marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Etsy — a source, a DESTINATION and a task, over OAuth with PKCE; Otto — a source, a task and a listing; Allegro — a source, a task and a listing (browsed a level at a time); bol.com — a source, a DESTINATION and a task |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book, track and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); DHL Express — book with a label, and **no cancel, because DHL Express has none**; PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -1162,7 +1162,54 @@ this codebase: the WSDL types it as an integer and does not enumerate it, and a
 picker built from a guess would be worse than a field you fill in from your own
 contract documentation.
 
-#### Aras Kargo, and a task that is missing on purpose
+#### Etsy, and a contract that was never actually shut
+
+**Etsy** reads orders in, pushes stock and price out, and sends a tracking
+number back — the same three-part shape bol.com has. It arrived late for a
+reason worth recording: the backlog had it filed under "waiting on account
+approval", because a probe of the developer site returned 403. But
+`etsy.com/openapi/generated/oas/3.0.0.json` answers a plain GET with **OpenAPI
+3.0.2, 76 paths**, and every field this provider sends was read out of it. A
+seller account is needed to make live calls; it was never needed to know what a
+call looks like, and those are different blockers. DHL Express was nearly
+skipped for the same reason.
+
+**Two credentials that are one string.** Every v3 request needs an OAuth bearer
+token AND an `x-api-key` header, and the `x-api-key` value is the app's
+keystring — which is also the OAuth client id. The provider reads one field and
+sends it twice rather than asking for the same value in two boxes. (Etsy's own
+spec describes that header as `keystring:shared_secret`, which would fail every
+request. The keystring alone is what v3 accepts.)
+
+**The shop id is asked for, not discovered.** `getShop` could resolve it, but
+every operation is addressed by `shop_id` and a wrong one is answered with an
+empty list rather than an error — an integration that silently syncs nothing.
+Asking at connect time makes that a form error instead.
+
+Three things about the data that are quietly wrong if you reason from another
+marketplace:
+
+- **Timestamps are epoch SECONDS.** Sending milliseconds asks for orders from
+  the year 57000 and returns an empty page with no error.
+- **Money is `{amount, divisor, currency_code}`** on the way out — minor units
+  with an explicit divisor, because Etsy carries currencies that do not have
+  two decimal places — and a plain decimal on the way back in.
+- **The inventory PUT REPLACES the whole listing.** It looks like a patch and
+  is not one: writing a bare product deletes every other variation. So the
+  provider reads the current inventory, edits it, and writes it back whole.
+
+That last one is why the destination has an **"Each row addresses"** setting. A
+row that names only a listing has to say what it means for a listing with five
+variations. `One variation` (the default) refuses a row with no product id;
+`The whole listing` writes the same quantity and price onto every variation,
+having been asked to. The destructive reading is never the default.
+
+`submit_tracking` is deliberately not repeatable: Etsy treats it as marking the
+receipt shipped and mails the buyer, so sending it twice sends a second
+notification about a parcel already announced. The carrier name comes from the
+row because Etsy matches it against its own list and refuses anything else.
+
+#### Aras Kargo, and a task that turned out to be possible
 
 **Aras Kargo** is the second SOAP courier, and it is what the helper was written
 for: the file is a translation, not a design. `book_shipment` and
@@ -1177,15 +1224,37 @@ a transcription error. And the **cash-on-delivery flag and amount travel
 together or not at all**: an amount with no flag is silently not collected,
 which is the one failure here that costs the seller money.
 
-**There is no tracking task**, deliberately. Aras's tracking operations
-(`GetCargoTransaction`, `GetCargoInfo`, `GetSortedCargoInfo`) all return an
-untyped .NET DataSet — the WSDL declares the response as `<s:any>` carrying a
-diffgram, so the column names inside are not part of the published contract at
-all. A task must declare the fields it writes back, and declaring names guessed
-from somebody else's DataSet is how a row ends up permanently empty while the
-run reports success. Those names *are* in the integration document Aras hands
-over with the credentials; with that document in front of you the task is a
-short addition, because the helper already reads an arbitrary tree by name.
+**Tracking took a second look, and this section used to say it was
+impossible.** Five of Aras's consignment-query operations —
+`GetCargoTransaction`, `GetCargoInfo`, `GetSortedCargoInfo`,
+`GetCargoSearchByCode`, `GetCargoTransactionByWaybillId` — do return an untyped
+.NET DataSet: the WSDL declares the response as `<s:any>` carrying a diffgram,
+so the column names inside are not part of the published contract, and
+declaring names guessed from somebody else's DataSet is how a row ends up
+permanently empty while the run reports success. That reasoning stands, and
+those five stay unused.
+
+But `GetDeliveryInfodocID` is not one of them. The same public WSDL declares it
+returning `ArrayOfDeliveryInfo`, and `DeliveryInfo` is a fully typed complex
+type with 23 named fields — `DeliveryStatus`, `DeliveryDate`, `DeliveryPerson`,
+`DeliveryUnitName`, `NotDeliveredReason` and the rest. `refresh_tracking` reads
+those, so nothing it writes back is a guess and the integration document was
+never the dependency.
+
+Two things about it worth knowing:
+
+- **Which key to point it at is a setting, not a constant.** The operation asks
+  for `docID` and the record it returns carries BOTH `OrgDocNumber` and
+  `DocID`, so whether Aras answers to the integration code `book_shipment`
+  books with, or to a document id of its own, is a question the WSDL does not
+  settle. Point `docIdField` at the field `book_shipment` wrote first; if a
+  consignment you know has moved comes back empty, the other key is the answer
+  and only that row field changes.
+- **An empty answer is not a failure.** A consignment Aras has not moved yet
+  returns an empty array, and the task reports `unknown` rather than throwing —
+  otherwise a cron poll over undelivered consignments would be a wall of failed
+  runs. The status itself is Aras's own Turkish prose, passed through rather
+  than mapped, because the WSDL publishes no list of the values it uses.
 
 #### UPS, and the shape that got lifted
 

@@ -3289,8 +3289,12 @@ msgid "Book"
 msgstr "Book"
 
 #: src/client/admin/pages/automation/integrations.tsx
-msgid "Book a consignment and cancel it."
-msgstr "Book a consignment and cancel it."
+#~ msgid "Book a consignment and cancel it."
+#~ msgstr "Book a consignment and cancel it."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a consignment, ask where it is, and cancel it."
+msgstr "Book a consignment, ask where it is, and cancel it."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Book a consignment, ask where the parcel is, and cancel it."
@@ -14648,6 +14652,10 @@ msgstr "Read it from a column"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Read on your own clock, then stored as an instant."
 msgstr "Read on your own clock, then stored as an instant."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Read orders, push stock and price, and send a tracking number back."
+msgstr "Read orders, push stock and price, and send a tracking number back."
 
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx

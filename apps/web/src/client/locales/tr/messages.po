@@ -3289,8 +3289,12 @@ msgid "Book"
 msgstr "Rezerve et"
 
 #: src/client/admin/pages/automation/integrations.tsx
-msgid "Book a consignment and cancel it."
-msgstr "Gönderi oluşturun ve iptal edin."
+#~ msgid "Book a consignment and cancel it."
+#~ msgstr "Gönderi oluşturun ve iptal edin."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a consignment, ask where it is, and cancel it."
+msgstr "Gönderi oluşturur, nerede olduğunu sorar ve iptal eder."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Book a consignment, ask where the parcel is, and cancel it."
@@ -14648,6 +14652,10 @@ msgstr "Bir kolondan oku"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Read on your own clock, then stored as an instant."
 msgstr "Kendi saatinizle okunur, sonra bir zaman anı olarak saklanır."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Read orders, push stock and price, and send a tracking number back."
+msgstr "Siparişleri okur, stok ve fiyatı gönderir, kargo takip numarasını geri yazar."
 
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/pages/public-form.tsx

@@ -183,6 +183,7 @@ const BRANDS: Record<string, Brand> = {
   ciceksepeti: { name: "Çiçeksepeti", mark: "Çs", markBg: "#E5004C" },
   amazon: { name: "Amazon", mark: "Az", markBg: "#232F3E" },
   ebay: { name: "eBay", mark: "eB", markBg: "#E53238" },
+  etsy: { name: "Etsy", mark: "Etsy", markBg: "#F1641E" },
   allegro: { name: "Allegro", mark: "Al", markBg: "#FF5A00" },
   otto: { name: "Otto", mark: "Ot", markBg: "#D4021D" },
   bol: { name: "bol.com", mark: "bol", markBg: "#0000A4" },
@@ -368,6 +369,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Pull Selling Partner orders in with their lines and addresses, put products on sale, and confirm shipments back.`;
       case "ebay":
         return t`Pull orders in with their lines, put products on sale across eBay's marketplaces, and confirm shipments back.`;
+      case "etsy":
+        return t`Read orders, push stock and price, and send a tracking number back.`;
       case "allegro":
         return t`Pull Polish marketplace orders in with their lines, and set a seller order status with its waybill back.`;
       case "otto":
@@ -379,7 +382,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
       case "yurtici":
         return t`Book a consignment, ask where the parcel is, and cancel it.`;
       case "aras":
-        return t`Book a consignment and cancel it.`;
+        return t`Book a consignment, ask where it is, and cancel it.`;
       case "dhl":
         return t`Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo).`;
       case "dhl-express":

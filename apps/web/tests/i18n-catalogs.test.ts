@@ -12,7 +12,7 @@
  *    are preserved exactly — a dropped placeholder is a runtime crash.
  */
 import { describe, test, expect } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const LOCALES_DIR = join(import.meta.dir, "../src/client/locales");
@@ -59,11 +59,72 @@ function tokens(s: string): string[] {
 const readCatalog = (locale: string): Map<string, string> =>
   parsePo(readFileSync(join(LOCALES_DIR, locale, "messages.po"), "utf-8"));
 
+const CLIENT_DIR = join(import.meta.dir, "../src/client");
+
+/** Every `.ts`/`.tsx` under the admin SPA, minus the catalogs themselves. */
+const clientSources = (dir: string, out: string[] = []): string[] => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== "locales") clientSources(p, out);
+    } else if (/\.tsx?$/.test(entry.name)) {
+      out.push(p);
+    }
+  }
+  return out;
+};
+
+/**
+ * Comments out, so a doc comment mentioning the `t` macro in backticks is not
+ * read as a call to it. That is not hypothetical — several files here explain
+ * how the macro works, and the closing backtick of an inline `t` reference
+ * followed by any later backtick looks exactly like a tagged template.
+ */
+const stripComments = (src: string): string =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+/** `.po` escapes; the source literal is the unescaped form. */
+const unescapePo = (s: string): string =>
+  s.replace(/\\"/g, '"').replace(/\\\\/g, "\\").replace(/\\n/g, "\n");
+
 describe("admin i18n catalogs", () => {
   const en = readCatalog("en");
 
   test("source catalog is non-empty", () => {
     expect(en.size).toBeGreaterThan(0);
+  });
+
+  /**
+   * The gap the other checks structurally cannot see.
+   *
+   * Everything below compares `tr` against `en` — but `en` is itself GENERATED
+   * by `bun run i18n:extract`. A string added to a component without running
+   * extraction is in neither catalog, so it is missing from no comparison and
+   * every check passes. Two strings shipped that way in `42cf2c8c` and the
+   * full suite was green; they only surfaced when somebody else ran extract.
+   *
+   * So this reads the source instead. Restricted to non-interpolated
+   * `` t`…` `` literals on one line: an interpolated one becomes `{0}` / `{name}`
+   * in the catalog and matching that would need the macro itself, and
+   * `<Trans>` bodies are JSX rather than text. Those are the cases this cannot
+   * cover — it covers the one that actually bit.
+   */
+  test("every plain `t` literal in the source is in the en catalog", () => {
+    const ids = new Set([...en.keys()].map(unescapePo));
+    const missing: string[] = [];
+    for (const file of clientSources(CLIENT_DIR)) {
+      const src = stripComments(readFileSync(file, "utf-8"));
+      // Not preceded by a backtick, word char or dot — so `` `t` `` in prose
+      // and `foo.t\`…\`` are both excluded.
+      for (const m of src.matchAll(/(^|[^`\w.])t`([^`$\\]*)`/g)) {
+        const literal = m[2]!;
+        if (!literal.trim() || literal.includes("\n")) continue;
+        if (!ids.has(literal)) {
+          missing.push(`${file.slice(file.indexOf("src/client/"))}: ${literal.slice(0, 60)}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
   });
 
   for (const locale of TARGET_LOCALES) {

@@ -120,9 +120,17 @@ describe("CollectionKpiStrip", () => {
       },
     );
     renderWithProviders(<CollectionKpisPanel collection="orders" />);
-    await waitFor(() => expect(screen.getByText("Mine")).toBeTruthy());
+    // Wait for the VALUE, not the label. The label arrives with the KPI LIST;
+    // the figure comes from a second request, so waiting on "Mine" and then
+    // reading "12" races that request — which is how this failed once under
+    // full-suite load with the strip still showing its skeleton.
+    //
+    // It also makes the negative assertion mean something: "Theirs" is absent
+    // from a strip that has not loaded either, so checking it before the value
+    // lands passes whether or not the filtering works.
+    await waitFor(() => expect(screen.getByText("12")).toBeTruthy());
+    expect(screen.getByText("Mine")).toBeTruthy();
     expect(screen.queryByText("Theirs")).toBeNull();
-    expect(screen.getByText("12")).toBeTruthy();
     expect(screen.getByText("20%")).toBeTruthy();
   });
 

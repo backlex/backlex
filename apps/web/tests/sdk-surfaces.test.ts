@@ -74,6 +74,17 @@ type Coverage = {
   missing?: string[];
   /** `wave-N` or `wave-N-phase-M`. Required by `deferred` and by `missing`. */
   until?: string;
+  /**
+   * The `clients/<name>.ts` module whose arrival retires this deferral, when
+   * the entry's own key cannot name it.
+   *
+   * The tripwire below derives the module from the key by stripping an `mcp:`
+   * prefix, which works for every MCP entry and for NONE of the route-literal
+   * ones — `route:/api/i18n` never equals a filename, so those deferrals sat
+   * green no matter what shipped. This is how such an entry says what would
+   * satisfy it, and the retirability assertion refuses a new one without it.
+   */
+  retiredBy?: string;
 };
 
 /** Reasons repeated across many entries, written once so each stays specific. */
@@ -221,9 +232,8 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api": { core: "request" },
   "/api/_internal/sandbox-rpc": INTERNAL,
   "/api/account": {
-    deferred:
-      "Account preferences are the admin console's own state — list columns, locale and timezone for the operator UI. An application keeps its users' preferences in its own collections.",
-    until: "wave-21",
+    serverOnly:
+      "Account preferences are the admin console's own state — list columns, locale and timezone for the operator UI. An application keeps its users' preferences in its own collections, so there is nothing here for a client to wrap. Was marked deferred-until-wave-21, but its own reasoning describes a permanent exclusion: no wave was ever going to change the answer.",
   },
   "/api/activity": MCP_SURFACES.activity!,
   "/api/agents": { client: "agents" },
@@ -253,6 +263,7 @@ const ROUTE_FAMILIES: Record<string, Family> = {
     deferred:
       "Translating a workspace's own content is reached through the `locale` option on ordinary reads and writes, which every application already uses. The i18n routes administer the locale set itself, which is an operator concern.",
     until: "wave-21",
+    retiredBy: "i18n",
   },
   "/api/integrations": { client: "integrations" },
   "/api/items": { core: "from" },
@@ -264,26 +275,31 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/permissions": { client: "permissions" },
   "/api/phone": { core: "from" },
   "/api/phone-numbers": { client: "messaging" },
+  // Same reclassification as `/api/public/forms`, and for the same reason its
+  // own text gives: it is the visitor half of a feature whose client already
+  // exists, so the gap is a member on `approvals`, not a missing module.
   "/api/public/approve": {
-    deferred:
-      "The visitor half of approvals: someone who is not a user of the workspace acts on a token they were emailed. Same class as filling in a public form, and it should be designed alongside it rather than ahead of it.",
-    until: "wave-21",
+    client: "approvals",
+    missing: ["actOnToken"],
+    until: "wave-19-phase-4",
   },
   "/api/public/book": { client: "booking" },
   "/api/public/dashboards": {
-    deferred:
-      "A public dashboard embed is consumed as an iframe or an image, not as a typed method call, so the SDK is not the surface that makes it usable.",
-    until: "wave-21",
+    serverOnly:
+      "A public dashboard embed is consumed as an iframe or an image, not as a typed method call, so the SDK is not the surface that makes it usable. Was deferred-until-wave-21 while saying, in the same sentence, that no client belongs here.",
   },
+  // `missing`, not `deferred`: the client exists and covers authoring, so the
+  // gap is a member rather than a module — and `missing` is the half of this
+  // file that actually goes red when the member lands. As a deferral it could
+  // not, because `clients/forms.ts` is already claimed by the `forms` entry.
   "/api/public/forms": {
-    deferred:
-      "Filling in a public form from your own application is the entire purpose of the feature, and the client covers only authoring today. A wave-19 target.",
+    client: "forms",
+    missing: ["submit"],
     until: "wave-19-phase-4",
   },
   "/api/public/sign": {
-    deferred:
-      "The signer's journey is a hosted page reached from an email link, and the token that authorises it is deliberately not something an application holds.",
-    until: "wave-21",
+    serverOnly:
+      "The signer's journey is a hosted page reached from an email link, and the token that authorises it is deliberately not something an application holds. A client method would need the one credential the design refuses to hand out, so this is permanent rather than pending.",
   },
   "/api/realtime": { core: "subscribe" },
   "/api/revisions": MCP_SURFACES.revisions!,
@@ -307,11 +323,9 @@ const ROUTE_FAMILIES: Record<string, Family> = {
       "This is the INBOUND receiver third-party providers post to. Its callers are Stripe and Slack, not this SDK, and a client method pointed at it would have no meaning.",
   },
   "/api/webhooks": MCP_SURFACES.webhooks!,
-  "/api/workspace-config": {
-    deferred:
-      "The public shape of a workspace's auth configuration is fetched by the sign-in flow itself rather than called directly, so it is served through `auth` rather than as a surface of its own.",
-    until: "wave-21",
-  },
+  // Not deferred — its own reasoning says the `auth` client already answers it,
+  // which is `client`, not an excuse waiting on a wave.
+  "/api/workspace-config": { client: "auth" },
   "/mcp": INTERNAL,
   "/s3": INTERNAL,
   // The whole `/api/admin/*` family. Listed one by one rather than matched by
@@ -339,6 +353,7 @@ const ROUTE_FAMILIES: Record<string, Family> = {
     deferred:
       "Erasing a data subject is irreversible and wants its own confirmation gate before any client makes it one call away. It has no MCP tool either, so designing the surface is a piece of work rather than a port.",
     until: "wave-21",
+    retiredBy: "erasure",
   },
   "/api/admin/feature-flags": { client: "flags" },
   "/api/admin/forms": { client: "forms" },
@@ -557,11 +572,56 @@ describe("SDK parity — every entry is well formed", () => {
     );
     for (const [key, cov] of allEntries) {
       if (cov.deferred === undefined) continue;
-      const module = key.replace(/^mcp:/, "");
+      // `retiredBy` first: stripping an `mcp:` prefix leaves a `route:` key
+      // intact, and `clientModules.includes("route:/api/i18n")` is false
+      // forever — which is how seven route-literal deferrals sat here green
+      // through every wave, wearing a tripwire that could not fire.
+      const module = cov.retiredBy ?? key.replace(/^mcp:/, "");
       const stale = clientModules.includes(module) && !claimed.has(module);
       expect(`${key} is deferred but an unclaimed clients/${module}.ts exists: ${stale}`).toBe(
         `${key} is deferred but an unclaimed clients/${module}.ts exists: false`,
       );
+    }
+  });
+
+  test("every deferral is one the tripwire above can actually fire on", () => {
+    // The hole this closes is the file's own shape, not a typo: `deferred` was
+    // accepted on any key, while the retirement check only ever understood
+    // `mcp:`-prefixed ones. An entry could therefore promise "until wave 21"
+    // and be incapable of noticing wave 21 — and eight of twenty-three were in
+    // exactly that state, four of them describing permanent exclusions.
+    //
+    // So: a deferral either names a module the check can look for, or it is not
+    // a deferral. If nothing would ever satisfy it, the honest field is
+    // `serverOnly`; if a client already exists and only a member is absent, it
+    // is `missing`, which retires itself.
+    // A route family that answers by pointing at an MCP module's entry shares
+    // the very same object (`"/api/activity": MCP_SURFACES.activity!`), so it
+    // is already retirable under that module's own key — checking by identity
+    // rather than by key is what stops twelve such aliases reading as holes.
+    const mcpBacked = new Set(
+      allEntries.filter(([k]) => k.startsWith("mcp:")).map(([, cov]) => cov),
+    );
+    for (const [key, cov] of allEntries) {
+      if (cov.deferred === undefined) continue;
+      const retirable =
+        key.startsWith("mcp:") || typeof cov.retiredBy === "string" || mcpBacked.has(cov);
+      expect(`${key} names what would retire it: ${retirable}`).toBe(
+        `${key} names what would retire it: true`,
+      );
+    }
+  });
+
+  test("`retiredBy` names a module that does not exist yet", () => {
+    // A `retiredBy` pointing at a module that is already there — or at one
+    // another entry has claimed — is a tripwire aimed at the past. Either way
+    // the deferral it guards can never fire, which is the state this whole
+    // pair of tests exists to make impossible.
+    for (const [key, cov] of allEntries) {
+      if (!cov.retiredBy) continue;
+      expect(
+        `${key} -> clients/${cov.retiredBy}.ts exists: ${clientModules.includes(cov.retiredBy)}`,
+      ).toBe(`${key} -> clients/${cov.retiredBy}.ts exists: false`);
     }
   });
 

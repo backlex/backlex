@@ -71,6 +71,38 @@ import { phoneRoutes } from "./phone";
 import { signaturesRoutes } from "./signatures";
 import { bookingRoutes } from "./booking";
 import { bookingPublicRoutes } from "./booking-public";
+// The 27 groups below were fully annotated with `createRoute` + schemas and
+// absent from this array, so none of them reached `/api/openapi`, the REST
+// explorer, `docs/service-map.md` or the ten generated polyglot SDKs. Adding a
+// line here is the whole of what documenting a group takes, which is exactly
+// why it kept being forgotten — `openapi-subapp-coverage.test.ts` now derives
+// the set from `app.ts` instead of trusting this file to be complete.
+import { approvalsRoutes } from "./approvals";
+import { pushTemplatesRoutes } from "./push-templates";
+import { pushConfigRoutes } from "./push-config";
+import { smsConfigRoutes } from "./sms-config";
+import { aiConfigRoutes } from "./ai-config";
+import { platformSamlAdminRoutes } from "./platform-saml-admin";
+import { platformLdapAdminRoutes } from "./platform-ldap-admin";
+import { dashboardsRoutes } from "./dashboards";
+import { kpisRoutes } from "./kpis";
+import { usageRoutes } from "./usage";
+import { realtimeAdminRoutes } from "./realtime-admin";
+import { advisorRoutes } from "./advisor";
+import { tracesRoutes } from "./traces";
+import { analyticsRoutes } from "./analytics";
+import { analyticsIngestRoutes } from "./analytics-ingest";
+import { flagsPublicRoutes, flagsAdminRoutes } from "./feature-flags";
+import { sharedLinksRoutes } from "./shared-links";
+import { sharedPublicRoutes } from "./shared-public";
+import { dashboardsPublicRoutes } from "./dashboards-public";
+import { approvalsPublicRoutes } from "./approvals-public";
+import { signaturesPublicRoutes } from "./signatures-public";
+import { deviceTokensRoutes } from "./device-tokens";
+import { phoneNumbersRoutes } from "./phone-numbers";
+import { messagingRoutes } from "./messaging";
+import { jobsRoutes } from "./jobs";
+import { extensionsRoutes } from "./extensions";
 
 // `any` on purpose — `OpenAPIHono<AppBindings>` for each sub-app blows
 // past TypeScript's inference budget on this many entries. Only the
@@ -139,6 +171,33 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/signatures", signaturesRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/booking", bookingRoutes as unknown as OpenAPIHono<any>],
   ["/api/public/book", bookingPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/approvals", approvalsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/push-templates", pushTemplatesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/push-config", pushConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/sms-config", smsConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/ai-config", aiConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/platform-saml", platformSamlAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/platform-ldap-config", platformLdapAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/dashboards", dashboardsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/kpis", kpisRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/usage", usageRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/realtime", realtimeAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/advisor", advisorRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/traces", tracesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/analytics", analyticsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/analytics", analyticsIngestRoutes as unknown as OpenAPIHono<any>],
+  ["/api/flags", flagsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/feature-flags", flagsAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/shared-links", sharedLinksRoutes as unknown as OpenAPIHono<any>],
+  ["/api/shared", sharedPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/dashboards", dashboardsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/approve", approvalsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/sign", signaturesPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/device-tokens", deviceTokensRoutes as unknown as OpenAPIHono<any>],
+  ["/api/phone-numbers", phoneNumbersRoutes as unknown as OpenAPIHono<any>],
+  ["/api/messaging", messagingRoutes as unknown as OpenAPIHono<any>],
+  ["/api/jobs", jobsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/extensions", extensionsRoutes as unknown as OpenAPIHono<any>],
 ];
 
 const requireAdmin = (roles: string[]) => {

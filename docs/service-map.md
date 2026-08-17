@@ -163,6 +163,20 @@ guides; this list is everything else.
 - **Email templates** (`routes/email-templates.ts`) — per-tenant
   overrides for transactional templates; pairs with the
   per-workspace email config in `docs/api-keys-and-email.md`.
+- **Direct messaging** (`routes/messaging.ts`, `services/messaging.ts`)
+  — dispatch-only push + SMS, no in-app row. `dispatchPush` /
+  `dispatchSms` are the single source of truth the REST route and the
+  GraphQL mutations both call, so validation and the admin-or-self gate
+  cannot drift between them.
+- **Push** (`routes/device-tokens.ts`, `routes/push-config.ts`,
+  `routes/push-templates.ts`, `services/push.ts`) — device registry,
+  per-workspace transport, and `sendTemplatedPush`, the twin of
+  `sendTemplatedEmail`: a key resolves tenant-then-global and literal
+  title/body are its fallback. See `docs/push-messaging.md`.
+- **SMS** (`routes/phone-numbers.ts`, `routes/sms-config.ts`,
+  `services/sms.ts`) — number registry read at send time by
+  `sendSmsToUsers`, and cleaned up by `services/erasure.ts`. See
+  `docs/sms-messaging.md`.
 
 ## Workspace admin
 

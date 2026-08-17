@@ -87,13 +87,113 @@ const sentBody = (call: Call) => {
 };
 
 describe("the tasks Aras actually supports", () => {
-  test("book and cancel, and no tracking task at all", () => {
-    // Aras's tracking operations return an untyped .NET DataSet whose column
-    // names are not in the WSDL. A task must declare the fields it writes back,
-    // and declaring guessed names is how a row ends up permanently empty while
-    // the run reports success.
-    expect(INTEGRATION_TASKS.aras?.map((t) => t.id)).toEqual(["book_shipment", "cancel_shipment"]);
-    expect(INTEGRATION_TASKS.aras?.some((t) => t.repeatable)).toBe(false);
+  test("book, track and cancel — and only tracking repeats", () => {
+    // Tracking arrived late and for a specific reason: five of Aras's
+    // consignment-query operations answer with an untyped .NET DataSet whose
+    // columns are not in the WSDL, and declaring guessed names is how a row
+    // ends up permanently empty while the run reports success. But
+    // `GetDeliveryInfodocID` is not one of them — it returns a typed
+    // `ArrayOfDeliveryInfo`, so the names below are read rather than guessed.
+    expect(INTEGRATION_TASKS.aras?.map((t) => t.id)).toEqual([
+      "book_shipment",
+      "refresh_tracking",
+      "cancel_shipment",
+    ]);
+    // Booking twice puts two consignments on a manifest and cancelling twice
+    // errors on one already gone. Reading where a parcel is has no side effect
+    // and its whole value is that the answer moves.
+    expect(INTEGRATION_TASKS.aras?.filter((t) => t.repeatable).map((t) => t.id)).toEqual([
+      "refresh_tracking",
+    ]);
+  });
+});
+
+describe("refreshing tracking", () => {
+  const TRACK_SETTINGS = { docIdField: "carrier_shipment_id" };
+
+  /** One `DeliveryInfo`, with the field names taken from the published WSDL. */
+  const delivered = (over: Record<string, string> = {}) => {
+    const f: Record<string, string> = {
+      DocID: "DOC-9",
+      DeliveryStatus: "Teslim Edildi",
+      DeliveryAddressStatus: "Adres Doğru",
+      StatusFlag: "1",
+      DeliveryDate: "2026-08-18",
+      DeliveryTime: "14:32",
+      DeliveryPerson: "Ayşe Yılmaz",
+      DeliveryUnitName: "Kadıköy Şube",
+      ArrivalDate: "2026-08-17",
+      NotDeliveredReason: "",
+      ...over,
+    };
+    const inner = Object.entries(f).map(([k, v]) => `<${k}>${v}</${k}>`).join("");
+    return {
+      body: `<GetDeliveryInfodocIDResponse><GetDeliveryInfodocIDResult><DeliveryInfo>${inner}</DeliveryInfo></GetDeliveryInfodocIDResult></GetDeliveryInfodocIDResponse>`,
+    };
+  };
+
+  test("asks by document id, as an ArrayOfString even for one", async () => {
+    // The WSDL takes `ArrayOfString`; a bare string is answered with a fault
+    // about the element type.
+    const { calls, fetchImpl } = recorder([delivered()]);
+    await runTask("refresh_tracking", { fetchImpl, settings: TRACK_SETTINGS });
+    // Asserted on the wire rather than through the parser: the point is the
+    // `<string>` wrapper, and a parser that unwraps single text nodes would
+    // hide exactly the thing under test.
+    expect(calls[0]!.body).toContain("<docID><string>run1abc</string></docID>");
+    // Quoted, as SOAP 1.1 requires — ASP.NET checks it.
+    expect(calls[0]!.headers.SOAPAction).toBe('"http://tempuri.org/GetDeliveryInfodocID"');
+  });
+
+  test("maps the typed fields Aras publishes", async () => {
+    const { fetchImpl } = recorder([delivered()]);
+    const res = await runTask("refresh_tracking", { fetchImpl, settings: TRACK_SETTINGS });
+    expect(res.outputs).toMatchObject({
+      shipmentStatus: "Teslim Edildi",
+      statusDetail: "Adres Doğru",
+      statusFlag: "1",
+      receivedBy: "Ayşe Yılmaz",
+      deliveryUnit: "Kadıköy Şube",
+      arrivedAt: "2026-08-17",
+      docId: "DOC-9",
+    });
+  });
+
+  test("date and time are joined — apart they are not an instant", async () => {
+    const { fetchImpl } = recorder([delivered()]);
+    const res = await runTask("refresh_tracking", { fetchImpl, settings: TRACK_SETTINGS });
+    expect(res.outputs.deliveredAt).toBe("2026-08-18 14:32");
+  });
+
+  test("a consignment with no delivery date reports no instant rather than a half one", async () => {
+    const { fetchImpl } = recorder([delivered({ DeliveryDate: "", DeliveryTime: "" })]);
+    const res = await runTask("refresh_tracking", { fetchImpl, settings: TRACK_SETTINGS });
+    expect(res.outputs.deliveredAt).toBeNull();
+  });
+
+  test("an EMPTY answer is not a failure — it is a parcel Aras has not moved yet", async () => {
+    // The ordinary case immediately after booking. Throwing here would turn a
+    // cron poll over undelivered consignments into a wall of failed runs.
+    const { fetchImpl } = recorder([
+      { body: "<GetDeliveryInfodocIDResponse><GetDeliveryInfodocIDResult /></GetDeliveryInfodocIDResponse>" },
+    ]);
+    const res = await runTask("refresh_tracking", { fetchImpl, settings: TRACK_SETTINGS });
+    expect(res.outputs).toEqual({ shipmentStatus: "unknown", docId: "run1abc" });
+  });
+
+  test("a row with no document id is refused before the call", async () => {
+    const { calls, fetchImpl } = recorder([delivered()]);
+    await expect(
+      runTask("refresh_tracking", { fetchImpl, settings: TRACK_SETTINGS, row: { id: "r1" } }),
+    ).rejects.toThrow(/holds no Aras document id/);
+    expect(calls).toHaveLength(0);
+  });
+
+  test("no `docIdField` setting names itself", async () => {
+    const { fetchImpl } = recorder([delivered()]);
+    await expect(runTask("refresh_tracking", { fetchImpl, settings: {} })).rejects.toThrow(
+      /row field holding the document id/,
+    );
   });
 });
 

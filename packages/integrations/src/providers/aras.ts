@@ -13,7 +13,15 @@ import { findNode, nodeList, soapCall, SoapFault, xmlText, type SoapValue, type 
  * credentials. The credentials themselves come from a branch application; the
  * contract does not.
  *
- * ## Why there is no tracking task
+ * ## Why tracking took a second look
+ *
+ * This section used to be "why there is no tracking task", and everything it
+ * says below is still true of the operations it names — but the conclusion it
+ * drew was too broad, and `refresh_tracking` exists now. `GetDeliveryInfodocID`
+ * returns a fully typed `ArrayOfDeliveryInfo` with 23 named fields, so the
+ * integration document was never the dependency; nobody had looked past the
+ * DataSet operations. The original reasoning, kept because it is still the
+ * reason those five operations are unused:
  *
  * Aras has several operations that would answer "where is this consignment" —
  * `GetCargoTransaction`, `GetCargoInfo`, `GetSortedCargoInfo` — and every one of
@@ -24,10 +32,12 @@ import { findNode, nodeList, soapCall, SoapFault, xmlText, type SoapValue, type 
  * how a row ends up permanently empty while the run reports success.
  *
  * Those names ARE in the integration document Aras hands over with the
- * credentials. When somebody has that document in front of them, the task is a
- * short addition to this file — the helper already reads an arbitrary tree by
- * name. Until then, the two operations below are fully typed and correct, and
- * the third one is honest about not existing.
+ * credentials — and that is still the only way to use THOSE operations. What
+ * changed is that a different one does not need them: see `refresh_tracking`
+ * below, which reads a typed contract instead. (Five operations are diffgrams,
+ * not the three named above — `GetCargoSearchByCode` and
+ * `GetCargoTransactionByWaybillId` are the other two, each declaring only a
+ * `tableTypeName` attribute and no columns at all.)
  *
  * ## Three things the code depends on
  *
@@ -154,6 +164,124 @@ export const aras = defineProvider({
             resultMessage: xmlText(first, "ResultMessage"),
             shipmentStatus: "booked",
             bookedAt: Date.now(),
+          },
+        };
+      },
+    },
+    {
+      id: "refresh_tracking",
+      label: "Refresh tracking",
+      /**
+       * The read half, and the one task here that is genuinely repeatable:
+       * where a parcel is has no side effect at Aras, and the whole value of
+       * the answer is that it moves. Put it on a cron flow filtered to the
+       * consignments that are not delivered yet.
+       *
+       * ## Why this exists now, when the file said it could not
+       *
+       * The comment at the top of this file is still right about the
+       * operations it names: `GetCargoTransaction`, `GetCargoInfo`,
+       * `GetSortedCargoInfo` — and, it turns out, `GetCargoSearchByCode` and
+       * `GetCargoTransactionByWaybillId` too — all answer with an untyped .NET
+       * DataSet whose columns are not in the published contract. Declaring
+       * outputs from those would be guessing.
+       *
+       * `GetDeliveryInfodocID` is not one of them. The same public WSDL
+       * declares it returning `ArrayOfDeliveryInfo`, and `DeliveryInfo` is a
+       * fully typed complex type with 23 named string fields — `DeliveryStatus`,
+       * `DeliveryDate`, `DeliveryPerson`, `NotDeliveredReason` and the rest.
+       * Every name below was read out of that WSDL, so nothing here is a guess.
+       * The integration document was never the dependency; nobody had looked
+       * past the DataSet operations.
+       *
+       * ## Which key to point it at
+       *
+       * Honestly unresolved from the contract alone, which is why it is a
+       * setting rather than a constant. The operation asks for `docID` and the
+       * record it returns carries BOTH `OrgDocNumber` and `DocID`, so whether
+       * Aras answers to the integration code this provider books with, or to a
+       * document id of its own, is a question the WSDL does not settle. Point
+       * the setting at the field `book_shipment` wrote first; if that comes
+       * back empty on a consignment you know has moved, the other key is the
+       * answer and the row field is the only thing that has to change.
+       */
+      repeatable: true,
+      settingFields: [
+        rowField(
+          "docIdField",
+          "Document id field",
+          "the row field book_shipment wrote, e.g. carrier_shipment_id",
+        ),
+        {
+          key: "language",
+          label: "Answer language (optional)",
+          /**
+           * Free text for the reason `./dhl` gives about its own: the WSDL
+           * types this `s:string` and enumerates nothing, so a dropdown here
+           * would be a list of guesses rendered as a closed choice.
+           */
+          placeholder: "the code your Aras contract documents, e.g. TR — leave empty for Aras's default",
+        },
+      ],
+      outputs: [
+        { key: "shipmentStatus", label: "Carrier status" },
+        { key: "statusDetail", label: "Status detail" },
+        { key: "statusFlag", label: "Carrier status flag" },
+        { key: "deliveredAt", label: "Delivered at" },
+        { key: "receivedBy", label: "Received by" },
+        { key: "deliveryUnit", label: "Delivery branch" },
+        { key: "arrivedAt", label: "Arrived at branch" },
+        { key: "notDeliveredReason", label: "Reason not delivered" },
+        { key: "docId", label: "Document id" },
+      ],
+      async run(ctx) {
+        const creds = credentialsFor(ctx, "task");
+        const field = ctx.setting("docIdField");
+        if (!field) throw new Error("Aras tracking needs the row field holding the document id");
+        const docId = text(ctx.row[field]);
+        if (!docId) throw new Error(`Row field "${field}" holds no Aras document id`);
+
+        const body = await call(ctx, "GetDeliveryInfodocID", {
+          userName: creds.userName,
+          password: creds.password,
+          language: ctx.setting("language") ?? "",
+          // `ArrayOfString`, even for one id — the WSDL takes a list and a bare
+          // string is answered with a fault about the element type.
+          docID: { string: [docId] },
+        });
+
+        // `ArrayOfDeliveryInfo` with `maxOccurs="unbounded"`: one entry per
+        // document asked for. One was asked for, so the first is the answer —
+        // but an EMPTY array is the ordinary case for a consignment Aras has
+        // not moved yet, and must not read as a failure. A run that writes
+        // nothing is the honest answer there.
+        const entries = nodeList(findNode(body, "GetDeliveryInfodocIDResult"), "DeliveryInfo");
+        const info = entries[0];
+        if (!info) {
+          return { outputs: { shipmentStatus: "unknown", docId } };
+        }
+
+        const status = xmlText(info, "DeliveryStatus");
+        const deliveredDate = xmlText(info, "DeliveryDate");
+        const deliveredTime = xmlText(info, "DeliveryTime");
+
+        return {
+          outputs: {
+            // Aras's own words rather than a normalised code. Every value it
+            // uses is Turkish prose from a list the WSDL does not publish, so
+            // mapping it onto this engine's vocabulary would be the same guess
+            // the DataSet operations were rejected for.
+            shipmentStatus: status ?? "unknown",
+            statusDetail: xmlText(info, "DeliveryAddressStatus"),
+            statusFlag: xmlText(info, "StatusFlag"),
+            // Date and time are separate fields and only meaningful together;
+            // joined rather than returned apart so a row holds one instant.
+            deliveredAt: deliveredDate ? [deliveredDate, deliveredTime].filter(Boolean).join(" ") : null,
+            receivedBy: xmlText(info, "DeliveryPerson"),
+            deliveryUnit: xmlText(info, "DeliveryUnitName"),
+            arrivedAt: xmlText(info, "ArrivalDate"),
+            notDeliveredReason: xmlText(info, "NotDeliveredReason"),
+            docId: xmlText(info, "DocID") ?? docId,
           },
         };
       },

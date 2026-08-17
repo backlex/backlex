@@ -163,6 +163,91 @@ describe("three hops, end to end", () => {
     expect(await res.text()).toContain("is not a relation field");
   });
 
+  test("`?expand=a.b` inlines the second hop inside the first", async () => {
+    const res = await h.fetch("/api/items/sales?expand=buyer_id.place_id&sort=title");
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as {
+      data: Array<{ title: string; buyer_id: { name: string; place_id: { city: string } } }>;
+    };
+    expect(data[0]!.buyer_id.name).toBe("Alice");
+    // The nested value replaces the FK, exactly as the top level does.
+    expect(data[0]!.buyer_id.place_id.city).toBe("Berlin");
+    expect(data[1]!.buyer_id.place_id.city).toBe("Paris");
+  });
+
+  test("a three-deep chain nests three deep", async () => {
+    const res = await h.fetch("/api/items/sales?expand=buyer_id.place_id.country_id&sort=title");
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as {
+      data: Array<{ buyer_id: { place_id: { country_id: { name: string } } } }>;
+    };
+    expect(data[0]!.buyer_id.place_id.country_id.name).toBe("Germany");
+    expect(data[1]!.buyer_id.place_id.country_id.name).toBe("France");
+  });
+
+  test("two chains under one head build one object, not two selects", async () => {
+    // `a.b` and `a.c` share the head. Emitting a select per entry would
+    // produce two `__expand_a` columns and one would win silently.
+    const res = await h.fetch("/api/items/sales?expand=buyer_id.place_id,buyer_id&sort=title");
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as {
+      data: Array<{ buyer_id: { name: string; place_id: { city: string } } }>;
+    };
+    expect(data[0]!.buyer_id.name).toBe("Alice");
+    expect(data[0]!.buyer_id.place_id.city).toBe("Berlin");
+  });
+
+  test("a null FK partway down nests null, not an object of nulls", async () => {
+    const mk = await h.fetch("/api/items/buyers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Nowhere" }),
+    });
+    const buyer = ((await mk.json()) as { data: { id: string } }).data.id;
+    await h.fetch("/api/items/sales", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "S-4", buyer_id: buyer }),
+    });
+    const res = await h.fetch("/api/items/sales?expand=buyer_id.place_id&sort=title");
+    const { data } = (await res.json()) as {
+      data: Array<{ title: string; buyer_id: { place_id: unknown } | null }>;
+    };
+    const s4 = data.find((r) => r.title === "S-4")!;
+    expect(s4.buyer_id).not.toBeNull();
+    expect(s4.buyer_id!.place_id).toBeNull();
+  });
+
+  test("chaining through a relation_many is refused by name", async () => {
+    // A to-many head is batch-fetched after the page materializes, so there
+    // is no joined row to hang a further hop off.
+    await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug: "baskets",
+        fields: [{ name: "country_ids", type: "relation_many", to: "countries" }],
+      }),
+    });
+    const res = await h.fetch("/api/items/baskets?expand=country_ids.name");
+    expect(res.status).toBe(422);
+    expect(await res.text()).toContain("relation_many");
+  });
+
+  test("the single-item endpoint chains too — it used to refuse what the list allowed", async () => {
+    // `routes/items/read.ts` kept its own copy of the expand validator, so
+    // the two endpoints could disagree about the same collection and caller.
+    // They share one function now.
+    const list = await h.fetch("/api/items/sales?sort=title&limit=1");
+    const id = ((await list.json()) as { data: { id: string }[] }).data[0]!.id;
+    const res = await h.fetch(`/api/items/sales/${id}?expand=buyer_id.place_id`);
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as {
+      data: { buyer_id: { place_id: { city: string } } };
+    };
+    expect(data.buyer_id.place_id.city).toBe("Berlin");
+  });
+
   test("a query reaching through too many relation paths is refused", async () => {
     // Each distinct chain is its own JOIN ladder, and each hop costs a
     // collection load and a permission resolution before any SQL runs. That

@@ -488,8 +488,13 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // gates per-target read permission + tenant scope on every entry.
       // Split expand heads: to-one (`relation`) ride the JOIN resolver; to-many
       // (`relation_many`) are batch-fetched after the page is materialized.
+      // An expand entry may be a CHAIN (`order_id.customer_id`), so the
+      // to-one / to-many split reads the HEAD segment. Matching the whole
+      // entry would classify every chain as to-one by accident, which happens
+      // to be right today (a to-many head cannot be chained) but only by
+      // coincidence.
       const isManyHead = (h: string) =>
-        collection.fields.find((f) => f.name === h)?.type === "relation_many";
+        collection.fields.find((f) => f.name === h.split(".")[0])?.type === "relation_many";
       const expandOne = q.expand.filter((h) => !isManyHead(h));
       const expandManyHeads = q.expand.filter(isManyHead);
       const {

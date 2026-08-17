@@ -66,18 +66,43 @@ export const relationAlias = (
  * always included; user fields are filtered by the target role's
  * permission `fields` allow-list (passed in already-filtered).
  */
+export const buildExpandObject = (
+  dialect: "pg" | "sqlite",
+  baseFkRef: SQL,
+  cols: Array<{ key: string; ref: SQL }>,
+): SQL => {
+  const builder = dialect === "pg" ? sql`jsonb_build_object` : sql`json_object`;
+  const args = cols.flatMap((c) => [sql`${c.key}`, c.ref]);
+  const objectExpr = sql`${builder}(${sql.join(args, sql`, `)})`;
+  return sql`CASE WHEN ${baseFkRef} IS NULL THEN NULL ELSE ${objectExpr} END`;
+};
+
 export const buildExpandSelect = (
   dialect: "pg" | "sqlite",
   baseFkRef: SQL,
   _alias: string,
   outputCol: string,
   cols: Array<{ key: string; ref: SQL }>,
-): SQL => {
-  const builder = dialect === "pg" ? sql`jsonb_build_object` : sql`json_object`;
-  const args = cols.flatMap((c) => [sql`${c.key}`, c.ref]);
-  const objectExpr = sql`${builder}(${sql.join(args, sql`, `)})`;
-  return sql`CASE WHEN ${baseFkRef} IS NULL THEN NULL ELSE ${objectExpr} END AS ${sql.identifier(outputCol)}`;
-};
+): SQL =>
+  sql`${buildExpandObject(dialect, baseFkRef, cols)} AS ${sql.identifier(outputCol)}`;
+
+/**
+ * One expanded relation, and anything expanded THROUGH it.
+ *
+ * `?expand=order_id.customer_id` inlines the customer inside the order, so the
+ * plan is a tree rather than a list: `children` carries the same shape one hop
+ * further in, keyed by the field it was reached through. A plain
+ * `?expand=order_id` has no children and is exactly what it always was.
+ */
+export interface ExpandNode {
+  /** Field on the PARENT collection this node was reached through. */
+  key: string;
+  /** Target collection, for deserializing nested values back to JS types. */
+  target: CollectionRow;
+  /** Allowed fields on the target after permission projection (null = all). */
+  allowedFields: Set<string> | null;
+  children: ExpandNode[];
+}
 
 export interface ExpandPlan {
   /** Source-collection relation field name (the column being expanded). */
@@ -88,6 +113,9 @@ export interface ExpandPlan {
   target: CollectionRow;
   /** Allowed fields on the target after permission projection (null = all). */
   allowedFields: Set<string> | null;
+  /** Relations expanded THROUGH this one (`?expand=a.b`). Empty for a plain
+   *  single-hop expand, which is what every caller sent before chaining. */
+  children: ExpandNode[];
 }
 
 /**
@@ -127,7 +155,18 @@ export const resolveExpands = async (
   const selects: SQL[] = [];
   const plans: ExpandPlan[] = [];
   const baseTbl = sql.identifier(collection.physicalTable);
-  for (const head of expand) {
+  // Entries may be dotted (`order_id.customer_id`). Group them by head so one
+  // head asked for twice (`a.b` and `a.c`) builds ONE join and one object with
+  // two nested keys, rather than two conflicting selects for the same column.
+  const chains = new Map<string, string[][]>();
+  for (const entry of expand) {
+    const segs = entry.split(".");
+    const head = segs[0]!;
+    const tails = chains.get(head) ?? [];
+    if (segs.length > 1) tails.push(segs.slice(1));
+    chains.set(head, tails);
+  }
+  for (const head of chains.keys()) {
     const def = collection.fields.find((f) => f.name === head);
     // parseQuery already enforced shape + type + source perm, so a missing
     // / wrong-type def shouldn't happen — be defensive anyway.
@@ -228,14 +267,169 @@ export const resolveExpands = async (
       if (!wants(f.name)) continue;
       cols.push({ key: f.name, ref: sql`${aliasId}.${sql.identifier(f.name)}` });
     }
+    // Chained expansion: `?expand=order_id.customer_id` inlines the customer
+    // INSIDE the order. Each further hop is another LEFT JOIN sharing the
+    // chain-prefix alias with the filter/sort walker, and another
+    // `jsonb_build_object` nested as one more key on the object above it.
+    // The gate walks with it — every hop loads its target and resolves
+    // `read`, so a chained expand can never reach a collection a plain expand
+    // of that collection would refuse.
+    const children = await resolveExpandChildren(
+      ctx,
+      auth,
+      target,
+      alias,
+      [head],
+      chains.get(head) ?? [],
+      joinMap,
+      extraJoins,
+      cols,
+    );
+
     const outputCol = `__expand_${head}`;
     const baseFkRef = sql`${baseTbl}.${sql.identifier(head)}`;
     selects.push(
       buildExpandSelect(ctx.dialect, baseFkRef, alias, outputCol, cols),
     );
-    plans.push({ head, outputCol, target, allowedFields: targetPerm.fields });
+    plans.push({ head, outputCol, target, allowedFields: targetPerm.fields, children });
   }
   return { extraJoins, selects, plans };
+};
+
+/**
+ * Wire one level of chained expansion and recurse.
+ *
+ * `tails` are the remaining segment lists under this node (`["customer_id"]`
+ * for `order_id.customer_id`). Each distinct next segment becomes one LEFT
+ * JOIN — aliased by the full chain prefix, so it is the SAME join the nested
+ * filter walker would emit and the two share it — plus one nested object
+ * appended to the parent's column list.
+ *
+ * Mutates `cols` and `extraJoins` because it is building the parent's SELECT
+ * in place; returns the plan nodes the row applier needs to deserialize what
+ * comes back.
+ */
+const resolveExpandChildren = async (
+  ctx: Ctx,
+  auth: AuthSubject,
+  source: CollectionRow,
+  parentAlias: string,
+  prefix: string[],
+  tails: string[][],
+  joinMap: Map<string, { alias: string; target: CollectionRow }>,
+  extraJoins: SQL[],
+  cols: Array<{ key: string; ref: SQL }>,
+): Promise<ExpandNode[]> => {
+  const bySegment = new Map<string, string[][]>();
+  for (const tail of tails) {
+    const seg = tail[0];
+    if (!seg) continue;
+    const rest = tail.slice(1);
+    const list = bySegment.get(seg) ?? [];
+    if (rest.length > 0) list.push(rest);
+    bySegment.set(seg, list);
+  }
+
+  const nodes: ExpandNode[] = [];
+  for (const [seg, deeper] of bySegment) {
+    const def = source.fields.find((f) => f.name === seg);
+    if (!def || def.type !== "relation" || !def.to) {
+      // `relation_many` lands here too: expanding one INSIDE another expand
+      // would need the batch fetch to run per parent row, which the to-many
+      // path does not do. Named rather than silently dropped.
+      throw new AppError(
+        "VALIDATION",
+        `Cannot expand "${[...prefix, seg].join(".")}" — "${seg}" on "${source.slug}" is not a single-FK relation`,
+      );
+    }
+    const target = await loadCollection(ctx, auth.tenantId, def.to).catch(() => {
+      throw new AppError("VALIDATION", `Relation target not active: ${def.to}`);
+    });
+    const perm = await resolvePermission(
+      { db: ctx.db, dialect: ctx.dialect },
+      auth,
+      def.to,
+      "read",
+    );
+    if (!perm.allowed) {
+      throw new AppError("FORBIDDEN", `No read permission on relation target: ${def.to}`);
+    }
+
+    const chain = [...prefix, seg];
+    const key = chain.join(".");
+    let alias = joinMap.get(key)?.alias;
+    if (!alias) {
+      alias = relationAlias(chain, ctx.dialect);
+      const aliasId = sql.identifier(alias);
+      const onParts: SQL[] = [
+        sql`${aliasId}.${sql.identifier(target.pkColumn)} = ${sql.identifier(parentAlias)}.${sql.identifier(seg)}`,
+      ];
+      if (target.tenantScoped && auth.tenantId) {
+        onParts.push(sql`${aliasId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`);
+      }
+      extraJoins.push(
+        sql`LEFT JOIN ${sql.identifier(target.physicalTable)} AS ${aliasId} ON ${sql.join(onParts, sql` AND `)}`,
+      );
+      joinMap.set(key, { alias, target });
+    }
+
+    const aliasId = sql.identifier(alias);
+    const childCols: Array<{ key: string; ref: SQL }> = [
+      { key: "id", ref: sql`${aliasId}.${sql.identifier(target.pkColumn)}` },
+    ];
+    if (target.hasCreatedAt) {
+      childCols.push({
+        key: "created_at",
+        ref: sql`${aliasId}.${sql.identifier(target.createdAtColumn ?? "created_at")}`,
+      });
+    }
+    if (target.hasUpdatedAt) {
+      childCols.push({
+        key: "updated_at",
+        ref: sql`${aliasId}.${sql.identifier(target.updatedAtColumn ?? "updated_at")}`,
+      });
+    }
+    if (target.ownerScoped && (!target.adopted || target.ownerIdColumn)) {
+      childCols.push({
+        key: "owner_id",
+        ref: sql`${aliasId}.${sql.identifier(target.ownerIdColumn ?? "owner_id")}`,
+      });
+    }
+    for (const f of target.fields) {
+      if (perm.fields && !perm.fields.has(f.name)) continue;
+      childCols.push({ key: f.name, ref: sql`${aliasId}.${sql.identifier(f.name)}` });
+    }
+
+    const grandchildren = await resolveExpandChildren(
+      ctx,
+      auth,
+      target,
+      alias,
+      chain,
+      deeper,
+      joinMap,
+      extraJoins,
+      childCols,
+    );
+
+    // Nested under the parent's own FK column, so a null FK on the PARENT row
+    // still yields null here rather than an object of nulls — the same
+    // `CASE WHEN … IS NULL` the top level uses.
+    // The bare expression, not a `(SELECT … AS v)` wrapper: an aliased select
+    // cannot nest as a value, and wrapping it in a scalar subquery would work
+    // on SQLite while costing a per-row subquery on Postgres for no reason.
+    // `buildExpandObject` is the un-aliased half, and the top level aliases it.
+    cols.push({
+      key: seg,
+      ref: buildExpandObject(
+        ctx.dialect,
+        sql`${sql.identifier(parentAlias)}.${sql.identifier(seg)}`,
+        childCols,
+      ),
+    });
+    nodes.push({ key: seg, target, allowedFields: perm.fields, children: grandchildren });
+  }
+  return nodes;
 };
 
 /**
@@ -279,25 +473,62 @@ export const applyExpandToRow = (
       out[plan.head] = null;
       continue;
     }
-    const expanded: Record<string, unknown> = {};
-    // System keys → camelCase, matching the top-level row shape that
-    // deserializeRow emits.
-    if ("id" in obj) expanded.id = obj.id;
-    if ("created_at" in obj && obj.created_at != null) {
-      expanded.createdAt = deserialize(obj.created_at, "timestamp", dialect);
-    }
-    if ("updated_at" in obj && obj.updated_at != null) {
-      expanded.updatedAt = deserialize(obj.updated_at, "timestamp", dialect);
-    }
-    if ("owner_id" in obj) expanded.ownerId = obj.owner_id ?? null;
-    for (const f of plan.target.fields) {
-      if (!(f.name in obj)) continue;
-      // Permission `fields` allow-list was already enforced at SELECT
-      // emission time, so anything present here is allowed.
-      expanded[f.name] = deserializeField(obj[f.name], f, dialect, obj, plan.target.fields);
-    }
-    out[plan.head] = expanded;
+    out[plan.head] = shapeExpanded(obj, plan.target, plan.children, dialect);
   }
+};
+
+/**
+ * Turn one raw JSON object from the database into the row shape the API emits,
+ * recursing into anything expanded through it.
+ *
+ * Split out of `applyExpandToRow` when expansion became chained: the top level
+ * and every nested level need the identical treatment (system keys to
+ * camelCase, timestamps through `deserialize`, user fields through
+ * `deserializeField`), and having two copies is how the inlined shape would
+ * drift from the top-level one.
+ */
+const shapeExpanded = (
+  obj: Record<string, unknown>,
+  target: CollectionRow,
+  children: ExpandNode[],
+  dialect: "pg" | "sqlite",
+): Record<string, unknown> => {
+  const expanded: Record<string, unknown> = {};
+  // System keys → camelCase, matching the top-level row shape that
+  // deserializeRow emits.
+  if ("id" in obj) expanded.id = obj.id;
+  if ("created_at" in obj && obj.created_at != null) {
+    expanded.createdAt = deserialize(obj.created_at, "timestamp", dialect);
+  }
+  if ("updated_at" in obj && obj.updated_at != null) {
+    expanded.updatedAt = deserialize(obj.updated_at, "timestamp", dialect);
+  }
+  if ("owner_id" in obj) expanded.ownerId = obj.owner_id ?? null;
+  for (const f of target.fields) {
+    if (!(f.name in obj)) continue;
+    // Permission `fields` allow-list was already enforced at SELECT
+    // emission time, so anything present here is allowed.
+    expanded[f.name] = deserializeField(obj[f.name], f, dialect, obj, target.fields);
+  }
+  // Nested expands replace the FK value under the same key, exactly as the top
+  // level replaces `order_id` with the order.
+  for (const child of children) {
+    const raw = obj[child.key];
+    let nested: Record<string, unknown> | null = null;
+    if (typeof raw === "string") {
+      try {
+        nested = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        nested = null;
+      }
+    } else if (raw && typeof raw === "object") {
+      nested = raw as Record<string, unknown>;
+    }
+    expanded[child.key] = nested
+      ? shapeExpanded(nested, child.target, child.children, dialect)
+      : null;
+  }
+  return expanded;
 };
 
 // ---------------------------------------------------------------------------

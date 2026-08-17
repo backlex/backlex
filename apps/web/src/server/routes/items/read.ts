@@ -3,6 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { AppError, } from "@backlex/core";
 import type { AppBindings } from "../../app";
 import { requirePermission } from "../../middleware/permission";
+import { validateExpandEntry } from "../../lib/query";
 import { ifNoneMatch, weakETag } from "../../lib/etag";
 import { listRevisions, } from "../../services/revisions";
 import { loadAppSettings } from "../../services/settings";
@@ -195,28 +196,11 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         for (const raw of expandRaw.split(",")) {
           const name = raw.trim();
           if (!name) continue;
-          if (name.includes(".")) {
-            throw new AppError(
-              "VALIDATION",
-              `expand chain not yet supported: ${name}`,
-            );
-          }
-          const def = fieldsByName.get(name);
-          if (!def) {
-            throw new AppError("VALIDATION", `Unknown expand field: ${name}`);
-          }
-          if (def.type !== "relation" && def.type !== "relation_many") {
-            throw new AppError(
-              "VALIDATION",
-              `expand only works on relation fields — "${name}" is ${def.type}`,
-            );
-          }
-          if (perm.fields && !perm.fields.has(name)) {
-            throw new AppError(
-              "FORBIDDEN",
-              `No permission to read field: ${name}`,
-            );
-          }
+          // The list endpoint's validator, not a second copy of it — this
+          // block WAS a second copy, and it had already drifted: chained
+          // expansion would have been accepted there and refused here, for
+          // the same collection and the same caller.
+          validateExpandEntry(name, fieldsByName, (f) => !perm.fields || perm.fields.has(f));
           if (!seen.has(name)) {
             seen.add(name);
             expand.push(name);
@@ -225,7 +209,7 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
       // Split to-one (JOIN) from to-many (batch) heads, same as the list path.
       const isManyHead = (h: string) =>
-        collection.fields.find((f) => f.name === h)?.type === "relation_many";
+        collection.fields.find((f) => f.name === h.split(".")[0])?.type === "relation_many";
       const expandOne = expand.filter((h) => !isManyHead(h));
       const expandManyHeads = expand.filter(isManyHead);
 

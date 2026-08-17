@@ -478,6 +478,32 @@ LEFT JOIN c_customers AS rel_customer_id
   substituted under the `<head>` key during deserialization, so the
   caller never sees the synthetic column.
 
+### Chaining
+
+An entry may be a path, up to the same 3-hop ceiling as a nested filter:
+
+```bash
+curl '/api/items/orders?expand=customer_id.address_id.country_id'
+```
+
+```jsonc
+{ "id": "…", "title": "Order-1",
+  "customer_id": { "id": "…", "name": "Alice",
+    "address_id": { "id": "…", "city": "Berlin",
+      "country_id": { "id": "…", "name": "Germany" } } } }
+```
+
+Each hop is one more LEFT JOIN aliased by the full chain prefix — so it is the
+**same** join the nested-filter walker emits, and naming the same path in both
+places still produces one ladder. Two entries under one head (`a.b` and `a`)
+build one object with the nested key added, not two competing selects for the
+same column. A null FK partway down nests `null` rather than an object of
+nulls, exactly as the top level does.
+
+The permission cascade below applies at **every** hop: each loads its target
+collection and resolves `read` on it, so a chain can reach nothing a plain
+expand of that collection would refuse.
+
 ### Permission cascade
 
 `expand=<head>` is a read against the target collection, gated the same
@@ -553,7 +579,8 @@ unset relations look the same expanded or not.
 
 | Situation                                                       | Status | Message                                                            |
 |-----------------------------------------------------------------|--------|--------------------------------------------------------------------|
-| `expand` chain (`a.b`)                                          | 422    | `expand chain not yet supported: <field>`                          |
+| `expand` chain deeper than 3 hops                               | 422    | `expand exceeds max depth: <field>`                                |
+| `expand` chain through a `relation_many` head                   | 422    | `Cannot chain through a relation_many field: <field>`              |
 | `expand` on a non-relation field                                | 422    | `expand only works on relation fields — "<field>" is <type>`       |
 | Unknown expand field                                            | 422    | `Unknown expand field: <field>`                                    |
 | Source `fields` allow-list excludes the relation field          | 403    | `No permission to read field: <field>`                             |
@@ -602,11 +629,14 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
 - **Sorting through `relation_many`** — there's no well-defined order
   across the array's members; filter is supported via `EXISTS`, sort
   still returns `422`.
-- **`?expand=` chain (`a.b`)** — single-hop only. Chained expansion
-  (`?expand=customer_id.address_id`) returns `422`. The mechanics
-  (per-hop target collection load + read-permission gate + nested JOIN)
-  are the same as for nested filter; the lowering just hasn't been
-  wired up yet. Tracked as a follow-up.
+~~**`?expand=` chain (`a.b`)**~~ — **shipped.** `?expand=customer_id.address_id`
+  inlines the address inside the customer, up to the same 3-hop ceiling, and
+  the JOIN is shared with the nested-filter ladder when both name the same
+  path. Every hop loads its target and resolves `read` on it, so a chained
+  expand can reach nothing a plain expand of that collection would refuse.
+  Chaining THROUGH a `relation_many` head is still `422` — a to-many head is
+  batch-fetched after the page materializes, so there is no joined row to hang
+  a further hop off.
 ~~**`?expand=` on a `relation_many` field**~~ — **shipped.** To-many heads are
   batch-fetched after the page is materialized rather than joined, so no
   `LATERAL`/`json_group_array` lowering was needed after all. This entry

@@ -22,6 +22,60 @@ import { normalizeTemporalOperands } from "../services/items/temporal-fields";
  */
 export const MAX_NESTED_DOTS = 3;
 
+/**
+ * Validate one `?expand=` entry and return the head it hangs off.
+ *
+ * Exported because there were TWO copies of this — `parseQuery` for the list
+ * endpoint and an inline block in `routes/items/read.ts` for the single-item
+ * one — and they had already drifted: chained expansion would have been
+ * accepted by the list path and refused by the read path, for the same
+ * collection and the same caller.
+ *
+ * Only the HEAD is type-checked here. A second hop's target collection is not
+ * loaded at parse time, exactly as with a nested filter, so the expand
+ * resolver gates it (target load + `read` permission) when it wires the JOIN.
+ */
+export const validateExpandEntry = (
+  name: string,
+  fieldsByName: Map<string, FieldDef>,
+  readable: (field: string) => boolean,
+): string => {
+  const segments = name.split(".");
+  if (segments.length - 1 > MAX_NESTED_DOTS) {
+    throw new AppError("VALIDATION", `expand exceeds max depth: ${name}`);
+  }
+  for (const seg of segments.slice(1)) {
+    if (!/^[a-z_][a-z0-9_]*$/.test(seg)) {
+      throw new AppError("VALIDATION", `Invalid expand subfield: ${seg}`);
+    }
+  }
+  const head = segments[0]!;
+  const def = fieldsByName.get(head);
+  if (!def) {
+    throw new AppError("VALIDATION", `Unknown expand field: ${head}`);
+  }
+  if (def.type !== "relation" && def.type !== "relation_many") {
+    throw new AppError(
+      "VALIDATION",
+      `expand only works on relation fields — "${head}" is ${def.type}`,
+    );
+  }
+  if (def.type === "relation_many" && segments.length > 1) {
+    // A to-many head is batch-fetched after the page materializes rather than
+    // joined, so there is no row to hang a further hop off. Named rather than
+    // silently expanding only the head.
+    throw new AppError(
+      "VALIDATION",
+      `Cannot chain through a relation_many field: ${name}`,
+    );
+  }
+  if (!readable(head)) {
+    throw new AppError("FORBIDDEN", `No permission to read field: ${head}`);
+  }
+  return head;
+};
+
+
 export interface SortClause {
   field: string;
   dir: "asc" | "desc";
@@ -563,25 +617,7 @@ export const parseQuery = (
     for (const raw of expandRaw.split(",")) {
       const name = raw.trim();
       if (!name) continue;
-      if (name.includes(".")) {
-        throw new AppError(
-          "VALIDATION",
-          `expand chain not yet supported: ${name}`,
-        );
-      }
-      const def = expandFieldsByName.get(name);
-      if (!def) {
-        throw new AppError("VALIDATION", `Unknown expand field: ${name}`);
-      }
-      if (def.type !== "relation" && def.type !== "relation_many") {
-        throw new AppError(
-          "VALIDATION",
-          `expand only works on relation fields — "${name}" is ${def.type}`,
-        );
-      }
-      if (!allowedForUser.has(name)) {
-        throw new AppError("FORBIDDEN", `No permission to read field: ${name}`);
-      }
+      validateExpandEntry(name, expandFieldsByName, (f) => allowedForUser.has(f));
       if (!seen.has(name)) {
         seen.add(name);
         expand.push(name);

@@ -139,7 +139,13 @@ describe("vector namespace — write and read must agree", () => {
     await embedAndUpsert(ctx, meta, TENANT, "item-1", { title: "hello" });
     await deleteVector(ctx, meta, TENANT, "item-1");
 
-    expect(seen.delete).toEqual(seen.upsert);
+    // Compared as SETS, not as call sequences: since chunking, a write issues
+    // a self-heal delete of its own (dropping any chunk ids the previous,
+    // longer version of the row left behind), so the two arrays no longer have
+    // the same length. The claim this test makes is about the namespace, and
+    // every namespace on either side still has to be the one the write used.
+    expect([...new Set(seen.delete)]).toEqual([...new Set(seen.upsert)]);
+    expect(seen.delete.length).toBeGreaterThan(0);
   });
 
   test("two workspaces never share a namespace for the same collection", async () => {

@@ -2,7 +2,13 @@ import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
-import { isVectorizable, resolveModel, vectorNamespace } from "../vectorize";
+import {
+  collapseChunkMatches,
+  isVectorizable,
+  resolveModel,
+  vectorNamespace,
+} from "../vectorize";
+
 import { ftsRankedIds, isSearchable } from "../fts";
 import { loadAppSettings } from "../settings";
 import { hasLocalizedField, type CollectionRow } from "./collection-loader";
@@ -25,6 +31,11 @@ import {
 // implementation: mode resolution, the RRF fusion, and — critically — the
 // permission/tenant/soft-delete/draft re-filtering at hydration that stops a
 // vector hit the caller can't see from leaking.
+
+/** Vector candidates fetched per pool slot, so collapsing a long row's chunks
+ *  back to one id does not leave the pool short. Three is enough that a page
+ *  of results survives even when every hit is a multi-chunk document. */
+const CHUNK_OVERFETCH = 3;
 
 export type SearchMode = "fts" | "vector" | "hybrid";
 
@@ -119,14 +130,20 @@ export const searchCollectionItems = async (
     });
     const matches = await ctx.vector.query(model, {
       values: values[0]!,
-      topK: pool,
+      // A long row is many chunks, so the same item can occupy several of the
+      // top slots. Over-fetch so collapsing them still leaves a full pool —
+      // without this a single long document could crowd out every other row.
+      topK: pool * CHUNK_OVERFETCH,
       // Must be the SAME namespace the write path wrote to. It used to be the
       // bare slug while every write was scoped `<tenantId>:<slug>`, so this
       // searched a namespace nothing had ever been written to — silently, since
       // "no matches" and "wrong namespace" are the same empty array here.
       namespace: vectorNamespace(collection.slug, auth.tenantId ?? null),
     });
-    return matches.map((m) => m.id);
+    // Chunk ids (`<itemId>#3`) must become item ids before anything downstream
+    // sees them: they feed RRF below, and then a `WHERE pk IN (…)` that a
+    // chunk id matches nothing in.
+    return collapseChunkMatches(matches, pool);
   };
 
   const [ftsIds, vecIds] = await Promise.all([

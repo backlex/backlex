@@ -134,6 +134,32 @@ vector is upserted under the collection's namespace.
 Embedding on write is **best-effort** — a provider/store hiccup is logged but
 never blocks the item write.
 
+### Long rows are chunked
+
+Every embedding model has a hard input ceiling — 8192 tokens for BGE-M3, 8191
+for both OpenAI models — so a row longer than that cannot be one vector. It is
+split into overlapping passages of about 2000 characters (200 of overlap, cut
+on the nearest paragraph, line or sentence boundary), each embedded and stored
+on its own. A search returns the row once, ranked by its **best** passage.
+
+This is automatic and needs no configuration. Three consequences worth knowing:
+
+- **A row is capped at 32 chunks** — roughly 64 KB of indexed text. Past that
+  the remainder is not embedded, and the drop is logged with the row's id.
+- **Short rows are unchanged.** A row that fits in one chunk keeps the plain
+  item id as its vector id, exactly as before chunking existed, so **no
+  re-index is required** — existing vectors stay valid.
+- **Editing a row shortens its chunk list safely.** Cutting a document from
+  five passages to two deletes the other three, so text you removed stops
+  matching queries. (Vector stores here cannot delete by metadata filter, so
+  this happens by deriving the ids — see `staleChunkIds` in
+  `services/vectorize.ts` if you are changing that code.)
+
+Before chunking, an over-long row failed differently on each provider and
+silently on both: OpenAI rejects the request, so the row ended up with **no**
+vector and was invisible to `mode: "vector"` forever, while Workers AI truncates,
+so only the opening of the document was searchable.
+
 In the admin UI: toggle **Vector search (semantic)** on the collection's
 Settings card (it also hosts the embedding-model picker and warns when the
 chosen model's provider or the vector store isn't configured — readiness comes

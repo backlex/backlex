@@ -183,6 +183,27 @@ Register the redirect URI shown at the bottom of the dialog with the IdP:
 ${APP_URL}/api/t/<workspace-slug>/auth/oauth2/callback/<provider-slug>
 ```
 
+### Rendering the button
+
+An enabled provider is listed by `GET /api/t/<workspace-slug>/auth/providers`
+with `kind: "oidc"` and its slug as the `id`. Unlike SAML it carries **no**
+`loginUrl` — an OIDC sign-in starts with a POST, not a link — so the app enters
+it through the SDK:
+
+```ts
+const { data } = await client.auth.providers();
+for (const p of data.providers.filter((p) => p.kind === "oidc" && p.enabled)) {
+  // render a button labelled p.label
+}
+
+const { url } = await client.auth.signInOAuth2(providerId, { callbackURL: "/" });
+location.href = url;
+```
+
+`signInOAuth2` is a different endpoint from `signInSocial`: the latter is for
+the deployment's own consumer providers (Google / GitHub / Apple), these are the
+workspace's, and better-auth serves them from its `genericOAuth` plugin.
+
 The client secret is encrypted at rest with `AUTH_SECRET` and has **no
 read-back path** — the API only reports `hasClientSecret: true`. In edit mode
 the secret field starts blank and a blank field is omitted from the PATCH, so

@@ -8,7 +8,19 @@ export const auth = createBacklexAuthClient(
 
 export interface PublicProvider {
   id: string;
-  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social" | "saml" | "ldap";
+  /** The fourth copy of this union, and kept in step with the other three by
+   *  `apps/web/tests/auth-surface-parity.test.ts`. The admin plane never lists
+   *  `oidc` (those rows are loaded into the tenant better-auth instance only),
+   *  but a narrower type here is how the last drift started. */
+  kind:
+    | "credential"
+    | "magic-link"
+    | "email-otp"
+    | "passkey"
+    | "social"
+    | "oidc"
+    | "saml"
+    | "ldap";
   label: string;
   enabled: boolean;
   /** SAML only — the SP-initiated login URL to redirect the browser to. */

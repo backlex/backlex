@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Env } from "../env";
@@ -60,16 +60,32 @@ export interface PublicProvider {
    *  `"emailOtp"`, the WebAuthn flow for `"passkey"`,
    *  `auth.signInSocial("github")` for the OAuth providers. SAML providers
    *  use their per-tenant slug as the id and point to
-   *  `/api/t/<slug>/auth/saml/<slug>/login`. */
+   *  `/api/t/<slug>/auth/saml/<slug>/login`. Workspace-defined OIDC providers
+   *  also use their slug, and it is passed to `auth.signInOAuth2(slug)`. */
   id: AuthProviderKey | string;
-  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social" | "saml" | "ldap";
+  /**
+   * Kept in step with `PublicProvider["kind"]` in `packages/client/src/core.ts`
+   * by `apps/web/tests/auth-surface-parity.test.ts`. The two drifted for three
+   * kinds and a whole field once already; an application that renders buttons
+   * off this list silently drops every provider its types have never heard of.
+   */
+  kind:
+    | "credential"
+    | "magic-link"
+    | "email-otp"
+    | "passkey"
+    | "social"
+    | "oidc"
+    | "saml"
+    | "ldap";
   label: string;
   /** Whether sign-in with this provider is currently offered for this
    *  workspace. The list itself only contains providers the running worker is
    *  actually able to serve. */
   enabled: boolean;
   /** Provider-specific entry-point URL (SAML only — the rest are implied by
-   *  the better-auth client SDK calls). */
+   *  the better-auth client SDK calls, and OIDC deliberately has none: its
+   *  sign-in is `POST /sign-in/oauth2`, not a link a browser can follow). */
   loginUrl?: string;
 }
 
@@ -401,6 +417,39 @@ export const resolveAuthSurface = async (
       }
     } catch {
       // table not migrated yet — skip silently.
+    }
+
+    // Append enabled workspace OIDC providers. These are already live at
+    // sign-in time — `tenant-auth.ts` feeds every enabled row to better-auth's
+    // `genericOAuth` plugin — but they were absent from the one endpoint whose
+    // entire job is telling a frontend which buttons to draw, so a workspace
+    // could configure an IdP that worked and could not be offered.
+    //
+    // No `loginUrl`: unlike SAML, a generic OIDC sign-in is
+    // `POST /sign-in/oauth2 { providerId }` (which answers with the authorize
+    // URL), so there is no link to hand out. `auth.signInOAuth2(id)` is the
+    // call, and the id is the row's slug — the same string better-auth is
+    // configured with.
+    //
+    // Only enabled rows, deliberately unlike the SAML block above: this filter
+    // is the same one `loadOidcProvidersForAuth` applies, so everything in the
+    // list is something the auth instance will really serve. Only the display
+    // name and slug are read — never `clientId` or the encrypted secret.
+    try {
+      const o = ctx.dialect === "pg" ? pg.schema.oidcProviders : sqlite.schema.oidcProviders;
+      const rows = (await (ctx.db as any)
+        .select({ slug: o.slug, name: o.name, enabled: o.enabled })
+        .from(o)
+        .where(and(eq(o.tenantId, tenantId), eq(o.enabled, true)))) as Array<{
+        slug: string;
+        name: string;
+        enabled: boolean;
+      }>;
+      for (const r of rows) {
+        providers.push({ id: r.slug, kind: "oidc", label: r.name, enabled: true });
+      }
+    } catch {
+      // table not migrated yet — skip silently, same as SAML above.
     }
   }
 

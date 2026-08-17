@@ -29,6 +29,12 @@ export interface AuthClient {
     provider: string,
     input?: { callbackURL?: string; errorCallbackURL?: string },
   ): Promise<{ url: string; redirect: boolean }>;
+  /** Begin a sign-in with a workspace-defined OIDC provider (`kind: "oidc"`
+   *  in `providers()`); returns the authorize `url` to navigate to. */
+  signInOAuth2(
+    providerId: string,
+    input?: { callbackURL?: string; errorCallbackURL?: string },
+  ): Promise<{ url: string; redirect: boolean }>;
   /** Send a one-time sign-in link by email (magic-link provider). */
   signInMagicLink(input: { email: string; callbackURL?: string }): Promise<{ status: boolean }>;
   /** Email a one-time numeric code (email-otp provider). */
@@ -175,6 +181,24 @@ export const makeAuth = (core: ClientCore): AuthClient => {
         ...input,
         // ask better-auth for the URL instead of a 302, so the caller controls
         // the navigation.
+        disableRedirect: true,
+      }),
+    /**
+     * Begin a sign-in with a workspace-defined OIDC / OAuth2 provider — the
+     * ones an operator adds under Settings · SSO, listed by `providers()` as
+     * `kind: "oidc"`. A DIFFERENT endpoint from `signInSocial`: those are the
+     * deployment's own consumer providers, these are the workspace's, and
+     * better-auth serves them from its `genericOAuth` plugin.
+     *
+     * `providerId` is the provider's `id` from `providers()`.
+     */
+    signInOAuth2: (
+      providerId: string,
+      input?: { callbackURL?: string; errorCallbackURL?: string },
+    ) =>
+      core.request<{ url: string; redirect: boolean }>("POST", `${core.authBase}/sign-in/oauth2`, {
+        providerId,
+        ...input,
         disableRedirect: true,
       }),
     /** Send a one-time sign-in link by email (requires the `magic` provider

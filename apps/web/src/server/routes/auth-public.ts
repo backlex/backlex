@@ -18,11 +18,27 @@ import { defaultHook } from "../lib/openapi-router";
  * (`/api/auth/*`) so it isn't swallowed by it.
  */
 
+// `kind` and `loginUrl` are declared, not merely passed through: the ten
+// polyglot SDKs are generated from this spec, so an undeclared field is a field
+// their types do not have. `.passthrough()` kept the response correct and the
+// contract three fields wide.
 const AuthProvider = z
   .object({
     id: z.string(),
+    kind: z.enum([
+      "credential",
+      "magic-link",
+      "email-otp",
+      "passkey",
+      "social",
+      "oidc",
+      "saml",
+      "ldap",
+    ]),
     label: z.string(),
     enabled: z.boolean(),
+    /** SAML only — the other kinds are entered through an `auth.*` call. */
+    loginUrl: z.string().optional(),
   })
   .passthrough()
   .openapi("AuthProvider");

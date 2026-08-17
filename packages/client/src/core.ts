@@ -109,12 +109,35 @@ export interface AuthSession {
   updatedAt: string;
 }
 
-/** A public sign-in provider as advertised by `auth.providers()`. */
+/**
+ * A public sign-in provider as advertised by `auth.providers()`.
+ *
+ * `kind` is kept in step with the server's own union (`PublicProvider` in
+ * `apps/web/src/server/services/auth-config.ts`) by
+ * `apps/web/tests/auth-surface-parity.test.ts`. It had drifted: the server
+ * emitted `saml`, `ldap` and `oidc` while this typed five kinds and no
+ * `loginUrl`, so an application narrowing on `kind` dropped every SSO provider
+ * its types had never heard of — silently, because the values were there.
+ */
 export interface PublicProvider {
+  /** For `social` this is the better-auth provider name (`github`); for
+   *  `oidc` and `saml` it is the workspace's own slug for that provider. */
   id: string;
-  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social";
+  kind:
+    | "credential"
+    | "magic-link"
+    | "email-otp"
+    | "passkey"
+    | "social"
+    | "oidc"
+    | "saml"
+    | "ldap";
   label: string;
   enabled: boolean;
+  /** Where to send the browser (SAML only). The other kinds are entered
+   *  through an `auth.*` call — `signInSocial` for `social`, `signInOAuth2`
+   *  for `oidc` — so they carry no URL. */
+  loginUrl?: string;
 }
 
 /** Public description of a workspace's auth surface (provider list + policy). */

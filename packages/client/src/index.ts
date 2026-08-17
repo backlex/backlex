@@ -83,6 +83,8 @@ import {
   type ItemResponse,
   type ListQuery,
   type ListResponse,
+  type IngestInput,
+  type IngestSummary,
   type SearchQuery,
   type SearchResponse,
   type ChangesQuery,
@@ -99,6 +101,8 @@ export type {
   ItemEvent,
   AggregateQuery,
   AggregateRow,
+  IngestInput,
+  IngestSummary,
   SearchPassage,
   SearchQuery,
   SearchResponse,
@@ -545,6 +549,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         ),
       /** Bulk-import rows from a JSON array (or raw JSON/CSV string). Each row
        *  runs the normal create path; row-level failures land in `errors`. */
+      /** Turn a stored document into rows — one per section. See `IngestInput`. */
+      ingest: (body: IngestInput): Promise<{ data: IngestSummary }> =>
+        core.request<{ data: IngestSummary }>("POST", `/api/items/${slug}/ingest`, body),
       importItems: (
         body: string | Partial<T>[],
         format: "json" | "csv" = "json",

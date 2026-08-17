@@ -222,6 +222,57 @@ POST /api/collections/articles/vectorize
 # → { "ok": true, "processed": 1240, "skipped": 12, "total": 1252 }
 ```
 
+## Ingesting a document
+
+A stored file becomes rows with `POST /api/items/{slug}/ingest` — **one row per
+section**, which then flow through the ordinary create path and pick up the
+collection's full-text and vector indexes on the way.
+
+```bash
+bun backlex items ingest docs \
+  --key handbook.md --body-field body \
+  --title-field title --source-field source --section-field section --replace
+```
+
+```ts
+await client.from("docs").ingest({
+  key: "handbook.md",
+  bodyField: "body",
+  titleField: "title",
+  sourceField: "source",   // set to the key on every row
+  sectionField: "section", // 0-based position in the document
+  replace: true,           // drop this document's previous rows first
+});
+```
+
+Also on the `collections.ingest` MCP tool, so an agent can make a handbook
+answerable without a human in the loop.
+
+**Why sections and not one row per document.** A row is capped at 32 chunks —
+about 64 KB of indexed text — so a single-row ingest of a real handbook would
+stop being indexed part-way through, and silently. Sections keep every row well
+under the cap, and they are the granularity retrieval wants anyway: a search
+should answer with the section, not hand back a document to go read. Markdown
+headings are the boundary when the document has them; paragraphs otherwise,
+accumulated to about 4000 characters and never split mid-sentence.
+
+**Text-native formats only** — `.txt`, `.md`, `.html`, `.csv`, `.json`. These
+decode with no dependency and behave identically on all eight runtimes backlex
+ships to. A PDF or Office document is **refused by name** rather than
+half-handled: extracting one needs either a library that does not run on
+workerd or a per-runtime capability (Cloudflare's `AI.toMarkdown()`), which is
+its own piece of work. Convert the file first.
+
+Two more things worth knowing:
+
+- **`replace` needs `sourceField`** — without it there is no way to tell which
+  rows came from this document — and it needs `delete` permission in its own
+  right, since the route's own gate is `create`. Rows are removed through the
+  ordinary delete path, so their vectors go with them.
+- Without `replace`, re-ingesting the same document **adds a second copy**.
+  That is deliberate: silently deleting rows on a plain create would be the
+  surprising behaviour.
+
 ## Endpoints
 
 Under `/api/vector` (see also the `vector.search` MCP tool):

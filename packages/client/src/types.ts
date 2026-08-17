@@ -181,6 +181,38 @@ export interface SearchResponse<T> {
   limit: number;
 }
 
+/** What `from(slug).ingest(...)` reads and how each row is built from it. */
+export interface IngestInput {
+  /** Storage key of the document, as `/api/storage` lists it. */
+  key: string;
+  /** Field each section's text is written to. */
+  bodyField: string;
+  /** Field for the section's heading, when the document had one. */
+  titleField?: string;
+  /** Field set to `key` on every row. Required by `replace`, and what makes a
+   *  re-ingest identifiable later. */
+  sourceField?: string;
+  /** Field for the section's 0-based position in the document. */
+  sectionField?: string;
+  /** Constants merged into every row (a category, an owner…). */
+  data?: Record<string, unknown>;
+  /** Delete this document's existing rows first, matched on `sourceField`.
+   *  Needs `delete` permission. */
+  replace?: boolean;
+}
+
+/** Summary from `from(slug).ingest(...)`. */
+export interface IngestSummary {
+  key: string;
+  /** Sections the document split into. */
+  sections: number;
+  inserted: number;
+  /** Rows a `replace` removed first. */
+  replaced: number;
+  failed: number;
+  errors: { section: number; error: string }[];
+}
+
 /** Summary from `from(slug).importItems(...)` — per-row outcome of a bulk
  *  import. `errors` is capped to the first 50 failures server-side. */
 export interface ImportSummary {

@@ -19,6 +19,15 @@ import {
   resolveContext,
 } from "./client";
 
+/** A required flag, reported by name rather than as a server-side 422. */
+const need = (value: string | undefined, name: string): string => {
+  if (!value) {
+    process.stderr.write(`missing ${name}\n`);
+    process.exit(1);
+  }
+  return value;
+};
+
 const ITEMS_HELP = `backlex items <cmd> <slug> [args]
 
   list <slug>     [--filter <json>] [--sort a,-b] [--fields a,b] [--expand …]
@@ -36,7 +45,12 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
   backfill-slugs <slug> [--field <name>] [--apply]
   export <slug>   [--format json|csv] [--out <file>]
   import <slug>   <file|@file|->  [--format json|csv]
+  ingest <slug>   --key <storage-key> --body-field <name>
+                  [--title-field <n>] [--source-field <n>] [--section-field <n>]
+                  [--data <json|@file|->] [--replace]
+                                one row per section of a stored document
   search <slug>   -q <text> [--mode fts|vector|hybrid] [--limit N] [--locale xx]
+                  [--passages]
   changes <slug>  [--since <cursor>] [--shape <json>] [--fields a,b] [--limit N] [--follow]
 
 Add --json to any read for raw output.
@@ -282,6 +296,37 @@ export const runItems = async (args: string[]): Promise<void> => {
         }
         return;
       }
+      case "ingest": {
+        const slug = requireSlug(rest, "items ingest <slug> --key <storage-key> --body-field <name>");
+        const rawData = flag(rest, "--data");
+        const summary = await client.from(slug).ingest({
+          key: need(flag(rest, "--key"), "--key"),
+          bodyField: need(flag(rest, "--body-field"), "--body-field"),
+          ...(flag(rest, "--title-field") ? { titleField: flag(rest, "--title-field")! } : {}),
+          ...(flag(rest, "--source-field") ? { sourceField: flag(rest, "--source-field")! } : {}),
+          ...(flag(rest, "--section-field") ? { sectionField: flag(rest, "--section-field")! } : {}),
+          ...(rawData
+            ? { data: JSON.parse(await resolvePayload(rawData)) as Record<string, unknown> }
+            : {}),
+          ...(has(rest, "--replace") ? { replace: true } : {}),
+        });
+        if (json) printJson(summary);
+        else {
+          printKeyValues({
+            sections: summary.data.sections,
+            inserted: summary.data.inserted,
+            replaced: summary.data.replaced,
+            failed: summary.data.failed,
+          });
+          if (summary.data.errors.length) {
+            process.stdout.write("\nerrors:\n");
+            for (const e of summary.data.errors) {
+              process.stdout.write(`  section ${e.section}: ${e.error}\n`);
+            }
+          }
+        }
+        return;
+      }
       case "import": {
         const slug = requireSlug(rest, "items import <slug> <file|@file|->  [--format json|csv]");
         const source = rest[1];
@@ -324,6 +369,7 @@ export const runItems = async (args: string[]): Promise<void> => {
           mode,
           limit: limit ? Number(limit) : undefined,
           locale: flag(rest, "--locale") ?? undefined,
+          ...(has(rest, "--passages") ? { passages: true } : {}),
         });
         if (json) printJson(res);
         else {

@@ -1,6 +1,6 @@
 import type { QueryBuilder } from "./query";
 import type { TokenStore } from "./token-store";
-import type { AggregateQuery, AggregateRow, BatchOperation, BatchResponse, BulkUpdateResponse, ChangesQuery, ChangesResponse, ImportSummary, ItemQuery, ItemResponse, ListQuery, ListResponse, SearchQuery, SearchResponse } from "./types";
+import type { AggregateQuery, AggregateRow, BatchOperation, BatchResponse, BulkUpdateResponse, ChangesQuery, ChangesResponse, ImportSummary, IngestInput, IngestSummary, ItemQuery, ItemResponse, ListQuery, ListResponse, SearchQuery, SearchResponse } from "./types";
 
 /**
  * The shapes every domain client in `clients/` is written against, and the
@@ -185,6 +185,15 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   changes(q?: ChangesQuery): Promise<ChangesResponse<T>>;
   /** Export every readable row as a JSON or CSV string. */
   exportItems(format?: "json" | "csv"): Promise<string>;
+  /**
+   * Turn a stored document into rows — one per section, ready for the
+   * collection's full-text and vector indexes.
+   *
+   * Text-native formats only (`.txt`, `.md`, `.html`, `.csv`, `.json`); a PDF
+   * or Office document is refused by name. Sections come from markdown
+   * headings when the document has them, paragraphs otherwise.
+   */
+  ingest(body: IngestInput): Promise<{ data: IngestSummary }>;
   /** Bulk-import rows from a JSON array (or a raw JSON/CSV string). */
   importItems(
     body: string | Partial<T>[],

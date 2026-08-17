@@ -459,6 +459,76 @@ export const changesItems: McpTool = {
   },
 };
 
+export const ingestDocument: McpTool = {
+  name: "collections.ingest",
+  description:
+    "Turn a document already in storage into rows of a collection — one row " +
+    "per section — so it becomes searchable and retrievable. Sections come " +
+    "from markdown headings when the document has them, paragraphs " +
+    "otherwise. This is how you make a handbook or a policy answerable: " +
+    "ingest it into a collection with `vectorize` on, then use " +
+    "collections.search with `passages: true`. Text-native formats only " +
+    "(.txt, .md, .html, .csv, .json) — a PDF or Word file is refused by " +
+    "name, convert it first. Pass `replace: true` (with `sourceField`) when " +
+    "re-ingesting a document you have ingested before, or you will get a " +
+    "second copy alongside the first.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string", description: "Target collection slug." },
+      key: { type: "string", description: "Storage key, as storage.list reports it." },
+      bodyField: { type: "string", description: "Field each section's text is written to." },
+      titleField: {
+        type: "string",
+        description: "Field for the section's heading, when the document had one.",
+      },
+      sourceField: {
+        type: "string",
+        description: "Field set to the storage key on every row. Required by `replace`.",
+      },
+      sectionField: {
+        type: "string",
+        description: "Field for the section's 0-based position in the document.",
+      },
+      data: {
+        type: "object",
+        description: "Constants merged into every row (a category, an owner...).",
+        additionalProperties: true,
+      },
+      replace: {
+        type: "boolean",
+        description:
+          "Delete this document's existing rows first, matched on `sourceField`. Needs delete permission.",
+      },
+    },
+    required: ["collection", "key", "bodyField"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      key: { type: "string" },
+      sections: { type: "number" },
+      inserted: { type: "number" },
+      replaced: { type: "number" },
+      failed: { type: "number" },
+      errors: { type: "array", items: { type: "object" } },
+    },
+    required: ["key", "sections", "inserted"],
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const { collection: _c, ...body } = args;
+    const res = await ctx.fetchInternal(`/api/items/${encodeURIComponent(slug)}/ingest`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const out = await readJson<unknown>(res);
+    return textResult(out);
+  },
+};
+
 export const collectionsTools: McpTool[] = [
   listItems,
   readItem,
@@ -468,4 +538,5 @@ export const collectionsTools: McpTool[] = [
   insertItem,
   updateItem,
   deleteItem,
+  ingestDocument,
 ];

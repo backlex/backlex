@@ -10,6 +10,7 @@ import type { AppBindings } from "../../app";
 import { itemsListRoutes } from "./list";
 import { itemsQueryRoutes } from "./query";
 import { itemsCsvRoutes } from "./csv";
+import { itemsIngestRoutes } from "./ingest";
 import { itemsChangesRoutes } from "./changes";
 import { itemsReadRoutes } from "./read";
 import { itemsWriteRoutes } from "./write";
@@ -20,6 +21,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .route("/", itemsListRoutes)
   .route("/", itemsQueryRoutes)
   .route("/", itemsCsvRoutes)
+  .route("/", itemsIngestRoutes)
   .route("/", itemsChangesRoutes)
   .route("/", itemsReadRoutes)
   .route("/", itemsWriteRoutes)

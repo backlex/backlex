@@ -215,6 +215,10 @@ msgid "(none — use literal subject/body)"
 msgstr "(none — use literal subject/body)"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+msgid "(none — use literal title/body)"
+msgstr "(none — use literal title/body)"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
 msgid "(none connected — connect one on Payments)"
 msgstr "(none connected — connect one on Payments)"
 
@@ -3295,6 +3299,10 @@ msgstr "Book a consignment, ask where the parcel is, and cancel it."
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Book a consignment, fetch its printable label, ask where the parcel is, and cancel it."
 msgstr "Book a consignment, fetch its printable label, ask where the parcel is, and cancel it."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Book a DHL Express parcel and get its label. DHL Express has no electronic cancel — an unused label is discarded, not voided."
+msgstr "Book a DHL Express parcel and get its label. DHL Express has no electronic cancel — an unused label is discarded, not voided."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Book a shipment and store its label, read where the parcel is, and cancel it."
@@ -20823,6 +20831,10 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "When set, title and body are rendered from the stored template at run time. Otherwise the literal fields below are used."
+msgstr "When set, title and body are rendered from the stored template at run time. Otherwise the literal fields below are used."
 
 #: src/client/admin/pages/access/impersonation-card.tsx
 msgid "When somebody is, it is recorded here — including why."

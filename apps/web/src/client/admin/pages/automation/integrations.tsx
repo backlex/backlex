@@ -193,6 +193,12 @@ const BRANDS: Record<string, Brand> = {
   // Turkish one among them, which is why the description names MNG Kargo: the
   // brand changed in 2025 and an operator still looks for the old name.
   dhl: { name: "DHL", mark: "DHL", markBg: "#D40511" },
+  // The second DHL card, and the mark says which one it is: `./dhl` tracks
+  // across sixteen divisions on a self-serve key, this books Express parcels
+  // on a contract account. Same brand red — they are the same company, and
+  // inventing a second colour to tell them apart would be worse than the
+  // label doing it.
+  "dhl-express": { name: "DHL Express", mark: "DHLe", markBg: "#D40511" },
   // PTT's brand yellow is the same problem Mailchimp's is: the mark is drawn
   // white-on-brand and white on yellow is unreadable. The navy their logo pairs
   // it with is the other half of the same identity.
@@ -376,6 +382,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
         return t`Book a consignment and cancel it.`;
       case "dhl":
         return t`Track a parcel across DHL's divisions, including DHL eCommerce Türkiye (formerly MNG Kargo).`;
+      case "dhl-express":
+        return t`Book a DHL Express parcel and get its label. DHL Express has no electronic cancel — an unused label is discarded, not voided.`;
       case "ptt":
         return t`Book a consignment, fetch its printable label, ask where the parcel is, and cancel it.`;
       case "ups":

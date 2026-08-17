@@ -29,6 +29,30 @@ import {
 const KINDS = INTEGRATION_KINDS as readonly IntegrationKind[];
 
 describe("provider registry", () => {
+  /**
+   * The docs open by counting the registry, and prose cannot notice a new
+   * provider. It said "Forty-one" while forty-eight were registered — stale
+   * from some earlier addition, and nothing anywhere was going to say so.
+   *
+   * The number is spelled out in `docs/integrations.md`, so this reads it back
+   * rather than asserting a literal: a bare `toBe(49)` would fail on the next
+   * provider and be "fixed" by editing the test, which is how a gate becomes a
+   * chore instead of a check.
+   */
+  test("the docs count the registry correctly", async () => {
+    const WORDS = [
+      "Thirty", "Forty", "Fifty", "Sixty",
+    ];
+    const ONES = ["", "-one", "-two", "-three", "-four", "-five", "-six", "-seven", "-eight", "-nine"];
+    const n = INTEGRATION_KINDS.length;
+    const spelled = `${WORDS[Math.floor(n / 10) - 3]}${ONES[n % 10]}`;
+    const doc = await Bun.file(
+      new URL("../../../docs/integrations.md", import.meta.url),
+    ).text();
+    const said = /^(\w+(?:-\w+)?) providers ship in the registry/m.exec(doc)?.[1];
+    expect({ said, registered: n }).toEqual({ said: spelled, registered: n });
+  });
+
   test("every kind resolves to a provider registered under its own id", () => {
     for (const kind of KINDS) {
       const p = providerFor(kind);

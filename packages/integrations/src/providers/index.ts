@@ -22,6 +22,7 @@ import { clickhouse } from "./clickhouse";
 import { contentful } from "./contentful";
 import { datadog } from "./datadog";
 import { dhl } from "./dhl";
+import { dhlExpress } from "./dhl-express";
 import { discord } from "./discord";
 import { easypost } from "./easypost";
 import { ebay } from "./ebay";
@@ -117,6 +118,7 @@ export const INTEGRATION_KINDS = [
   "yurtici",
   "aras",
   "dhl",
+  "dhl-express",
   "ptt",
   "ups",
 ] as const;
@@ -170,6 +172,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   yurtici,
   aras,
   dhl,
+  "dhl-express": dhlExpress,
   ptt,
   ups,
 };

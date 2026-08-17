@@ -22,7 +22,7 @@ backlex signs what it sends.
 
 ## Providers
 
-Forty-one providers ship in the registry, grouped by category:
+Forty-nine providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -37,7 +37,7 @@ Forty-one providers ship in the registry, grouped by category:
 | crm | HubSpot — *receives record contents*, see below |
 | marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 | marketplace | Trendyol — a source, a destination, tasks **and** an inbound webhook; Hepsiburada, n11, Çiçeksepeti — each a source, a destination and tasks; Amazon — a source, a task and a listing; eBay — a source, a task and a listing, over OAuth; Otto — a source, a task and a listing; Allegro — a source, a task and a listing (browsed a level at a time); bol.com — a source, a DESTINATION and a task |
-| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
+| carrier | EasyPost — tasks (book a shipment, read where it is, cancel it) **and** an inbound webhook; Yurtiçi Kargo — the same three tasks, over SOAP; Aras Kargo — book and cancel, over SOAP; DHL — tracking only, across every DHL division including DHL eCommerce Türkiye (ex-MNG Kargo); DHL Express — book with a label, and **no cancel, because DHL Express has none**; PTT Kargo — all four (book, label, track, cancel), over SOAP; UPS — book with a label, track, void |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -1330,13 +1330,15 @@ oversight, and the shape is worth understanding because it will recur.
 
 A carrier's three tasks are independent contracts, and DHL publishes them at
 very different heights. **Tracking is public and self-serve**: sign up on
-`developer.dhl.com`, take the key, and the task works. **Booking is not.** For
-Türkiye it still lives behind `apizone.mngkargo.com.tr`, an IBM API Connect
-portal whose request bodies are inside a spec ZIP you can only download with an
-account — there is no DHL-branded replacement. A `book_shipment` written from a
-guess at those bodies would fail at a courier rather than at a form. Aras ships
-the mirror image of this (book and cancel, no tracking) for its own reason, so
-"some of a carrier's tasks" is an established answer here.
+`developer.dhl.com`, take the key, and the task works. **Booking depends on
+which DHL you mean.** For **DHL eCommerce Türkiye** it still lives behind
+`apizone.mngkargo.com.tr`, an IBM API Connect portal whose request bodies are
+inside a spec ZIP you can only download with an account — there is no
+DHL-branded replacement, and a `book_shipment` written from a guess at those
+bodies would fail at a courier rather than at a form. For **DHL Express** it
+turned out to be fully public after all, and that is now its own provider
+(below). Aras ships the mirror image of this (book and cancel, no tracking) for
+its own reason, so "some of a carrier's tasks" is an established answer here.
 
 **Why the provider is `dhl` and not `mng-kargo`.** DHL Group completed its
 acquisition of MNG Kargo in October 2023 and the Turkish brand became **DHL
@@ -1378,6 +1380,60 @@ There is a push (webhook) version of this API and it does support `ecommerce-tr`
 but access is granted through a form on the developer portal rather than by a
 subscribe endpoint — there is nothing for `IntegrationWebhook.register` to call,
 so polling is the whole story today.
+
+#### DHL Express, and a carrier with no cancel
+
+**DHL Express** is a second DHL card, and the separation is the point: `dhl`
+tracks parcels through the **Shipment Tracking – Unified** API on
+`api-eu.dhl.com` with a self-serve consumer key, while this books them through
+**MyDHL API** on `express.api.dhl.com` with Basic auth and a contract account
+number. Different host, different credential, different product. Every other
+provider here is one API with one credential set, and folding two into one card
+would make the capability matrix depend on which service a row happened to name.
+
+The contract is not guesswork: DHL publishes the whole of MyDHL as OpenAPI
+3.0.0 (`dpdhl-express-api-3.3.1.yaml`, v3.3.1, released 2026-06-28), and the
+provider was written by reading it.
+
+**There is no cancel task, and there cannot be one.** In all 22,726 lines of
+that spec there is exactly one `delete:` operation, and it cancels a courier
+*pickup* — `/pickups/{dispatchConfirmationNumber}` — not a shipment. Nothing
+tagged `shipment` mentions cancel, void or delete. DHL's own guidance is to
+discard an unused label: billing happens when the parcel is collected, not when
+the label is made. A task named `cancel_shipment` that quietly cancelled a
+collection would be worse than its absence — the label would stay valid, the
+parcel would still travel, and the operator would believe otherwise. The
+booking does return `dispatchConfirmationNumber`, so an operator who has to
+telephone DHL about a collection has the number to quote.
+
+Three details the spec answers and prose would not:
+
+- **The timestamp is not ISO 8601.** `plannedShippingDateAndTime` wants
+  `2019-08-04T14:00:31GMT+01:00` — the offset appended to a literal `GMT`.
+  `toISOString()` produces something DHL rejects.
+- **`x-version` is required**, and the spec declares it as a shared `$ref`'d
+  parameter rather than beside the operation, so it is easy to miss. The
+  provider pins `3.3.1` so a later DHL default cannot change what a request
+  means.
+- **The label is found by `typeCode`, not by position.** `documents[]` also
+  carries invoices and receipts when those were requested, and taking the first
+  entry would attach the wrong file — convincingly, until somebody opened it.
+
+**To track what you booked here, use the `dhl` card with
+`service=express`** — not `ecommerce-tr`. MyDHL books DHL *Express*
+consignments, while the tracking card's flagship division is the Turkish
+eCommerce one, so a booking made here is invisible to a poll configured for
+that service. Same company, different parcel network.
+
+**Test and production are different paths**, `…/mydhlapi/test` and
+`…/mydhlapi`, with the same credentials — the opposite of EasyPost, where the
+test mode is the key itself. So the environment is an explicit choice on the
+connection and nothing is inferred: a wrong default here is a real consignment
+and a real invoice. The picker offers test first.
+
+The booking does **not** request a collection (`pickup.isRequested: false`).
+Booking is triggered by a row write, and asking for a courier off the back of a
+database insert would send a van.
 
 #### The SOAP helper
 

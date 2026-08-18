@@ -414,6 +414,211 @@ export const TAG_TEMPLATES: TagTemplate[] = [
       },
     ],
   },
+  {
+    id: "linkedin_insight",
+    label: "LinkedIn Insight Tag",
+    vendor: "LinkedIn",
+    docUrl: "https://learn.microsoft.com/en-us/linkedin/marketing/conversions/deduplication",
+    consentCategories: ["marketing"],
+    // LinkedIn publishes no CSP guidance. `px.ads.linkedin.com` comes from the
+    // noscript pixel in its own snippet; `api.linkedin.com` is deliberately
+    // absent — that is the server-to-server Conversions API.
+    csp: {
+      script: ["https://snap.licdn.com"],
+      img: ["https://px.ads.linkedin.com"],
+    },
+    cspSource: "inferred",
+    params: [
+      {
+        key: "partnerId",
+        label: "Partner ID",
+        required: true,
+        kind: "text",
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        // Worth knowing when writing the init branch: LinkedIn's own docs are
+        // internally inconsistent, using `_linkedin_data_partner_id` in
+        // troubleshooting and `_linkedin_data_partner_ids` (plural, an array)
+        // in the snippet. The array is the one the library reads.
+        help: "LinkedIn publishes no id format — copy it from Campaign Manager.",
+      },
+    ],
+  },
+  {
+    id: "microsoft_clarity",
+    label: "Microsoft Clarity",
+    vendor: "Microsoft",
+    docUrl: "https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-setup",
+    // Clarity is sold as analytics, but its own consent call takes `ad_Storage`
+    // alongside `analytics_Storage` because the data is shared with Microsoft
+    // Advertising. Declaring analytics-only would under-declare it, the same
+    // trap Yandex sets.
+    consentCategories: ["analytics", "marketing"],
+    // No CSP guidance published. Note also that Microsoft does not publish the
+    // tag URL as TEXT anywhere — the setup page shows it only in a screenshot.
+    // The origin below is corroborated by a live request, which is evidence
+    // rather than documentation, and the honest label for that is "inferred".
+    csp: {
+      script: ["https://www.clarity.ms"],
+      img: ["https://*.clarity.ms", "https://c.bing.com"],
+      connect: ["https://*.clarity.ms", "https://c.bing.com"],
+    },
+    cspSource: "inferred",
+    params: [
+      {
+        key: "projectId",
+        label: "Project ID",
+        required: true,
+        kind: "text",
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        help: "Microsoft publishes no id format — copy it from Clarity Settings.",
+      },
+    ],
+  },
+  {
+    id: "hotjar",
+    label: "Hotjar",
+    vendor: "Hotjar",
+    docUrl: "https://help.hotjar.com/hc/en-us/articles/36820044421393-What-is-the-Hotjar-Tracking-Code",
+    // The one vendor here that says outright it is NOT an advertising tool.
+    consentCategories: ["analytics"],
+    // Hotjar is the only vendor in this registry that publishes a real
+    // directive-by-directive CSP. Two of its details are easy to get wrong and
+    // are therefore copied exactly: the websocket origin is `.hotjar.com` and
+    // never `.hotjar.io`, and session-replay assets need `style-src`/`font-src`
+    // which no other template in this file touches.
+    csp: {
+      script: ["https://static.hotjar.com", "https://script.hotjar.com"],
+      img: [
+        "https://static.hotjar.com",
+        "https://script.hotjar.com",
+        "https://survey-images.hotjar.com",
+      ],
+      connect: ["https://*.hotjar.com", "https://*.hotjar.io", "wss://*.hotjar.com"],
+    },
+    cspSource: "vendor",
+    params: [
+      {
+        key: "siteId",
+        label: "Site ID",
+        required: true,
+        kind: "text",
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        help: "Hotjar calls this hjid and publishes no format for it.",
+      },
+      {
+        key: "snippetVersion",
+        label: "Snippet version",
+        required: false,
+        kind: "text",
+        // Hotjar's docs elide the snippet body entirely and never state a value
+        // for `hjsv`. 6 is what Hotjar's own site serves. Exposed as an override
+        // so a bump does not need a backlex deploy.
+        pattern: "^[0-9]{1,3}$",
+        formatDocumented: false,
+        placeholder: "6",
+        help: "Hotjar does not document this value; 6 is what its own site uses.",
+      },
+    ],
+  },
+  {
+    id: "microsoft_uet",
+    label: "Microsoft Advertising UET",
+    vendor: "Microsoft",
+    docUrl:
+      "https://learn.microsoft.com/en-us/advertising/msa-help/hlp_ba_conc_uet_setup_master",
+    consentCategories: ["marketing"],
+    // No CSP guidance published. Microsoft's own snippet is protocol-relative
+    // (`//bat.bing.com/bat.js`); we pin https, because a protocol-relative URL
+    // on an https page buys nothing and breaks a policy that names a scheme.
+    csp: {
+      script: ["https://bat.bing.com", "https://bat.bing.net"],
+      img: ["https://bat.bing.com", "https://bat.bing.net", "https://c.bing.com"],
+      connect: ["https://bat.bing.com", "https://c.bing.com"],
+    },
+    cspSource: "inferred",
+    params: [
+      {
+        key: "tagId",
+        label: "Tag ID",
+        required: true,
+        kind: "text",
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        // For the init branch: UET honours ONLY `ad_storage` in its consent
+        // call — `analytics_storage` is silently ignored. And Microsoft's own
+        // nonce variant of the snippet has a live bug (it assigns `m` without
+        // declaring it, so it throws under strict mode); do not copy it.
+        help: "Microsoft publishes no id format — copy it from the UET tag.",
+      },
+    ],
+  },
+  {
+    id: "x_pixel",
+    label: "X (Twitter) Pixel",
+    vendor: "X",
+    docUrl:
+      "https://business.x.com/en/help/campaign-measurement-and-analytics/conversion-tracking-for-websites.html",
+    consentCategories: ["marketing"],
+    // X DOES publish a CSP list, and it is **wrong**: it names only image and
+    // connect origins and omits `script-src` entirely, so a site that follows
+    // it literally blocks `uwt.js` — the very file the list exists to enable.
+    // It also still names `.twitter.com`. So this is ours, not theirs.
+    csp: {
+      script: ["https://static.ads-twitter.com"],
+      img: ["https://analytics.twitter.com"],
+      connect: ["https://analytics.twitter.com"],
+    },
+    cspSource: "inferred",
+    params: [
+      {
+        key: "pixelId",
+        label: "Pixel ID",
+        required: true,
+        kind: "text",
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        // X's published examples contain unbalanced quotes, curly quotes and an
+        // unterminated string. Whoever writes the init branch should take the
+        // shape from the queue shim, not from X's code blocks.
+        help: "X publishes no id format — copy it from Ads Manager.",
+      },
+    ],
+  },
+  {
+    id: "pinterest_tag",
+    label: "Pinterest Tag",
+    vendor: "Pinterest",
+    docUrl: "https://help.pinterest.com/en/business/article/install-the-base-code",
+    consentCategories: ["marketing"],
+    // Pinterest names the two hosts itself, but only as "domains to allow" with
+    // no directive breakdown — so the hosts are theirs and the split is ours.
+    // `api.pinterest.com` stays out: server-to-server only.
+    csp: {
+      script: ["https://s.pinimg.com"],
+      img: ["https://ct.pinterest.com"],
+      connect: ["https://ct.pinterest.com"],
+    },
+    cspSource: "inferred",
+    params: [
+      {
+        key: "tagId",
+        label: "Tag ID",
+        required: true,
+        kind: "text",
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        // Two things for the init branch. Pinterest's browser event names are
+        // CamelCase (`PageVisit`, `AddToCart`) — the lowercase run-together
+        // forms that appear in its noscript examples are query-string values,
+        // not the vocabulary. And its base code guards on `if(!window.pintrk)`,
+        // so a second copy on the page is a silent no-op.
+        help: "Pinterest publishes no tag-id format — copy it from Ads Manager.",
+      },
+    ],
+  },
 ];
 
 const BY_ID = new Map(TAG_TEMPLATES.map((t) => [t.id, t]));

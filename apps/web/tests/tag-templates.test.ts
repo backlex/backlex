@@ -51,7 +51,10 @@ describe("registry invariants", () => {
     for (const t of TAG_TEMPLATES) {
       for (const key of ["script", "img", "connect", "frame"] as const) {
         for (const origin of t.csp[key] ?? []) {
-          expect(origin).toMatch(/^https:\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+$/);
+          // `wss:` is allowed in connect-src and Hotjar's session replay needs
+          // it — but only there, and only on the host the vendor names.
+          expect(origin).toMatch(/^(https|wss):\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+$/);
+          if (origin.startsWith("wss:")) expect(key).toBe("connect");
         }
       }
     }
@@ -218,6 +221,41 @@ describe("honesty about vendor formats", () => {
     const meta = getTagTemplate("meta_pixel")?.params[0];
     expect(meta?.formatDocumented).toBe(false);
     expect(meta?.pattern).not.toMatch(/\{15|\{16/);
+  });
+
+  test("a vendor that feeds an ad platform is not declared analytics-only", () => {
+    // Two vendors in this registry are sold as analytics and are not. Yandex's
+    // own docs let any Metrica goal drive Yandex Direct retargeting; Clarity's
+    // own consent call takes `ad_Storage` because the data reaches Microsoft
+    // Advertising. Declaring either analytics-only would under-declare it to a
+    // consent tool that is behaving correctly.
+    for (const id of ["yandex_metrica", "microsoft_clarity"]) {
+      const t = getTagTemplate(id);
+      expect(t?.consentCategories).toContain("analytics");
+      expect(t?.consentCategories).toContain("marketing");
+    }
+
+    // Hotjar is the counter-example, and it is the vendor's own position: it
+    // says outright that it does not do advertising or profiling. Pinned so
+    // nobody "tidies" it into the marketing bucket with its neighbours.
+    expect(getTagTemplate("hotjar")?.consentCategories).toEqual(["analytics"]);
+  });
+
+  test("every template loads something", () => {
+    // A template with no script origin is a tag that cannot fire — an entry in
+    // a picker that does nothing when chosen.
+    for (const t of TAG_TEMPLATES) {
+      expect((t.csp.script ?? []).length).toBeGreaterThan(0);
+    }
+  });
+
+  test("X's CSP is marked as ours, because X's own list is wrong", () => {
+    // X publishes a CSP list that names only image and connect origins and
+    // omits script-src entirely — follow it literally and the browser blocks
+    // `uwt.js`, the very file the list exists to permit. So ours it is.
+    const x = getTagTemplate("x_pixel");
+    expect(x?.cspSource).toBe("inferred");
+    expect(x?.csp.script).toContain("https://static.ads-twitter.com");
   });
 
   test("Yandex is declared as BOTH analytics and marketing", () => {

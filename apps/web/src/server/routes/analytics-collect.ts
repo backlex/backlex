@@ -120,6 +120,8 @@ const pathExcluded = (path: string, patterns: string[]): boolean => {
 
 interface CollectBody {
   s?: unknown;
+  /** Consent state as the tag understood it: "denied" drops the event. */
+  c?: unknown;
   n?: unknown;
   p?: unknown;
   r?: unknown;
@@ -171,6 +173,13 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
     } catch {
       // A malformed beacon is not worth an error response — there is no client
       // on the other end able to act on one.
+      return c.body(null, 204, { ...corsHeaders });
+    }
+
+    // Consent is enforced HERE as well as in the tag. The client-side check is
+    // advice a modified script can decline to follow; this is the part an
+    // operator can point at.
+    if (asStr(body.c, 16) === "denied") {
       return c.body(null, 204, { ...corsHeaders });
     }
 

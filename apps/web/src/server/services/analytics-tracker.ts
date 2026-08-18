@@ -68,7 +68,39 @@ export const TRACKER_JS = `// backlex web analytics tag.
   var localhostOk = self.getAttribute("data-allow-localhost") === "true";
   var LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"];
 
+  // Consent state, in the three shapes a site is likely to already have.
+  //
+  // This is Consent Mode's MECHANICAL half and nothing more: if a consent tool
+  // says no, we do not collect. GA4's other half is behavioural modeling —
+  // statistically inferring the conversions it was not allowed to observe —
+  // and that is not something to imitate quietly.
+  var consentOverride = null;
+  function consentDenied() {
+    if (consentOverride === "denied") return true;
+    if (consentOverride === "granted") return false;
+    // Google Consent Mode, as a gtag dataLayer entry. Read defensively: this
+    // is another vendor's array on someone else's page.
+    try {
+      var dl = window.dataLayer;
+      if (dl && dl.length) {
+        for (var i = dl.length - 1; i >= 0; i--) {
+          var e = dl[i];
+          if (!e) continue;
+          var state = e[2] || e;
+          if (state && typeof state === "object" && state.analytics_storage) {
+            return state.analytics_storage === "denied";
+          }
+        }
+      }
+    } catch (e) {
+      // A malformed dataLayer is not a reason to stop measuring; it is a
+      // reason to fall through to the explicit signals below.
+    }
+    return false;
+  }
+
   function optedOut() {
+    if (consentDenied()) return true;
     if (honorDnt && (nav.doNotTrack === "1" || window.doNotTrack === "1")) return true;
     if (nav.globalPrivacyControl === true) return true;
     // A dev machine's traffic is noise in a production report, and forgetting
@@ -93,6 +125,10 @@ export const TRACKER_JS = `// backlex web analytics tag.
         // would otherwise dominate the referrer report with your own pages.
         r: doc.referrer && doc.referrer.indexOf(location.origin) !== 0 ? doc.referrer : "",
         h: location.hostname,
+        // Reported so the server can enforce as well. A client-side check is
+        // advice; the route drops a denied event regardless of what a modified
+        // tag chooses to send.
+        c: consentOverride || null,
         v: props || null
       });
     } catch (e) {
@@ -165,6 +201,13 @@ export const TRACKER_JS = `// backlex web analytics tag.
   var queued = window.backlex && window.backlex.q;
   window.backlex = function (name, props) {
     if (name) send(String(name), props);
+  };
+  // Explicit control for a site whose consent tool is not gtag-shaped:
+  //   backlex.consent("denied")  /  backlex.consent("granted")
+  // An explicit call wins over the dataLayer, because it is the site owner
+  // speaking directly rather than us inferring.
+  window.backlex.consent = function (state) {
+    consentOverride = state === "denied" ? "denied" : state === "granted" ? "granted" : null;
   };
   if (queued && queued.length) {
     for (var i = 0; i < queued.length; i++) {

@@ -224,6 +224,39 @@ describe("cookieless identity", () => {
   });
 });
 
+describe("consent", () => {
+  test("a denied event is dropped by the SERVER, not only by the tag", async () => {
+    // The tag's own check is advice: a modified script, or one loaded from a
+    // cache, can decline to follow it. This is the half an operator can point
+    // at in an audit.
+    const site = await createSite({ domain: "consent.example" });
+    const res = await beacon(
+      { s: site.id, n: "consent_probe", p: "/", h: "consent.example", c: "denied" },
+      { Origin: "https://consent.example" },
+    );
+    expect(res.status).toBe(204);
+    expect((await rows(200)).some((r) => r.name === "consent_probe")).toBe(false);
+
+    // …and an explicit grant still lands.
+    const ok = await beacon(
+      { s: site.id, n: "consent_ok", p: "/", h: "consent.example", c: "granted" },
+      { Origin: "https://consent.example" },
+    );
+    expect(ok.status).toBe(204);
+    expect((await rows(200)).some((r) => r.name === "consent_ok")).toBe(true);
+  });
+
+  test("the tag ships the mechanical half of consent mode and says so", () => {
+    // Reading gtag's dataLayer, GPC and DNT, plus an explicit override. What
+    // it deliberately does NOT do is GA4's behavioural modeling — inferring
+    // the conversions it was not allowed to observe.
+    expect(TRACKER_JS).toContain("analytics_storage");
+    expect(TRACKER_JS).toContain("globalPrivacyControl");
+    expect(TRACKER_JS).toContain("doNotTrack");
+    expect(TRACKER_JS).toContain("backlex.consent");
+  });
+});
+
 describe("server-side filters", () => {
   test("a declared crawler is dropped when the site asks for it", async () => {
     const site = await createSite({ domain: "bots.example", filterBots: true });

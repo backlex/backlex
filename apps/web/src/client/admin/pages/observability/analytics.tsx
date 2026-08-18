@@ -1294,6 +1294,7 @@ function SitesTab({ pushToast }: { pushToast: PushToast }) {
   const updateSite = useUpdateAnalyticsSite();
   const deleteSite = useDeleteAnalyticsSite();
   const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<ApiAnalyticsSite | null>(null);
   const sites = sitesQ.data?.data ?? [];
 
   const copy = (text: string) => {
@@ -1335,6 +1336,13 @@ function SitesTab({ pushToast }: { pushToast: PushToast }) {
                     onClick={() => copy(snippetFor(s.id))}
                   >
                     <Trans>Copy snippet</Trans>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    icon={I.Settings}
+                    onClick={() => setEditing(s)}
+                  >
+                    <Trans>Settings</Trans>
                   </Button>
                   <Button
                     variant="outline"
@@ -1394,6 +1402,20 @@ function SitesTab({ pushToast }: { pushToast: PushToast }) {
           ))}
         </div>
       )}
+
+      <SiteSettingsDialog
+        site={editing}
+        onClose={() => setEditing(null)}
+        onSave={(patch) => {
+          if (!editing) return;
+          updateSite.mutate(
+            { id: editing.id, patch },
+            { onError: () => pushToast(t`Could not save the settings.`) },
+          );
+          setEditing(null);
+          pushToast(t`Site settings saved.`);
+        }}
+      />
 
       <AddSiteDialog
         open={addOpen}
@@ -1948,6 +1970,106 @@ function SegmentsDialog({
           </Button>
           <Button variant="primary" disabled={!valid} onClick={save}>
             <Trans>Save segment</Trans>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Per-site collection settings.
+ *
+ * These are the controls that actually bound what a public write endpoint
+ * accepts, and every one of them is enforced SERVER-side. The tag's own
+ * opt-outs (DNT, GPC, skipping localhost) are advice a modified script can
+ * decline to follow; these are not.
+ */
+function SiteSettingsDialog({
+  site,
+  onClose,
+  onSave,
+}: {
+  site: ApiAnalyticsSite | null;
+  onClose: () => void;
+  onSave: (patch: { excludedPaths: string[]; ignoredIps: string[] }) => void;
+}) {
+  const [paths, setPaths] = useState("");
+  const [ips, setIps] = useState("");
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+
+  // Seed the fields from the site the first time this opens for it. Doing it
+  // in render rather than an effect keeps the dialog a pure function of props
+  // and avoids the StrictMode double-effect that has bitten this codebase.
+  if (site && loadedFor !== site.id) {
+    setLoadedFor(site.id);
+    setPaths(site.excludedPaths.join("\n"));
+    setIps(site.ignoredIps.join("\n"));
+  }
+
+  const lines = (v: string) =>
+    v
+      .split(/[\n,]/)
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 50);
+
+  return (
+    <Dialog open={!!site} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-[520px] [&>*]:min-w-0">
+        <DialogHeader>
+          <DialogTitle>
+            <Trans>Collection settings</Trans>
+          </DialogTitle>
+          <DialogDescription>
+            {site ? site.domain : ""}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex min-w-0 flex-col gap-3">
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-[12.5px] text-muted-foreground">
+                <Trans>Excluded paths</Trans>
+              </span>
+              <Input
+                value={paths}
+                placeholder="/admin/*, /health"
+                onChange={(e) => setPaths(e.target.value)}
+              />
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>
+                  Comma separated. A leading or trailing * is supported. Never
+                  recorded, and enforced on the server.
+                </Trans>
+              </span>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-[12.5px] text-muted-foreground">
+                <Trans>Ignored IPs</Trans>
+              </span>
+              <Input
+                value={ips}
+                placeholder="203.0.113.4, 198.51.100.9"
+                onChange={(e) => setIps(e.target.value)}
+              />
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>
+                  Your office, a monitoring probe. The address is compared and
+                  discarded — it is never stored on an event.
+                </Trans>
+              </span>
+            </label>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            <Trans>Cancel</Trans>
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => onSave({ excludedPaths: lines(paths), ignoredIps: lines(ips) })}
+          >
+            <Trans>Save</Trans>
           </Button>
         </DialogFooter>
       </DialogContent>

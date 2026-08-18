@@ -101,6 +101,34 @@ Two things follow, and neither is hidden in the UI:
 Rotating `ANALYTICS_SALT` resets every visitor identity at once. That is a
 legitimate privacy lever and also a visible discontinuity in the numbers.
 
+### Consent, and what "cookieless" does and does not mean
+
+The tag ships **the mechanical half of Consent Mode**: it reads gtag's
+`dataLayer` for `analytics_storage`, `navigator.globalPrivacyControl` and
+`DNT`, and it exposes an explicit override for a consent tool that is not
+gtag-shaped:
+
+```js
+backlex.consent("denied");   // and "granted"
+```
+
+An explicit call wins over the dataLayer — that is the site owner speaking
+directly rather than us inferring. **The state is enforced on the server too**:
+a denied event is dropped by the collect route regardless of what a modified
+tag chooses to send, because a client-side check is advice and this is the half
+an operator can point at in an audit.
+
+GA4's *other* half of Consent Mode is behavioural modeling — statistically
+inferring the conversions it was not allowed to observe. That is not
+reproducible here and is not imitated quietly.
+
+Be precise about the privacy claim itself. The visitor id is
+`sha256(ANALYTICS_SALT ‖ utcDay ‖ tenant ‖ site ‖ ip ‖ user-agent)`, truncated.
+Nothing is stored on the device, no IP or user-agent is written to any column,
+and the id stops working at UTC midnight. But the operator holds the salt, so
+an operator with an IP and a user-agent could recompute an id: this is
+**pseudonymous, not anonymous**, and the second word is the one to use.
+
 ### Per-site settings
 
 | Setting | Effect |
@@ -110,10 +138,10 @@ legitimate privacy lever and also a visible discontinuity in the numbers.
 | **Excluded paths** | Never recorded. A leading or trailing `*` is supported (`/admin/*`). |
 | **Ignored IPs** | Never recorded — your office, a monitoring probe. |
 
-All four are enforced **server-side**. The tag's own opt-outs (`DNT`,
-`globalPrivacyControl`, and skipping `localhost` unless
-`data-allow-localhost="true"`) are advice a client can decline to follow; these
-are not.
+All four are enforced **server-side** and are editable from **Analytics →
+Sites → Settings**. The tag's own opt-outs (`DNT`, `globalPrivacyControl`,
+consent state, and skipping `localhost` unless `data-allow-localhost="true"`)
+are advice a client can decline to follow; these are not.
 
 > **The origin check is not a security boundary.** `Origin` is forgeable by any
 > non-browser client. It stops a snippet copied onto a staging host and casual

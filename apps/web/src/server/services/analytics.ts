@@ -1259,7 +1259,12 @@ export interface AnalyticsRealtime {
  */
 export const analyticsRealtime = async (
   ctx: AnalyticsDbCtx,
-  opts: { tenantId: string | null; siteId?: string | null },
+  opts: {
+    tenantId: string | null;
+    siteId?: string | null;
+    /** Optional saved-segment predicate, already validated by `parseSegment`. */
+    segment?: SegmentNode | null;
+  },
   now = Date.now(),
 ): Promise<AnalyticsRealtime> => {
   const t = eventsTable(ctx.dialect);

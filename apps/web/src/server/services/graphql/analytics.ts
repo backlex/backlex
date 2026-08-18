@@ -238,6 +238,7 @@ const AnalyticsEventType = new GraphQLObjectType({
     sessionId: { type: GraphQLString },
     props: { type: JSONScalar },
     path: { type: GraphQLString },
+    pathBase: { type: GraphQLString },
     referrer: { type: GraphQLString },
     source: { type: GraphQLString },
     release: { type: GraphQLString },

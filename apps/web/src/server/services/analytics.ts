@@ -31,6 +31,7 @@
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import { classifyChannel, sourceMediumLabel } from "./analytics-channels";
+import { parseUtm } from "./analytics-enrich";
 import {
   compileSegment,
   compileSegmentRaw,
@@ -67,6 +68,24 @@ export const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0
  *  and D1, so the bucket is computed here rather than in SQL. Sorts lexically,
  *  and `slice(0, 10)` recovers the day from it. */
 export const utcHour = (ms: number): string => new Date(ms).toISOString().slice(0, 13);
+
+/**
+ * A path with its query string removed — the key page reports group by.
+ *
+ * `path` keeps the query, because campaign tags live there and `?q=` /
+ * `?page=2` are real information. Grouping on it, though, splits one page into
+ * a row per campaign variant: `/pricing?utm_source=a` and `/pricing?utm_source=b`
+ * report as two different pages. Materialized at write time for the same reason
+ * `day` and `hour` are — no substring-before-a-character expression has a
+ * common spelling across Postgres, SQLite and D1, and a stored column can be
+ * indexed where an expression cannot.
+ */
+export const pathWithoutQuery = (path: string | null): string | null => {
+  if (!path) return null;
+  const q = path.indexOf("?");
+  const base = q === -1 ? path : path.slice(0, q);
+  return base || null;
+};
 
 /** Shift a `YYYY-MM-DD` day by N days. */
 export const addDays = (day: string, n: number): string =>
@@ -271,6 +290,7 @@ export const recordEvents = async (
       sessionId: str(e.sessionId, 200),
       props: e.props && typeof e.props === "object" ? e.props : null,
       path: str(e.path, 1000),
+      pathBase: pathWithoutQuery(str(e.path, 1000)),
       referrer: str(e.referrer, 1000),
       source: str(e.source, 40),
       release: str(e.release, 80),
@@ -280,9 +300,20 @@ export const recordEvents = async (
       deviceType: str(e.deviceType, 16),
       browser: str(e.browser, 40),
       os: str(e.os, 40),
-      utmSource: str(e.utmSource, 200),
-      utmMedium: str(e.utmMedium, 200),
-      utmCampaign: str(e.utmCampaign, 200),
+      // Campaign tags come from the EVENT's own landing path, not from the
+      // request, so they are derived here rather than per-surface. Doing it in
+      // the REST route only meant a GraphQL-ingested event silently lost its
+      // campaign — same data, different answer depending on how it arrived.
+      // An explicitly supplied value still wins, for a caller relaying events
+      // whose original URL we never saw.
+      ...(() => {
+        const derived = parseUtm(e.path);
+        return {
+          utmSource: str(e.utmSource, 200) ?? derived.utmSource,
+          utmMedium: str(e.utmMedium, 200) ?? derived.utmMedium,
+          utmCampaign: str(e.utmCampaign, 200) ?? derived.utmCampaign,
+        };
+      })(),
       revenue: typeof e.revenue === "number" && Number.isFinite(e.revenue)
         ? Math.trunc(e.revenue)
         : null,
@@ -687,7 +718,8 @@ const sessionCteSql = (
   const siteFilter = opts.siteId ? sql` AND site_id = ${opts.siteId}` : sql``;
   return sql`
     lagged AS (
-      SELECT distinct_id, day, ts, path, referrer, utm_source, utm_medium,
+      SELECT distinct_id, day, ts, COALESCE(path_base, path) AS path,
+             referrer, utm_source, utm_medium,
              LAG(ts) OVER (PARTITION BY distinct_id, day ORDER BY ts) AS prev_ts
       FROM analytics_events
       WHERE ${tenantSql(opts.tenantId)}
@@ -1338,7 +1370,7 @@ export const analyticsRealtime = async (
       bucket.events++;
       bucket.visitors.add(who);
     }
-    bump(byPath, r.path, who);
+    bump(byPath, pathWithoutQuery(typeof r.path === "string" ? r.path : null), who);
     bump(byReferrer, r.referrer, who);
     bump(byCountry, r.country, who);
   }
@@ -1650,6 +1682,7 @@ const num = (v: unknown): number => {
  */
 export type BreakdownColumn =
   | "path"
+  | "pathBase"
   | "referrer"
   | "source"
   | "country"
@@ -1784,7 +1817,9 @@ export const analyticsOverview = async (
 
   const [paths, referrers, sources, countries, devices, campaigns] =
     await Promise.all([
-      topBy(ctx, range, "path", 10),
+      // Grouped on the query-stripped key, so one page is one row however many
+      // campaign variants pointed at it.
+      topBy(ctx, range, "pathBase", 10),
       topBy(ctx, range, "referrer", 10),
       topBy(ctx, range, "source", 6),
       topBy(ctx, range, "country", 10),
@@ -2043,6 +2078,8 @@ export interface AnalyticsEventRow {
   sessionId: string | null;
   props: Record<string, unknown> | null;
   path: string | null;
+  /** `path` with the query removed — what page reports group by. */
+  pathBase: string | null;
   referrer: string | null;
   source: string | null;
   release: string | null;
@@ -2094,6 +2131,7 @@ export const listAnalyticsEvents = async (
       sessionId: t.sessionId,
       props: propsRaw,
       path: t.path,
+      pathBase: t.pathBase,
       referrer: t.referrer,
       source: t.source,
       release: t.release,
@@ -2123,6 +2161,7 @@ export const listAnalyticsEvents = async (
     sessionId: r.sessionId ?? null,
     props: parseProps(r.props),
     path: r.path ?? null,
+    pathBase: r.pathBase ?? null,
     referrer: r.referrer ?? null,
     source: r.source ?? null,
     release: r.release ?? null,

@@ -26,7 +26,7 @@ import { defaultHook } from "../lib/openapi-router";
 import { rateLimitOk } from "../lib/rate-limit";
 import { setMeterTenant } from "../lib/usage-meter";
 import { requestMeta } from "../services/activity";
-import { enrichmentFromRequest, parseUtm } from "../services/analytics-enrich";
+import { enrichmentFromRequest } from "../services/analytics-enrich";
 import {
   MAX_BATCH,
   recordErrors,
@@ -187,9 +187,6 @@ export const analyticsIngestRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
         browser: ctxFields.browser,
         os: ctxFields.os,
         country: ctxFields.country ?? e.country ?? null,
-        // Campaign tags ride on the landing URL's query string, so they are
-        // per-event rather than per-request.
-        ...parseUtm(e.path),
       }));
 
       const result = await recordEvents(

@@ -320,6 +320,7 @@ export interface ApiAnalyticsEvent {
   sessionId: string | null;
   props: Record<string, unknown> | null;
   path: string | null;
+  pathBase: string | null;
   referrer: string | null;
   source: string | null;
   release: string | null;

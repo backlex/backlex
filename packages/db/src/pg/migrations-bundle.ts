@@ -124,6 +124,7 @@ import m117 from "../../drizzle/pg/20260816120000_job_progress/migration.sql" wi
 import m118 from "../../drizzle/pg/20260818090000_analytics_web_dimensions/migration.sql" with { type: "text" };
 import m119 from "../../drizzle/pg/20260818130000_analytics_sites/migration.sql" with { type: "text" };
 import m120 from "../../drizzle/pg/20260818170000_analytics_segments/migration.sql" with { type: "text" };
+import m121 from "../../drizzle/pg/20260818210000_analytics_path_base/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -252,4 +253,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260818090000_analytics_web_dimensions", sql: m118 },
   { name: "20260818130000_analytics_sites", sql: m119 },
   { name: "20260818170000_analytics_segments", sql: m120 },
+  { name: "20260818210000_analytics_path_base", sql: m121 },
 ];

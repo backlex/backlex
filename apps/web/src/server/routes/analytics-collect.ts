@@ -41,7 +41,7 @@ import { requestMeta } from "../services/activity";
 import { setMeterTenant } from "../lib/usage-meter";
 import { getSiteById, recordWebEvents } from "../services/analytics";
 import { dailyVisitorId } from "../services/analytics-identity";
-import { enrichmentFromRequest, parseUtm, parseUserAgent } from "../services/analytics-enrich";
+import { enrichmentFromRequest, parseUserAgent } from "../services/analytics-enrich";
 import { TRACKER_JS } from "../services/analytics-tracker";
 
 /**
@@ -281,7 +281,6 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
           country: ctxFields.country,
           revenue,
           currency,
-          ...parseUtm(path),
         },
       ],
       now,

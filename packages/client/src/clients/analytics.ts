@@ -176,6 +176,8 @@ export interface AnalyticsEventRow {
   sessionId: string | null;
   props: Record<string, unknown> | null;
   path: string | null;
+  /** `path` with the query removed — what page reports group by. */
+  pathBase: string | null;
   referrer: string | null;
   source: string | null;
   release: string | null;

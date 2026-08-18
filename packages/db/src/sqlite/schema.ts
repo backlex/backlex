@@ -3153,6 +3153,15 @@ export const analyticsEvents = sqliteTable(
     sessionId: text("session_id"),
     props: text("props", { mode: "json" }).$type<Record<string, unknown> | null>(),
     path: text("path"),
+    /** `path` with its query string removed — the key page reports GROUP BY.
+     *
+     *  `path` keeps the query because that is where campaign tags live and
+     *  because `?q=` / `?page=2` are real information. But grouping on it
+     *  splits one page into a row per campaign variant, so the grouping key is
+     *  materialized here at write time. Same reasoning as `day` and `hour`:
+     *  there is no substring-before-a-character expression with a common
+     *  spelling across Postgres, SQLite and D1. */
+    pathBase: text("path_base"),
     referrer: text("referrer"),
     /** `web` / `ios` / `android` / `server`, or any free-form client label. */
     source: text("source"),
@@ -3209,6 +3218,7 @@ export const analyticsEvents = sqliteTable(
     index("analytics_events_tenant_distinct_idx").on(t.tenantId, t.distinctId, t.ts),
     index("analytics_events_tenant_day_idx").on(t.tenantId, t.day),
     index("analytics_events_tenant_hour_idx").on(t.tenantId, t.hour),
+    index("analytics_events_tenant_path_base_idx").on(t.tenantId, t.pathBase),
     /** Sessionization: `PARTITION BY distinct_id ORDER BY ts` with the range
      *  filter on `day`. The older `(tenant, distinct_id, ts)` index cannot
      *  serve it — a `WHERE day BETWEEN` is not a prefix of that ordering, so

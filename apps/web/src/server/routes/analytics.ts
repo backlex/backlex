@@ -289,6 +289,7 @@ const AnalyticsEvent = z
     sessionId: z.string().nullable(),
     props: z.record(z.string(), z.unknown()).nullable(),
     path: z.string().nullable(),
+    pathBase: z.string().nullable(),
     referrer: z.string().nullable(),
     source: z.string().nullable(),
     release: z.string().nullable(),

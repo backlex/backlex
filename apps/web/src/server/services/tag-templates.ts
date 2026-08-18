@@ -85,8 +85,30 @@ export interface TagTemplate {
    * What a site owner must add to their OWN Content-Security-Policy for this
    * tag to run. Their page, their policy — we cannot relax it for them, so the
    * Install tab prints these instead of letting them find out in production.
+   *
+   * `frameSchemes` is separate because at least one vendor needs URL *schemes*
+   * rather than hosts: TikTok's own CSP doc asks for `bytedance:` and
+   * `sslocal:` in `frame-src`, which are app-handoff schemes, not origins.
+   * Folding them into the host list would produce a policy line that does not
+   * parse.
    */
-  csp: { script?: string[]; img?: string[]; connect?: string[]; frame?: string[] };
+  csp: {
+    script?: string[];
+    img?: string[];
+    connect?: string[];
+    frame?: string[];
+    frameSchemes?: string[];
+  };
+  /**
+   * Did the vendor publish this CSP guidance, or did we derive it from their
+   * snippet and endpoints?
+   *
+   * Meta publishes none at all — every CSP article for the Meta Pixel is
+   * third-party. The Install tab says which, because an operator hardening a
+   * policy deserves to know whether they are following a vendor instruction or
+   * our reading of one.
+   */
+  cspSource: "vendor" | "inferred";
   params: TagTemplateParam[];
 }
 
@@ -107,7 +129,11 @@ export const TAG_TEMPLATES: TagTemplate[] = [
     docUrl:
       "https://business.reddithelp.com/s/article/manual-conversion-events-with-the-reddit-pixel",
     consentCategories: ["marketing"],
-    csp: { script: ["https://www.redditstatic.com"], connect: ["https://alb.reddit.com", "https://pixel-config.reddit.com"] },
+    csp: {
+      script: ["https://www.redditstatic.com"],
+      connect: ["https://alb.reddit.com", "https://pixel-config.reddit.com"],
+    },
+    cspSource: "inferred",
     params: [
       {
         key: "pixelId",
@@ -130,6 +156,7 @@ export const TAG_TEMPLATES: TagTemplate[] = [
     docUrl: "https://developers.snap.com/marketing-api/Ads-API/snap-pixel",
     consentCategories: ["marketing"],
     csp: { script: ["https://sc-static.net"], connect: ["https://tr.snapchat.com"] },
+    cspSource: "inferred",
     params: [
       {
         key: "pixelId",
@@ -160,6 +187,7 @@ export const TAG_TEMPLATES: TagTemplate[] = [
       img: ["https://mc.yandex.ru", "https://mc.yandex.com"],
       connect: ["https://mc.yandex.ru", "https://mc.yandex.com", "https://mc.webvisor.org"],
     },
+    cspSource: "vendor",
     params: [
       {
         key: "counterId",
@@ -192,6 +220,197 @@ export const TAG_TEMPLATES: TagTemplate[] = [
         ],
         formatDocumented: true,
         help: "Yandex documents both. Only these two — the tag_ww.js variant seen in the wild is undocumented.",
+      },
+    ],
+  },
+  {
+    id: "google_tag",
+    label: "Google tag (GA4)",
+    vendor: "Google",
+    docUrl: "https://developers.google.com/tag-platform/gtagjs/install",
+    consentCategories: ["analytics"],
+    // Google publishes these itself, and publishes them against
+    // `script-src-elem` rather than `script-src`. We emit `script-src`, which
+    // covers script elements UNLESS the site sets `script-src-elem`
+    // explicitly — the Install tab says so, because a site that already has
+    // `script-src-elem` will not inherit our line.
+    //
+    // Google's list also includes per-country `https://www.google.<TLD>`
+    // entries and says each TLD must be named individually because CSP allows
+    // no wildcard on the right of a host. Google publishes no list of which
+    // TLDs, so we do not invent one.
+    csp: {
+      script: ["https://www.googletagmanager.com"],
+      img: ["https://*.google-analytics.com", "https://www.googletagmanager.com"],
+      connect: [
+        "https://*.google-analytics.com",
+        "https://*.analytics.google.com",
+        "https://www.googletagmanager.com",
+      ],
+      frame: ["https://www.googletagmanager.com"],
+    },
+    cspSource: "vendor",
+    params: [
+      {
+        key: "measurementId",
+        label: "Measurement ID",
+        required: true,
+        kind: "text",
+        // The `G-` PREFIX is documented; the length and character class after
+        // it are not. Enforcing the prefix is still worth it — it catches the
+        // common paste of an `AW-` or `GT-` id into the wrong template, which
+        // would otherwise fail silently in the browser.
+        pattern: "^G-[A-Za-z0-9]{1,24}$",
+        formatDocumented: false,
+        placeholder: "G-PSW1MY7HB4",
+        help: "Google documents the G- prefix but not what follows it.",
+      },
+    ],
+  },
+  {
+    id: "google_ads_conversion",
+    label: "Google Ads conversion",
+    vendor: "Google",
+    docUrl: "https://support.google.com/google-ads/answer/7548399?hl=en",
+    consentCategories: ["marketing"],
+    csp: {
+      script: [
+        "https://www.googleadservices.com",
+        "https://www.google.com",
+        "https://www.googletagmanager.com",
+        "https://pagead2.googlesyndication.com",
+        "https://googleads.g.doubleclick.net",
+      ],
+      img: [
+        "https://www.googletagmanager.com",
+        "https://googleads.g.doubleclick.net",
+        "https://www.google.com",
+        "https://pagead2.googlesyndication.com",
+        "https://www.googleadservices.com",
+      ],
+      connect: [
+        "https://pagead2.googlesyndication.com",
+        "https://www.googleadservices.com",
+        "https://googleads.g.doubleclick.net",
+        "https://ad.doubleclick.net",
+        "https://www.google.com",
+      ],
+      frame: ["https://www.googletagmanager.com"],
+    },
+    cspSource: "vendor",
+    params: [
+      {
+        key: "conversionId",
+        label: "Conversion ID",
+        required: true,
+        kind: "text",
+        // `AW-` prefix documented; digit count is not.
+        pattern: "^AW-[0-9]{1,20}$",
+        formatDocumented: false,
+        placeholder: "AW-123456789",
+        help: "Google documents the AW- prefix but not how many digits follow.",
+      },
+      {
+        key: "conversionLabel",
+        label: "Conversion label",
+        required: true,
+        kind: "text",
+        // Google shows only examples (`AbC-D_efG-h12_34-567`) and states no
+        // character class or length. The pair is sent as
+        // `send_to: 'AW-<id>/<label>'`, so the label must not carry a slash.
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        help: "Google publishes no label format — copy it from the conversion action.",
+      },
+    ],
+  },
+  {
+    id: "meta_pixel",
+    label: "Meta Pixel",
+    vendor: "Meta",
+    docUrl: "https://developers.facebook.com/docs/meta-pixel/get-started",
+    consentCategories: ["marketing"],
+    // Meta publishes NO Content-Security-Policy guidance for the pixel — every
+    // article on the subject is third-party. These origins are read off Meta's
+    // own snippet and its noscript pixel, which is the best available source,
+    // and the Install tab labels them as ours rather than Meta's.
+    //
+    // `graph.facebook.com` is deliberately absent: it is the server-to-server
+    // Conversions API endpoint and has no business in a browser policy.
+    csp: {
+      script: ["https://connect.facebook.net"],
+      img: ["https://www.facebook.com"],
+      connect: ["https://www.facebook.com"],
+    },
+    cspSource: "inferred",
+    params: [
+      {
+        key: "pixelId",
+        label: "Pixel ID",
+        required: true,
+        kind: "text",
+        // Meta documents NO format whatsoever. Its get-started page shows only
+        // `{your-pixel-id-goes-here}`, and the "find your pixel ID" article
+        // describes where to look, never what it looks like. The widely-cited
+        // 15/16-digit rule is folklore, and shipping it would reject valid ids.
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        help: "Meta publishes no id format — copy it exactly from Events Manager.",
+      },
+    ],
+  },
+  {
+    id: "tiktok_pixel",
+    label: "TikTok Pixel",
+    vendor: "TikTok",
+    docUrl: "https://business-api.tiktok.com/portal/docs?id=1739585702922241",
+    // TikTok publishes no consent-management category for the pixel at all, so
+    // `marketing` is our classification rather than theirs. It is the only
+    // defensible one for an advertising pixel, but it is not vendor-stated.
+    consentCategories: ["marketing"],
+    // TikTok DOES publish a first-party CSP doc, and it is worth following
+    // exactly: `analytics-ipv6.tiktokw.us` is a different registrable domain,
+    // so the tempting `*.tiktok.com` shortcut both is undocumented and misses
+    // a host the tag actually uses.
+    csp: {
+      script: [
+        "https://analytics.tiktok.com",
+        "https://analytics-ipv6.tiktokw.us",
+        "https://ads.tiktok.com",
+      ],
+      img: [
+        "https://analytics.tiktok.com",
+        "https://analytics-ipv6.tiktokw.us",
+        "https://ads.tiktok.com",
+      ],
+      connect: [
+        "https://analytics.tiktok.com",
+        "https://analytics-ipv6.tiktokw.us",
+        "https://ads.tiktok.com",
+      ],
+      // Not hosts — app-handoff URL schemes, straight from TikTok's own
+      // example policy line.
+      frameSchemes: ["bytedance:", "sslocal:"],
+    },
+    cspSource: "vendor",
+    params: [
+      {
+        key: "pixelId",
+        label: "Pixel ID",
+        required: true,
+        kind: "text",
+        // Four 20-character examples exist across TikTok's docs, but every API
+        // reference types the field as a bare `string` with no pattern, and
+        // TikTok's own examples elsewhere use free-form placeholders like
+        // `my_pixel_code`. Four examples are not a specification.
+        //
+        // Two runtime facts for whoever writes the init branch:
+        //   - the id goes in the loader URL as `?sdkid=<id>&lib=ttq`.
+        //   - `ttq.track()` fans out to EVERY loaded pixel, so a page with two
+        //     TikTok tags double-counts. Use `ttq.instance(<id>).track(...)`.
+        pattern: OPAQUE_ID,
+        formatDocumented: false,
+        help: "TikTok publishes no id format — copy it exactly from Events Manager.",
       },
     ],
   },
@@ -278,19 +497,41 @@ export const parseTemplateParams = (
  */
 export const cspAdditionsForTemplates = (
   templateIds: string[],
-): { script: string[]; img: string[]; connect: string[]; frame: string[] } => {
-  const acc = { script: new Set<string>(), img: new Set<string>(), connect: new Set<string>(), frame: new Set<string>() };
+): {
+  script: string[];
+  img: string[];
+  connect: string[];
+  /** Hosts and schemes together — `frame-src` accepts both in one list. */
+  frame: string[];
+  /** True when any contributing template's guidance is ours, not the vendor's. */
+  hasInferred: boolean;
+} => {
+  const acc = {
+    script: new Set<string>(),
+    img: new Set<string>(),
+    connect: new Set<string>(),
+    frame: new Set<string>(),
+  };
+  let hasInferred = false;
+
   for (const id of templateIds) {
     const t = getTagTemplate(id);
     if (!t) continue;
+    if (t.cspSource === "inferred") hasInferred = true;
     for (const key of ["script", "img", "connect", "frame"] as const) {
       for (const origin of t.csp[key] ?? []) acc[key].add(origin);
     }
+    // Schemes join the frame list because that is where they belong in the
+    // emitted policy line; they are modelled apart only so a host-shaped
+    // assertion can tell them from origins.
+    for (const scheme of t.csp.frameSchemes ?? []) acc.frame.add(scheme);
   }
+
   return {
     script: [...acc.script].sort(),
     img: [...acc.img].sort(),
     connect: [...acc.connect].sort(),
     frame: [...acc.frame].sort(),
+    hasInferred,
   };
 };

@@ -41,16 +41,41 @@ describe("registry invariants", () => {
     }
   });
 
-  test("every CSP entry is a bare https origin", () => {
-    // These are pasted into someone else's Content-Security-Policy. A path, a
-    // trailing slash or a wildcard host would either silently widen their
-    // policy or fail to parse — both worse than not offering the list.
+  test("every CSP host is an https origin, with a wildcard only in the label position", () => {
+    // These are pasted into someone else's Content-Security-Policy, so a path,
+    // a trailing slash or a malformed host would either silently widen their
+    // policy or fail to parse. A leading `*.` IS allowed — Google documents
+    // exactly that form, because its collection endpoints are genuinely
+    // sharded across subdomains. CSP permits a wildcard only there, never on
+    // the right of a host, which is what this pattern encodes.
     for (const t of TAG_TEMPLATES) {
-      for (const list of Object.values(t.csp)) {
-        for (const origin of list ?? []) {
-          expect(origin).toMatch(/^https:\/\/[a-z0-9.-]+$/);
+      for (const key of ["script", "img", "connect", "frame"] as const) {
+        for (const origin of t.csp[key] ?? []) {
+          expect(origin).toMatch(/^https:\/\/(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+$/);
         }
       }
+    }
+  });
+
+  test("frame schemes are schemes, and never appear among the hosts", () => {
+    // TikTok's own policy line asks for `bytedance:` and `sslocal:` in
+    // frame-src. They are app-handoff URL schemes, not origins — folding them
+    // into a host list produces a line that does not parse, which is why the
+    // model keeps them apart.
+    for (const t of TAG_TEMPLATES) {
+      for (const scheme of t.csp.frameSchemes ?? []) {
+        expect(scheme).toMatch(/^[a-z][a-z0-9+.-]*:$/);
+        expect(t.csp.frame ?? []).not.toContain(scheme);
+      }
+    }
+  });
+
+  test("every template says whether its CSP guidance is the vendor's or ours", () => {
+    // Meta publishes none at all, so its origins are read off Meta's own
+    // snippet. An operator hardening a policy deserves to know which they are
+    // following.
+    for (const t of TAG_TEMPLATES) {
+      expect(["vendor", "inferred"]).toContain(t.cspSource);
     }
   });
 
@@ -178,6 +203,23 @@ describe("honesty about vendor formats", () => {
     }
   });
 
+  test("no id pattern claims a length the vendor never published", () => {
+    // Every one of these vendors was checked against its own docs, and the
+    // recurring finding was that the id format is simply not published. The
+    // two prefixes that ARE documented (Google's G- and AW-) are enforced,
+    // because pasting one into the other's template is the common mistake and
+    // fails silently in the browser otherwise.
+    const google = getTagTemplate("google_tag")?.params[0];
+    expect(google?.pattern).toStartWith("^G-");
+    expect(google?.formatDocumented).toBe(false);
+
+    // Meta's is the sharp one: the widely-cited 15/16-digit rule is folklore,
+    // and shipping it would reject valid ids.
+    const meta = getTagTemplate("meta_pixel")?.params[0];
+    expect(meta?.formatDocumented).toBe(false);
+    expect(meta?.pattern).not.toMatch(/\{15|\{16/);
+  });
+
   test("Yandex is declared as BOTH analytics and marketing", () => {
     // By Yandex's own docs any Metrica goal can drive Yandex Direct
     // retargeting, so analytics-only would under-declare it to a consent tool
@@ -194,6 +236,27 @@ describe("CSP additions", () => {
     expect(csp.script).toEqual([...csp.script].sort());
     expect(new Set(csp.script).size).toBe(csp.script.length);
     expect(csp.script).toContain("https://sc-static.net");
+  });
+
+  test("frame schemes are folded into the emitted frame list", () => {
+    // Modelled apart, emitted together: `frame-src` takes hosts and schemes in
+    // one directive.
+    const csp = cspAdditionsForTemplates(["tiktok_pixel"]);
+    expect(csp.frame).toContain("bytedance:");
+    expect(csp.frame).toContain("sslocal:");
+  });
+
+  test("hasInferred flags a container carrying guidance we derived", () => {
+    expect(cspAdditionsForTemplates(["meta_pixel"]).hasInferred).toBe(true);
+    expect(cspAdditionsForTemplates(["tiktok_pixel"]).hasInferred).toBe(false);
+  });
+
+  test("TikTok is not collapsed to a *.tiktok.com shortcut", () => {
+    // `analytics-ipv6.tiktokw.us` is a different registrable domain, so the
+    // tempting wildcard is both undocumented AND misses a host the tag uses.
+    const csp = cspAdditionsForTemplates(["tiktok_pixel"]);
+    expect(csp.script).toContain("https://analytics-ipv6.tiktokw.us");
+    expect(csp.script).not.toContain("https://*.tiktok.com");
   });
 
   test("an unknown id contributes nothing rather than throwing", () => {

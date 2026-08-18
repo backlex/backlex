@@ -597,6 +597,11 @@ msgstr "{1} araçtan {0} tanesine izin verildi. Listeyi kaldırmak için Tümün
 msgid "{0} of lists"
 msgstr "listelerin %{0}'i"
 
+#. placeholder {0}: c.transactions
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "{0} orders"
+msgstr "{0} sipariş"
+
 #. placeholder {0}: (mcpTools ?? []).length
 #: src/client/admin/pages/access/role-mcp-guards.tsx
 msgid "{0} patterns"
@@ -1158,6 +1163,10 @@ msgstr "1 dosya"
 msgid "1 of {0} still undecided"
 msgstr "{0} birimin 1 tanesi hâlâ karara bağlanmadı"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "1 order"
+msgstr "1 sipariş"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "1 row"
 msgstr "1 satır"
@@ -1222,6 +1231,10 @@ msgstr "3. Onaylamak için bir kod girin"
 #: src/client/pages/api-keys.tsx
 msgid "30 days"
 msgstr "30 gün"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "30-minute inactivity"
+msgstr "30 dakikalık hareketsizlik"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "4:5 portrait"
@@ -1294,6 +1307,10 @@ msgstr "Bir bayrak; etkinse VE hedeflemesi (koşul + dağıtım) eşleşiyorsa �
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "A fresh link is on its way to {0} — the previous one is dead."
 msgstr "{0} adresine yeni bir bağlantı gidiyor — önceki bağlantı artık geçersiz."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "A full URL is fine — it is reduced to the host. Subdomains count as the same site."
+msgstr "Tam URL de olur — ana makine adına indirgenir. Alt alan adları aynı site sayılır."
 
 #: src/client/admin/pages/automation/functions.tsx
 msgid "A function with that name already exists."
@@ -1415,9 +1432,17 @@ msgstr "Hiçbir kutusu işaretli olmayan satır son durumdur — oradan hiçbir 
 msgid "A rule with no weekday needs a date range."
 msgstr "Gün belirtilmeyen kuralın bir tarih aralığı olmalı."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "A saved filter you can apply to every report from the header."
+msgstr "Başlıktan her rapora uygulayabileceğin kayıtlı bir filtre."
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
 msgstr "Kayıtlı bir gizli anahtar var ve geri okunamaz. Mevcut gizli anahtarı korumak için burayı boş bırakın."
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "A segment only narrows a panel, so it adds nothing to a public embed."
+msgstr "Segment paneli yalnızca daraltır; herkese açık gömmeye bir şey eklemez."
 
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
@@ -1673,6 +1698,10 @@ msgstr "Bu çalışma alanının etkin dilleri. İstenen yerel ayar için dize y
 msgid "Active locales"
 msgstr "Etkin yerel ayarlar"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Active pages"
+msgstr "Etkin sayfalar"
+
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -1819,6 +1848,10 @@ msgstr "Döngüden sonra adım ekle"
 msgid "Add a tag and press Enter…"
 msgstr "Etiket ekleyip Enter'a basın…"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Add a website"
+msgstr "Web sitesi ekle"
+
 #: src/client/admin/pages/automation/chat.tsx
 msgid "Add an agent to this room, or just talk to your team…"
 msgstr "Bu odaya bir agent ekleyin ya da sadece ekibinizle konuşun…"
@@ -1867,6 +1900,7 @@ msgstr "Sütun ekle"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Add condition"
 msgstr "Koşul ekle"
 
@@ -1962,6 +1996,10 @@ msgstr "SAML sağlayıcı ekle"
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "Add sink"
 msgstr "Hedef ekle"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Add site"
+msgstr "Site ekle"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Add sort"
@@ -2281,6 +2319,10 @@ msgstr "tüm klasörler"
 msgid "All levels"
 msgstr "Tüm seviyeler"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "all of"
+msgstr "tümü"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "all of them"
 msgstr "hepsi"
@@ -2310,6 +2352,11 @@ msgstr "tüm araçlar"
 #: src/client/pages/api-keys.tsx
 msgid "All tools, read & write (default) — tap to restrict"
 msgstr "Tüm araçlar, okuma ve yazma (varsayılan) — kısıtlamak için dokunun"
+
+#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/insights.tsx
+msgid "All traffic"
+msgstr "Tüm trafik"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/components/mcp-guards-fields.tsx
@@ -2531,9 +2578,17 @@ msgstr "OAuth destekleyen her istemci anahtar olmadan bağlanır — keşif, ona
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "OAuth destekleyen her MCP istemcisi anahtarsız bağlanır — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code ve yeni Claude Desktop. MCP URL'sini uzak / özel bağlayıcı olarak ekleyip onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "any of"
+msgstr "herhangi biri"
+
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "any order"
 msgstr "sıra farketmez"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Any origin"
+msgstr "Her köken"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
@@ -2575,6 +2630,10 @@ msgstr "Herkes, istediği zaman"
 #: src/client/admin/pages/automation/channels-card.tsx
 msgid "Anyone, even signed out"
 msgstr "Herkes, oturum açmamış olsa bile"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "AOV"
+msgstr "Ortalama sepet"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "API"
@@ -2860,6 +2919,10 @@ msgstr "Denemeler"
 msgid "Attribute map"
 msgstr "Öznitelik eşlemesi"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Attribution is the last non-direct touch within a session. Cookieless visitor ids rotate daily, so a campaign from an earlier day cannot be credited to this visit."
+msgstr "Atıf, bir oturum içindeki son doğrudan-olmayan temastır. Çerezsiz ziyaretçi kimlikleri her gün değiştiği için önceki bir günün kampanyası bu ziyarete yazılamaz."
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Audience"
 msgstr "Audience"
@@ -3056,6 +3119,10 @@ msgstr "Ortalama"
 #: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "avg {0}"
 msgstr "ort. {0}"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Avg duration"
+msgstr "Ort. süre"
 
 #: src/client/admin/pages/access/users.tsx
 msgid "awaiting accept"
@@ -3358,6 +3425,22 @@ msgstr "İkisi de payment_transactions koleksiyonundaki satırda yer alır."
 msgid "Both sides apply, so 15+15 is a 30-minute gap."
 msgstr "İki taraf da uygulanır; 15+15 otuz dakikalık boşluk demektir."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bots filtered"
+msgstr "Botlar eleniyor"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bots kept"
+msgstr "Botlar tutuluyor"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bounce rate"
+msgstr "Hemen çıkma oranı"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "bounces count as zero"
+msgstr "hemen çıkmalar sıfır sayılır"
+
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "Branch created."
 msgstr "Dal oluşturuldu."
@@ -3491,6 +3574,10 @@ msgstr "Yakalanmamış hataları ve işlenmemiş reddetmeleri otomatik iletmek i
 msgid "Called after every password sign-in with the result — including failures. Return allow: false to refuse one."
 msgstr "Her parola girişinden sonra sonucuyla birlikte çağrılır — başarısızlıklar dahil. Reddetmek için allow: false döndürün."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Campaigns"
+msgstr "Kampanyalar"
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "can patch"
 msgstr "yamalayabilir"
@@ -3541,6 +3628,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/observability/translations.tsx
@@ -3750,6 +3838,7 @@ msgid "Channel"
 msgstr "Kanal"
 
 #: src/client/admin/pages/data/template-onboarding.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Channels"
 msgstr "Kanallar"
 
@@ -4033,6 +4122,7 @@ msgstr "kapat"
 #: src/client/admin/pages/automation/jobs.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/logs.tsx
 #: src/client/admin/sheet.tsx
@@ -4146,6 +4236,10 @@ msgstr "Formda henüz olmayan koleksiyon alanları ve yerleşim blokları."
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Collection list traffic"
 msgstr "Koleksiyon liste trafiği"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Collection settings"
+msgstr "Toplama ayarları"
 
 #: src/client/admin/app.tsx
 msgid "Collection settings saved."
@@ -4280,6 +4374,10 @@ msgstr "varyanttaki kolonlara"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
 msgstr "Virgül veya satır sonuyla ayırın. Her biri kendi tek kullanımlık bağlantısını alır."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Comma separated. A leading or trailing * is supported. Never recorded, and enforced on the server."
+msgstr "Virgülle ayrılır. Başta veya sonda * desteklenir. Hiç kaydedilmez ve sunucuda uygulanır."
 
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Comma- or newline-separated. Leave blank to send the whole row. Naming fields here is an allow-list, so a column added to the collection later is not sent to this endpoint until you add it."
@@ -4621,6 +4719,10 @@ msgstr "geleneksel sütun mevcut"
 msgid "Convert within"
 msgstr "Şu süre içinde dönüşsün"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Cookieless"
+msgstr "Çerezsiz"
+
 #: src/client/admin/ui.tsx
 msgid "copied"
 msgstr "kopyalandı"
@@ -4741,6 +4843,10 @@ msgstr "Linki kopyala"
 msgid "Copy order:"
 msgstr "Kopyalama sırası:"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Copy snippet"
+msgstr "Snippet’i kopyala"
+
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Copy the client secret now — it is not shown again"
 msgstr "İstemci gizli anahtarını şimdi kopyalayın — bir daha gösterilmez"
@@ -4769,6 +4875,10 @@ msgstr "Snippet kopyalanıyor"
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not add the site."
+msgstr "Site eklenemedi."
+
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Could not apply template"
 msgstr "Şablon uygulanamadı"
@@ -4780,6 +4890,10 @@ msgstr "Düzeltme uygulanamadı."
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Could not copy — clipboard blocked."
 msgstr "Kopyalanamadı — pano engellendi."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not copy — select the snippet manually."
+msgstr "Kopyalanamadı — snippet’i elle seç."
 
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Could not copy — select the text manually."
@@ -4829,6 +4943,14 @@ msgstr "Yorum gönderilemedi."
 msgid "Could not reach the clipboard — select the link and copy it."
 msgstr "Panoya erişilemedi — bağlantıyı seçip kopyalayın."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not remove the segment."
+msgstr "Segment kaldırılamadı."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not remove the site."
+msgstr "Site kaldırılamadı."
+
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Paylaşım bağlantısı iptal edilemedi."
@@ -4836,6 +4958,14 @@ msgstr "Paylaşım bağlantısı iptal edilemedi."
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Could not save the KPI."
 msgstr "KPI kaydedilemedi."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not save the segment."
+msgstr "Segment kaydedilemedi."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not save the settings."
+msgstr "Ayarlar kaydedilemedi."
 
 #. placeholder {0}: res.data.email
 #: src/client/admin/pages/settings/signatures.tsx
@@ -4934,6 +5064,10 @@ msgstr "Ziyaretçiyi şunu gerçekleştirdiğinde aktif say"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Sayaç, 1. satırın ilk sayısal sütununu alır; kıvılcım grafik / çubuklar tüm satırlarda gösterir; halka / tablo ilk iki sütunu eşleştirir."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Countries"
+msgstr "Ülkeler"
 
 #: src/client/admin/fields/field-phone-input.tsx
 msgid "Country a national number is read as"
@@ -5828,6 +5962,10 @@ msgstr "Dağıtım varsayılanı"
 msgid "deprecated"
 msgstr "kullanımdan kaldırıldı"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "depth of a visit"
+msgstr "ziyaretin derinliği"
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Derive from width × source aspect"
 msgstr "Genişlik × kaynak en-boy oranından türet"
@@ -5904,6 +6042,10 @@ msgstr "Geliştirme"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Device"
 msgstr "Cihaz"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Devices"
+msgstr "Cihazlar"
 
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Diff"
@@ -6083,6 +6225,10 @@ msgstr "Belge şablonları"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Documents"
 msgstr "Belgeler"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Domain"
+msgstr "Alan adı"
 
 #: src/client/pages/sign-in.tsx
 msgid "Don't have an account?"
@@ -7064,6 +7210,10 @@ msgstr "Olay deseni"
 msgid "Event title"
 msgstr "Etkinlik başlığı"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "events"
+msgstr "olay"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -7227,6 +7377,10 @@ msgstr "Örnekler: items:posts:created, items:posts:*, items:*:*"
 msgid "Excluded"
 msgstr "Hariç tutuldu"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Excluded paths"
+msgstr "Hariç tutulan yollar"
+
 #: src/client/pages/graphql.tsx
 msgid "Execute"
 msgstr "Çalıştır"
@@ -7238,6 +7392,10 @@ msgstr "Sonuçları görmek için bir sorgu çalıştırın."
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Existing user"
 msgstr "Mevcut kullanıcı"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Exit pages"
+msgstr "Çıkış sayfaları"
 
 #: src/client/admin/ui.tsx
 msgid "Expand collections"
@@ -8191,6 +8349,7 @@ msgstr "Global'ler: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Bun ü
 #~ msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
 #~ msgstr "Globaller: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. v1'de yalnızca senkron; QuickJS-WASM sandbox içinde çalışır."
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Go live"
 msgstr "Canlıya geç"
@@ -8640,6 +8799,10 @@ msgstr "Yoksayıldı"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Ignored by a KPI with no date column — it reports a running total."
 msgstr "Tarih sütunu olmayan KPI bunu yok sayar — yürüyen toplam gösterir."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Ignored IPs"
+msgstr "Yok sayılan IP’ler"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Images"
@@ -9427,6 +9590,10 @@ msgstr "Öğe formunda gösterilen etiket. Ayarlanmazsa sütun adına döner."
 msgid "Labels, one per line"
 msgstr "Etiketler, her satıra bir tane"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Landing pages"
+msgstr "İniş sayfaları"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Lands in {pending}"
 msgstr "{pending} içine düşer"
@@ -9512,6 +9679,10 @@ msgstr "son 30 gün"
 #: src/client/admin/pages/overview.tsx
 msgid "Last 30 days"
 msgstr "Son 30 gün"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "last 30 minutes"
+msgstr "son 30 dakika"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Last 7 days"
@@ -9935,6 +10106,7 @@ msgstr "canlı"
 #: src/client/admin/app.tsx
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/logs.tsx
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Live"
@@ -10242,6 +10414,10 @@ msgstr "Pazar yeri kategorisi"
 msgid "Marketplace field"
 msgstr "Pazar yeri alanı"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Match"
+msgstr "Eşleştir"
+
 #. placeholder {0}: node.op === "and" ? "all" : "any"
 #: src/client/admin/rule-builder.tsx
 msgid "match {0} of the following"
@@ -10458,6 +10634,10 @@ msgstr "Çalışma alanı ve API anahtarı başına ölçülen API trafiği, dep
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Method"
 msgstr "Yöntem"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Metric"
+msgstr "Metrik"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Migrate"
@@ -10838,6 +11018,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/documents.tsx
@@ -10850,6 +11031,10 @@ msgstr "yazi-adresim"
 #: src/client/pages/book.tsx
 msgid "Name"
 msgstr "Ad"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Name — e.g. Mobile from Germany"
+msgstr "Ad — örn. Almanya’dan mobil"
 
 #: src/client/admin/fields/edit-field.tsx
 msgid "Name and type are immutable — drop & re-add the column to change them."
@@ -11297,6 +11482,10 @@ msgstr "Henüz API anahtarı yok"
 msgid "No archived collections"
 msgstr "Arşivlenmiş koleksiyon yok"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No attributed revenue in this window."
+msgstr "Bu aralıkta atfedilmiş gelir yok."
+
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "No auth hooks"
 msgstr "Kimlik doğrulama kancası yok"
@@ -11324,6 +11513,10 @@ msgstr "Henüz dal yok"
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
 msgstr "Bu koleksiyonda toplu düzenlenebilir alan yok."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No campaigns yet — tag a landing URL with ?utm_source=… to see it here."
+msgstr "Henüz kampanya yok — bir iniş URL’ini ?utm_source=… ile etiketle."
 
 #: src/client/admin/pages/automation/channels-card.tsx
 msgid "No channel rules"
@@ -11415,6 +11608,14 @@ msgstr "İçerik şeması yok."
 #~ msgstr "Henüz konuşma yok."
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "No country resolved in this window."
+msgstr "Bu aralıkta ülke çözümlenmedi."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No country resolved. Self-hosted deploys need a proxy that sets a geo header."
+msgstr "Ülke çözümlenmedi. Kendi sunucunda geo başlığını ayarlayan bir proxy gerekir."
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "No crashes here"
 msgstr "Burada çökme yok"
 
@@ -11466,6 +11667,10 @@ msgstr "Henüz teslimat yok"
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "No deliveries yet — they appear here as records change."
 msgstr "Henüz teslimat yok — kayıtlar değiştikçe burada görünür."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No device recorded — events sent server-side carry no user-agent."
+msgstr "Cihaz kaydedilmedi — sunucudan gönderilen olaylar user-agent taşımaz."
 
 #: src/client/admin/app.tsx
 msgid "No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels."
@@ -11540,6 +11745,10 @@ msgstr "Huni kuracak olay yok"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "No events tracked yet"
 msgstr "Henüz olay izlenmedi"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No exit pages in this window."
+msgstr "Bu aralıkta çıkış sayfası yok."
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "No extensions installed"
@@ -11667,6 +11876,10 @@ msgstr "Öğe yok"
 msgid "No items in this collection yet."
 msgstr "Bu koleksiyonda henüz öğe yok."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No items recorded — send props.items with a purchase."
+msgstr "Ürün kaydedilmedi — satın almayla birlikte props.items gönder."
+
 #: src/client/admin/extras.tsx
 msgid "No items yet"
 msgstr "Henüz öğe yok"
@@ -11703,6 +11916,10 @@ msgstr "Henüz KPI tanımlanmadı"
 #: src/client/admin/collections/collection-kpis.tsx
 msgid "No KPIs for this collection"
 msgstr "Bu koleksiyon için KPI yok"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No landing pages in this window."
+msgstr "Bu aralıkta iniş sayfası yok."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No language found."
@@ -11845,6 +12062,10 @@ msgid "No questions — the page asks only for name, email and phone."
 msgstr "Soru yok — sayfa yalnızca ad, e-posta ve telefon ister."
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "No referrers in this window."
+msgstr "Bu aralıkta yönlendiren yok."
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "No referrers recorded."
 msgstr "Yönlendiren kaydedilmemiş."
 
@@ -11946,6 +12167,10 @@ msgstr "Şema yok."
 msgid "No selection — any file type is accepted."
 msgstr "Seçim yok — her dosya türü kabul edilir."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No sessions to attribute in this window."
+msgstr "Bu aralıkta atfedilecek oturum yok."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
@@ -12006,6 +12231,10 @@ msgstr "Eşleşen tablo yok."
 #: src/client/admin/pages/data/database.tsx
 msgid "No tables yet."
 msgstr "Henüz tablo yok."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No tagged traffic in this window."
+msgstr "Bu aralıkta etiketli trafik yok."
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "No tags yet."
@@ -12076,6 +12305,10 @@ msgstr "Eşleşen kullanıcı yok"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "No webhooks yet"
 msgstr "Henüz webhook yok"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No websites registered"
+msgstr "Kayıtlı web sitesi yok"
 
 #: src/client/admin/fields/field-translations-editor.tsx
 msgid "No workspace locales configured — add them under Settings → Localization."
@@ -12275,6 +12508,10 @@ msgstr "Henüz bir şey gelmedi."
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Nothing has been published yet."
 msgstr "Henüz hiçbir şey yayımlanmadı."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Nothing in the last 30 minutes."
+msgstr "Son 30 dakikada bir şey yok."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Nothing in this period"
@@ -12653,6 +12890,10 @@ msgstr "Tek kural, deseniyle eşleşen her kanalı yetkilendirir — odaları te
 msgid "One URL per line — saved when you click away."
 msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "one-page sessions"
+msgstr "tek sayfalık oturumlar"
+
 #: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
@@ -12960,6 +13201,7 @@ msgstr "Sıra"
 msgid "Order cancelled"
 msgstr "Sipariş iptal edildi"
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "orders"
 msgstr "sipariş"
@@ -12985,6 +13227,10 @@ msgstr "Organizasyonlar"
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Orientation"
 msgstr "Yön"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Origin checked"
+msgstr "Köken denetleniyor"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Original"
@@ -13143,6 +13389,10 @@ msgstr "Sayfa başlıkları, rozetler. Slug'a geri döner."
 #: src/client/admin/extras.tsx
 msgid "Pages"
 msgstr "Sayfalar"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Pages / session"
+msgstr "Sayfa / oturum"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Panel \"{name}\" created."
@@ -13400,6 +13650,14 @@ msgstr "Kişiler"
 #: src/client/admin/collections/item-editor.tsx
 msgid "People viewing this record"
 msgstr "Bu kaydı görüntüleyenler"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "per day, ids rotate daily"
+msgstr "günlük, kimlikler her gün değişir"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Per minute"
+msgstr "Dakikalık"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
@@ -13685,6 +13943,10 @@ msgstr "Bir kullanıcı seçin"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Pick a value"
 msgstr "Bir değer seçin"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Pick a website metric below. Nothing to write, and no row-level owner to clamp on an embed."
+msgstr "Aşağıdan bir web metriği seç. Yazılacak sorgu yok ve gömmede kısıtlanacak satır sahibi yok."
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
@@ -14742,10 +15004,15 @@ msgid "Ready to save."
 msgstr "Kaydetmeye hazır."
 
 #: src/client/admin/pages/automation/realtime.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr "Gerçek zamanlı"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Realtime ignores the window — \"the last 30 minutes\" is the metric."
+msgstr "Realtime pencereyi yok sayar — metrik \"son 30 dakika\"dır."
 
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
@@ -14908,6 +15175,10 @@ msgstr "Referans alanı (isteğe bağlı)"
 msgid "References collection"
 msgstr "Koleksiyona başvurur"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Referrers"
+msgstr "Yönlendirenler"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "Refetch /api/openapi.json"
 msgstr "/api/openapi.json yeniden çek"
@@ -15009,6 +15280,10 @@ msgstr "Özel bir OpenID Connect kimlik sağlayıcısı kaydet."
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Register a physical table as a backlex collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
 msgstr "Fiziksel bir tabloyu backlex koleksiyonu olarak kaydet. Tabloda hiç DDL çalıştırılmaz — yalnızca koleksiyon meta veri satırı + alan kayıtları yazılır."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Register a site to get a one-line script tag. It measures pageviews with no cookie and no consent banner — visitors are counted by a hash that rotates every day."
+msgstr "Tek satırlık bir script etiketi almak için bir site kaydet. Çerez ve onay bildirimi olmadan sayfa görüntülemelerini ölçer — ziyaretçiler her gün değişen bir hash ile sayılır."
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
@@ -15142,6 +15417,7 @@ msgstr "hatırlatıldı {0}"
 #: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -15687,6 +15963,14 @@ msgstr "Yeniden dene"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Return URL (optional)"
 msgstr "Dönüş adresi (isteğe bağlı)"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Revenue"
+msgstr "Gelir"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Revenue by channel"
+msgstr "Kanala göre gelir"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Revenue overview"
@@ -16271,6 +16555,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
@@ -16380,6 +16665,10 @@ msgstr "Meta verileri kaydet"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Save progress"
 msgstr "İlerlemeyi kaydet"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Save segment"
+msgstr "Segmenti kaydet"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Save sort"
@@ -16768,6 +17057,22 @@ msgstr "Şimdi bir sahip belirleyin ya da boş bırakıp organizasyon oluştukta
 msgid "Seeing what they see needs reads. Changing their data on their behalf is a different act — turn this off only when that is what you mean."
 msgstr "Gördüklerini görmek okuma gerektirir. Verilerini onlar adına değiştirmek başka bir eylemdir — bunu yalnızca gerçekten bunu kastediyorsanız kapatın."
 
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Segment"
+msgstr "Segment"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Segment removed."
+msgstr "Segment kaldırıldı."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Segment saved."
+msgstr "Segment kaydedildi."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Segments"
+msgstr "Segmentler"
+
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Select"
 msgstr "Seç"
@@ -17077,6 +17382,7 @@ msgstr "Oturum süresi {v} olarak ayarlandı."
 msgid "Session revoked: {0}"
 msgstr "Oturum iptal edildi: {0}"
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "sessions"
 msgstr "oturumlar"
@@ -17199,6 +17505,7 @@ msgstr "Passkey ayarlanıyor…"
 #: src/client/admin/app.tsx
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Settings"
@@ -17738,9 +18045,25 @@ msgstr "Hedef silindi — karşı taraf aldıklarını saklar."
 msgid "sinks"
 msgstr "hedef"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Site added — copy its snippet."
+msgstr "Site eklendi — snippet’ini kopyala."
+
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Site key"
 msgstr "Site anahtarı"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Site removed."
+msgstr "Site kaldırıldı."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Site settings saved."
+msgstr "Site ayarları kaydedildi."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Sites"
+msgstr "Siteler"
 
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/data/storage/index.tsx
@@ -17838,6 +18161,10 @@ msgstr "anlık görüntü tutulur — eskiler otomatik olarak budanır."
 msgid "Snippet copied"
 msgstr "Parça kopyalandı"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Snippet copied."
+msgstr "Snippet kopyalandı."
+
 #: src/client/admin/pages/data/database.tsx
 #: src/client/pages/graphql.tsx
 msgid "Snippets"
@@ -17859,6 +18186,10 @@ msgstr "Esnek"
 msgid "Soft delete"
 msgstr "Geçici silme"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "sold"
+msgstr "satıldı"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Sort"
 msgstr "Sıralama"
@@ -17871,6 +18202,10 @@ msgstr "Sıralanan"
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Source"
 msgstr "Kaynak"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Source / medium"
+msgstr "Kaynak / ortam"
 
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "source collection"
@@ -18116,6 +18451,7 @@ msgid "Step log"
 msgstr "Adım günlüğü"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/observability/insights.tsx
 msgid "Steps"
 msgstr "Adımlar"
 
@@ -19651,6 +19987,10 @@ msgid "Top events"
 msgstr "En çok olay"
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "Top items"
+msgstr "En çok satan ürünler"
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Top pages"
 msgstr "En çok sayfa"
 
@@ -19702,6 +20042,10 @@ msgstr "Veri olaylarını Mixpanel'de izler."
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Track data events through Segment."
 msgstr "Veri olaylarını Segment üzerinden izle."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Traffic exceeded the row cap for this window — these counts are a floor, not a total."
+msgstr "Trafik bu aralığın satır sınırını aştı — bu sayılar toplam değil, alt sınırdır."
 
 #. placeholder {0}: runtime.spanCount
 #. placeholder {1}: runtime.windowDays
@@ -19899,6 +20243,10 @@ msgstr "Art arda gelen iki yarım genişlikli alan tek satırda yan yana durur (
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Two questions share the stored name \"{0}\". Names have to be unique."
 msgstr "İki soru aynı \"{0}\" adını kullanıyor. Adlar benzersiz olmalı."
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Two to eight event names, in order, comma separated."
+msgstr "Sırayla iki ilâ sekiz olay adı, virgülle ayrılmış."
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/pages/sign-in.tsx
@@ -20432,6 +20780,7 @@ msgstr "Doğrulama"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "value"
 msgstr "değer"
@@ -20612,6 +20961,10 @@ msgid "Visitor's choice"
 msgstr "Ziyaretçinin tercihi"
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "visitors"
+msgstr "ziyaretçi"
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Visitors"
 msgstr "Ziyaretçiler"
 
@@ -20623,6 +20976,10 @@ msgstr "Ziyaretçiler tarayıcı dilini görür; <0>?lang={0}</0> belirli bir di
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
 msgstr "Ziyaretçi işaretlemeden gönderemez — sunucu tarafında da zorunlu. Onay cümlesini Etiket alanına yazın."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Visitors now"
+msgstr "Şu anki ziyaretçi"
 
 #: src/client/admin/fields/display-template-editor.tsx
 msgid "Visual"
@@ -20692,6 +21049,10 @@ msgstr "Webhook URL'si kopyalandı."
 #: src/client/admin/ui.tsx
 msgid "Webhooks"
 msgstr "Webhook'lar"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "website metrics — visitors, sessions, channels, revenue"
+msgstr "web metrikleri — ziyaretçi, oturum, kanal, gelir"
 
 #: src/client/admin/collections/item-views.tsx
 msgid "Wed"
@@ -21222,6 +21583,10 @@ msgstr "Rezervasyonunuz alındı."
 msgid "You declined to sign this document. The sender has been notified."
 msgstr "Bu belgeyi imzalamayı reddettiniz. Gönderen bilgilendirildi."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "You get a one-line script tag. It stores nothing on the visitor's device, so it needs no cookie banner."
+msgstr "Tek satırlık bir script etiketi alırsın. Ziyaretçinin cihazında hiçbir şey saklamaz, bu yüzden çerez bildirimi gerekmez."
+
 #: src/client/pages/approve-request.tsx
 msgid "You have been asked to approve this."
 msgstr "Bunu onaylamanız istendi."
@@ -21325,6 +21690,10 @@ msgstr "E-postanız henüz doğrulanmadı. Doğrulama bağlantısı için gelen 
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"
 msgstr "Adınız ve soyadınız"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Your office, a monitoring probe. The address is compared and discarded — it is never stored on an event."
+msgstr "Ofisin, bir izleme sondası. Adres karşılaştırılıp atılır — hiçbir olayda saklanmaz."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Your own category, whatever you call it. Each distinct value is mapped to a marketplace category from the sync's row once it exists — a product whose value is unmapped is skipped."

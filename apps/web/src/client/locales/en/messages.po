@@ -597,6 +597,11 @@ msgstr "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 msgid "{0} of lists"
 msgstr "{0} of lists"
 
+#. placeholder {0}: c.transactions
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "{0} orders"
+msgstr "{0} orders"
+
 #. placeholder {0}: (mcpTools ?? []).length
 #: src/client/admin/pages/access/role-mcp-guards.tsx
 msgid "{0} patterns"
@@ -1158,6 +1163,10 @@ msgstr "1 file"
 msgid "1 of {0} still undecided"
 msgstr "1 of {0} still undecided"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "1 order"
+msgstr "1 order"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "1 row"
 msgstr "1 row"
@@ -1222,6 +1231,10 @@ msgstr "3. Enter a code to confirm"
 #: src/client/pages/api-keys.tsx
 msgid "30 days"
 msgstr "30 days"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "30-minute inactivity"
+msgstr "30-minute inactivity"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "4:5 portrait"
@@ -1294,6 +1307,10 @@ msgstr "A flag is on for a caller when enabled AND its targeting (condition + ro
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "A fresh link is on its way to {0} — the previous one is dead."
 msgstr "A fresh link is on its way to {0} — the previous one is dead."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "A full URL is fine — it is reduced to the host. Subdomains count as the same site."
+msgstr "A full URL is fine — it is reduced to the host. Subdomains count as the same site."
 
 #: src/client/admin/pages/automation/functions.tsx
 msgid "A function with that name already exists."
@@ -1415,9 +1432,17 @@ msgstr "A row with nothing ticked is a final state — nothing can move out of i
 msgid "A rule with no weekday needs a date range."
 msgstr "A rule with no weekday needs a date range."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "A saved filter you can apply to every report from the header."
+msgstr "A saved filter you can apply to every report from the header."
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
 msgstr "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "A segment only narrows a panel, so it adds nothing to a public embed."
+msgstr "A segment only narrows a panel, so it adds nothing to a public embed."
 
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
@@ -1673,6 +1698,10 @@ msgstr "Active languages for this workspace. The default is returned by the publ
 msgid "Active locales"
 msgstr "Active locales"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Active pages"
+msgstr "Active pages"
+
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -1819,6 +1848,10 @@ msgstr "Add a step after the loop"
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Add a website"
+msgstr "Add a website"
+
 #: src/client/admin/pages/automation/chat.tsx
 msgid "Add an agent to this room, or just talk to your team…"
 msgstr "Add an agent to this room, or just talk to your team…"
@@ -1867,6 +1900,7 @@ msgstr "Add column"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Add condition"
 msgstr "Add condition"
 
@@ -1962,6 +1996,10 @@ msgstr "Add SAML provider"
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "Add sink"
 msgstr "Add sink"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Add site"
+msgstr "Add site"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Add sort"
@@ -2281,6 +2319,10 @@ msgstr "all folders"
 msgid "All levels"
 msgstr "All levels"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "all of"
+msgstr "all of"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "all of them"
 msgstr "all of them"
@@ -2310,6 +2352,11 @@ msgstr "all tools"
 #: src/client/pages/api-keys.tsx
 msgid "All tools, read & write (default) — tap to restrict"
 msgstr "All tools, read & write (default) — tap to restrict"
+
+#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/insights.tsx
+msgid "All traffic"
+msgstr "All traffic"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/components/mcp-guards-fields.tsx
@@ -2531,9 +2578,17 @@ msgstr "Any OAuth-capable client connects with no key — the browser handles di
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "any of"
+msgstr "any of"
+
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "any order"
 msgstr "any order"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Any origin"
+msgstr "Any origin"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
@@ -2575,6 +2630,10 @@ msgstr "Anyone, any time"
 #: src/client/admin/pages/automation/channels-card.tsx
 msgid "Anyone, even signed out"
 msgstr "Anyone, even signed out"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "AOV"
+msgstr "AOV"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "API"
@@ -2860,6 +2919,10 @@ msgstr "Attempts"
 msgid "Attribute map"
 msgstr "Attribute map"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Attribution is the last non-direct touch within a session. Cookieless visitor ids rotate daily, so a campaign from an earlier day cannot be credited to this visit."
+msgstr "Attribution is the last non-direct touch within a session. Cookieless visitor ids rotate daily, so a campaign from an earlier day cannot be credited to this visit."
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Audience"
 msgstr "Audience"
@@ -3056,6 +3119,10 @@ msgstr "Average"
 #: src/client/admin/pages/data/forms/results-tab.tsx
 msgid "avg {0}"
 msgstr "avg {0}"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Avg duration"
+msgstr "Avg duration"
 
 #: src/client/admin/pages/access/users.tsx
 msgid "awaiting accept"
@@ -3358,6 +3425,22 @@ msgstr "Both are on the row in the payment_transactions collection."
 msgid "Both sides apply, so 15+15 is a 30-minute gap."
 msgstr "Both sides apply, so 15+15 is a 30-minute gap."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bots filtered"
+msgstr "Bots filtered"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bots kept"
+msgstr "Bots kept"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bounce rate"
+msgstr "Bounce rate"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "bounces count as zero"
+msgstr "bounces count as zero"
+
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "Branch created."
 msgstr "Branch created."
@@ -3491,6 +3574,10 @@ msgstr "Call client.analytics.captureErrors() in your app to forward uncaught er
 msgid "Called after every password sign-in with the result — including failures. Return allow: false to refuse one."
 msgstr "Called after every password sign-in with the result — including failures. Return allow: false to refuse one."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Campaigns"
+msgstr "Campaigns"
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "can patch"
 msgstr "can patch"
@@ -3541,6 +3628,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/observability/translations.tsx
@@ -3750,6 +3838,7 @@ msgid "Channel"
 msgstr "Channel"
 
 #: src/client/admin/pages/data/template-onboarding.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Channels"
 msgstr "Channels"
 
@@ -4033,6 +4122,7 @@ msgstr "close"
 #: src/client/admin/pages/automation/jobs.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/logs.tsx
 #: src/client/admin/sheet.tsx
@@ -4146,6 +4236,10 @@ msgstr "Collection fields not yet on the form, plus layout blocks."
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "Collection list traffic"
 msgstr "Collection list traffic"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Collection settings"
+msgstr "Collection settings"
 
 #: src/client/admin/app.tsx
 msgid "Collection settings saved."
@@ -4280,6 +4374,10 @@ msgstr "columns on the variant"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
 msgstr "Comma or newline separated. Each gets its own single-use link."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Comma separated. A leading or trailing * is supported. Never recorded, and enforced on the server."
+msgstr "Comma separated. A leading or trailing * is supported. Never recorded, and enforced on the server."
 
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Comma- or newline-separated. Leave blank to send the whole row. Naming fields here is an allow-list, so a column added to the collection later is not sent to this endpoint until you add it."
@@ -4621,6 +4719,10 @@ msgstr "conventional column present"
 msgid "Convert within"
 msgstr "Convert within"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Cookieless"
+msgstr "Cookieless"
+
 #: src/client/admin/ui.tsx
 msgid "copied"
 msgstr "copied"
@@ -4741,6 +4843,10 @@ msgstr "Copy link"
 msgid "Copy order:"
 msgstr "Copy order:"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Copy snippet"
+msgstr "Copy snippet"
+
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Copy the client secret now — it is not shown again"
 msgstr "Copy the client secret now — it is not shown again"
@@ -4769,6 +4875,10 @@ msgstr "Copying snippet"
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not add the site."
+msgstr "Could not add the site."
+
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Could not apply template"
 msgstr "Could not apply template"
@@ -4780,6 +4890,10 @@ msgstr "Could not apply the fix."
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Could not copy — clipboard blocked."
 msgstr "Could not copy — clipboard blocked."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not copy — select the snippet manually."
+msgstr "Could not copy — select the snippet manually."
 
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "Could not copy — select the text manually."
@@ -4829,6 +4943,14 @@ msgstr "Could not post comment."
 msgid "Could not reach the clipboard — select the link and copy it."
 msgstr "Could not reach the clipboard — select the link and copy it."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not remove the segment."
+msgstr "Could not remove the segment."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not remove the site."
+msgstr "Could not remove the site."
+
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Could not revoke share link."
@@ -4836,6 +4958,14 @@ msgstr "Could not revoke share link."
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Could not save the KPI."
 msgstr "Could not save the KPI."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not save the segment."
+msgstr "Could not save the segment."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not save the settings."
+msgstr "Could not save the settings."
 
 #. placeholder {0}: res.data.email
 #: src/client/admin/pages/settings/signatures.tsx
@@ -4934,6 +5064,10 @@ msgstr "Count a visitor as active when they fire"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Countries"
+msgstr "Countries"
 
 #: src/client/admin/fields/field-phone-input.tsx
 msgid "Country a national number is read as"
@@ -5828,6 +5962,10 @@ msgstr "Deployment default"
 msgid "deprecated"
 msgstr "deprecated"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "depth of a visit"
+msgstr "depth of a visit"
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Derive from width × source aspect"
 msgstr "Derive from width × source aspect"
@@ -5904,6 +6042,10 @@ msgstr "Development"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Device"
 msgstr "Device"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Devices"
+msgstr "Devices"
 
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Diff"
@@ -6083,6 +6225,10 @@ msgstr "Document templates"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Documents"
 msgstr "Documents"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Domain"
+msgstr "Domain"
 
 #: src/client/pages/sign-in.tsx
 msgid "Don't have an account?"
@@ -7064,6 +7210,10 @@ msgstr "Event pattern"
 msgid "Event title"
 msgstr "Event title"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "events"
+msgstr "events"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -7227,6 +7377,10 @@ msgstr "Examples: items:posts:created, items:posts:*, items:*:*"
 msgid "Excluded"
 msgstr "Excluded"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Excluded paths"
+msgstr "Excluded paths"
+
 #: src/client/pages/graphql.tsx
 msgid "Execute"
 msgstr "Execute"
@@ -7238,6 +7392,10 @@ msgstr "Execute a query to see results here."
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Existing user"
 msgstr "Existing user"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Exit pages"
+msgstr "Exit pages"
 
 #: src/client/admin/ui.tsx
 msgid "Expand collections"
@@ -8191,6 +8349,7 @@ msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. On Bun or
 #~ msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
 #~ msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Go live"
 msgstr "Go live"
@@ -8640,6 +8799,10 @@ msgstr "Ignored"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Ignored by a KPI with no date column — it reports a running total."
 msgstr "Ignored by a KPI with no date column — it reports a running total."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Ignored IPs"
+msgstr "Ignored IPs"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Images"
@@ -9427,6 +9590,10 @@ msgstr "Label shown in the item form. Falls back to the column name."
 msgid "Labels, one per line"
 msgstr "Labels, one per line"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Landing pages"
+msgstr "Landing pages"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Lands in {pending}"
 msgstr "Lands in {pending}"
@@ -9512,6 +9679,10 @@ msgstr "last 30 days"
 #: src/client/admin/pages/overview.tsx
 msgid "Last 30 days"
 msgstr "Last 30 days"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "last 30 minutes"
+msgstr "last 30 minutes"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Last 7 days"
@@ -9935,6 +10106,7 @@ msgstr "live"
 #: src/client/admin/app.tsx
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/logs.tsx
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Live"
@@ -10242,6 +10414,10 @@ msgstr "Marketplace category"
 msgid "Marketplace field"
 msgstr "Marketplace field"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Match"
+msgstr "Match"
+
 #. placeholder {0}: node.op === "and" ? "all" : "any"
 #: src/client/admin/rule-builder.tsx
 msgid "match {0} of the following"
@@ -10458,6 +10634,10 @@ msgstr "Metered API traffic per workspace and API key, storage and row footprint
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Method"
 msgstr "Method"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Metric"
+msgstr "Metric"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Migrate"
@@ -10838,6 +11018,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/data/schema-versions.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/documents.tsx
@@ -10850,6 +11031,10 @@ msgstr "my-post-slug"
 #: src/client/pages/book.tsx
 msgid "Name"
 msgstr "Name"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Name — e.g. Mobile from Germany"
+msgstr "Name — e.g. Mobile from Germany"
 
 #: src/client/admin/fields/edit-field.tsx
 msgid "Name and type are immutable — drop & re-add the column to change them."
@@ -11297,6 +11482,10 @@ msgstr "No API keys yet"
 msgid "No archived collections"
 msgstr "No archived collections"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No attributed revenue in this window."
+msgstr "No attributed revenue in this window."
+
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "No auth hooks"
 msgstr "No auth hooks"
@@ -11324,6 +11513,10 @@ msgstr "No branches yet"
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
 msgstr "No bulk-editable fields on this collection."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No campaigns yet — tag a landing URL with ?utm_source=… to see it here."
+msgstr "No campaigns yet — tag a landing URL with ?utm_source=… to see it here."
 
 #: src/client/admin/pages/automation/channels-card.tsx
 msgid "No channel rules"
@@ -11415,6 +11608,14 @@ msgstr "No content schema."
 #~ msgstr "No conversations yet."
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "No country resolved in this window."
+msgstr "No country resolved in this window."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No country resolved. Self-hosted deploys need a proxy that sets a geo header."
+msgstr "No country resolved. Self-hosted deploys need a proxy that sets a geo header."
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "No crashes here"
 msgstr "No crashes here"
 
@@ -11466,6 +11667,10 @@ msgstr "No deliveries yet"
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "No deliveries yet — they appear here as records change."
 msgstr "No deliveries yet — they appear here as records change."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No device recorded — events sent server-side carry no user-agent."
+msgstr "No device recorded — events sent server-side carry no user-agent."
 
 #: src/client/admin/app.tsx
 msgid "No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels."
@@ -11540,6 +11745,10 @@ msgstr "No events to build a funnel from"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "No events tracked yet"
 msgstr "No events tracked yet"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No exit pages in this window."
+msgstr "No exit pages in this window."
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "No extensions installed"
@@ -11667,6 +11876,10 @@ msgstr "No items"
 msgid "No items in this collection yet."
 msgstr "No items in this collection yet."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No items recorded — send props.items with a purchase."
+msgstr "No items recorded — send props.items with a purchase."
+
 #: src/client/admin/extras.tsx
 msgid "No items yet"
 msgstr "No items yet"
@@ -11703,6 +11916,10 @@ msgstr "No KPIs defined yet"
 #: src/client/admin/collections/collection-kpis.tsx
 msgid "No KPIs for this collection"
 msgstr "No KPIs for this collection"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No landing pages in this window."
+msgstr "No landing pages in this window."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "No language found."
@@ -11845,6 +12062,10 @@ msgid "No questions — the page asks only for name, email and phone."
 msgstr "No questions — the page asks only for name, email and phone."
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "No referrers in this window."
+msgstr "No referrers in this window."
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "No referrers recorded."
 msgstr "No referrers recorded."
 
@@ -11946,6 +12167,10 @@ msgstr "No schema."
 msgid "No selection — any file type is accepted."
 msgstr "No selection — any file type is accepted."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No sessions to attribute in this window."
+msgstr "No sessions to attribute in this window."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
@@ -12006,6 +12231,10 @@ msgstr "No tables match."
 #: src/client/admin/pages/data/database.tsx
 msgid "No tables yet."
 msgstr "No tables yet."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No tagged traffic in this window."
+msgstr "No tagged traffic in this window."
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "No tags yet."
@@ -12076,6 +12305,10 @@ msgstr "No users match"
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "No webhooks yet"
 msgstr "No webhooks yet"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No websites registered"
+msgstr "No websites registered"
 
 #: src/client/admin/fields/field-translations-editor.tsx
 msgid "No workspace locales configured — add them under Settings → Localization."
@@ -12275,6 +12508,10 @@ msgstr "Nothing has arrived yet."
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Nothing has been published yet."
 msgstr "Nothing has been published yet."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Nothing in the last 30 minutes."
+msgstr "Nothing in the last 30 minutes."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Nothing in this period"
@@ -12653,6 +12890,10 @@ msgstr "One rule authorizes every channel its pattern matches — you never enum
 msgid "One URL per line — saved when you click away."
 msgstr "One URL per line — saved when you click away."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "one-page sessions"
+msgstr "one-page sessions"
+
 #: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "One-time link, no <0>password</0>."
@@ -12960,6 +13201,7 @@ msgstr "Order"
 msgid "Order cancelled"
 msgstr "Order cancelled"
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "orders"
 msgstr "orders"
@@ -12985,6 +13227,10 @@ msgstr "Organizations"
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Orientation"
 msgstr "Orientation"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Origin checked"
+msgstr "Origin checked"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Original"
@@ -13143,6 +13389,10 @@ msgstr "Page titles, badges. Falls back to the slug."
 #: src/client/admin/extras.tsx
 msgid "Pages"
 msgstr "Pages"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Pages / session"
+msgstr "Pages / session"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Panel \"{name}\" created."
@@ -13400,6 +13650,14 @@ msgstr "People"
 #: src/client/admin/collections/item-editor.tsx
 msgid "People viewing this record"
 msgstr "People viewing this record"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "per day, ids rotate daily"
+msgstr "per day, ids rotate daily"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Per minute"
+msgstr "Per minute"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
@@ -13685,6 +13943,10 @@ msgstr "Pick a user"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Pick a value"
 msgstr "Pick a value"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Pick a website metric below. Nothing to write, and no row-level owner to clamp on an embed."
+msgstr "Pick a website metric below. Nothing to write, and no row-level owner to clamp on an embed."
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
@@ -14742,10 +15004,15 @@ msgid "Ready to save."
 msgstr "Ready to save."
 
 #: src/client/admin/pages/automation/realtime.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr "Realtime"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Realtime ignores the window — \"the last 30 minutes\" is the metric."
+msgstr "Realtime ignores the window — \"the last 30 minutes\" is the metric."
 
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
@@ -14908,6 +15175,10 @@ msgstr "Reference field (optional)"
 msgid "References collection"
 msgstr "References collection"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Referrers"
+msgstr "Referrers"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "Refetch /api/openapi.json"
 msgstr "Refetch /api/openapi.json"
@@ -15009,6 +15280,10 @@ msgstr "Register a custom OpenID Connect identity provider."
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Register a physical table as a backlex collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
 msgstr "Register a physical table as a backlex collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Register a site to get a one-line script tag. It measures pageviews with no cookie and no consent banner — visitors are counted by a hash that rotates every day."
+msgstr "Register a site to get a one-line script tag. It measures pageviews with no cookie and no consent banner — visitors are counted by a hash that rotates every day."
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
@@ -15142,6 +15417,7 @@ msgstr "reminded {0}"
 #: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -15687,6 +15963,14 @@ msgstr "Retry"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Return URL (optional)"
 msgstr "Return URL (optional)"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Revenue"
+msgstr "Revenue"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Revenue by channel"
+msgstr "Revenue by channel"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Revenue overview"
@@ -16271,6 +16555,7 @@ msgstr "Sat"
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
@@ -16380,6 +16665,10 @@ msgstr "Save metadata"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Save progress"
 msgstr "Save progress"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Save segment"
+msgstr "Save segment"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Save sort"
@@ -16768,6 +17057,22 @@ msgstr "Seed an owner now, or leave it empty and add members once it exists."
 msgid "Seeing what they see needs reads. Changing their data on their behalf is a different act — turn this off only when that is what you mean."
 msgstr "Seeing what they see needs reads. Changing their data on their behalf is a different act — turn this off only when that is what you mean."
 
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Segment"
+msgstr "Segment"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Segment removed."
+msgstr "Segment removed."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Segment saved."
+msgstr "Segment saved."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Segments"
+msgstr "Segments"
+
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Select"
 msgstr "Select"
@@ -17077,6 +17382,7 @@ msgstr "Session lifetime set to {v}."
 msgid "Session revoked: {0}"
 msgstr "Session revoked: {0}"
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "sessions"
 msgstr "sessions"
@@ -17199,6 +17505,7 @@ msgstr "Setting up passkey…"
 #: src/client/admin/app.tsx
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Settings"
@@ -17738,9 +18045,25 @@ msgstr "Sink deleted — the destination keeps what it already received."
 msgid "sinks"
 msgstr "sinks"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Site added — copy its snippet."
+msgstr "Site added — copy its snippet."
+
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "Site key"
 msgstr "Site key"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Site removed."
+msgstr "Site removed."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Site settings saved."
+msgstr "Site settings saved."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Sites"
+msgstr "Sites"
 
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/data/storage/index.tsx
@@ -17838,6 +18161,10 @@ msgstr "snapshots — older ones are pruned automatically."
 msgid "Snippet copied"
 msgstr "Snippet copied"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Snippet copied."
+msgstr "Snippet copied."
+
 #: src/client/admin/pages/data/database.tsx
 #: src/client/pages/graphql.tsx
 msgid "Snippets"
@@ -17859,6 +18186,10 @@ msgstr "Soft"
 msgid "Soft delete"
 msgstr "Soft delete"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "sold"
+msgstr "sold"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Sort"
 msgstr "Sort"
@@ -17871,6 +18202,10 @@ msgstr "Sorted by"
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Source"
 msgstr "Source"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Source / medium"
+msgstr "Source / medium"
 
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "source collection"
@@ -18116,6 +18451,7 @@ msgid "Step log"
 msgstr "Step log"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/observability/insights.tsx
 msgid "Steps"
 msgstr "Steps"
 
@@ -19651,6 +19987,10 @@ msgid "Top events"
 msgstr "Top events"
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "Top items"
+msgstr "Top items"
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Top pages"
 msgstr "Top pages"
 
@@ -19702,6 +20042,10 @@ msgstr "Track data events in Mixpanel."
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Track data events through Segment."
 msgstr "Track data events through Segment."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Traffic exceeded the row cap for this window — these counts are a floor, not a total."
+msgstr "Traffic exceeded the row cap for this window — these counts are a floor, not a total."
 
 #. placeholder {0}: runtime.spanCount
 #. placeholder {1}: runtime.windowDays
@@ -19899,6 +20243,10 @@ msgstr "Two consecutive half-width fields sit side by side on one row (stacked o
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Two questions share the stored name \"{0}\". Names have to be unique."
 msgstr "Two questions share the stored name \"{0}\". Names have to be unique."
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Two to eight event names, in order, comma separated."
+msgstr "Two to eight event names, in order, comma separated."
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/pages/sign-in.tsx
@@ -20432,6 +20780,7 @@ msgstr "Validation"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "value"
 msgstr "value"
@@ -20612,6 +20961,10 @@ msgid "Visitor's choice"
 msgstr "Visitor's choice"
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "visitors"
+msgstr "visitors"
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Visitors"
 msgstr "Visitors"
 
@@ -20623,6 +20976,10 @@ msgstr "Visitors get their browser language; <0>?lang={0}</0> forces one. Missin
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
 msgstr "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Visitors now"
+msgstr "Visitors now"
 
 #: src/client/admin/fields/display-template-editor.tsx
 msgid "Visual"
@@ -20692,6 +21049,10 @@ msgstr "Webhook URL copied."
 #: src/client/admin/ui.tsx
 msgid "Webhooks"
 msgstr "Webhooks"
+
+#: src/client/admin/pages/observability/insights.tsx
+msgid "website metrics — visitors, sessions, channels, revenue"
+msgstr "website metrics — visitors, sessions, channels, revenue"
 
 #: src/client/admin/collections/item-views.tsx
 msgid "Wed"
@@ -21222,6 +21583,10 @@ msgstr "You are booked in."
 msgid "You declined to sign this document. The sender has been notified."
 msgstr "You declined to sign this document. The sender has been notified."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "You get a one-line script tag. It stores nothing on the visitor's device, so it needs no cookie banner."
+msgstr "You get a one-line script tag. It stores nothing on the visitor's device, so it needs no cookie banner."
+
 #: src/client/pages/approve-request.tsx
 msgid "You have been asked to approve this."
 msgstr "You have been asked to approve this."
@@ -21325,6 +21690,10 @@ msgstr "Your email isn't verified yet. Check your inbox for the verification lin
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"
 msgstr "Your full name"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Your office, a monitoring probe. The address is compared and discarded — it is never stored on an event."
+msgstr "Your office, a monitoring probe. The address is compared and discarded — it is never stored on an event."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Your own category, whatever you call it. Each distinct value is mapped to a marketplace category from the sync's row once it exists — a product whose value is unmapped is skipped."

@@ -22,17 +22,42 @@ const ok = () => new Response("{}", { status: 200 });
 
 describe("token bucket", () => {
   test("a burst runs straight through, then pacing kicks in", async () => {
-    // burst=2 at 100/s: two immediate, the third waits ~10ms for a refill.
+    // This one is about SCALE, and it got it wrong twice.
+    //
+    // It first ran at 100/s — a 10ms refill — and asserted the burst finished
+    // in under 10ms: the signal and the scheduler noise were the same size, so
+    // "spent the burst" and "waited a full refill" were one measurement. That
+    // reached CI as 5812 pass / 1 fail.
+    //
+    // The repair to 20/s was still too small, because the stall this has to
+    // survive was then MEASURED rather than guessed: running the full 481-file
+    // suite, two no-wait awaits in the sibling test below took **106ms**. A GC
+    // pause on a loaded machine is bigger than any of the intervals the first
+    // two attempts chose.
+    //
+    // So: 2/s, a 500ms refill. The two outcomes sit 500ms apart and each
+    // assertion tolerates a 250ms stall — better than 2x the worst pause
+    // actually observed. Both bounds are written against REFILL_MS so the
+    // margin cannot quietly vanish if anyone retunes the rate.
+    const RPS = 2;
+    const REFILL_MS = 1000 / RPS;
+    const limit = { rps: RPS, burst: 2 };
+
     const started = Date.now();
-    await takeToken("k", { rps: 100, burst: 2 });
-    await takeToken("k", { rps: 100, burst: 2 });
+    await takeToken("k", limit);
+    await takeToken("k", limit);
     const afterBurst = Date.now() - started;
-    await takeToken("k", { rps: 100, burst: 2 });
+    await takeToken("k", limit);
     const afterThird = Date.now() - started;
 
-    expect(afterBurst).toBeLessThan(10);
-    // The third had to wait for a token to refill; the first two did not.
-    expect(afterThird).toBeGreaterThan(afterBurst);
+    // Neither of the first two paid a refill — they spent the burst. This is a
+    // sanity bound, not the regression detector: if pacing broke entirely this
+    // would still read ~0. The assertion that actually catches it is the next.
+    expect(afterBurst).toBeLessThan(REFILL_MS / 2);
+    // The third had none left, so it waited for one. Timers fire late more
+    // often than early, but a coarse clock can round a hair under the nominal
+    // interval, so allow 20% rather than asserting the full REFILL_MS.
+    expect(afterThird - afterBurst).toBeGreaterThanOrEqual(REFILL_MS * 0.8);
   });
 
   test("concurrent callers queue instead of all reading the same token count", async () => {
@@ -51,10 +76,23 @@ describe("token bucket", () => {
   test("separate keys do not pace each other", async () => {
     // Two workspaces holding two sellers' credentials have independent quotas
     // at the provider; sharing a bucket would halve what each paid for.
+    //
+    // This carried the same fault as the burst test above and was left alone
+    // once on the reasoning that 50ms was "enough margin" — then it failed at
+    // **106ms** in the very next full-suite run. Two immediate takes cost ~0;
+    // 50ms was measuring the machine, not the buckets.
+    //
+    // The number that means something here is what the second call would pay
+    // if the two keys DID share a bucket: at 1/s, a full second. Bounding at
+    // half of that fails loudly on a shared bucket while surviving any stall
+    // this suite has produced.
+    const RPS = 1;
+    const SHARED_WAIT_MS = 1000 / RPS;
+
     const started = Date.now();
-    await takeToken("seller-a", { rps: 1, burst: 1 });
-    await takeToken("seller-b", { rps: 1, burst: 1 });
-    expect(Date.now() - started).toBeLessThan(50);
+    await takeToken("seller-a", { rps: RPS, burst: 1 });
+    await takeToken("seller-b", { rps: RPS, burst: 1 });
+    expect(Date.now() - started).toBeLessThan(SHARED_WAIT_MS / 2);
   });
 });
 

@@ -410,6 +410,15 @@ export interface ApiAnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+export interface ApiAnalyticsSegment {
+  id: string;
+  name: string;
+  siteId: string | null;
+  definition: unknown;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface ApiAnalyticsRevenue {
   byCurrency: { currency: string; revenue: number; transactions: number; aov: number }[];
   byChannel: { channel: string; currency: string; revenue: number; transactions: number }[];
@@ -446,17 +455,27 @@ export interface ApiAnalyticsRealtime {
 }
 
 export const analyticsApi = {
-  revenue: (from: number, to: number, siteId?: string) =>
+  segments: () => api<Envelope<ApiAnalyticsSegment[]>>("/api/admin/analytics/segments"),
+  createSegment: (body: { name: string; definition: unknown; siteId?: string | null }) =>
+    api<Envelope<ApiAnalyticsSegment>>("/api/admin/analytics/segments", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteSegment: (id: string) =>
+    api<{ ok: boolean }>(`/api/admin/analytics/segments/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
+  revenue: (from: number, to: number, siteId?: string, segmentId?: string) =>
     api<Envelope<ApiAnalyticsRevenue>>(
-      `/api/admin/analytics/revenue${analyticsQs({ from, to, siteId })}`,
+      `/api/admin/analytics/revenue${analyticsQs({ from, to, siteId, segmentId })}`,
     ),
-  channels: (from: number, to: number, siteId?: string) =>
+  channels: (from: number, to: number, siteId?: string, segmentId?: string) =>
     api<Envelope<ApiAnalyticsChannels>>(
-      `/api/admin/analytics/channels${analyticsQs({ from, to, siteId })}`,
+      `/api/admin/analytics/channels${analyticsQs({ from, to, siteId, segmentId })}`,
     ),
-  sessions: (from: number, to: number, siteId?: string) =>
+  sessions: (from: number, to: number, siteId?: string, segmentId?: string) =>
     api<Envelope<ApiAnalyticsSessions>>(
-      `/api/admin/analytics/sessions${analyticsQs({ from, to, siteId })}`,
+      `/api/admin/analytics/sessions${analyticsQs({ from, to, siteId, segmentId })}`,
     ),
   realtime: (siteId?: string) =>
     api<Envelope<ApiAnalyticsRealtime>>(
@@ -477,9 +496,9 @@ export const analyticsApi = {
     api<{ ok: boolean }>(`/api/admin/analytics/sites/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
-  overview: (from: number, to: number) =>
+  overview: (from: number, to: number, segmentId?: string) =>
     api<Envelope<ApiAnalyticsOverview>>(
-      `/api/admin/analytics/overview${analyticsQs({ from, to })}`,
+      `/api/admin/analytics/overview${analyticsQs({ from, to, segmentId })}`,
     ),
   eventNames: () => api<Envelope<string[]>>("/api/admin/analytics/event-names"),
   funnel: (body: { steps: string[]; windowDays?: number; from: number; to: number }) =>

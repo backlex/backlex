@@ -209,6 +209,47 @@ and sessions, a **zero-filled** daily series (a quiet day is a zero, not a gap),
 and top-N breakdowns by event name, path, referrer and source. Default window
 is 30 days; the maximum span is 365.
 
+### Saved segments
+
+A segment is a reusable filter. Save one, then pass its id as `segmentId` to
+any report — overview, sessions, channels, revenue, funnel, retention — or pick
+it from the dropdown in the admin header.
+
+```json
+{ "all": [
+  { "field": "country", "op": "eq", "value": "DE" },
+  { "field": "deviceType", "op": "eq", "value": "mobile" }
+] }
+```
+
+A leaf is `{field, op, value}`, `{prop, op, value}` for a `props` key, or
+`{revenue, value}` for an amount. Leaves combine with `all`, `any` and `not`.
+Operators: `eq`, `neq`, `contains`, `startsWith`, `endsWith`, `in`, `isSet`,
+`isNotSet` — plus `gt` / `gte` / `lt` / `lte` for revenue.
+
+> **This is the highest-severity input in the feature**, because a definition
+> ends up inside a WHERE clause on every report it touches. The mitigation is
+> structural, not sanitizing: **field names come from a closed allowlist** and
+> are looked up to a column, never interpolated; **every value is bound**;
+> `props` keys are bound as a JSON path with the `json_valid` guard that stops
+> one malformed blob raising; and node count, nesting depth and `in`-list
+> length are all capped, so a saved segment cannot become a way to make the
+> database do unbounded work on every dashboard load.
+
+A stored definition is **re-validated on every read**, never trusted. One saved
+under an older, looser validator — or edited outside the API — filters
+*nothing* rather than filtering wrongly. An id belonging to another workspace
+resolves to nothing too, because the lookup is tenant-scoped.
+
+**String matching does not use `LIKE`.** D1 rejects a bound LIKE pattern
+outright (`LIKE or GLOB pattern too complex`), and it does so only on D1 — not
+in bun:sqlite, so a test suite will not catch it. `contains` / `startsWith` /
+`endsWith` use position and substring functions with bound values instead.
+
+Sequence segments ("did A, then B, within N minutes") are deliberately absent:
+the funnel report already answers that question directly, and a sequence
+*segment* is a different composition.
+
 ### Ecommerce & revenue
 
 `GET /api/admin/analytics/revenue?from=&to=&siteId=` — revenue by currency, by
@@ -395,7 +436,8 @@ Ingest (publishable key / API key / session): `POST /api/analytics/events`,
 Public web tag (no auth; the site id is the only parameter):
 `POST /api/analytics/collect`, `GET /api/analytics/script.js`.
 
-Admin (`/api/admin/analytics`, admin-only): `GET /revenue`, `GET /channels`, `GET /sessions`, `GET /realtime`, `GET|POST /sites`,
+Admin (`/api/admin/analytics`, admin-only): `GET|POST /segments`,
+`PATCH|DELETE /segments/{id}`, `GET /revenue`, `GET /channels`, `GET /sessions`, `GET /realtime`, `GET|POST /sites`,
 `PATCH|DELETE /sites/{id}`, `GET /overview`,
 `GET /event-names`, `POST /funnel`, `POST /retention`, `GET /events`,
 `GET /errors`, `GET /errors/{id}`, `PATCH /errors/{id}`, `DELETE /errors/{id}`,
@@ -416,7 +458,8 @@ await client.analytics.retention({ event: "page_view" });
 await client.analytics.realtime();
 await client.analytics.sessions({ siteId });
 await client.analytics.channels({ siteId });
-await client.analytics.revenue({ siteId });
+await client.analytics.revenue({ siteId, segmentId });
+await client.analytics.segments.create({ name: "Germany", definition });
 await client.analytics.errors.list({ status: "open" });
 await client.analytics.errors.update(id, { status: "resolved" });
 await client.analytics.ingestKey.mint();
@@ -429,15 +472,17 @@ await client.analytics.sites.delete(id);
 
 ### GraphQL
 
-Queries `analyticsRevenue`, `analyticsChannels`, `analyticsSessions`, `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
+Queries `analyticsSegments`, `analyticsRevenue`, `analyticsChannels`, `analyticsSessions`, `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
 `analyticsRetention`, `analyticsEvents`, `errorGroups`, `errorGroup`.
 Mutations `trackEvents`, `trackErrors`, `updateErrorGroup`, `deleteErrorGroup`,
-`createAnalyticsSite`, `updateAnalyticsSite`, `deleteAnalyticsSite`.
+`createAnalyticsSite`, `updateAnalyticsSite`, `deleteAnalyticsSite`,
+`createAnalyticsSegment`, `updateAnalyticsSegment`, `deleteAnalyticsSegment`.
 Ingest is admin-gated on this surface — the publishable-key path is REST-only,
 since that's what client bundles use.
 
 ### MCP
 
+`analytics.segments`, `analytics.segment_save`, `analytics.segment_delete`,
 `analytics.revenue`, `analytics.channels`, `analytics.sessions`, `analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
 `analytics.site_delete`, `analytics.overview`, `analytics.event_names`, `analytics.funnel`,
 `analytics.retention`, `analytics.events`, `errors.list`, `errors.get`,
@@ -460,6 +505,8 @@ backlex analytics realtime
 backlex analytics sessions --days 30
 backlex analytics channels --days 30
 backlex analytics revenue --days 30
+backlex analytics segments
+backlex analytics overview --segment <id>
 backlex analytics sites
 backlex analytics sites add --name "Marketing" --domain example.com
 backlex analytics sites rm <id>

@@ -31,6 +31,12 @@
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import { classifyChannel, sourceMediumLabel } from "./analytics-channels";
+import {
+  compileSegment,
+  compileSegmentRaw,
+  parseSegment,
+  type SegmentNode,
+} from "./analytics-segments";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { hashToken } from "./shared-links";
@@ -50,6 +56,8 @@ const settingsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
 const sitesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.analyticsSites : sqlite.schema.analyticsSites;
+const segmentsTable = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.analyticsSegments : sqlite.schema.analyticsSegments;
 
 /** UTC calendar day, `YYYY-MM-DD`. */
 export const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
@@ -684,7 +692,7 @@ const sessionCteSql = (
       FROM analytics_events
       WHERE ${tenantSql(opts.tenantId)}
         AND day >= ${fromDay} AND day <= ${toDay}
-        AND site_id IS NOT NULL${siteFilter}
+        AND site_id IS NOT NULL${siteFilter}${segmentSql(ctx, opts)}
     ),
     marked AS (
       SELECT distinct_id, day, ts, path, referrer, utm_source, utm_medium,
@@ -825,6 +833,145 @@ const parseProps = (v: unknown): Record<string, unknown> | null => {
   }
 };
 
+/* ── Segments ─────────────────────────────────────────────────────────── */
+
+export interface AnalyticsSegmentRow {
+  id: string;
+  name: string;
+  siteId: string | null;
+  definition: unknown;
+  createdAt: number;
+  updatedAt: number;
+}
+
+const toSegmentRow = (r: any): AnalyticsSegmentRow => ({
+  id: r.id,
+  name: r.name,
+  siteId: r.siteId ?? null,
+  definition: r.definition ?? null,
+  createdAt: tsValue(r.createdAt),
+  updatedAt: tsValue(r.updatedAt),
+});
+
+export const listSegments = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+): Promise<AnalyticsSegmentRow[]> => {
+  const t = segmentsTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(tenantEq(t.tenantId, tenantId))
+    .orderBy(t.name)) as any[];
+  return rows.map(toSegmentRow);
+};
+
+/**
+ * Resolve a saved segment id into a VALIDATED predicate tree.
+ *
+ * The stored blob is re-parsed on every read rather than trusted. A definition
+ * saved under an older, looser validator must not keep working just because it
+ * once passed — and a row edited outside the API has never passed at all.
+ * An unknown id is `null`, which reports treat as "no filter"; an id belonging
+ * to another workspace is also `null`, because the lookup is tenant-scoped.
+ */
+export const resolveSegment = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  id: string | null | undefined,
+): Promise<SegmentNode | null> => {
+  if (!id) return null;
+  const t = segmentsTable(ctx.dialect);
+  const [row] = (await (ctx.db as any)
+    .select({ definition: t.definition })
+    .from(t)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)))
+    .limit(1)) as any[];
+  if (!row) return null;
+  try {
+    return parseSegment(row.definition);
+  } catch {
+    // A stored definition that no longer validates filters NOTHING rather than
+    // filtering wrongly — and the segment list still shows it, so it can be
+    // fixed. Silently reporting the whole workspace under a segment's name
+    // would be the worse failure, so callers surface this as a warning.
+    return null;
+  }
+};
+
+export const createSegment = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  input: { name?: unknown; siteId?: unknown; definition?: unknown },
+  createdBy: string | null,
+  now = Date.now(),
+): Promise<AnalyticsSegmentRow> => {
+  const name = str(input.name, 120);
+  if (!name) throw new AppError("VALIDATION", "A segment needs a name.");
+  // Validate BEFORE storing. A definition that cannot compile must never reach
+  // the table, or it becomes a segment that silently filters nothing.
+  parseSegment(input.definition);
+
+  const t = segmentsTable(ctx.dialect);
+  const row = {
+    id: crypto.randomUUID(),
+    tenantId,
+    siteId: str(input.siteId, 64),
+    name,
+    definition: input.definition,
+    createdBy,
+    createdAt: new Date(now),
+    updatedAt: new Date(now),
+  };
+  await (ctx.db as any).insert(t).values(row);
+  return toSegmentRow(row);
+};
+
+export const updateSegment = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  id: string,
+  input: { name?: unknown; siteId?: unknown; definition?: unknown },
+  now = Date.now(),
+): Promise<AnalyticsSegmentRow> => {
+  const t = segmentsTable(ctx.dialect);
+  const patch: Record<string, unknown> = { updatedAt: new Date(now) };
+  if (input.name !== undefined) {
+    const name = str(input.name, 120);
+    if (!name) throw new AppError("VALIDATION", "A segment needs a name.");
+    patch.name = name;
+  }
+  if (input.siteId !== undefined) patch.siteId = str(input.siteId, 64);
+  if (input.definition !== undefined) {
+    parseSegment(input.definition);
+    patch.definition = input.definition;
+  }
+
+  await (ctx.db as any)
+    .update(t)
+    .set(patch)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)));
+
+  const [row] = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)))
+    .limit(1)) as any[];
+  if (!row) throw new AppError("NOT_FOUND", "Segment not found.");
+  return toSegmentRow(row);
+};
+
+export const deleteSegment = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  id: string,
+): Promise<void> => {
+  const t = segmentsTable(ctx.dialect);
+  await (ctx.db as any)
+    .delete(t)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)));
+};
+
 /* ── Revenue ──────────────────────────────────────────────────────────── */
 
 /** Purchase rows read for the item breakdown. Items live in `props`, which has
@@ -875,6 +1022,8 @@ export const analyticsRevenue = async (
     sql`${t.revenue} IS NOT NULL`,
   ];
   if (opts.siteId) clauses.push(eq(t.siteId, opts.siteId));
+  const revSeg = segmentWhere(ctx, opts);
+  if (revSeg) clauses.push(revSeg);
 
   const rows = (await (ctx.db as any)
     .select({
@@ -1125,6 +1274,13 @@ export const analyticsRealtime = async (
     gte(t.ts, tsParam(ctx.dialect, from) as any),
   ];
   if (opts.siteId) clauses.push(eq(t.siteId, opts.siteId));
+  const rtSeg = opts.segment
+    ? compileSegment(
+        { dialect: ctx.dialect, table: eventsTable(ctx.dialect) as never },
+        opts.segment,
+      )
+    : undefined;
+  if (rtSeg) clauses.push(rtSeg);
 
   const rows = (await (ctx.db as any)
     .select({
@@ -1410,6 +1566,16 @@ export interface AnalyticsRange {
   /** Inclusive epoch-ms bounds. */
   from: number;
   to: number;
+  /** Optional: limit to one registered site. */
+  siteId?: string | null;
+  /**
+   * Optional saved-segment predicate, ALREADY VALIDATED.
+   *
+   * Reports take the parsed tree rather than an id so the trust boundary is
+   * unambiguous: whatever reaches a query here has been through
+   * `parseSegment`, and a report cannot accidentally be handed raw JSON.
+   */
+  segment?: SegmentNode | null;
 }
 
 /** One row of a top-N breakdown. `users` is distinct visitors, which is what a
@@ -1489,6 +1655,27 @@ export type BreakdownColumn =
   | "utmMedium"
   | "utmCampaign";
 
+/**
+ * Builder-side segment predicate for a report, or `undefined`.
+ *
+ * Kept as a one-liner so every report applies it the same way — a report that
+ * forgets it silently ignores the operator's filter and reports the whole
+ * workspace, which looks like working software.
+ */
+const segmentWhere = (ctx: AnalyticsDbCtx, range: AnalyticsRange) =>
+  range.segment
+    ? compileSegment(
+        { dialect: ctx.dialect, table: eventsTable(ctx.dialect) as never },
+        range.segment,
+      )
+    : undefined;
+
+/** Raw-SQL twin, appended to a CTE's WHERE. */
+const segmentSql = (ctx: AnalyticsDbCtx, range: AnalyticsRange) => {
+  const frag = range.segment ? compileSegmentRaw(ctx.dialect, range.segment) : undefined;
+  return frag ? sql` AND ${frag}` : sql``;
+};
+
 /** Top-N breakdown over one column, skipping NULL/empty values. */
 const topBy = async (
   ctx: AnalyticsDbCtx,
@@ -1511,6 +1698,8 @@ const topBy = async (
         gte(t.ts, tsParam(ctx.dialect, range.from) as any),
         lte(t.ts, tsParam(ctx.dialect, range.to) as any),
         sql`${col} IS NOT NULL AND ${col} <> ''`,
+        ...(range.siteId ? [eq(t.siteId, range.siteId)] : []),
+        ...(segmentWhere(ctx, range) ? [segmentWhere(ctx, range) as any] : []),
       ),
     )
     .groupBy(col)
@@ -1529,10 +1718,13 @@ export const analyticsOverview = async (
   range: AnalyticsRange,
 ): Promise<AnalyticsOverview> => {
   const t = eventsTable(ctx.dialect);
+  const seg = segmentWhere(ctx, range);
   const inRange = and(
     tenantEq(t.tenantId, range.tenantId),
     gte(t.ts, tsParam(ctx.dialect, range.from) as any),
     lte(t.ts, tsParam(ctx.dialect, range.to) as any),
+    ...(range.siteId ? [eq(t.siteId, range.siteId)] : []),
+    ...(seg ? [seg] : []),
   );
 
   // `count(distinct case when ... end)` and `sum(case when ... end)` are both
@@ -1717,7 +1909,7 @@ export const analyticsFunnel = async (
   const ctes = [
     sql`s0 AS (SELECT distinct_id, MIN(ts) AS t FROM analytics_events
         WHERE ${tenantSql(opts.tenantId)} AND name = ${steps[0]}
-          AND ts >= ${from} AND ts <= ${to} AND ${durableOnly()}
+          AND ts >= ${from} AND ts <= ${to} AND ${durableOnly()}${segmentSql(ctx, opts)}
         GROUP BY distinct_id)`,
   ];
   for (let i = 1; i < steps.length; i++) {
@@ -1795,13 +1987,13 @@ export const analyticsRetention = async (
   const query = sql`
     WITH f AS (
       SELECT distinct_id, MIN(day) AS d0 FROM analytics_events
-      WHERE ${tenantSql(opts.tenantId)}${nameFilter} AND ${durableOnly()}
+      WHERE ${tenantSql(opts.tenantId)}${nameFilter} AND ${durableOnly()}${segmentSql(ctx, opts)}
       GROUP BY distinct_id
       HAVING MIN(day) >= ${fromDay} AND MIN(day) <= ${toDay}
     ),
     a AS (
       SELECT DISTINCT distinct_id, day FROM analytics_events
-      WHERE ${tenantSql(opts.tenantId)}${nameFilter} AND ${durableOnly()}
+      WHERE ${tenantSql(opts.tenantId)}${nameFilter} AND ${durableOnly()}${segmentSql(ctx, opts)}
         AND day >= ${fromDay} AND day <= ${toDay}
     )
     SELECT f.d0 AS cohort, a.day AS day, COUNT(DISTINCT a.distinct_id) AS n

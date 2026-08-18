@@ -297,7 +297,7 @@ function UsageSkeletonImpl() {
 function AnalyticsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
-      <HeaderSkeleton actions={3} />
+      <HeaderSkeleton actions={4} />
       {/* Six tab pills: overview, realtime, funnel, retention, errors, sites.
           The sessions block below the breakdowns is NOT reserved here: it only
           renders when tag traffic exists, and a skeleton for something that

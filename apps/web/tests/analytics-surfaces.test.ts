@@ -673,6 +673,9 @@ describe("MCP surface", () => {
       "analytics-sessions",
       "analytics-channels",
       "analytics-revenue",
+      "analytics-segments",
+      "analytics-segment_save",
+      "analytics-segment_delete",
       "analytics-sites",
       "analytics-site_create",
       "analytics-site_update",
@@ -695,6 +698,11 @@ describe("MCP surface", () => {
     expect(byName.get("analytics-sessions")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("analytics-channels")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("analytics-revenue")?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get("analytics-segments")?.annotations?.readOnlyHint).toBe(true);
+    // Saving a segment changes what every report returns, so it must never be
+    // reachable by a read-only key.
+    expect(byName.get("analytics-segment_save")?.annotations?.readOnlyHint).toBe(false);
+    expect(byName.get("analytics-segment_delete")?.annotations?.readOnlyHint).toBe(false);
     expect(byName.get("errors-update")?.annotations?.readOnlyHint).toBe(false);
     // Site mutations must NOT read as read-only: a read-only key that could
     // repoint a site's domain would be read-only in name only.
@@ -751,6 +759,7 @@ describe("CLI surface", () => {
       "sessions",
       "channels",
       "revenue",
+      "segments",
     ]) {
       expect(src).toContain(`case "${sub}"`);
     }

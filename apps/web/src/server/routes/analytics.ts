@@ -22,18 +22,23 @@ import {
   analyticsRevenue,
   analyticsRetention,
   analyticsSessions,
+  createSegment,
   createSite,
   deleteErrorGroup,
+  deleteSegment,
   deleteSite,
   getErrorGroup,
   hasIngestKey,
   listAnalyticsEvents,
   listErrorGroups,
   listEventNames,
+  listSegments,
   listSites,
+  resolveSegment,
   mintIngestKey,
   revokeIngestKey,
   updateErrorGroup,
+  updateSegment,
   updateSite,
 } from "../services/analytics";
 
@@ -65,6 +70,8 @@ const resolveRange = (q: { from?: number; to?: number }) => {
 };
 
 const RangeQuery = z.object({
+  /** Apply a saved filter. An unknown or no-longer-valid id filters nothing. */
+  segmentId: z.string().optional(),
   from: z.coerce.number().int().optional(),
   to: z.coerce.number().int().optional(),
 });
@@ -155,6 +162,25 @@ const RetentionResult = z
     ),
   })
   .openapi("AnalyticsRetention");
+
+const Segment = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    siteId: z.string().nullable(),
+    definition: z.unknown(),
+    createdAt: z.number().int(),
+    updatedAt: z.number().int(),
+  })
+  .openapi("AnalyticsSegment");
+
+const SegmentInput = z.object({
+  name: z.string().min(1).max(120),
+  siteId: z.string().max(64).nullish(),
+  /** Validated by `parseSegment`, not by zod — the shape is recursive and the
+   *  field allowlist is the actual check. */
+  definition: z.unknown(),
+});
 
 const MoneyRow = z.object({
   currency: z.string(),
@@ -346,10 +372,16 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       requireAdmin(auth.roles);
-      const { from, to } = resolveRange(c.req.valid("query"));
+      const q = c.req.valid("query");
+      const { from, to } = resolveRange(q);
+      const segment = await resolveSegment(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        q.segmentId,
+      );
       const data = await analyticsOverview(
         { db: ctx.db, dialect: ctx.dialect },
-        { tenantId: auth.tenantId ?? null, from, to },
+        { tenantId: auth.tenantId ?? null, from, to, segment },
       );
       return c.json({ data });
     },
@@ -726,6 +758,138 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",
+      path: "/segments",
+      tags: TAGS,
+      summary: "Saved analytics filters",
+      security: SECURITY,
+      middleware: [requireUser],
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(Segment) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const data = await listSegments(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+      );
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/segments",
+      tags: TAGS,
+      summary: "Save an analytics filter",
+      description:
+        "The definition is a predicate tree over a CLOSED field allowlist. It is " +
+        "validated here and re-validated on every read — a stored blob is never " +
+        "trusted, and every value is bound rather than spliced into SQL.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        body: { required: true, content: { "application/json": { schema: SegmentInput } } },
+      },
+      responses: {
+        201: {
+          description: "Created",
+          content: { "application/json": { schema: z.object({ data: Segment }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const data = await createSegment(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        c.req.valid("json"),
+        auth.userId ?? null,
+      );
+      return c.json({ data }, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/segments/{id}",
+      tags: TAGS,
+      summary: "Update a saved filter",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: SegmentInput.partial() } },
+        },
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: Segment }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const { id } = c.req.valid("param");
+      const data = await updateSegment(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        id,
+        c.req.valid("json"),
+      );
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/segments/{id}",
+      tags: TAGS,
+      summary: "Remove a saved filter",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "Deleted",
+          content: { "application/json": { schema: z.object({ ok: z.boolean() }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const { id } = c.req.valid("param");
+      await deleteSegment(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        id,
+      );
+      return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
       path: "/revenue",
       tags: TAGS,
       summary: "Revenue by currency, channel and campaign",
@@ -751,9 +915,14 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       requireAdmin(auth.roles);
       const q = c.req.valid("query");
       const { from, to } = resolveRange(q);
+      const segment = await resolveSegment(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        q.segmentId,
+      );
       const data = await analyticsRevenue(
         { db: ctx.db, dialect: ctx.dialect },
-        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null },
+        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null, segment },
       );
       return c.json({ data });
     },
@@ -787,9 +956,14 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       requireAdmin(auth.roles);
       const q = c.req.valid("query");
       const { from, to } = resolveRange(q);
+      const segment = await resolveSegment(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        q.segmentId,
+      );
       const data = await analyticsChannels(
         { db: ctx.db, dialect: ctx.dialect },
-        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null },
+        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null, segment },
       );
       return c.json({ data });
     },
@@ -823,9 +997,14 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       requireAdmin(auth.roles);
       const q = c.req.valid("query");
       const { from, to } = resolveRange(q);
+      const segment = await resolveSegment(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        q.segmentId,
+      );
       const data = await analyticsSessions(
         { db: ctx.db, dialect: ctx.dialect },
-        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null },
+        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null, segment },
       );
       return c.json({ data });
     },

@@ -3646,6 +3646,33 @@ export const analyticsSites = pgTable(
   (t) => [index("analytics_sites_tenant_domain_idx").on(t.tenantId, t.domain)],
 );
 
+
+/**
+ * A saved analytics filter.
+ *
+ * `definition` is an operator-authored predicate tree, and it is the highest-
+ * severity input in the analytics feature: it ends up inside a WHERE clause on
+ * every report it is applied to. It is validated and compiled by
+ * `services/analytics-segments.ts`, which binds every value and looks field
+ * names up in a closed allowlist — the blob stored here is never trusted on
+ * read, only re-parsed.
+ */
+export const analyticsSegments = pgTable(
+  "analytics_segments",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** Optional: scope the segment to one registered site. */
+    siteId: text("site_id"),
+    name: text("name").notNull(),
+    definition: jsonb("definition").$type<unknown>(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("analytics_segments_tenant_idx").on(t.tenantId, t.siteId)],
+);
+
 /**
  * Crash-reporting group — the deduplicated identity of one bug. Occurrences
  * fold into a group by `fingerprint` (a hash of the error type, its normalized

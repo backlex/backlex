@@ -18,7 +18,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime|sessions|channels|revenue>
+const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime|sessions|channels|revenue|segments>
 
   overview [--days <n>]                headline counters + top breakdowns
   events [--name <n>] [--limit <n>]    recent raw tracked events
@@ -36,6 +36,8 @@ const HELP = `backlex analytics <overview|events|event-names|funnel|retention|er
   sessions [--site <id>] [--days <n>]  bounce rate, duration, landing/exit pages
   channels [--site <id>] [--days <n>]  where sessions came from (session-scoped)
   revenue [--site <id>] [--days <n>]   revenue by currency, channel and campaign
+  segments                             saved filters (apply with --segment <id>)
+  segments rm <id>                     remove one
   sites                                websites measured by the drop-in tag
   sites add --name <n> --domain <d>    register one, and print its snippet
   sites rm <id>                        stop accepting that snippet
@@ -358,11 +360,35 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         else process.stderr.write(`Reported (group ${res.groups[0] ?? "—"}).\n`);
         return;
       }
+      case "segments": {
+        if (rest[0] === "rm") {
+          const id = rest[1];
+          if (!id) throw new Error("segments rm needs a segment id.");
+          await client.request("DELETE", `${BASE}/segments/${encodeURIComponent(id)}`);
+          process.stderr.write(`Removed segment ${id}.\n`);
+          return;
+        }
+        const { data } = await client.request<{ data: any[] }>("GET", `${BASE}/segments`);
+        if (json) {
+          printJson(data);
+          return;
+        }
+        if (!data.length) {
+          process.stderr.write("No saved segments.\n");
+          return;
+        }
+        printTable(
+          data.map((s) => ({ id: s.id, name: s.name, site: s.siteId ?? "all" })),
+        );
+        return;
+      }
       case "revenue": {
         const { from, to } = windowFrom(rest);
         const site = flag(rest, "--site");
         const params = new URLSearchParams({ from: String(from), to: String(to) });
         if (site) params.set("siteId", site);
+        const seg = flag(rest, "--segment");
+        if (seg) params.set("segmentId", seg);
         const { data } = await client.request<{ data: any }>(
           "GET",
           `${BASE}/revenue?${params}`,
@@ -418,6 +444,8 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         const site = flag(rest, "--site");
         const params = new URLSearchParams({ from: String(from), to: String(to) });
         if (site) params.set("siteId", site);
+        const seg = flag(rest, "--segment");
+        if (seg) params.set("segmentId", seg);
         const { data } = await client.request<{ data: any }>(
           "GET",
           `${BASE}/channels?${params}`,
@@ -455,6 +483,8 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         const site = flag(rest, "--site");
         const params = new URLSearchParams({ from: String(from), to: String(to) });
         if (site) params.set("siteId", site);
+        const seg = flag(rest, "--segment");
+        if (seg) params.set("segmentId", seg);
         const { data } = await client.request<{ data: any }>(
           "GET",
           `${BASE}/sessions?${params}`,

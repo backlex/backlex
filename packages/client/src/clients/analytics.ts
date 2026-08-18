@@ -102,6 +102,17 @@ export interface AnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+/** A saved analytics filter. `definition` is a predicate tree over a closed
+ *  field allowlist; it is validated server-side on save AND on every read. */
+export interface AnalyticsSegment {
+  id: string;
+  name: string;
+  siteId: string | null;
+  definition: unknown;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /** Revenue, always grouped by currency. There is no FX source, so nothing is
  *  ever summed across currencies and no single total is offered. */
 export interface AnalyticsRevenue {
@@ -301,6 +312,7 @@ export interface AnalyticsClient {
     from?: number;
     to?: number;
     siteId?: string;
+    segmentId?: string;
   }): Promise<{ data: AnalyticsRevenue }>;
   /**
    * Record a purchase. Sugar over `track`, and the only reason it exists is to
@@ -319,15 +331,31 @@ export interface AnalyticsClient {
     from?: number;
     to?: number;
     siteId?: string;
+    segmentId?: string;
   }): Promise<{ data: AnalyticsChannels }>;
   /** Sessions, bounce rate, duration, landing and exit pages. */
   sessions(input?: {
     from?: number;
     to?: number;
     siteId?: string;
+    segmentId?: string;
   }): Promise<{ data: AnalyticsSessions }>;
   /** Who is on the site right now — the last 30 minutes, by minute. */
   realtime(opts?: { siteId?: string }): Promise<{ data: AnalyticsRealtime }>;
+  /** Saved filters, appliable to any report via its `segmentId`. */
+  segments: {
+    list(): Promise<{ data: AnalyticsSegment[] }>;
+    create(input: {
+      name: string;
+      definition: unknown;
+      siteId?: string | null;
+    }): Promise<{ data: AnalyticsSegment }>;
+    update(
+      id: string,
+      patch: { name?: string; definition?: unknown; siteId?: string | null },
+    ): Promise<{ data: AnalyticsSegment }>;
+    delete(id: string): Promise<{ ok: boolean }>;
+  };
   /** Websites measured by the drop-in tag. */
   sites: {
     list(): Promise<{ data: AnalyticsSite[] }>;
@@ -348,11 +376,17 @@ export interface AnalyticsClient {
 }
 
 /** Shared query string for the range-plus-site reports. */
-const rangeQs = (input?: { from?: number; to?: number; siteId?: string }): string => {
+const rangeQs = (input?: {
+  from?: number;
+  to?: number;
+  siteId?: string;
+  segmentId?: string;
+}): string => {
   const qs = new URLSearchParams();
   if (input?.from !== undefined) qs.set("from", String(input.from));
   if (input?.to !== undefined) qs.set("to", String(input.to));
   if (input?.siteId) qs.set("siteId", input.siteId);
+  if (input?.segmentId) qs.set("segmentId", input.segmentId);
   const tail = qs.toString();
   return tail ? `?${tail}` : "";
 };
@@ -518,7 +552,7 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
         core.request<{ data: ErrorGroup }>("PATCH", errPath(id), patch),
       delete: (id: string) => core.request<{ ok: boolean }>("DELETE", errPath(id)),
     },
-    revenue: (input?: { from?: number; to?: number; siteId?: string }) =>
+    revenue: (input?: { from?: number; to?: number; siteId?: string; segmentId?: string }) =>
       core.request<{ data: AnalyticsRevenue }>(
         "GET",
         `/api/admin/analytics/revenue${rangeQs(input)}`,
@@ -534,12 +568,12 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
         },
         input.path ? { path: input.path } : undefined,
       ),
-    channels: (input?: { from?: number; to?: number; siteId?: string }) =>
+    channels: (input?: { from?: number; to?: number; siteId?: string; segmentId?: string }) =>
       core.request<{ data: AnalyticsChannels }>(
         "GET",
         `/api/admin/analytics/channels${rangeQs(input)}`,
       ),
-    sessions: (input?: { from?: number; to?: number; siteId?: string }) =>
+    sessions: (input?: { from?: number; to?: number; siteId?: string; segmentId?: string }) =>
       core.request<{ data: AnalyticsSessions }>(
         "GET",
         `/api/admin/analytics/sessions${rangeQs(input)}`,
@@ -549,6 +583,27 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
         "GET",
         `/api/admin/analytics/realtime${opts?.siteId ? `?siteId=${encodeURIComponent(opts.siteId)}` : ""}`,
       ),
+    segments: {
+      list: () =>
+        core.request<{ data: AnalyticsSegment[] }>("GET", "/api/admin/analytics/segments"),
+      create: (input) =>
+        core.request<{ data: AnalyticsSegment }>(
+          "POST",
+          "/api/admin/analytics/segments",
+          input,
+        ),
+      update: (id, patch) =>
+        core.request<{ data: AnalyticsSegment }>(
+          "PATCH",
+          `/api/admin/analytics/segments/${encodeURIComponent(id)}`,
+          patch,
+        ),
+      delete: (id) =>
+        core.request<{ ok: boolean }>(
+          "DELETE",
+          `/api/admin/analytics/segments/${encodeURIComponent(id)}`,
+        ),
+    },
     sites: {
       list: () =>
         core.request<{ data: AnalyticsSite[] }>("GET", "/api/admin/analytics/sites"),

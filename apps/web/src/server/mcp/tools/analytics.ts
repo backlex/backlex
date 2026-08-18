@@ -84,6 +84,70 @@ const SITE_PROPS = {
   },
 } as const;
 
+export const analyticsSegmentsTool: McpTool = {
+  name: "analytics.segments",
+  kind: "read",
+  description:
+    "Saved analytics filters. Apply one to any report by passing its id as " +
+    "`segmentId`. A definition is a predicate tree over a closed field " +
+    "allowlist; an unknown or no-longer-valid id filters nothing rather than " +
+    "filtering wrongly.",
+  inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  handler: async (_args, ctx) => {
+    const res = await ctx.fetchInternal("/api/admin/analytics/segments");
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const analyticsSegmentSave: McpTool = {
+  name: "analytics.segment_save",
+  kind: "write",
+  description:
+    "Save an analytics filter. `definition` is a predicate tree: a leaf is " +
+    "`{field, op, value}` (or `{prop, op, value}` for a props key, or " +
+    "`{revenue, value}` for an amount), and leaves combine with `{all: []}`, " +
+    "`{any: []}` and `{not: {}}`. Fields are restricted to a closed allowlist " +
+    "and every value is bound, never spliced into SQL.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      siteId: { type: "string", description: "Optional: scope to one site." },
+      definition: { type: "object", description: "The predicate tree." },
+    },
+    required: ["name", "definition"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal("/api/admin/analytics/segments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args ?? {}),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const analyticsSegmentDelete: McpTool = {
+  name: "analytics.segment_delete",
+  kind: "write",
+  description: "Remove a saved analytics filter.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String((args as { id?: unknown })?.id ?? "");
+    const res = await ctx.fetchInternal(
+      `/api/admin/analytics/segments/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const analyticsRevenueTool: McpTool = {
   name: "analytics.revenue",
   kind: "read",
@@ -476,6 +540,9 @@ export const analyticsTools: McpTool[] = [
   analyticsSessionsTool,
   analyticsChannelsTool,
   analyticsRevenueTool,
+  analyticsSegmentsTool,
+  analyticsSegmentSave,
+  analyticsSegmentDelete,
   analyticsSites,
   analyticsSiteCreate,
   analyticsSiteUpdate,

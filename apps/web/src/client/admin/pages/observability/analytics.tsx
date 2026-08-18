@@ -38,6 +38,7 @@ import {
 import {
   analyticsApi,
   type ApiAnalyticsOverview,
+  type ApiAnalyticsSegment,
   type ApiAnalyticsSite,
   type ApiErrorGroup,
   type ApiErrorStatus,
@@ -48,6 +49,9 @@ import {
   useAnalyticsIngestKey,
   useAnalyticsOverview,
   useAnalyticsChannels,
+  useAnalyticsSegments,
+  useCreateAnalyticsSegment,
+  useDeleteAnalyticsSegment,
   useAnalyticsRealtime,
   useAnalyticsRevenue,
   useAnalyticsSessionStats,
@@ -183,9 +187,13 @@ export function AnalyticsPage({
   const qc = useQueryClient();
   const [tab, setTab] = useUrlTab(TABS, "overview");
   const [days, setDays] = useState(30);
+  const [segmentId, setSegmentId] = useState<string>("");
+  const [segOpen, setSegOpen] = useState(false);
+  const segmentsQ = useAnalyticsSegments();
+  const segments = segmentsQ.data?.data ?? [];
   const [keyOpen, setKeyOpen] = useState(false);
 
-  const overviewQ = useAnalyticsOverview(days);
+  const overviewQ = useAnalyticsOverview(days, segmentId || null);
   const overview = overviewQ.data?.data;
 
   const tabLabels: Record<Tab, string> = {
@@ -215,6 +223,22 @@ export function AnalyticsPage({
             />
             <Button variant="outline" icon={I.Key} onClick={() => setKeyOpen(true)}>
               <Trans>Ingest key</Trans>
+            </Button>
+            <Select
+              size="sm"
+              value={segmentId}
+              onValueChange={(v) => setSegmentId(v)}
+              className="w-[150px] min-w-0 [&>*]:min-w-0"
+              options={[
+                { value: "", label: t`All traffic` },
+                ...segments.map((sg: ApiAnalyticsSegment) => ({
+                  value: sg.id,
+                  label: sg.name,
+                })),
+              ]}
+            />
+            <Button variant="outline" icon={I.Filter} onClick={() => setSegOpen(true)}>
+              <Trans>Segments</Trans>
             </Button>
             <Button
               variant="outline"
@@ -263,7 +287,9 @@ export function AnalyticsPage({
         </Card>
       ) : (
         <>
-          {tab === "overview" && <OverviewTab overview={overview} days={days} />}
+          {tab === "overview" && (
+            <OverviewTab overview={overview} days={days} segmentId={segmentId || null} />
+          )}
           {tab === "funnel" && <FunnelTab days={days} />}
           {tab === "retention" && <RetentionTab days={days} />}
           {tab === "errors" && <ErrorsTab pushToast={pushToast} />}
@@ -271,6 +297,12 @@ export function AnalyticsPage({
           {tab === "sites" && <SitesTab pushToast={pushToast} />}
         </>
       )}
+
+      <SegmentsDialog
+        open={segOpen}
+        onClose={() => setSegOpen(false)}
+        pushToast={pushToast}
+      />
 
       <IngestKeyDialog
         open={keyOpen}
@@ -286,9 +318,11 @@ export function AnalyticsPage({
 function OverviewTab({
   overview,
   days,
+  segmentId,
 }: {
   overview: ApiAnalyticsOverview | undefined;
   days: number;
+  segmentId: string | null;
 }) {
   const { t } = useLingui();
   if (!overview) return null;
@@ -438,9 +472,9 @@ function OverviewTab({
         />
       </div>
 
-      <SessionsBlock days={days} />
-      <ChannelsBlock days={days} />
-      <RevenueBlock days={days} />
+      <SessionsBlock days={days} segmentId={segmentId} />
+      <ChannelsBlock days={days} segmentId={segmentId} />
+      <RevenueBlock days={days} segmentId={segmentId} />
     </>
   );
 }
@@ -452,9 +486,9 @@ function OverviewTab({
  * events are not visits — and rendering "0% bounce rate, 0s average" for it
  * would be four confident zeros about something that was never measured.
  */
-function SessionsBlock({ days }: { days: number }) {
+function SessionsBlock({ days, segmentId }: { days: number; segmentId: string | null }) {
   const { t } = useLingui();
-  const q = useAnalyticsSessionStats(days);
+  const q = useAnalyticsSessionStats(days, null, segmentId);
   const s = q.data?.data;
   if (!s || s.sessions === 0) return null;
 
@@ -1583,9 +1617,9 @@ function RealtimeTab() {
  * an earlier day cannot be joined to this visit. Someone comparing the two
  * tools has to be told, not left to infer it.
  */
-function ChannelsBlock({ days }: { days: number }) {
+function ChannelsBlock({ days, segmentId }: { days: number; segmentId: string | null }) {
   const { t } = useLingui();
-  const q = useAnalyticsChannels(days);
+  const q = useAnalyticsChannels(days, null, segmentId);
   const c = q.data?.data;
   if (!c || c.totalSessions === 0) return null;
 
@@ -1635,9 +1669,9 @@ function ChannelsBlock({ days }: { days: number }) {
  * plausible, which is what makes it dangerous. Amounts are stored in minor
  * units; this is the only place that divides.
  */
-function RevenueBlock({ days }: { days: number }) {
+function RevenueBlock({ days, segmentId }: { days: number; segmentId: string | null }) {
   const { t } = useLingui();
-  const q = useAnalyticsRevenue(days);
+  const q = useAnalyticsRevenue(days, null, segmentId);
   const r = q.data?.data;
   if (!r || r.byCurrency.length === 0) return null;
 
@@ -1699,5 +1733,224 @@ function RevenueBlock({ days }: { days: number }) {
         />
       </div>
     </>
+  );
+}
+
+/* ── Segments ─────────────────────────────────────────────────────────── */
+
+/**
+ * Fields a segment may filter on, mirroring the server's closed allowlist.
+ *
+ * Duplicated here rather than fetched because it is a UI affordance, not the
+ * check — the server refuses anything outside its own list regardless of what
+ * this dropdown offers. Keeping it a dropdown is the point: a free-text field
+ * name would invite exactly the input the server has to reject.
+ */
+const SEGMENT_FIELD_OPTIONS = [
+  { value: "path", label: "Page path" },
+  { value: "referrer", label: "Referrer" },
+  { value: "country", label: "Country" },
+  { value: "deviceType", label: "Device" },
+  { value: "browser", label: "Browser" },
+  { value: "os", label: "OS" },
+  { value: "utmSource", label: "Campaign source" },
+  { value: "utmMedium", label: "Campaign medium" },
+  { value: "utmCampaign", label: "Campaign" },
+  { value: "name", label: "Event name" },
+  { value: "currency", label: "Currency" },
+] as const;
+
+const SEGMENT_OP_OPTIONS = [
+  { value: "eq", label: "is" },
+  { value: "neq", label: "is not" },
+  { value: "contains", label: "contains" },
+  { value: "startsWith", label: "starts with" },
+  { value: "endsWith", label: "ends with" },
+  { value: "isSet", label: "is set" },
+  { value: "isNotSet", label: "is not set" },
+] as const;
+
+interface DraftRow {
+  field: string;
+  op: string;
+  value: string;
+}
+
+function SegmentsDialog({
+  open,
+  onClose,
+  pushToast,
+}: {
+  open: boolean;
+  onClose: () => void;
+  pushToast: PushToast;
+}) {
+  const { t } = useLingui();
+  const segmentsQ = useAnalyticsSegments();
+  const createSegment = useCreateAnalyticsSegment();
+  const deleteSegment = useDeleteAnalyticsSegment();
+  const segments = segmentsQ.data?.data ?? [];
+
+  const [name, setName] = useState("");
+  const [combine, setCombine] = useState<"all" | "any">("all");
+  const [rows, setRows] = useState<DraftRow[]>([{ field: "path", op: "eq", value: "" }]);
+
+  const patch = (i: number, next: Partial<DraftRow>) =>
+    setRows((r) => r.map((row, j) => (j === i ? { ...row, ...next } : row)));
+
+  const needsValue = (op: string) => op !== "isSet" && op !== "isNotSet";
+  const complete = rows.filter((r) => (needsValue(r.op) ? r.value.trim() !== "" : true));
+  const valid = name.trim() !== "" && complete.length > 0;
+
+  const save = () => {
+    if (!valid) return;
+    const leaves = complete.map((r) =>
+      needsValue(r.op)
+        ? { field: r.field, op: r.op, value: r.value.trim() }
+        : { field: r.field, op: r.op },
+    );
+    // One level of and/or covers essentially every real segment; the server
+    // accepts nesting, but a tree editor is a different product.
+    const definition = leaves.length === 1 ? leaves[0] : { [combine]: leaves };
+    createSegment.mutate(
+      { name: name.trim(), definition },
+      { onError: () => pushToast(t`Could not save the segment.`) },
+    );
+    pushToast(t`Segment saved.`);
+    setName("");
+    setRows([{ field: "path", op: "eq", value: "" }]);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-[560px] [&>*]:min-w-0">
+        <DialogHeader>
+          <DialogTitle>
+            <Trans>Segments</Trans>
+          </DialogTitle>
+          <DialogDescription>
+            <Trans>
+              A saved filter you can apply to every report from the header.
+            </Trans>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex flex-col gap-4">
+            {segments.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {segments.map((sg: ApiAnalyticsSegment) => (
+                  <div
+                    key={sg.id}
+                    className="flex min-w-0 items-center gap-2 rounded-control bg-muted/50 px-2 py-1.5"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{sg.name}</span>
+                    <Button
+                      variant="outline"
+                      icon={I.Trash}
+                      className="shrink-0"
+                      onClick={() => {
+                        deleteSegment.mutate(sg.id, {
+                          onError: () => pushToast(t`Could not remove the segment.`),
+                        });
+                        pushToast(t`Segment removed.`);
+                      }}
+                    >
+                      <Trans>Remove</Trans>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2.5">
+              <Input
+                value={name}
+                placeholder={t`Name — e.g. Mobile from Germany`}
+                onChange={(e) => setName(e.target.value)}
+              />
+
+              <div className="flex items-center gap-2">
+                <span className="text-[12.5px] text-muted-foreground">
+                  <Trans>Match</Trans>
+                </span>
+                <Select
+                  size="sm"
+                  value={combine}
+                  onValueChange={(v) => setCombine(v as "all" | "any")}
+                  className="w-[110px] min-w-0 [&>*]:min-w-0"
+                  options={[
+                    { value: "all", label: t`all of` },
+                    { value: "any", label: t`any of` },
+                  ]}
+                />
+              </div>
+
+              {rows.map((row, i) => (
+                <div
+                  key={`${row.field}-${i}`}
+                  className="grid min-w-0 grid-cols-1 gap-1.5 [&>*]:min-w-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+                >
+                  {/* Every one of these is a dropdown rather than free text:
+                      the value set is finite and known, and a typed field name
+                      is exactly the input the server has to reject. */}
+                  <Select
+                    size="sm"
+                    value={row.field}
+                    onValueChange={(v) => patch(i, { field: v })}
+                    className="min-w-0 [&>*]:min-w-0"
+                    options={SEGMENT_FIELD_OPTIONS.map((o) => ({ ...o }))}
+                  />
+                  <Select
+                    size="sm"
+                    value={row.op}
+                    onValueChange={(v) => patch(i, { op: v })}
+                    className="min-w-0 [&>*]:min-w-0"
+                    options={SEGMENT_OP_OPTIONS.map((o) => ({ ...o }))}
+                  />
+                  {needsValue(row.op) ? (
+                    <Input
+                      value={row.value}
+                      placeholder={t`value`}
+                      onChange={(e) => patch(i, { value: e.target.value })}
+                    />
+                  ) : (
+                    <span />
+                  )}
+                  <Button
+                    variant="outline"
+                    icon={I.Trash}
+                    disabled={rows.length === 1}
+                    onClick={() => setRows((r) => r.filter((_, j) => j !== i))}
+                  >
+                    <Trans>Remove</Trans>
+                  </Button>
+                </div>
+              ))}
+
+              <div>
+                <Button
+                  variant="outline"
+                  icon={I.Plus}
+                  disabled={rows.length >= 10}
+                  onClick={() =>
+                    setRows((r) => [...r, { field: "path", op: "eq", value: "" }])
+                  }
+                >
+                  <Trans>Add condition</Trans>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            <Trans>Close</Trans>
+          </Button>
+          <Button variant="primary" disabled={!valid} onClick={save}>
+            <Trans>Save segment</Trans>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -43,6 +43,7 @@ import {
   extensionsApi,
   itemsApi,
   analyticsApi,
+  type ApiAnalyticsSegment,
   type ApiAnalyticsSite,
   type ApiAnalyticsSiteInput,
   type ApiErrorGroup,
@@ -149,6 +150,7 @@ export const queryKeys = {
   /** Whether a publishable ingest key exists. */
   analyticsIngestKey: () => ["analytics", "ingest-key"] as const,
   analyticsSites: () => ["analytics", "sites"] as const,
+  analyticsSegments: () => ["analytics", "segments"] as const,
   analyticsRevenue: (days: number, siteId: string | null) =>
     ["analytics", "revenue", days, siteId ?? ""] as const,
   analyticsChannels: (days: number, siteId: string | null) =>
@@ -566,12 +568,12 @@ const analyticsRange = (days: number) => {
   return { from: to - days * 86_400_000, to };
 };
 
-export function useAnalyticsOverview(days: number) {
+export function useAnalyticsOverview(days: number, segmentId: string | null = null) {
   return useQuery({
-    queryKey: queryKeys.analytics(days),
+    queryKey: [...queryKeys.analytics(days), segmentId ?? ""],
     queryFn: () => {
       const { from, to } = analyticsRange(days);
-      return analyticsApi.overview(from, to);
+      return analyticsApi.overview(from, to, segmentId ?? undefined);
     },
   });
 }
@@ -627,32 +629,44 @@ export function useErrorGroup(id: string | null) {
   });
 }
 
-export function useAnalyticsRevenue(days: number, siteId: string | null = null) {
+export function useAnalyticsRevenue(
+  days: number,
+  siteId: string | null = null,
+  segmentId: string | null = null,
+) {
   return useQuery({
-    queryKey: queryKeys.analyticsRevenue(days, siteId),
+    queryKey: [...queryKeys.analyticsRevenue(days, siteId), segmentId ?? ""],
     queryFn: () => {
       const { from, to } = analyticsRange(days);
-      return analyticsApi.revenue(from, to, siteId ?? undefined);
+      return analyticsApi.revenue(from, to, siteId ?? undefined, segmentId ?? undefined);
     },
   });
 }
 
-export function useAnalyticsChannels(days: number, siteId: string | null = null) {
+export function useAnalyticsChannels(
+  days: number,
+  siteId: string | null = null,
+  segmentId: string | null = null,
+) {
   return useQuery({
-    queryKey: queryKeys.analyticsChannels(days, siteId),
+    queryKey: [...queryKeys.analyticsChannels(days, siteId), segmentId ?? ""],
     queryFn: () => {
       const { from, to } = analyticsRange(days);
-      return analyticsApi.channels(from, to, siteId ?? undefined);
+      return analyticsApi.channels(from, to, siteId ?? undefined, segmentId ?? undefined);
     },
   });
 }
 
-export function useAnalyticsSessionStats(days: number, siteId: string | null = null) {
+export function useAnalyticsSessionStats(
+  days: number,
+  siteId: string | null = null,
+  segmentId: string | null = null,
+) {
   return useQuery({
-    queryKey: queryKeys.analyticsSessions(days, siteId),
+    queryKey: [...queryKeys.analyticsSessions(days, siteId), segmentId ?? ""],
     queryFn: () => {
       const { from, to } = analyticsRange(days);
-      return analyticsApi.sessions(from, to, siteId ?? undefined);
+      return analyticsApi.sessions(from, to, siteId ?? undefined, segmentId ?? undefined);
     },
   });
 }
@@ -669,6 +683,66 @@ export function useAnalyticsRealtime(live: boolean, siteId: string | null = null
     queryKey: queryKeys.analyticsRealtime(siteId),
     queryFn: () => analyticsApi.realtime(siteId ?? undefined),
     refetchInterval: live ? 10_000 : false,
+  });
+}
+
+const segmentsKey = () => queryKeys.analyticsSegments();
+
+export function useAnalyticsSegments() {
+  return useQuery({ queryKey: segmentsKey(), queryFn: () => analyticsApi.segments() });
+}
+
+export function useCreateAnalyticsSegment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; definition: unknown }) =>
+      analyticsApi.createSegment(input),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: segmentsKey() });
+      const prev = qc.getQueryData<Envelope<ApiAnalyticsSegment[]>>(segmentsKey());
+      qc.setQueryData<Envelope<ApiAnalyticsSegment[]>>(segmentsKey(), (old) =>
+        old
+          ? {
+              ...old,
+              data: [
+                ...old.data,
+                {
+                  id: `pending-${Date.now()}`,
+                  name: input.name,
+                  siteId: null,
+                  definition: input.definition,
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                },
+              ],
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(segmentsKey(), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: segmentsKey() }),
+  });
+}
+
+export function useDeleteAnalyticsSegment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => analyticsApi.deleteSegment(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: segmentsKey() });
+      const prev = qc.getQueryData<Envelope<ApiAnalyticsSegment[]>>(segmentsKey());
+      qc.setQueryData<Envelope<ApiAnalyticsSegment[]>>(segmentsKey(), (old) =>
+        old ? { ...old, data: old.data.filter((x) => x.id !== id) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(segmentsKey(), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: segmentsKey() }),
   });
 }
 

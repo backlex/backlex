@@ -39,6 +39,11 @@ import {
   analyticsRealtime,
   analyticsChannels,
   analyticsRevenue,
+  createSegment,
+  deleteSegment,
+  listSegments,
+  resolveSegment,
+  updateSegment,
   analyticsSessions,
   createSite,
   updateSite,
@@ -367,6 +372,22 @@ const breakdown = <K extends string>(
   key: K,
 ) => rows.map((r) => ({ value: r[key], count: r.count, users: r.users }));
 
+const SegmentType = new GraphQLObjectType({
+  name: "AnalyticsSegment",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    siteId: { type: GraphQLString },
+    definition: {
+      type: JSONScalar,
+      description:
+        "A predicate tree over a closed field allowlist. Re-validated on every read.",
+    },
+    createdAt: { type: new GraphQLNonNull(GraphQLFloat) },
+    updatedAt: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
 const MoneyRowFields = {
   currency: { type: new GraphQLNonNull(GraphQLString) },
   revenue: { type: new GraphQLNonNull(GraphQLFloat) },
@@ -556,6 +577,12 @@ export const analyticsQueryFields: Record<
       };
     },
   },
+  analyticsSegments: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(SegmentType))),
+    description: "Saved analytics filters (admin-only).",
+    resolve: async (_src, _args, gqlCtx) =>
+      listSegments(dbOf(gqlCtx), requireAnalyticsAdmin(gqlCtx)),
+  },
   analyticsRevenue: {
     type: new GraphQLNonNull(RevenueType),
     description:
@@ -564,16 +591,19 @@ export const analyticsQueryFields: Record<
       from: { type: GraphQLFloat },
       to: { type: GraphQLFloat },
       siteId: { type: GraphQLString },
+      segmentId: { type: GraphQLString },
     },
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireAnalyticsAdmin(gqlCtx);
-      const a = args as { from?: number; to?: number; siteId?: string };
+      const a = args as { from?: number; to?: number; siteId?: string; segmentId?: string };
       const { from, to } = resolveRange(a);
+      const segment = await resolveSegment(dbOf(gqlCtx), tenantId, a.segmentId);
       return analyticsRevenue(dbOf(gqlCtx), {
         tenantId,
         from,
         to,
         siteId: a.siteId ?? null,
+        segment,
       });
     },
   },
@@ -585,16 +615,19 @@ export const analyticsQueryFields: Record<
       from: { type: GraphQLFloat },
       to: { type: GraphQLFloat },
       siteId: { type: GraphQLString },
+      segmentId: { type: GraphQLString },
     },
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireAnalyticsAdmin(gqlCtx);
-      const a = args as { from?: number; to?: number; siteId?: string };
+      const a = args as { from?: number; to?: number; siteId?: string; segmentId?: string };
       const { from, to } = resolveRange(a);
+      const segment = await resolveSegment(dbOf(gqlCtx), tenantId, a.segmentId);
       return analyticsChannels(dbOf(gqlCtx), {
         tenantId,
         from,
         to,
         siteId: a.siteId ?? null,
+        segment,
       });
     },
   },
@@ -606,16 +639,19 @@ export const analyticsQueryFields: Record<
       from: { type: GraphQLFloat },
       to: { type: GraphQLFloat },
       siteId: { type: GraphQLString },
+      segmentId: { type: GraphQLString },
     },
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireAnalyticsAdmin(gqlCtx);
-      const a = args as { from?: number; to?: number; siteId?: string };
+      const a = args as { from?: number; to?: number; siteId?: string; segmentId?: string };
       const { from, to } = resolveRange(a);
+      const segment = await resolveSegment(dbOf(gqlCtx), tenantId, a.segmentId);
       return analyticsSessions(dbOf(gqlCtx), {
         tenantId,
         from,
         to,
         siteId: a.siteId ?? null,
+        segment,
       });
     },
   },
@@ -799,6 +835,49 @@ export const analyticsMutationFields: Record<
       const tenantId = requireAnalyticsAdmin(gqlCtx);
       const a = args as { errors: Parameters<typeof recordErrors>[2] };
       return recordErrors(dbOf(gqlCtx), tenantId, a.errors);
+    },
+  },
+  createAnalyticsSegment: {
+    type: new GraphQLNonNull(SegmentType),
+    description: "Save an analytics filter (admin-only).",
+    args: {
+      name: { type: new GraphQLNonNull(GraphQLString) },
+      siteId: { type: GraphQLString },
+      definition: { type: new GraphQLNonNull(JSONScalar) },
+    },
+    resolve: async (_src, args, gqlCtx) =>
+      createSegment(
+        dbOf(gqlCtx),
+        requireAnalyticsAdmin(gqlCtx),
+        args as never,
+        gqlCtx.auth.userId ?? null,
+      ),
+  },
+  updateAnalyticsSegment: {
+    type: new GraphQLNonNull(SegmentType),
+    description: "Update a saved analytics filter (admin-only).",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      name: { type: GraphQLString },
+      siteId: { type: GraphQLString },
+      definition: { type: JSONScalar },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const { id, ...patch } = args as { id: string } & Record<string, unknown>;
+      return updateSegment(dbOf(gqlCtx), requireAnalyticsAdmin(gqlCtx), id, patch);
+    },
+  },
+  deleteAnalyticsSegment: {
+    type: new GraphQLNonNull(GraphQLBoolean),
+    description: "Remove a saved analytics filter (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      await deleteSegment(
+        dbOf(gqlCtx),
+        requireAnalyticsAdmin(gqlCtx),
+        (args as { id: string }).id,
+      );
+      return true;
     },
   },
   createAnalyticsSite: {

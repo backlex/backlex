@@ -117,9 +117,12 @@ A **PDF renderer must be configured** — `PDF_CF_ACCOUNT_ID` +
 with `422` and says so. There is deliberately no bundled fallback renderer; see
 [Document generation](/docs/documents) for why.
 
-On managed cloud the email gateway cannot carry attachments. The covering mail
-still goes, and the response carries `attachmentsDropped: true` so the caller
-can say the report did not travel with it.
+On managed cloud the email gateway carries the PDF (since `v0.4.114`), within
+its own limits: 5 attachments and ~2 MB encoded per message, past which the
+send is refused rather than trimmed. If a transport cannot carry the file at
+all, the covering mail still goes and the response carries
+`attachmentsDropped: true`, so the caller can say the report did not travel
+with it.
 
 ## Surfaces
 

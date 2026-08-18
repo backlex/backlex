@@ -250,12 +250,17 @@ A `start` that renders empty or unparseable **fails the op**. The message names
 the *template*, never the rendered value — it is persisted on the run's activity
 row, and that value is customer data.
 
-**Transports.** Every self-hosted transport carries the file (Resend, SendGrid,
-Mailgun, SES, SMTP, console). The **managed-cloud** gateway does not yet: there
-the mail is still sent and the result carries `attachmentsDropped: true`, so the
-run says the invite did not travel rather than leaving the recipient to find
-out. Nothing is silently lost either way — the flag is what the running
-transport actually does, not what it intends to.
+**Transports.** Every transport carries the file — the self-hosted ones (Resend,
+SendGrid, Mailgun, SES, SMTP, console) and, since `v0.4.114`, the
+**managed-cloud** gateway. The cloud gateway caps a message at 5 attachments
+and ~2 MB of encoded content, and it **refuses** past that rather than trimming,
+so an oversized send fails loudly instead of arriving incomplete.
+
+A transport that genuinely cannot carry the file still sends the mail and
+returns `attachmentsDropped: true`, so the run reports that the invite did not
+travel rather than leaving the recipient to find out. Nothing is silently lost
+either way — the flag is what the running transport actually does, not what it
+intends to.
 
 ### Who an `sms` op texts
 

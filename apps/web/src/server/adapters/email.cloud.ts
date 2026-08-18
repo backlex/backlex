@@ -18,20 +18,21 @@ import { cloudPost } from "../lib/cloud-report";
 export function cloudEmailAdapter(env: Env): EmailAdapter {
   return {
     /**
-     * Declared UNSUPPORTED, and the field is forwarded anyway.
+     * Supported since the control-plane gateway learned to carry the field
+     * (cloud `af2bdc8`, deployed 2026-08-18). Verified against the running
+     * bundle, not the merge: the deployed worker contains the gateway's own
+     * refusal strings.
      *
-     * A `.ics` sent through here would otherwise be dropped between two
-     * services that both reported success — the exact failure this flag exists
-     * to name. Saying so lets the caller tell the operator the invite did not
-     * travel, instead of the recipient finding out.
+     * The two sides agree on one shape — `{ filename, content, contentType? }`
+     * with `content` base64 — so nothing is translated in between.
      *
-     * **The gateway side is written and waiting** on
-     * `feat/gateway-email-attachments` in the control-plane repo. Flip this to
-     * `true` once that branch is merged and DEPLOYED — not when it is merged.
-     * Until the running gateway accepts the field, `true` here is a claim the
-     * live system does not honour, which is worse than the current answer.
+     * What the gateway will NOT do is trim: over 5 attachments, or past ~3M
+     * base64 characters total, it fails the send with a 400 rather than
+     * quietly dropping the overflow. That is deliberate, and it is what lets
+     * this flag say `true` honestly — the promise here is not "attachments
+     * always arrive", it is "if they do not, you are told".
      */
-    attachments: false,
+    attachments: true,
     async send(msg: EmailMessage): Promise<void> {
       let res: Response;
       try {

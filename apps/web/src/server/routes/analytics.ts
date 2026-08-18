@@ -19,6 +19,7 @@ import {
   analyticsOverview,
   analyticsRealtime,
   analyticsRetention,
+  analyticsSessions,
   createSite,
   deleteErrorGroup,
   deleteSite,
@@ -152,6 +153,18 @@ const RetentionResult = z
     ),
   })
   .openapi("AnalyticsRetention");
+
+const Sessions = z
+  .object({
+    sessions: z.number().int(),
+    pageviews: z.number().int(),
+    bounceRate: z.number(),
+    avgDurationMs: z.number().int(),
+    pagesPerSession: z.number(),
+    landingPages: z.array(Breakdown),
+    exitPages: z.array(Breakdown),
+  })
+  .openapi("AnalyticsSessions");
 
 const Realtime = z
   .object({
@@ -663,6 +676,42 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         id,
       );
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/sessions",
+      tags: TAGS,
+      summary: "Sessions, bounce rate, duration, landing and exit pages",
+      description:
+        "Admin-only. Derived at query time from the event stream — a 30-minute gap " +
+        "between one visitor's hits ends a session. Covers tag traffic only: a " +
+        "server-side SDK event is not a visit. Optionally scoped to one site.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        query: RangeQuery.extend({ siteId: z.string().optional() }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: Sessions }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const q = c.req.valid("query");
+      const { from, to } = resolveRange(q);
+      const data = await analyticsSessions(
+        { db: ctx.db, dialect: ctx.dialect },
+        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null },
+      );
+      return c.json({ data });
     },
   )
   .openapi(

@@ -19,7 +19,9 @@
  * into JS. They're written as parameterized CTE chains that both dialects
  * accept. The only dialect branch is timestamp shape — Postgres binds `Date`
  * against `timestamptz` and adds windows as an `interval`, SQLite binds epoch
- * milliseconds and adds them as integers ({@link tsParam}, {@link windowSql}).
+ * milliseconds and adds them as integers ({@link tsParam}, {@link windowSql},
+ * {@link elapsedMsSql} — all three are the same branch wearing different hats:
+ * how an instant is bound, offset, and subtracted).
  *
  * **Why `analytics_events.day` exists.** Cohort grouping runs on the
  * denormalized `YYYY-MM-DD` text column instead of date functions, which have
@@ -83,6 +85,19 @@ const windowSql = (dialect: "pg" | "sqlite", base: string, ms: number) =>
   dialect === "pg"
     ? sql.raw(`${base} + interval '${Math.floor(ms)} milliseconds'`)
     : sql.raw(`${base} + ${Math.floor(ms)}`);
+
+/**
+ * `<b> - <a>` as a millisecond count.
+ *
+ * The third face of the one dialect branch this module allows. Subtracting two
+ * `timestamptz` values in Postgres yields an `interval`, which cannot be summed
+ * into a number; SQLite stores epoch milliseconds, so subtraction is already
+ * the answer. Both sides are column references chosen here, never caller text.
+ */
+const elapsedMsSql = (dialect: "pg" | "sqlite", a: string, b: string) =>
+  dialect === "pg"
+    ? sql.raw(`(EXTRACT(EPOCH FROM (${b} - ${a})) * 1000)`)
+    : sql.raw(`(${b} - ${a})`);
 
 /** Run a raw query against either dialect, normalising to a plain row array
  *  (mirrors `services/advisor.ts::runRaw`). */
@@ -601,6 +616,163 @@ export const resolveIngestKey = async (
   }[];
   const hit = rows.find((r) => r.value === hash);
   return hit ? { tenantId: hit.tenantId ?? null } : null;
+};
+
+/* ── Sessions ─────────────────────────────────────────────────────────── */
+
+/** GA's session definition: a gap this long ends the session. */
+export const SESSION_GAP_MS = 30 * 60_000;
+
+export interface AnalyticsSessions {
+  sessions: number;
+  pageviews: number;
+  /** Sessions with exactly one pageview, as a share of all sessions (0..1). */
+  bounceRate: number;
+  /** Mean session duration in ms. Bounces contribute 0 — a single hit has no
+   *  measurable length, and dropping them would flatter the average. */
+  avgDurationMs: number;
+  pagesPerSession: number;
+  landingPages: AnalyticsBreakdownRow[];
+  exitPages: AnalyticsBreakdownRow[];
+}
+
+/**
+ * Sessionize the web stream at query time.
+ *
+ * There is no `sessions` table and no second write path: a window function
+ * derives session boundaries from the events already stored. A 30-minute gap
+ * between one visitor's consecutive hits opens a new session, which is GA's
+ * definition and Plausible's.
+ *
+ * **Partitioned by `(distinct_id, day)`, filtered on `day`.** Two reasons, and
+ * the second is the load-bearing one. Cookieless ids are day-scoped anyway, so
+ * a cross-day partition would be meaningless for them. And the index that can
+ * serve this is `(tenant_id, day, distinct_id, ts)` — filtering on `ts` instead
+ * would put the range predicate outside the index prefix and scan the tenant's
+ * entire history. That index shipped in phase 1 precisely for this query.
+ *
+ * **`site_id IS NOT NULL`** restricts it to tag traffic. Server-side SDK
+ * events have no session at all, and letting them in would inflate every
+ * figure here with things that are not visits.
+ *
+ * The explicit `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` on
+ * the FIRST_VALUE/LAST_VALUE frame is not decoration: the DEFAULT frame ends at
+ * the current row, so `LAST_VALUE` without it returns the current row's path
+ * rather than the session's last — an exit-page report that is silently just
+ * the landing page.
+ */
+export const analyticsSessions = async (
+  ctx: AnalyticsDbCtx,
+  opts: AnalyticsRange & { siteId?: string | null },
+): Promise<AnalyticsSessions> => {
+  const fromDay = utcDay(opts.from);
+  const toDay = utcDay(opts.to);
+  const siteFilter = opts.siteId ? sql` AND site_id = ${opts.siteId}` : sql``;
+
+  /** The shared prefix: raw events → one row per (visitor, day, session). */
+  const sessionCte = sql`
+    lagged AS (
+      SELECT distinct_id, day, ts, path,
+             LAG(ts) OVER (PARTITION BY distinct_id, day ORDER BY ts) AS prev_ts
+      FROM analytics_events
+      WHERE ${tenantSql(opts.tenantId)}
+        AND day >= ${fromDay} AND day <= ${toDay}
+        AND site_id IS NOT NULL${siteFilter}
+    ),
+    marked AS (
+      SELECT distinct_id, day, ts, path,
+             CASE WHEN prev_ts IS NULL
+                       OR ${windowSql(ctx.dialect, "prev_ts", SESSION_GAP_MS)} < ts
+                  THEN 1 ELSE 0 END AS is_new
+      FROM lagged
+    ),
+    numbered AS (
+      SELECT distinct_id, day, ts, path,
+             SUM(is_new) OVER (
+               PARTITION BY distinct_id, day ORDER BY ts
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) AS sn
+      FROM marked
+    )`;
+
+  const totalsQuery = sql`
+    WITH ${sessionCte},
+    agg AS (
+      SELECT distinct_id, day, sn,
+             COUNT(*) AS hits,
+             MIN(ts) AS started,
+             MAX(ts) AS ended
+      FROM numbered GROUP BY distinct_id, day, sn
+    )
+    SELECT COUNT(*) AS sessions,
+           SUM(hits) AS pageviews,
+           SUM(CASE WHEN hits = 1 THEN 1 ELSE 0 END) AS bounces,
+           SUM(${elapsedMsSql(ctx.dialect, "started", "ended")}) AS duration_ms
+    FROM agg`;
+
+  const pagesQuery = sql`
+    WITH ${sessionCte},
+    framed AS (
+      SELECT distinct_id, day, sn, ts,
+             FIRST_VALUE(path) OVER (
+               PARTITION BY distinct_id, day, sn ORDER BY ts
+               ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+             ) AS landing,
+             LAST_VALUE(path) OVER (
+               PARTITION BY distinct_id, day, sn ORDER BY ts
+               ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+             ) AS exit_path
+      FROM numbered
+    ),
+    one AS (
+      SELECT distinct_id, day, sn, MIN(landing) AS landing, MIN(exit_path) AS exit_path
+      FROM framed GROUP BY distinct_id, day, sn
+    )
+    SELECT landing, exit_path, distinct_id FROM one`;
+
+  const [totalsRows, pageRows] = await Promise.all([
+    runRaw<Record<string, unknown>>(ctx.db, ctx.dialect, totalsQuery),
+    runRaw<{ landing: unknown; exit_path: unknown; distinct_id: unknown }>(
+      ctx.db,
+      ctx.dialect,
+      pagesQuery,
+    ),
+  ]);
+
+  const row = totalsRows[0] ?? {};
+  const sessions = num(row.sessions);
+  const pageviews = num(row.pageviews);
+  const bounces = num(row.bounces);
+  const durationMs = num(row.duration_ms);
+
+  const tally = (pick: (r: (typeof pageRows)[number]) => unknown) => {
+    const m = new Map<string, { count: number; users: Set<string> }>();
+    for (const r of pageRows) {
+      const key = pick(r);
+      if (typeof key !== "string" || !key) continue;
+      let hit = m.get(key);
+      if (!hit) {
+        hit = { count: 0, users: new Set() };
+        m.set(key, hit);
+      }
+      hit.count++;
+      hit.users.add(String(r.distinct_id));
+    }
+    return [...m.entries()]
+      .map(([value, v]) => ({ value, count: v.count, users: v.users.size }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  };
+
+  return {
+    sessions,
+    pageviews,
+    bounceRate: sessions > 0 ? bounces / sessions : 0,
+    avgDurationMs: sessions > 0 ? Math.round(durationMs / sessions) : 0,
+    pagesPerSession: sessions > 0 ? pageviews / sessions : 0,
+    landingPages: tally((r) => r.landing),
+    exitPages: tally((r) => r.exit_path),
+  };
 };
 
 /* ── Realtime ─────────────────────────────────────────────────────────── */

@@ -18,7 +18,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime>
+const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime|sessions>
 
   overview [--days <n>]                headline counters + top breakdowns
   events [--name <n>] [--limit <n>]    recent raw tracked events
@@ -33,6 +33,7 @@ const HELP = `backlex analytics <overview|events|event-names|funnel|retention|er
   report-error --message <m> [--stack <s>] [--type <t>]
   ingest-key <status|mint|revoke>      publishable client key
   realtime [--site <id>]               who is on the site in the last 30 min
+  sessions [--site <id>] [--days <n>]  bounce rate, duration, landing/exit pages
   sites                                websites measured by the drop-in tag
   sites add --name <n> --domain <d>    register one, and print its snippet
   sites rm <id>                        stop accepting that snippet
@@ -353,6 +354,41 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         );
         if (json) printJson(res);
         else process.stderr.write(`Reported (group ${res.groups[0] ?? "—"}).\n`);
+        return;
+      }
+      case "sessions": {
+        const { from, to } = windowFrom(rest);
+        const site = flag(rest, "--site");
+        const params = new URLSearchParams({ from: String(from), to: String(to) });
+        if (site) params.set("siteId", site);
+        const { data } = await client.request<{ data: any }>(
+          "GET",
+          `${BASE}/sessions?${params}`,
+        );
+        if (json) {
+          printJson(data);
+          return;
+        }
+        printKeyValues({
+          sessions: String(data.sessions),
+          pageviews: String(data.pageviews),
+          "bounce rate": `${Math.round(data.bounceRate * 100)}%`,
+          "avg duration": `${Math.round(data.avgDurationMs / 1000)}s`,
+          "pages / session": data.pagesPerSession.toFixed(2),
+        });
+        const section = (title: string, rows: any[]) => {
+          if (!rows?.length) return;
+          process.stderr.write(`\n${title}\n`);
+          printTable(
+            rows.map((r: any) => ({
+              page: r.value,
+              sessions: r.count,
+              visitors: r.users,
+            })),
+          );
+        };
+        section("Landing pages", data.landingPages);
+        section("Exit pages", data.exitPages);
         return;
       }
       case "realtime": {

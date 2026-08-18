@@ -410,6 +410,16 @@ export interface ApiAnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+export interface ApiAnalyticsSessions {
+  sessions: number;
+  pageviews: number;
+  bounceRate: number;
+  avgDurationMs: number;
+  pagesPerSession: number;
+  landingPages: ApiAnalyticsBreakdown[];
+  exitPages: ApiAnalyticsBreakdown[];
+}
+
 export interface ApiAnalyticsRealtime {
   visitorsNow: number;
   events: number;
@@ -422,6 +432,10 @@ export interface ApiAnalyticsRealtime {
 }
 
 export const analyticsApi = {
+  sessions: (from: number, to: number, siteId?: string) =>
+    api<Envelope<ApiAnalyticsSessions>>(
+      `/api/admin/analytics/sessions${analyticsQs({ from, to, siteId })}`,
+    ),
   realtime: (siteId?: string) =>
     api<Envelope<ApiAnalyticsRealtime>>(
       `/api/admin/analytics/realtime${analyticsQs({ siteId })}`,

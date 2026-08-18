@@ -202,6 +202,63 @@ test("pg: retention cohorts key on the first-ever day", async () => {
   expect(cohort.values[2]).toBe(1);
 }, PGLITE_TEST_TIMEOUT_MS);
 
+test("pg: sessionization produces the identical numbers to sqlite", async () => {
+  if (skipped()) return;
+  // The twin of `analytics-sessions.test.ts`, on the same hand-worked fixture.
+  // This is the phase's real dialect exposure: subtracting two timestamps is an
+  // `interval` on Postgres and an integer on SQLite, and `LAST_VALUE` without
+  // an explicit frame silently returns the current row on both — an exit-page
+  // report that is really the landing-page report. Only asserting the exact
+  // integers on BOTH dialects catches either.
+  const { buildContext } = await import("../src/server/context");
+  const { analyticsSessions, getSiteById, recordEvents } = await import(
+    "../src/server/services/analytics"
+  );
+  const ctx = await buildContext(harness!.env);
+  const db = { db: ctx.db, dialect: ctx.dialect } as never;
+
+  const created = await harness!.fetch("/api/admin/analytics/sites", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "S", domain: "pg-sessions.example" }),
+  });
+  const site = ((await created.json()) as any).data.id as string;
+  const tenant = (await getSiteById(db, site))!.tenantId;
+
+  const MIN = 60_000;
+  const T = Date.parse("2026-08-17T09:00:00.000Z");
+  await recordEvents(
+    db,
+    tenant,
+    [
+      { name: "page_view", distinctId: "v1", siteId: site, path: "/a", ts: T },
+      { name: "page_view", distinctId: "v1", siteId: site, path: "/b", ts: T + 5 * MIN },
+      { name: "page_view", distinctId: "v1", siteId: site, path: "/c", ts: T + 10 * MIN },
+      { name: "page_view", distinctId: "v1", siteId: site, path: "/d", ts: T + 41 * MIN },
+      { name: "page_view", distinctId: "v2", siteId: site, path: "/x", ts: T + 2 * MIN },
+      { name: "page_view", distinctId: "v3", siteId: site, path: "/p", ts: T + 3 * MIN },
+      { name: "page_view", distinctId: "v3", siteId: site, path: "/q", ts: T + 13 * MIN },
+      { name: "cron_ran", distinctId: "srv", path: "/internal", ts: T + 4 * MIN },
+    ],
+    T + 6 * 60 * MIN,
+  );
+
+  const s = await analyticsSessions(db, {
+    tenantId: tenant,
+    from: T - MIN,
+    to: T + 6 * 60 * MIN,
+    siteId: site,
+  });
+
+  expect(s.sessions).toBe(4);
+  expect(s.pageviews).toBe(7);
+  expect(s.bounceRate).toBeCloseTo(0.5, 5);
+  // The interval arithmetic: 10 + 0 + 0 + 10 minutes over 4 sessions.
+  expect(s.avgDurationMs).toBe(5 * MIN);
+  expect(s.landingPages.map((r) => r.value).sort()).toEqual(["/a", "/d", "/p", "/x"]);
+  expect(s.exitPages.map((r) => r.value).sort()).toEqual(["/c", "/d", "/q", "/x"]);
+}, PGLITE_TEST_TIMEOUT_MS);
+
 test("pg: error groups fold, reopen and delete", async () => {
   if (skipped()) return;
   const report = await harness!.fetch("/api/analytics/errors", {

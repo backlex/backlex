@@ -47,6 +47,7 @@ import {
   useAnalyticsIngestKey,
   useAnalyticsOverview,
   useAnalyticsRealtime,
+  useAnalyticsSessionStats,
   useAnalyticsRetention,
   useAnalyticsSites,
   useCreateAnalyticsSite,
@@ -431,6 +432,79 @@ function OverviewTab({
             users: r.users,
           }))}
           empty={t`No campaigns yet — tag a landing URL with ?utm_source=… to see it here.`}
+        />
+      </div>
+
+      <SessionsBlock days={days} />
+    </>
+  );
+}
+
+/**
+ * Session metrics, shown only when there is tag traffic to compute them from.
+ *
+ * A workspace that only calls `track()` from its app has no sessions — server
+ * events are not visits — and rendering "0% bounce rate, 0s average" for it
+ * would be four confident zeros about something that was never measured.
+ */
+function SessionsBlock({ days }: { days: number }) {
+  const { t } = useLingui();
+  const q = useAnalyticsSessionStats(days);
+  const s = q.data?.data;
+  if (!s || s.sessions === 0) return null;
+
+  const duration = (ms: number) => {
+    const total = Math.round(ms / 1000);
+    const m = Math.floor(total / 60);
+    const sec = total % 60;
+    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile
+          label={t`Sessions`}
+          value={fmtCount(s.sessions)}
+          sub={t`30-minute inactivity`}
+        />
+        <StatTile
+          label={t`Bounce rate`}
+          value={`${Math.round(s.bounceRate * 100)}%`}
+          sub={t`one-page sessions`}
+        />
+        <StatTile
+          label={t`Avg duration`}
+          value={duration(s.avgDurationMs)}
+          sub={t`bounces count as zero`}
+        />
+        <StatTile
+          label={t`Pages / session`}
+          value={s.pagesPerSession.toFixed(2)}
+          sub={t`depth of a visit`}
+        />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <BreakdownCard
+          title={t`Landing pages`}
+          unit={t`sessions`}
+          rows={s.landingPages.map((r) => ({
+            label: r.value,
+            count: r.count,
+            users: r.users,
+          }))}
+          empty={t`No landing pages in this window.`}
+        />
+        <BreakdownCard
+          title={t`Exit pages`}
+          unit={t`sessions`}
+          rows={s.exitPages.map((r) => ({
+            label: r.value,
+            count: r.count,
+            users: r.users,
+          }))}
+          empty={t`No exit pages in this window.`}
         />
       </div>
     </>

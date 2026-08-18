@@ -84,6 +84,30 @@ const SITE_PROPS = {
   },
 } as const;
 
+export const analyticsSessionsTool: McpTool = {
+  name: "analytics.sessions",
+  kind: "read",
+  description:
+    "Sessions, bounce rate, average duration, pages per session, and the top " +
+    "landing and exit pages. Derived at query time — a 30-minute gap between one " +
+    "visitor's hits ends a session. Covers tag traffic only; a server-side SDK " +
+    "event is not a visit. Defaults to the last 30 days.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      ...RANGE_PROPS,
+      siteId: { type: "string", description: "Limit to one registered site." },
+    },
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(
+      `/api/admin/analytics/sessions${qs(args, ["from", "to", "siteId"])}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const analyticsRealtimeTool: McpTool = {
   name: "analytics.realtime",
   kind: "read",
@@ -400,6 +424,7 @@ export const deleteErrorGroup: McpTool = {
 export const analyticsTools: McpTool[] = [
   analyticsOverview,
   analyticsRealtimeTool,
+  analyticsSessionsTool,
   analyticsSites,
   analyticsSiteCreate,
   analyticsSiteUpdate,

@@ -23,6 +23,7 @@ import {
   analyticsFunnel,
   analyticsOverview,
   analyticsRealtime,
+  analyticsSessions,
   analyticsRetention,
 } from "./analytics";
 import { runItemsAggregate } from "./items/aggregate";
@@ -301,6 +302,7 @@ export const ANALYTICS_PANEL_METRICS = [
   "funnel",
   "retention",
   "realtime",
+  "sessions",
   "top-countries",
   "top-devices",
   "top-campaigns",
@@ -334,6 +336,27 @@ export const runAnalyticsPanel = async (
   const to = Date.now();
   const from = to - rangeDays * 86_400_000;
   const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+
+  if (metric === "sessions") {
+    const s = await analyticsSessions(dbCtx, {
+      tenantId: scopeTenant,
+      from,
+      to,
+      siteId: typeof config?.siteId === "string" ? config.siteId : null,
+    });
+    // One row of headline figures — the panel renderer reads the first
+    // non-numeric column as the label, so there is none and every column is a
+    // series, which is what a stat-style panel wants.
+    return [
+      {
+        sessions: s.sessions,
+        pageviews: s.pageviews,
+        bounceRatePct: Math.round(s.bounceRate * 100),
+        avgDurationSec: Math.round(s.avgDurationMs / 1000),
+        pagesPerSession: Number(s.pagesPerSession.toFixed(2)),
+      },
+    ];
+  }
 
   if (metric === "realtime") {
     // Deliberately ignores `rangeDays`: "the last 30 minutes" is the metric, not

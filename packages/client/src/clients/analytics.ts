@@ -102,6 +102,20 @@ export interface AnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+/** Sessions derived at query time from the tag stream. A 30-minute gap between
+ *  one visitor's hits ends a session; server-side SDK events are not visits. */
+export interface AnalyticsSessions {
+  sessions: number;
+  pageviews: number;
+  /** Share of sessions with exactly one pageview, 0..1. */
+  bounceRate: number;
+  /** Mean duration in ms. Bounces count as 0 rather than being dropped. */
+  avgDurationMs: number;
+  pagesPerSession: number;
+  landingPages: AnalyticsBreakdownRow[];
+  exitPages: AnalyticsBreakdownRow[];
+}
+
 /** The last 30 minutes. `truncated` is true when a row cap bit, which makes
  *  every figure below it a floor rather than a total. */
 export interface AnalyticsRealtime {
@@ -263,6 +277,12 @@ export interface AnalyticsClient {
     delete(id: string): Promise<{ ok: boolean }>;
   };
   /** Publishable ingest-key management (admin). */
+  /** Sessions, bounce rate, duration, landing and exit pages. */
+  sessions(input?: {
+    from?: number;
+    to?: number;
+    siteId?: string;
+  }): Promise<{ data: AnalyticsSessions }>;
   /** Who is on the site right now — the last 30 minutes, by minute. */
   realtime(opts?: { siteId?: string }): Promise<{ data: AnalyticsRealtime }>;
   /** Websites measured by the drop-in tag. */
@@ -444,6 +464,17 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
       update: (id: string, patch: { status: "open" | "resolved" | "ignored" }) =>
         core.request<{ data: ErrorGroup }>("PATCH", errPath(id), patch),
       delete: (id: string) => core.request<{ ok: boolean }>("DELETE", errPath(id)),
+    },
+    sessions: (input?: { from?: number; to?: number; siteId?: string }) => {
+      const qs = new URLSearchParams();
+      if (input?.from !== undefined) qs.set("from", String(input.from));
+      if (input?.to !== undefined) qs.set("to", String(input.to));
+      if (input?.siteId) qs.set("siteId", input.siteId);
+      const tail = qs.toString();
+      return core.request<{ data: AnalyticsSessions }>(
+        "GET",
+        `/api/admin/analytics/sessions${tail ? `?${tail}` : ""}`,
+      );
     },
     realtime: (opts?: { siteId?: string }) =>
       core.request<{ data: AnalyticsRealtime }>(

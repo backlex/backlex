@@ -209,6 +209,29 @@ and sessions, a **zero-filled** daily series (a quiet day is a zero, not a gap),
 and top-N breakdowns by event name, path, referrer and source. Default window
 is 30 days; the maximum span is 365.
 
+### Sessions
+
+`GET /api/admin/analytics/sessions?from=&to=&siteId=` — sessions, bounce rate,
+average duration, pages per session, and the top landing and exit pages. A
+30-minute gap between one visitor's hits ends a session, which is GA's
+definition.
+
+There is **no sessions table**: a window function reconstructs the boundaries
+from the events already stored, so nothing is written twice and nothing can
+drift. Two details are load-bearing:
+
+- It partitions by `(distinct_id, day)` and filters on `day`, not `ts`. The
+  index that serves it is `(tenant_id, day, distinct_id, ts)`; a range
+  predicate on `ts` would sit outside that prefix and scan the workspace's
+  whole history.
+- It covers tag traffic only (`site_id IS NOT NULL`). A server-side SDK event
+  is not a visit, and counting one would inflate every figure here.
+
+Bounces count as zero duration rather than being dropped — excluding them would
+flatter the average by roughly 2×. The admin shows the block only when there is
+tag traffic to compute it from: four confident zeros about something never
+measured is worse than an absent card.
+
 ### Realtime
 
 `GET /api/admin/analytics/realtime?siteId=` — the last 30 minutes, bucketed by
@@ -266,7 +289,8 @@ metrics can be dropped onto a dashboard and published to a public embed:
 ```
 
 Metrics: `totals`, `series`, `top-events`, `top-paths`, `top-referrers`,
-`sources`, `top-countries`, `top-devices`, `top-campaigns`, `realtime` (which
+`sources`, `top-countries`, `top-devices`, `top-campaigns`, `sessions`,
+`realtime` (which
 ignores `rangeDays` — "the last 30 minutes" is the metric, not a window),
 `funnel` (with `steps` + `windowDays`), `retention` (with an optional `event`). Unlike `items-aggregate` panels there is no per-role clamp to apply on
 an embed — the stream has no row-level owner, only counts — so analytics panels
@@ -297,7 +321,7 @@ Ingest (publishable key / API key / session): `POST /api/analytics/events`,
 Public web tag (no auth; the site id is the only parameter):
 `POST /api/analytics/collect`, `GET /api/analytics/script.js`.
 
-Admin (`/api/admin/analytics`, admin-only): `GET /realtime`, `GET|POST /sites`,
+Admin (`/api/admin/analytics`, admin-only): `GET /sessions`, `GET /realtime`, `GET|POST /sites`,
 `PATCH|DELETE /sites/{id}`, `GET /overview`,
 `GET /event-names`, `POST /funnel`, `POST /retention`, `GET /events`,
 `GET /errors`, `GET /errors/{id}`, `PATCH /errors/{id}`, `DELETE /errors/{id}`,
@@ -316,6 +340,7 @@ await client.analytics.overview({ from, to });
 await client.analytics.funnel({ steps: ["a", "b"], windowDays: 7 });
 await client.analytics.retention({ event: "page_view" });
 await client.analytics.realtime();
+await client.analytics.sessions({ siteId });
 await client.analytics.errors.list({ status: "open" });
 await client.analytics.errors.update(id, { status: "resolved" });
 await client.analytics.ingestKey.mint();
@@ -328,7 +353,7 @@ await client.analytics.sites.delete(id);
 
 ### GraphQL
 
-Queries `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
+Queries `analyticsSessions`, `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
 `analyticsRetention`, `analyticsEvents`, `errorGroups`, `errorGroup`.
 Mutations `trackEvents`, `trackErrors`, `updateErrorGroup`, `deleteErrorGroup`,
 `createAnalyticsSite`, `updateAnalyticsSite`, `deleteAnalyticsSite`.
@@ -337,7 +362,7 @@ since that's what client bundles use.
 
 ### MCP
 
-`analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
+`analytics.sessions`, `analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
 `analytics.site_delete`, `analytics.overview`, `analytics.event_names`, `analytics.funnel`,
 `analytics.retention`, `analytics.events`, `errors.list`, `errors.get`,
 `errors.update`, `errors.delete`. The reporting verbs are classified `read`, so
@@ -356,6 +381,7 @@ backlex analytics track deploy_finished --props '{"version":"1.4.0"}'
 backlex analytics report-error --message "nightly job failed" --type CronError
 backlex analytics ingest-key mint
 backlex analytics realtime
+backlex analytics sessions --days 30
 backlex analytics sites
 backlex analytics sites add --name "Marketing" --domain example.com
 backlex analytics sites rm <id>

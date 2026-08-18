@@ -37,6 +37,7 @@ import {
   listEventNames,
   listSites,
   analyticsRealtime,
+  analyticsSessions,
   createSite,
   updateSite,
   deleteSite,
@@ -364,6 +365,23 @@ const breakdown = <K extends string>(
   key: K,
 ) => rows.map((r) => ({ value: r[key], count: r.count, users: r.users }));
 
+const SessionsType = new GraphQLObjectType({
+  name: "AnalyticsSessions",
+  fields: {
+    sessions: { type: new GraphQLNonNull(GraphQLInt) },
+    pageviews: { type: new GraphQLNonNull(GraphQLInt) },
+    bounceRate: { type: new GraphQLNonNull(GraphQLFloat) },
+    avgDurationMs: { type: new GraphQLNonNull(GraphQLInt) },
+    pagesPerSession: { type: new GraphQLNonNull(GraphQLFloat) },
+    landingPages: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType))),
+    },
+    exitPages: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType))),
+    },
+  },
+});
+
 const RealtimeMinuteType = new GraphQLObjectType({
   name: "AnalyticsRealtimeMinute",
   fields: {
@@ -451,6 +469,27 @@ export const analyticsQueryFields: Record<
         topReferrers: breakdown(o.topReferrers, "referrer"),
         sources: breakdown(o.sources, "source"),
       };
+    },
+  },
+  analyticsSessions: {
+    type: new GraphQLNonNull(SessionsType),
+    description:
+      "Sessions, bounce rate, average duration, pages per session, and landing / exit pages — derived at query time from tag traffic (admin-only).",
+    args: {
+      from: { type: GraphQLFloat },
+      to: { type: GraphQLFloat },
+      siteId: { type: GraphQLString },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as { from?: number; to?: number; siteId?: string };
+      const { from, to } = resolveRange(a);
+      return analyticsSessions(dbOf(gqlCtx), {
+        tenantId,
+        from,
+        to,
+        siteId: a.siteId ?? null,
+      });
     },
   },
   analyticsRealtime: {

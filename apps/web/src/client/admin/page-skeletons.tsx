@@ -298,7 +298,10 @@ function AnalyticsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={3} />
-      {/* Six tab pills: overview, realtime, funnel, retention, errors, sites. */}
+      {/* Six tab pills: overview, realtime, funnel, retention, errors, sites.
+          The sessions block below the breakdowns is NOT reserved here: it only
+          renders when tag traffic exists, and a skeleton for something that
+          may never appear is its own layout jump. */}
       <div className="flex items-center gap-1.5">
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-9 w-[92px]" />

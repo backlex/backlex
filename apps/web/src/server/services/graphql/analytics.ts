@@ -37,6 +37,7 @@ import {
   listEventNames,
   listSites,
   analyticsRealtime,
+  analyticsChannels,
   analyticsSessions,
   createSite,
   updateSite,
@@ -365,6 +366,37 @@ const breakdown = <K extends string>(
   key: K,
 ) => rows.map((r) => ({ value: r[key], count: r.count, users: r.users }));
 
+const ChannelRowType = new GraphQLObjectType({
+  name: "AnalyticsChannelRow",
+  fields: {
+    channel: { type: new GraphQLNonNull(GraphQLString) },
+    sessions: { type: new GraphQLNonNull(GraphQLInt) },
+    visitors: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const SourceMediumType = new GraphQLObjectType({
+  name: "AnalyticsSourceMedium",
+  fields: {
+    value: { type: new GraphQLNonNull(GraphQLString) },
+    sessions: { type: new GraphQLNonNull(GraphQLInt) },
+    visitors: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const ChannelsType = new GraphQLObjectType({
+  name: "AnalyticsChannels",
+  fields: {
+    channels: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ChannelRowType))),
+    },
+    sourceMedium: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(SourceMediumType))),
+    },
+    totalSessions: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
 const SessionsType = new GraphQLObjectType({
   name: "AnalyticsSessions",
   fields: {
@@ -469,6 +501,27 @@ export const analyticsQueryFields: Record<
         topReferrers: breakdown(o.topReferrers, "referrer"),
         sources: breakdown(o.sources, "source"),
       };
+    },
+  },
+  analyticsChannels: {
+    type: new GraphQLNonNull(ChannelsType),
+    description:
+      "GA4 Default Channel Groups and a source/medium breakdown. Attribution is last non-direct touch within a session — cookieless ids rotate daily, so cross-session attribution is unavailable (admin-only).",
+    args: {
+      from: { type: GraphQLFloat },
+      to: { type: GraphQLFloat },
+      siteId: { type: GraphQLString },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as { from?: number; to?: number; siteId?: string };
+      const { from, to } = resolveRange(a);
+      return analyticsChannels(dbOf(gqlCtx), {
+        tenantId,
+        from,
+        to,
+        siteId: a.siteId ?? null,
+      });
     },
   },
   analyticsSessions: {

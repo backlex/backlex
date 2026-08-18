@@ -46,6 +46,7 @@ import {
   useAnalyticsFunnel,
   useAnalyticsIngestKey,
   useAnalyticsOverview,
+  useAnalyticsChannels,
   useAnalyticsRealtime,
   useAnalyticsSessionStats,
   useAnalyticsRetention,
@@ -436,6 +437,7 @@ function OverviewTab({
       </div>
 
       <SessionsBlock days={days} />
+      <ChannelsBlock days={days} />
     </>
   );
 }
@@ -1564,5 +1566,57 @@ function RealtimeTab() {
         </>
       )}
     </div>
+  );
+}
+
+/* ── Channels ─────────────────────────────────────────────────────────── */
+
+/**
+ * Where sessions came from.
+ *
+ * The caveat under the cards is not boilerplate. This number looks exactly
+ * like GA4's and is a weaker claim: attribution is scoped to a single session,
+ * because a cookieless visitor id rotates at UTC midnight and a campaign from
+ * an earlier day cannot be joined to this visit. Someone comparing the two
+ * tools has to be told, not left to infer it.
+ */
+function ChannelsBlock({ days }: { days: number }) {
+  const { t } = useLingui();
+  const q = useAnalyticsChannels(days);
+  const c = q.data?.data;
+  if (!c || c.totalSessions === 0) return null;
+
+  return (
+    <>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <BreakdownCard
+          title={t`Channels`}
+          unit={t`sessions`}
+          rows={c.channels.map((r) => ({
+            label: r.channel,
+            count: r.sessions,
+            users: r.visitors,
+          }))}
+          empty={t`No sessions to attribute in this window.`}
+        />
+        <BreakdownCard
+          title={t`Source / medium`}
+          unit={t`sessions`}
+          rows={c.sourceMedium.map((r) => ({
+            label: r.value,
+            count: r.sessions,
+            users: r.visitors,
+          }))}
+          empty={t`No tagged traffic in this window.`}
+        />
+      </div>
+      <p className="m-0 text-[11.5px] text-muted-foreground">
+        <Trans>
+          Attribution is the last non-direct touch within a session. Cookieless
+          visitor ids rotate daily, so a campaign from an earlier day cannot be
+          credited to this visit.
+        </Trans>
+      </p>
+    </>
   );
 }

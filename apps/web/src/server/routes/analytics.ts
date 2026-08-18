@@ -17,6 +17,7 @@ import {
   MAX_FUNNEL_STEPS,
   analyticsFunnel,
   analyticsOverview,
+  analyticsChannels,
   analyticsRealtime,
   analyticsRetention,
   analyticsSessions,
@@ -153,6 +154,26 @@ const RetentionResult = z
     ),
   })
   .openapi("AnalyticsRetention");
+
+const Channels = z
+  .object({
+    channels: z.array(
+      z.object({
+        channel: z.string(),
+        sessions: z.number().int(),
+        visitors: z.number().int(),
+      }),
+    ),
+    sourceMedium: z.array(
+      z.object({
+        value: z.string(),
+        sessions: z.number().int(),
+        visitors: z.number().int(),
+      }),
+    ),
+    totalSessions: z.number().int(),
+  })
+  .openapi("AnalyticsChannels");
 
 const Sessions = z
   .object({
@@ -676,6 +697,42 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         id,
       );
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/channels",
+      tags: TAGS,
+      summary: "Where sessions came from",
+      description:
+        "Admin-only. GA4's Default Channel Groups plus a `source / medium` breakdown. " +
+        "Attribution is LAST NON-DIRECT TOUCH WITHIN A SESSION — cookieless visitor " +
+        "ids rotate daily, so a campaign that brought someone in on an earlier day " +
+        "cannot be joined to this visit. Classification is derived at query time, so " +
+        "the whole history reclassifies when the rules change.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: { query: RangeQuery.extend({ siteId: z.string().optional() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: Channels }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const q = c.req.valid("query");
+      const { from, to } = resolveRange(q);
+      const data = await analyticsChannels(
+        { db: ctx.db, dialect: ctx.dialect },
+        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null },
+      );
+      return c.json({ data });
     },
   )
   .openapi(

@@ -209,6 +209,34 @@ and sessions, a **zero-filled** daily series (a quiet day is a zero, not a gap),
 and top-N breakdowns by event name, path, referrer and source. Default window
 is 30 days; the maximum span is 365.
 
+### Channels & attribution
+
+`GET /api/admin/analytics/channels?from=&to=&siteId=` — GA4's Default Channel
+Groups (Direct, Organic Search, Paid Search, Organic Social, Paid Social,
+Email, Affiliate, Display, Referral) plus a `source / medium` breakdown.
+
+> **Attribution is the last non-direct touch WITHIN a session.** That is a
+> weaker claim than GA4's, and the number looks identical, so the admin and the
+> CLI both say it out loud. Cookieless visitor ids rotate at UTC midnight, so a
+> campaign that brought someone in three days ago cannot be joined to this
+> visit. Within a session, a touch carrying attribution wins over a bare direct
+> hit regardless of order — a visitor who opens a bookmark and then clicks an
+> emailed link in the same session came from Email.
+
+Classification is **derived at query time, never stored**. A `channel` column
+would freeze today's rules into yesterday's rows: adding a new social network
+to the list would leave every historical visit from it reading as Referral
+forever. Deriving it means the whole history reclassifies the moment the rules
+change, which is what anyone comparing quarters actually wants.
+
+The rules themselves live in `services/analytics-channels.ts` as pure
+functions with no database, so they are cheap to test and cheap to adjust. An
+explicit paid medium beats whatever the referrer looks like — an ad click and
+an organic result share `google.com` and differ only in the tag, and getting
+that backwards files every paid campaign as free traffic. An unrecognised
+referrer falls through to `Referral`, which is a correct answer rather than a
+guess, and is why the host lists can stay short.
+
 ### Sessions
 
 `GET /api/admin/analytics/sessions?from=&to=&siteId=` — sessions, bounce rate,
@@ -290,6 +318,7 @@ metrics can be dropped onto a dashboard and published to a public embed:
 
 Metrics: `totals`, `series`, `top-events`, `top-paths`, `top-referrers`,
 `sources`, `top-countries`, `top-devices`, `top-campaigns`, `sessions`,
+`channels`,
 `realtime` (which
 ignores `rangeDays` — "the last 30 minutes" is the metric, not a window),
 `funnel` (with `steps` + `windowDays`), `retention` (with an optional `event`). Unlike `items-aggregate` panels there is no per-role clamp to apply on
@@ -321,7 +350,7 @@ Ingest (publishable key / API key / session): `POST /api/analytics/events`,
 Public web tag (no auth; the site id is the only parameter):
 `POST /api/analytics/collect`, `GET /api/analytics/script.js`.
 
-Admin (`/api/admin/analytics`, admin-only): `GET /sessions`, `GET /realtime`, `GET|POST /sites`,
+Admin (`/api/admin/analytics`, admin-only): `GET /channels`, `GET /sessions`, `GET /realtime`, `GET|POST /sites`,
 `PATCH|DELETE /sites/{id}`, `GET /overview`,
 `GET /event-names`, `POST /funnel`, `POST /retention`, `GET /events`,
 `GET /errors`, `GET /errors/{id}`, `PATCH /errors/{id}`, `DELETE /errors/{id}`,
@@ -341,6 +370,7 @@ await client.analytics.funnel({ steps: ["a", "b"], windowDays: 7 });
 await client.analytics.retention({ event: "page_view" });
 await client.analytics.realtime();
 await client.analytics.sessions({ siteId });
+await client.analytics.channels({ siteId });
 await client.analytics.errors.list({ status: "open" });
 await client.analytics.errors.update(id, { status: "resolved" });
 await client.analytics.ingestKey.mint();
@@ -353,7 +383,7 @@ await client.analytics.sites.delete(id);
 
 ### GraphQL
 
-Queries `analyticsSessions`, `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
+Queries `analyticsChannels`, `analyticsSessions`, `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
 `analyticsRetention`, `analyticsEvents`, `errorGroups`, `errorGroup`.
 Mutations `trackEvents`, `trackErrors`, `updateErrorGroup`, `deleteErrorGroup`,
 `createAnalyticsSite`, `updateAnalyticsSite`, `deleteAnalyticsSite`.
@@ -362,7 +392,7 @@ since that's what client bundles use.
 
 ### MCP
 
-`analytics.sessions`, `analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
+`analytics.channels`, `analytics.sessions`, `analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
 `analytics.site_delete`, `analytics.overview`, `analytics.event_names`, `analytics.funnel`,
 `analytics.retention`, `analytics.events`, `errors.list`, `errors.get`,
 `errors.update`, `errors.delete`. The reporting verbs are classified `read`, so
@@ -382,6 +412,7 @@ backlex analytics report-error --message "nightly job failed" --type CronError
 backlex analytics ingest-key mint
 backlex analytics realtime
 backlex analytics sessions --days 30
+backlex analytics channels --days 30
 backlex analytics sites
 backlex analytics sites add --name "Marketing" --domain example.com
 backlex analytics sites rm <id>

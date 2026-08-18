@@ -410,6 +410,12 @@ export interface ApiAnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+export interface ApiAnalyticsChannels {
+  channels: { channel: string; sessions: number; visitors: number }[];
+  sourceMedium: { value: string; sessions: number; visitors: number }[];
+  totalSessions: number;
+}
+
 export interface ApiAnalyticsSessions {
   sessions: number;
   pageviews: number;
@@ -432,6 +438,10 @@ export interface ApiAnalyticsRealtime {
 }
 
 export const analyticsApi = {
+  channels: (from: number, to: number, siteId?: string) =>
+    api<Envelope<ApiAnalyticsChannels>>(
+      `/api/admin/analytics/channels${analyticsQs({ from, to, siteId })}`,
+    ),
   sessions: (from: number, to: number, siteId?: string) =>
     api<Envelope<ApiAnalyticsSessions>>(
       `/api/admin/analytics/sessions${analyticsQs({ from, to, siteId })}`,

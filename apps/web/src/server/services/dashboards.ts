@@ -22,6 +22,7 @@ import type { Ctx } from "../context";
 import {
   analyticsFunnel,
   analyticsOverview,
+  analyticsChannels,
   analyticsRealtime,
   analyticsSessions,
   analyticsRetention,
@@ -303,6 +304,7 @@ export const ANALYTICS_PANEL_METRICS = [
   "retention",
   "realtime",
   "sessions",
+  "channels",
   "top-countries",
   "top-devices",
   "top-campaigns",
@@ -336,6 +338,16 @@ export const runAnalyticsPanel = async (
   const to = Date.now();
   const from = to - rangeDays * 86_400_000;
   const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+
+  if (metric === "channels") {
+    const c = await analyticsChannels(dbCtx, {
+      tenantId: scopeTenant,
+      from,
+      to,
+      siteId: typeof config?.siteId === "string" ? config.siteId : null,
+    });
+    return c.channels as unknown as Record<string, unknown>[];
+  }
 
   if (metric === "sessions") {
     const s = await analyticsSessions(dbCtx, {

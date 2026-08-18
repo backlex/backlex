@@ -30,6 +30,7 @@
  */
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
+import { classifyChannel, sourceMediumLabel } from "./analytics-channels";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { hashToken } from "./shared-links";
@@ -661,18 +662,24 @@ export interface AnalyticsSessions {
  * rather than the session's last — an exit-page report that is silently just
  * the landing page.
  */
-export const analyticsSessions = async (
+/**
+ * The sessionization CTE chain, shared by every session-scoped report.
+ *
+ * Ends with a `numbered` relation of one row per event carrying its session
+ * ordinal `sn`, so a caller only has to say what it wants per session. Kept in
+ * one place because the gap rule IS the definition of a session — two copies
+ * would be two definitions the moment one is tuned.
+ */
+const sessionCteSql = (
   ctx: AnalyticsDbCtx,
   opts: AnalyticsRange & { siteId?: string | null },
-): Promise<AnalyticsSessions> => {
+) => {
   const fromDay = utcDay(opts.from);
   const toDay = utcDay(opts.to);
   const siteFilter = opts.siteId ? sql` AND site_id = ${opts.siteId}` : sql``;
-
-  /** The shared prefix: raw events → one row per (visitor, day, session). */
-  const sessionCte = sql`
+  return sql`
     lagged AS (
-      SELECT distinct_id, day, ts, path,
+      SELECT distinct_id, day, ts, path, referrer, utm_source, utm_medium,
              LAG(ts) OVER (PARTITION BY distinct_id, day ORDER BY ts) AS prev_ts
       FROM analytics_events
       WHERE ${tenantSql(opts.tenantId)}
@@ -680,20 +687,27 @@ export const analyticsSessions = async (
         AND site_id IS NOT NULL${siteFilter}
     ),
     marked AS (
-      SELECT distinct_id, day, ts, path,
+      SELECT distinct_id, day, ts, path, referrer, utm_source, utm_medium,
              CASE WHEN prev_ts IS NULL
                        OR ${windowSql(ctx.dialect, "prev_ts", SESSION_GAP_MS)} < ts
                   THEN 1 ELSE 0 END AS is_new
       FROM lagged
     ),
     numbered AS (
-      SELECT distinct_id, day, ts, path,
+      SELECT distinct_id, day, ts, path, referrer, utm_source, utm_medium,
              SUM(is_new) OVER (
                PARTITION BY distinct_id, day ORDER BY ts
                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
              ) AS sn
       FROM marked
     )`;
+};
+
+export const analyticsSessions = async (
+  ctx: AnalyticsDbCtx,
+  opts: AnalyticsRange & { siteId?: string | null },
+): Promise<AnalyticsSessions> => {
+  const sessionCte = sessionCteSql(ctx, opts);
 
   const totalsQuery = sql`
     WITH ${sessionCte},
@@ -772,6 +786,104 @@ export const analyticsSessions = async (
     pagesPerSession: sessions > 0 ? pageviews / sessions : 0,
     landingPages: tally((r) => r.landing),
     exitPages: tally((r) => r.exit_path),
+  };
+};
+
+/* ── Channels ─────────────────────────────────────────────────────────── */
+
+export interface AnalyticsChannels {
+  /** One row per Default Channel Group, ordered by sessions. */
+  channels: { channel: string; sessions: number; visitors: number }[];
+  /** GA4's `source / medium` breakdown, top 10. */
+  sourceMedium: { value: string; sessions: number; visitors: number }[];
+  totalSessions: number;
+}
+
+/**
+ * Where sessions came from.
+ *
+ * Attribution here is **last non-direct touch WITHIN a session** — the session
+ * is the unit, not the visitor. That limit is a direct consequence of the
+ * cookieless identity: a visitor id rotates at UTC midnight, so "the campaign
+ * that brought them here three days ago" is a join we cannot make. The UI says
+ * so rather than letting the number be read as GA4-equivalent.
+ *
+ * Within a session, the touch carrying attribution wins over a bare direct
+ * hit regardless of order — a visitor who lands on a bookmarked page and then
+ * clicks an emailed link in the same session came from Email, and ordering
+ * strictly by time would file that as Direct.
+ */
+export const analyticsChannels = async (
+  ctx: AnalyticsDbCtx,
+  opts: AnalyticsRange & { siteId?: string | null },
+): Promise<AnalyticsChannels> => {
+  const query = sql`
+    WITH ${sessionCteSql(ctx, opts)},
+    ranked AS (
+      SELECT distinct_id, day, sn, referrer, utm_source, utm_medium,
+             ROW_NUMBER() OVER (
+               PARTITION BY distinct_id, day, sn
+               ORDER BY
+                 CASE WHEN (referrer IS NOT NULL AND referrer <> '')
+                            OR (utm_source IS NOT NULL AND utm_source <> '')
+                       THEN 0 ELSE 1 END,
+                 ts
+             ) AS rn
+      FROM numbered
+    )
+    SELECT distinct_id, referrer, utm_source, utm_medium
+    FROM ranked WHERE rn = 1`;
+
+  const rows = await runRaw<{
+    distinct_id: unknown;
+    referrer: unknown;
+    utm_source: unknown;
+    utm_medium: unknown;
+  }>(ctx.db, ctx.dialect, query);
+
+  const asText = (v: unknown) => (typeof v === "string" ? v : null);
+  const byChannel = new Map<string, { sessions: number; users: Set<string> }>();
+  const bySourceMedium = new Map<string, { sessions: number; users: Set<string> }>();
+
+  const bump = (
+    m: Map<string, { sessions: number; users: Set<string> }>,
+    key: string,
+    who: string,
+  ) => {
+    let hit = m.get(key);
+    if (!hit) {
+      hit = { sessions: 0, users: new Set() };
+      m.set(key, hit);
+    }
+    hit.sessions++;
+    hit.users.add(who);
+  };
+
+  for (const r of rows) {
+    const touch = {
+      referrer: asText(r.referrer),
+      utmSource: asText(r.utm_source),
+      utmMedium: asText(r.utm_medium),
+    };
+    const who = String(r.distinct_id);
+    bump(byChannel, classifyChannel(touch), who);
+    bump(bySourceMedium, sourceMediumLabel(touch), who);
+  }
+
+  const shape = (m: Map<string, { sessions: number; users: Set<string> }>, limit: number) =>
+    [...m.entries()]
+      .map(([value, v]) => ({ value, sessions: v.sessions, visitors: v.users.size }))
+      .sort((a, b) => b.sessions - a.sessions)
+      .slice(0, limit);
+
+  return {
+    channels: shape(byChannel, 12).map((r) => ({
+      channel: r.value,
+      sessions: r.sessions,
+      visitors: r.visitors,
+    })),
+    sourceMedium: shape(bySourceMedium, 10),
+    totalSessions: rows.length,
   };
 };
 

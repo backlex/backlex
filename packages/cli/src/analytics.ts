@@ -18,7 +18,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime|sessions>
+const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime|sessions|channels>
 
   overview [--days <n>]                headline counters + top breakdowns
   events [--name <n>] [--limit <n>]    recent raw tracked events
@@ -34,6 +34,7 @@ const HELP = `backlex analytics <overview|events|event-names|funnel|retention|er
   ingest-key <status|mint|revoke>      publishable client key
   realtime [--site <id>]               who is on the site in the last 30 min
   sessions [--site <id>] [--days <n>]  bounce rate, duration, landing/exit pages
+  channels [--site <id>] [--days <n>]  where sessions came from (session-scoped)
   sites                                websites measured by the drop-in tag
   sites add --name <n> --domain <d>    register one, and print its snippet
   sites rm <id>                        stop accepting that snippet
@@ -354,6 +355,43 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         );
         if (json) printJson(res);
         else process.stderr.write(`Reported (group ${res.groups[0] ?? "—"}).\n`);
+        return;
+      }
+      case "channels": {
+        const { from, to } = windowFrom(rest);
+        const site = flag(rest, "--site");
+        const params = new URLSearchParams({ from: String(from), to: String(to) });
+        if (site) params.set("siteId", site);
+        const { data } = await client.request<{ data: any }>(
+          "GET",
+          `${BASE}/channels?${params}`,
+        );
+        if (json) {
+          printJson(data);
+          return;
+        }
+        printTable(
+          data.channels.map((c: any) => ({
+            channel: c.channel,
+            sessions: c.sessions,
+            visitors: c.visitors,
+          })),
+        );
+        if (data.sourceMedium.length) {
+          process.stderr.write("\nSource / medium\n");
+          printTable(
+            data.sourceMedium.map((s: any) => ({
+              "source / medium": s.value,
+              sessions: s.sessions,
+              visitors: s.visitors,
+            })),
+          );
+        }
+        // Said every time, because the number reads exactly like GA4's and is
+        // not the same claim.
+        process.stderr.write(
+          "\nAttribution is last non-direct touch within a session; cookieless ids rotate daily.\n",
+        );
         return;
       }
       case "sessions": {

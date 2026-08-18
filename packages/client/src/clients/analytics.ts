@@ -102,6 +102,15 @@ export interface AnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+/** Where sessions came from. Attribution is last non-direct touch WITHIN a
+ *  session — cookieless ids rotate daily, so cross-session attribution is not
+ *  available for tag traffic. */
+export interface AnalyticsChannels {
+  channels: { channel: string; sessions: number; visitors: number }[];
+  sourceMedium: { value: string; sessions: number; visitors: number }[];
+  totalSessions: number;
+}
+
 /** Sessions derived at query time from the tag stream. A 30-minute gap between
  *  one visitor's hits ends a session; server-side SDK events are not visits. */
 export interface AnalyticsSessions {
@@ -277,6 +286,12 @@ export interface AnalyticsClient {
     delete(id: string): Promise<{ ok: boolean }>;
   };
   /** Publishable ingest-key management (admin). */
+  /** Default Channel Groups and a source/medium breakdown. */
+  channels(input?: {
+    from?: number;
+    to?: number;
+    siteId?: string;
+  }): Promise<{ data: AnalyticsChannels }>;
   /** Sessions, bounce rate, duration, landing and exit pages. */
   sessions(input?: {
     from?: number;
@@ -303,6 +318,16 @@ export interface AnalyticsClient {
     revoke(): Promise<{ ok: boolean }>;
   };
 }
+
+/** Shared query string for the range-plus-site reports. */
+const rangeQs = (input?: { from?: number; to?: number; siteId?: string }): string => {
+  const qs = new URLSearchParams();
+  if (input?.from !== undefined) qs.set("from", String(input.from));
+  if (input?.to !== undefined) qs.set("to", String(input.to));
+  if (input?.siteId) qs.set("siteId", input.siteId);
+  const tail = qs.toString();
+  return tail ? `?${tail}` : "";
+};
 
 export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
   // Product analytics + crash reporting. `track*` post to the public ingest
@@ -465,17 +490,16 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
         core.request<{ data: ErrorGroup }>("PATCH", errPath(id), patch),
       delete: (id: string) => core.request<{ ok: boolean }>("DELETE", errPath(id)),
     },
-    sessions: (input?: { from?: number; to?: number; siteId?: string }) => {
-      const qs = new URLSearchParams();
-      if (input?.from !== undefined) qs.set("from", String(input.from));
-      if (input?.to !== undefined) qs.set("to", String(input.to));
-      if (input?.siteId) qs.set("siteId", input.siteId);
-      const tail = qs.toString();
-      return core.request<{ data: AnalyticsSessions }>(
+    channels: (input?: { from?: number; to?: number; siteId?: string }) =>
+      core.request<{ data: AnalyticsChannels }>(
         "GET",
-        `/api/admin/analytics/sessions${tail ? `?${tail}` : ""}`,
-      );
-    },
+        `/api/admin/analytics/channels${rangeQs(input)}`,
+      ),
+    sessions: (input?: { from?: number; to?: number; siteId?: string }) =>
+      core.request<{ data: AnalyticsSessions }>(
+        "GET",
+        `/api/admin/analytics/sessions${rangeQs(input)}`,
+      ),
     realtime: (opts?: { siteId?: string }) =>
       core.request<{ data: AnalyticsRealtime }>(
         "GET",

@@ -84,6 +84,31 @@ const SITE_PROPS = {
   },
 } as const;
 
+export const analyticsChannelsTool: McpTool = {
+  name: "analytics.channels",
+  kind: "read",
+  description:
+    "Where sessions came from: GA4's Default Channel Groups (Direct, Organic " +
+    "Search, Paid Search, Organic/Paid Social, Email, Affiliate, Display, " +
+    "Referral) plus a `source / medium` breakdown. Attribution is last " +
+    "non-direct touch WITHIN a session — cookieless visitor ids rotate daily, " +
+    "so a campaign from an earlier day cannot be joined to this visit.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      ...RANGE_PROPS,
+      siteId: { type: "string", description: "Limit to one registered site." },
+    },
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(
+      `/api/admin/analytics/channels${qs(args, ["from", "to", "siteId"])}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const analyticsSessionsTool: McpTool = {
   name: "analytics.sessions",
   kind: "read",
@@ -425,6 +450,7 @@ export const analyticsTools: McpTool[] = [
   analyticsOverview,
   analyticsRealtimeTool,
   analyticsSessionsTool,
+  analyticsChannelsTool,
   analyticsSites,
   analyticsSiteCreate,
   analyticsSiteUpdate,

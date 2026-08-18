@@ -581,6 +581,10 @@ export interface Env {
   /** Days of tracked product-analytics events to keep. The stream is the
    *  highest-volume table backlex writes, and the aggregates that matter
    *  (funnels, retention) are windowed anyway. Defaults to 90. */
+  /** Secret the cookieless visitor hash is derived from. Falls back to
+   *  `AUTH_SECRET`. Rotating it resets every visitor identity at once — which
+   *  is a legitimate privacy lever, and also a discontinuity in the numbers. */
+  ANALYTICS_SALT?: string;
   ANALYTICS_RETENTION_DAYS?: string;
   /** Days of captured error occurrences (stacks + context) to keep. Groups
    *  outlive their occurrences — only a group with nothing left AND no sighting
@@ -826,6 +830,7 @@ export const STRING_ENV_KEYS = [
   "S3_SECRET_ACCESS_KEY",
   "ACTIVITY_RETENTION_DAYS",
   "ACCESS_AUDIT_RETENTION_DAYS",
+  "ANALYTICS_SALT",
   "ANALYTICS_RETENTION_DAYS",
   "ERRORS_RETENTION_DAYS",
   "MCP_AUDIT_LEVEL",

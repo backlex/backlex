@@ -43,6 +43,8 @@ import {
   extensionsApi,
   itemsApi,
   analyticsApi,
+  type ApiAnalyticsSite,
+  type ApiAnalyticsSiteInput,
   type ApiErrorGroup,
   type ApiErrorGroupDetail,
   type ApiErrorStatus,
@@ -59,6 +61,7 @@ import {
   tracesApi,
   usageApi,
 } from "./api";
+import type { Envelope } from "./api/types";
 import { reorderVisible } from "@backlex/db/order";
 import type { Post } from "./config";
 import { type ItemsQueryParams, reconcileBulkUpdate } from "./lib/items-query-params";
@@ -145,6 +148,7 @@ export const queryKeys = {
   errorGroup: (id: string) => ["errors", "detail", id] as const,
   /** Whether a publishable ingest key exists. */
   analyticsIngestKey: () => ["analytics", "ingest-key"] as const,
+  analyticsSites: () => ["analytics", "sites"] as const,
   /** Enabled extensions — drives dynamic sidebar panels + extension field
    *  editors. Shares the `["extensions"]` prefix with the admin page's list
    *  query so one invalidate refreshes both. */
@@ -612,6 +616,99 @@ export function useErrorGroup(id: string | null) {
     queryKey: queryKeys.errorGroup(id ?? ""),
     queryFn: () => analyticsApi.error(id as string),
     enabled: !!id,
+  });
+}
+
+export function useAnalyticsSites() {
+  return useQuery({
+    queryKey: queryKeys.analyticsSites(),
+    queryFn: () => analyticsApi.sites(),
+  });
+}
+
+/**
+ * Site mutations, all optimistic.
+ *
+ * A site row is the operator's own config, so it must repaint the instant they
+ * act — waiting on a round-trip before the row appears is the await-then-refetch
+ * shape this codebase does not ship. `onMutate` patches the raw query cache,
+ * `onError` restores the snapshot, `onSettled` reconciles.
+ */
+const sitesKey = () => queryKeys.analyticsSites();
+
+export function useCreateAnalyticsSite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ApiAnalyticsSiteInput) => analyticsApi.createSite(input),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: sitesKey() });
+      const prev = qc.getQueryData<Envelope<ApiAnalyticsSite[]>>(sitesKey());
+      // A placeholder id so React has a stable key; the reconcile replaces it.
+      const optimistic: ApiAnalyticsSite = {
+        id: `pending-${Date.now()}`,
+        name: input.name,
+        domain: input.domain,
+        tz: "UTC",
+        excludedPaths: input.excludedPaths ?? [],
+        ignoredIps: input.ignoredIps ?? [],
+        filterBots: input.filterBots ?? true,
+        requireKnownOrigin: input.requireKnownOrigin ?? true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      qc.setQueryData<Envelope<ApiAnalyticsSite[]>>(sitesKey(), (old) =>
+        old ? { ...old, data: [...old.data, optimistic] } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(sitesKey(), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: sitesKey() }),
+  });
+}
+
+export function useUpdateAnalyticsSite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; patch: Partial<ApiAnalyticsSiteInput> }) =>
+      analyticsApi.updateSite(v.id, v.patch),
+    onMutate: async (v) => {
+      await qc.cancelQueries({ queryKey: sitesKey() });
+      const prev = qc.getQueryData<Envelope<ApiAnalyticsSite[]>>(sitesKey());
+      qc.setQueryData<Envelope<ApiAnalyticsSite[]>>(sitesKey(), (old) =>
+        old
+          ? {
+              ...old,
+              data: old.data.map((s) => (s.id === v.id ? { ...s, ...v.patch } : s)),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(sitesKey(), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: sitesKey() }),
+  });
+}
+
+export function useDeleteAnalyticsSite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => analyticsApi.deleteSite(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: sitesKey() });
+      const prev = qc.getQueryData<Envelope<ApiAnalyticsSite[]>>(sitesKey());
+      qc.setQueryData<Envelope<ApiAnalyticsSite[]>>(sitesKey(), (old) =>
+        old ? { ...old, data: old.data.filter((s) => s.id !== id) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(sitesKey(), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: sitesKey() }),
   });
 }
 

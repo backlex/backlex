@@ -77,6 +77,31 @@ export interface AnalyticsOverview {
   topCampaigns: AnalyticsBreakdownRow[];
 }
 
+/** A website registered for tag-based measurement. Its `id` ships in the
+ *  public snippet, so treat it as naming a destination, not authenticating one. */
+export interface AnalyticsSite {
+  id: string;
+  name: string;
+  domain: string;
+  tz: string;
+  excludedPaths: string[];
+  ignoredIps: string[];
+  filterBots: boolean;
+  requireKnownOrigin: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AnalyticsSiteInput {
+  name: string;
+  domain: string;
+  tz?: string;
+  excludedPaths?: string[];
+  ignoredIps?: string[];
+  filterBots?: boolean;
+  requireKnownOrigin?: boolean;
+}
+
 export interface AnalyticsFunnelResult {
   windowDays: number;
   steps: { name: string; count: number; conversion: number; dropOff: number }[];
@@ -226,6 +251,16 @@ export interface AnalyticsClient {
     delete(id: string): Promise<{ ok: boolean }>;
   };
   /** Publishable ingest-key management (admin). */
+  /** Websites measured by the drop-in tag. */
+  sites: {
+    list(): Promise<{ data: AnalyticsSite[] }>;
+    create(input: AnalyticsSiteInput): Promise<{ data: AnalyticsSite }>;
+    update(
+      id: string,
+      patch: Partial<AnalyticsSiteInput>,
+    ): Promise<{ data: AnalyticsSite }>;
+    delete(id: string): Promise<{ ok: boolean }>;
+  };
   ingestKey: {
     /** Whether a key exists. The plaintext is never recoverable. */
     status(): Promise<{ data: { exists: boolean } }>;
@@ -395,6 +430,27 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
       update: (id: string, patch: { status: "open" | "resolved" | "ignored" }) =>
         core.request<{ data: ErrorGroup }>("PATCH", errPath(id), patch),
       delete: (id: string) => core.request<{ ok: boolean }>("DELETE", errPath(id)),
+    },
+    sites: {
+      list: () =>
+        core.request<{ data: AnalyticsSite[] }>("GET", "/api/admin/analytics/sites"),
+      create: (input: AnalyticsSiteInput) =>
+        core.request<{ data: AnalyticsSite }>(
+          "POST",
+          "/api/admin/analytics/sites",
+          input,
+        ),
+      update: (id: string, patch: Partial<AnalyticsSiteInput>) =>
+        core.request<{ data: AnalyticsSite }>(
+          "PATCH",
+          `/api/admin/analytics/sites/${encodeURIComponent(id)}`,
+          patch,
+        ),
+      delete: (id: string) =>
+        core.request<{ ok: boolean }>(
+          "DELETE",
+          `/api/admin/analytics/sites/${encodeURIComponent(id)}`,
+        ),
     },
     ingestKey: {
       status: () =>

@@ -54,6 +54,86 @@ Backfilling historical analytics from another provider is therefore *not*
 supported through this endpoint; those rows would all collapse onto the 7-day
 boundary.
 
+## Measuring a website (the drop-in tag)
+
+Everything above assumes your app calls `track()`. For a website — a marketing
+site, a docs site, anything you did not want to add an SDK to — register the
+site and paste one line:
+
+```html
+<script defer src="https://your-workspace.example.com/api/analytics/script.js"
+        data-site="<site-id>"></script>
+```
+
+Register it under **Analytics → Sites** (or `backlex analytics sites add --name
+"Marketing" --domain example.com`, which prints the snippet for you). The site
+id is public by design: it names a destination, it does not authenticate one.
+
+The tag reports a `page_view` on load and on every SPA route change — it wraps
+`pushState` / `replaceState` and listens for `popstate` and `hashchange`, so a
+client-side router is measured without extra code. Custom events use the global
+it installs:
+
+```js
+backlex("signup", { plan: "pro" });
+```
+
+### It is cookieless, and what that costs
+
+The tag stores **nothing** on the visitor's device: no cookie, no
+`localStorage`, no `sessionStorage`. The visitor id is derived server-side from
+a daily-rotating hash of the request's IP and user-agent; neither is ever
+written to a column.
+
+Two things follow, and neither is hidden in the UI:
+
+- **This is pseudonymous, not anonymous.** The salt is derived from a secret
+  the operator holds (`ANALYTICS_SALT`, falling back to `AUTH_SECRET`), so an
+  operator with an IP and user-agent could recompute an id. What it does buy is
+  real: nothing on the device, and no id that outlives the day.
+- **Cohort reports exclude it.** At 00:00 UTC every visitor becomes new. A
+  retention grid or a multi-day funnel built on rotating ids would not be
+  incomplete — it would be *wrong*, showing every returning visitor as new. So
+  those two reports filter to durable (SDK) ids, and the overview reports
+  `cookielessShare` alongside a per-day visitor figure so you can see which
+  number you are reading.
+
+Rotating `ANALYTICS_SALT` resets every visitor identity at once. That is a
+legitimate privacy lever and also a visible discontinuity in the numbers.
+
+### Per-site settings
+
+| Setting | Effect |
+|---|---|
+| **Bots filtered** | Declared crawlers are dropped rather than labelled `bot`. |
+| **Origin checked** | Events whose origin is not the registered domain are refused. Subdomains count as the same site. |
+| **Excluded paths** | Never recorded. A leading or trailing `*` is supported (`/admin/*`). |
+| **Ignored IPs** | Never recorded — your office, a monitoring probe. |
+
+All four are enforced **server-side**. The tag's own opt-outs (`DNT`,
+`globalPrivacyControl`, and skipping `localhost` unless
+`data-allow-localhost="true"`) are advice a client can decline to follow; these
+are not.
+
+> **The origin check is not a security boundary.** `Origin` is forgeable by any
+> non-browser client. It stops a snippet copied onto a staging host and casual
+> abuse; what bounds a determined caller is the per-(site, IP) rate limit, and
+> the endpoint is append-only — it can never read a row back.
+
+### Why the tag does not use the ingest endpoint
+
+`POST /api/analytics/collect` exists separately from `POST /api/analytics/events`
+because four things make the latter unusable from a `<script>` on someone
+else's domain: the app's CORS layer is credentialed with an origin allowlist;
+the SDK always sends `credentials: "include"`, which a wildcard origin rejects;
+`navigator.sendBeacon` cannot set the `X-Backlex-Ingest-Key` header; and
+`distinctId` is required, which a cookieless tag does not have.
+
+So collect opts out of that CORS layer, answers `Access-Control-Allow-Origin: *`
+**without** credentials, and takes a `text/plain` body — which keeps the request
+"simple", so there is no preflight and a beacon fired during page unload still
+arrives.
+
 ## Ingest
 
 `POST /api/analytics/events` and `POST /api/analytics/errors` are append-only
@@ -180,6 +260,7 @@ Both streams are pruned by the daily cron sweep:
 | Env var | Default | What it drops |
 |---|---|---|
 | `ANALYTICS_RETENTION_DAYS` | 90 | Tracked events older than N days. |
+| `ANALYTICS_SALT` | `AUTH_SECRET` | Secret the cookieless visitor hash derives from. Rotating it resets every visitor identity. |
 | `ERRORS_RETENTION_DAYS` | 90 | Error *occurrences* older than N days. A group is only dropped once it has no occurrences left **and** hasn't been seen since the cutoff — an active bug keeps its full counter. |
 
 ## Surfaces
@@ -193,7 +274,11 @@ the funnel/retention SQL is pinned in `apps/web/tests/analytics-pg.test.ts`.
 Ingest (publishable key / API key / session): `POST /api/analytics/events`,
 `POST /api/analytics/errors`.
 
-Admin (`/api/admin/analytics`, admin-only): `GET /overview`,
+Public web tag (no auth; the site id is the only parameter):
+`POST /api/analytics/collect`, `GET /api/analytics/script.js`.
+
+Admin (`/api/admin/analytics`, admin-only): `GET|POST /sites`,
+`PATCH|DELETE /sites/{id}`, `GET /overview`,
 `GET /event-names`, `POST /funnel`, `POST /retention`, `GET /events`,
 `GET /errors`, `GET /errors/{id}`, `PATCH /errors/{id}`, `DELETE /errors/{id}`,
 `GET|POST|DELETE /ingest-key`.
@@ -213,19 +298,26 @@ await client.analytics.retention({ event: "page_view" });
 await client.analytics.errors.list({ status: "open" });
 await client.analytics.errors.update(id, { status: "resolved" });
 await client.analytics.ingestKey.mint();
+
+await client.analytics.sites.list();
+await client.analytics.sites.create({ name: "Marketing", domain: "example.com" });
+await client.analytics.sites.update(id, { filterBots: false });
+await client.analytics.sites.delete(id);
 ```
 
 ### GraphQL
 
-Queries `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
+Queries `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
 `analyticsRetention`, `analyticsEvents`, `errorGroups`, `errorGroup`.
-Mutations `trackEvents`, `trackErrors`, `updateErrorGroup`, `deleteErrorGroup`.
+Mutations `trackEvents`, `trackErrors`, `updateErrorGroup`, `deleteErrorGroup`,
+`createAnalyticsSite`, `updateAnalyticsSite`, `deleteAnalyticsSite`.
 Ingest is admin-gated on this surface — the publishable-key path is REST-only,
 since that's what client bundles use.
 
 ### MCP
 
-`analytics.overview`, `analytics.event_names`, `analytics.funnel`,
+`analytics.sites`, `analytics.site_create`, `analytics.site_update`,
+`analytics.site_delete`, `analytics.overview`, `analytics.event_names`, `analytics.funnel`,
 `analytics.retention`, `analytics.events`, `errors.list`, `errors.get`,
 `errors.update`, `errors.delete`. The reporting verbs are classified `read`, so
 they stay available to read-only API keys.
@@ -242,6 +334,9 @@ backlex analytics resolve <id> | ignore <id> | reopen <id>
 backlex analytics track deploy_finished --props '{"version":"1.4.0"}'
 backlex analytics report-error --message "nightly job failed" --type CronError
 backlex analytics ingest-key mint
+backlex analytics sites
+backlex analytics sites add --name "Marketing" --domain example.com
+backlex analytics sites rm <id>
 ```
 
 `track` and `report-error` exist so a CI job or shell script can mark a deploy
@@ -249,11 +344,12 @@ or a failed batch without pulling in the SDK.
 
 ## Admin UI
 
-**Observability → Analytics**, four tabs over one shared time window:
+**Observability → Analytics**, five tabs over one shared time window:
 Overview (counters, daily chart, top-N), Funnel (a step builder that only
 offers event names you've actually tracked), Retention (the cohort grid), and
 Errors (crash groups + triage, with the stack trace and affected-visitor count
-in the detail dialog).
+in the detail dialog), and Sites (register a website, copy its snippet, toggle
+bot filtering and the origin check).
 
 ## Implementation notes
 

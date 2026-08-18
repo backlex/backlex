@@ -14,6 +14,7 @@ import { useUrlTab } from "../../use-url-tab";
 import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
 import {
   Dialog,
   DialogBody,
@@ -34,6 +35,7 @@ import {
 import {
   analyticsApi,
   type ApiAnalyticsOverview,
+  type ApiAnalyticsSite,
   type ApiErrorGroup,
   type ApiErrorStatus,
 } from "../../api";
@@ -43,16 +45,20 @@ import {
   useAnalyticsIngestKey,
   useAnalyticsOverview,
   useAnalyticsRetention,
+  useAnalyticsSites,
+  useCreateAnalyticsSite,
+  useDeleteAnalyticsSite,
   useDeleteErrorGroup,
   useErrorGroup,
   useErrorGroups,
+  useUpdateAnalyticsSite,
   useUpdateErrorGroup,
 } from "../../queries";
 import { AnalyticsSkeleton } from "../../page-skeletons";
 import { useQueryClient } from "@tanstack/react-query";
 
 const WINDOWS = ["7", "30", "90"] as const;
-const TABS = ["overview", "funnel", "retention", "errors"] as const;
+const TABS = ["overview", "funnel", "retention", "errors", "sites"] as const;
 type Tab = (typeof TABS)[number];
 
 const fmtCount = (n: number): string =>
@@ -219,6 +225,7 @@ export function AnalyticsPage({
     funnel: t`Funnel`,
     retention: t`Retention`,
     errors: t`Errors`,
+    sites: t`Sites`,
   };
 
   if (overviewQ.isLoading && !overview) return <AnalyticsSkeleton />;
@@ -291,6 +298,7 @@ export function AnalyticsPage({
           {tab === "funnel" && <FunnelTab days={days} />}
           {tab === "retention" && <RetentionTab days={days} />}
           {tab === "errors" && <ErrorsTab pushToast={pushToast} />}
+          {tab === "sites" && <SitesTab pushToast={pushToast} />}
         </>
       )}
 
@@ -1184,3 +1192,214 @@ function IngestKeyDialog({
 
 /** Local alias so the dialog doesn't need the whole queryKeys import surface. */
 const queryKeysIngest = ["analytics", "ingest-key"] as const;
+
+/* ── Sites ────────────────────────────────────────────────────────────── */
+
+/** The snippet an operator pastes. Built from the browser's own origin so a
+ *  workspace on a custom domain needs no configuration to get it right. */
+const snippetFor = (siteId: string): string =>
+  `<script defer src="${typeof window === "undefined" ? "" : window.location.origin}/api/analytics/script.js" data-site="${siteId}"></script>`;
+
+function SitesTab({ pushToast }: { pushToast: PushToast }) {
+  const { t } = useLingui();
+  const sitesQ = useAnalyticsSites();
+  const createSite = useCreateAnalyticsSite();
+  const updateSite = useUpdateAnalyticsSite();
+  const deleteSite = useDeleteAnalyticsSite();
+  const [addOpen, setAddOpen] = useState(false);
+  const sites = sitesQ.data?.data ?? [];
+
+  const copy = (text: string) => {
+    void navigator.clipboard
+      ?.writeText(text)
+      .then(() => pushToast(t`Snippet copied.`))
+      .catch(() => pushToast(t`Could not copy — select the snippet manually.`));
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-end">
+        <Button variant="primary" icon={I.Plus} onClick={() => setAddOpen(true)}>
+          <Trans>Add site</Trans>
+        </Button>
+      </div>
+
+      {sites.length === 0 ? (
+        <EmptyState
+          icon={I.BarChart}
+          title={t`No websites registered`}
+          description={t`Register a site to get a one-line script tag. It measures pageviews with no cookie and no consent banner — visitors are counted by a hash that rotates every day.`}
+        />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {sites.map((s: ApiAnalyticsSite) => (
+            <Card key={s.id} className="gap-3 px-4 py-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-[14px] font-medium">{s.name}</div>
+                  <div className="truncate text-[12.5px] text-muted-foreground">
+                    {s.domain}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    icon={I.Copy}
+                    onClick={() => copy(snippetFor(s.id))}
+                  >
+                    <Trans>Copy snippet</Trans>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    icon={I.Trash}
+                    onClick={() => {
+                      deleteSite.mutate(s.id, {
+                        onError: () => pushToast(t`Could not remove the site.`),
+                      });
+                      pushToast(t`Site removed.`);
+                    }}
+                  >
+                    <Trans>Remove</Trans>
+                  </Button>
+                </div>
+              </div>
+
+              {/* The snippet is long and full of punctuation — the classic
+                  mobile overflow. Its own scroll container keeps the card and
+                  the page from ever scrolling sideways. */}
+              <ScrollArea className="w-full rounded-control border bg-muted/40">
+                <div className="p-2">
+                  <code className="block whitespace-pre text-[11.5px] leading-relaxed">
+                    {snippetFor(s.id)}
+                  </code>
+                </div>
+              </ScrollArea>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  variant={s.filterBots ? "primary" : "outline"}
+                  onClick={() =>
+                    updateSite.mutate({ id: s.id, patch: { filterBots: !s.filterBots } })
+                  }
+                >
+                  {s.filterBots ? <Trans>Bots filtered</Trans> : <Trans>Bots kept</Trans>}
+                </Button>
+                <Button
+                  variant={s.requireKnownOrigin ? "primary" : "outline"}
+                  onClick={() =>
+                    updateSite.mutate({
+                      id: s.id,
+                      patch: { requireKnownOrigin: !s.requireKnownOrigin },
+                    })
+                  }
+                >
+                  {s.requireKnownOrigin ? (
+                    <Trans>Origin checked</Trans>
+                  ) : (
+                    <Trans>Any origin</Trans>
+                  )}
+                </Button>
+                <Badge variant="secondary">
+                  <Trans>Cookieless</Trans>
+                </Badge>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <AddSiteDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSubmit={(input) => {
+          // Optimistic: the row is in the list before the request resolves, and
+          // the dialog closes immediately. `onError` rolls the cache back.
+          createSite.mutate(input, {
+            onError: () => pushToast(t`Could not add the site.`),
+          });
+          setAddOpen(false);
+          pushToast(t`Site added — copy its snippet.`);
+        }}
+      />
+    </div>
+  );
+}
+
+function AddSiteDialog({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (input: { name: string; domain: string }) => void;
+}) {
+  const [name, setName] = useState("");
+  const [domain, setDomain] = useState("");
+  const valid = name.trim().length > 0 && domain.trim().length > 0;
+
+  const submit = () => {
+    if (!valid) return;
+    onSubmit({ name: name.trim(), domain: domain.trim() });
+    setName("");
+    setDomain("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle>
+            <Trans>Add a website</Trans>
+          </DialogTitle>
+          <DialogDescription>
+            <Trans>
+              You get a one-line script tag. It stores nothing on the visitor's
+              device, so it needs no cookie banner.
+            </Trans>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex flex-col gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] text-muted-foreground">
+                <Trans>Name</Trans>
+              </span>
+              <Input
+                value={name}
+                placeholder="Marketing site"
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] text-muted-foreground">
+                <Trans>Domain</Trans>
+              </span>
+              <Input
+                value={domain}
+                placeholder="example.com"
+                onChange={(e) => setDomain(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>
+                  A full URL is fine — it is reduced to the host. Subdomains
+                  count as the same site.
+                </Trans>
+              </span>
+            </label>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            <Trans>Cancel</Trans>
+          </Button>
+          <Button variant="primary" disabled={!valid} onClick={submit}>
+            <Trans>Add site</Trans>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

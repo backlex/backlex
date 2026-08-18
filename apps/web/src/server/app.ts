@@ -32,6 +32,7 @@ import { adoptRoutes } from "./routes/adopt";
 import { migrateRoutes } from "./routes/migrate";
 import { advisorRoutes } from "./routes/advisor";
 import { analyticsRoutes } from "./routes/analytics";
+import { analyticsCollectRoutes } from "./routes/analytics-collect";
 import { analyticsIngestRoutes } from "./routes/analytics-ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
 import { agentsRoutes } from "./routes/agents";
@@ -760,8 +761,22 @@ export const createApp = (env: Env) => {
       ],
     }),
   );
+  // Two carve-outs from the credentialed CORS policy above, for the same
+  // reason: both serve documents/endpoints that ANY origin must be able to
+  // reach, and the policy here would replace their own `ACAO: *` with a single
+  // allowed origin — which is exactly wrong for them.
+  //
+  //  - `/.well-known/*` — JWKS and OAuth metadata, public and uncredentialed.
+  //  - `/api/analytics/collect` + `/script.js` — the web tag. It runs on
+  //    customer domains that are not on any allowlist, and `sendBeacon` cannot
+  //    send a header or survive a preflight. The route answers `ACAO: *`
+  //    WITHOUT credentials and is append-only; it can never read a row back.
+  //    See `routes/analytics-collect.ts` for what replaces the origin check.
+  const CORS_EXEMPT = ["/api/analytics/collect", "/api/analytics/script.js"];
   app.use("*", async (c, next) =>
-    c.req.path.startsWith("/.well-known/") ? next() : corsMw(c, next),
+    c.req.path.startsWith("/.well-known/") || CORS_EXEMPT.includes(c.req.path)
+      ? next()
+      : corsMw(c, next),
   );
 
   app.use("*", timed("session", sessionMiddleware));
@@ -978,6 +993,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/analytics", analyticsRoutes);
   // Public ingest — authenticated by a publishable key or a normal session,
   // never anonymous. Kept off `/api/admin/*` because client bundles call it.
+  app.route("/api/analytics", analyticsCollectRoutes);
   app.route("/api/analytics", analyticsIngestRoutes);
   app.route("/api/revisions", revisionsRoutes);
   app.route("/api/storage", storageRoutes);

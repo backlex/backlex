@@ -18,15 +18,19 @@ import {
   analyticsFunnel,
   analyticsOverview,
   analyticsRetention,
+  createSite,
   deleteErrorGroup,
+  deleteSite,
   getErrorGroup,
   hasIngestKey,
   listAnalyticsEvents,
   listErrorGroups,
   listEventNames,
+  listSites,
   mintIngestKey,
   revokeIngestKey,
   updateErrorGroup,
+  updateSite,
 } from "../services/analytics";
 
 const TAGS = ["analytics"];
@@ -147,6 +151,31 @@ const RetentionResult = z
     ),
   })
   .openapi("AnalyticsRetention");
+
+const Site = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    domain: z.string(),
+    tz: z.string(),
+    excludedPaths: z.array(z.string()),
+    ignoredIps: z.array(z.string()),
+    filterBots: z.boolean(),
+    requireKnownOrigin: z.boolean(),
+    createdAt: z.number().int(),
+    updatedAt: z.number().int(),
+  })
+  .openapi("AnalyticsSite");
+
+const SiteInputSchema = z.object({
+  name: z.string().min(1).max(120),
+  domain: z.string().min(1).max(255),
+  tz: z.string().max(60).optional(),
+  excludedPaths: z.array(z.string().max(200)).max(50).optional(),
+  ignoredIps: z.array(z.string().max(64)).max(50).optional(),
+  filterBots: z.boolean().optional(),
+  requireKnownOrigin: z.boolean().optional(),
+});
 
 const AnalyticsEvent = z
   .object({
@@ -610,6 +639,142 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       requireAdmin(auth.roles);
       const { id } = c.req.valid("param");
       await deleteErrorGroup(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        id,
+      );
+      return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/sites",
+      tags: TAGS,
+      summary: "List registered websites",
+      description:
+        "Admin-only. Each site is a measurement destination for the web tag; its " +
+        "id ships in the public snippet.",
+      security: SECURITY,
+      middleware: [requireUser],
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(Site) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const data = await listSites(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+      );
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/sites",
+      tags: TAGS,
+      summary: "Register a website",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        body: {
+          required: true,
+          content: { "application/json": { schema: SiteInputSchema } },
+        },
+      },
+      responses: {
+        201: {
+          description: "Created",
+          content: { "application/json": { schema: z.object({ data: Site }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const data = await createSite(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        c.req.valid("json"),
+      );
+      return c.json({ data }, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/sites/{id}",
+      tags: TAGS,
+      summary: "Update a website's settings",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: SiteInputSchema.partial() } },
+        },
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: Site }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const { id } = c.req.valid("param");
+      const data = await updateSite(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        id,
+        c.req.valid("json"),
+      );
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/sites/{id}",
+      tags: TAGS,
+      summary: "Remove a website",
+      description:
+        "The snippet stops being accepted immediately. Events already recorded " +
+        "keep their `site_id` and are pruned on the normal retention schedule.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "Deleted",
+          content: { "application/json": { schema: z.object({ ok: z.boolean() }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const { id } = c.req.valid("param");
+      await deleteSite(
         { db: ctx.db, dialect: ctx.dialect },
         auth.tenantId ?? null,
         id,

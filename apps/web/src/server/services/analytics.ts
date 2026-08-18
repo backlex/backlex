@@ -45,6 +45,8 @@ const occurrencesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.errorEvents : sqlite.schema.errorEvents;
 const settingsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
+const sitesTable = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.analyticsSites : sqlite.schema.analyticsSites;
 
 /** UTC calendar day, `YYYY-MM-DD`. */
 export const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
@@ -600,6 +602,206 @@ export const resolveIngestKey = async (
   const hit = rows.find((r) => r.value === hash);
   return hit ? { tenantId: hit.tenantId ?? null } : null;
 };
+
+/* ── Sites ────────────────────────────────────────────────────────────── */
+
+export interface AnalyticsSiteRow {
+  id: string;
+  name: string;
+  domain: string;
+  tz: string;
+  excludedPaths: string[];
+  ignoredIps: string[];
+  filterBots: boolean;
+  requireKnownOrigin: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Reduce whatever a caller sent to a bare lowercase host. Accepts a full URL,
+ *  a host with a port, or a bare host — operators paste all three. */
+export const normalizeDomain = (raw: string): string => {
+  const t = String(raw ?? "").trim().toLowerCase();
+  if (!t) return "";
+  const withScheme = t.includes("://") ? t : `https://${t}`;
+  try {
+    return new URL(withScheme).hostname;
+  } catch {
+    return t.replace(/^https?:\/\//, "").split("/")[0]?.split(":")[0] ?? "";
+  }
+};
+
+const strList = (v: unknown, max: number): string[] => {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => (typeof x === "string" ? x.trim() : ""))
+    .filter(Boolean)
+    .slice(0, max);
+};
+
+const toSiteRow = (r: any): AnalyticsSiteRow => ({
+  id: r.id,
+  name: r.name,
+  domain: r.domain,
+  tz: r.tz ?? "UTC",
+  excludedPaths: Array.isArray(r.excludedPaths) ? r.excludedPaths : [],
+  ignoredIps: Array.isArray(r.ignoredIps) ? r.ignoredIps : [],
+  filterBots: Boolean(r.filterBots),
+  requireKnownOrigin: Boolean(r.requireKnownOrigin),
+  createdAt: tsValue(r.createdAt),
+  updatedAt: tsValue(r.updatedAt),
+});
+
+export const listSites = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+): Promise<AnalyticsSiteRow[]> => {
+  const t = sitesTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(tenantEq(t.tenantId, tenantId))
+    .orderBy(t.domain)) as any[];
+  return rows.map(toSiteRow);
+};
+
+/** Resolve a site for the collect route. Tenant is derived FROM the site —
+ *  the tag has no other credential — so this is the one lookup that may not
+ *  be tenant-scoped, and it is keyed on a primary key. */
+export const getSiteById = async (
+  ctx: AnalyticsDbCtx,
+  id: string,
+): Promise<(AnalyticsSiteRow & { tenantId: string | null }) | null> => {
+  if (!id) return null;
+  const t = sitesTable(ctx.dialect);
+  const [row] = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(eq(t.id, id))
+    .limit(1)) as any[];
+  return row ? { ...toSiteRow(row), tenantId: row.tenantId ?? null } : null;
+};
+
+export interface SiteInput {
+  name?: string | null;
+  domain?: string | null;
+  tz?: string | null;
+  excludedPaths?: unknown;
+  ignoredIps?: unknown;
+  filterBots?: boolean | null;
+  requireKnownOrigin?: boolean | null;
+}
+
+export const createSite = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  input: SiteInput,
+  now = Date.now(),
+): Promise<AnalyticsSiteRow> => {
+  const name = str(input.name, 120);
+  const domain = normalizeDomain(String(input.domain ?? ""));
+  if (!name) throw new AppError("VALIDATION", "A site needs a name.");
+  if (!domain) throw new AppError("VALIDATION", "A site needs a domain.");
+
+  const t = sitesTable(ctx.dialect);
+  const row = {
+    id: crypto.randomUUID(),
+    tenantId,
+    name,
+    domain,
+    tz: str(input.tz, 60) ?? "UTC",
+    excludedPaths: strList(input.excludedPaths, 50),
+    ignoredIps: strList(input.ignoredIps, 50),
+    filterBots: input.filterBots !== false,
+    requireKnownOrigin: input.requireKnownOrigin !== false,
+    createdAt: new Date(now),
+    updatedAt: new Date(now),
+  };
+  await (ctx.db as any).insert(t).values(row);
+  return toSiteRow(row);
+};
+
+export const updateSite = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  id: string,
+  input: SiteInput,
+  now = Date.now(),
+): Promise<AnalyticsSiteRow> => {
+  const t = sitesTable(ctx.dialect);
+  const patch: Record<string, unknown> = { updatedAt: new Date(now) };
+  if (input.name !== undefined) {
+    const name = str(input.name, 120);
+    if (!name) throw new AppError("VALIDATION", "A site needs a name.");
+    patch.name = name;
+  }
+  if (input.domain !== undefined) {
+    const domain = normalizeDomain(String(input.domain ?? ""));
+    if (!domain) throw new AppError("VALIDATION", "A site needs a domain.");
+    patch.domain = domain;
+  }
+  if (input.tz !== undefined) patch.tz = str(input.tz, 60) ?? "UTC";
+  if (input.excludedPaths !== undefined)
+    patch.excludedPaths = strList(input.excludedPaths, 50);
+  if (input.ignoredIps !== undefined) patch.ignoredIps = strList(input.ignoredIps, 50);
+  if (input.filterBots !== undefined) patch.filterBots = input.filterBots !== false;
+  if (input.requireKnownOrigin !== undefined)
+    patch.requireKnownOrigin = input.requireKnownOrigin !== false;
+
+  // Tenant-scoped on the UPDATE itself, not checked-then-written: a read
+  // followed by a write is a cross-tenant race, and this is a workspace's
+  // measurement config.
+  await (ctx.db as any)
+    .update(t)
+    .set(patch)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)));
+
+  const [row] = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)))
+    .limit(1)) as any[];
+  if (!row) throw new AppError("NOT_FOUND", "Site not found.");
+  return toSiteRow(row);
+};
+
+export const deleteSite = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  id: string,
+): Promise<void> => {
+  const t = sitesTable(ctx.dialect);
+  await (ctx.db as any)
+    .delete(t)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)));
+};
+
+/**
+ * Persist tag-originated events.
+ *
+ * Separate from {@link recordEvents} because the two lanes differ in exactly
+ * the ways that matter: the visitor id is server-derived rather than
+ * caller-supplied, `id_scope` is `daily`, and every row is pinned to a site.
+ * Sharing one function would mean a caller-controlled `idScope`, which is the
+ * one field no caller may set.
+ */
+export const recordWebEvents = async (
+  ctx: AnalyticsDbCtx,
+  opts: { tenantId: string | null; siteId: string; distinctId: string },
+  input: TrackEventInput[],
+  now = Date.now(),
+): Promise<{ accepted: number; rejected: number }> =>
+  recordEvents(
+    ctx,
+    opts.tenantId,
+    input.map((e) => ({
+      ...e,
+      distinctId: opts.distinctId,
+      siteId: opts.siteId,
+      idScope: "daily" as const,
+    })),
+    now,
+  );
 
 /* ── Overview ─────────────────────────────────────────────────────────── */
 

@@ -56,6 +56,115 @@ const postJson = async (
   };
 };
 
+const SITE_PROPS = {
+  name: { type: "string", description: "Display name." },
+  domain: {
+    type: "string",
+    description:
+      "Bare host. A full URL or a host:port is accepted and reduced to the host.",
+  },
+  excludedPaths: {
+    type: "array",
+    items: { type: "string" },
+    description: "Paths never recorded. Supports a leading or trailing `*`.",
+  },
+  ignoredIps: {
+    type: "array",
+    items: { type: "string" },
+    description: "Source IPs never recorded — an office, a monitoring probe.",
+  },
+  filterBots: {
+    type: "boolean",
+    description: "Drop declared crawlers instead of labelling them `bot`.",
+  },
+  requireKnownOrigin: {
+    type: "boolean",
+    description:
+      "Refuse events whose origin is not the registered domain. Stops a snippet copied onto a staging host; `Origin` is forgeable, so it is not a security boundary.",
+  },
+} as const;
+
+export const analyticsSites: McpTool = {
+  name: "analytics.sites",
+  kind: "read",
+  description:
+    "Websites registered for tag-based measurement. Each site's id is what ships " +
+    "in the public `<script>` snippet.",
+  inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  handler: async (_args, ctx) => {
+    const res = await ctx.fetchInternal("/api/admin/analytics/sites");
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const analyticsSiteCreate: McpTool = {
+  name: "analytics.site_create",
+  kind: "write",
+  description:
+    "Register a website. Returns the site, whose `id` goes into the snippet's " +
+    "`data-site` attribute.",
+  inputSchema: {
+    type: "object",
+    properties: { ...SITE_PROPS },
+    required: ["name", "domain"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal("/api/admin/analytics/sites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args ?? {}),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const analyticsSiteUpdate: McpTool = {
+  name: "analytics.site_update",
+  kind: "write",
+  description: "Update a registered website's settings.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" }, ...SITE_PROPS },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { id, ...patch } = (args ?? {}) as Record<string, unknown>;
+    const res = await ctx.fetchInternal(
+      `/api/admin/analytics/sites/${encodeURIComponent(String(id))}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const analyticsSiteDelete: McpTool = {
+  name: "analytics.site_delete",
+  kind: "write",
+  description:
+    "Remove a registered website. Its snippet stops being accepted immediately; " +
+    "events already recorded are pruned on the normal retention schedule.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String((args as { id?: unknown })?.id ?? "");
+    const res = await ctx.fetchInternal(
+      `/api/admin/analytics/sites/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const analyticsOverview: McpTool = {
   name: "analytics.overview",
   kind: "read",
@@ -267,6 +376,10 @@ export const deleteErrorGroup: McpTool = {
 
 export const analyticsTools: McpTool[] = [
   analyticsOverview,
+  analyticsSites,
+  analyticsSiteCreate,
+  analyticsSiteUpdate,
+  analyticsSiteDelete,
   analyticsEventNames,
   analyticsFunnel,
   analyticsRetention,

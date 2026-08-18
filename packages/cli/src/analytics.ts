@@ -18,7 +18,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key>
+const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites>
 
   overview [--days <n>]                headline counters + top breakdowns
   events [--name <n>] [--limit <n>]    recent raw tracked events
@@ -32,6 +32,9 @@ const HELP = `backlex analytics <overview|events|event-names|funnel|retention|er
   track <name> [--props <json|@file|->] [--distinct-id <id>]
   report-error --message <m> [--stack <s>] [--type <t>]
   ingest-key <status|mint|revoke>      publishable client key
+  sites                                websites measured by the drop-in tag
+  sites add --name <n> --domain <d>    register one, and print its snippet
+  sites rm <id>                        stop accepting that snippet
 
 Common: --days <n> (default 30) sets the reporting window; --json prints raw JSON.
 `;
@@ -349,6 +352,59 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         );
         if (json) printJson(res);
         else process.stderr.write(`Reported (group ${res.groups[0] ?? "—"}).\n`);
+        return;
+      }
+      case "sites": {
+        const action = rest[0] ?? "list";
+        if (action === "add") {
+          const name = flag(rest, "--name");
+          const domain = flag(rest, "--domain");
+          if (!name || !domain) {
+            throw new Error("sites add needs --name and --domain.");
+          }
+          const { data } = await client.request<{ data: any }>(
+            "POST",
+            `${BASE}/sites`,
+            { name, domain },
+          );
+          if (json) {
+            printJson(data);
+            return;
+          }
+          printKeyValues({ id: data.id, name: data.name, domain: data.domain });
+          // The snippet is the only reason an operator runs this command, so
+          // print it rather than making them assemble it from the id.
+          const base = resolveContext(args).url.replace(/\/$/, "");
+          process.stderr.write(
+            `\nAdd this to ${data.domain}:\n\n` +
+              `  <script defer src="${base}/api/analytics/script.js" data-site="${data.id}"></script>\n`,
+          );
+          return;
+        }
+        if (action === "rm") {
+          const id = rest[1];
+          if (!id) throw new Error("sites rm needs a site id.");
+          await client.request("DELETE", `${BASE}/sites/${encodeURIComponent(id)}`);
+          process.stderr.write(`Removed site ${id}.\n`);
+          return;
+        }
+        const { data } = await client.request<{ data: any[] }>("GET", `${BASE}/sites`);
+        if (json) {
+          printJson(data);
+          return;
+        }
+        if (!data.length) {
+          process.stderr.write("No sites yet. Add one with `sites add`.\n");
+          return;
+        }
+        printTable(
+          data.map((s) => ({
+            id: s.id,
+            name: s.name,
+            domain: s.domain,
+            bots: s.filterBots ? "filtered" : "kept",
+          })),
+        );
         return;
       }
       case "ingest-key": {

@@ -669,6 +669,10 @@ describe("MCP surface", () => {
       "analytics-funnel",
       "analytics-retention",
       "analytics-events",
+      "analytics-sites",
+      "analytics-site_create",
+      "analytics-site_update",
+      "analytics-site_delete",
       "errors-list",
       "errors-get",
       "errors-update",
@@ -682,7 +686,12 @@ describe("MCP surface", () => {
     expect(byName.get("analytics-funnel")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("analytics-retention")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("analytics-events")?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get("analytics-sites")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("errors-update")?.annotations?.readOnlyHint).toBe(false);
+    // Site mutations must NOT read as read-only: a read-only key that could
+    // repoint a site's domain would be read-only in name only.
+    expect(byName.get("analytics-site_create")?.annotations?.readOnlyHint).toBe(false);
+    expect(byName.get("analytics-site_delete")?.annotations?.readOnlyHint).toBe(false);
   });
 
   test("overview / funnel / errors dispatch through to the service", async () => {
@@ -729,6 +738,7 @@ describe("CLI surface", () => {
       "track",
       "report-error",
       "ingest-key",
+      "sites",
     ]) {
       expect(src).toContain(`case "${sub}"`);
     }

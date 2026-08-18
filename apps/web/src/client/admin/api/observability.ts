@@ -388,7 +388,44 @@ const analyticsQs = (params: Record<string, string | number | undefined>): strin
   return tail ? `?${tail}` : "";
 };
 
+export interface ApiAnalyticsSite {
+  id: string;
+  name: string;
+  domain: string;
+  tz: string;
+  excludedPaths: string[];
+  ignoredIps: string[];
+  filterBots: boolean;
+  requireKnownOrigin: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ApiAnalyticsSiteInput {
+  name: string;
+  domain: string;
+  excludedPaths?: string[];
+  ignoredIps?: string[];
+  filterBots?: boolean;
+  requireKnownOrigin?: boolean;
+}
+
 export const analyticsApi = {
+  sites: () => api<Envelope<ApiAnalyticsSite[]>>("/api/admin/analytics/sites"),
+  createSite: (body: ApiAnalyticsSiteInput) =>
+    api<Envelope<ApiAnalyticsSite>>("/api/admin/analytics/sites", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateSite: (id: string, body: Partial<ApiAnalyticsSiteInput>) =>
+    api<Envelope<ApiAnalyticsSite>>(
+      `/api/admin/analytics/sites/${encodeURIComponent(id)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  deleteSite: (id: string) =>
+    api<{ ok: boolean }>(`/api/admin/analytics/sites/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
   overview: (from: number, to: number) =>
     api<Envelope<ApiAnalyticsOverview>>(
       `/api/admin/analytics/overview${analyticsQs({ from, to })}`,

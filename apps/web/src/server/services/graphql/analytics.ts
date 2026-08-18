@@ -35,6 +35,11 @@ import {
   listAnalyticsEvents,
   listErrorGroups,
   listEventNames,
+  listSites,
+  createSite,
+  updateSite,
+  deleteSite,
+  type SiteInput,
   recordErrors,
   recordEvents,
   updateErrorGroup,
@@ -358,6 +363,39 @@ const breakdown = <K extends string>(
   key: K,
 ) => rows.map((r) => ({ value: r[key], count: r.count, users: r.users }));
 
+const AnalyticsSiteType = new GraphQLObjectType({
+  name: "AnalyticsSite",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    domain: { type: new GraphQLNonNull(GraphQLString) },
+    tz: {
+      type: new GraphQLNonNull(GraphQLString),
+      description: "Reporting timezone. Unused in v1 — every report buckets in UTC.",
+    },
+    excludedPaths: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
+    },
+    ignoredIps: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
+    },
+    filterBots: { type: new GraphQLNonNull(GraphQLBoolean) },
+    requireKnownOrigin: { type: new GraphQLNonNull(GraphQLBoolean) },
+    createdAt: { type: new GraphQLNonNull(GraphQLFloat) },
+    updatedAt: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
+const siteArgs = {
+  name: { type: GraphQLString },
+  domain: { type: GraphQLString },
+  tz: { type: GraphQLString },
+  excludedPaths: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+  ignoredIps: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+  filterBots: { type: GraphQLBoolean },
+  requireKnownOrigin: { type: GraphQLBoolean },
+};
+
 export const analyticsQueryFields: Record<
   string,
   GraphQLFieldConfig<unknown, GqlCtx>
@@ -378,6 +416,15 @@ export const analyticsQueryFields: Record<
         sources: breakdown(o.sources, "source"),
       };
     },
+  },
+  analyticsSites: {
+    type: new GraphQLNonNull(
+      new GraphQLList(new GraphQLNonNull(AnalyticsSiteType)),
+    ),
+    description:
+      "Websites registered for tag-based measurement (admin-only). A site's id ships in the public snippet.",
+    resolve: async (_src, _args, gqlCtx) =>
+      listSites(dbOf(gqlCtx), requireAnalyticsAdmin(gqlCtx)),
   },
   analyticsEventNames: {
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
@@ -539,6 +586,43 @@ export const analyticsMutationFields: Record<
       const tenantId = requireAnalyticsAdmin(gqlCtx);
       const a = args as { errors: Parameters<typeof recordErrors>[2] };
       return recordErrors(dbOf(gqlCtx), tenantId, a.errors);
+    },
+  },
+  createAnalyticsSite: {
+    type: new GraphQLNonNull(AnalyticsSiteType),
+    description: "Register a website for tag-based measurement (admin-only).",
+    args: {
+      name: { type: new GraphQLNonNull(GraphQLString) },
+      domain: { type: new GraphQLNonNull(GraphQLString) },
+      tz: siteArgs.tz,
+      excludedPaths: siteArgs.excludedPaths,
+      ignoredIps: siteArgs.ignoredIps,
+      filterBots: siteArgs.filterBots,
+      requireKnownOrigin: siteArgs.requireKnownOrigin,
+    },
+    resolve: async (_src, args, gqlCtx) =>
+      createSite(dbOf(gqlCtx), requireAnalyticsAdmin(gqlCtx), args as SiteInput),
+  },
+  updateAnalyticsSite: {
+    type: new GraphQLNonNull(AnalyticsSiteType),
+    description: "Update a registered website's settings (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) }, ...siteArgs },
+    resolve: async (_src, args, gqlCtx) => {
+      const { id, ...patch } = args as { id: string } & SiteInput;
+      return updateSite(dbOf(gqlCtx), requireAnalyticsAdmin(gqlCtx), id, patch);
+    },
+  },
+  deleteAnalyticsSite: {
+    type: new GraphQLNonNull(GraphQLBoolean),
+    description: "Remove a registered website (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      await deleteSite(
+        dbOf(gqlCtx),
+        requireAnalyticsAdmin(gqlCtx),
+        (args as { id: string }).id,
+      );
+      return true;
     },
   },
   updateErrorGroup: {

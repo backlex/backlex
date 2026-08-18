@@ -3603,6 +3603,49 @@ export const analyticsEvents = pgTable(
   ],
 );
 
+
+/**
+ * A website registered for tag-based measurement.
+ *
+ * GA makes you declare a property and a data stream before it will accept a
+ * pageview, and that is not bureaucracy — it is where the per-site settings
+ * live and it is the only thing standing between a public snippet and an open
+ * write endpoint. The `id` ships in the snippet, so it is public by design;
+ * treat it as naming a destination, never as authenticating one. What actually
+ * bounds abuse is the per-(site, ip) rate limit on the collect route.
+ *
+ * `domain` is checked against the reported origin when `require_known_origin`
+ * is set. Be honest about the strength of that: `Origin` is forgeable by any
+ * non-browser client, so the check stops accidental cross-posting (a snippet
+ * copied to a staging host) and casual abuse, not a determined attacker.
+ */
+export const analyticsSites = pgTable(
+  "analytics_sites",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    /** Bare host, no scheme or port — `example.com`. */
+    domain: text("domain").notNull(),
+    /** Reporting timezone. **Unused in v1: every report buckets in UTC.** It
+     *  exists now because `analytics_events.day` is UTC and re-bucketing later
+     *  would be a rewrite of overview, retention and funnels — cheaper to
+     *  carry an unused column than to migrate one in. */
+    tz: text("tz").notNull().default("UTC"),
+    /** Path globs never recorded (`/admin/*`, `/health`). */
+    excludedPaths: jsonb("excluded_paths").$type<string[] | null>(),
+    /** Source IPs never recorded — the office, a monitoring probe. Matched
+     *  against the request IP, which is used and discarded either way. */
+    ignoredIps: jsonb("ignored_ips").$type<string[] | null>(),
+    /** Drop declared crawlers instead of labelling them `bot`. */
+    filterBots: boolean("filter_bots").notNull().default(true),
+    requireKnownOrigin: boolean("require_known_origin").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("analytics_sites_tenant_domain_idx").on(t.tenantId, t.domain)],
+);
+
 /**
  * Crash-reporting group — the deduplicated identity of one bug. Occurrences
  * fold into a group by `fingerprint` (a hash of the error type, its normalized

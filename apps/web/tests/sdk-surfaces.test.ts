@@ -266,7 +266,13 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   },
   "/api/activity": MCP_SURFACES.activity!,
   "/api/agents": { client: "agents" },
-  "/api/analytics": { client: "analytics" },
+  // Two sub-apps share this prefix, so the registry has to speak about each —
+  // "a shared prefix is not a shared decision", as the derivation below puts it.
+  "/api/analytics → analyticsIngestRoutes": { client: "analytics" },
+  "/api/analytics → analyticsCollectRoutes": {
+    serverOnly:
+      "The collect endpoint and the script it serves exist for the drop-in `<script>` tag, which is deliberately NOT the SDK: it is hand-written plain JS that ships to a customer's own domain, authenticates with nothing but a public site id, and posts a text/plain body so `sendBeacon` never triggers a preflight. An SDK method here would need credentials the tag must not carry, and would reach an endpoint that can only ever append. Registering a site — the part an application would automate — is covered by `analytics.sites` on the admin surface.",
+  },
   "/api/api-keys": MCP_SURFACES["api-keys"]!,
   "/api/app-orgs": { client: "orgs" },
   "/api/app-users": { client: "app-users" },

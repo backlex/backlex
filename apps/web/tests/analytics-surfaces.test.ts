@@ -672,6 +672,7 @@ describe("MCP surface", () => {
       "analytics-realtime",
       "analytics-sessions",
       "analytics-channels",
+      "analytics-revenue",
       "analytics-sites",
       "analytics-site_create",
       "analytics-site_update",
@@ -693,6 +694,7 @@ describe("MCP surface", () => {
     expect(byName.get("analytics-realtime")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("analytics-sessions")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("analytics-channels")?.annotations?.readOnlyHint).toBe(true);
+    expect(byName.get("analytics-revenue")?.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("errors-update")?.annotations?.readOnlyHint).toBe(false);
     // Site mutations must NOT read as read-only: a read-only key that could
     // repoint a site's domain would be read-only in name only.
@@ -748,6 +750,7 @@ describe("CLI surface", () => {
       "realtime",
       "sessions",
       "channels",
+      "revenue",
     ]) {
       expect(src).toContain(`case "${sub}"`);
     }

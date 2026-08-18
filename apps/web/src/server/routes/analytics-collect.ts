@@ -239,6 +239,21 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
         ? (body.v as Record<string, unknown>)
         : null;
 
+    // A purchase reports its amount in the event's own props — the tag has one
+    // call shape, `backlex("purchase", { revenue, currency })`. Both are lifted
+    // into columns so revenue reports never have to read JSON, and both are
+    // range-checked here: a caller-supplied number reaches a bigint column, and
+    // "unbounded integer from the public internet" is not a thing to store.
+    const rawRevenue = Number(props?.revenue);
+    const revenue =
+      Number.isFinite(rawRevenue) && Math.abs(rawRevenue) <= Number.MAX_SAFE_INTEGER
+        ? Math.trunc(rawRevenue)
+        : null;
+    const currency =
+      typeof props?.currency === "string" && /^[A-Za-z]{3}$/.test(props.currency)
+        ? props.currency.toUpperCase()
+        : null;
+
     await recordWebEvents(
       db,
       { tenantId: site.tenantId, siteId: site.id, distinctId },
@@ -255,6 +270,8 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
           browser: ctxFields.browser,
           os: ctxFields.os,
           country: ctxFields.country,
+          revenue,
+          currency,
           ...parseUtm(path),
         },
       ],

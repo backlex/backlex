@@ -19,6 +19,7 @@ import {
   analyticsOverview,
   analyticsChannels,
   analyticsRealtime,
+  analyticsRevenue,
   analyticsRetention,
   analyticsSessions,
   createSite,
@@ -154,6 +155,29 @@ const RetentionResult = z
     ),
   })
   .openapi("AnalyticsRetention");
+
+const MoneyRow = z.object({
+  currency: z.string(),
+  revenue: z.number().int(),
+  transactions: z.number().int(),
+});
+
+const Revenue = z
+  .object({
+    byCurrency: z.array(MoneyRow.extend({ aov: z.number().int() })),
+    byChannel: z.array(MoneyRow.extend({ channel: z.string() })),
+    byCampaign: z.array(MoneyRow.extend({ campaign: z.string() })),
+    topItems: z.array(
+      z.object({
+        name: z.string(),
+        currency: z.string(),
+        quantity: z.number(),
+        revenue: z.number(),
+      }),
+    ),
+    truncated: z.boolean(),
+  })
+  .openapi("AnalyticsRevenue");
 
 const Channels = z
   .object({
@@ -697,6 +721,41 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         id,
       );
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/revenue",
+      tags: TAGS,
+      summary: "Revenue by currency, channel and campaign",
+      description:
+        "Admin-only. Amounts are in the currency's MINOR units and every row carries " +
+        "its currency — nothing is ever summed across currencies, because this repo " +
+        "has no FX rate source and a mixed total would not be a quantity. Item " +
+        "breakdowns read `props.items`.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: { query: RangeQuery.extend({ siteId: z.string().optional() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: Revenue }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const q = c.req.valid("query");
+      const { from, to } = resolveRange(q);
+      const data = await analyticsRevenue(
+        { db: ctx.db, dialect: ctx.dialect },
+        { tenantId: auth.tenantId ?? null, from, to, siteId: q.siteId ?? null },
+      );
+      return c.json({ data });
     },
   )
   .openapi(

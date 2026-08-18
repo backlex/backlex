@@ -84,6 +84,30 @@ const SITE_PROPS = {
   },
 } as const;
 
+export const analyticsRevenueTool: McpTool = {
+  name: "analytics.revenue",
+  kind: "read",
+  description:
+    "Revenue by currency, by acquisition channel, by campaign, and the top " +
+    "items. Amounts are in the currency's MINOR units and every row carries its " +
+    "currency — nothing is summed across currencies, because there is no FX " +
+    "rate source and a mixed total would not be a quantity.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      ...RANGE_PROPS,
+      siteId: { type: "string", description: "Limit to one registered site." },
+    },
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(
+      `/api/admin/analytics/revenue${qs(args, ["from", "to", "siteId"])}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const analyticsChannelsTool: McpTool = {
   name: "analytics.channels",
   kind: "read",
@@ -451,6 +475,7 @@ export const analyticsTools: McpTool[] = [
   analyticsRealtimeTool,
   analyticsSessionsTool,
   analyticsChannelsTool,
+  analyticsRevenueTool,
   analyticsSites,
   analyticsSiteCreate,
   analyticsSiteUpdate,

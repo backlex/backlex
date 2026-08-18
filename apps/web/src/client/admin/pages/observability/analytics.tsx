@@ -17,6 +17,7 @@ import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Input } from "@backlex/ui/components/input";
 import { Timeseries } from "./timeseries";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { currencyExponent, formatMoney, fromMinorUnits } from "@backlex/db/money";
 import {
   Dialog,
   DialogBody,
@@ -48,6 +49,7 @@ import {
   useAnalyticsOverview,
   useAnalyticsChannels,
   useAnalyticsRealtime,
+  useAnalyticsRevenue,
   useAnalyticsSessionStats,
   useAnalyticsRetention,
   useAnalyticsSites,
@@ -438,6 +440,7 @@ function OverviewTab({
 
       <SessionsBlock days={days} />
       <ChannelsBlock days={days} />
+      <RevenueBlock days={days} />
     </>
   );
 }
@@ -1617,6 +1620,84 @@ function ChannelsBlock({ days }: { days: number }) {
           credited to this visit.
         </Trans>
       </p>
+    </>
+  );
+}
+
+/* ── Revenue ──────────────────────────────────────────────────────────── */
+
+/**
+ * Revenue, one card per currency.
+ *
+ * There is no combined total anywhere on this block, and that is the design.
+ * The repo has no FX rate source, so a merged figure would be an addition of
+ * quantities that are not commensurable — and it would look completely
+ * plausible, which is what makes it dangerous. Amounts are stored in minor
+ * units; this is the only place that divides.
+ */
+function RevenueBlock({ days }: { days: number }) {
+  const { t } = useLingui();
+  const q = useAnalyticsRevenue(days);
+  const r = q.data?.data;
+  if (!r || r.byCurrency.length === 0) return null;
+
+  // Uses the repo's own money module rather than dividing by 100.
+  //
+  // Not every currency has two decimals: JPY, KRW and VND have none, BHD and
+  // KWD have three. A blanket /100 rendered a ¥150,000 order as ¥1,500 — off
+  // by 100x, and entirely plausible-looking on the page, which is exactly the
+  // kind of money bug that survives review. `currencyExponent` knows the right
+  // answer per code and `formatMoney` falls back to "12.34 XYZ" for an
+  // unrecognised one instead of throwing.
+  const money = (minor: number, currency: string) =>
+    formatMoney({
+      amount: fromMinorUnits(minor, currencyExponent(currency)),
+      currency,
+    });
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {r.byCurrency.map((c) => (
+          <Card key={c.currency} className="gap-2 px-4 py-3.5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+              {t`Revenue`} · {c.currency}
+            </div>
+            <div className="text-[22px] font-semibold tabular-nums">
+              {money(c.revenue, c.currency)}
+            </div>
+            <div className="text-[12.5px] text-muted-foreground">
+              {c.transactions === 1
+                ? t`1 order`
+                : t`${c.transactions} orders`}{" · "}
+              {money(c.aov, c.currency)} {t`AOV`}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <BreakdownCard
+          title={t`Revenue by channel`}
+          unit={t`orders`}
+          rows={r.byChannel.map((x) => ({
+            label: `${x.channel} · ${money(x.revenue, x.currency)}`,
+            count: x.transactions,
+            users: x.transactions,
+          }))}
+          empty={t`No attributed revenue in this window.`}
+        />
+        <BreakdownCard
+          title={t`Top items`}
+          unit={t`sold`}
+          rows={r.topItems.map((x) => ({
+            label: `${x.name} · ${money(x.revenue, x.currency)}`,
+            count: x.quantity,
+            users: x.quantity,
+          }))}
+          empty={t`No items recorded — send props.items with a purchase.`}
+        />
+      </div>
     </>
   );
 }

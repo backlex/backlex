@@ -102,6 +102,16 @@ export interface AnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+/** Revenue, always grouped by currency. There is no FX source, so nothing is
+ *  ever summed across currencies and no single total is offered. */
+export interface AnalyticsRevenue {
+  byCurrency: { currency: string; revenue: number; transactions: number; aov: number }[];
+  byChannel: { channel: string; currency: string; revenue: number; transactions: number }[];
+  byCampaign: { campaign: string; currency: string; revenue: number; transactions: number }[];
+  topItems: { name: string; currency: string; quantity: number; revenue: number }[];
+  truncated: boolean;
+}
+
 /** Where sessions came from. Attribution is last non-direct touch WITHIN a
  *  session — cookieless ids rotate daily, so cross-session attribution is not
  *  available for tag traffic. */
@@ -286,6 +296,24 @@ export interface AnalyticsClient {
     delete(id: string): Promise<{ ok: boolean }>;
   };
   /** Publishable ingest-key management (admin). */
+  /** Revenue by currency, channel and campaign. */
+  revenue(input?: {
+    from?: number;
+    to?: number;
+    siteId?: string;
+  }): Promise<{ data: AnalyticsRevenue }>;
+  /**
+   * Record a purchase. Sugar over `track`, and the only reason it exists is to
+   * put `amount` in MINOR units in the signature — a float here is the classic
+   * way a currency total ends up 100x wrong.
+   */
+  trackPurchase(input: {
+    amountMinor: number;
+    currency: string;
+    items?: { name: string; quantity?: number; price?: number }[];
+    props?: Record<string, unknown>;
+    path?: string;
+  }): Promise<AnalyticsIngestResult>;
   /** Default Channel Groups and a source/medium breakdown. */
   channels(input?: {
     from?: number;
@@ -490,6 +518,22 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
         core.request<{ data: ErrorGroup }>("PATCH", errPath(id), patch),
       delete: (id: string) => core.request<{ ok: boolean }>("DELETE", errPath(id)),
     },
+    revenue: (input?: { from?: number; to?: number; siteId?: string }) =>
+      core.request<{ data: AnalyticsRevenue }>(
+        "GET",
+        `/api/admin/analytics/revenue${rangeQs(input)}`,
+      ),
+    trackPurchase: (input) =>
+      analytics.track(
+        "purchase",
+        {
+          ...input.props,
+          revenue: Math.trunc(input.amountMinor),
+          currency: input.currency.toUpperCase(),
+          ...(input.items ? { items: input.items } : {}),
+        },
+        input.path ? { path: input.path } : undefined,
+      ),
     channels: (input?: { from?: number; to?: number; siteId?: string }) =>
       core.request<{ data: AnalyticsChannels }>(
         "GET",

@@ -23,6 +23,7 @@ import {
   analyticsFunnel,
   analyticsOverview,
   analyticsChannels,
+  analyticsRevenue,
   analyticsRealtime,
   analyticsSessions,
   analyticsRetention,
@@ -305,6 +306,7 @@ export const ANALYTICS_PANEL_METRICS = [
   "realtime",
   "sessions",
   "channels",
+  "revenue",
   "top-countries",
   "top-devices",
   "top-campaigns",
@@ -338,6 +340,18 @@ export const runAnalyticsPanel = async (
   const to = Date.now();
   const from = to - rangeDays * 86_400_000;
   const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+
+  if (metric === "revenue") {
+    const r = await analyticsRevenue(dbCtx, {
+      tenantId: scopeTenant,
+      from,
+      to,
+      siteId: typeof config?.siteId === "string" ? config.siteId : null,
+    });
+    // Currency leads the row so a chart groups by it rather than stacking
+    // amounts that cannot be added.
+    return r.byCurrency as unknown as Record<string, unknown>[];
+  }
 
   if (metric === "channels") {
     const c = await analyticsChannels(dbCtx, {

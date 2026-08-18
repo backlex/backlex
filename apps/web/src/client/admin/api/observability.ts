@@ -410,6 +410,14 @@ export interface ApiAnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+export interface ApiAnalyticsRevenue {
+  byCurrency: { currency: string; revenue: number; transactions: number; aov: number }[];
+  byChannel: { channel: string; currency: string; revenue: number; transactions: number }[];
+  byCampaign: { campaign: string; currency: string; revenue: number; transactions: number }[];
+  topItems: { name: string; currency: string; quantity: number; revenue: number }[];
+  truncated: boolean;
+}
+
 export interface ApiAnalyticsChannels {
   channels: { channel: string; sessions: number; visitors: number }[];
   sourceMedium: { value: string; sessions: number; visitors: number }[];
@@ -438,6 +446,10 @@ export interface ApiAnalyticsRealtime {
 }
 
 export const analyticsApi = {
+  revenue: (from: number, to: number, siteId?: string) =>
+    api<Envelope<ApiAnalyticsRevenue>>(
+      `/api/admin/analytics/revenue${analyticsQs({ from, to, siteId })}`,
+    ),
   channels: (from: number, to: number, siteId?: string) =>
     api<Envelope<ApiAnalyticsChannels>>(
       `/api/admin/analytics/channels${analyticsQs({ from, to, siteId })}`,

@@ -18,7 +18,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime|sessions|channels>
+const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime|sessions|channels|revenue>
 
   overview [--days <n>]                headline counters + top breakdowns
   events [--name <n>] [--limit <n>]    recent raw tracked events
@@ -35,6 +35,7 @@ const HELP = `backlex analytics <overview|events|event-names|funnel|retention|er
   realtime [--site <id>]               who is on the site in the last 30 min
   sessions [--site <id>] [--days <n>]  bounce rate, duration, landing/exit pages
   channels [--site <id>] [--days <n>]  where sessions came from (session-scoped)
+  revenue [--site <id>] [--days <n>]   revenue by currency, channel and campaign
   sites                                websites measured by the drop-in tag
   sites add --name <n> --domain <d>    register one, and print its snippet
   sites rm <id>                        stop accepting that snippet
@@ -355,6 +356,61 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         );
         if (json) printJson(res);
         else process.stderr.write(`Reported (group ${res.groups[0] ?? "—"}).\n`);
+        return;
+      }
+      case "revenue": {
+        const { from, to } = windowFrom(rest);
+        const site = flag(rest, "--site");
+        const params = new URLSearchParams({ from: String(from), to: String(to) });
+        if (site) params.set("siteId", site);
+        const { data } = await client.request<{ data: any }>(
+          "GET",
+          `${BASE}/revenue?${params}`,
+        );
+        if (json) {
+          printJson(data);
+          return;
+        }
+        if (!data.byCurrency.length) {
+          process.stderr.write("No revenue in this window.\n");
+          return;
+        }
+        // One table per currency dimension, never a merged total: amounts in
+        // different currencies are not addable and there is no FX source.
+        printTable(
+          data.byCurrency.map((c: any) => ({
+            currency: c.currency,
+            revenue: c.revenue,
+            orders: c.transactions,
+            aov: c.aov,
+          })),
+        );
+        const section = (title: string, rows: any[], key: string) => {
+          if (!rows?.length) return;
+          process.stderr.write(`\n${title}\n`);
+          printTable(
+            rows.map((r: any) => ({
+              [key]: r[key],
+              currency: r.currency,
+              revenue: r.revenue,
+              orders: r.transactions,
+            })),
+          );
+        };
+        section("By channel", data.byChannel, "channel");
+        section("By campaign", data.byCampaign, "campaign");
+        if (data.topItems.length) {
+          process.stderr.write("\nTop items\n");
+          printTable(
+            data.topItems.map((i: any) => ({
+              item: i.name,
+              currency: i.currency,
+              qty: i.quantity,
+              revenue: i.revenue,
+            })),
+          );
+        }
+        process.stderr.write("\nAmounts are in each currency's minor units.\n");
         return;
       }
       case "channels": {

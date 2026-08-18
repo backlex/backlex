@@ -38,6 +38,7 @@ import {
   listSites,
   analyticsRealtime,
   analyticsChannels,
+  analyticsRevenue,
   analyticsSessions,
   createSite,
   updateSite,
@@ -366,6 +367,58 @@ const breakdown = <K extends string>(
   key: K,
 ) => rows.map((r) => ({ value: r[key], count: r.count, users: r.users }));
 
+const MoneyRowFields = {
+  currency: { type: new GraphQLNonNull(GraphQLString) },
+  revenue: { type: new GraphQLNonNull(GraphQLFloat) },
+  transactions: { type: new GraphQLNonNull(GraphQLInt) },
+};
+
+const RevenueCurrencyType = new GraphQLObjectType({
+  name: "AnalyticsRevenueCurrency",
+  fields: { ...MoneyRowFields, aov: { type: new GraphQLNonNull(GraphQLFloat) } },
+});
+
+const RevenueChannelType = new GraphQLObjectType({
+  name: "AnalyticsRevenueChannel",
+  fields: { ...MoneyRowFields, channel: { type: new GraphQLNonNull(GraphQLString) } },
+});
+
+const RevenueCampaignType = new GraphQLObjectType({
+  name: "AnalyticsRevenueCampaign",
+  fields: { ...MoneyRowFields, campaign: { type: new GraphQLNonNull(GraphQLString) } },
+});
+
+const RevenueItemType = new GraphQLObjectType({
+  name: "AnalyticsRevenueItem",
+  fields: {
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    currency: { type: new GraphQLNonNull(GraphQLString) },
+    quantity: { type: new GraphQLNonNull(GraphQLFloat) },
+    revenue: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
+const RevenueType = new GraphQLObjectType({
+  name: "AnalyticsRevenue",
+  description:
+    "Amounts are in the currency's minor units. Every row carries its currency and nothing is summed across them — there is no FX rate source.",
+  fields: {
+    byCurrency: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(RevenueCurrencyType))),
+    },
+    byChannel: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(RevenueChannelType))),
+    },
+    byCampaign: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(RevenueCampaignType))),
+    },
+    topItems: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(RevenueItemType))),
+    },
+    truncated: { type: new GraphQLNonNull(GraphQLBoolean) },
+  },
+});
+
 const ChannelRowType = new GraphQLObjectType({
   name: "AnalyticsChannelRow",
   fields: {
@@ -501,6 +554,27 @@ export const analyticsQueryFields: Record<
         topReferrers: breakdown(o.topReferrers, "referrer"),
         sources: breakdown(o.sources, "source"),
       };
+    },
+  },
+  analyticsRevenue: {
+    type: new GraphQLNonNull(RevenueType),
+    description:
+      "Revenue by currency, channel and campaign, plus the top items (admin-only).",
+    args: {
+      from: { type: GraphQLFloat },
+      to: { type: GraphQLFloat },
+      siteId: { type: GraphQLString },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as { from?: number; to?: number; siteId?: string };
+      const { from, to } = resolveRange(a);
+      return analyticsRevenue(dbOf(gqlCtx), {
+        tenantId,
+        from,
+        to,
+        siteId: a.siteId ?? null,
+      });
     },
   },
   analyticsChannels: {

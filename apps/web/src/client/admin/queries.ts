@@ -149,6 +149,8 @@ export const queryKeys = {
   /** Whether a publishable ingest key exists. */
   analyticsIngestKey: () => ["analytics", "ingest-key"] as const,
   analyticsSites: () => ["analytics", "sites"] as const,
+  analyticsRevenue: (days: number, siteId: string | null) =>
+    ["analytics", "revenue", days, siteId ?? ""] as const,
   analyticsChannels: (days: number, siteId: string | null) =>
     ["analytics", "channels", days, siteId ?? ""] as const,
   analyticsSessions: (days: number, siteId: string | null) =>
@@ -622,6 +624,16 @@ export function useErrorGroup(id: string | null) {
     queryKey: queryKeys.errorGroup(id ?? ""),
     queryFn: () => analyticsApi.error(id as string),
     enabled: !!id,
+  });
+}
+
+export function useAnalyticsRevenue(days: number, siteId: string | null = null) {
+  return useQuery({
+    queryKey: queryKeys.analyticsRevenue(days, siteId),
+    queryFn: () => {
+      const { from, to } = analyticsRange(days);
+      return analyticsApi.revenue(from, to, siteId ?? undefined);
+    },
   });
 }
 

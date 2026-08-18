@@ -789,6 +789,190 @@ export const analyticsSessions = async (
   };
 };
 
+
+/**
+ * Read `props` WITHOUT letting the driver parse it.
+ *
+ * Selecting the column object makes Drizzle run its json mapper over the value
+ * while assembling the result row — and a malformed blob throws there, inside
+ * `mapResultRow`, before any code of ours sees it. That is not a hypothetical:
+ * a row written by another tool, restored from a backup, or fixed by hand in
+ * SQL can hold anything, and one of them would 500 an entire report. Worse, it
+ * would also 500 the raw-event view, which is exactly where an operator would
+ * go to find the bad row.
+ *
+ * Selecting a bare expression skips the mapper. What comes back then differs by
+ * dialect — SQLite hands over the raw TEXT, Postgres hands over an already
+ * parsed `jsonb` value — so {@link parseProps} accepts both.
+ */
+const propsRaw = sql<unknown>`props`;
+
+/** Normalize whatever {@link propsRaw} yielded into an object, or null. */
+const parseProps = (v: unknown): Record<string, unknown> | null => {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    return v as Record<string, unknown>;
+  }
+  if (typeof v !== "string" || !v) return null;
+  try {
+    const parsed = JSON.parse(v);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    // A blob we cannot read is reported as absent, which is true and is the
+    // only answer that keeps the rest of the row usable.
+    return null;
+  }
+};
+
+/* ── Revenue ──────────────────────────────────────────────────────────── */
+
+/** Purchase rows read for the item breakdown. Items live in `props`, which has
+ *  no portable SQL-side aggregation across pg/SQLite/D1, so they are tallied in
+ *  JS from a bounded read rather than with a dialect-branching JSON query. */
+const REVENUE_ROW_CAP = 5_000;
+
+export interface AnalyticsRevenue {
+  /** One row per currency. Never a single total — see the note below. */
+  byCurrency: {
+    currency: string;
+    revenue: number;
+    transactions: number;
+    /** Average order value, in the same minor units. */
+    aov: number;
+  }[];
+  byChannel: { channel: string; currency: string; revenue: number; transactions: number }[];
+  byCampaign: { campaign: string; currency: string; revenue: number; transactions: number }[];
+  topItems: { name: string; currency: string; quantity: number; revenue: number }[];
+  truncated: boolean;
+}
+
+/**
+ * Revenue, grouped by currency and attributed to the channel that brought the
+ * session in.
+ *
+ * **Every figure carries its currency, and nothing is ever summed across
+ * currencies.** There is no FX rate source in this repo, so a single "total
+ * revenue" number would be an addition of quantities that are not commensurable
+ * — 100 TRY + 100 EUR is not 200 of anything. Making `currency` part of every
+ * row means the mistake is not available to a caller rather than merely
+ * discouraged. Amounts stay in minor units end to end; only the UI divides.
+ *
+ * Items come from `props.items` — an array of `{ name, quantity, price }` — and
+ * are tallied in JS. A `jsonb_array_elements` / `json_each` branch would be the
+ * SQL answer, but it is the one shape whose spelling genuinely differs between
+ * the dialects, and the read here is already bounded by `REVENUE_ROW_CAP`.
+ */
+export const analyticsRevenue = async (
+  ctx: AnalyticsDbCtx,
+  opts: AnalyticsRange & { siteId?: string | null },
+): Promise<AnalyticsRevenue> => {
+  const t = eventsTable(ctx.dialect);
+  const clauses = [
+    tenantEq(t.tenantId, opts.tenantId),
+    gte(t.ts, tsParam(ctx.dialect, opts.from) as any),
+    lte(t.ts, tsParam(ctx.dialect, opts.to) as any),
+    sql`${t.revenue} IS NOT NULL`,
+  ];
+  if (opts.siteId) clauses.push(eq(t.siteId, opts.siteId));
+
+  const rows = (await (ctx.db as any)
+    .select({
+      revenue: t.revenue,
+      currency: t.currency,
+      referrer: t.referrer,
+      utmSource: t.utmSource,
+      utmMedium: t.utmMedium,
+      utmCampaign: t.utmCampaign,
+      props: propsRaw,
+    })
+    .from(t)
+    .where(and(...clauses))
+    .orderBy(desc(t.ts))
+    .limit(REVENUE_ROW_CAP + 1)) as any[];
+
+  const truncated = rows.length > REVENUE_ROW_CAP;
+  const use = truncated ? rows.slice(0, REVENUE_ROW_CAP) : rows;
+
+  type Bucket = { revenue: number; transactions: number };
+  const byCurrency = new Map<string, Bucket>();
+  const byChannel = new Map<string, Bucket & { channel: string; currency: string }>();
+  const byCampaign = new Map<string, Bucket & { campaign: string; currency: string }>();
+  const items = new Map<string, { name: string; currency: string; quantity: number; revenue: number }>();
+
+  for (const r of use) {
+    const amount = Number(r.revenue);
+    if (!Number.isFinite(amount)) continue;
+    // An untagged currency is its own bucket rather than being folded into a
+    // guess — "unknown" is a fact, a default currency would be a fiction.
+    const currency = typeof r.currency === "string" && r.currency ? r.currency : "—";
+
+    const cur = byCurrency.get(currency) ?? { revenue: 0, transactions: 0 };
+    cur.revenue += amount;
+    cur.transactions++;
+    byCurrency.set(currency, cur);
+
+    const touch = {
+      referrer: typeof r.referrer === "string" ? r.referrer : null,
+      utmSource: typeof r.utmSource === "string" ? r.utmSource : null,
+      utmMedium: typeof r.utmMedium === "string" ? r.utmMedium : null,
+    };
+    const channel = classifyChannel(touch);
+    const chKey = `${channel}\u0000${currency}`;
+    const ch = byChannel.get(chKey) ?? { channel, currency, revenue: 0, transactions: 0 };
+    ch.revenue += amount;
+    ch.transactions++;
+    byChannel.set(chKey, ch);
+
+    const campaign =
+      typeof r.utmCampaign === "string" && r.utmCampaign ? r.utmCampaign : "(none)";
+    const cpKey = `${campaign}\u0000${currency}`;
+    const cp = byCampaign.get(cpKey) ?? { campaign, currency, revenue: 0, transactions: 0 };
+    cp.revenue += amount;
+    cp.transactions++;
+    byCampaign.set(cpKey, cp);
+
+    // `props` is caller-supplied and may be anything at all — including a row
+    // written directly to the table by some other tool. Every access below is
+    // shape-checked, because one malformed blob must not 500 a revenue report.
+    const props = parseProps(r.props);
+    const list = props ? (props as any).items : null;
+    if (Array.isArray(list)) {
+      for (const raw of list.slice(0, 50)) {
+        if (!raw || typeof raw !== "object") continue;
+        const name = typeof (raw as any).name === "string" ? (raw as any).name.slice(0, 200) : null;
+        if (!name) continue;
+        const qty = Number((raw as any).quantity);
+        const price = Number((raw as any).price);
+        const key = `${name}\u0000${currency}`;
+        const hit = items.get(key) ?? { name, currency, quantity: 0, revenue: 0 };
+        hit.quantity += Number.isFinite(qty) ? qty : 1;
+        if (Number.isFinite(price)) {
+          hit.revenue += price * (Number.isFinite(qty) ? qty : 1);
+        }
+        items.set(key, hit);
+      }
+    }
+  }
+
+  const byRevenue = <T extends { revenue: number }>(a: T, b: T) => b.revenue - a.revenue;
+
+  return {
+    byCurrency: [...byCurrency.entries()]
+      .map(([currency, v]) => ({
+        currency,
+        revenue: v.revenue,
+        transactions: v.transactions,
+        aov: v.transactions > 0 ? Math.round(v.revenue / v.transactions) : 0,
+      }))
+      .sort(byRevenue),
+    byChannel: [...byChannel.values()].sort(byRevenue).slice(0, 12),
+    byCampaign: [...byCampaign.values()].sort(byRevenue).slice(0, 10),
+    topItems: [...items.values()].sort(byRevenue).slice(0, 10),
+    truncated,
+  };
+};
+
 /* ── Channels ─────────────────────────────────────────────────────────── */
 
 export interface AnalyticsChannels {
@@ -1701,8 +1885,34 @@ export const listAnalyticsEvents = async (
   if (opts.name) clauses.push(eq(t.name, opts.name));
   if (opts.distinctId) clauses.push(eq(t.distinctId, opts.distinctId));
 
+  // Explicit columns with `props` read raw: selecting the whole table would
+  // run Drizzle's json mapper, and a malformed blob would throw while building
+  // the row — taking down the one view that could show you which row it is.
   const rows = (await (ctx.db as any)
-    .select()
+    .select({
+      id: t.id,
+      name: t.name,
+      distinctId: t.distinctId,
+      userId: t.userId,
+      sessionId: t.sessionId,
+      props: propsRaw,
+      path: t.path,
+      referrer: t.referrer,
+      source: t.source,
+      release: t.release,
+      country: t.country,
+      siteId: t.siteId,
+      idScope: t.idScope,
+      deviceType: t.deviceType,
+      browser: t.browser,
+      os: t.os,
+      utmSource: t.utmSource,
+      utmMedium: t.utmMedium,
+      utmCampaign: t.utmCampaign,
+      revenue: t.revenue,
+      currency: t.currency,
+      ts: t.ts,
+    })
     .from(t)
     .where(and(...clauses))
     .orderBy(desc(t.ts))
@@ -1714,7 +1924,7 @@ export const listAnalyticsEvents = async (
     distinctId: r.distinctId,
     userId: r.userId ?? null,
     sessionId: r.sessionId ?? null,
-    props: (r.props as Record<string, unknown> | null) ?? null,
+    props: parseProps(r.props),
     path: r.path ?? null,
     referrer: r.referrer ?? null,
     source: r.source ?? null,

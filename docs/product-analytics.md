@@ -209,6 +209,51 @@ and sessions, a **zero-filled** daily series (a quiet day is a zero, not a gap),
 and top-N breakdowns by event name, path, referrer and source. Default window
 is 30 days; the maximum span is 365.
 
+### Ecommerce & revenue
+
+`GET /api/admin/analytics/revenue?from=&to=&siteId=` — revenue by currency, by
+acquisition channel, by campaign, and the top items.
+
+Record a purchase from the tag:
+
+```js
+backlex("purchase", {
+  revenue: 15000,          // MINOR units — 150.00
+  currency: "TRY",
+  items: [{ name: "Mug", quantity: 2, price: 2500 }],
+});
+```
+
+…or from the SDK, where the signature says so:
+
+```ts
+await client.analytics.trackPurchase({
+  amountMinor: 15_000,
+  currency: "TRY",
+  items: [{ name: "Mug", quantity: 2, price: 2_500 }],
+});
+```
+
+> **Nothing is ever summed across currencies, and there is no combined total
+> anywhere.** This repo has no FX rate source, so 100 TRY + 100 EUR is not 200
+> of anything — and a merged figure would look entirely plausible, which is
+> what makes it dangerous. Every row carries its own currency, so the mistake
+> is unavailable to a caller rather than merely discouraged.
+
+Amounts stay in minor units end to end; only the admin's formatter divides.
+`revenue` and `currency` are columns (they landed in the first phase), so no
+report has to read JSON to get a total — only the item breakdown reads
+`props.items`, and it does so in JS from a bounded read rather than with a
+`jsonb_array_elements` / `json_each` branch.
+
+**`props` is read without the driver's JSON parser.** Selecting the column
+object makes Drizzle parse the value while assembling the result row, and a
+malformed blob throws *there* — before any of our code runs. One such row
+would 500 an entire revenue report, and, worse, also 500 the raw-event view
+that an operator would use to find it. Both queries therefore select `props` as
+a bare expression and parse it defensively; an unreadable blob is reported as
+absent, which is true and leaves the rest of the row usable.
+
 ### Channels & attribution
 
 `GET /api/admin/analytics/channels?from=&to=&siteId=` — GA4's Default Channel
@@ -318,7 +363,7 @@ metrics can be dropped onto a dashboard and published to a public embed:
 
 Metrics: `totals`, `series`, `top-events`, `top-paths`, `top-referrers`,
 `sources`, `top-countries`, `top-devices`, `top-campaigns`, `sessions`,
-`channels`,
+`channels`, `revenue`,
 `realtime` (which
 ignores `rangeDays` — "the last 30 minutes" is the metric, not a window),
 `funnel` (with `steps` + `windowDays`), `retention` (with an optional `event`). Unlike `items-aggregate` panels there is no per-role clamp to apply on
@@ -350,7 +395,7 @@ Ingest (publishable key / API key / session): `POST /api/analytics/events`,
 Public web tag (no auth; the site id is the only parameter):
 `POST /api/analytics/collect`, `GET /api/analytics/script.js`.
 
-Admin (`/api/admin/analytics`, admin-only): `GET /channels`, `GET /sessions`, `GET /realtime`, `GET|POST /sites`,
+Admin (`/api/admin/analytics`, admin-only): `GET /revenue`, `GET /channels`, `GET /sessions`, `GET /realtime`, `GET|POST /sites`,
 `PATCH|DELETE /sites/{id}`, `GET /overview`,
 `GET /event-names`, `POST /funnel`, `POST /retention`, `GET /events`,
 `GET /errors`, `GET /errors/{id}`, `PATCH /errors/{id}`, `DELETE /errors/{id}`,
@@ -371,6 +416,7 @@ await client.analytics.retention({ event: "page_view" });
 await client.analytics.realtime();
 await client.analytics.sessions({ siteId });
 await client.analytics.channels({ siteId });
+await client.analytics.revenue({ siteId });
 await client.analytics.errors.list({ status: "open" });
 await client.analytics.errors.update(id, { status: "resolved" });
 await client.analytics.ingestKey.mint();
@@ -383,7 +429,7 @@ await client.analytics.sites.delete(id);
 
 ### GraphQL
 
-Queries `analyticsChannels`, `analyticsSessions`, `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
+Queries `analyticsRevenue`, `analyticsChannels`, `analyticsSessions`, `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
 `analyticsRetention`, `analyticsEvents`, `errorGroups`, `errorGroup`.
 Mutations `trackEvents`, `trackErrors`, `updateErrorGroup`, `deleteErrorGroup`,
 `createAnalyticsSite`, `updateAnalyticsSite`, `deleteAnalyticsSite`.
@@ -392,7 +438,7 @@ since that's what client bundles use.
 
 ### MCP
 
-`analytics.channels`, `analytics.sessions`, `analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
+`analytics.revenue`, `analytics.channels`, `analytics.sessions`, `analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
 `analytics.site_delete`, `analytics.overview`, `analytics.event_names`, `analytics.funnel`,
 `analytics.retention`, `analytics.events`, `errors.list`, `errors.get`,
 `errors.update`, `errors.delete`. The reporting verbs are classified `read`, so
@@ -413,6 +459,7 @@ backlex analytics ingest-key mint
 backlex analytics realtime
 backlex analytics sessions --days 30
 backlex analytics channels --days 30
+backlex analytics revenue --days 30
 backlex analytics sites
 backlex analytics sites add --name "Marketing" --domain example.com
 backlex analytics sites rm <id>

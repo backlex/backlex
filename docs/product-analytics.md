@@ -432,10 +432,22 @@ metrics can be dropped onto a dashboard and published to a public embed:
 
 Metrics: `totals`, `series`, `top-events`, `top-paths`, `top-referrers`,
 `sources`, `top-countries`, `top-devices`, `top-campaigns`, `sessions`,
-`channels`, `revenue`,
-`realtime` (which
-ignores `rangeDays` — "the last 30 minutes" is the metric, not a window),
-`funnel` (with `steps` + `windowDays`), `retention` (with an optional `event`). Unlike `items-aggregate` panels there is no per-role clamp to apply on
+`channels`, `revenue`, `realtime` (which ignores `rangeDays` — "the last 30
+minutes" is the metric, not a window), `funnel` (with `steps` + `windowDays`),
+and `retention` (with an optional `event`).
+
+A panel may also carry `siteId` and `segmentId`. The segment is resolved
+through the same tenant-scoped lookup every other caller uses, so a panel
+cannot borrow another workspace's filter — and because a segment only ever
+*narrows* a result, it adds nothing to the public-embed disclosure surface that
+the note above describes.
+
+All of this is now reachable from **Insights → New panel → analytics**. It was
+API-only before: the server had supported the `analytics` panel kind since
+before this feature, but the admin editor never offered it, so every metric was
+invisible to anyone not writing HTTP by hand. `analytics-parity-meta.test.ts`
+keeps the server's metric list and the editor's dropdown from drifting apart
+again. Unlike `items-aggregate` panels there is no per-role clamp to apply on
 an embed — the stream has no row-level owner, only counts — so analytics panels
 are treated like `sql` panels: admin-authored, and public only because an admin
 explicitly enabled the embed.

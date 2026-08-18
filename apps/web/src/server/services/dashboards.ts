@@ -23,6 +23,7 @@ import {
   analyticsFunnel,
   analyticsOverview,
   analyticsChannels,
+  resolveSegment,
   analyticsRevenue,
   analyticsRealtime,
   analyticsSessions,
@@ -337,9 +338,19 @@ export const runAnalyticsPanel = async (
   // analytics tables store NULL there — normalise before querying.
   const scopeTenant = tenantId || null;
   const rangeDays = Math.min(365, Math.max(1, Math.floor(Number(config?.rangeDays) || 30)));
+  // A panel may carry a saved segment. Resolved through the SAME tenant-scoped
+  // lookup every other caller uses, so a panel cannot borrow another
+  // workspace's filter — and re-validated, so a stale definition narrows
+  // nothing rather than narrowing wrongly. Note that a segment only ever
+  // NARROWS a result, so this adds no disclosure on the public-embed path.
   const to = Date.now();
   const from = to - rangeDays * 86_400_000;
   const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+  const segment = await resolveSegment(
+    dbCtx,
+    scopeTenant,
+    typeof config?.segmentId === "string" ? config.segmentId : null,
+  );
 
   if (metric === "revenue") {
     const r = await analyticsRevenue(dbCtx, {
@@ -347,6 +358,7 @@ export const runAnalyticsPanel = async (
       from,
       to,
       siteId: typeof config?.siteId === "string" ? config.siteId : null,
+      segment,
     });
     // Currency leads the row so a chart groups by it rather than stacking
     // amounts that cannot be added.
@@ -359,6 +371,7 @@ export const runAnalyticsPanel = async (
       from,
       to,
       siteId: typeof config?.siteId === "string" ? config.siteId : null,
+      segment,
     });
     return c.channels as unknown as Record<string, unknown>[];
   }
@@ -369,6 +382,7 @@ export const runAnalyticsPanel = async (
       from,
       to,
       siteId: typeof config?.siteId === "string" ? config.siteId : null,
+      segment,
     });
     // One row of headline figures — the panel renderer reads the first
     // non-numeric column as the label, so there is none and every column is a
@@ -391,6 +405,7 @@ export const runAnalyticsPanel = async (
     const rt = await analyticsRealtime(dbCtx, {
       tenantId: scopeTenant,
       siteId: typeof config?.siteId === "string" ? config.siteId : null,
+      segment,
     });
     return rt.byMinute.map((b) => ({
       minute: new Date(b.minute).toISOString().slice(11, 16),
@@ -430,7 +445,13 @@ export const runAnalyticsPanel = async (
     return out;
   }
 
-  const overview = await analyticsOverview(dbCtx, { tenantId: scopeTenant, from, to });
+  const overview = await analyticsOverview(dbCtx, {
+    tenantId: scopeTenant,
+    from,
+    to,
+    siteId: typeof config?.siteId === "string" ? config.siteId : null,
+    segment,
+  });
   switch (metric) {
     case "totals":
       return [overview.totals as unknown as Record<string, unknown>];

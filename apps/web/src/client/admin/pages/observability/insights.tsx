@@ -25,6 +25,7 @@ import {
   collectionsApi,
   dashboardsApi,
   dbAdminApi,
+  analyticsApi,
   kpisApi,
   panelsApi,
   rolesApi,
@@ -585,7 +586,32 @@ export function InsightsPage({ pushToast }: { pushToast?: PushToast } = {}) {
 
 const SAMPLE_PANEL_SQL = "SELECT COUNT(*) AS n FROM user;";
 
-type PanelKind = "sql" | "items-aggregate" | "kpi" | "static";
+type PanelKind = "sql" | "items-aggregate" | "analytics" | "kpi" | "static";
+
+/**
+ * Website metrics a panel can show.
+ *
+ * Mirrors `ANALYTICS_PANEL_METRICS` on the server, which is the actual check —
+ * an unknown value falls back to `series` there rather than erroring. Offered
+ * as a dropdown because the set is finite and known, which is the house rule.
+ */
+const ANALYTICS_METRIC_OPTIONS = [
+  { value: "series", label: "events per day" },
+  { value: "totals", label: "headline totals" },
+  { value: "sessions", label: "sessions, bounce, duration" },
+  { value: "channels", label: "channels" },
+  { value: "revenue", label: "revenue by currency" },
+  { value: "realtime", label: "last 30 minutes" },
+  { value: "top-events", label: "top events" },
+  { value: "top-paths", label: "top pages" },
+  { value: "top-referrers", label: "top referrers" },
+  { value: "top-countries", label: "top countries" },
+  { value: "top-devices", label: "devices" },
+  { value: "top-campaigns", label: "campaigns" },
+  { value: "sources", label: "sources" },
+  { value: "retention", label: "retention" },
+  { value: "funnel", label: "funnel (needs steps)" },
+] as const;
 type PanelViz =
   | "counter"
   | "sparkline"
@@ -694,10 +720,23 @@ function PanelEditorDialog({
   const [kpiSlug, setKpiSlug] = useState<string>(
     (panel?.config as { kpi?: string } | null)?.kpi ?? "",
   );
+  const [anMetric, setAnMetric] = useState<string>(
+    (panel?.config as { metric?: string } | null)?.metric ?? "series",
+  );
+  const [anRangeDays, setAnRangeDays] = useState<string>(
+    String((panel?.config as { rangeDays?: number } | null)?.rangeDays ?? 30),
+  );
+  const [anSteps, setAnSteps] = useState<string>(
+    ((panel?.config as { steps?: string[] } | null)?.steps ?? []).join(", "),
+  );
+  const [anSegmentId, setAnSegmentId] = useState<string>(
+    (panel?.config as { segmentId?: string } | null)?.segmentId ?? "",
+  );
   const [kpiRangeDays, setKpiRangeDays] = useState<string>(
     String((panel?.config as { rangeDays?: number } | null)?.rangeDays ?? 30),
   );
   const [kpiOptions, setKpiOptions] = useState<ApiKpi[]>([]);
+  const [segmentOptions, setSegmentOptions] = useState<{ id: string; name: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string | null>(null);
@@ -752,6 +791,10 @@ function PanelEditorDialog({
         const r = await kpisApi.list();
         if (!cancelled) setKpiOptions(r.data ?? []);
       } catch { /* leave empty; the field explains there are none */ }
+      try {
+        const sg = await analyticsApi.segments();
+        if (!cancelled) setSegmentOptions(sg.data ?? []);
+      } catch { /* a workspace with no segments is the normal case */ }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -947,7 +990,21 @@ function PanelEditorDialog({
             ? composeAggregateConfig()
             : kind === "kpi"
               ? { kpi: kpiSlug, rangeDays: Number(kpiRangeDays) || 30 }
-              : null,
+              : kind === "analytics"
+                ? {
+                    metric: anMetric,
+                    rangeDays: Number(anRangeDays) || 30,
+                    ...(anSegmentId ? { segmentId: anSegmentId } : {}),
+                    ...(anMetric === "funnel"
+                      ? {
+                          steps: anSteps
+                            .split(",")
+                            .map((x) => x.trim())
+                            .filter(Boolean),
+                        }
+                      : {}),
+                  }
+                : null,
         layout: null,
       };
       if (mode === "create") {
@@ -1030,13 +1087,14 @@ function PanelEditorDialog({
                 options={[
                   { value: "items-aggregate", label: "collection", hint: t`count / sum / average over a collection — no SQL` },
                   { value: "kpi", label: "kpi", hint: t`show a defined KPI — same number as Ask AI and reports` },
+                  { value: "analytics", label: "analytics", hint: t`website metrics — visitors, sessions, channels, revenue` },
                   { value: "sql", label: "sql", hint: t`read-only SELECT against the workspace database` },
                   { value: "static", label: "static", hint: t`config-only panel rendered from props` },
                 ]}
               />
               {serverErrors.kind
                 ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{serverErrors.kind}</div>
-                : <span className="text-[11.5px] text-muted-foreground">{kind === "items-aggregate" ? <Trans>Pick a collection and an aggregate below — no query to write.</Trans> : kind === "kpi" ? <Trans>The formula stays in the KPI, so this tile can never disagree with it.</Trans> : kind === "sql" ? <Trans>Write a read-only SELECT below.</Trans> : <Trans>Set the config object via the API once the panel exists.</Trans>}</span>}
+                : <span className="text-[11.5px] text-muted-foreground">{kind === "items-aggregate" ? <Trans>Pick a collection and an aggregate below — no query to write.</Trans> : kind === "analytics" ? <Trans>Pick a website metric below. Nothing to write, and no row-level owner to clamp on an embed.</Trans> : kind === "kpi" ? <Trans>The formula stays in the KPI, so this tile can never disagree with it.</Trans> : kind === "sql" ? <Trans>Write a read-only SELECT below.</Trans> : <Trans>Set the config object via the API once the panel exists.</Trans>}</span>}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Visualization</Trans></label>
@@ -1054,6 +1112,64 @@ function PanelEditorDialog({
                 : <span className="text-[11.5px] text-muted-foreground">{vizHint}</span>}
             </div>
           </div>
+
+          {kind === "analytics" && (
+            <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Metric</Trans></label>
+                <Select
+                  value={anMetric}
+                  onChange={(v) => { setAnMetric(v); setPreview(null); setPreviewError(null); }}
+                  className="w-full min-w-0"
+                  options={ANALYTICS_METRIC_OPTIONS.map((o) => ({ ...o }))}
+                />
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>Realtime ignores the window — "the last 30 minutes" is the metric.</Trans>
+                </span>
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Window</Trans></label>
+                <Select
+                  value={anRangeDays}
+                  onChange={(v) => { setAnRangeDays(v); setPreview(null); setPreviewError(null); }}
+                  className="w-full min-w-0"
+                  options={[
+                    { value: "7", label: t`7 days` },
+                    { value: "30", label: t`30 days` },
+                    { value: "90", label: t`90 days` },
+                  ]}
+                />
+              </div>
+              {anMetric === "funnel" && (
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Steps</Trans></label>
+                  <Input
+                    value={anSteps}
+                    placeholder="page_view, signup, purchase"
+                    onChange={(e) => { setAnSteps(e.target.value); setPreview(null); setPreviewError(null); }}
+                  />
+                  <span className="text-[11.5px] text-muted-foreground">
+                    <Trans>Two to eight event names, in order, comma separated.</Trans>
+                  </span>
+                </div>
+              )}
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Segment</Trans></label>
+                <Select
+                  value={anSegmentId}
+                  onChange={(v) => { setAnSegmentId(v); setPreview(null); setPreviewError(null); }}
+                  className="w-full min-w-0"
+                  options={[
+                    { value: "", label: t`All traffic` },
+                    ...segmentOptions.map((sg) => ({ value: sg.id, label: sg.name })),
+                  ]}
+                />
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>A segment only narrows a panel, so it adds nothing to a public embed.</Trans>
+                </span>
+              </div>
+            </div>
+          )}
 
           {kind === "kpi" && (
             <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">

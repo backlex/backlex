@@ -3538,6 +3538,35 @@ export const analyticsEvents = pgTable(
     /** App or build version, so a metric shift can be tied to a release. */
     release: text("release"),
     country: text("country"),
+    /** Registered site this row came from (`analytics_sites.id`). NULL for
+     *  SDK / server-side traffic — `site_id IS NOT NULL` is what isolates the
+     *  web stream, so session reports don't count a cron job as a visit. */
+    siteId: text("site_id"),
+    /** Does `distinct_id` outlive today? `durable` = the SDK's localStorage id,
+     *  `daily` = a server-derived cookieless hash that rotates at UTC midnight.
+     *  Cohort and multi-day funnel reports MUST exclude `daily` — a rotating id
+     *  makes every returning visitor look new, which is wrong rather than
+     *  merely missing. Defaulted so rows written before this column read
+     *  `durable`, which is factually what they were. */
+    idScope: text("id_scope").default("durable"),
+    /** `desktop` / `mobile` / `tablet` / `bot`, derived from the user-agent at
+     *  ingest. The user-agent itself is never stored. */
+    deviceType: text("device_type"),
+    browser: text("browser"),
+    os: text("os"),
+    /** Campaign tagging, read off the landing URL's query string. `utm_term`
+     *  and `utm_content` stay in `props`: these three are columns because
+     *  reports GROUP BY them, and every added column costs D1 write throughput
+     *  (see `PARAM_BUDGET` in services/analytics.ts). */
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
+    /** Purchase amount in the currency's MINOR units (cents, kuruş). */
+    revenue: bigint("revenue", { mode: "number" }),
+    /** ISO-4217 code for `revenue`. Reports group by it and never sum across
+     *  it — this repo has no FX rate source, and a silently mixed total is
+     *  worse than no total. */
+    currency: text("currency"),
     /** Event time. Client-supplied (offline queues replay late) but clamped
      *  server-side so a skewed clock can't park rows in the far future. */
     ts: timestamp("ts", { withTimezone: true }).notNull(),
@@ -3545,6 +3574,12 @@ export const analyticsEvents = pgTable(
      *  retention cohorts group without dialect-specific date math — the same
      *  trick `usage_counters.day` uses. */
     day: text("day").notNull(),
+    /** UTC hour of `ts`, `YYYY-MM-DDTHH`. Denormalized for the same reason as
+     *  `day` — there is no portable hour-bucketing expression across Postgres,
+     *  SQLite and D1. NULL on rows written before this column existed.
+     *  Realtime does NOT use this: "last 30 minutes" wants minute buckets and
+     *  is a bounded `ts >=` scan instead. */
+    hour: text("hour"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -3554,6 +3589,17 @@ export const analyticsEvents = pgTable(
     index("analytics_events_tenant_name_ts_idx").on(t.tenantId, t.name, t.ts),
     index("analytics_events_tenant_distinct_idx").on(t.tenantId, t.distinctId, t.ts),
     index("analytics_events_tenant_day_idx").on(t.tenantId, t.day),
+    index("analytics_events_tenant_hour_idx").on(t.tenantId, t.hour),
+    /** Sessionization: `PARTITION BY distinct_id ORDER BY ts` with the range
+     *  filter on `day`. The older `(tenant, distinct_id, ts)` index cannot
+     *  serve it — a `WHERE day BETWEEN` is not a prefix of that ordering, so
+     *  the planner would scan the tenant's whole history. */
+    index("analytics_events_tenant_day_distinct_ts_idx").on(
+      t.tenantId,
+      t.day,
+      t.distinctId,
+      t.ts,
+    ),
   ],
 );
 

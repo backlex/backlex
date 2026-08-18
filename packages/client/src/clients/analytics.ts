@@ -39,13 +39,42 @@ export interface AnalyticsIngestResult {
   rejected: number;
 }
 
+/** One top-N row over a dimension. `users` is distinct visitors — a website
+ *  report leads with people, `count` alone answers "how many hits". */
+export interface AnalyticsBreakdownRow {
+  value: string;
+  count: number;
+  users: number;
+}
+
 export interface AnalyticsOverview {
-  totals: { events: number; users: number; sessions: number };
+  totals: {
+    events: number;
+    /**
+     * Distinct visitor ids in range. Read alongside `cookielessShare`: ids in
+     * the cookieless lane rotate at UTC midnight, so for that share of traffic
+     * one returning person contributes one id per day and this is inflated.
+     * `durableUsers` and `visitorsPerDay` are always true.
+     */
+    users: number;
+    sessions: number;
+    /** Unique visitors among non-rotating ids. Correct over any range. */
+    durableUsers: number;
+    /** Mean distinct cookieless visitors per active day, or null when there
+     *  was no cookieless traffic in range. */
+    visitorsPerDay: number | null;
+    /** Fraction of events in range carrying a rotating id, 0..1. */
+    cookielessShare: number;
+  };
   series: { day: string; events: number; users: number }[];
   topEvents: { name: string; count: number; users: number }[];
-  topPaths: { path: string; count: number }[];
-  topReferrers: { referrer: string; count: number }[];
-  sources: { source: string; count: number }[];
+  topPaths: { path: string; count: number; users: number }[];
+  topReferrers: { referrer: string; count: number; users: number }[];
+  sources: { source: string; count: number; users: number }[];
+  /** Website dimensions, derived server-side at ingest. */
+  topCountries: AnalyticsBreakdownRow[];
+  topDevices: AnalyticsBreakdownRow[];
+  topCampaigns: AnalyticsBreakdownRow[];
 }
 
 export interface AnalyticsFunnelResult {
@@ -70,6 +99,17 @@ export interface AnalyticsEventRow {
   source: string | null;
   release: string | null;
   country: string | null;
+  /** Server-derived web dimensions, exposed on the raw-event debug view. */
+  siteId: string | null;
+  idScope: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  revenue: number | null;
+  currency: string | null;
   ts: number;
 }
 

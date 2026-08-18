@@ -72,8 +72,25 @@ const AnalyticsTotalsType = new GraphQLObjectType({
   name: "AnalyticsTotals",
   fields: {
     events: { type: new GraphQLNonNull(GraphQLInt) },
-    users: { type: new GraphQLNonNull(GraphQLInt) },
+    users: {
+      type: new GraphQLNonNull(GraphQLInt),
+      description:
+        "Distinct visitor ids in range. Inflated for the `cookielessShare` of traffic, whose ids rotate daily — see durableUsers / visitorsPerDay.",
+    },
     sessions: { type: new GraphQLNonNull(GraphQLInt) },
+    durableUsers: {
+      type: new GraphQLNonNull(GraphQLInt),
+      description: "Unique visitors among non-rotating ids. Correct over any range.",
+    },
+    visitorsPerDay: {
+      type: GraphQLInt,
+      description:
+        "Mean distinct cookieless visitors per active day; null when there was none in range.",
+    },
+    cookielessShare: {
+      type: new GraphQLNonNull(GraphQLFloat),
+      description: "Fraction of events in range carrying a rotating id, 0..1.",
+    },
   },
 });
 
@@ -95,12 +112,15 @@ const AnalyticsTopEventType = new GraphQLObjectType({
   },
 });
 
-/** One label→count breakdown row (paths, referrers, sources). */
+/** One breakdown row (paths, referrers, sources, countries, devices,
+ *  campaigns). `users` is distinct visitors — the figure a website report
+ *  leads with; `count` alone answers "how many hits". */
 const AnalyticsBreakdownType = new GraphQLObjectType({
   name: "AnalyticsBreakdown",
   fields: {
     value: { type: new GraphQLNonNull(GraphQLString) },
     count: { type: new GraphQLNonNull(GraphQLInt) },
+    users: { type: new GraphQLNonNull(GraphQLInt) },
   },
 });
 
@@ -129,6 +149,21 @@ const AnalyticsOverviewType = new GraphQLObjectType({
       ),
     },
     sources: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType)),
+      ),
+    },
+    topCountries: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType)),
+      ),
+    },
+    topDevices: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType)),
+      ),
+    },
+    topCampaigns: {
       type: new GraphQLNonNull(
         new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType)),
       ),
@@ -193,6 +228,16 @@ const AnalyticsEventType = new GraphQLObjectType({
     source: { type: GraphQLString },
     release: { type: GraphQLString },
     country: { type: GraphQLString },
+    siteId: { type: GraphQLString },
+    idScope: { type: GraphQLString },
+    deviceType: { type: GraphQLString },
+    browser: { type: GraphQLString },
+    os: { type: GraphQLString },
+    utmSource: { type: GraphQLString },
+    utmMedium: { type: GraphQLString },
+    utmCampaign: { type: GraphQLString },
+    revenue: { type: GraphQLFloat },
+    currency: { type: GraphQLString },
     ts: { type: new GraphQLNonNull(GraphQLFloat) },
   },
 });
@@ -306,10 +351,12 @@ const IngestResultType = new GraphQLObjectType({
 });
 
 /** Flatten the service's per-column breakdown shape into `{ value, count }`. */
+/** Rename the historical key (`path` / `referrer` / `source`) to the generic
+ *  `value` the GraphQL breakdown type exposes, keeping `users` intact. */
 const breakdown = <K extends string>(
-  rows: (Record<K, string> & { count: number })[],
+  rows: (Record<K, string> & { count: number; users: number })[],
   key: K,
-) => rows.map((r) => ({ value: r[key], count: r.count }));
+) => rows.map((r) => ({ value: r[key], count: r.count, users: r.users }));
 
 export const analyticsQueryFields: Record<
   string,

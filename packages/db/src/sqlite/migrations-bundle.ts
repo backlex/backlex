@@ -126,6 +126,7 @@ import m119 from "../../drizzle/sqlite/20260814140000_ai_usage_counters/migratio
 import m120 from "../../drizzle/sqlite/20260814150000_agent_app_access/migration.sql" with { type: "text" };
 import m121 from "../../drizzle/sqlite/20260815090000_two_factor_lockout/migration.sql" with { type: "text" };
 import m122 from "../../drizzle/sqlite/20260816120000_job_progress/migration.sql" with { type: "text" };
+import m123 from "../../drizzle/sqlite/20260818090000_analytics_web_dimensions/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -256,4 +257,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260814150000_agent_app_access", sql: m120 },
   { name: "20260815090000_two_factor_lockout", sql: m121 },
   { name: "20260816120000_job_progress", sql: m122 },
+  { name: "20260818090000_analytics_web_dimensions", sql: m123 },
 ];

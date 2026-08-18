@@ -49,6 +49,12 @@ const settingsTable = (dialect: "pg" | "sqlite") =>
 /** UTC calendar day, `YYYY-MM-DD`. */
 export const utcDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
 
+/** UTC hour, `YYYY-MM-DDTHH`. Materialized for the same reason as {@link utcDay}:
+ *  no hour-bucketing expression has a common spelling across Postgres, SQLite
+ *  and D1, so the bucket is computed here rather than in SQL. Sorts lexically,
+ *  and `slice(0, 10)` recovers the day from it. */
+export const utcHour = (ms: number): string => new Date(ms).toISOString().slice(0, 13);
+
 /** Shift a `YYYY-MM-DD` day by N days. */
 export const addDays = (day: string, n: number): string =>
   utcDay(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000);
@@ -102,6 +108,28 @@ const tenantSql = (tenantId: string | null, alias = "") => {
 /** Drizzle-builder twin of {@link tenantSql}. */
 const tenantEq = (col: any, tenantId: string | null) =>
   tenantId === null ? isNull(col) : eq(col, tenantId);
+
+/**
+ * Restrict a report to visitor ids that outlive the day.
+ *
+ * Cohort retention and multi-day funnels both rest on "is this the same person
+ * as yesterday", which a cookieless id cannot answer — it is regenerated at
+ * UTC midnight by design. Including that traffic would not leave these reports
+ * incomplete, it would make them WRONG in a way that still renders: every
+ * returning visitor reads as new, so retention collapses toward 0% and no
+ * funnel step on a later day ever converts. A wrong number that looks right is
+ * worse than a missing one, so those two queries exclude rotating ids and the
+ * UI says what share was excluded.
+ *
+ * Spelled `<> 'daily'` rather than `= 'durable'` on purpose: a NULL — a row
+ * written before the column existed, or by some future writer that forgets to
+ * set it — is then INCLUDED. Over-including a durable row is a far milder
+ * failure than silently dropping real history.
+ */
+const durableOnly = (alias = "") => {
+  const col = sql.raw(`${alias ? `${alias}.` : ""}id_scope`);
+  return sql`(${col} IS NULL OR ${col} <> 'daily')`;
+};
 
 /* ── Ingest ───────────────────────────────────────────────────────────── */
 
@@ -161,6 +189,24 @@ export interface TrackEventInput {
   source?: string | null;
   release?: string | null;
   country?: string | null;
+  /** Registered site (`analytics_sites.id`) for web-stream rows; NULL for
+   *  SDK / server traffic. Set by the collect route, never by a caller. */
+  siteId?: string | null;
+  /** `durable` (SDK localStorage id) or `daily` (server-derived cookieless
+   *  hash). Defaults to `durable` — see the column's doc-comment for why the
+   *  distinction is load-bearing for cohort reports. */
+  idScope?: "durable" | "daily" | null;
+  /** Derived server-side from the user-agent; not accepted from clients, which
+   *  have no better information and every reason to be wrong. */
+  deviceType?: string | null;
+  browser?: string | null;
+  os?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  /** Purchase amount in the currency's minor units. */
+  revenue?: number | null;
+  currency?: string | null;
   /** Epoch ms. Defaults to now; clamped to ±(7d, 5min). */
   ts?: number;
 }
@@ -203,8 +249,21 @@ export const recordEvents = async (
       source: str(e.source, 40),
       release: str(e.release, 80),
       country: str(e.country, 8),
+      siteId: str(e.siteId, 64),
+      idScope: e.idScope === "daily" ? "daily" : "durable",
+      deviceType: str(e.deviceType, 16),
+      browser: str(e.browser, 40),
+      os: str(e.os, 40),
+      utmSource: str(e.utmSource, 200),
+      utmMedium: str(e.utmMedium, 200),
+      utmCampaign: str(e.utmCampaign, 200),
+      revenue: typeof e.revenue === "number" && Number.isFinite(e.revenue)
+        ? Math.trunc(e.revenue)
+        : null,
+      currency: str(e.currency, 8)?.toUpperCase() ?? null,
       ts: new Date(ms),
       day: utcDay(ms),
+      hour: utcHour(ms),
       createdAt: new Date(now),
     });
   }
@@ -551,14 +610,54 @@ export interface AnalyticsRange {
   to: number;
 }
 
+/** One row of a top-N breakdown. `users` is distinct visitors, which is what a
+ *  website-analytics report leads with — `count` alone answers "how many hits"
+ *  when the question is almost always "how many people". */
+export interface AnalyticsBreakdownRow {
+  value: string;
+  count: number;
+  users: number;
+}
+
 export interface AnalyticsOverview {
-  totals: { events: number; users: number; sessions: number };
+  totals: {
+    events: number;
+    /**
+     * Distinct visitor ids in range.
+     *
+     * Read this together with `cookielessShare`. Cookieless ids rotate at UTC
+     * midnight, so for that share of traffic one returning person contributes
+     * one id PER DAY and this figure is inflated. `durableUsers` and
+     * `visitorsPerDay` are the two figures that are always true; this one is
+     * kept because it is what every existing caller already reads.
+     */
+    users: number;
+    sessions: number;
+    /** Unique visitors among durable (SDK localStorage) ids only. Correct over
+     *  any range length, because those ids do not rotate. */
+    durableUsers: number;
+    /** Mean distinct cookieless visitors per active day. The strongest true
+     *  statement available for rotating ids — they cannot be de-duplicated
+     *  across a day boundary. NULL when there is no cookieless traffic. */
+    visitorsPerDay: number | null;
+    /** Fraction of events in range carrying a rotating id, 0..1. Zero until
+     *  the web tag ships; the UI switches its visitor label on it. */
+    cookielessShare: number;
+  };
   /** One point per UTC day in range, zero-filled so charts don't gap. */
   series: { day: string; events: number; users: number }[];
   topEvents: { name: string; count: number; users: number }[];
-  topPaths: { path: string; count: number }[];
-  topReferrers: { referrer: string; count: number }[];
-  sources: { source: string; count: number }[];
+  /** These three keep their historical key name (`path` / `referrer` /
+   *  `source`) rather than the generic `value`, because SDK and GraphQL
+   *  consumers already read them by that name. They gain `users` like every
+   *  other breakdown. */
+  topPaths: { path: string; count: number; users: number }[];
+  topReferrers: { referrer: string; count: number; users: number }[];
+  sources: { source: string; count: number; users: number }[];
+  /** Website dimensions, derived server-side at ingest. */
+  topCountries: AnalyticsBreakdownRow[];
+  topDevices: AnalyticsBreakdownRow[];
+  topCampaigns: AnalyticsBreakdownRow[];
 }
 
 const num = (v: unknown): number => {
@@ -566,17 +665,43 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * Columns a top-N breakdown may group by.
+ *
+ * Deliberately a closed union rather than a free string: this value reaches a
+ * `groupBy` and the set of things it is safe to group by is exactly "a real
+ * column on this table". Widening it to `string` would turn a report parameter
+ * into an injection surface for no gain — a caller wanting to break down by an
+ * arbitrary `props` key needs the JSON-extract path, which is a different
+ * query with its own `json_valid` guard.
+ */
+export type BreakdownColumn =
+  | "path"
+  | "referrer"
+  | "source"
+  | "country"
+  | "deviceType"
+  | "browser"
+  | "os"
+  | "utmSource"
+  | "utmMedium"
+  | "utmCampaign";
+
 /** Top-N breakdown over one column, skipping NULL/empty values. */
 const topBy = async (
   ctx: AnalyticsDbCtx,
   range: AnalyticsRange,
-  column: "path" | "referrer" | "source",
+  column: BreakdownColumn,
   limit: number,
-): Promise<{ value: string; count: number }[]> => {
+): Promise<AnalyticsBreakdownRow[]> => {
   const t = eventsTable(ctx.dialect);
   const col = (t as any)[column];
   const rows = (await (ctx.db as any)
-    .select({ value: col, count: sql<number>`count(*)` })
+    .select({
+      value: col,
+      count: sql<number>`count(*)`,
+      users: sql<number>`count(distinct ${t.distinctId})`,
+    })
     .from(t)
     .where(
       and(
@@ -588,8 +713,12 @@ const topBy = async (
     )
     .groupBy(col)
     .orderBy(desc(sql`count(*)`))
-    .limit(limit)) as { value: string; count: unknown }[];
-  return rows.map((r) => ({ value: r.value, count: num(r.count) }));
+    .limit(limit)) as { value: string; count: unknown; users: unknown }[];
+  return rows.map((r) => ({
+    value: r.value,
+    count: num(r.count),
+    users: num(r.users),
+  }));
 };
 
 /** Headline counters, the daily series and the top-N breakdowns. */
@@ -604,25 +733,43 @@ export const analyticsOverview = async (
     lte(t.ts, tsParam(ctx.dialect, range.to) as any),
   );
 
+  // `count(distinct case when ... end)` and `sum(case when ... end)` are both
+  // plain SQL-92 and need no dialect branch, which is why the two
+  // cookieless-aware figures ride along on the existing round-trip instead of
+  // costing two more queries.
   const [totalsRow] = (await (ctx.db as any)
     .select({
       events: sql<number>`count(*)`,
       users: sql<number>`count(distinct ${t.distinctId})`,
       sessions: sql<number>`count(distinct ${t.sessionId})`,
+      durableUsers: sql<number>`count(distinct case when ${t.idScope} <> 'daily' then ${t.distinctId} end)`,
+      cookielessEvents: sql<number>`sum(case when ${t.idScope} = 'daily' then 1 else 0 end)`,
     })
     .from(t)
-    .where(inRange)) as { events: unknown; users: unknown; sessions: unknown }[];
+    .where(inRange)) as {
+    events: unknown;
+    users: unknown;
+    sessions: unknown;
+    durableUsers: unknown;
+    cookielessEvents: unknown;
+  }[];
 
   const seriesRows = (await (ctx.db as any)
     .select({
       day: t.day,
       events: sql<number>`count(*)`,
       users: sql<number>`count(distinct ${t.distinctId})`,
+      cookielessUsers: sql<number>`count(distinct case when ${t.idScope} = 'daily' then ${t.distinctId} end)`,
     })
     .from(t)
     .where(inRange)
     .groupBy(t.day)
-    .orderBy(t.day)) as { day: string; events: unknown; users: unknown }[];
+    .orderBy(t.day)) as {
+    day: string;
+    events: unknown;
+    users: unknown;
+    cookielessUsers: unknown;
+  }[];
 
   const eventRows = (await (ctx.db as any)
     .select({
@@ -636,11 +783,17 @@ export const analyticsOverview = async (
     .orderBy(desc(sql`count(*)`))
     .limit(10)) as { name: string; count: unknown; users: unknown }[];
 
-  const [paths, referrers, sources] = await Promise.all([
-    topBy(ctx, range, "path", 10),
-    topBy(ctx, range, "referrer", 10),
-    topBy(ctx, range, "source", 6),
-  ]);
+  const [paths, referrers, sources, countries, devices, campaigns] =
+    await Promise.all([
+      topBy(ctx, range, "path", 10),
+      topBy(ctx, range, "referrer", 10),
+      topBy(ctx, range, "source", 6),
+      topBy(ctx, range, "country", 10),
+      // Four buckets exist (desktop/mobile/tablet/bot); 6 leaves headroom
+      // without implying there is a long tail.
+      topBy(ctx, range, "deviceType", 6),
+      topBy(ctx, range, "utmSource", 10),
+    ]);
 
   // Zero-fill so a quiet day renders as a gap-free zero rather than a jump.
   const byDay = new Map(seriesRows.map((r) => [r.day, r]));
@@ -653,11 +806,30 @@ export const analyticsOverview = async (
     if (series.length > 400) break; // guardrail on an absurd range
   }
 
+  // A rotating id cannot be de-duplicated across days, so the honest figure for
+  // that traffic is a per-active-day mean rather than a range-wide distinct.
+  // Averaged over days that actually saw cookieless traffic — including quiet
+  // days would report a drop in visitors that is really a drop in days.
+  const cookielessDays = seriesRows
+    .map((r) => num(r.cookielessUsers))
+    .filter((n) => n > 0);
+  const visitorsPerDay = cookielessDays.length
+    ? Math.round(
+        cookielessDays.reduce((a, b) => a + b, 0) / cookielessDays.length,
+      )
+    : null;
+
+  const events = num(totalsRow?.events);
+  const cookielessEvents = num(totalsRow?.cookielessEvents);
+
   return {
     totals: {
-      events: num(totalsRow?.events),
+      events,
       users: num(totalsRow?.users),
       sessions: num(totalsRow?.sessions),
+      durableUsers: num(totalsRow?.durableUsers),
+      visitorsPerDay,
+      cookielessShare: events > 0 ? cookielessEvents / events : 0,
     },
     series,
     topEvents: eventRows.map((r) => ({
@@ -665,9 +837,20 @@ export const analyticsOverview = async (
       count: num(r.count),
       users: num(r.users),
     })),
-    topPaths: paths.map((r) => ({ path: r.value, count: r.count })),
-    topReferrers: referrers.map((r) => ({ referrer: r.value, count: r.count })),
-    sources: sources.map((r) => ({ source: r.value, count: r.count })),
+    topPaths: paths.map((r) => ({ path: r.value, count: r.count, users: r.users })),
+    topReferrers: referrers.map((r) => ({
+      referrer: r.value,
+      count: r.count,
+      users: r.users,
+    })),
+    sources: sources.map((r) => ({
+      source: r.value,
+      count: r.count,
+      users: r.users,
+    })),
+    topCountries: countries,
+    topDevices: devices,
+    topCampaigns: campaigns,
   };
 };
 
@@ -732,7 +915,7 @@ export const analyticsFunnel = async (
   const ctes = [
     sql`s0 AS (SELECT distinct_id, MIN(ts) AS t FROM analytics_events
         WHERE ${tenantSql(opts.tenantId)} AND name = ${steps[0]}
-          AND ts >= ${from} AND ts <= ${to}
+          AND ts >= ${from} AND ts <= ${to} AND ${durableOnly()}
         GROUP BY distinct_id)`,
   ];
   for (let i = 1; i < steps.length; i++) {
@@ -747,6 +930,7 @@ export const analyticsFunnel = async (
       sql`${cur} AS (SELECT e.distinct_id, MIN(e.ts) AS t
           FROM analytics_events e JOIN ${prev} ON ${prev}.distinct_id = e.distinct_id${entryJoin}
           WHERE ${tenantSql(opts.tenantId, "e")} AND e.name = ${steps[i]}
+            AND ${durableOnly("e")}
             AND e.ts > ${prev}.t AND e.ts <= ${to}
             AND e.ts <= ${windowSql(ctx.dialect, "s0.t", windowMs)}
           GROUP BY e.distinct_id)`,
@@ -809,13 +993,13 @@ export const analyticsRetention = async (
   const query = sql`
     WITH f AS (
       SELECT distinct_id, MIN(day) AS d0 FROM analytics_events
-      WHERE ${tenantSql(opts.tenantId)}${nameFilter}
+      WHERE ${tenantSql(opts.tenantId)}${nameFilter} AND ${durableOnly()}
       GROUP BY distinct_id
       HAVING MIN(day) >= ${fromDay} AND MIN(day) <= ${toDay}
     ),
     a AS (
       SELECT DISTINCT distinct_id, day FROM analytics_events
-      WHERE ${tenantSql(opts.tenantId)}${nameFilter}
+      WHERE ${tenantSql(opts.tenantId)}${nameFilter} AND ${durableOnly()}
         AND day >= ${fromDay} AND day <= ${toDay}
     )
     SELECT f.d0 AS cohort, a.day AS day, COUNT(DISTINCT a.distinct_id) AS n
@@ -864,6 +1048,19 @@ export interface AnalyticsEventRow {
   source: string | null;
   release: string | null;
   country: string | null;
+  /** Server-derived web dimensions. Present on the raw-event view because this
+   *  is the debug surface — when a breakdown looks wrong, the first question is
+   *  what actually landed on the row. */
+  siteId: string | null;
+  idScope: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  revenue: number | null;
+  currency: string | null;
   ts: number;
 }
 
@@ -905,6 +1102,16 @@ export const listAnalyticsEvents = async (
     source: r.source ?? null,
     release: r.release ?? null,
     country: r.country ?? null,
+    siteId: r.siteId ?? null,
+    idScope: r.idScope ?? null,
+    deviceType: r.deviceType ?? null,
+    browser: r.browser ?? null,
+    os: r.os ?? null,
+    utmSource: r.utmSource ?? null,
+    utmMedium: r.utmMedium ?? null,
+    utmCampaign: r.utmCampaign ?? null,
+    revenue: r.revenue == null ? null : Number(r.revenue),
+    currency: r.currency ?? null,
     ts: tsValue(r.ts),
   }));
 };

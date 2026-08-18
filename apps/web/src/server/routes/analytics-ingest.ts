@@ -26,6 +26,7 @@ import { defaultHook } from "../lib/openapi-router";
 import { rateLimitOk } from "../lib/rate-limit";
 import { setMeterTenant } from "../lib/usage-meter";
 import { requestMeta } from "../services/activity";
+import { enrichmentFromRequest, parseUtm } from "../services/analytics-enrich";
 import {
   MAX_BATCH,
   recordErrors,
@@ -171,10 +172,30 @@ export const analyticsIngestRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
       const ctx = c.get("ctx");
       const tenantId = await resolveIngestTenant(c);
       const { events } = c.req.valid("json");
+
+      // Server-derived dimensions. Read once per request (they are properties
+      // of the connection, not of an individual event) and layered over the
+      // payload rather than under it: a client cannot know its own device
+      // better than its user-agent says, and cannot be trusted about its own
+      // country at all. `country` is the one field a caller may still supply —
+      // a server-side SDK relaying events on behalf of real visitors knows
+      // their geo when we don't — so the derived value wins only when present.
+      const ctxFields = enrichmentFromRequest(c.req.raw);
+      const enriched = events.map((e) => ({
+        ...e,
+        deviceType: ctxFields.deviceType,
+        browser: ctxFields.browser,
+        os: ctxFields.os,
+        country: ctxFields.country ?? e.country ?? null,
+        // Campaign tags ride on the landing URL's query string, so they are
+        // per-event rather than per-request.
+        ...parseUtm(e.path),
+      }));
+
       const result = await recordEvents(
         { db: ctx.db, dialect: ctx.dialect },
         tenantId,
-        events as Parameters<typeof recordEvents>[2],
+        enriched as Parameters<typeof recordEvents>[2],
       );
       return c.json(result, 202);
     },

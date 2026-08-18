@@ -109,11 +109,21 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
           printJson(data);
           return;
         }
-        printKeyValues({
+        const totals: Record<string, string> = {
           events: String(data.totals.events),
           visitors: String(data.totals.users),
           sessions: String(data.totals.sessions),
-        });
+        };
+        // Only surface the cookieless caveat when there IS cookieless traffic.
+        // Printing "0% cookieless" on every workspace that has none is noise
+        // that trains people to skip the line that matters.
+        if (data.totals.cookielessShare > 0) {
+          totals.cookieless = `${Math.round(data.totals.cookielessShare * 100)}% of events (ids rotate daily)`;
+          totals["visitors/day"] = String(data.totals.visitorsPerDay ?? 0);
+          totals["visitors (durable ids)"] = String(data.totals.durableUsers);
+        }
+        printKeyValues(totals);
+
         process.stderr.write("\nTop events\n");
         printTable(
           data.topEvents.map((e: any) => ({
@@ -122,10 +132,21 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
             visitors: e.users,
           })),
         );
-        if (data.topPaths.length > 0) {
-          process.stderr.write("\nTop paths\n");
-          printTable(data.topPaths);
-        }
+        const section = (title: string, rows: any[], key: string) => {
+          if (!rows?.length) return;
+          process.stderr.write(`\n${title}\n`);
+          printTable(
+            rows.map((r: any) => ({
+              [key]: r.value ?? r[key],
+              count: r.count,
+              visitors: r.users,
+            })),
+          );
+        };
+        section("Top paths", data.topPaths, "path");
+        section("Top countries", data.topCountries, "country");
+        section("Devices", data.topDevices, "device");
+        section("Top campaigns", data.topCampaigns, "campaign");
         return;
       }
       case "events": {

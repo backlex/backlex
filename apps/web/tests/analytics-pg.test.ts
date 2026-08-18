@@ -79,6 +79,75 @@ test("pg: overview counts and zero-fills like sqlite", async () => {
   expect(data.series.length).toBe(8);
   expect(data.topEvents.find((e: any) => e.name === "page_view").count).toBe(4);
   expect(data.topPaths[0].path).toBe("/pricing");
+
+  // The cookieless-aware counters ride on the same round-trip via
+  // `count(distinct case when ...)` / `sum(case when ...)`. Postgres and
+  // SQLite spell those identically, and this is what proves it rather than
+  // assuming it.
+  expect(data.totals.durableUsers).toBe(3);
+  expect(data.totals.cookielessShare).toBe(0);
+  expect(data.totals.visitorsPerDay).toBeNull();
+}, PGLITE_TEST_TIMEOUT_MS);
+
+test("pg: breakdowns carry distinct users, not just row counts", async () => {
+  if (skipped()) return;
+  const res = await harness!.fetch(
+    `/api/admin/analytics/overview?from=${now - 7 * DAY}&to=${now}`,
+  );
+  const { data } = (await res.json()) as any;
+
+  // `count(distinct ...)` inside a grouped breakdown is the addition phase 1
+  // makes to `topBy`. The fixture's three visitors all hit /pricing once at
+  // entry, so hits and people agree there — what is being pinned is that
+  // Postgres returns the column at all and that it is a number, not a string
+  // (pg returns bigint counts as strings through some drivers, which would
+  // make `users` render as "3").
+  const pricing = data.topPaths.find((r: any) => r.path === "/pricing");
+  expect(pricing.count).toBe(3);
+  const sources = data.topCountries.concat(data.topDevices, data.topCampaigns);
+  for (const row of sources) {
+    expect(typeof row.count).toBe("number");
+    expect(typeof row.users).toBe("number");
+  }
+}, PGLITE_TEST_TIMEOUT_MS);
+
+test("pg: LAG + SUM OVER sessionize with the interval spelling", async () => {
+  if (skipped()) return;
+  // The Postgres twin of `analytics-sessionization-probe.test.ts`. This is the
+  // phase-4 unblocker: the gap comparison is the ONE place sessionization
+  // touches the dialect, and it does so through the same `interval` spelling
+  // `windowSql` already uses. If this passes, phase 4 adds no new dialect
+  // branch — and if it fails, we learn now rather than three phases in.
+  const { buildContext } = await import("../src/server/context");
+  const ctx = await buildContext(harness!.env);
+  const { sql } = await import("drizzle-orm");
+
+  const GAP_MS = 30 * 60_000;
+  const query = sql`
+    WITH lagged AS (
+      SELECT distinct_id, ts,
+             LAG(ts) OVER (PARTITION BY distinct_id, day ORDER BY ts) AS prev_ts
+      FROM analytics_events
+    ),
+    marked AS (
+      SELECT distinct_id, ts,
+             CASE WHEN prev_ts IS NULL
+                       OR ${sql.raw(`prev_ts + interval '${GAP_MS} milliseconds' < ts`)}
+                  THEN 1 ELSE 0 END AS is_new
+      FROM lagged
+    )
+    SELECT SUM(is_new) AS sessions FROM marked`;
+
+  const rows = ((await (ctx.db as any).execute(query)) as any).rows as any[];
+  // 9 events collapse to 6 sessions, and the arithmetic is what does it. Each
+  // of the three visitors fires page_view + signup ONE SECOND apart on the
+  // same day — well inside the 30-minute gap, so those pair into one session —
+  // then returns on a later day, which opens a second. 3 × 2 = 6.
+  //
+  // This is the assertion that actually exercises the `interval` spelling: a
+  // broken one either treats the 1-second pairs as separate sessions (→ 9) or
+  // swallows the day boundary (→ 3).
+  expect(Number(rows[0]?.sessions)).toBe(6);
 }, PGLITE_TEST_TIMEOUT_MS);
 
 test("pg: the funnel interval window matches the sqlite integer window", async () => {

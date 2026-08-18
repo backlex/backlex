@@ -269,13 +269,37 @@ export const usageApi = {
 
 // ── External-DB migration (docs/migrating-in.md) ─────────────────────────────
 
+/** One top-N row over a dimension. `users` is distinct visitors — the figure a
+ *  website report leads with. */
+export interface ApiAnalyticsBreakdown {
+  value: string;
+  count: number;
+  users: number;
+}
+
 export interface ApiAnalyticsOverview {
-  totals: { events: number; users: number; sessions: number };
+  totals: {
+    events: number;
+    /** Distinct visitor ids in range. Inflated for `cookielessShare` of
+     *  traffic, whose ids rotate at UTC midnight — the page shows
+     *  `visitorsPerDay` instead when that share is non-zero. */
+    users: number;
+    sessions: number;
+    /** Unique visitors among non-rotating ids; correct over any range. */
+    durableUsers: number;
+    /** Mean distinct cookieless visitors per active day, or null when none. */
+    visitorsPerDay: number | null;
+    /** Fraction of events carrying a rotating id, 0..1. */
+    cookielessShare: number;
+  };
   series: { day: string; events: number; users: number }[];
   topEvents: { name: string; count: number; users: number }[];
-  topPaths: { path: string; count: number }[];
-  topReferrers: { referrer: string; count: number }[];
-  sources: { source: string; count: number }[];
+  topPaths: { path: string; count: number; users: number }[];
+  topReferrers: { referrer: string; count: number; users: number }[];
+  sources: { source: string; count: number; users: number }[];
+  topCountries: ApiAnalyticsBreakdown[];
+  topDevices: ApiAnalyticsBreakdown[];
+  topCampaigns: ApiAnalyticsBreakdown[];
 }
 
 export interface ApiAnalyticsFunnel {
@@ -300,6 +324,16 @@ export interface ApiAnalyticsEvent {
   source: string | null;
   release: string | null;
   country: string | null;
+  siteId: string | null;
+  idScope: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  revenue: number | null;
+  currency: string | null;
   ts: number;
 }
 

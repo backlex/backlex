@@ -61,12 +61,24 @@ const RangeQuery = z.object({
   to: z.coerce.number().int().optional(),
 });
 
+/** A top-N row over one dimension. Carries `users` as well as `count` because
+ *  a website report leads with people, not hits. */
+const Breakdown = z.object({
+  value: z.string(),
+  count: z.number().int(),
+  users: z.number().int(),
+});
+
 const Overview = z
   .object({
     totals: z.object({
       events: z.number().int(),
       users: z.number().int(),
       sessions: z.number().int(),
+      durableUsers: z.number().int(),
+      /** Null when no cookieless traffic fell in the range. */
+      visitorsPerDay: z.number().int().nullable(),
+      cookielessShare: z.number(),
     }),
     series: z.array(
       z.object({
@@ -82,11 +94,30 @@ const Overview = z
         users: z.number().int(),
       }),
     ),
-    topPaths: z.array(z.object({ path: z.string(), count: z.number().int() })),
-    topReferrers: z.array(
-      z.object({ referrer: z.string(), count: z.number().int() }),
+    topPaths: z.array(
+      z.object({
+        path: z.string(),
+        count: z.number().int(),
+        users: z.number().int(),
+      }),
     ),
-    sources: z.array(z.object({ source: z.string(), count: z.number().int() })),
+    topReferrers: z.array(
+      z.object({
+        referrer: z.string(),
+        count: z.number().int(),
+        users: z.number().int(),
+      }),
+    ),
+    sources: z.array(
+      z.object({
+        source: z.string(),
+        count: z.number().int(),
+        users: z.number().int(),
+      }),
+    ),
+    topCountries: z.array(Breakdown),
+    topDevices: z.array(Breakdown),
+    topCampaigns: z.array(Breakdown),
   })
   .openapi("AnalyticsOverview");
 
@@ -130,6 +161,16 @@ const AnalyticsEvent = z
     source: z.string().nullable(),
     release: z.string().nullable(),
     country: z.string().nullable(),
+    siteId: z.string().nullable(),
+    idScope: z.string().nullable(),
+    deviceType: z.string().nullable(),
+    browser: z.string().nullable(),
+    os: z.string().nullable(),
+    utmSource: z.string().nullable(),
+    utmMedium: z.string().nullable(),
+    utmCampaign: z.string().nullable(),
+    revenue: z.number().int().nullable(),
+    currency: z.string().nullable(),
     ts: z.number().int(),
   })
   .openapi("AnalyticsEvent");

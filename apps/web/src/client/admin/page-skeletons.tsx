@@ -319,10 +319,16 @@ function AnalyticsSkeletonImpl() {
         </div>
         <Skeleton className="h-[120px] w-full" />
       </Card>
+      {/* Six breakdown cards: events, pages, referrers, countries, devices,
+          campaigns. Must track `OverviewTab` — a skeleton with a different
+          card count makes the page visibly jump as it loads. */}
       <div className="grid gap-3 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="gap-2 px-4 py-3.5">
-            <Skeleton className="h-3 w-24" />
+            <div className="flex items-baseline justify-between gap-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-2.5 w-12" />
+            </div>
             {Array.from({ length: 5 }).map((__, j) => (
               <Skeleton key={j} className="h-6 w-full" />
             ))}

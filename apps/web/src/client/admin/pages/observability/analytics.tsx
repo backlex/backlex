@@ -140,32 +140,57 @@ function BreakdownCard({
   title,
   rows,
   empty,
+  metric = "count",
+  unit,
 }: {
   title: string;
-  rows: { label: string; count: number }[];
+  rows: { label: string; count: number; users?: number }[];
   empty: string;
+  /**
+   * Which figure the row leads with. A website report answers "how many
+   * people" for a page or a country, and "how many times" for an event — so
+   * the caller says which. The other figure rides in the row's tooltip rather
+   * than a second column, which would not survive a 390px viewport.
+   */
+  metric?: "count" | "users";
+  unit: string;
 }) {
-  const max = Math.max(1, ...rows.map((r) => r.count));
+  const figure = (r: { count: number; users?: number }) =>
+    metric === "users" ? (r.users ?? 0) : r.count;
+  const max = Math.max(1, ...rows.map(figure));
   return (
     <Card className="gap-2 px-4 py-3.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-        {title}
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+          {title}
+        </div>
+        <div className="shrink-0 text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground/70">
+          {unit}
+        </div>
       </div>
       {rows.length === 0 ? (
         <p className="m-0 text-[13px] text-muted-foreground">{empty}</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           {rows.map((r) => (
-            <div key={r.label} className="flex items-center gap-2">
+            <div
+              key={r.label}
+              className="flex items-center gap-2"
+              title={
+                r.users === undefined
+                  ? `${r.count}`
+                  : `${r.count} events · ${r.users} visitors`
+              }
+            >
               <div className="relative min-w-0 flex-1 overflow-hidden rounded-control bg-muted/60 px-2 py-1">
                 <div
                   className="absolute inset-y-0 left-0 bg-primary/15"
-                  style={{ width: `${Math.max(3, (r.count / max) * 100)}%` }}
+                  style={{ width: `${Math.max(3, (figure(r) / max) * 100)}%` }}
                 />
                 <span className="relative block truncate text-[12.5px]">{r.label}</span>
               </div>
               <span className="shrink-0 tabular-nums text-[12.5px] text-muted-foreground">
-                {fmtCount(r.count)}
+                {fmtCount(figure(r))}
               </span>
             </div>
           ))}
@@ -290,6 +315,13 @@ function OverviewTab({
   const { t } = useLingui();
   if (!overview) return null;
 
+  // With rotating ids a range-wide unique count is inflated — one returning
+  // person is a new id every day. Rather than print a number we know is wrong,
+  // the visitor tile switches to the per-day figure, which is true, and says
+  // so. Zero cookieless traffic (every workspace, until the web tag ships)
+  // keeps the original label.
+  const cookieless = overview.totals.cookielessShare > 0;
+
   if (overview.totals.events === 0) {
     return (
       <EmptyState
@@ -310,8 +342,12 @@ function OverviewTab({
         />
         <StatTile
           label={t`Visitors`}
-          value={fmtCount(overview.totals.users)}
-          sub={t`unique, by anonymous id`}
+          value={
+            cookieless
+              ? fmtCount(overview.totals.visitorsPerDay ?? 0)
+              : fmtCount(overview.totals.users)
+          }
+          sub={cookieless ? t`per day, ids rotate daily` : t`unique, by anonymous id`}
         />
         <StatTile
           label={t`Sessions`}
@@ -351,18 +387,68 @@ function OverviewTab({
       <div className="grid gap-3 lg:grid-cols-3">
         <BreakdownCard
           title={t`Top events`}
-          rows={overview.topEvents.map((e) => ({ label: e.name, count: e.count }))}
+          unit={t`events`}
+          rows={overview.topEvents.map((e) => ({
+            label: e.name,
+            count: e.count,
+            users: e.users,
+          }))}
           empty={t`No events in this window.`}
         />
         <BreakdownCard
           title={t`Top pages`}
-          rows={overview.topPaths.map((p) => ({ label: p.path, count: p.count }))}
+          unit={t`visitors`}
+          metric="users"
+          rows={overview.topPaths.map((p) => ({
+            label: p.path,
+            count: p.count,
+            users: p.users,
+          }))}
           empty={t`No page paths recorded — send a path with your events.`}
         />
         <BreakdownCard
           title={t`Top referrers`}
-          rows={overview.topReferrers.map((r) => ({ label: r.referrer, count: r.count }))}
+          unit={t`visitors`}
+          metric="users"
+          rows={overview.topReferrers.map((r) => ({
+            label: r.referrer,
+            count: r.count,
+            users: r.users,
+          }))}
           empty={t`No referrers recorded.`}
+        />
+        <BreakdownCard
+          title={t`Countries`}
+          unit={t`visitors`}
+          metric="users"
+          rows={overview.topCountries.map((r) => ({
+            label: r.value,
+            count: r.count,
+            users: r.users,
+          }))}
+          empty={t`No country resolved. Self-hosted deploys need a proxy that sets a geo header.`}
+        />
+        <BreakdownCard
+          title={t`Devices`}
+          unit={t`visitors`}
+          metric="users"
+          rows={overview.topDevices.map((r) => ({
+            label: r.value,
+            count: r.count,
+            users: r.users,
+          }))}
+          empty={t`No device recorded — events sent server-side carry no user-agent.`}
+        />
+        <BreakdownCard
+          title={t`Campaigns`}
+          unit={t`visitors`}
+          metric="users"
+          rows={overview.topCampaigns.map((r) => ({
+            label: r.value,
+            count: r.count,
+            users: r.users,
+          }))}
+          empty={t`No campaigns yet — tag a landing URL with ?utm_source=… to see it here.`}
         />
       </div>
     </>

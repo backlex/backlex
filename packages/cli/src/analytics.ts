@@ -18,7 +18,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites>
+const HELP = `backlex analytics <overview|events|event-names|funnel|retention|errors|error|resolve|ignore|reopen|delete-error|track|report-error|ingest-key|sites|realtime>
 
   overview [--days <n>]                headline counters + top breakdowns
   events [--name <n>] [--limit <n>]    recent raw tracked events
@@ -32,6 +32,7 @@ const HELP = `backlex analytics <overview|events|event-names|funnel|retention|er
   track <name> [--props <json|@file|->] [--distinct-id <id>]
   report-error --message <m> [--stack <s>] [--type <t>]
   ingest-key <status|mint|revoke>      publishable client key
+  realtime [--site <id>]               who is on the site in the last 30 min
   sites                                websites measured by the drop-in tag
   sites add --name <n> --domain <d>    register one, and print its snippet
   sites rm <id>                        stop accepting that snippet
@@ -352,6 +353,39 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
         );
         if (json) printJson(res);
         else process.stderr.write(`Reported (group ${res.groups[0] ?? "—"}).\n`);
+        return;
+      }
+      case "realtime": {
+        const site = flag(rest, "--site");
+        const { data } = await client.request<{ data: any }>(
+          "GET",
+          `${BASE}/realtime${site ? `?siteId=${encodeURIComponent(site)}` : ""}`,
+        );
+        if (json) {
+          printJson(data);
+          return;
+        }
+        printKeyValues({
+          "visitors now": String(data.visitorsNow),
+          "events (30 min)": String(data.events),
+        });
+        if (data.truncated) {
+          // A clipped realtime figure is a wrong number that still renders, so
+          // it is said out loud rather than left to the reader to notice.
+          process.stderr.write(
+            "\nRow cap reached — these counts are a floor, not a total.\n",
+          );
+        }
+        if (data.topPaths.length) {
+          process.stderr.write("\nTop pages\n");
+          printTable(
+            data.topPaths.map((r: any) => ({
+              path: r.value,
+              views: r.count,
+              visitors: r.users,
+            })),
+          );
+        }
         return;
       }
       case "sites": {

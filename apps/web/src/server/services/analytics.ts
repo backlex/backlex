@@ -603,6 +603,138 @@ export const resolveIngestKey = async (
   return hit ? { tenantId: hit.tenantId ?? null } : null;
 };
 
+/* ── Realtime ─────────────────────────────────────────────────────────── */
+
+/** Minutes in the realtime window. GA calls this "last 30 minutes". */
+export const REALTIME_MINUTES = 30;
+
+/**
+ * Rows one realtime call will read.
+ *
+ * The window is bounded by time, not by volume, so a busy site could put an
+ * unbounded number of rows inside it — and this endpoint is polled. The cap
+ * makes the cost predictable; `truncated` says when it bit, because a silently
+ * clipped "visitors right now" is a wrong number that still renders.
+ */
+const REALTIME_ROW_CAP = 5_000;
+
+export interface AnalyticsRealtime {
+  /** Distinct visitors seen in the window. */
+  visitorsNow: number;
+  events: number;
+  /** Oldest-first, one point per minute, zero-filled. Always REALTIME_MINUTES long. */
+  byMinute: { minute: number; events: number; visitors: number }[];
+  topPaths: AnalyticsBreakdownRow[];
+  topReferrers: AnalyticsBreakdownRow[];
+  topCountries: AnalyticsBreakdownRow[];
+  /** True when the row cap bit and the figures below it are a floor, not a total. */
+  truncated: boolean;
+}
+
+/**
+ * "Who is on the site right now."
+ *
+ * Deliberately NOT built on the `hour` column. Hourly buckets are the wrong
+ * grain for a 30-minute view, and the whole point of materializing `hour` was
+ * to dodge date functions for LONG ranges. Here the range is short and bounded,
+ * so one narrow query plus JS bucketing is both cheaper and free of any dialect
+ * branch — there is no portable minute-truncation expression to write.
+ */
+export const analyticsRealtime = async (
+  ctx: AnalyticsDbCtx,
+  opts: { tenantId: string | null; siteId?: string | null },
+  now = Date.now(),
+): Promise<AnalyticsRealtime> => {
+  const t = eventsTable(ctx.dialect);
+  const windowMs = REALTIME_MINUTES * 60_000;
+  // Anchor on a whole minute so buckets are stable between polls — otherwise
+  // every refresh shifts the boundaries and the chart shimmers.
+  const end = Math.floor(now / 60_000) * 60_000 + 60_000;
+  const from = end - windowMs;
+
+  const clauses = [
+    tenantEq(t.tenantId, opts.tenantId),
+    gte(t.ts, tsParam(ctx.dialect, from) as any),
+  ];
+  if (opts.siteId) clauses.push(eq(t.siteId, opts.siteId));
+
+  const rows = (await (ctx.db as any)
+    .select({
+      ts: t.ts,
+      distinctId: t.distinctId,
+      path: t.path,
+      referrer: t.referrer,
+      country: t.country,
+    })
+    .from(t)
+    .where(and(...clauses))
+    .orderBy(desc(t.ts))
+    .limit(REALTIME_ROW_CAP + 1)) as any[];
+
+  const truncated = rows.length > REALTIME_ROW_CAP;
+  const use = truncated ? rows.slice(0, REALTIME_ROW_CAP) : rows;
+
+  const buckets = Array.from({ length: REALTIME_MINUTES }, (_, i) => ({
+    minute: from + i * 60_000,
+    events: 0,
+    visitors: new Set<string>(),
+  }));
+  const seen = new Set<string>();
+  const byPath = new Map<string, { count: number; users: Set<string> }>();
+  const byReferrer = new Map<string, { count: number; users: Set<string> }>();
+  const byCountry = new Map<string, { count: number; users: Set<string> }>();
+
+  const bump = (
+    m: Map<string, { count: number; users: Set<string> }>,
+    key: unknown,
+    who: string,
+  ) => {
+    if (typeof key !== "string" || !key) return;
+    let hit = m.get(key);
+    if (!hit) {
+      hit = { count: 0, users: new Set() };
+      m.set(key, hit);
+    }
+    hit.count++;
+    hit.users.add(who);
+  };
+
+  for (const r of use) {
+    const ms = tsValue(r.ts);
+    const who = String(r.distinctId);
+    seen.add(who);
+    const idx = Math.floor((ms - from) / 60_000);
+    const bucket = buckets[idx];
+    if (bucket) {
+      bucket.events++;
+      bucket.visitors.add(who);
+    }
+    bump(byPath, r.path, who);
+    bump(byReferrer, r.referrer, who);
+    bump(byCountry, r.country, who);
+  }
+
+  const top = (m: Map<string, { count: number; users: Set<string> }>) =>
+    [...m.entries()]
+      .map(([value, v]) => ({ value, count: v.count, users: v.users.size }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+  return {
+    visitorsNow: seen.size,
+    events: use.length,
+    byMinute: buckets.map((b) => ({
+      minute: b.minute,
+      events: b.events,
+      visitors: b.visitors.size,
+    })),
+    topPaths: top(byPath),
+    topReferrers: top(byReferrer),
+    topCountries: top(byCountry),
+    truncated,
+  };
+};
+
 /* ── Sites ────────────────────────────────────────────────────────────── */
 
 export interface AnalyticsSiteRow {

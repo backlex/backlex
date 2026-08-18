@@ -14,6 +14,7 @@ import { Badge, Button, EmptyState, PageHeader } from "../../ui";
 import { Select } from "../../select";
 import { Input } from "@backlex/ui/components/input";
 import { Card } from "@backlex/ui/components/card";
+import { Timeseries } from "./timeseries";
 import {
   Dialog,
   DialogBody,
@@ -64,34 +65,6 @@ function LimitBar({ used, limit }: { used: number; limit: number }) {
   );
 }
 
-/** Per-day request bars with the error slice stacked in red on top. */
-function DayChart({ series }: { series: ApiUsageOverview["series"] }) {
-  const max = Math.max(1, ...series.map((p) => p.requests));
-  const h = 120;
-  const gap = 2;
-  const n = series.length;
-  const w = 600;
-  const bw = Math.max(2, (w - gap * (n - 1)) / Math.max(1, n));
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="block h-[120px] w-full">
-      {series.map((p, i) => {
-        const x = i * (bw + gap);
-        const bh = Math.max(p.requests > 0 ? 2 : 0, (p.requests / max) * (h - 4));
-        const eh = p.requests > 0 ? (p.errors / p.requests) * bh : 0;
-        return (
-          <g key={p.day}>
-            <rect x={x} y={h - bh} width={bw} height={bh} rx="1.5" fill="var(--primary)" opacity="0.75">
-              <title>{`${p.day} — ${p.requests} req, ${p.errors} err`}</title>
-            </rect>
-            {eh > 0.5 && (
-              <rect x={x} y={h - bh} width={bw} height={eh} rx="1.5" fill="var(--destructive)" />
-            )}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 const WINDOWS = ["7", "30", "90"] as const;
 
@@ -303,7 +276,15 @@ export function UsagePage({
                 }
               />
             ) : (
-              <DayChart series={paddedSeries} />
+              <Timeseries
+                data={paddedSeries.map((p) => ({
+                  label: p.day,
+                  total: p.requests,
+                  accent: p.errors,
+                }))}
+                totalLabel={t`Requests`}
+                accentLabel={t`Errors`}
+              />
             )}
           </Card>
 

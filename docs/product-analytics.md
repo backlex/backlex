@@ -209,6 +209,25 @@ and sessions, a **zero-filled** daily series (a quiet day is a zero, not a gap),
 and top-N breakdowns by event name, path, referrer and source. Default window
 is 30 days; the maximum span is 365.
 
+### Realtime
+
+`GET /api/admin/analytics/realtime?siteId=` — the last 30 minutes, bucketed by
+minute and zero-filled, with the top paths, referrers and countries inside that
+window.
+
+It is deliberately **not** built on the `hour` column. Hourly buckets are the
+wrong grain for a 30-minute view, and materializing `hour` existed to dodge
+date functions over *long* ranges; here the range is short and bounded, so one
+narrow query plus JS bucketing is cheaper and needs no dialect branch at all.
+
+Buckets are anchored to a whole minute, so two polls seconds apart return the
+same boundaries rather than a chart that shimmers on every refresh. The read is
+capped at 5,000 rows; when that cap bites, `truncated` is `true` and every
+count below it is a floor rather than a total — the admin says so out loud
+rather than under-reporting silently. The admin's **Live** toggle polls every
+10 seconds (not the 5 that Logs and Traces use — each poll scans a 30-minute
+window, and every open tab pays for it).
+
 ### Funnels
 
 `POST /api/admin/analytics/funnel` with 2–8 event names. A visitor counts at
@@ -247,8 +266,9 @@ metrics can be dropped onto a dashboard and published to a public embed:
 ```
 
 Metrics: `totals`, `series`, `top-events`, `top-paths`, `top-referrers`,
-`sources`, `funnel` (with `steps` + `windowDays`), `retention` (with an optional
-`event`). Unlike `items-aggregate` panels there is no per-role clamp to apply on
+`sources`, `top-countries`, `top-devices`, `top-campaigns`, `realtime` (which
+ignores `rangeDays` — "the last 30 minutes" is the metric, not a window),
+`funnel` (with `steps` + `windowDays`), `retention` (with an optional `event`). Unlike `items-aggregate` panels there is no per-role clamp to apply on
 an embed — the stream has no row-level owner, only counts — so analytics panels
 are treated like `sql` panels: admin-authored, and public only because an admin
 explicitly enabled the embed.
@@ -277,7 +297,7 @@ Ingest (publishable key / API key / session): `POST /api/analytics/events`,
 Public web tag (no auth; the site id is the only parameter):
 `POST /api/analytics/collect`, `GET /api/analytics/script.js`.
 
-Admin (`/api/admin/analytics`, admin-only): `GET|POST /sites`,
+Admin (`/api/admin/analytics`, admin-only): `GET /realtime`, `GET|POST /sites`,
 `PATCH|DELETE /sites/{id}`, `GET /overview`,
 `GET /event-names`, `POST /funnel`, `POST /retention`, `GET /events`,
 `GET /errors`, `GET /errors/{id}`, `PATCH /errors/{id}`, `DELETE /errors/{id}`,
@@ -295,6 +315,7 @@ client.analytics.identify(distinctId, { userId });
 await client.analytics.overview({ from, to });
 await client.analytics.funnel({ steps: ["a", "b"], windowDays: 7 });
 await client.analytics.retention({ event: "page_view" });
+await client.analytics.realtime();
 await client.analytics.errors.list({ status: "open" });
 await client.analytics.errors.update(id, { status: "resolved" });
 await client.analytics.ingestKey.mint();
@@ -307,7 +328,7 @@ await client.analytics.sites.delete(id);
 
 ### GraphQL
 
-Queries `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
+Queries `analyticsRealtime`, `analyticsSites`, `analyticsOverview`, `analyticsEventNames`, `analyticsFunnel`,
 `analyticsRetention`, `analyticsEvents`, `errorGroups`, `errorGroup`.
 Mutations `trackEvents`, `trackErrors`, `updateErrorGroup`, `deleteErrorGroup`,
 `createAnalyticsSite`, `updateAnalyticsSite`, `deleteAnalyticsSite`.
@@ -316,7 +337,7 @@ since that's what client bundles use.
 
 ### MCP
 
-`analytics.sites`, `analytics.site_create`, `analytics.site_update`,
+`analytics.realtime`, `analytics.sites`, `analytics.site_create`, `analytics.site_update`,
 `analytics.site_delete`, `analytics.overview`, `analytics.event_names`, `analytics.funnel`,
 `analytics.retention`, `analytics.events`, `errors.list`, `errors.get`,
 `errors.update`, `errors.delete`. The reporting verbs are classified `read`, so
@@ -334,6 +355,7 @@ backlex analytics resolve <id> | ignore <id> | reopen <id>
 backlex analytics track deploy_finished --props '{"version":"1.4.0"}'
 backlex analytics report-error --message "nightly job failed" --type CronError
 backlex analytics ingest-key mint
+backlex analytics realtime
 backlex analytics sites
 backlex analytics sites add --name "Marketing" --domain example.com
 backlex analytics sites rm <id>
@@ -344,8 +366,9 @@ or a failed batch without pulling in the SDK.
 
 ## Admin UI
 
-**Observability → Analytics**, five tabs over one shared time window:
-Overview (counters, daily chart, top-N), Funnel (a step builder that only
+**Observability → Analytics**, six tabs over one shared time window:
+Overview (counters, daily chart, top-N), Realtime (the last 30 minutes, with
+a Live toggle), Funnel (a step builder that only
 offers event names you've actually tracked), Retention (the cohort grid), and
 Errors (crash groups + triage, with the stack trace and affected-visitor count
 in the detail dialog), and Sites (register a website, copy its snippet, toggle

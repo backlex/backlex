@@ -102,6 +102,18 @@ export interface AnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+/** The last 30 minutes. `truncated` is true when a row cap bit, which makes
+ *  every figure below it a floor rather than a total. */
+export interface AnalyticsRealtime {
+  visitorsNow: number;
+  events: number;
+  byMinute: { minute: number; events: number; visitors: number }[];
+  topPaths: AnalyticsBreakdownRow[];
+  topReferrers: AnalyticsBreakdownRow[];
+  topCountries: AnalyticsBreakdownRow[];
+  truncated: boolean;
+}
+
 export interface AnalyticsFunnelResult {
   windowDays: number;
   steps: { name: string; count: number; conversion: number; dropOff: number }[];
@@ -251,6 +263,8 @@ export interface AnalyticsClient {
     delete(id: string): Promise<{ ok: boolean }>;
   };
   /** Publishable ingest-key management (admin). */
+  /** Who is on the site right now — the last 30 minutes, by minute. */
+  realtime(opts?: { siteId?: string }): Promise<{ data: AnalyticsRealtime }>;
   /** Websites measured by the drop-in tag. */
   sites: {
     list(): Promise<{ data: AnalyticsSite[] }>;
@@ -431,6 +445,11 @@ export const makeAnalytics = (core: ClientCore): AnalyticsClient => {
         core.request<{ data: ErrorGroup }>("PATCH", errPath(id), patch),
       delete: (id: string) => core.request<{ ok: boolean }>("DELETE", errPath(id)),
     },
+    realtime: (opts?: { siteId?: string }) =>
+      core.request<{ data: AnalyticsRealtime }>(
+        "GET",
+        `/api/admin/analytics/realtime${opts?.siteId ? `?siteId=${encodeURIComponent(opts.siteId)}` : ""}`,
+      ),
     sites: {
       list: () =>
         core.request<{ data: AnalyticsSite[] }>("GET", "/api/admin/analytics/sites"),

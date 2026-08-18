@@ -298,9 +298,9 @@ function AnalyticsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={3} />
-      {/* Five tab pills: overview, funnel, retention, errors, sites. */}
+      {/* Six tab pills: overview, realtime, funnel, retention, errors, sites. */}
       <div className="flex items-center gap-1.5">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-9 w-[92px]" />
         ))}
       </div>

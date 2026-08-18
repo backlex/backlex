@@ -149,6 +149,8 @@ export const queryKeys = {
   /** Whether a publishable ingest key exists. */
   analyticsIngestKey: () => ["analytics", "ingest-key"] as const,
   analyticsSites: () => ["analytics", "sites"] as const,
+  analyticsRealtime: (siteId: string | null) =>
+    ["analytics", "realtime", siteId ?? ""] as const,
   /** Enabled extensions — drives dynamic sidebar panels + extension field
    *  editors. Shares the `["extensions"]` prefix with the admin page's list
    *  query so one invalidate refreshes both. */
@@ -616,6 +618,21 @@ export function useErrorGroup(id: string | null) {
     queryKey: queryKeys.errorGroup(id ?? ""),
     queryFn: () => analyticsApi.error(id as string),
     enabled: !!id,
+  });
+}
+
+/**
+ * The last 30 minutes, polled while `live` is on.
+ *
+ * 10 seconds, not the 5 the logs and traces pages use: each poll is a scan of a
+ * 30-minute window, and every open admin tab pays for it. Realtime is about
+ * "is anyone here", which does not need two-second resolution.
+ */
+export function useAnalyticsRealtime(live: boolean, siteId: string | null = null) {
+  return useQuery({
+    queryKey: queryKeys.analyticsRealtime(siteId),
+    queryFn: () => analyticsApi.realtime(siteId ?? undefined),
+    refetchInterval: live ? 10_000 : false,
   });
 }
 

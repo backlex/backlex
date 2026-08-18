@@ -17,6 +17,7 @@ import {
   MAX_FUNNEL_STEPS,
   analyticsFunnel,
   analyticsOverview,
+  analyticsRealtime,
   analyticsRetention,
   createSite,
   deleteErrorGroup,
@@ -151,6 +152,24 @@ const RetentionResult = z
     ),
   })
   .openapi("AnalyticsRetention");
+
+const Realtime = z
+  .object({
+    visitorsNow: z.number().int(),
+    events: z.number().int(),
+    byMinute: z.array(
+      z.object({
+        minute: z.number().int(),
+        events: z.number().int(),
+        visitors: z.number().int(),
+      }),
+    ),
+    topPaths: z.array(Breakdown),
+    topReferrers: z.array(Breakdown),
+    topCountries: z.array(Breakdown),
+    truncated: z.boolean(),
+  })
+  .openapi("AnalyticsRealtime");
 
 const Site = z
   .object({
@@ -644,6 +663,40 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         id,
       );
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/realtime",
+      tags: TAGS,
+      summary: "Who is on the site right now",
+      description:
+        "Admin-only. The last 30 minutes, bucketed by minute and zero-filled, with " +
+        "the top paths, referrers and countries inside that window. Bounded by a " +
+        "row cap: `truncated` is true when the figures are a floor rather than a " +
+        "total. Optionally scoped to one registered site.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: { query: z.object({ siteId: z.string().optional() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: Realtime }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const { siteId } = c.req.valid("query");
+      const data = await analyticsRealtime(
+        { db: ctx.db, dialect: ctx.dialect },
+        { tenantId: auth.tenantId ?? null, siteId: siteId ?? null },
+      );
+      return c.json({ data });
     },
   )
   .openapi(

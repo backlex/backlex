@@ -84,6 +84,29 @@ const SITE_PROPS = {
   },
 } as const;
 
+export const analyticsRealtimeTool: McpTool = {
+  name: "analytics.realtime",
+  kind: "read",
+  description:
+    "Who is on the site right now: the last 30 minutes bucketed by minute and " +
+    "zero-filled, plus the top paths, referrers and countries inside that " +
+    "window. `truncated` is true when a row cap bit, which makes the counts a " +
+    "floor rather than a total. Optionally scoped to one registered site.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      siteId: { type: "string", description: "Limit to one registered site." },
+    },
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(
+      `/api/admin/analytics/realtime${qs(args, ["siteId"])}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const analyticsSites: McpTool = {
   name: "analytics.sites",
   kind: "read",
@@ -376,6 +399,7 @@ export const deleteErrorGroup: McpTool = {
 
 export const analyticsTools: McpTool[] = [
   analyticsOverview,
+  analyticsRealtimeTool,
   analyticsSites,
   analyticsSiteCreate,
   analyticsSiteUpdate,

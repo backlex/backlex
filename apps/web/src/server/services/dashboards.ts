@@ -22,6 +22,7 @@ import type { Ctx } from "../context";
 import {
   analyticsFunnel,
   analyticsOverview,
+  analyticsRealtime,
   analyticsRetention,
 } from "./analytics";
 import { runItemsAggregate } from "./items/aggregate";
@@ -299,6 +300,10 @@ export const ANALYTICS_PANEL_METRICS = [
   "sources",
   "funnel",
   "retention",
+  "realtime",
+  "top-countries",
+  "top-devices",
+  "top-campaigns",
 ] as const;
 export type AnalyticsPanelMetric = (typeof ANALYTICS_PANEL_METRICS)[number];
 
@@ -329,6 +334,21 @@ export const runAnalyticsPanel = async (
   const to = Date.now();
   const from = to - rangeDays * 86_400_000;
   const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+
+  if (metric === "realtime") {
+    // Deliberately ignores `rangeDays`: "the last 30 minutes" is the metric, not
+    // a window the panel author picks. A dashboard asking for 90 days of
+    // realtime is asking for something that does not exist.
+    const rt = await analyticsRealtime(dbCtx, {
+      tenantId: scopeTenant,
+      siteId: typeof config?.siteId === "string" ? config.siteId : null,
+    });
+    return rt.byMinute.map((b) => ({
+      minute: new Date(b.minute).toISOString().slice(11, 16),
+      events: b.events,
+      visitors: b.visitors,
+    }));
+  }
 
   if (metric === "funnel") {
     const steps = Array.isArray(config?.steps) ? config.steps.map(String) : [];
@@ -373,6 +393,12 @@ export const runAnalyticsPanel = async (
       return overview.topReferrers as unknown as Record<string, unknown>[];
     case "sources":
       return overview.sources as unknown as Record<string, unknown>[];
+    case "top-countries":
+      return overview.topCountries as unknown as Record<string, unknown>[];
+    case "top-devices":
+      return overview.topDevices as unknown as Record<string, unknown>[];
+    case "top-campaigns":
+      return overview.topCampaigns as unknown as Record<string, unknown>[];
     default:
       return overview.series as unknown as Record<string, unknown>[];
   }

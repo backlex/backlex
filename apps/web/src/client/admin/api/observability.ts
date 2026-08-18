@@ -410,7 +410,22 @@ export interface ApiAnalyticsSiteInput {
   requireKnownOrigin?: boolean;
 }
 
+export interface ApiAnalyticsRealtime {
+  visitorsNow: number;
+  events: number;
+  byMinute: { minute: number; events: number; visitors: number }[];
+  topPaths: ApiAnalyticsBreakdown[];
+  topReferrers: ApiAnalyticsBreakdown[];
+  topCountries: ApiAnalyticsBreakdown[];
+  /** True when a row cap bit — the counts are a floor, not a total. */
+  truncated: boolean;
+}
+
 export const analyticsApi = {
+  realtime: (siteId?: string) =>
+    api<Envelope<ApiAnalyticsRealtime>>(
+      `/api/admin/analytics/realtime${analyticsQs({ siteId })}`,
+    ),
   sites: () => api<Envelope<ApiAnalyticsSite[]>>("/api/admin/analytics/sites"),
   createSite: (body: ApiAnalyticsSiteInput) =>
     api<Envelope<ApiAnalyticsSite>>("/api/admin/analytics/sites", {

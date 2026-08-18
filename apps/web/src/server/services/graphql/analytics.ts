@@ -36,6 +36,7 @@ import {
   listErrorGroups,
   listEventNames,
   listSites,
+  analyticsRealtime,
   createSite,
   updateSite,
   deleteSite,
@@ -363,6 +364,41 @@ const breakdown = <K extends string>(
   key: K,
 ) => rows.map((r) => ({ value: r[key], count: r.count, users: r.users }));
 
+const RealtimeMinuteType = new GraphQLObjectType({
+  name: "AnalyticsRealtimeMinute",
+  fields: {
+    minute: { type: new GraphQLNonNull(GraphQLFloat) },
+    events: { type: new GraphQLNonNull(GraphQLInt) },
+    visitors: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const RealtimeType = new GraphQLObjectType({
+  name: "AnalyticsRealtime",
+  fields: {
+    visitorsNow: { type: new GraphQLNonNull(GraphQLInt) },
+    events: { type: new GraphQLNonNull(GraphQLInt) },
+    byMinute: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(RealtimeMinuteType)),
+      ),
+    },
+    topPaths: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType))),
+    },
+    topReferrers: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType))),
+    },
+    topCountries: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType))),
+    },
+    truncated: {
+      type: new GraphQLNonNull(GraphQLBoolean),
+      description: "True when a row cap bit — the counts are a floor, not a total.",
+    },
+  },
+});
+
 const AnalyticsSiteType = new GraphQLObjectType({
   name: "AnalyticsSite",
   fields: {
@@ -416,6 +452,17 @@ export const analyticsQueryFields: Record<
         sources: breakdown(o.sources, "source"),
       };
     },
+  },
+  analyticsRealtime: {
+    type: new GraphQLNonNull(RealtimeType),
+    description:
+      "The last 30 minutes bucketed by minute, with the top paths, referrers and countries inside that window (admin-only).",
+    args: { siteId: { type: GraphQLString } },
+    resolve: async (_src, args, gqlCtx) =>
+      analyticsRealtime(dbOf(gqlCtx), {
+        tenantId: requireAnalyticsAdmin(gqlCtx),
+        siteId: (args as { siteId?: string }).siteId ?? null,
+      }),
   },
   analyticsSites: {
     type: new GraphQLNonNull(

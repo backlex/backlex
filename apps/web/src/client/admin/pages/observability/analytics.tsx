@@ -15,6 +15,8 @@ import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Input } from "@backlex/ui/components/input";
+import { Timeseries } from "./timeseries";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   Dialog,
   DialogBody,
@@ -44,6 +46,7 @@ import {
   useAnalyticsFunnel,
   useAnalyticsIngestKey,
   useAnalyticsOverview,
+  useAnalyticsRealtime,
   useAnalyticsRetention,
   useAnalyticsSites,
   useCreateAnalyticsSite,
@@ -58,7 +61,7 @@ import { AnalyticsSkeleton } from "../../page-skeletons";
 import { useQueryClient } from "@tanstack/react-query";
 
 const WINDOWS = ["7", "30", "90"] as const;
-const TABS = ["overview", "funnel", "retention", "errors", "sites"] as const;
+const TABS = ["overview", "realtime", "funnel", "retention", "errors", "sites"] as const;
 type Tab = (typeof TABS)[number];
 
 const fmtCount = (n: number): string =>
@@ -101,45 +104,6 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub: st
 }
 
 /** Per-day event bars with the unique-visitor slice drawn on top. */
-function DayChart({ series }: { series: ApiAnalyticsOverview["series"] }) {
-  const max = Math.max(1, ...series.map((p) => p.events));
-  const h = 120;
-  const gap = 2;
-  const n = series.length;
-  const w = 600;
-  const bw = Math.max(2, (w - gap * (n - 1)) / Math.max(1, n));
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      className="block h-[120px] w-full"
-    >
-      {series.map((p, i) => {
-        const x = i * (bw + gap);
-        const bh = Math.max(p.events > 0 ? 2 : 0, (p.events / max) * (h - 4));
-        const uh = p.events > 0 ? (p.users / p.events) * bh : 0;
-        return (
-          <g key={p.day}>
-            <rect
-              x={x}
-              y={h - bh}
-              width={bw}
-              height={bh}
-              rx="1.5"
-              fill="var(--primary)"
-              opacity="0.35"
-            >
-              <title>{`${p.day} — ${p.events} events, ${p.users} visitors`}</title>
-            </rect>
-            {uh > 0.5 && (
-              <rect x={x} y={h - uh} width={bw} height={uh} rx="1.5" fill="var(--primary)" />
-            )}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 /** A simple label→count list card, used for the top-N breakdowns. */
 function BreakdownCard({
@@ -222,6 +186,7 @@ export function AnalyticsPage({
 
   const tabLabels: Record<Tab, string> = {
     overview: t`Overview`,
+    realtime: t`Realtime`,
     funnel: t`Funnel`,
     retention: t`Retention`,
     errors: t`Errors`,
@@ -298,6 +263,7 @@ export function AnalyticsPage({
           {tab === "funnel" && <FunnelTab days={days} />}
           {tab === "retention" && <RetentionTab days={days} />}
           {tab === "errors" && <ErrorsTab pushToast={pushToast} />}
+          {tab === "realtime" && <RealtimeTab />}
           {tab === "sites" && <SitesTab pushToast={pushToast} />}
         </>
       )}
@@ -389,7 +355,15 @@ function OverviewTab({
             </span>
           </div>
         </div>
-        <DayChart series={overview.series} />
+        <Timeseries
+          data={overview.series.map((p) => ({
+            label: p.day,
+            total: p.events,
+            accent: p.users,
+          }))}
+          totalLabel={t`Events`}
+          accentLabel={t`Visitors`}
+        />
       </Card>
 
       <div className="grid gap-3 lg:grid-cols-3">
@@ -1401,5 +1375,120 @@ function AddSiteDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ── Realtime ─────────────────────────────────────────────────────────── */
+
+function RealtimeTab() {
+  const { t } = useLingui();
+  const [live, setLive] = useState(true);
+  const q = useAnalyticsRealtime(live);
+  const rt = q.data?.data;
+
+  const fmtMinute = (ms: number) =>
+    new Date(ms).toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-end">
+        <Button
+          variant={live ? "primary" : "outline"}
+          icon={I.Zap}
+          onClick={() => setLive((v) => !v)}
+        >
+          {live ? <Trans>Live</Trans> : <Trans>Go live</Trans>}
+        </Button>
+      </div>
+
+      {!rt ? (
+        <Card className="gap-2 px-4 py-3.5">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-[120px] w-full" />
+        </Card>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <StatTile
+              label={t`Visitors now`}
+              value={fmtCount(rt.visitorsNow)}
+              sub={t`last 30 minutes`}
+            />
+            <StatTile
+              label={t`Events`}
+              value={fmtCount(rt.events)}
+              sub={t`last 30 minutes`}
+            />
+          </div>
+
+          {rt.truncated && (
+            /* A clipped realtime count is a wrong number that renders
+               perfectly, so it says so rather than quietly under-reporting. */
+            <Card className="px-4 py-3">
+              <p className="m-0 text-[12.5px] text-muted-foreground">
+                <Trans>
+                  Traffic exceeded the row cap for this window — these counts are
+                  a floor, not a total.
+                </Trans>
+              </p>
+            </Card>
+          )}
+
+          <Card className="gap-2 px-4 py-3.5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+              <Trans>Per minute</Trans>
+            </div>
+            <Timeseries
+              data={rt.byMinute.map((b) => ({
+                label: fmtMinute(b.minute),
+                total: b.events,
+                accent: b.visitors,
+              }))}
+              totalLabel={t`Events`}
+              accentLabel={t`Visitors`}
+            />
+          </Card>
+
+          <div className="grid gap-3 lg:grid-cols-3">
+            <BreakdownCard
+              title={t`Active pages`}
+              unit={t`visitors`}
+              metric="users"
+              rows={rt.topPaths.map((r) => ({
+                label: r.value,
+                count: r.count,
+                users: r.users,
+              }))}
+              empty={t`Nothing in the last 30 minutes.`}
+            />
+            <BreakdownCard
+              title={t`Referrers`}
+              unit={t`visitors`}
+              metric="users"
+              rows={rt.topReferrers.map((r) => ({
+                label: r.value,
+                count: r.count,
+                users: r.users,
+              }))}
+              empty={t`No referrers in this window.`}
+            />
+            <BreakdownCard
+              title={t`Countries`}
+              unit={t`visitors`}
+              metric="users"
+              rows={rt.topCountries.map((r) => ({
+                label: r.value,
+                count: r.count,
+                users: r.users,
+              }))}
+              empty={t`No country resolved in this window.`}
+            />
+          </div>
+        </>
+      )}
+    </div>
   );
 }

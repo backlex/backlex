@@ -150,8 +150,10 @@ the commit, so a run starts from the previous one.
 
 **TypeScript 6.0.** Free on top: cold whole-repo **217s → 145s**. The only
 migration cost was `baseUrl` in four tsconfigs, removed rather than silenced
-with `ignoreDeprecations` — the option stops working in 7.0 either way, and
-`paths` has not needed it since 4.1.
+with `ignoreDeprecations` — and that call paid off: 7.0 turned the deprecation
+into `TS5102: Option 'baseUrl' has been removed`, so a tree that had silenced it
+would have had to do the work anyway, under a hard error. (`paths` has not
+needed `baseUrl` since 4.1.) The tree has since moved on to 7.0 — see below.
 
 #### The real bottleneck: long `.openapi()` chains
 
@@ -196,13 +198,17 @@ machine more than half of the wall clock is paging, not compiling.**
 So chain length is not the lever it looks like, at least at 15→7+8 on this
 tree. Don't re-attempt it on `routes/integrations.ts` (26 links) expecting a
 win. The lever that is actually measurable here is physical memory — the same
-constraint that makes the TypeScript 7 port slower rather than faster below.
+constraint that makes the TypeScript 7 port look slower than 6.0 below until its
+checker count is pinned.
 
-#### TypeScript 7 (the Go port) — measured, not adopted
+#### TypeScript 7 (the Go port) — adopted 2026-08-19
 
-`typescript-7` is installed under an alias and wired to `bun run
-typecheck:native` so this stays reproducible. Both compilers report identical
-diagnostics on this tree. The speed is not uniform:
+Every workspace that can run it now declares `typescript` `7.0.2`; the
+`typescript-7` alias and the `typecheck:native` script it fed are gone, because
+the aliased compiler is the only compiler. The measurement that preceded the
+move (2026-08-15, both compilers reporting **identical diagnostics** on this
+tree) read like this, and the last row is why it took four days and a wrong
+conclusion to get here:
 
 | Project | tsc 6.0 | TS 7.0.2 native | |
 |---|---|---|---|
@@ -210,22 +216,94 @@ diagnostics on this tree. The speed is not uniform:
 | `apps/web` client | 9.15s | 1.61s | **5.7× faster** |
 | `apps/web` server | 152s | 268s | **1.8× slower** |
 
-The regression is the one project whose working set (6.3 GB) does not fit
-alongside everything else on an 8 GB machine — its `sys` time is 449s against
-125s, which is swap, not compilation. So the port is a large win everywhere
-except the project that most needs it, on this hardware. A 16 GB CI runner may
-well invert that; the script is there to find out.
+That last row was **not** a property of the compiler. It was the default
+`--checkers` value, and finding that is the single most useful thing in this
+section.
 
-`apps/docs` and `apps/site` cannot move regardless: they typecheck through
-`astro check`, which imports the compiler API, and 7.0 shipped without one.
-That returns in 7.1.
+##### `--checkers` is the new heap cap — `apps/web`'s server pass needs it
 
-#### The heap cap is load-bearing — do not lower it
+7.0 splits checking across parallel checker instances, and **each instance
+carries its own type tables**. On this 8-core box the default fans out far
+enough that the server project's footprint reaches 11 GB, which on an 8 GB
+machine means it stops compiling and starts paging: three separate runs were
+killed at 31, 46 and 10 minutes without ever finishing. That is what the "1.8×
+slower" row above was actually measuring.
 
-`apps/web`'s typecheck runs the server pass under
-`NODE_OPTIONS=--max-old-space-size=8192`. On an 8 GB machine that looks absurd,
-and lowering it is the obvious first thing to try. It was tried (2026-08-15,
-cold, idle):
+Pinning the checker count fixes it outright. Same project, same tree, machine
+otherwise idle, cold (no `.tsbuildinfo`):
+
+| | wall | user | sys | max RSS | peak footprint | |
+|---|---|---|---|---|---|---|
+| 7.0 default | — | — | — | — | 11 GB | **never finished** (killed at 10m) |
+| 7.0 `--checkers 2` | 422.51s | 152.33s | 456.25s | 2.53 GB | 9.76 GB | ok |
+| 7.0 `--checkers 1` | 579.90s | 116.60s | 365.84s | 2.18 GB | 6.55 GB | ok |
+| 6.0 (for reference) | 338.56s | 134.19s | 319.18s | 2.28 GB | — | ok |
+
+Read `user`, not `real` — see the methodology note above. At `--checkers 1` the
+port does **less** actual CPU work than 6.0 did (116.6s against 134.2s) in
+**less** memory (2.18 GB against 2.28 GB); the wall-clock gap is this box
+paging, which is the same story every other measurement on this page tells.
+`--checkers 2` trades ~36s more `user` and a 3.2 GB larger footprint for 157s
+off the wall clock, and that is the one the script ships:
+
+    tsc --noEmit -p tsconfig.server.json --checkers 2
+
+With the flag in place the gate command itself lands where it did before the
+move: `bun run typecheck` over the whole repo is **9m45s cold** (no
+`.tsbuildinfo` anywhere, every workspace in parallel including both `astro
+check` passes) and **19.2s warm** — against 17s warm under 6.0. Day to day this
+change is invisible; it only ever showed up cold, and only on this one project.
+
+Drop it to `1` if you are running something else alongside — that is the
+low-memory setting, not a slower one. **Do not remove the flag**; the default is
+not a smaller number, it is "as many as the machine looks like it can take",
+and this project's per-checker working set makes that arithmetic wrong. No
+other project in the repo needs it: they are small enough that the fan-out
+costs nothing.
+
+There is no `GOMEMLIMIT` escape hatch, and it is worth knowing why so nobody
+spends an evening on it. It was tried at 4 GiB. Go's memory limit is a *soft*
+target — when the live heap genuinely exceeds it the GC simply runs harder and
+the process keeps growing, so the run climbed past 8.6 GB anyway and had to be
+killed at 31 minutes. It is not the analogue of `--max-old-space-size`.
+`--checkers` is.
+
+
+**Three things could not move, and each has a different reason.**
+
+`apps/docs` and `apps/site` stay on `typescript` 5.9.3: they typecheck through
+`astro check`, which imports the compiler API, and 7.0 ships none. 7.0's package
+`exports` map resolves `.` to a version stub — `lib/version.cjs`, ~360 KB for
+the whole tarball — so `require("typescript")` succeeds and the first `ts.…`
+call is what fails.
+
+`packages/client` stays on 6.0.3 in its **own** `devDependencies` for exactly
+that reason, one layer down: `tsup`'s declaration step runs
+`rollup-plugin-dts`, which reaches for `ts.sys.useCaseSensitiveFileNames` and
+dies with `Cannot read properties of undefined` under 7.0. Bun nests the 6.0.3
+copy inside `packages/client/node_modules`, `tsup` resolves it, and the
+published `.d.ts` still builds; the package's own `typecheck` reaches back out
+to the root's 7.0 binary as `../../node_modules/.bin/tsc`, so its source is
+still held to the same compiler as everything else. `packages/cli` did **not**
+need the pin — its `tsup.config.ts` never sets `dts: true`, so no declaration
+step runs.
+
+Both pins come off when 7.1 restores the API. Nothing else in the tree needed
+work: the seven `examples/*` moved from 5.9.3 straight to 7.0.2 clean, and
+`next build` (Next 16.3) is unaffected because `experimental.useTypeScriptCli`
+already defaults to `true` — Next shells out to `typescript/bin/tsc` rather
+than loading the API, and reports the type pass in ~1.1s.
+
+#### The heap cap was load-bearing — until the compiler stopped being V8
+
+`apps/web`'s typecheck used to run the server pass under
+`NODE_OPTIONS=--max-old-space-size=8192`. **That flag is gone as of the 7.0
+move** — it is a V8 flag, and the 7.0 checker is a Go binary that has never
+read it. It was removed rather than left in place as a lie about what guards
+the pass. Keep the measurement below anyway, because it is the evidence for how
+big this project's live working set actually is, and that has not changed. On
+an 8 GB machine an 8192 cap looked absurd, and lowering it was the obvious
+first thing to try. It was tried (2026-08-15, cold, idle):
 
 | cap | result | wall | user | sys | peak RSS |
 |---|---|---|---|---|---|
@@ -234,8 +312,11 @@ cold, idle):
 | 2048 | **OOM**, exit 134 | 20.77s | 50.15s | 1.91s | 2.37 GB |
 
 The live heap really does exceed 4 GB — the 4096 run died with peak RSS sitting
-exactly on its ceiling. The flag is not slack to be reclaimed; it is the only
-thing keeping the pass alive.
+exactly on its ceiling. Under 6.0 the flag was not slack to be reclaimed; it was
+the only thing keeping the pass alive. **Under 7.0 the equivalent lever is
+`--checkers`, not a memory number at all** — see the TypeScript 7 section above.
+Losing that flag without replacing it is what made the port look like a
+regression on this project.
 
 #### Why `pre-push` is serial
 

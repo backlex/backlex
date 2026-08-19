@@ -13,6 +13,14 @@
     // TS5101 and the .d.ts step dies — which meant the published SDK could not
     // be built at all. 8.5.1 is the latest tsup, so there is no version to
     // upgrade to. Remove this the moment tsup stops injecting it.
+    //
+    // Which is also why this package alone still declares `typescript` 6.0.3
+    // in its own devDependencies while the rest of the repo runs 7.0.2: 7.0
+    // ships no compiler API at all, so rollup-plugin-dts dies on
+    // `ts.sys.useCaseSensitiveFileNames` before it ever gets to TS5101. Bun
+    // nests the 6.0.3 copy here for tsup; the `typecheck` script deliberately
+    // reaches back out to the root's 7.0 binary so the source is still held to
+    // the same compiler as everything else. Both go away in 7.1.
     "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*"]

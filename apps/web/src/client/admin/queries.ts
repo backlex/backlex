@@ -43,6 +43,7 @@ import {
   extensionsApi,
   itemsApi,
   analyticsApi,
+  tagManagerApi,
   type ApiAnalyticsSegment,
   type ApiAnalyticsSite,
   type ApiAnalyticsSiteInput,
@@ -62,6 +63,7 @@ import {
   tracesApi,
   usageApi,
 } from "./api";
+import type { ApiTagDefinition, ApiTagTrigger } from "./api/observability";
 import type { Envelope } from "./api/types";
 import { reorderVisible } from "@backlex/db/order";
 import type { Post } from "./config";
@@ -150,6 +152,11 @@ export const queryKeys = {
   /** Whether a publishable ingest key exists. */
   analyticsIngestKey: () => ["analytics", "ingest-key"] as const,
   analyticsSites: () => ["analytics", "sites"] as const,
+  tagVocabulary: () => ["tag-manager", "vocabulary"] as const,
+  tagTags: (siteId: string) => ["tag-manager", "tags", siteId] as const,
+  tagTriggers: (siteId: string) => ["tag-manager", "triggers", siteId] as const,
+  tagVersions: (siteId: string) => ["tag-manager", "versions", siteId] as const,
+  tagInstall: (siteId: string) => ["tag-manager", "install", siteId] as const,
   analyticsSegments: () => ["analytics", "segments"] as const,
   analyticsRevenue: (days: number, siteId: string | null) =>
     ["analytics", "revenue", days, siteId ?? ""] as const,
@@ -1368,5 +1375,230 @@ export function useItemsBulkDelete(collection: string | null) {
       patchItemRows(qc, slug, (rows) => rows.filter((r) => !okIds.has(r.id)));
     },
     onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+
+// ── Tag manager ───────────────────────────────────────────────────────────
+// Its own block rather than more analytics hooks: a different product surface
+// behind a different route family. The only thing shared is the site id, which
+// is the container.
+
+export function useTagVocabulary() {
+  return useQuery({
+    // The templates, trigger types and field names the forms are built from.
+    // Served rather than hardcoded so adding a vendor does not need a client
+    // release — and cached hard, because it changes only on deploy.
+    queryKey: queryKeys.tagVocabulary(),
+    queryFn: () => tagManagerApi.vocabulary(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useTags(siteId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.tagTags(siteId ?? ""),
+    queryFn: () => tagManagerApi.tags(siteId as string),
+    enabled: !!siteId,
+  });
+}
+
+export function useTagTriggers(siteId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.tagTriggers(siteId ?? ""),
+    queryFn: () => tagManagerApi.triggers(siteId as string),
+    enabled: !!siteId,
+  });
+}
+
+export function useTagVersions(siteId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.tagVersions(siteId ?? ""),
+    queryFn: () => tagManagerApi.versions(siteId as string),
+    enabled: !!siteId,
+  });
+}
+
+export function useTagInstall(siteId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.tagInstall(siteId ?? ""),
+    queryFn: () => tagManagerApi.install(siteId as string),
+    enabled: !!siteId,
+  });
+}
+
+/**
+ * Tag and trigger mutations, all optimistic.
+ *
+ * Same shape as the analytics site hooks and for the same reason: the row is
+ * the operator's own configuration, so it repaints the instant they act.
+ * `onMutate` patches the raw cache, `onError` restores the snapshot,
+ * `onSettled` reconciles.
+ *
+ * Note what these do NOT invalidate: the version list and the install panel.
+ * Editing a draft changes neither, because nothing is published until the
+ * operator says so — invalidating them here would make the UI imply otherwise.
+ */
+export function useCreateTag(siteId: string) {
+  const qc = useQueryClient();
+  const key = queryKeys.tagTags(siteId);
+  return useMutation({
+    mutationFn: (input: Record<string, unknown>) => tagManagerApi.createTag(siteId, input),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Envelope<ApiTagDefinition[]>>(key);
+      const optimistic: ApiTagDefinition = {
+        id: `pending-${Date.now()}`,
+        siteId,
+        name: String(input.name ?? "Untitled tag"),
+        kind: String(input.kind ?? "template"),
+        templateId: (input.templateId as string) ?? null,
+        params: (input.params as Record<string, unknown>) ?? null,
+        triggerIds: (input.triggerIds as string[]) ?? [],
+        blockingTriggerIds: (input.blockingTriggerIds as string[]) ?? [],
+        consentCategory: String(input.consentCategory ?? "marketing"),
+        fireRule: String(input.fireRule ?? "always"),
+        priority: Number(input.priority ?? 0),
+        enabled: input.enabled !== false,
+        updatedAt: Date.now(),
+      };
+      qc.setQueryData<Envelope<ApiTagDefinition[]>>(key, (old) =>
+        old ? { ...old, data: [...old.data, optimistic] } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function useUpdateTag(siteId: string) {
+  const qc = useQueryClient();
+  const key = queryKeys.tagTags(siteId);
+  return useMutation({
+    mutationFn: (v: { id: string; patch: Record<string, unknown> }) =>
+      tagManagerApi.updateTag(v.id, v.patch),
+    onMutate: async (v) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Envelope<ApiTagDefinition[]>>(key);
+      qc.setQueryData<Envelope<ApiTagDefinition[]>>(key, (old) =>
+        old
+          ? {
+              ...old,
+              data: old.data.map((t) =>
+                t.id === v.id ? ({ ...t, ...v.patch, updatedAt: Date.now() } as ApiTagDefinition) : t,
+              ),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function useDeleteTag(siteId: string) {
+  const qc = useQueryClient();
+  const key = queryKeys.tagTags(siteId);
+  return useMutation({
+    mutationFn: (id: string) => tagManagerApi.deleteTag(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Envelope<ApiTagDefinition[]>>(key);
+      qc.setQueryData<Envelope<ApiTagDefinition[]>>(key, (old) =>
+        old ? { ...old, data: old.data.filter((t) => t.id !== id) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function useCreateTrigger(siteId: string) {
+  const qc = useQueryClient();
+  const key = queryKeys.tagTriggers(siteId);
+  return useMutation({
+    mutationFn: (input: Record<string, unknown>) => tagManagerApi.createTrigger(siteId, input),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Envelope<ApiTagTrigger[]>>(key);
+      const optimistic: ApiTagTrigger = {
+        id: `pending-${Date.now()}`,
+        siteId,
+        name: String(input.name ?? input.type ?? "Trigger"),
+        type: String(input.type ?? "pageview"),
+        config: (input.config as Record<string, unknown>) ?? null,
+        condition: input.condition ?? null,
+        updatedAt: Date.now(),
+      };
+      qc.setQueryData<Envelope<ApiTagTrigger[]>>(key, (old) =>
+        old ? { ...old, data: [...old.data, optimistic] } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function useDeleteTrigger(siteId: string) {
+  const qc = useQueryClient();
+  const key = queryKeys.tagTriggers(siteId);
+  return useMutation({
+    mutationFn: (id: string) => tagManagerApi.deleteTrigger(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Envelope<ApiTagTrigger[]>>(key);
+      qc.setQueryData<Envelope<ApiTagTrigger[]>>(key, (old) =>
+        old ? { ...old, data: old.data.filter((t) => t.id !== id) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    // A deleted trigger can orphan a tag, and the compile view is what says so
+    // — so this one DOES reach across to the tag list.
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: queryKeys.tagTags(siteId) });
+    },
+  });
+}
+
+/**
+ * Publishing and rolling back both change what visitors receive, so both
+ * invalidate the version list AND the install panel — the CSP lines it prints
+ * are derived from the tags that just went live.
+ */
+export function usePublishTags(siteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (note?: string) => tagManagerApi.publish(siteId, note),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tagVersions(siteId) });
+      qc.invalidateQueries({ queryKey: queryKeys.tagInstall(siteId) });
+    },
+  });
+}
+
+export function useRollbackTags(siteId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (version: number) => tagManagerApi.rollback(siteId, version),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.tagVersions(siteId) });
+      qc.invalidateQueries({ queryKey: queryKeys.tagInstall(siteId) });
+    },
   });
 }

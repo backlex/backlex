@@ -1195,6 +1195,27 @@ const GenericSkeleton = withSkeletonDelay(GenericSkeletonImpl);
  * ────────────────────────────────────────────────────────────────────── */
 
 /**
+ * Tag manager: a header, a four-tab strip, and one card.
+ *
+ * Defined here rather than imported from the page for the reason every skeleton
+ * is: importing the page module would pull its lazy chunk into the eager
+ * bundle, which is the cost this placeholder exists to avoid. The tab count
+ * must match the page — a strip that grows by one on load is a visible jump.
+ */
+const TagManagerSkeletonImpl = () => (
+  <div className="space-y-6">
+    <HeaderSkeleton />
+    <div className="flex gap-1">
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} className="h-8 w-20" />
+      ))}
+    </div>
+    <CardSkeleton />
+  </div>
+);
+export const TagManagerSkeleton = withSkeletonDelay(TagManagerSkeletonImpl);
+
+/**
  * Resolves a nav id to its matching page skeleton. Used as the lazy-page
  * `<Suspense>` fallback so the chunk-loading placeholder already mirrors the
  * page being opened. Falls back to a generic header + card stack.
@@ -1244,6 +1265,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <UsageSkeleton />;
     case "analytics":
       return <AnalyticsSkeleton />;
+    case "tag-manager":
+      return <TagManagerSkeleton />;
     case "advisor":
       return <AdvisorSkeleton />;
     case "schema-graph":

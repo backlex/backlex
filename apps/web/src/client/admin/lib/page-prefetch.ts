@@ -20,6 +20,7 @@ const LOADERS: Record<string, () => Promise<unknown>> = {
   realtime: () => import("../pages/automation/realtime"),
   logs: () => import("../pages/observability/logs"),
   advisor: () => import("../pages/observability/advisor"),
+  "tag-manager": () => import("../pages/observability/tag-manager"),
   "schema-graph": () => import("../pages/data/schema-graph"),
   users: () => import("../pages/access/users"),
   settings: () => import("../pages/settings"),

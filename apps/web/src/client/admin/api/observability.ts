@@ -455,6 +455,145 @@ export interface ApiAnalyticsRealtime {
   truncated: boolean;
 }
 
+/**
+ * Tag manager — third-party tags fired by the script the site already loads.
+ *
+ * Separate from `analyticsApi` because it is a separate product surface with a
+ * separate route family; the only thing the two share is the site, which is the
+ * container.
+ */
+export interface ApiTagVocabulary {
+  templates: {
+    id: string;
+    label: string;
+    vendor: string;
+    docUrl: string;
+    consentCategories: string[];
+    cspSource: "vendor" | "inferred";
+    csp: Record<string, string[] | undefined>;
+    params: {
+      key: string;
+      label: string;
+      required: boolean;
+      kind: "text" | "select" | "boolean";
+      options?: { value: string; label: string }[];
+      pattern?: string;
+      formatDocumented: boolean;
+      placeholder?: string;
+      help?: string;
+    }[];
+  }[];
+  triggerTypes: string[];
+  scrollThresholds: number[];
+  fields: string[];
+  tagKinds: string[];
+  variableKinds: string[];
+  fireRules: string[];
+}
+
+export interface ApiTagDefinition {
+  id: string;
+  siteId: string;
+  name: string;
+  kind: string;
+  templateId: string | null;
+  params: Record<string, unknown> | null;
+  triggerIds: string[];
+  blockingTriggerIds: string[];
+  consentCategory: string;
+  fireRule: string;
+  priority: number;
+  enabled: boolean;
+  updatedAt: number;
+}
+
+export interface ApiTagTrigger {
+  id: string;
+  siteId: string;
+  name: string;
+  type: string;
+  config: Record<string, unknown> | null;
+  condition: unknown;
+  updatedAt: number;
+}
+
+export interface ApiTagVersion {
+  id: string;
+  siteId: string;
+  version: number;
+  note: string | null;
+  hash: string;
+  createdBy: string | null;
+  createdAt: number;
+}
+
+export interface ApiTagDropped {
+  kind: "tag" | "trigger" | "variable";
+  id: string;
+  name: string;
+  reason: string;
+}
+
+export interface ApiTagInstall {
+  snippet: string;
+  csp: { script: string[]; img: string[]; connect: string[]; frame: string[]; hasInferred: boolean };
+  scriptSrcElemCaveat: boolean;
+}
+
+const tm = (path: string) => `/api/admin/tag-manager${path}`;
+const site = (id: string) => encodeURIComponent(id);
+
+export const tagManagerApi = {
+  vocabulary: () => api<Envelope<ApiTagVocabulary>>(tm("/vocabulary")),
+
+  tags: (siteId: string) => api<Envelope<ApiTagDefinition[]>>(tm(`/sites/${site(siteId)}/tags`)),
+  createTag: (siteId: string, body: unknown) =>
+    api<Envelope<ApiTagDefinition>>(tm(`/sites/${site(siteId)}/tags`), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateTag: (id: string, body: unknown) =>
+    api<Envelope<ApiTagDefinition>>(tm(`/tags/${site(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteTag: (id: string) =>
+    api<Envelope<{ id: string }>>(tm(`/tags/${site(id)}`), { method: "DELETE" }),
+
+  triggers: (siteId: string) =>
+    api<Envelope<ApiTagTrigger[]>>(tm(`/sites/${site(siteId)}/triggers`)),
+  createTrigger: (siteId: string, body: unknown) =>
+    api<Envelope<ApiTagTrigger>>(tm(`/sites/${site(siteId)}/triggers`), {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateTrigger: (id: string, body: unknown) =>
+    api<Envelope<ApiTagTrigger>>(tm(`/triggers/${site(id)}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteTrigger: (id: string) =>
+    api<Envelope<{ id: string }>>(tm(`/triggers/${site(id)}`), { method: "DELETE" }),
+
+  compile: (siteId: string) =>
+    api<Envelope<{ artifact: { tags: unknown[] }; dropped: ApiTagDropped[] }>>(
+      tm(`/sites/${site(siteId)}/compile`),
+    ),
+  publish: (siteId: string, note?: string) =>
+    api<Envelope<{ version: ApiTagVersion; dropped: ApiTagDropped[] }>>(
+      tm(`/sites/${site(siteId)}/publish`),
+      { method: "POST", body: JSON.stringify({ note }) },
+    ),
+  versions: (siteId: string) =>
+    api<Envelope<ApiTagVersion[]>>(tm(`/sites/${site(siteId)}/versions`)),
+  rollback: (siteId: string, version: number) =>
+    api<Envelope<ApiTagVersion>>(tm(`/sites/${site(siteId)}/rollback`), {
+      method: "POST",
+      body: JSON.stringify({ version }),
+    }),
+  install: (siteId: string) => api<Envelope<ApiTagInstall>>(tm(`/sites/${site(siteId)}/install`)),
+};
+
 export const analyticsApi = {
   segments: () => api<Envelope<ApiAnalyticsSegment[]>>("/api/admin/analytics/segments"),
   createSegment: (body: { name: string; definition: unknown; siteId?: string | null }) =>

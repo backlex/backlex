@@ -597,6 +597,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   traces: msg`Traces`,
   usage: msg`Usage`,
   analytics: msg`Analytics`,
+  "tag-manager": msg`Tag manager`,
   advisor: msg`Advisor`,
   "schema-graph": msg`Schema graph`,
   "schema-versions": msg`Schema versions`,

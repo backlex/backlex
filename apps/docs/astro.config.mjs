@@ -149,6 +149,7 @@ export default defineConfig({
             { slug: "tracing" },
             { slug: "usage-metering" },
             { slug: "product-analytics" },
+            { slug: "tag-manager" },
             { slug: "audit-logs" },
             { slug: "erasure" },
             { slug: "demo-mode" },

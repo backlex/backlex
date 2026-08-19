@@ -132,6 +132,7 @@ const LogsPage = lazy(() => import("./pages/observability/logs").then((m) => ({ 
 const TracesPage = lazy(() => import("./pages/observability/traces").then((m) => ({ default: m.TracesPage })));
 const UsagePage = lazy(() => import("./pages/observability/usage").then((m) => ({ default: m.UsagePage })));
 const AnalyticsPage = lazy(() => import("./pages/observability/analytics").then((m) => ({ default: m.AnalyticsPage })));
+const TagManagerPage = lazy(() => import("./pages/observability/tag-manager").then((m) => ({ default: m.TagManagerPage })));
 const AdvisorPage = lazy(() => import("./pages/observability/advisor").then((m) => ({ default: m.AdvisorPage })));
 const SchemaGraphPage = lazy(() => import("./pages/data/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
 const SearchPlaygroundPage = lazy(() => import("./pages/data/search-playground").then((m) => ({ default: m.SearchPlaygroundPage })));
@@ -1235,6 +1236,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "traces" && <TracesPage pushToast={pushToast} />}
             {activeNav === "usage" && <UsagePage pushToast={pushToast} />}
             {activeNav === "analytics" && <AnalyticsPage pushToast={pushToast} />}
+            {activeNav === "tag-manager" && <TagManagerPage pushToast={pushToast} />}
             {activeNav === "advisor" && <AdvisorPage pushToast={pushToast} />}
             {activeNav === "schema-graph" && <SchemaGraphPage pushToast={pushToast} />}
             {activeNav === "search" && <SearchPlaygroundPage pushToast={pushToast} />}

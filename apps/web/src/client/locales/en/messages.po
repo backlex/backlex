@@ -1476,6 +1476,10 @@ msgstr "A template with key \"{trimmedKey}\" already exists."
 msgid "A text column holding this row's two-letter country code, for a list of contacts spread across countries. Falls back to the default above when the column is empty."
 msgstr "A text column holding this row's two-letter country code, for a list of contacts spread across countries. Falls back to the default above when the column is empty."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A trigger decides when a tag fires."
+msgstr "A trigger decides when a tag fires."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
 #~ msgstr "A turn is still running on this thread — wait for it to finish."
@@ -1847,6 +1851,10 @@ msgstr "Add a step after the loop"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Add a vendor pixel, an image pixel, or your own code."
+msgstr "Add a vendor pixel, an image pixel, or your own code."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Add a website"
@@ -3631,6 +3639,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -4919,6 +4928,14 @@ msgstr "Could not copy snippet — clipboard blocked."
 msgid "Could not create share link."
 msgstr "Could not create share link."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not create that tag."
+msgstr "Could not create that tag."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not create that trigger."
+msgstr "Could not create that trigger."
+
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not delete comment."
 msgstr "Could not delete comment."
@@ -4938,6 +4955,10 @@ msgstr "Could not export runs."
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not post comment."
 msgstr "Could not post comment."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not publish."
+msgstr "Could not publish."
 
 #: src/client/admin/pages/data/booking/parts.tsx
 msgid "Could not reach the clipboard — select the link and copy it."
@@ -5092,6 +5113,7 @@ msgstr "Covering message"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -5324,6 +5346,10 @@ msgstr "Credentials are encrypted at rest and shown masked afterwards. You'll ge
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Cron expression"
 msgstr "Cron expression"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "CSS selector"
+msgstr "CSS selector"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -5844,6 +5870,10 @@ msgstr "Delete source?"
 msgid "Delete submission"
 msgstr "Delete submission"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Delete tag"
+msgstr "Delete tag"
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Delete template"
 msgstr "Delete template"
@@ -5876,6 +5906,10 @@ msgstr "Delete this row too (cascade)"
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete this submission?"
 msgstr "Delete this submission?"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Delete trigger"
+msgstr "Delete trigger"
 
 #: src/client/admin/pages/access/users.tsx
 msgid "Delete user"
@@ -7202,6 +7236,10 @@ msgstr "Event hooks also fire on their matching pattern; running one here execut
 msgid "Event label"
 msgstr "Event label"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Event name"
+msgstr "Event name"
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Event pattern"
 msgstr "Event pattern"
@@ -7882,6 +7920,10 @@ msgstr "Fires at that wall clock, so it stays at the same local hour across a da
 msgid "Fires at the same time of day the date field itself carries."
 msgstr "Fires at the same time of day the date field itself carries."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Fires on"
+msgstr "Fires on"
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "fires on matching pub-sub channel events"
@@ -8292,6 +8334,10 @@ msgstr "Generate new link"
 msgid "Generated DSL — saved to <0>role_permissions</0> on save."
 msgstr "Generated DSL — saved to <0>role_permissions</0> on save."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Generated from the tags this container actually holds. Your page, your policy — we cannot relax it for you."
+msgstr "Generated from the tags this container actually holds. Your page, your policy — we cannot relax it for you."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
 #~ msgstr "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
@@ -8369,6 +8415,10 @@ msgstr "Goes to that user's registered devices. No devices is a silent no-op."
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Good direction"
 msgstr "Good direction"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Google documents its origins against script-src-elem. If your site sets that directive explicitly, add them there too."
+msgstr "Google documents its origins against script-src-elem. If your site sets that directive explicitly, add them there too."
 
 #: src/client/admin/extras.tsx
 msgid "goto"
@@ -9012,6 +9062,7 @@ msgid "Inspecting…"
 msgstr "Inspecting…"
 
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Install"
 msgstr "Install"
 
@@ -9267,6 +9318,10 @@ msgstr "Istanbul, Turkey"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "it calls us"
 msgstr "it calls us"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+msgstr "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
 
 #: src/client/pages/sign-document.tsx
 msgid "It has already been completed."
@@ -9896,6 +9951,10 @@ msgstr "Leave empty for the latest published version."
 msgid "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
 msgstr "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Leave empty to match every element."
+msgstr "Leave empty to match every element."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
 msgstr "leave empty to pass the trigger payload"
@@ -9923,6 +9982,10 @@ msgstr "Left empty, an answer outside the list fails the step instead of guessin
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "Left empty, this is built from"
 msgstr "Left empty, this is built from"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Left out of the last publish"
+msgstr "Left out of the last publish"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "legacy production"
@@ -11021,6 +11084,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -11324,6 +11388,10 @@ msgstr "New step"
 msgid "New sync hook"
 msgstr "New sync hook"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "New tag"
+msgstr "New tag"
+
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "New template"
@@ -11332,6 +11400,10 @@ msgstr "New template"
 #: src/client/admin/pages/observability/translations.tsx
 msgid "New translation key"
 msgstr "New translation key"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "New trigger"
+msgstr "New trigger"
 
 #: src/client/admin/pages/automation/payments.tsx
 msgid "New URL"
@@ -12236,6 +12308,10 @@ msgstr "No tables yet."
 msgid "No tagged traffic in this window."
 msgstr "No tagged traffic in this window."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "No tags yet"
+msgstr "No tags yet"
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "No tags yet."
 msgstr "No tags yet."
@@ -12280,6 +12356,10 @@ msgstr "No traffic for this consumer"
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "No traffic recorded yet"
 msgstr "No traffic recorded yet"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "No triggers yet"
+msgstr "No triggers yet"
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "No trusted issuers. Add one to let an app that already signs users in with Clerk, Auth0, Firebase, Cognito or WorkOS call this API with the token it already has — no user migration, no second login."
@@ -12577,6 +12657,10 @@ msgstr "Nothing outstanding."
 #: src/client/admin/collections/grid-edit.tsx
 msgid "Nothing pasted — the target cells are read-only or the values don't fit."
 msgstr "Nothing pasted — the target cells are read-only or the values don't fit."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Nothing published yet"
+msgstr "Nothing published yet"
 
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Nothing ranked for that query — try different words or another mode."
@@ -13533,6 +13617,10 @@ msgstr "Paste IdP metadata XML (optional — prefills the fields below)"
 msgid "Paste the endpoint above"
 msgstr "Paste the endpoint above"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Paste this once, before the closing head tag"
+msgstr "Paste this once, before the closing head tag"
+
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
 msgstr "Paths"
@@ -13943,6 +14031,10 @@ msgstr "Pick a user"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Pick a value"
 msgstr "Pick a value"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Pick a vendor, fill in what it needs, and choose when it fires."
+msgstr "Pick a vendor, fill in what it needs, and choose when it fires."
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Pick a website metric below. Nothing to write, and no row-level owner to clamp on an embed."
@@ -14608,6 +14700,7 @@ msgstr "publish"
 
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/collections/items.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Publish"
@@ -14681,11 +14774,23 @@ msgstr "published only"
 #~ msgid "Published posts past week"
 #~ msgstr "Published posts past week"
 
+#. placeholder {0}: res.data.version.version
+#. placeholder {1}: res.data.dropped.length
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Published version {0}, leaving out {1}."
+msgstr "Published version {0}, leaving out {1}."
+
+#. placeholder {0}: res.data.version.version
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Published version {0}."
+msgstr "Published version {0}."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
 #~ msgstr "Published."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Publishing…"
 msgstr "Publishing…"
 
@@ -15288,6 +15393,10 @@ msgstr "Register a site to get a one-line script tag. It measures pageviews with
 #: src/client/admin/collections/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Register a website first"
+msgstr "Register a website first"
 
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Register an OAuth client"
@@ -17321,6 +17430,10 @@ msgstr "September"
 msgid "sequential"
 msgstr "sequential"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Serve this again"
+msgstr "Serve this again"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Server default (10 MB)"
 #~ msgstr "Server default (10 MB)"
@@ -18190,6 +18303,10 @@ msgstr "Soft delete"
 msgid "sold"
 msgstr "sold"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Some of these origins are our reading of a vendor's snippet, not guidance the vendor publishes."
+msgstr "Some of these origins are our reading of a vendor's snippet, not guidance the vendor publishes."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Sort"
 msgstr "Sort"
@@ -18362,6 +18479,10 @@ msgstr "Start over"
 #: src/client/pages/oauth-consent.tsx
 msgid "Start the connection again from your MCP client (for example claude.ai → Connectors)."
 msgstr "Start the connection again from your MCP client (for example claude.ai → Connectors)."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Start with a page view; a tag needs at least one trigger to fire."
+msgstr "Start with a page view; a tag needs at least one trigger to fire."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Start with a template"
@@ -18832,14 +18953,28 @@ msgstr "Table"
 msgid "Tables"
 msgstr "Tables"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+#: src/client/admin/ui.tsx
+msgid "Tag manager"
+msgstr "Tag manager"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Tagline"
 msgstr "Tagline"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Tags"
 msgstr "Tags"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Tags are configured per site. Add one under Analytics → Sites, then come back."
+msgstr "Tags are configured per site. Add one under Analytics → Sites, then come back."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Tags fire on the triggers you attach to them."
+msgstr "Tags fire on the triggers you attach to them."
 
 #: src/client/admin/collections/item-editor.tsx
 msgid "Take out of play"
@@ -19233,6 +19368,10 @@ msgstr "The loop body runs once per row, with the row available as <0>{itemInter
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "The move is refused until they hold a value — filling one in the same save counts."
 msgstr "The move is refused until they hold a value — filling one in the same save counts."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "The name your site already passes to backlex()."
+msgstr "The name your site already passes to backlex()."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The old slot goes back on sale, the customer is emailed, and a fresh link to change or cancel is minted."
@@ -20137,6 +20276,10 @@ msgstr "Trigger only fires when the row matches this filter (after the change)."
 msgid "Trigger PagerDuty alerts on data events."
 msgstr "Trigger PagerDuty alerts on data events."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Triggers"
+msgstr "Triggers"
+
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 msgstr "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
@@ -20483,6 +20626,10 @@ msgstr "Until one exists, every application-owned channel is refused. Add a rule
 #: src/client/pages/sign-up.tsx
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Until you publish, visitors get the tracker alone."
+msgstr "Until you publish, visitors get the tracker alone."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "Untouched means any value. Existing records are never re-judged by this."
@@ -20863,6 +21010,10 @@ msgstr "Vector search (semantic)"
 msgid "Vectorize"
 msgstr "Vectorize"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Vendor"
+msgstr "Vendor"
+
 #: src/client/pages/sign-in.tsx
 msgid "Verification email sent."
 msgstr "Verification email sent."
@@ -20910,6 +21061,10 @@ msgstr "versioned"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Versioned (draft / published)"
 msgstr "Versioned (draft / published)"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Versions"
+msgstr "Versions"
 
 #. placeholder {0}: m.extension.manifest.title
 #: src/client/admin/extension-widgets.tsx
@@ -21170,6 +21325,7 @@ msgstr "whatever the collection has enabled"
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "When"
 msgstr "When"
 
@@ -21670,6 +21826,10 @@ msgstr "Your category value"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 msgstr "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Your Content-Security-Policy needs these"
+msgstr "Your Content-Security-Policy needs these"
 
 #: src/client/pages/approve-request.tsx
 msgid "Your decision has been recorded. You can close this page."

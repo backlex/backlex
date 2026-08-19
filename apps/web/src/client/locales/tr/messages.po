@@ -1476,6 +1476,10 @@ msgstr "\"{trimmedKey}\" anahtarlı bir şablon zaten mevcut."
 msgid "A text column holding this row's two-letter country code, for a list of contacts spread across countries. Falls back to the default above when the column is empty."
 msgstr "Bu satırın iki harfli ülke kodunu tutan metin sütunu — kişileri farklı ülkelere yayılmış bir liste için. Sütun boşken yukarıdaki varsayılana düşer."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A trigger decides when a tag fires."
+msgstr "Bir tetikleyici, etiketin ne zaman çalışacağına karar verir."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
 #~ msgstr "Bu görüşmede bir tur hâlâ çalışıyor — bitmesini bekleyin."
@@ -1847,6 +1851,10 @@ msgstr "Döngüden sonra adım ekle"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Etiket ekleyip Enter'a basın…"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Add a vendor pixel, an image pixel, or your own code."
+msgstr "Bir sağlayıcı pikseli, görsel piksel veya kendi kodunuzu ekleyin."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Add a website"
@@ -3631,6 +3639,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -4919,6 +4928,14 @@ msgstr "Parça kopyalanamadı — pano engellendi."
 msgid "Could not create share link."
 msgstr "Paylaşım bağlantısı oluşturulamadı."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not create that tag."
+msgstr "Etiket oluşturulamadı."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not create that trigger."
+msgstr "Tetikleyici oluşturulamadı."
+
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not delete comment."
 msgstr "Yorum silinemedi."
@@ -4938,6 +4955,10 @@ msgstr "Çalıştırmalar dışa aktarılamadı."
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not post comment."
 msgstr "Yorum gönderilemedi."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not publish."
+msgstr "Yayınlanamadı."
 
 #: src/client/admin/pages/data/booking/parts.tsx
 msgid "Could not reach the clipboard — select the link and copy it."
@@ -5092,6 +5113,7 @@ msgstr "Üst yazı"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -5324,6 +5346,10 @@ msgstr "Kimlik bilgileri şifrelenerek saklanır ve sonrasında maskelenmiş gö
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Cron expression"
 msgstr "Cron ifadesi"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "CSS selector"
+msgstr "CSS seçici"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -5844,6 +5870,10 @@ msgstr "Kaynak silinsin mi?"
 msgid "Delete submission"
 msgstr "Gönderimi sil"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Delete tag"
+msgstr "Etiketi sil"
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Delete template"
 msgstr "Şablonu sil"
@@ -5876,6 +5906,10 @@ msgstr "Bu satırı da sil (art arda)"
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete this submission?"
 msgstr "Bu gönderim silinsin mi?"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Delete trigger"
+msgstr "Tetikleyiciyi sil"
 
 #: src/client/admin/pages/access/users.tsx
 msgid "Delete user"
@@ -7202,6 +7236,10 @@ msgstr "Olay kancaları eşleşen desenlerinde de tetiklenir; burada çalıştı
 msgid "Event label"
 msgstr "Olay etiketi"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Event name"
+msgstr "Olay adı"
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Event pattern"
 msgstr "Olay deseni"
@@ -7882,6 +7920,10 @@ msgstr "O saat diliminde belirtilen saatte tetiklenir; yaz saati değişiminde b
 msgid "Fires at the same time of day the date field itself carries."
 msgstr "Tarih alanının kendi taşıdığı saatte tetiklenir."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Fires on"
+msgstr "Şununla çalışır"
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "eşleşen pub-sub kanal olaylarında tetiklenir"
@@ -8292,6 +8334,10 @@ msgstr "Yeni bağlantı üret"
 msgid "Generated DSL — saved to <0>role_permissions</0> on save."
 msgstr "Oluşturulan DSL — kayıt sırasında <0>role_permissions</0> tablosuna kaydedilir."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Generated from the tags this container actually holds. Your page, your policy — we cannot relax it for you."
+msgstr "Bu konteynerdeki etiketlerden üretildi. Sayfa sizin, politika sizin — sizin adınıza gevşetemeyiz."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
 #~ msgstr "Yeni bir token üretir ve mevcut bağlantıyı anında geçersiz kılar. Eski bağlantının gömülü olduğu her yer güncellenmelidir — yeni bağlantı yalnızca bir kez gösterilir."
@@ -8369,6 +8415,10 @@ msgstr "O kullanıcının kayıtlı cihazlarına gider. Cihaz yoksa sessizce atl
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Good direction"
 msgstr "İyi yön"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Google documents its origins against script-src-elem. If your site sets that directive explicitly, add them there too."
+msgstr "Google kendi origin'lerini script-src-elem için belgeliyor. Siteniz bu direktifi açıkça tanımlıyorsa origin'leri oraya da ekleyin."
 
 #: src/client/admin/extras.tsx
 msgid "goto"
@@ -9012,6 +9062,7 @@ msgid "Inspecting…"
 msgstr "İnceleniyor…"
 
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Install"
 msgstr "Kur"
 
@@ -9267,6 +9318,10 @@ msgstr "İstanbul, Türkiye"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "it calls us"
 msgstr "bizi arar"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+msgstr "Analytics etiketini de taşır; yani analytics snippet'ine eklenmez, onun yerine geçer."
 
 #: src/client/pages/sign-document.tsx
 msgid "It has already been completed."
@@ -9896,6 +9951,10 @@ msgstr "Son yayınlanan sürüm için boş bırakın."
 msgid "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
 msgstr "Her ülkeyi kabul etmek için boş bırakın. Kısıtlamak, yanlış yazılmış bir ülke kodunun yurt dışına gönderilmiş bir SMS olarak ortaya çıkmak yerine yazma anında yakalanmasını sağlar."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Leave empty to match every element."
+msgstr "Her öğeyle eşleşmesi için boş bırakın."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
 msgstr "tetikleyici yükünü iletmek için boş bırakın"
@@ -9923,6 +9982,10 @@ msgstr "Boş bırakılırsa, listede olmayan bir yanıt tahmin etmek yerine adı
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "Left empty, this is built from"
 msgstr "Boş bırakılırsa şuradan üretilir:"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Left out of the last publish"
+msgstr "Son yayında dışarıda kalanlar"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "legacy production"
@@ -11021,6 +11084,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -11324,6 +11388,10 @@ msgstr "Yeni adım"
 msgid "New sync hook"
 msgstr "Yeni sync hook"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "New tag"
+msgstr "Yeni etiket"
+
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "New template"
@@ -11332,6 +11400,10 @@ msgstr "Yeni şablon"
 #: src/client/admin/pages/observability/translations.tsx
 msgid "New translation key"
 msgstr "Yeni çeviri anahtarı"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "New trigger"
+msgstr "Yeni tetikleyici"
 
 #: src/client/admin/pages/automation/payments.tsx
 msgid "New URL"
@@ -12236,6 +12308,10 @@ msgstr "Henüz tablo yok."
 msgid "No tagged traffic in this window."
 msgstr "Bu aralıkta etiketli trafik yok."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "No tags yet"
+msgstr "Henüz etiket yok"
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "No tags yet."
 msgstr "Henüz etiket yok."
@@ -12280,6 +12356,10 @@ msgstr "Bu tüketici için trafik yok"
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "No traffic recorded yet"
 msgstr "Henüz trafik kaydedilmedi"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "No triggers yet"
+msgstr "Henüz tetikleyici yok"
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "No trusted issuers. Add one to let an app that already signs users in with Clerk, Auth0, Firebase, Cognito or WorkOS call this API with the token it already has — no user migration, no second login."
@@ -12577,6 +12657,10 @@ msgstr "Bekleyen bir şey yok."
 #: src/client/admin/collections/grid-edit.tsx
 msgid "Nothing pasted — the target cells are read-only or the values don't fit."
 msgstr "Hiçbir şey yapıştırılmadı — hedef hücreler salt okunur ya da değerler uymuyor."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Nothing published yet"
+msgstr "Henüz hiçbir şey yayınlanmadı"
 
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Nothing ranked for that query — try different words or another mode."
@@ -13533,6 +13617,10 @@ msgstr "IdP metadata XML yapıştırın (isteğe bağlı — aşağıdaki alanla
 msgid "Paste the endpoint above"
 msgstr "Yukarıdaki uç noktayı yapıştırın"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Paste this once, before the closing head tag"
+msgstr "Bunu bir kez, kapanış head etiketinden önce yapıştırın"
+
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
 msgstr "Yollar"
@@ -13943,6 +14031,10 @@ msgstr "Bir kullanıcı seçin"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Pick a value"
 msgstr "Bir değer seçin"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Pick a vendor, fill in what it needs, and choose when it fires."
+msgstr "Bir sağlayıcı seçin, istediği alanları doldurun ve ne zaman çalışacağını belirleyin."
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Pick a website metric below. Nothing to write, and no row-level owner to clamp on an embed."
@@ -14608,6 +14700,7 @@ msgstr "yayınlama"
 
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/collections/items.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Yayınla"
@@ -14681,11 +14774,23 @@ msgstr "yalnızca yayınlananlar"
 #~ msgid "Published posts past week"
 #~ msgstr "Son haftada yayınlanmış postlar"
 
+#. placeholder {0}: res.data.version.version
+#. placeholder {1}: res.data.dropped.length
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Published version {0}, leaving out {1}."
+msgstr "{0} sürümü yayınlandı, {1} tanesi dışarıda kaldı."
+
+#. placeholder {0}: res.data.version.version
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Published version {0}."
+msgstr "{0} sürümü yayınlandı."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
 #~ msgstr "Yayınlandı."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Publishing…"
 msgstr "Yayımlanıyor…"
 
@@ -15288,6 +15393,10 @@ msgstr "Tek satırlık bir script etiketi almak için bir site kaydet. Çerez ve
 #: src/client/admin/collections/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — backlex yalnızca kendi meta verilerini yazar."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Register a website first"
+msgstr "Önce bir web sitesi kaydedin"
 
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Register an OAuth client"
@@ -17321,6 +17430,10 @@ msgstr "Eylül"
 msgid "sequential"
 msgstr "sırayla"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Serve this again"
+msgstr "Bunu tekrar yayınla"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Server default (10 MB)"
 #~ msgstr "Sunucu varsayılanı (10 MB)"
@@ -18190,6 +18303,10 @@ msgstr "Geçici silme"
 msgid "sold"
 msgstr "satıldı"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Some of these origins are our reading of a vendor's snippet, not guidance the vendor publishes."
+msgstr "Bu origin'lerin bir kısmı sağlayıcının yayımladığı yönerge değil, snippet'inden bizim çıkarımımız."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Sort"
 msgstr "Sıralama"
@@ -18362,6 +18479,10 @@ msgstr "Baştan başla"
 #: src/client/pages/oauth-consent.tsx
 msgid "Start the connection again from your MCP client (for example claude.ai → Connectors)."
 msgstr "Bağlantıyı MCP istemcinizden yeniden başlatın (örneğin claude.ai → Connectors)."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Start with a page view; a tag needs at least one trigger to fire."
+msgstr "Sayfa görüntüleme ile başlayın; bir etiketin çalışması için en az bir tetikleyici gerekir."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Start with a template"
@@ -18832,14 +18953,28 @@ msgstr "Tablo"
 msgid "Tables"
 msgstr "Tablolar"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+#: src/client/admin/ui.tsx
+msgid "Tag manager"
+msgstr "Etiket yöneticisi"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Tagline"
 msgstr "Slogan"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Tags"
 msgstr "Etiketler"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Tags are configured per site. Add one under Analytics → Sites, then come back."
+msgstr "Etiketler site bazında tanımlanır. Analytics → Siteler altından bir site ekleyip geri dönün."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Tags fire on the triggers you attach to them."
+msgstr "Etiketler, kendilerine bağladığınız tetikleyicilerle çalışır."
 
 #: src/client/admin/collections/item-editor.tsx
 msgid "Take out of play"
@@ -19233,6 +19368,10 @@ msgstr "Döngü gövdesi her satır için bir kez çalışır; satıra <0>{itemI
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "The move is refused until they hold a value — filling one in the same save counts."
 msgstr "Bu alanlar dolana kadar geçiş reddedilir — aynı kayıtta doldurmak da sayılır."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "The name your site already passes to backlex()."
+msgstr "Sitenizin hâlihazırda backlex() fonksiyonuna verdiği ad."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The old slot goes back on sale, the customer is emailed, and a fresh link to change or cancel is minted."
@@ -20137,6 +20276,10 @@ msgstr "Tetikleyici yalnızca satır bu filtreyle eşleştiğinde (değişiklikt
 msgid "Trigger PagerDuty alerts on data events."
 msgstr "Veri olaylarında PagerDuty uyarıları tetikle."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Triggers"
+msgstr "Tetikleyiciler"
+
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 msgstr "Tetikleyiciler koleksiyon etkinliklerinde, zamanlamalarda veya webhook'larda tetiklenir. Her adım kum havuzunda çalışır."
@@ -20483,6 +20626,10 @@ msgstr "Bir kural olana kadar uygulamaya ait her kanal reddedilir. Bir kanalı a
 #: src/client/pages/sign-up.tsx
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "E-postanızı onaylayana kadar giriş çalışmaz. Almadınız mı? Spam'i kontrol edin veya bir dakika bekleyip giriş yapmayı deneyin — talep üzerine yeniden göndeririz."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Until you publish, visitors get the tracker alone."
+msgstr "Siz yayınlayana kadar ziyaretçilere yalnızca izleyici gider."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "Untouched means any value. Existing records are never re-judged by this."
@@ -20863,6 +21010,10 @@ msgstr "Vektör araması (anlamsal)"
 msgid "Vectorize"
 msgstr "Vectorize"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Vendor"
+msgstr "Sağlayıcı"
+
 #: src/client/pages/sign-in.tsx
 msgid "Verification email sent."
 msgstr "Doğrulama e-postası gönderildi."
@@ -20910,6 +21061,10 @@ msgstr "sürümlü"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Versioned (draft / published)"
 msgstr "Sürümlü (taslak / yayınlandı)"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Versions"
+msgstr "Sürümler"
 
 #. placeholder {0}: m.extension.manifest.title
 #: src/client/admin/extension-widgets.tsx
@@ -21170,6 +21325,7 @@ msgstr "koleksiyonda etkin olan neyse"
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "When"
 msgstr "Ne zaman"
 
@@ -21670,6 +21826,10 @@ msgstr "Sizdeki kategori değeri"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 msgstr "Koleksiyon sizin, kolon adları da öyle — bu yüzden her rezervasyon alanının bir karşılığı gerekir. Eşlemesi olmayan bir hedef hiçbir şey kaydetmez, o yüzden eşlemesiz kayıt reddedilir."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Your Content-Security-Policy needs these"
+msgstr "Content-Security-Policy'nizin bunlara ihtiyacı var"
 
 #: src/client/pages/approve-request.tsx
 msgid "Your decision has been recorded. You can close this page."

@@ -110,7 +110,10 @@ const created = (schema: z.ZodTypeAny) => ({
   ...errorResponses,
 });
 
-const base = { tags: TAGS, security: SECURITY, middleware: [requireUser] as const };
+// NOT `as const`: a readonly tuple is not assignable to RouteConfig's
+// `middleware`, and the failure cascades — the route config is rejected, so
+// `c.req.valid(...)` collapses to `never` and every handler in the file errors.
+const base = { tags: TAGS, security: SECURITY, middleware: [requireUser] };
 
 export const tagManagerRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /**

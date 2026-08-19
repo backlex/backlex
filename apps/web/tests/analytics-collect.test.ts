@@ -73,6 +73,31 @@ describe("the tag script", () => {
     const js = await res.text();
     expect(js).toContain("sendBeacon");
     expect(js).toContain("data-site");
+    // The served file must START the tracker, not merely define it. The tag is
+    // a function now so the tag-manager file can boot it with configuration,
+    // and a route that shipped the definition alone would pass every other
+    // assertion here while measuring nothing at all.
+    expect(js).toContain("__backlexTrackerInit(null);");
+    expect(js.indexOf("__backlexTrackerInit(null);")).toBeGreaterThan(
+      js.indexOf("window.__backlexTrackerInit = function"),
+    );
+  });
+
+  test("it boots once, however many snippets a page carries", () => {
+    // A site migrating from the legacy snippet to the tag-manager file will
+    // briefly have both installed. Without the guard that page reports every
+    // visit twice, silently, and the numbers just look like growth.
+    expect(TRACKER_JS).toContain("__backlexTagBooted");
+  });
+
+  test("the collect endpoint is derived from the last slash, not a filename", () => {
+    // The old form searched its own src for "/script.js" and fell back to a
+    // RELATIVE path when it was absent — which resolves against the CUSTOMER's
+    // page, so every beacon would have gone to their own server and 404ed
+    // invisibly. Any second URL shape for the tag reintroduces that the moment
+    // the filename search misses.
+    expect(TRACKER_JS).toContain("lastIndexOf");
+    expect(TRACKER_JS).not.toContain('indexOf("/script.js")');
   });
 
   test("its source survives being a template literal", () => {

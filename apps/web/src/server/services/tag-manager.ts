@@ -32,6 +32,7 @@ import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { hashToken } from "./shared-links";
+import { invalidateContainer } from "./tag-container-cache";
 import {
   CONSENT_CATEGORIES,
   type ConsentCategory,
@@ -885,6 +886,11 @@ export const publishContainer = async (
     .set({ publishedVersion: version, publishedVersionId: row.id, updatedAt: new Date(now) })
     .where(and(eq(sites.id, siteId), tenantEq(sites.tenantId, tenantId)));
 
+  // The public route memoizes for a minute. Without this an operator publishes,
+  // immediately opens their site, and sees the old container — which reads like
+  // a broken publish rather than a cache.
+  invalidateContainer(siteId);
+
   return { version: toVersion(row), dropped };
 };
 
@@ -917,6 +923,8 @@ export const rollbackContainer = async (
     .update(sites)
     .set({ publishedVersion: version, publishedVersionId: row.id, updatedAt: new Date(now) })
     .where(and(eq(sites.id, siteId), tenantEq(sites.tenantId, tenantId)));
+
+  invalidateContainer(siteId);
 
   return toVersion(row);
 };

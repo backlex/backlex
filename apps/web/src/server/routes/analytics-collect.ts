@@ -42,7 +42,14 @@ import { setMeterTenant } from "../lib/usage-meter";
 import { getSiteById, recordWebEvents } from "../services/analytics";
 import { dailyVisitorId } from "../services/analytics-identity";
 import { enrichmentFromRequest, parseUserAgent } from "../services/analytics-enrich";
-import { TRACKER_JS } from "../services/analytics-tracker";
+import { TRACKER_BOOT_JS, TRACKER_JS } from "../services/analytics-tracker";
+import { TAG_RUNTIME_JS, safeJson } from "../services/tag-runtime";
+import { getPublishedArtifact } from "../services/tag-manager";
+import { ifNoneMatch, weakETag } from "../lib/etag";
+import {
+  getContainerEntry,
+  setContainerEntry,
+} from "../services/tag-container-cache";
 
 /**
  * Per-(site, IP) budget.
@@ -70,6 +77,20 @@ const COLLECT_MAX_PER_IP_PER_MINUTE = 1_200;
 
 /** Longest body we will read. A pageview is a few hundred bytes. */
 const MAX_BODY_BYTES = 8_192;
+
+/**
+ * How long a browser keeps a container before asking again.
+ *
+ * Fifteen minutes, which is GTM's own figure, and the honest way to describe it
+ * is "a publish reaches every visitor within fifteen minutes". The alternative
+ * — a version in the URL — would make every publish an edit to the customer's
+ * HTML. Preview mode is what gives an operator an instant answer.
+ *
+ * Note that `must-revalidate` is deliberately NOT here. It forbids serving a
+ * STALE entry after expiry; it does not make a browser revalidate before one.
+ * The ETag is what turns the post-expiry request into a bodyless 304.
+ */
+const CONTAINER_MAX_AGE = 900;
 
 /** CORS for an uncredentialed, append-only, cross-origin endpoint. */
 const corsHeaders = {
@@ -291,8 +312,77 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
     return c.body(null, 204, { ...corsHeaders });
   })
 
+  /**
+   * The per-site container: the tracker and the tag runtime in one file, with
+   * the compiled container inlined as DATA.
+   *
+   * The snippet is `<script defer src=".../tm/<site-id>.js"></script>` — no
+   * `data-site` attribute, because the id is in the URL. That matters for more
+   * than tidiness: `document.currentScript` is null for a dynamically injected
+   * script, which is exactly the shape of the async snippet operators paste out
+   * of habit, so a runtime that read its configuration off the element would
+   * simply never start.
+   *
+   * The container is JSON handed to a fixed interpreter, never generated code.
+   * The only operator string that becomes executable is a custom-code tag, and
+   * that rides the per-site gate which the compiler re-checks on every publish.
+   */
+  .get("/tm/:file", async (c) => {
+    const file = c.req.param("file");
+    if (!file.endsWith(".js")) return c.notFound();
+    const siteId = file.slice(0, -3);
+
+    const ctx = c.get("ctx");
+    const now = Date.now();
+
+    const origin = new URL(c.req.url).origin;
+    let hit = getContainerEntry(siteId, origin, now);
+
+    if (!hit) {
+      const published = await getPublishedArtifact({ db: ctx.db, dialect: ctx.dialect }, siteId);
+      // An unknown or unpublished site gets an empty 200 rather than a 404, for
+      // the same reason the collect route answers 202: a status code that
+      // differs by whether an id exists is an oracle for enumerating ids.
+      if (!published) {
+        return c.body("", 200, {
+          "Content-Type": "application/javascript; charset=utf-8",
+          "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
+          "Access-Control-Allow-Origin": "*",
+        });
+      }
+      const endpoint = origin + "/api/analytics/collect";
+      const body = [
+        TRACKER_JS,
+        TAG_RUNTIME_JS,
+        `;__backlexTrackerInit(${safeJson({ s: siteId, e: endpoint })});`,
+        `;__backlexTM(${safeJson(published.artifact)});`,
+      ].join("\n");
+      hit = { at: now, body, hash: published.hash, tenantId: published.tenantId };
+      setContainerEntry(siteId, origin, hit);
+    }
+
+    // The site resolves the workspace — the tag carries no other credential —
+    // so metering is attributed from here. Without this an anonymous fetch
+    // bills whichever workspace the tenant middleware happened to resolve,
+    // which is the DEFAULT one. That exact defect is pinned as a regression.
+    if (hit.tenantId) setMeterTenant(c, hit.tenantId);
+
+    const etag = weakETag([hit.hash]);
+    const headers = {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
+      ETag: etag,
+      "Access-Control-Allow-Origin": "*",
+    };
+    // `c.body` does no conditional handling of its own, so the 304 is explicit.
+    if (ifNoneMatch(c.req.header("if-none-match"), etag)) {
+      return c.body(null, 304, headers);
+    }
+    return c.body(hit.body, 200, headers);
+  })
+
   .get("/script.js", (c) =>
-    c.body(TRACKER_JS, 200, {
+    c.body(TRACKER_BOOT_JS, 200, {
       "Content-Type": "application/javascript; charset=utf-8",
       // Long enough to stay out of the way, short enough that a fix reaches
       // every visitor within the hour. `must-revalidate` is deliberate: a

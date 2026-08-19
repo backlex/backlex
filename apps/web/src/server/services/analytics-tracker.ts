@@ -16,7 +16,16 @@
  * regex written naturally here would ship subtly wrong (`[::1]` would turn
  * into a character class rather than a literal). The tag therefore uses string
  * operations where a regex would be the obvious choice, and
- * `analytics-tracker.test.ts` fails if any of the three ever appears.
+ * `analytics-collect.test.ts` fails if any of the three ever appears. (That
+ * pointer used to name a file that does not exist.)
+ *
+ * ── Why this is a function rather than an IIFE ────────────────────────────
+ * The tag manager serves ONE per-site file carrying both this tracker and the
+ * container runtime, so the tracker has to be startable with configuration
+ * passed in rather than sniffed from the page. `__backlexTrackerInit(cfg)`
+ * takes `{s, e}` — site id and collect endpoint — and falls back to the
+ * original attribute/URL sniffing when called with `null`, which is exactly
+ * what `/script.js` does. Its behaviour on the legacy snippet is unchanged.
  */
 export const TRACKER_JS = `// backlex web analytics tag.
 //
@@ -45,27 +54,55 @@ export const TRACKER_JS = `// backlex web analytics tag.
 // NOTE: this file intentionally avoids regular expressions. It is embedded in
 // a TypeScript template literal, where a backslash would be eaten before it
 // ever reached a browser.
-(function () {
+window.__backlexTrackerInit = function (cfg) {
   var doc = document;
   var nav = navigator;
 
-  // document.currentScript is only valid while this file is executing, so it
-  // is captured immediately rather than looked up later from a callback.
-  var self = doc.currentScript;
-  if (!self) return;
+  // One tracker per page, whichever snippet started it. Both the legacy
+  // /script.js snippet and the tag-manager file call in here, and a site
+  // migrating from one to the other will briefly have both installed. Without
+  // this guard that page reports every visit twice, silently, and the numbers
+  // simply look like growth.
+  if (window.__backlexTagBooted) return;
+  window.__backlexTagBooted = 1;
 
-  var site = self.getAttribute("data-site");
+  // document.currentScript is only valid while this file is executing, so it
+  // is captured immediately rather than looked up later from a callback. It is
+  // also null for a dynamically injected script, which is why the configured
+  // path below never consults it.
+  var self = doc.currentScript;
+
+  var site = cfg && cfg.s ? cfg.s : self ? self.getAttribute("data-site") : null;
   if (!site) return;
 
   // The collect endpoint lives next to the script that served us, so a
   // workspace on a custom domain needs no second attribute to configure.
-  var src = String(self.src || "");
-  var cut = src.indexOf("/script.js");
-  var endpoint = cut === -1 ? "/api/analytics/collect" : src.slice(0, cut) + "/collect";
+  //
+  // Derived from the LAST slash rather than by searching for a filename. The
+  // old form looked for "/script.js" and fell back to a RELATIVE path when it
+  // was not found -- which resolves against the customer page, so every beacon
+  // would have gone to their own server and 404ed, invisibly: sendBeacon
+  // returns before a response and the fetch fallback swallows errors.
+  var endpoint = cfg && cfg.e ? cfg.e : "";
+  if (!endpoint) {
+    var src = String((self && self.src) || "");
+    var cut = src.lastIndexOf("/");
+    endpoint = cut === -1 ? "" : src.slice(0, cut) + "/collect";
+  }
+  if (!endpoint) return;
 
   // Opt-outs a site owner can set without touching this file.
-  var honorDnt = self.getAttribute("data-respect-dnt") !== "false";
-  var localhostOk = self.getAttribute("data-allow-localhost") === "true";
+  //
+  // Read through a guard because self is legitimately null now: on the
+  // tag-manager path there is no script element to read attributes from, and
+  // on any dynamically injected script currentScript is null regardless. An
+  // unguarded read here would throw before the first pageview -- on the exact
+  // path the tag manager depends on.
+  function attr(name) {
+    return self ? self.getAttribute(name) : null;
+  }
+  var honorDnt = attr("data-respect-dnt") !== "false";
+  var localhostOk = attr("data-allow-localhost") === "true";
   var LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"];
 
   // Consent state, in the three shapes a site is likely to already have.
@@ -98,6 +135,10 @@ export const TRACKER_JS = `// backlex web analytics tag.
     }
     return false;
   }
+
+  // Shared with the tag-manager runtime, which must gate marketing tags on the
+  // same signals rather than growing a second copy that can drift.
+  window.__backlexConsentDenied = consentDenied;
 
   function optedOut() {
     if (consentDenied()) return true;
@@ -219,6 +260,18 @@ export const TRACKER_JS = `// backlex web analytics tag.
     }
   }
 
+  // The container runtime raises custom events through the same public handle,
+  // so a backlex_event tag needs no second transport.
   pageview();
-})();
+};
 `;
+
+/**
+ * What `/script.js` actually serves: the tracker plus the call that starts it
+ * in legacy mode.
+ *
+ * Kept separate so the tag-manager file can concatenate `TRACKER_JS` and start
+ * it with configuration instead. Splitting here rather than at the route means
+ * there is exactly one place that knows the legacy start is `(null)`.
+ */
+export const TRACKER_BOOT_JS = TRACKER_JS + ";__backlexTrackerInit(null);";

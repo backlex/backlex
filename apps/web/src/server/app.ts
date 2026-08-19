@@ -32,6 +32,7 @@ import { adoptRoutes } from "./routes/adopt";
 import { migrateRoutes } from "./routes/migrate";
 import { advisorRoutes } from "./routes/advisor";
 import { analyticsRoutes } from "./routes/analytics";
+import { tagManagerRoutes } from "./routes/tag-manager";
 import { consentRoutes } from "./routes/consent";
 import { analyticsCollectRoutes } from "./routes/analytics-collect";
 import { analyticsIngestRoutes } from "./routes/analytics-ingest";
@@ -774,8 +775,20 @@ export const createApp = (env: Env) => {
   //    WITHOUT credentials and is append-only; it can never read a row back.
   //    See `routes/analytics-collect.ts` for what replaces the origin check.
   const CORS_EXEMPT = ["/api/analytics/collect", "/api/analytics/script.js"];
+  // The tag manager's per-site container joins them, and it is a path
+  // PARAMETER, so it needs a prefix rather than a third exact entry. Both exact
+  // entries stay — the two older paths are not under this prefix.
+  //
+  // Worth naming what this exemption actually does, because "CORS" sends the
+  // next person to the wrong layer: a `<script src>` without `crossorigin` is
+  // not CORS-governed at all. What it prevents is hono's `cors()` stamping
+  // `Vary: Origin` and an `ACAO` of one specific origin onto a response we want
+  // cached identically for every origin on the internet.
+  const CORS_EXEMPT_PREFIX = "/api/analytics/tm/";
   app.use("*", async (c, next) =>
-    c.req.path.startsWith("/.well-known/") || CORS_EXEMPT.includes(c.req.path)
+    c.req.path.startsWith("/.well-known/") ||
+    CORS_EXEMPT.includes(c.req.path) ||
+    c.req.path.startsWith(CORS_EXEMPT_PREFIX)
       ? next()
       : corsMw(c, next),
   );
@@ -992,6 +1005,7 @@ export const createApp = (env: Env) => {
   app.route("/api/activity", activityRoutes);
   app.route("/api/admin/traces", tracesRoutes);
   app.route("/api/admin/analytics", analyticsRoutes);
+  app.route("/api/admin/tag-manager", tagManagerRoutes);
   app.route("/api/admin/consent", consentRoutes);
   // Public ingest — authenticated by a publishable key or a normal session,
   // never anonymous. Kept off `/api/admin/*` because client bundles call it.

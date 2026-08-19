@@ -3271,6 +3271,19 @@ export const analyticsSites = sqliteTable(
     requireKnownOrigin: integer("require_known_origin", { mode: "boolean" })
       .notNull()
       .default(true),
+    /** ── Tag manager ──────────────────────────────────────────────────
+     *  May this site run operator-authored code (a custom HTML/JS tag, or a
+     *  `js_expression` variable)? Default false, and deliberately per-site:
+     *  a custom tag is arbitrary JavaScript on a public website, so it stays
+     *  off until somebody turns it on for a site they mean to turn it on for. */
+    allowCustomCode: integer("allow_custom_code", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    /** The container version currently served, and the row it was compiled
+     *  into. Null until the first publish — a site that has never published
+     *  serves the tracker alone, which is exactly what it does today. */
+    publishedVersion: integer("published_version"),
+    publishedVersionId: text("published_version_id"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
@@ -3346,6 +3359,134 @@ export const consentPolicies = sqliteTable(
   },
   (t) => [index("consent_policies_tenant_idx").on(t.tenantId)],
 );
+
+/**
+ * ── Tag manager ───────────────────────────────────────────────────────────
+ *
+ * A GTM-style container, hung off the site that already carries the tag. The
+ * site IS the container: it already names one domain, the snippet is already
+ * installed against it, and a second id on the same page would only be a
+ * second thing to get wrong.
+ *
+ * The three `tag_*` tables below are DRAFT state — what an operator is
+ * editing. None of it is served to a visitor. `tag_versions` holds the
+ * immutable compiled artifact that IS served, and
+ * `analytics_sites.published_version_id` points at the one currently live.
+ * That is the same shape as `schema_snapshots` + `schema_branches`: an
+ * append-only history plus a mutable pointer, so a rollback is a pointer move
+ * rather than a reconstruction of what used to be true.
+ *
+ * Everything an operator authors here is re-validated on READ and never
+ * trusted from storage — the same rule as `analytics_segments.definition`,
+ * for a sharper reason: this blob ends up as input to JavaScript running on
+ * somebody else's website.
+ */
+export const tagVariables = sqliteTable(
+  "tag_variables",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    /** Referenced from a tag parameter as `{{key}}`. */
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    /** `constant` | `query_param` | `cookie` | `data_layer` | `js_expression`.
+     *  The last one is operator-authored code and rides the same
+     *  `allow_custom_code` gate as a custom-HTML tag, not a looser one. */
+    kind: text("kind").notNull().default("constant"),
+    config: text("config", { mode: "json" }).$type<unknown>(),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("tag_variables_site_idx").on(t.siteId),
+    uniqueIndex("tag_variables_site_key_idx").on(t.siteId, t.key),
+  ],
+);
+
+export const tagTriggers = sqliteTable(
+  "tag_triggers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    name: text("name").notNull(),
+    /** Closed vocabulary — `services/tag-conditions.ts::TRIGGER_TYPES`. */
+    type: text("type").notNull(),
+    /** Type-specific settings: a CSS selector, a scroll threshold, a timer
+     *  interval, a custom event name. Checked against the type on write and
+     *  again on read. */
+    config: text("config", { mode: "json" }).$type<unknown>(),
+    /** Optional predicate tree narrowing when the trigger fires. Same node
+     *  grammar as an analytics segment; evaluated in the browser rather than
+     *  compiled to SQL. */
+    condition: text("condition", { mode: "json" }).$type<unknown>(),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [index("tag_triggers_site_idx").on(t.siteId)],
+);
+
+export const tagDefinitions = sqliteTable(
+  "tag_definitions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    name: text("name").notNull(),
+    /** `template` | `custom_html` | `custom_js` | `image_pixel` |
+     *  `backlex_event`. */
+    kind: text("kind").notNull().default("template"),
+    /** Registry id when `kind = 'template'` — `services/tag-templates.ts`. */
+    templateId: text("template_id"),
+    /** Operator-supplied parameters, validated against the template's own
+     *  schema. For a custom tag this is where the code lives. */
+    params: text("params", { mode: "json" }).$type<unknown>(),
+    /** Trigger ids that fire this tag, and ids that suppress it. Arrays
+     *  rather than a join table because nothing ever groups or filters by
+     *  them, and the published artifact is one JSON document either way. */
+    triggerIds: text("trigger_ids", { mode: "json" }).$type<string[] | null>(),
+    blockingTriggerIds: text("blocking_trigger_ids", { mode: "json" }).$type<
+      string[] | null
+    >(),
+    /** `none` | `functional` | `analytics` | `marketing`, gated against the
+     *  signals the tracker already reads. Defaults to the strictest useful
+     *  answer: most tags an operator adds here are advertising tags. */
+    consentCategory: text("consent_category").notNull().default("marketing"),
+    /** `always` | `once_per_page` | `once_per_visitor_day`. */
+    fireRule: text("fire_rule").notNull().default("always"),
+    /** Higher fires first within one trigger. */
+    priority: integer("priority").notNull().default(0),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdBy: text("created_by"),
+    updatedBy: text("updated_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [index("tag_definitions_site_idx").on(t.siteId)],
+);
+
+export const tagVersions = sqliteTable(
+  "tag_versions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    /** Monotonic per site — the number the admin shows and rolls back to. */
+    version: integer("version").notNull(),
+    note: text("note"),
+    /** The COMPILED artifact, exactly as served. Storing the compiled form
+     *  instead of recompiling on read is what keeps serving to one query, and
+     *  what makes a rollback reproduce byte-for-byte what was live. */
+    snapshot: text("snapshot", { mode: "json" }).$type<unknown>().notNull(),
+    /** Content hash of `snapshot` — this is the ETag. */
+    hash: text("hash").notNull(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [uniqueIndex("tag_versions_site_version_idx").on(t.siteId, t.version)],
+);
+
 
 /**
  * Crash-reporting group — the deduplicated identity of one bug. Occurrences

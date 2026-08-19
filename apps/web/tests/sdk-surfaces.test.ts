@@ -272,7 +272,7 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/analytics → analyticsIngestRoutes": { client: "analytics" },
   "/api/analytics → analyticsCollectRoutes": {
     serverOnly:
-      "The collect endpoint and the script it serves exist for the drop-in `<script>` tag, which is deliberately NOT the SDK: it is hand-written plain JS that ships to a customer's own domain, authenticates with nothing but a public site id, and posts a text/plain body so `sendBeacon` never triggers a preflight. An SDK method here would need credentials the tag must not carry, and would reach an endpoint that can only ever append. Registering a site — the part an application would automate — is covered by `analytics.sites` on the admin surface.",
+      "The collect endpoint, the script it serves, and the per-site tag-manager container all exist for the drop-in `<script>` tag, which is deliberately NOT the SDK: they are hand-written plain JS that ships to a customer's own domain, authenticate with nothing but a public site id, and post a text/plain body so `sendBeacon` never triggers a preflight. An SDK method here would need credentials the tag must not carry, and would reach endpoints that can only append or read a document already published to anonymous visitors. The parts an application would automate — registering a site, editing and publishing a container — are covered by `analytics.sites` and the tag-manager admin surface.",
   },
   "/api/api-keys": MCP_SURFACES["api-keys"]!,
   "/api/app-orgs": { client: "orgs" },
@@ -371,6 +371,15 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/admin/ai": MCP_SURFACES.ai!,
   "/api/admin/ai-config": MCP_SURFACES.ai!,
   "/api/admin/analytics": { client: "analytics" },
+  "/api/admin/tag-manager": {
+    deferred:
+      "The tag manager's admin surface exists but has no SDK client yet: the browser runtime, the compile/publish service and this REST surface landed first because nothing downstream can be written against a container format that is still being proved end-to-end. An SDK client here would freeze the shape of a tag, a trigger and a compiled artifact before the admin has exercised any of them. It lands with the rest of the multi-surface pass, alongside the GraphQL fields, the MCP tools and the CLI verbs, so all four are written against one settled shape rather than four against a moving one.",
+    until: "wave-2",
+    // Names the module whose arrival retires this entry, so the tripwire can
+    // actually fire. `clients/tag-manager.ts` does not exist yet; the day it
+    // does, this deferral fails and has to be replaced by a real client entry.
+    retiredBy: "tag-manager",
+  },
   "/api/admin/consent": { client: "consent" },
   "/api/admin/approvals": { client: "approvals" },
   "/api/admin/auth": ADMIN,

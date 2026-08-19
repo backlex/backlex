@@ -1175,7 +1175,7 @@ msgstr "1 row"
 msgid "1 unit, all ruled on"
 msgstr "1 unit, all ruled on"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
 msgstr "1 year"
@@ -1197,11 +1197,11 @@ msgstr "123456"
 msgid "16:9 widescreen"
 msgstr "16:9 widescreen"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "180 days"
 msgstr "180 days"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "2 years"
 msgstr "2 years"
 
@@ -1274,7 +1274,7 @@ msgid "7 days"
 msgstr "7 days"
 
 #: src/client/admin/collections/collection-kpis.tsx
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/pages/api-keys.tsx
@@ -1289,7 +1289,7 @@ msgstr "A chosen agent answers"
 msgid "A confirmation is on its way, with a calendar invite attached."
 msgstr "A confirmation is on its way, with a calendar invite attached."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "A consent banner is served for a registered site. Add one on the Sites tab first, then decide here what its visitors are asked."
 msgstr "A consent banner is served for a registered site. Add one on the Sites tab first, then decide here what its visitors are asked."
 
@@ -1489,6 +1489,10 @@ msgstr "A template with key \"{trimmedKey}\" already exists."
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "A text column holding this row's two-letter country code, for a list of contacts spread across countries. Falls back to the default above when the column is empty."
 msgstr "A text column holding this row's two-letter country code, for a list of contacts spread across countries. Falls back to the default above when the column is empty."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A trigger decides when a tag fires."
+msgstr "A trigger decides when a tag fires."
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
@@ -1861,6 +1865,10 @@ msgstr "Add a step after the loop"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Add a vendor pixel, an image pixel, or your own code."
+msgstr "Add a vendor pixel, an image pixel, or your own code."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Add a website"
@@ -2381,7 +2389,7 @@ msgstr "Allow all"
 msgid "Allow this hook to patch the payload"
 msgstr "Allow this hook to patch the payload"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Allow until they decline"
 msgstr "Allow until they decline"
 
@@ -2410,7 +2418,7 @@ msgstr "Allowed moves"
 msgid "Allowed redirect URLs"
 msgstr "Allowed redirect URLs"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Allows before consent"
 msgstr "Allows before consent"
 
@@ -3229,7 +3237,7 @@ msgstr "Backlex stops treating this table as a collection. The underlying table 
 msgid "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
 msgstr "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "backlex's own analytics tag"
 msgstr "backlex's own analytics tag"
 
@@ -3257,11 +3265,11 @@ msgstr "Backups"
 msgid "balanced — recommended for most queries"
 msgstr "balanced — recommended for most queries"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Banner live"
 msgstr "Banner live"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Banner position"
 msgstr "Banner position"
 
@@ -3306,7 +3314,7 @@ msgstr "before"
 msgid "Before a user is created"
 msgstr "Before a user is created"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Before a visitor decides"
 msgstr "Before a visitor decides"
 
@@ -3352,7 +3360,7 @@ msgstr "Block all"
 msgid "Block the write (deny)"
 msgstr "Block the write (deny)"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Block until they answer"
 msgstr "Block until they answer"
 
@@ -3368,7 +3376,7 @@ msgstr "Blocked"
 msgid "Blocked so far"
 msgstr "Blocked so far"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Blocks before consent"
 msgstr "Blocks before consent"
 
@@ -3479,7 +3487,7 @@ msgstr "Bots filtered"
 msgid "Bots kept"
 msgstr "Bots kept"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Bottom bar"
 msgstr "Bottom bar"
 
@@ -3679,8 +3687,10 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/developers/extensions.tsx
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
@@ -3816,7 +3826,7 @@ msgstr "Carried out"
 msgid "Categories"
 msgstr "Categories"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Categories the banner offers"
 msgstr "Categories the banner offers"
 
@@ -3961,7 +3971,7 @@ msgstr "Choices"
 msgid "choices · from schema enum"
 msgstr "choices · from schema enum"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Choose — there is no default"
 msgstr "Choose — there is no default"
 
@@ -4732,15 +4742,15 @@ msgstr "Consent checkbox"
 msgid "consent must be accepted — always required"
 msgstr "consent must be accepted — always required"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Consent policy"
 msgstr "Consent policy"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Consent policy removed."
 msgstr "Consent policy removed."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Consent policy saved."
 msgstr "Consent policy saved."
 
@@ -4945,7 +4955,7 @@ msgstr "Copy webhook URL"
 msgid "Copying snippet"
 msgstr "Copying snippet"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Corner card"
 msgstr "Corner card"
 
@@ -4997,6 +5007,14 @@ msgstr "Could not copy snippet — clipboard blocked."
 msgid "Could not create share link."
 msgstr "Could not create share link."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not create that tag."
+msgstr "Could not create that tag."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not create that trigger."
+msgstr "Could not create that trigger."
+
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not delete comment."
 msgstr "Could not delete comment."
@@ -5017,11 +5035,15 @@ msgstr "Could not export runs."
 msgid "Could not post comment."
 msgstr "Could not post comment."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Could not publish."
+msgstr "Could not publish."
+
 #: src/client/admin/pages/data/booking/parts.tsx
 msgid "Could not reach the clipboard — select the link and copy it."
 msgstr "Could not reach the clipboard — select the link and copy it."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Could not remove the policy."
 msgstr "Could not remove the policy."
 
@@ -5041,7 +5063,7 @@ msgstr "Could not revoke share link."
 msgid "Could not save the KPI."
 msgstr "Could not save the KPI."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Could not save the policy."
 msgstr "Could not save the policy."
 
@@ -5178,6 +5200,7 @@ msgstr "Covering message"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -5410,6 +5433,10 @@ msgstr "Credentials are encrypted at rest and shown masked afterwards. You'll ge
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Cron expression"
 msgstr "Cron expression"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "CSS selector"
+msgstr "CSS selector"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -5930,6 +5957,10 @@ msgstr "Delete source?"
 msgid "Delete submission"
 msgstr "Delete submission"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Delete tag"
+msgstr "Delete tag"
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Delete template"
 msgstr "Delete template"
@@ -5962,6 +5993,10 @@ msgstr "Delete this row too (cascade)"
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete this submission?"
 msgstr "Delete this submission?"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Delete trigger"
+msgstr "Delete trigger"
 
 #: src/client/admin/pages/access/users.tsx
 msgid "Delete user"
@@ -6698,7 +6733,7 @@ msgstr "Edit layout"
 msgid "Edit panel"
 msgstr "Edit panel"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Edit policy"
 msgstr "Edit policy"
 
@@ -7291,6 +7326,10 @@ msgstr "Event hooks also fire on their matching pattern; running one here execut
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Event label"
 msgstr "Event label"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Event name"
+msgstr "Event name"
 
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Event pattern"
@@ -7972,6 +8011,10 @@ msgstr "Fires at that wall clock, so it stays at the same local hour across a da
 msgid "Fires at the same time of day the date field itself carries."
 msgstr "Fires at the same time of day the date field itself carries."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Fires on"
+msgstr "Fires on"
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "fires on matching pub-sub channel events"
@@ -8351,7 +8394,7 @@ msgstr "Funnel"
 msgid "Gallery"
 msgstr "Gallery"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Gate it like any other tag"
 msgstr "Gate it like any other tag"
 
@@ -8385,6 +8428,10 @@ msgstr "Generate new link"
 #: src/client/admin/pages/access/role-editor.tsx
 msgid "Generated DSL — saved to <0>role_permissions</0> on save."
 msgstr "Generated DSL — saved to <0>role_permissions</0> on save."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Generated from the tags this container actually holds. Your page, your policy — we cannot relax it for you."
+msgstr "Generated from the tags this container actually holds. Your page, your policy — we cannot relax it for you."
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
@@ -8463,6 +8510,10 @@ msgstr "Goes to that user's registered devices. No devices is a silent no-op."
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Good direction"
 msgstr "Good direction"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Google documents its origins against script-src-elem. If your site sets that directive explicitly, add them there too."
+msgstr "Google documents its origins against script-src-elem. If your site sets that directive explicitly, add them there too."
 
 #: src/client/admin/extras.tsx
 msgid "goto"
@@ -8756,7 +8807,7 @@ msgstr "How hard the model thinks per step. Lower effort means fewer thinking to
 msgid "How long"
 msgstr "How long"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "How long a decision stands"
 msgstr "How long a decision stands"
 
@@ -9110,6 +9161,7 @@ msgid "Inspecting…"
 msgstr "Inspecting…"
 
 #: src/client/admin/pages/developers/extensions.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Install"
 msgstr "Install"
 
@@ -9365,6 +9417,10 @@ msgstr "Istanbul, Turkey"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "it calls us"
 msgstr "it calls us"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+msgstr "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
 
 #: src/client/pages/sign-document.tsx
 msgid "It has already been completed."
@@ -9994,6 +10050,10 @@ msgstr "Leave empty for the latest published version."
 msgid "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
 msgstr "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Leave empty to match every element."
+msgstr "Leave empty to match every element."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
 msgstr "leave empty to pass the trigger payload"
@@ -10021,6 +10081,10 @@ msgstr "Left empty, an answer outside the list fails the step instead of guessin
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "Left empty, this is built from"
 msgstr "Left empty, this is built from"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Left out of the last publish"
+msgstr "Left out of the last publish"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "legacy production"
@@ -10131,7 +10195,7 @@ msgstr "Link field"
 msgid "link pins this language"
 msgstr "link pins this language"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Link to your privacy policy"
 msgstr "Link to your privacy policy"
 
@@ -10209,6 +10273,7 @@ msgstr "live"
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/observability/logs.tsx
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Live"
@@ -10537,7 +10602,7 @@ msgstr "Matched rules"
 msgid "Matched verbatim — a product whose column holds anything else is skipped."
 msgstr "Matched verbatim — a product whose column holds anything else is skipped."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Matches the CNIL's six-month guidance."
 msgstr "Matches the CNIL's six-month guidance."
 
@@ -10662,7 +10727,7 @@ msgstr "mean value"
 msgid "measured"
 msgstr "measured"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Measures every visitor. Defensible because the tag stores nothing on the device and its visitor id rotates daily — but that is a legal position, not a fact."
 msgstr "Measures every visitor. Defensible because the tag stores nothing on the device and its visitor id rotates daily — but that is a legal position, not a fact."
 
@@ -11046,7 +11111,7 @@ msgstr "Must be an absolute URL (https://…)"
 msgid "Must be an address at"
 msgstr "Must be an address at"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Must be an http(s) URL. It is linked from the banner."
 msgstr "Must be an http(s) URL. It is linked from the banner."
 
@@ -11135,6 +11200,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -11438,6 +11504,10 @@ msgstr "New step"
 msgid "New sync hook"
 msgstr "New sync hook"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "New tag"
+msgstr "New tag"
+
 #: src/client/admin/pages/settings/documents.tsx
 #: src/client/admin/pages/settings/email-templates.tsx
 msgid "New template"
@@ -11446,6 +11516,10 @@ msgstr "New template"
 #: src/client/admin/pages/observability/translations.tsx
 msgid "New translation key"
 msgstr "New translation key"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "New trigger"
+msgstr "New trigger"
 
 #: src/client/admin/pages/automation/payments.tsx
 msgid "New URL"
@@ -12159,7 +12233,7 @@ msgstr "No paths in the current spec."
 msgid "No period comparison"
 msgstr "No period comparison"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "No policy yet. Nothing is asked and nothing is blocked — the site behaves exactly as it does today."
 msgstr "No policy yet. Nothing is asked and nothing is blocked — the site behaves exactly as it does today."
 
@@ -12354,6 +12428,10 @@ msgstr "No tables yet."
 msgid "No tagged traffic in this window."
 msgstr "No tagged traffic in this window."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "No tags yet"
+msgstr "No tags yet"
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "No tags yet."
 msgstr "No tags yet."
@@ -12399,6 +12477,10 @@ msgstr "No traffic for this consumer"
 msgid "No traffic recorded yet"
 msgstr "No traffic recorded yet"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "No triggers yet"
+msgstr "No triggers yet"
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "No trusted issuers. Add one to let an app that already signs users in with Clerk, Auth0, Firebase, Cognito or WorkOS call this API with the token it already has — no user migration, no second login."
 msgstr "No trusted issuers. Add one to let an app that already signs users in with Clerk, Auth0, Firebase, Cognito or WorkOS call this API with the token it already has — no user migration, no second login."
@@ -12425,6 +12507,7 @@ msgid "No webhooks yet"
 msgstr "No webhooks yet"
 
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "No websites registered"
 msgstr "No websites registered"
 
@@ -12572,7 +12655,7 @@ msgstr "Not set"
 msgid "Not settled yet: {0}."
 msgstr "Not settled yet: {0}."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Not shown"
 msgstr "Not shown"
 
@@ -12684,7 +12767,7 @@ msgstr "Nothing new — all {0} collections already exist"
 msgid "nothing open in the window"
 msgstr "nothing open in the window"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Nothing optional fires. Required under GDPR and ePrivacy; you lose measurement on visitors who ignore the banner."
 msgstr "Nothing optional fires. Required under GDPR and ePrivacy; you lose measurement on visitors who ignore the banner."
 
@@ -12703,6 +12786,10 @@ msgstr "Nothing outstanding."
 #: src/client/admin/collections/grid-edit.tsx
 msgid "Nothing pasted — the target cells are read-only or the values don't fit."
 msgstr "Nothing pasted — the target cells are read-only or the values don't fit."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Nothing published yet"
+msgstr "Nothing published yet"
 
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Nothing ranked for that query — try different words or another mode."
@@ -12876,7 +12963,7 @@ msgstr "off"
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Off"
 msgstr "Off"
@@ -13041,7 +13128,7 @@ msgstr "Only accept addresses at these hosts"
 msgid "Only accept numbers from <0>(optional)</0>"
 msgstr "Only accept numbers from <0>(optional)</0>"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Only ask about what the site actually does. Strictly necessary is never offered — it is not a choice a visitor has."
 msgstr "Only ask about what the site actually does. Strictly necessary is never offered — it is not a choice a visitor has."
 
@@ -13286,7 +13373,7 @@ msgstr "Optional — the key stops working after this time."
 msgid "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
 msgstr "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Optional tags fire immediately. This is the CCPA/CPRA opt-out model and it is not lawful in the EU."
 msgstr "Optional tags fire immediately. This is the CCPA/CPRA opt-out model and it is not lawful in the EU."
 
@@ -13667,6 +13754,10 @@ msgstr "Paste IdP metadata XML (optional — prefills the fields below)"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Paste the endpoint above"
 msgstr "Paste the endpoint above"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Paste this once, before the closing head tag"
+msgstr "Paste this once, before the closing head tag"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
@@ -14078,6 +14169,10 @@ msgstr "Pick a user"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Pick a value"
 msgstr "Pick a value"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Pick a vendor, fill in what it needs, and choose when it fires."
+msgstr "Pick a vendor, fill in what it needs, and choose when it fires."
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Pick a website metric below. Nothing to write, and no row-level owner to clamp on an embed."
@@ -14743,6 +14838,7 @@ msgstr "publish"
 
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/collections/items.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Publish"
@@ -14816,11 +14912,23 @@ msgstr "published only"
 #~ msgid "Published posts past week"
 #~ msgstr "Published posts past week"
 
+#. placeholder {0}: res.data.version.version
+#. placeholder {1}: res.data.dropped.length
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Published version {0}, leaving out {1}."
+msgstr "Published version {0}, leaving out {1}."
+
+#. placeholder {0}: res.data.version.version
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Published version {0}."
+msgstr "Published version {0}."
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
 #~ msgstr "Published."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Publishing…"
 msgstr "Publishing…"
 
@@ -15424,6 +15532,10 @@ msgstr "Register a site to get a one-line script tag. It measures pageviews with
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Register a website first"
+msgstr "Register a website first"
+
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Register an OAuth client"
 msgstr "Register an OAuth client"
@@ -15553,6 +15665,7 @@ msgstr "reminded {0}"
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -16691,6 +16804,7 @@ msgstr "Sat"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/admin/pages/observability/usage.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
@@ -17456,6 +17570,10 @@ msgstr "September"
 msgid "sequential"
 msgstr "sequential"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Serve this again"
+msgstr "Serve this again"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Server default (10 MB)"
 #~ msgstr "Server default (10 MB)"
@@ -17625,7 +17743,7 @@ msgstr "set under Settings · AI"
 msgid "Set up"
 msgstr "Set up"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Set up consent"
 msgstr "Set up consent"
 
@@ -17825,7 +17943,7 @@ msgstr "Show password"
 msgid "Show sections as tabs"
 msgstr "Show sections as tabs"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Show the banner"
 msgstr "Show the banner"
 
@@ -18333,6 +18451,10 @@ msgstr "Soft delete"
 msgid "sold"
 msgstr "sold"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Some of these origins are our reading of a vendor's snippet, not guidance the vendor publishes."
+msgstr "Some of these origins are our reading of a vendor's snippet, not guidance the vendor publishes."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Sort"
 msgstr "Sort"
@@ -18505,6 +18627,10 @@ msgstr "Start over"
 #: src/client/pages/oauth-consent.tsx
 msgid "Start the connection again from your MCP client (for example claude.ai → Connectors)."
 msgstr "Start the connection again from your MCP client (for example claude.ai → Connectors)."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Start with a page view; a tag needs at least one trigger to fire."
+msgstr "Start with a page view; a tag needs at least one trigger to fire."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Start with a template"
@@ -18698,7 +18824,7 @@ msgstr "Stores the target row's <0>id</0>. The target is immutable — drop & re
 msgid "Stream"
 msgstr "Stream"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Strictly necessary"
 msgstr "Strictly necessary"
 
@@ -18979,11 +19105,16 @@ msgstr "Table"
 msgid "Tables"
 msgstr "Tables"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
+#: src/client/admin/ui.tsx
+msgid "Tag manager"
+msgstr "Tag manager"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Tag: gated"
 msgstr "Tag: gated"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Tag: strictly necessary"
 msgstr "Tag: strictly necessary"
 
@@ -18992,9 +19123,18 @@ msgid "Tagline"
 msgstr "Tagline"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Tags"
 msgstr "Tags"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Tags are configured per site. Add one under Analytics → Sites, then come back."
+msgstr "Tags are configured per site. Add one under Analytics → Sites, then come back."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Tags fire on the triggers you attach to them."
+msgstr "Tags fire on the triggers you attach to them."
 
 #: src/client/admin/collections/item-editor.tsx
 msgid "Take out of play"
@@ -19389,6 +19529,10 @@ msgstr "The loop body runs once per row, with the row available as <0>{itemInter
 msgid "The move is refused until they hold a value — filling one in the same save counts."
 msgstr "The move is refused until they hold a value — filling one in the same save counts."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "The name your site already passes to backlex()."
+msgstr "The name your site already passes to backlex()."
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The old slot goes back on sale, the customer is emailed, and a fresh link to change or cancel is minted."
 msgstr "The old slot goes back on sale, the customer is emailed, and a fresh link to change or cancel is minted."
@@ -19547,7 +19691,7 @@ msgstr "The slot goes back on sale and the customer is emailed."
 msgid "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 msgstr "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
 msgstr "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
 
@@ -19600,7 +19744,7 @@ msgstr "theme"
 msgid "Theme"
 msgstr "Theme"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "There is no default because neither answer is safe everywhere. The choice is recorded against your workspace."
 msgstr "There is no default because neither answer is safe everywhere. The choice is recorded against your workspace."
 
@@ -20137,7 +20281,7 @@ msgstr "Tools"
 msgid "Top {0} by {1}"
 msgstr "Top {0} by {1}"
 
-#: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Top bar"
 msgstr "Top bar"
 
@@ -20303,6 +20447,10 @@ msgstr "Trigger only fires when the row matches this filter (after the change)."
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Trigger PagerDuty alerts on data events."
 msgstr "Trigger PagerDuty alerts on data events."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Triggers"
+msgstr "Triggers"
 
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
@@ -20650,6 +20798,10 @@ msgstr "Until one exists, every application-owned channel is refused. Add a rule
 #: src/client/pages/sign-up.tsx
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Until you publish, visitors get the tracker alone."
+msgstr "Until you publish, visitors get the tracker alone."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "Untouched means any value. Existing records are never re-judged by this."
@@ -21030,6 +21182,10 @@ msgstr "Vector search (semantic)"
 msgid "Vectorize"
 msgstr "Vectorize"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Vendor"
+msgstr "Vendor"
+
 #: src/client/pages/sign-in.tsx
 msgid "Verification email sent."
 msgstr "Verification email sent."
@@ -21077,6 +21233,10 @@ msgstr "versioned"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Versioned (draft / published)"
 msgstr "Versioned (draft / published)"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Versions"
+msgstr "Versions"
 
 #. placeholder {0}: m.extension.manifest.title
 #: src/client/admin/extension-widgets.tsx
@@ -21337,6 +21497,7 @@ msgstr "whatever the collection has enabled"
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "When"
 msgstr "When"
 
@@ -21837,6 +21998,10 @@ msgstr "Your category value"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 msgstr "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Your Content-Security-Policy needs these"
+msgstr "Your Content-Security-Policy needs these"
 
 #: src/client/pages/approve-request.tsx
 msgid "Your decision has been recorded. You can close this page."

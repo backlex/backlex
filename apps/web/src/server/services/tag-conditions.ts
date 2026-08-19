@@ -234,7 +234,10 @@ export const parseTagCondition = (input: unknown): TagConditionNode => {
         );
       }
       if (!(NUMBER_OPS as readonly string[]).includes(op)) {
-        throw new AppError("VALIDATION", `Unknown numeric comparison "${op}".`);
+        throw new AppError(
+          "VALIDATION",
+          `Unknown numeric comparison. Allowed: ${NUMBER_OPS.join(", ")}.`,
+        );
       }
       const value = Number(raw.value);
       if (!Number.isFinite(value)) {
@@ -244,7 +247,11 @@ export const parseTagCondition = (input: unknown): TagConditionNode => {
     }
 
     if (!(TEXT_OPS as readonly string[]).includes(op)) {
-      throw new AppError("VALIDATION", `Unknown condition operator "${op}".`);
+      // Names the allowed set rather than echoing the caller's string back, for
+      // the same reason the field check does: a validation message is not a
+      // place to reflect arbitrary input, and this one reaches the admin UI
+      // through a publish report.
+      throw new AppError("VALIDATION", `Unknown condition operator. Allowed: ${TEXT_OPS.join(", ")}.`);
     }
     const typedOp = op as TagTextOp;
     const value = normalizeValue(typedOp, raw.value);

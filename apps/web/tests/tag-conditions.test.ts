@@ -51,8 +51,19 @@ describe("condition grammar", () => {
     }
   });
 
-  test("refuses an unknown operator", () => {
+  test("refuses an unknown operator, and does not echo it back either", () => {
     bad({ field: "pagePath", op: "sqlInject", value: "x" });
+    // Same rule as the field check. This message travels further than most —
+    // a stored condition that stops validating surfaces its reason in the
+    // publish report the admin renders.
+    try {
+      parseTagCondition({ field: "pagePath", op: "<script>alert(1)</script>", value: "x" });
+      throw new Error("should have thrown");
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).toContain("Allowed:");
+      expect(msg).not.toContain("script");
+    }
   });
 
   test("nests all/any/not", () => {

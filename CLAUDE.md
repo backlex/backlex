@@ -236,6 +236,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Distributed tracing (traceparent + Traces panel) | `docs/tracing.md` |
 | Usage metering + quotas (per-key limits, plan limits) | `docs/usage-metering.md` |
 | Product analytics + crash reporting | `docs/product-analytics.md` |
+| Cookie consent (policy a site publishes) | `docs/cookie-consent.md` |
 | Query API (REST) | `docs/querying.md` |
 | Full-text & hybrid search | `docs/full-text-search.md` |
 | GraphQL | `docs/graphql.md` |

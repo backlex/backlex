@@ -32,6 +32,7 @@ import { adoptRoutes } from "./routes/adopt";
 import { migrateRoutes } from "./routes/migrate";
 import { advisorRoutes } from "./routes/advisor";
 import { analyticsRoutes } from "./routes/analytics";
+import { consentRoutes } from "./routes/consent";
 import { analyticsCollectRoutes } from "./routes/analytics-collect";
 import { analyticsIngestRoutes } from "./routes/analytics-ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
@@ -991,6 +992,7 @@ export const createApp = (env: Env) => {
   app.route("/api/activity", activityRoutes);
   app.route("/api/admin/traces", tracesRoutes);
   app.route("/api/admin/analytics", analyticsRoutes);
+  app.route("/api/admin/consent", consentRoutes);
   // Public ingest — authenticated by a publishable key or a normal session,
   // never anonymous. Kept off `/api/admin/*` because client bundles call it.
   app.route("/api/analytics", analyticsCollectRoutes);

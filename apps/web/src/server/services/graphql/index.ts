@@ -30,6 +30,7 @@ import { messagingMutationFields } from "./messaging";
 import { dashboardQueryFields, dashboardMutationFields } from "./dashboards";
 import { kpiQueryFields, kpiMutationFields } from "./kpis";
 import { analyticsQueryFields, analyticsMutationFields } from "./analytics";
+import { consentQueryFields, consentMutationFields } from "./consent";
 import { formQueryFields, formMutationFields } from "./forms";
 import { usageQueryFields, usageMutationFields } from "./usage";
 import { advisorQueryFields, advisorMutationFields } from "./advisor";
@@ -97,6 +98,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...dashboardQueryFields,
           ...kpiQueryFields,
           ...analyticsQueryFields,
+          ...consentQueryFields,
           ...formQueryFields,
           ...usageQueryFields,
           ...advisorQueryFields,
@@ -130,6 +132,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...dashboardMutationFields,
           ...kpiMutationFields,
           ...analyticsMutationFields,
+          ...consentMutationFields,
           ...formMutationFields,
           ...usageMutationFields,
           ...advisorMutationFields,
@@ -168,6 +171,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...dashboardQueryFields,
     ...kpiQueryFields,
     ...analyticsQueryFields,
+    ...consentQueryFields,
     ...formQueryFields,
     ...usageQueryFields,
     ...advisorQueryFields,
@@ -198,6 +202,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...dashboardMutationFields,
     ...kpiMutationFields,
     ...analyticsMutationFields,
+    ...consentMutationFields,
     ...formMutationFields,
     ...usageMutationFields,
     ...advisorMutationFields,

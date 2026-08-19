@@ -43,6 +43,7 @@ import { paymentsTools } from "./payments";
 import { dashboardsTools } from "./dashboards";
 import { kpisTools } from "./kpis";
 import { analyticsTools } from "./analytics";
+import { consentTools } from "./consent";
 import { formsTools } from "./forms";
 import { usageTools } from "./usage";
 import { advisorTools } from "./advisor";
@@ -118,6 +119,7 @@ export const allTools: McpTool[] = [
   ...dashboardsTools,
   ...kpisTools,
   ...analyticsTools,
+  ...consentTools,
   ...formsTools,
   ...usageTools,
   ...advisorTools,

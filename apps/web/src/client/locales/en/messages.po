@@ -1175,6 +1175,7 @@ msgstr "1 row"
 msgid "1 unit, all ruled on"
 msgstr "1 unit, all ruled on"
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
 msgstr "1 year"
@@ -1195,6 +1196,14 @@ msgstr "123456"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "16:9 widescreen"
 msgstr "16:9 widescreen"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "180 days"
+msgstr "180 days"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "2 years"
+msgstr "2 years"
 
 #: src/client/admin/pages/account-page.tsx
 msgid "2. Save your backup codes"
@@ -1265,6 +1274,7 @@ msgid "7 days"
 msgstr "7 days"
 
 #: src/client/admin/collections/collection-kpis.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/pages/api-keys.tsx
@@ -1278,6 +1288,10 @@ msgstr "A chosen agent answers"
 #: src/client/pages/book.tsx
 msgid "A confirmation is on its way, with a calendar invite attached."
 msgstr "A confirmation is on its way, with a calendar invite attached."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "A consent banner is served for a registered site. Add one on the Sites tab first, then decide here what its visitors are asked."
+msgstr "A consent banner is served for a registered site. Add one on the Sites tab first, then decide here what its visitors are asked."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "a cookie, not an identity — another browser answers again"
@@ -2367,6 +2381,10 @@ msgstr "Allow all"
 msgid "Allow this hook to patch the payload"
 msgstr "Allow this hook to patch the payload"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Allow until they decline"
+msgstr "Allow until they decline"
+
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Allowed"
 msgstr "Allowed"
@@ -2391,6 +2409,10 @@ msgstr "Allowed moves"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Allowed redirect URLs"
 msgstr "Allowed redirect URLs"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Allows before consent"
+msgstr "Allows before consent"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "allows on failure"
@@ -3207,6 +3229,10 @@ msgstr "Backlex stops treating this table as a collection. The underlying table 
 msgid "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
 msgstr "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "backlex's own analytics tag"
+msgstr "backlex's own analytics tag"
+
 #: src/client/pages/sign-in.tsx
 msgid "Backup code"
 msgstr "Backup code"
@@ -3230,6 +3256,14 @@ msgstr "Backups"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "balanced — recommended for most queries"
 msgstr "balanced — recommended for most queries"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Banner live"
+msgstr "Banner live"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Banner position"
+msgstr "Banner position"
 
 #: src/client/admin/pages/observability/translations.tsx
 msgid "base"
@@ -3271,6 +3305,10 @@ msgstr "before"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Before a user is created"
 msgstr "Before a user is created"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Before a visitor decides"
+msgstr "Before a visitor decides"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -3314,6 +3352,10 @@ msgstr "Block all"
 msgid "Block the write (deny)"
 msgstr "Block the write (deny)"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Block until they answer"
+msgstr "Block until they answer"
+
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "blocked"
 msgstr "blocked"
@@ -3325,6 +3367,10 @@ msgstr "Blocked"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Blocked so far"
 msgstr "Blocked so far"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Blocks before consent"
+msgstr "Blocks before consent"
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Blocks every write tool at the dispatcher."
@@ -3432,6 +3478,10 @@ msgstr "Bots filtered"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Bots kept"
 msgstr "Bots kept"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bottom bar"
+msgstr "Bottom bar"
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Bounce rate"
@@ -3766,6 +3816,10 @@ msgstr "Carried out"
 msgid "Categories"
 msgstr "Categories"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Categories the banner offers"
+msgstr "Categories the banner offers"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Category column"
 msgstr "Category column"
@@ -3906,6 +3960,10 @@ msgstr "Choices"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "choices · from schema enum"
 msgstr "choices · from schema enum"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Choose — there is no default"
+msgstr "Choose — there is no default"
 
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Choose a different category"
@@ -4662,6 +4720,10 @@ msgstr "Connection failed."
 msgid "Connection URL"
 msgstr "Connection URL"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent"
+msgstr "Consent"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Consent checkbox"
 msgstr "Consent checkbox"
@@ -4669,6 +4731,18 @@ msgstr "Consent checkbox"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "consent must be accepted — always required"
 msgstr "consent must be accepted — always required"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent policy"
+msgstr "Consent policy"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent policy removed."
+msgstr "Consent policy removed."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent policy saved."
+msgstr "Consent policy saved."
 
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
@@ -4871,6 +4945,10 @@ msgstr "Copy webhook URL"
 msgid "Copying snippet"
 msgstr "Copying snippet"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Corner card"
+msgstr "Corner card"
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
@@ -4944,6 +5022,10 @@ msgid "Could not reach the clipboard — select the link and copy it."
 msgstr "Could not reach the clipboard — select the link and copy it."
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not remove the policy."
+msgstr "Could not remove the policy."
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Could not remove the segment."
 msgstr "Could not remove the segment."
 
@@ -4958,6 +5040,10 @@ msgstr "Could not revoke share link."
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Could not save the KPI."
 msgstr "Could not save the KPI."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not save the policy."
+msgstr "Could not save the policy."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Could not save the segment."
@@ -6612,6 +6698,10 @@ msgstr "Edit layout"
 msgid "Edit panel"
 msgstr "Edit panel"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Edit policy"
+msgstr "Edit policy"
+
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Edit raw DSL. Click Builder to round-trip back to visual."
 msgstr "Edit raw DSL. Click Builder to round-trip back to visual."
@@ -8261,6 +8351,10 @@ msgstr "Funnel"
 msgid "Gallery"
 msgstr "Gallery"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Gate it like any other tag"
+msgstr "Gate it like any other tag"
+
 #. placeholder {0}: new Date(overview.gauges.measuredAt).toLocaleString()
 #: src/client/admin/pages/observability/usage.tsx
 msgid "gauges measured {0}"
@@ -8661,6 +8755,10 @@ msgstr "How hard the model thinks per step. Lower effort means fewer thinking to
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "How long"
 msgstr "How long"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "How long a decision stands"
+msgstr "How long a decision stands"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "How long a write may block on this hook. Max 10000."
@@ -10033,6 +10131,10 @@ msgstr "Link field"
 msgid "link pins this language"
 msgstr "link pins this language"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Link to your privacy policy"
+msgstr "Link to your privacy policy"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Linked — you can sign in with this provider."
 msgstr "Linked — you can sign in with this provider."
@@ -10435,6 +10537,10 @@ msgstr "Matched rules"
 msgid "Matched verbatim — a product whose column holds anything else is skipped."
 msgstr "Matched verbatim — a product whose column holds anything else is skipped."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Matches the CNIL's six-month guidance."
+msgstr "Matches the CNIL's six-month guidance."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Matrix"
@@ -10555,6 +10661,10 @@ msgstr "mean value"
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "measured"
 msgstr "measured"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Measures every visitor. Defensible because the tag stores nothing on the device and its visitor id rotates daily — but that is a legal position, not a fact."
+msgstr "Measures every visitor. Defensible because the tag stores nothing on the device and its visitor id rotates daily — but that is a legal position, not a fact."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Medium"
@@ -10935,6 +11045,10 @@ msgstr "Must be an absolute URL (https://…)"
 #: src/client/admin/fields/field-email-input.tsx
 msgid "Must be an address at"
 msgstr "Must be an address at"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Must be an http(s) URL. It is linked from the banner."
+msgstr "Must be an http(s) URL. It is linked from the banner."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Must be an https URL."
@@ -12045,6 +12159,10 @@ msgstr "No paths in the current spec."
 msgid "No period comparison"
 msgstr "No period comparison"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No policy yet. Nothing is asked and nothing is blocked — the site behaves exactly as it does today."
+msgstr "No policy yet. Nothing is asked and nothing is blocked — the site behaves exactly as it does today."
+
 #: src/client/admin/collections/collection-kpis.tsx
 msgid "No prior period"
 msgstr "No prior period"
@@ -12454,6 +12572,10 @@ msgstr "Not set"
 msgid "Not settled yet: {0}."
 msgstr "Not settled yet: {0}."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Not shown"
+msgstr "Not shown"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Not signed in."
 msgstr "Not signed in."
@@ -12561,6 +12683,10 @@ msgstr "Nothing new — all {0} collections already exist"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "nothing open in the window"
 msgstr "nothing open in the window"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Nothing optional fires. Required under GDPR and ePrivacy; you lose measurement on visitors who ignore the banner."
+msgstr "Nothing optional fires. Required under GDPR and ePrivacy; you lose measurement on visitors who ignore the banner."
 
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Nothing out for signature"
@@ -12750,6 +12876,7 @@ msgstr "off"
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Off"
 msgstr "Off"
@@ -12913,6 +13040,10 @@ msgstr "Only accept addresses at these hosts"
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Only accept numbers from <0>(optional)</0>"
 msgstr "Only accept numbers from <0>(optional)</0>"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Only ask about what the site actually does. Strictly necessary is never offered — it is not a choice a visitor has."
+msgstr "Only ask about what the site actually does. Strictly necessary is never offered — it is not a choice a visitor has."
 
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Only count rows matching"
@@ -13154,6 +13285,10 @@ msgstr "Optional — the key stops working after this time."
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
 msgstr "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Optional tags fire immediately. This is the CCPA/CPRA opt-out model and it is not lawful in the EU."
+msgstr "Optional tags fire immediately. This is the CCPA/CPRA opt-out model and it is not lawful in the EU."
 
 #: src/client/admin/parity/booking.tsx
 #~ msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
@@ -17490,6 +17625,10 @@ msgstr "set under Settings · AI"
 msgid "Set up"
 msgstr "Set up"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Set up consent"
+msgstr "Set up consent"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Sets the admin display language and how dates and numbers are formatted. Only languages with a bundled translation are listed."
 msgstr "Sets the admin display language and how dates and numbers are formatted. Only languages with a bundled translation are listed."
@@ -17685,6 +17824,10 @@ msgstr "Show password"
 #: src/client/admin/fields/edit-field.tsx
 msgid "Show sections as tabs"
 msgstr "Show sections as tabs"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Show the banner"
+msgstr "Show the banner"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Show this block only when"
@@ -18555,6 +18698,10 @@ msgstr "Stores the target row's <0>id</0>. The target is immutable — drop & re
 msgid "Stream"
 msgstr "Stream"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Strictly necessary"
+msgstr "Strictly necessary"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Stripe and Polar both record this against the refund."
 msgstr "Stripe and Polar both record this against the refund."
@@ -18831,6 +18978,14 @@ msgstr "Table"
 #: src/client/admin/pages/data/database.tsx
 msgid "Tables"
 msgstr "Tables"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Tag: gated"
+msgstr "Tag: gated"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Tag: strictly necessary"
+msgstr "Tag: strictly necessary"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Tagline"
@@ -19392,6 +19547,10 @@ msgstr "The slot goes back on sale and the customer is emailed."
 msgid "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 msgstr "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
+msgstr "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
+
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
@@ -19440,6 +19599,10 @@ msgstr "theme"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Theme"
 msgstr "Theme"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "There is no default because neither answer is safe everywhere. The choice is recorded against your workspace."
+msgstr "There is no default because neither answer is safe everywhere. The choice is recorded against your workspace."
 
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
@@ -19973,6 +20136,10 @@ msgstr "Tools"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Top {0} by {1}"
 msgstr "Top {0} by {1}"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Top bar"
+msgstr "Top bar"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Top collections"

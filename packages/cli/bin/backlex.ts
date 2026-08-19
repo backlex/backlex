@@ -15,6 +15,7 @@ import { runFlows } from "../src/flows";
 import { runDashboards } from "../src/dashboards";
 import { runKpis } from "../src/kpis";
 import { runAnalytics } from "../src/analytics";
+import { runConsent } from "../src/consent";
 import { runForms } from "../src/forms";
 import { runUsage } from "../src/usage";
 import { runSchema } from "../src/schema";
@@ -124,6 +125,10 @@ Usage:
   backlex analytics <overview|funnel|retention|errors|track|ingest-key|...>
       Product analytics + crash reporting. \`ingest-key mint\` prints the
       publishable client key.
+
+  backlex consent <policies|policy|set|rm|wording>
+      Cookie consent. \`set\` requires --undecided and --tracker the first
+      time: both are compliance postures with no safe default.
 
   backlex forms <list|get|fields|create|update|rotate-token|delete>
       Public form builder. \`create\`/\`rotate-token\` print the one-time link.
@@ -345,6 +350,9 @@ const run = async () => {
       return;
     case "analytics":
       await runAnalytics(rest);
+      return;
+    case "consent":
+      await runConsent(rest);
       return;
     case "forms":
     case "form":

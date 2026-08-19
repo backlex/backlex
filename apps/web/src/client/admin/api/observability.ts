@@ -541,3 +541,68 @@ export const analyticsApi = {
   revokeIngestKey: () =>
     api<{ ok: boolean }>("/api/admin/analytics/ingest-key", { method: "DELETE" }),
 };
+
+/**
+ * Cookie consent — the policy a site publishes.
+ *
+ * `undecidedBehaviour` and `trackerCategory` are optional on input and required
+ * by the server the first time a policy is saved. That asymmetry is the point:
+ * an admin editing the banner copy sends the whole form back and must not be
+ * made to re-affirm a compliance decision they are not changing, while a first
+ * save has no stored choice to carry forward and is refused with a message
+ * explaining what each value means.
+ */
+export type ConsentCategory = "functional" | "analytics" | "marketing";
+export type UndecidedBehaviour = "block" | "allow";
+export type TrackerCategory = "none" | "analytics";
+export type BannerPosition = "bottom" | "top" | "corner";
+
+export interface ApiConsentPolicy {
+  siteId: string;
+  categoriesOffered: ConsentCategory[];
+  undecidedBehaviour: UndecidedBehaviour;
+  trackerCategory: TrackerCategory;
+  wording: Record<string, Record<string, string>>;
+  defaultLocale: string;
+  policyUrl: string | null;
+  position: BannerPosition;
+  theme: Record<string, string>;
+  cookieMaxAgeDays: number;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ApiConsentPolicyInput {
+  categoriesOffered?: ConsentCategory[];
+  undecidedBehaviour?: UndecidedBehaviour;
+  trackerCategory?: TrackerCategory;
+  wording?: Record<string, Record<string, string>>;
+  defaultLocale?: string;
+  policyUrl?: string | null;
+  position?: BannerPosition;
+  theme?: Record<string, string>;
+  cookieMaxAgeDays?: number;
+  enabled?: boolean;
+}
+
+export const consentApi = {
+  policies: () => api<Envelope<ApiConsentPolicy[]>>("/api/admin/consent/policies"),
+  policy: (siteId: string) =>
+    api<Envelope<ApiConsentPolicy | null>>(
+      `/api/admin/consent/policies/${encodeURIComponent(siteId)}`,
+    ),
+  savePolicy: (siteId: string, body: ApiConsentPolicyInput) =>
+    api<Envelope<ApiConsentPolicy>>(
+      `/api/admin/consent/policies/${encodeURIComponent(siteId)}`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  deletePolicy: (siteId: string) =>
+    api<{ ok: boolean }>(`/api/admin/consent/policies/${encodeURIComponent(siteId)}`, {
+      method: "DELETE",
+    }),
+  suggestedWording: () =>
+    api<Envelope<Record<string, Record<string, string>>>>(
+      "/api/admin/consent/wording/suggested",
+    ),
+};

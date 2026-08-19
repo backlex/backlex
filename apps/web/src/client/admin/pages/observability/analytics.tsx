@@ -16,6 +16,7 @@ import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Input } from "@backlex/ui/components/input";
 import { Timeseries } from "./timeseries";
+import { ConsentTab } from "./consent-tab";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { currencyExponent, formatMoney, fromMinorUnits } from "@backlex/db/money";
 import {
@@ -69,7 +70,15 @@ import { AnalyticsSkeleton } from "../../page-skeletons";
 import { useQueryClient } from "@tanstack/react-query";
 
 const WINDOWS = ["7", "30", "90"] as const;
-const TABS = ["overview", "realtime", "funnel", "retention", "errors", "sites"] as const;
+const TABS = [
+  "overview",
+  "realtime",
+  "funnel",
+  "retention",
+  "errors",
+  "sites",
+  "consent",
+] as const;
 type Tab = (typeof TABS)[number];
 
 const fmtCount = (n: number): string =>
@@ -203,6 +212,7 @@ export function AnalyticsPage({
     retention: t`Retention`,
     errors: t`Errors`,
     sites: t`Sites`,
+    consent: t`Consent`,
   };
 
   if (overviewQ.isLoading && !overview) return <AnalyticsSkeleton />;
@@ -295,6 +305,7 @@ export function AnalyticsPage({
           {tab === "errors" && <ErrorsTab pushToast={pushToast} />}
           {tab === "realtime" && <RealtimeTab />}
           {tab === "sites" && <SitesTab pushToast={pushToast} />}
+          {tab === "consent" && <ConsentTab pushToast={pushToast} />}
         </>
       )}
 

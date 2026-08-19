@@ -3683,6 +3683,88 @@ export const analyticsSegments = pgTable(
   (t) => [index("analytics_segments_tenant_idx").on(t.tenantId, t.siteId)],
 );
 
+
+/**
+ * The cookie-consent policy a site publishes — one row per site, and the
+ * primary key says so.
+ *
+ * `site_id` is the primary key rather than a `text("id")` with a unique index
+ * beside it, because "exactly one consent policy per site" is an invariant
+ * worth encoding structurally rather than enforcing in a service. It also
+ * removes a race this repo has already been bitten by: a check-then-insert
+ * around a separate unique column loses to a concurrent writer and surfaces as
+ * an intermittent 500, whereas `onConflictDoUpdate` against a primary key is
+ * one atomic statement.
+ *
+ * ## Two columns have no default, deliberately
+ *
+ * `undecided_behaviour` and `tracker_category` follow the reasoning written
+ * out in `services/captcha.ts` for `onError`: when neither answer is safe to
+ * pick on an operator's behalf, the choice is theirs and it is written down
+ * next to its consequence. Here the consequence is legal rather than
+ * operational, which makes defaulting worse, not better — a silent default is
+ * a compliance posture nobody chose.
+ *
+ * - `undecided_behaviour = "block"` — nothing optional fires until the visitor
+ *   decides. Correct under GDPR/ePrivacy; costs measurement on every visitor
+ *   who ignores the banner.
+ * - `undecided_behaviour = "allow"` — optional tags fire until the visitor
+ *   declines. The CCPA/CPRA opt-out model, and **not lawful in the EU**.
+ * - `tracker_category = "none"` — backlex's own cookieless tag counts as
+ *   strictly necessary and measures everyone. Defensible because that tag
+ *   stores nothing on the device and its visitor id is server-derived and
+ *   rotates daily, so ePrivacy Art. 5(3) — which is triggered by storing or
+ *   accessing information on the visitor's equipment — is arguably not
+ *   triggered at all. That is a legal position, not a fact, and it varies by
+ *   member state.
+ * - `tracker_category = "analytics"` — the tag is gated like any other
+ *   analytics tag.
+ *
+ * ## The wording is server-owned
+ *
+ * `wording` is stored here and served from the published artifact, never
+ * supplied by the page. The principle is the one `docs/e-signature.md` states
+ * for signature consent: if the browser supplies the text, the person being
+ * held to the record is the one choosing what the evidence says they agreed
+ * to.
+ */
+export const consentPolicies = pgTable(
+  "consent_policies",
+  {
+    /** The site this policy governs. PK — see the note above. */
+    siteId: text("site_id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** Which optional categories the banner offers. A LIST, not a switch, for
+     *  the same reason `captcha.protect` is one: a site running only a support
+     *  widget should not be made to ask about advertising it does not do.
+     *  `none` never appears here — strictly-necessary is not a choice. */
+    categoriesOffered: jsonb("categories_offered").$type<string[] | null>(),
+    /** `"block" | "allow"`. No default — see the note above. */
+    undecidedBehaviour: text("undecided_behaviour").notNull(),
+    /** `"none" | "analytics"`. No default — see the note above. */
+    trackerCategory: text("tracker_category").notNull(),
+    /** Per-locale banner copy: `{ en: {...}, tr: {...} }`. Server-owned; the
+     *  page never supplies it. */
+    wording: jsonb("wording").$type<Record<string, Record<string, string>> | null>(),
+    defaultLocale: text("default_locale").notNull().default("en"),
+    /** The operator's own privacy/cookie policy, linked from the banner. */
+    policyUrl: text("policy_url"),
+    /** `"bottom" | "top" | "corner"`. */
+    position: text("position").notNull().default("bottom"),
+    /** Colours and radius, as a flat token map the banner inlines. */
+    theme: jsonb("theme").$type<Record<string, string> | null>(),
+    /** How long a visitor's decision stands before they are asked again. The
+     *  CNIL's guidance is 6 months, which is where 180 comes from. */
+    cookieMaxAgeDays: integer("cookie_max_age_days").notNull().default(180),
+    /** Whether the banner is served at all. A site can hold a configured
+     *  policy without showing anything yet. */
+    enabled: boolean("enabled").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("consent_policies_tenant_idx").on(t.tenantId)],
+);
+
 /**
  * Crash-reporting group — the deduplicated identity of one bug. Occurrences
  * fold into a group by `fingerprint` (a hash of the error type, its normalized

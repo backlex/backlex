@@ -1175,6 +1175,7 @@ msgstr "1 satır"
 msgid "1 unit, all ruled on"
 msgstr "1 birim, karara bağlandı"
 
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/pages/api-keys.tsx
 msgid "1 year"
 msgstr "1 yıl"
@@ -1195,6 +1196,14 @@ msgstr "123456"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "16:9 widescreen"
 msgstr "16:9 geniş ekran"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "180 days"
+msgstr "180 gün"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "2 years"
+msgstr "2 yıl"
 
 #: src/client/admin/pages/account-page.tsx
 msgid "2. Save your backup codes"
@@ -1265,6 +1274,7 @@ msgid "7 days"
 msgstr "7 gün"
 
 #: src/client/admin/collections/collection-kpis.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/pages/api-keys.tsx
@@ -1278,6 +1288,10 @@ msgstr "Seçilen bir agent cevaplar"
 #: src/client/pages/book.tsx
 msgid "A confirmation is on its way, with a calendar invite attached."
 msgstr "Takvim daveti ekli bir onay e-postası yolda."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "A consent banner is served for a registered site. Add one on the Sites tab first, then decide here what its visitors are asked."
+msgstr "Çerez bandı kayıtlı bir site için sunulur. Önce Siteler sekmesinden bir site ekleyin, sonra ziyaretçilerine ne sorulacağına burada karar verin."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "a cookie, not an identity — another browser answers again"
@@ -2367,6 +2381,10 @@ msgstr "Tümüne izin ver"
 msgid "Allow this hook to patch the payload"
 msgstr "Bu hook yükü yamalayabilsin"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Allow until they decline"
+msgstr "Reddedene kadar izin ver"
+
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Allowed"
 msgstr "İzin verildi"
@@ -2391,6 +2409,10 @@ msgstr "İzin verilen geçişler"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Allowed redirect URLs"
 msgstr "İzin verilen yönlendirme URL'leri"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Allows before consent"
+msgstr "Onaydan önce izin veriyor"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "allows on failure"
@@ -3207,6 +3229,10 @@ msgstr "Backlex bu tabloyu artık koleksiyon olarak işlemez. Temel tablo ve sat
 msgid "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
 msgstr "Backlex bu tabloyu yeniden koleksiyon olarak işlemeye başlayacak. Sahip kapsamlı izinler yapılandırılmışsa yeniden tohumlanır."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "backlex's own analytics tag"
+msgstr "backlex'in kendi analitik etiketi"
+
 #: src/client/pages/sign-in.tsx
 msgid "Backup code"
 msgstr "Yedek kod"
@@ -3230,6 +3256,14 @@ msgstr "Yedekler"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "balanced — recommended for most queries"
 msgstr "dengeli — çoğu sorgu için önerilir"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Banner live"
+msgstr "Bant yayında"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Banner position"
+msgstr "Bant konumu"
 
 #: src/client/admin/pages/observability/translations.tsx
 msgid "base"
@@ -3271,6 +3305,10 @@ msgstr "önce"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Before a user is created"
 msgstr "Kullanıcı oluşturulmadan önce"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Before a visitor decides"
+msgstr "Ziyaretçi karar vermeden önce"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
@@ -3314,6 +3352,10 @@ msgstr "Tümünü engelle"
 msgid "Block the write (deny)"
 msgstr "Yazmayı blokla (deny)"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Block until they answer"
+msgstr "Yanıtlayana kadar engelle"
+
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "blocked"
 msgstr "engellendi"
@@ -3325,6 +3367,10 @@ msgstr "Engellenen"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Blocked so far"
 msgstr "Şimdiye dek engellenen"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Blocks before consent"
+msgstr "Onaydan önce engelliyor"
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Blocks every write tool at the dispatcher."
@@ -3432,6 +3478,10 @@ msgstr "Botlar eleniyor"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Bots kept"
 msgstr "Botlar tutuluyor"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Bottom bar"
+msgstr "Alt şerit"
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Bounce rate"
@@ -3766,6 +3816,10 @@ msgstr "Uygulandı"
 msgid "Categories"
 msgstr "Kategoriler"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Categories the banner offers"
+msgstr "Bandın sunduğu kategoriler"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Category column"
 msgstr "Kategori kolonu"
@@ -3906,6 +3960,10 @@ msgstr "Seçenekler"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "choices · from schema enum"
 msgstr "seçenekler · şema enum'ından"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Choose — there is no default"
+msgstr "Seçin — varsayılan yok"
 
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Choose a different category"
@@ -4662,6 +4720,10 @@ msgstr "Bağlantı başarısız."
 msgid "Connection URL"
 msgstr "Bağlantı URL'i"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent"
+msgstr "Çerez onayı"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Consent checkbox"
 msgstr "Onay kutusu"
@@ -4669,6 +4731,18 @@ msgstr "Onay kutusu"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "consent must be accepted — always required"
 msgstr "onay kabul edilmek zorunda — her zaman zorunlu"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent policy"
+msgstr "Çerez onayı politikası"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent policy removed."
+msgstr "Çerez onayı politikası kaldırıldı."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Consent policy saved."
+msgstr "Çerez onayı politikası kaydedildi."
 
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
@@ -4871,6 +4945,10 @@ msgstr "Webhook URL'sini kopyala"
 msgid "Copying snippet"
 msgstr "Snippet kopyalanıyor"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Corner card"
+msgstr "Köşe kartı"
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
@@ -4944,6 +5022,10 @@ msgid "Could not reach the clipboard — select the link and copy it."
 msgstr "Panoya erişilemedi — bağlantıyı seçip kopyalayın."
 
 #: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not remove the policy."
+msgstr "Politika kaldırılamadı."
+
+#: src/client/admin/pages/observability/analytics.tsx
 msgid "Could not remove the segment."
 msgstr "Segment kaldırılamadı."
 
@@ -4958,6 +5040,10 @@ msgstr "Paylaşım bağlantısı iptal edilemedi."
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Could not save the KPI."
 msgstr "KPI kaydedilemedi."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Could not save the policy."
+msgstr "Politika kaydedilemedi."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Could not save the segment."
@@ -6612,6 +6698,10 @@ msgstr "Düzeni düzenle"
 msgid "Edit panel"
 msgstr "Paneli düzenle"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Edit policy"
+msgstr "Politikayı düzenle"
+
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "Edit raw DSL. Click Builder to round-trip back to visual."
 msgstr "Ham DSL'i düzenle. Görsel moduna dönmek için Oluşturucu'ya tıklayın."
@@ -8261,6 +8351,10 @@ msgstr "Huni"
 msgid "Gallery"
 msgstr "Galeri"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Gate it like any other tag"
+msgstr "Diğer etiketler gibi onaya bağla"
+
 #. placeholder {0}: new Date(overview.gauges.measuredAt).toLocaleString()
 #: src/client/admin/pages/observability/usage.tsx
 msgid "gauges measured {0}"
@@ -8661,6 +8755,10 @@ msgstr "Modelin her adımda ne kadar düşüneceği. Düşük efor daha az düş
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "How long"
 msgstr "Ne kadar"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "How long a decision stands"
+msgstr "Bir karar ne kadar geçerli kalır"
 
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "How long a write may block on this hook. Max 10000."
@@ -10033,6 +10131,10 @@ msgstr "Bağlantı alanı"
 msgid "link pins this language"
 msgstr "bağlantı bu dili sabitler"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Link to your privacy policy"
+msgstr "Gizlilik politikanızın bağlantısı"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Linked — you can sign in with this provider."
 msgstr "Bağlandı — bu sağlayıcıyla giriş yapabilirsiniz."
@@ -10435,6 +10537,10 @@ msgstr "Eşleşen kurallar"
 msgid "Matched verbatim — a product whose column holds anything else is skipped."
 msgstr "Birebir eşleşir — kolonunda başka bir şey yazan ürün atlanır."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Matches the CNIL's six-month guidance."
+msgstr "CNIL'in altı aylık tavsiyesiyle uyumlu."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Matrix"
@@ -10555,6 +10661,10 @@ msgstr "ortalama değer"
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "measured"
 msgstr "ölçüldü"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Measures every visitor. Defensible because the tag stores nothing on the device and its visitor id rotates daily — but that is a legal position, not a fact."
+msgstr "Her ziyaretçiyi ölçer. Savunulabilir, çünkü etiket cihazda hiçbir şey saklamaz ve ziyaretçi kimliği her gün değişir — ama bu hukuki bir yorum, kesin bir olgu değil."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Medium"
@@ -10935,6 +11045,10 @@ msgstr "Mutlak bir URL olmalı (https://…)"
 #: src/client/admin/fields/field-email-input.tsx
 msgid "Must be an address at"
 msgstr "Şu alan adında bir adres olmalı:"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Must be an http(s) URL. It is linked from the banner."
+msgstr "http(s) adresi olmalı. Bant üzerinden bağlantı verilir."
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Must be an https URL."
@@ -12045,6 +12159,10 @@ msgstr "Mevcut spec'te yol yok."
 msgid "No period comparison"
 msgstr "Dönem karşılaştırması yok"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "No policy yet. Nothing is asked and nothing is blocked — the site behaves exactly as it does today."
+msgstr "Henüz politika yok. Hiçbir şey sorulmuyor ve hiçbir şey engellenmiyor — site bugünkü davranışını sürdürüyor."
+
 #: src/client/admin/collections/collection-kpis.tsx
 msgid "No prior period"
 msgstr "Önceki dönem yok"
@@ -12454,6 +12572,10 @@ msgstr "Belirtilmedi"
 msgid "Not settled yet: {0}."
 msgstr "Henüz kesinleşmedi: {0}."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Not shown"
+msgstr "Gösterilmiyor"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Not signed in."
 msgstr "Giriş yapılmamış."
@@ -12561,6 +12683,10 @@ msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "nothing open in the window"
 msgstr "bu aralıkta açık yer yok"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Nothing optional fires. Required under GDPR and ePrivacy; you lose measurement on visitors who ignore the banner."
+msgstr "İsteğe bağlı hiçbir şey çalışmaz. GDPR ve ePrivacy kapsamında zorunlu; bandı yok sayan ziyaretçilerde ölçümü kaybedersiniz."
 
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Nothing out for signature"
@@ -12750,6 +12876,7 @@ msgstr "kapalı"
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
+#: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Off"
 msgstr "Kapalı"
@@ -12913,6 +13040,10 @@ msgstr "Yalnızca şu host'lardaki adresleri kabul et"
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Only accept numbers from <0>(optional)</0>"
 msgstr "Yalnızca şu ülkelerden numara kabul et <0>(isteğe bağlı)</0>"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Only ask about what the site actually does. Strictly necessary is never offered — it is not a choice a visitor has."
+msgstr "Yalnızca sitenin gerçekten yaptığı şeyi sorun. Zorunlu çerezler hiç sunulmaz — ziyaretçinin böyle bir seçimi yoktur."
 
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "Only count rows matching"
@@ -13154,6 +13285,10 @@ msgstr "İsteğe bağlı — anahtar bu sürenin ardından çalışmayı durduru
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "Optional filter naming the subset to replicate. A row that stops matching is delivered as an exit marker, so the destination knows to drop it."
 msgstr "Kopyalanacak alt kümeyi belirten isteğe bağlı filtre. Eşleşmeyi bırakan bir satır çıkış işareti olarak gönderilir, böylece hedef onu düşürmesi gerektiğini bilir."
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Optional tags fire immediately. This is the CCPA/CPRA opt-out model and it is not lawful in the EU."
+msgstr "İsteğe bağlı etiketler hemen çalışır. Bu, CCPA/CPRA vazgeçme modelidir ve AB'de hukuka uygun değildir."
 
 #: src/client/admin/parity/booking.tsx
 #~ msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
@@ -17490,6 +17625,10 @@ msgstr "Ayarlar · Yapay Zekâ altında belirlenir"
 msgid "Set up"
 msgstr "Kur"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Set up consent"
+msgstr "Çerez onayını kur"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Sets the admin display language and how dates and numbers are formatted. Only languages with a bundled translation are listed."
 msgstr "Yönetici panelinin görüntü dilini ve tarihler ile sayıların nasıl biçimlendirileceğini belirler. Yalnızca paketlenmiş çevirisi olan diller listelenir."
@@ -17685,6 +17824,10 @@ msgstr "Parolayı göster"
 #: src/client/admin/fields/edit-field.tsx
 msgid "Show sections as tabs"
 msgstr "Bölümleri sekme olarak göster"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Show the banner"
+msgstr "Bandı göster"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Show this block only when"
@@ -18555,6 +18698,10 @@ msgstr "Hedef satırın <0>id</0> değerini saklar. Hedef değiştirilemez — d
 msgid "Stream"
 msgstr "Akış"
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Strictly necessary"
+msgstr "Zorunlu"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Stripe and Polar both record this against the refund."
 msgstr "Stripe ve Polar bunu iadenin kaydına işler."
@@ -18831,6 +18978,14 @@ msgstr "Tablo"
 #: src/client/admin/pages/data/database.tsx
 msgid "Tables"
 msgstr "Tablolar"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Tag: gated"
+msgstr "Etiket: onaya bağlı"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Tag: strictly necessary"
+msgstr "Etiket: zorunlu"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Tagline"
@@ -19392,6 +19547,10 @@ msgstr "Saat yeniden satışa açılır ve müşteriye e-posta gider."
 msgid "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
 msgstr "Saat alındı. Değiştirme veya iptal bağlantısı yalnızca burada, bir kez gösterilir."
 
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "The tag waits for consent. The safest reading, and it costs you the visitors who never answer."
+msgstr "Etiket onayı bekler. En güvenli yorum; karşılığında hiç yanıt vermeyen ziyaretçileri kaybedersiniz."
+
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "Token tekrar gösterilemez — yeni bir bağlantı üretmek tek yoldur. Eski bağlantı anında çalışmayı durdurur; gömülü kullanımları güncelleyin."
@@ -19440,6 +19599,10 @@ msgstr "tema"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Theme"
 msgstr "Tema"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "There is no default because neither answer is safe everywhere. The choice is recorded against your workspace."
+msgstr "Varsayılan yok, çünkü iki yanıt da her yerde güvenli değil. Seçim çalışma alanınıza kaydedilir."
 
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
@@ -19973,6 +20136,10 @@ msgstr "Araçlar"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Top {0} by {1}"
 msgstr "{1} bazında en yüksek {0}"
+
+#: src/client/admin/pages/observability/analytics.tsx
+msgid "Top bar"
+msgstr "Üst şerit"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Top collections"

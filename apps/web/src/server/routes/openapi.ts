@@ -91,6 +91,7 @@ import { realtimeAdminRoutes } from "./realtime-admin";
 import { advisorRoutes } from "./advisor";
 import { tracesRoutes } from "./traces";
 import { analyticsRoutes } from "./analytics";
+import { consentRoutes } from "./consent";
 import { analyticsIngestRoutes } from "./analytics-ingest";
 import { flagsPublicRoutes, flagsAdminRoutes } from "./feature-flags";
 import { sharedLinksRoutes } from "./shared-links";
@@ -185,6 +186,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/advisor", advisorRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/traces", tracesRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/analytics", analyticsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/consent", consentRoutes as unknown as OpenAPIHono<any>],
   ["/api/analytics", analyticsIngestRoutes as unknown as OpenAPIHono<any>],
   ["/api/flags", flagsPublicRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/feature-flags", flagsAdminRoutes as unknown as OpenAPIHono<any>],

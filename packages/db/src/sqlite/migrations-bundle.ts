@@ -130,6 +130,7 @@ import m123 from "../../drizzle/sqlite/20260818090000_analytics_web_dimensions/m
 import m124 from "../../drizzle/sqlite/20260818130000_analytics_sites/migration.sql" with { type: "text" };
 import m125 from "../../drizzle/sqlite/20260818170000_analytics_segments/migration.sql" with { type: "text" };
 import m126 from "../../drizzle/sqlite/20260818210000_analytics_path_base/migration.sql" with { type: "text" };
+import m127 from "../../drizzle/sqlite/20260819100000_consent_policies/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -264,4 +265,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260818130000_analytics_sites", sql: m124 },
   { name: "20260818170000_analytics_segments", sql: m125 },
   { name: "20260818210000_analytics_path_base", sql: m126 },
+  { name: "20260819100000_consent_policies", sql: m127 },
 ];

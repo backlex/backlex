@@ -32,6 +32,7 @@ import type { AdvisorClient } from "./clients/advisor";
 import type { AgentsClient } from "./clients/agents";
 import type { AgentChatClient } from "./clients/agent-chat";
 import type { AnalyticsClient } from "./clients/analytics";
+import type { ConsentClient } from "./clients/consent";
 import type { AppUsersClient } from "./clients/app-users";
 import type { ApprovalsClient } from "./clients/approvals";
 import type { AuthClient } from "./clients/auth";
@@ -176,6 +177,7 @@ export * from "./clients/payments";
 export * from "./clients/kpis";
 export * from "./clients/dashboards";
 export * from "./clients/analytics";
+export * from "./clients/consent";
 export * from "./clients/forms";
 export * from "./clients/extensions";
 export * from "./clients/usage";
@@ -219,6 +221,7 @@ import { makePayments } from "./clients/payments";
 import { makeKpis } from "./clients/kpis";
 import { makeDashboards } from "./clients/dashboards";
 import { makeAnalytics } from "./clients/analytics";
+import { makeConsent } from "./clients/consent";
 import { makeForms } from "./clients/forms";
 import { makeExtensions } from "./clients/extensions";
 import { makeUsage } from "./clients/usage";
@@ -368,6 +371,10 @@ export interface BacklexClient {
   dashboards: DashboardsClient;
   /** Product analytics + crash reporting. */
   analytics: AnalyticsClient;
+  /** Cookie consent — what a site asks its visitors, and what it blocks until
+   *  they answer. Operator configuration; a visitor's own decision arrives
+   *  from the banner, not from here. */
+  consent: ConsentClient;
   forms: FormsClient;
   /** Usage metering — per-day/per-key counters + workspace limits. */
   usage: UsageClient;
@@ -1002,6 +1009,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const kpis = makeKpis(core);
   const dashboards = makeDashboards(core);
   const analytics = makeAnalytics(core);
+  const consent = makeConsent(core);
   const forms = makeForms(core);
   const extensions = makeExtensions(core);
   const usage = makeUsage(core);
@@ -1071,6 +1079,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     kpis,
     dashboards,
     analytics,
+    consent,
     forms,
     usage,
     advisor,

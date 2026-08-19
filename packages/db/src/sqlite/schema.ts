@@ -3304,6 +3304,49 @@ export const analyticsSegments = sqliteTable(
   (t) => [index("analytics_segments_tenant_idx").on(t.tenantId, t.siteId)],
 );
 
+
+/**
+ * The cookie-consent policy a site publishes — SQLite/D1 twin.
+ *
+ * See the pg definition for why `site_id` is the primary key, why
+ * `undecided_behaviour` and `tracker_category` carry no default, and why the
+ * wording is server-owned. Dialect differences only: `jsonb` becomes `text` in
+ * json mode, `boolean` becomes an integer, timestamps are epoch-ms.
+ */
+export const consentPolicies = sqliteTable(
+  "consent_policies",
+  {
+    /** The site this policy governs. PK — one policy per site, structurally. */
+    siteId: text("site_id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** Which optional categories the banner offers. A LIST, not a switch.
+     *  `none` never appears here — strictly-necessary is not a choice. */
+    categoriesOffered: text("categories_offered", { mode: "json" }).$type<string[] | null>(),
+    /** `"block" | "allow"`. No default — the operator must choose. */
+    undecidedBehaviour: text("undecided_behaviour").notNull(),
+    /** `"none" | "analytics"`. No default — the operator must choose. */
+    trackerCategory: text("tracker_category").notNull(),
+    /** Per-locale banner copy. Server-owned; the page never supplies it. */
+    wording: text("wording", { mode: "json" }).$type<
+      Record<string, Record<string, string>> | null
+    >(),
+    defaultLocale: text("default_locale").notNull().default("en"),
+    /** The operator's own privacy/cookie policy, linked from the banner. */
+    policyUrl: text("policy_url"),
+    /** `"bottom" | "top" | "corner"`. */
+    position: text("position").notNull().default("bottom"),
+    /** Colours and radius, as a flat token map the banner inlines. */
+    theme: text("theme", { mode: "json" }).$type<Record<string, string> | null>(),
+    /** How long a visitor's decision stands before they are asked again. */
+    cookieMaxAgeDays: integer("cookie_max_age_days").notNull().default(180),
+    /** Whether the banner is served at all. */
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [index("consent_policies_tenant_idx").on(t.tenantId)],
+);
+
 /**
  * Crash-reporting group — the deduplicated identity of one bug. Occurrences
  * fold into a group by `fingerprint` (a hash of the error type, its normalized

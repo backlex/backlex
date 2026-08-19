@@ -43,6 +43,9 @@ import {
   extensionsApi,
   itemsApi,
   analyticsApi,
+  consentApi,
+  type ApiConsentPolicy,
+  type ApiConsentPolicyInput,
   type ApiAnalyticsSegment,
   type ApiAnalyticsSite,
   type ApiAnalyticsSiteInput,
@@ -150,6 +153,7 @@ export const queryKeys = {
   /** Whether a publishable ingest key exists. */
   analyticsIngestKey: () => ["analytics", "ingest-key"] as const,
   analyticsSites: () => ["analytics", "sites"] as const,
+  consentPolicies: () => ["consent", "policies"] as const,
   analyticsSegments: () => ["analytics", "segments"] as const,
   analyticsRevenue: (days: number, siteId: string | null) =>
     ["analytics", "revenue", days, siteId ?? ""] as const,
@@ -843,6 +847,100 @@ export function useAnalyticsIngestKey() {
   return useQuery({
     queryKey: queryKeys.analyticsIngestKey(),
     queryFn: () => analyticsApi.ingestKeyStatus(),
+  });
+}
+
+/**
+ * Consent policies — the whole list, keyed by site.
+ *
+ * One query rather than one per site: there is at most one policy per site and
+ * a workspace has a handful of sites, so a list read is cheaper than N reads
+ * and gives the optimistic updaters a single cache entry to patch.
+ */
+const consentKey = () => queryKeys.consentPolicies();
+
+export function useConsentPolicies() {
+  return useQuery({
+    queryKey: consentKey(),
+    queryFn: () => consentApi.policies(),
+  });
+}
+
+/**
+ * Save a policy, optimistically.
+ *
+ * The optimistic row is built by MERGING onto the existing one rather than from
+ * the patch alone, because a save that omits `undecidedBehaviour` is asking the
+ * server to carry the stored choice forward. Painting the patch on its own
+ * would blank the posture in the UI for the length of a round-trip and then
+ * flick it back — which reads exactly like the bug this feature exists to
+ * prevent.
+ */
+export function useSaveConsentPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { siteId: string; patch: ApiConsentPolicyInput }) =>
+      consentApi.savePolicy(v.siteId, v.patch),
+    onMutate: async (v) => {
+      await qc.cancelQueries({ queryKey: consentKey() });
+      const prev = qc.getQueryData<Envelope<ApiConsentPolicy[]>>(consentKey());
+      qc.setQueryData<Envelope<ApiConsentPolicy[]>>(consentKey(), (old) => {
+        if (!old) return old;
+        const existing = old.data.find((p) => p.siteId === v.siteId);
+        if (!existing) {
+          // A first save. Only paintable when the patch carries both
+          // decisions — and if it does not, the server is about to refuse it,
+          // so showing a row would be a lie the rollback then retracts.
+          if (!v.patch.undecidedBehaviour || !v.patch.trackerCategory) return old;
+          const optimistic: ApiConsentPolicy = {
+            siteId: v.siteId,
+            categoriesOffered: v.patch.categoriesOffered ?? [],
+            undecidedBehaviour: v.patch.undecidedBehaviour,
+            trackerCategory: v.patch.trackerCategory,
+            wording: v.patch.wording ?? {},
+            defaultLocale: v.patch.defaultLocale ?? "en",
+            policyUrl: v.patch.policyUrl ?? null,
+            position: v.patch.position ?? "bottom",
+            theme: v.patch.theme ?? {},
+            cookieMaxAgeDays: v.patch.cookieMaxAgeDays ?? 180,
+            enabled: v.patch.enabled ?? false,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          return { ...old, data: [...old.data, optimistic] };
+        }
+        return {
+          ...old,
+          data: old.data.map((p) =>
+            p.siteId === v.siteId ? { ...p, ...v.patch, updatedAt: Date.now() } : p,
+          ),
+        };
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(consentKey(), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: consentKey() }),
+  });
+}
+
+export function useDeleteConsentPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (siteId: string) => consentApi.deletePolicy(siteId),
+    onMutate: async (siteId) => {
+      await qc.cancelQueries({ queryKey: consentKey() });
+      const prev = qc.getQueryData<Envelope<ApiConsentPolicy[]>>(consentKey());
+      qc.setQueryData<Envelope<ApiConsentPolicy[]>>(consentKey(), (old) =>
+        old ? { ...old, data: old.data.filter((p) => p.siteId !== siteId) } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(consentKey(), ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: consentKey() }),
   });
 }
 

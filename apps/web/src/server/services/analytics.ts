@@ -41,6 +41,7 @@ import {
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { hashToken } from "./shared-links";
+import { deletePolicyForDeletedSite } from "./consent";
 
 export interface AnalyticsDbCtx {
   db: unknown;
@@ -1564,9 +1565,33 @@ export const deleteSite = async (
   id: string,
 ): Promise<void> => {
   const t = sitesTable(ctx.dialect);
+
+  // Ownership is established BEFORE anything is removed, and the cascade is
+  // gated on it.
+  //
+  // The ordering matters. Checking afterwards ("is the site gone now?") reads
+  // as equivalent and is not: a `site_id` that has a policy but no site row —
+  // left by a backfill or a direct write — would look "gone" to any caller, so
+  // whoever guessed the id could delete a policy belonging to a workspace that
+  // is not theirs. An orphan is already inert, but a delete primitive that
+  // works across tenants should not exist at all.
+  const [owned] = (await (ctx.db as any)
+    .select({ id: t.id })
+    .from(t)
+    .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)))
+    .limit(1)) as any[];
+  if (!owned) return;
+
   await (ctx.db as any)
     .delete(t)
     .where(and(eq(t.id, id), tenantEq(t.tenantId, tenantId)));
+
+  // Cascade the consent policy by hand. There is no foreign key — D1 has them
+  // off, so a constraint that exists only on Postgres is a dialect difference
+  // pretending to be an invariant — and an orphan here is not merely untidy: it
+  // is keyed on `site_id`, so the admin console (which iterates SITES) can
+  // neither show it nor remove it, while the row stays live.
+  await deletePolicyForDeletedSite(ctx, id);
 };
 
 /**

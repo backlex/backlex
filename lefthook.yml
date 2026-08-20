@@ -51,9 +51,11 @@ pre-commit:
 # So serialising does NOT make the gate finish sooner — 20s apart is inside this
 # box's noise, because parallel's total is the longest job while serial's is the
 # sum. What it buys is the last row: **2.4x less kernel paging**. typecheck
-# genuinely needs >4 GB of live heap (lowering --max-old-space-size below 8192
-# OOMs it outright), so running it beside the test suite pushes an 8 GB machine
-# into swap — `test`'s sys time alone drops 241s -> 33s once it stops competing.
+# genuinely needs >4 GB of live working set (measured under TypeScript 6.0,
+# where lowering --max-old-space-size below 8192 OOM'd it outright; 7.0's Go
+# checker has no such cap, which makes the point stronger, not weaker), so
+# running it beside the test suite pushes an 8 GB machine into swap — `test`'s
+# sys time alone drops 241s -> 33s once it stops competing.
 # That contention is what once left two typechecks wedged in `U` state for 27
 # minutes, thrashing, finishing never. The trade is: same wait, usable machine.
 #

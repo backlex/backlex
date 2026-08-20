@@ -160,7 +160,10 @@ jobs:
       # now it was built for the first time inside publish-backlex.yml, which
       # only runs on a `backlex-v*` tag. So when tsup's declaration step broke
       # under TypeScript 6.0 (TS5101), `backlex` quietly became unpublishable
-      # and no PR went red. ~1.3s here buys that back.
+      # and no PR went red. ~1.3s here buys that back. The same step is the
+      # reason this package pins `typescript` to 6.0.3 while the rest of the
+      # repo runs 7.0.2 — 7.0 ships no compiler API for rollup-plugin-dts to
+      # call. This build is what would go red if that pin were ever "tidied".
       - name: Build the SDK (tsup — catches .d.ts regressions before release)
         run: bun run --cwd packages/client build
 

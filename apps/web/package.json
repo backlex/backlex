@@ -11,7 +11,7 @@
     "i18n:extract": "lingui extract",
     "preview": "bun --preload ./scripts/real-undici.ts ./node_modules/.bin/vite preview",
     "deploy": "bun scripts/gen-openapi-static.ts && bunx --bun vite build && wrangler deploy",
-    "typecheck": "tsc --noEmit -p tsconfig.client.json && NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit -p tsconfig.server.json",
+    "typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.server.json --checkers 2",
     "test": "bun test --timeout 30000 tests/"
   },
   "dependencies": {
@@ -94,7 +94,7 @@
     "babel-plugin-macros": "^3.1.0",
     "node-forge": "^1.4.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vite": "8.2.1",
     "wrangler": "4.123.0",
     "xml-crypto": "^6.1.2"

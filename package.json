@@ -15,7 +15,6 @@
     "dev:bun": "bun run --cwd apps/web dev:bun",
     "build": "bun scripts/require-green-checks.ts && bun run --cwd apps/web build",
     "typecheck": "bun run --filter '*' typecheck",
-    "typecheck:native": "node_modules/typescript-7/bin/tsc --noEmit -p apps/web/tsconfig.client.json && node_modules/typescript-7/bin/tsc --noEmit -p apps/web/tsconfig.server.json",
     "db:generate:pg": "bun run --cwd packages/db generate:pg",
     "db:generate:sqlite": "bun run --cwd packages/db generate:sqlite",
     "db:migrate:pg": "bun run --cwd packages/db migrate:pg",
@@ -46,8 +45,7 @@
     "@types/bun": "latest",
     "@vercel/config": "0.5.0",
     "lefthook": "^2.1.8",
-    "typescript": "6.0.3",
-    "typescript-7": "npm:typescript@7.0.2"
+    "typescript": "7.0.2"
   },
   "engines": {
     "bun": ">=1.1.0"

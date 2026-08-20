@@ -53,7 +53,7 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit",
     "build": "tsup"
   },
   "devDependencies": {

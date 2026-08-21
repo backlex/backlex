@@ -93,6 +93,20 @@ export interface ConsentPolicyInput {
   enabled?: boolean;
 }
 
+/**
+ * One artifact a site's consent policy compiled to.
+ *
+ * Immutable. A recorded consent points at {@link ConsentVersion.hash}, so the
+ * text a visitor agreed to cannot be edited out from under the evidence.
+ */
+export interface ConsentVersion {
+  id: string;
+  /** SHA-256 of the canonical artifact, and the ETag the public config
+   *  endpoint serves. */
+  hash: string;
+  createdAt: number;
+}
+
 export interface ConsentClient {
   /** Every site that has a policy. Sites without one are absent, not empty. */
   policies(): Promise<{ data: ConsentPolicy[] }>;
@@ -111,6 +125,14 @@ export interface ConsentClient {
    * own built-in strings rather than a legal statement nobody reviewed.
    */
   suggestedWording(): Promise<{ data: Record<string, Record<string, string>> }>;
+  /**
+   * Artifacts this site's policy has compiled to, newest first.
+   *
+   * A history of distinct CONTENT, not a log of saves: there is no publish step
+   * and no version number — the live policy is the one row — and saving the
+   * same content twice reuses the existing artifact, so a revert adds nothing.
+   */
+  versions(siteId: string, opts?: { limit?: number }): Promise<{ data: ConsentVersion[] }>;
 }
 
 export const makeConsent = (core: ClientCore): ConsentClient => {
@@ -128,6 +150,15 @@ export const makeConsent = (core: ClientCore): ConsentClient => {
       core.request<{ data: Record<string, Record<string, string>> }>(
         "GET",
         "/api/admin/consent/wording/suggested",
+      ),
+    versions: (siteId: string, opts?: { limit?: number }) =>
+      core.request<{ data: ConsentVersion[] }>(
+        "GET",
+        `${at(siteId)}/versions${
+          opts?.limit === undefined
+            ? ""
+            : `?limit=${encodeURIComponent(String(opts.limit))}`
+        }`,
       ),
   };
 };

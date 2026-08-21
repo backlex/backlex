@@ -181,10 +181,39 @@ export const consentSuggestedWording: McpTool = {
   },
 };
 
+export const consentVersions: McpTool = {
+  name: "consent.versions",
+  kind: "read",
+  description:
+    "Artifacts this site's consent policy has compiled to, newest first. Each " +
+    "is addressed by the SHA-256 a recorded consent points at, so 'which " +
+    "version did they agree to' resolves to something that cannot be edited " +
+    "afterwards. A history of distinct content, not a log of saves: there is " +
+    "no publish step and no version number, and saving the same content twice " +
+    "reuses the existing artifact rather than minting a duplicate.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      ...SITE_ARG,
+      limit: { type: "number", description: "How many to return (1-100, default 20)." },
+    },
+    required: ["siteId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const limit = args.limit === undefined ? "" : `?limit=${Number(args.limit)}`;
+    const res = await ctx.fetchInternal(
+      `/api/admin/consent/policies/${encodeURIComponent(String(args.siteId))}/versions${limit}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const consentTools: McpTool[] = [
   consentPolicies,
   consentPolicy,
   consentSavePolicy,
   consentDeletePolicy,
   consentSuggestedWording,
+  consentVersions,
 ];

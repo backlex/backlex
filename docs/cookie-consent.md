@@ -96,6 +96,97 @@ and Turkish. It is a **suggestion, not a fallback** — nothing reads it at serv
 time, and a policy saved with no wording renders the banner's own built-in
 strings rather than a legal statement nobody reviewed.
 
+## The artifact a decision points at
+
+A recorded consent is only evidence if the thing it names cannot change
+afterwards. If a record pointed at `consent_policies`, an operator editing the
+wording next month would silently rewrite what every past visitor is held to
+have agreed to.
+
+So every save compiles the policy into an **artifact** — a canonical JSON
+document of what a visitor is shown — hashes it with SHA-256, and archives it in
+`consent_versions`. The hash is the identity: it is what the public config
+endpoint serves as its `ETag`, and it is what a consent record will store.
+
+### There is no publish step, and that is deliberate
+
+The tag manager next door has drafts, a publish, a version number and a
+rollback. Consent has none of them, because it has no draft: `consent_policies`
+is one row per site and `enabled` is already the live switch. Adding a publish
+step would create a state this feature should never have — *"I corrected the
+wording but visitors are still being shown the old text"* — on the one surface
+where stale copy is a legal problem rather than a cosmetic one.
+
+The archive is therefore **content-addressed**, keyed on `(site_id, hash)`
+rather than a counter:
+
+- Saving the same content twice adds nothing. An empty patch, a form re-submit,
+  or reverting to last week's wording all resolve to an artifact that already
+  exists.
+- There is no `max(version) + 1` to race on.
+- History is a list of distinct artifacts, not a log of clicks. Use `activity`
+  for who-changed-what-when; that is what it is for.
+
+`consent_policies.artifact_hash` carries the current artifact's digest. It is
+derived, not a pointer — it is recomputed from the row on every save and always
+agrees with what is being served, so it can never disagree with `enabled` about
+which policy is live.
+
+### What is in the artifact, and what is not
+
+Four fields of the policy row are deliberately excluded, because the artifact
+describes *what a visitor agreed to* rather than *what the table holds*:
+
+| Excluded | Why |
+|---|---|
+| `updatedAt` / `createdAt` | An empty save moves `updatedAt`. Including it would make the hash a clock reading, so every no-op save would mint an artifact and bust every visitor's cache. |
+| `tenantId` | The artifact is served with `Access-Control-Allow-Origin: *` to every visitor of a customer's domain. A workspace id has no business travelling there. |
+| `enabled` | Whether to show a banner is not something a visitor agreed to. It stays on the row and is read fresh on every request, so switching a banner off is instant and toggling it never mints an artifact. |
+
+Locale keys in `wording` are **sorted** before hashing. Without that, two
+byte-identical policies saved with their locales in a different order hash
+differently — and worse, the two dialects disagree with each other, because
+Postgres `jsonb` re-sorts object keys by (length, bytes) while SQLite stores the
+text as written. A consent record written against one database would then not
+resolve against the other.
+
+## The config endpoint
+
+```
+GET /api/consent/config?s=<siteId>
+```
+
+Public, uncredentialed, `Access-Control-Allow-Origin: *`, `Cache-Control:
+public, max-age=300`, with an `ETag` that revalidates to a `304`. This is what a
+banner running on the customer's own domain reads. It carries no session, and
+the query behind it names its columns explicitly, so nothing the operator
+configured about the *site* — ignored IPs, excluded paths, the site's internal
+name — can reach it.
+
+An unknown site id, a policy that is switched off, a site with no policy, and a
+policy orphaned by a deleted site all answer **identically**:
+
+```json
+{"v":1,"enabled":false}
+```
+
+`200`, never `404`. Site ids are public — they ship in the `<script>` snippet —
+so a status code that differed by whether an id exists would be an oracle for
+enumerating them. A live artifact carries no `enabled` key at all, so the
+banner's rule is `if (cfg.enabled === false) return;`.
+
+Do not set `If-None-Match` by hand. It is not a CORS-safelisted request header,
+so an author-set value triggers a preflight this route does not answer; the
+`304` path works through the browser's own cache revalidation on a plain
+`fetch`.
+
+**One caching caveat, stated rather than hidden.** Behind the browser's
+five-minute cache there is a per-isolate memo of up to a minute. Saving
+invalidates the isolate that handled the save, so an operator's own next request
+is correct — but on a distributed deploy another isolate may serve the previous
+artifact briefly. An operator who edits wording and immediately reloads a second
+tab may see the old copy for up to a minute.
+
 ## One policy per site
 
 `site_id` is the primary key of `consent_policies`, not a unique column beside a
@@ -127,11 +218,15 @@ reconfiguring a site.
 
 | Surface | How |
 |---|---|
-| REST | `GET/PUT/DELETE /api/admin/consent/policies/{siteId}` |
-| SDK | `client.consent.savePolicy(siteId, { … })` |
-| GraphQL | `consentPolicies`, `consentPolicy`, `consentSavePolicy`, `consentDeletePolicy` |
-| MCP | `consent.policies`, `consent.policy`, `consent.save_policy`, `consent.delete_policy` |
-| CLI | `backlex consent <policies\|policy\|set\|rm\|wording>` |
+| REST | `GET/PUT/DELETE /api/admin/consent/policies/{siteId}`, `GET …/{siteId}/versions` |
+| SDK | `client.consent.savePolicy(siteId, { … })`, `client.consent.versions(siteId)` |
+| GraphQL | `consentPolicies`, `consentPolicy`, `consentVersions`, `consentSavePolicy`, `consentDeletePolicy` |
+| MCP | `consent.policies`, `consent.policy`, `consent.versions`, `consent.save_policy`, `consent.delete_policy` |
+| CLI | `backlex consent <policies\|policy\|versions\|set\|rm\|wording>` |
+
+The public config endpoint above is deliberately absent from this table: it is
+read by a banner on a foreign origin with no credential, so it has no SDK, MCP
+or CLI twin.
 
 All five call the same `services/consent`, so the refusal above is not five
 implementations that can drift — it is one, reached five ways. That is what
@@ -144,9 +239,9 @@ rule the feature is built on.
 Stated plainly, because a consent feature is a compliance claim and the failure
 mode is an operator believing they are covered because a setting exists:
 
-- **Nothing is rendered or blocked yet.** This ships the policy; the banner, the
-  preference centre, the visitor records and the prior blocking of third-party
-  tags are separate surfaces.
+- **Nothing is rendered or blocked yet.** This ships the policy and the document
+  a banner would read; the banner itself, the preference centre, the visitor
+  records and the prior blocking of third-party tags are separate surfaces.
 - **No automatic cookie scanning.** Enumerating the cookies a site actually sets
   needs a headless-browser crawler; you declare yours.
 - **No IAB TCF.** The technical surface is plannable; the certification half —

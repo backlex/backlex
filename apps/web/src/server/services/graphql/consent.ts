@@ -21,6 +21,7 @@ import {
   GraphQLBoolean,
   GraphQLEnumType,
   GraphQLError,
+  GraphQLFloat,
   GraphQLID,
   GraphQLInputObjectType,
   GraphQLInt,
@@ -33,6 +34,7 @@ import {
 import {
   deletePolicy,
   getPolicy,
+  listConsentVersions,
   listPolicies,
   savePolicy,
   suggestedWording,
@@ -165,8 +167,13 @@ const ConsentPolicyType = new GraphQLObjectType({
       description: "How long a decision stands before the visitor is asked again.",
     },
     enabled: { type: new GraphQLNonNull(GraphQLBoolean) },
-    createdAt: { type: new GraphQLNonNull(GraphQLInt) },
-    updatedAt: { type: new GraphQLNonNull(GraphQLInt) },
+    // `GraphQLFloat`, not `Int` — and this was a real bug, not a style choice.
+    // These are epoch MILLISECONDS, so every value is past Int32's 2.1e9
+    // ceiling and graphql-js threw "Int cannot represent non 32-bit signed
+    // integer value" on serialization: selecting either field errored the whole
+    // query. Every other timestamp in this schema layer already uses Float.
+    createdAt: { type: new GraphQLNonNull(GraphQLFloat) },
+    updatedAt: { type: new GraphQLNonNull(GraphQLFloat) },
   },
 });
 
@@ -193,6 +200,21 @@ const ConsentPolicyInputType = new GraphQLInputObjectType({
   },
 });
 
+const ConsentVersionType = new GraphQLObjectType({
+  name: "ConsentVersion",
+  description:
+    "One artifact a site's consent policy compiled to. Immutable: a recorded consent points at the hash, so the text a visitor agreed to cannot be edited out from under the evidence.",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    hash: {
+      type: new GraphQLNonNull(GraphQLString),
+      description:
+        "SHA-256 of the canonical artifact, and the ETag the public config route serves. Saving the same content twice reuses this rather than minting a duplicate, so a revert costs nothing.",
+    },
+    createdAt: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
 export const consentQueryFields: Record<
   string,
   GraphQLFieldConfig<unknown, GqlCtx>
@@ -210,6 +232,24 @@ export const consentQueryFields: Record<
     args: { siteId: { type: new GraphQLNonNull(GraphQLID) } },
     resolve: async (_src, args, gqlCtx) =>
       getPolicy(dbOf(gqlCtx), requireConsentAdmin(gqlCtx), String((args as any).siteId)),
+  },
+  consentVersions: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ConsentVersionType))),
+    description:
+      "Artifacts this site's policy has compiled to, newest first. There is no publish step and no version number — the live policy is the one row — so this is a history of distinct content, not a log of saves.",
+    args: {
+      siteId: { type: new GraphQLNonNull(GraphQLID) },
+      limit: { type: GraphQLInt },
+    },
+    resolve: async (_src, args, gqlCtx) =>
+      surfacing(() =>
+        listConsentVersions(
+          dbOf(gqlCtx),
+          requireConsentAdmin(gqlCtx),
+          String((args as any).siteId),
+          (args as any).limit ?? undefined,
+        ),
+      ),
   },
   consentSuggestedWording: {
     type: new GraphQLNonNull(JSONScalar),

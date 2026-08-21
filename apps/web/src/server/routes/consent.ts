@@ -27,6 +27,7 @@ import {
   getPolicy,
   listPolicies,
   savePolicy,
+  listConsentVersions,
   suggestedWording,
 } from "../services/consent";
 
@@ -65,6 +66,16 @@ const Policy = z
     updatedAt: z.number().int(),
   })
   .openapi("ConsentPolicy");
+
+const Version = z
+  .object({
+    id: z.string(),
+    /** SHA-256 of the canonical artifact. This is what a consent record points
+     *  at, and what the public config route serves as its ETag. */
+    hash: z.string(),
+    createdAt: z.number().int(),
+  })
+  .openapi("ConsentVersion");
 
 /**
  * `undecidedBehaviour` and `trackerCategory` are optional HERE and required by
@@ -272,6 +283,52 @@ export const consentRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         },
       );
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/policies/{siteId}/versions",
+      tags: TAGS,
+      summary: "Artifacts this site's policy has compiled to",
+      description:
+        "Newest first. Every distinct artifact the policy has ever produced, " +
+        "each addressed by the SHA-256 that a recorded consent points at — so " +
+        "'which version did they agree to' resolves to something that cannot " +
+        "be edited afterwards. There is no publish step and no version number: " +
+        "the live policy is the one row, and saving the same content twice adds " +
+        "nothing rather than minting a duplicate.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        params: z.object({ siteId: z.string() }),
+        query: z.object({
+          limit: z.coerce.number().int().min(1).max(100).optional(),
+        }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(Version) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const { siteId } = c.req.valid("param");
+      const { limit } = c.req.valid("query");
+      const data = await listConsentVersions(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        siteId,
+        limit,
+      );
+      return c.json({ data });
     },
   )
   .openapi(

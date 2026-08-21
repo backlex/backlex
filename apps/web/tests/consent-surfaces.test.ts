@@ -107,6 +107,28 @@ describe("SDK surface", () => {
     expect(listed.data.some((p) => p.siteId === site)).toBe(true);
   });
 
+  test("versions reaches the archive, and dedupes a no-op save", async () => {
+    const first = await client.consent.versions(site);
+    expect(first.data.length).toBeGreaterThan(0);
+    expect(first.data[0]!.hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(typeof first.data[0]!.createdAt).toBe("number");
+
+    // Saving identical content adds nothing — the property that makes this an
+    // archive of distinct artifacts rather than a log of clicks.
+    await client.consent.savePolicy(site, {});
+    expect((await client.consent.versions(site)).data.length).toBe(first.data.length);
+
+    // A real content change does add one, which is also what makes the `limit`
+    // assertion below non-vacuous: with a single artifact on file, `limit: 1`
+    // returns one whether or not the parameter ever reached the server.
+    await client.consent.savePolicy(site, { policyUrl: "https://sdk-consent.example/v2" });
+    const all = await client.consent.versions(site);
+    expect(all.data.length).toBe(first.data.length + 1);
+    expect(all.data.length).toBeGreaterThan(1);
+
+    expect((await client.consent.versions(site, { limit: 1 })).data.length).toBe(1);
+  });
+
   test("the SDK adds no default of its own", async () => {
     // The one thing a convenience layer is tempted to do. If this ever starts
     // succeeding, a caller acquired a compliance posture from a TypeScript
@@ -178,6 +200,37 @@ describe("GraphQL surface", () => {
     expect(out.data.consentSavePolicy.undecidedBehaviour).toBe("block");
   });
 
+  test("timestamps survive serialization at all — epoch ms is not an Int32", async () => {
+    // A regression, and it was live: these fields were `GraphQLInt`, so
+    // graphql-js threw "Int cannot represent non 32-bit signed integer value"
+    // and selecting either one errored the WHOLE query. Every other timestamp
+    // in this schema layer already used Float.
+    const out = await gql(
+      `query($s: ID!) { consentPolicy(siteId: $s) { createdAt updatedAt } }`,
+      { s: SITE },
+    );
+    expect(out.errors).toBeUndefined();
+    // Past the Int32 ceiling, which is what makes the assertion meaningful
+    // rather than "a number came back".
+    expect(out.data.consentPolicy.createdAt).toBeGreaterThan(2_147_483_647);
+  });
+
+  test("consentVersions reaches the same archive REST does", async () => {
+    const out = await gql(
+      `query($s: ID!) { consentVersions(siteId: $s) { id hash createdAt } }`,
+      { s: SITE },
+    );
+    expect(out.errors).toBeUndefined();
+    expect(out.data.consentVersions.length).toBeGreaterThan(0);
+    expect(out.data.consentVersions[0].hash).toMatch(/^[0-9a-f]{64}$/);
+
+    const rest = await h.fetch(`/api/admin/consent/policies/${SITE}/versions`);
+    const restRows = ((await rest.json()) as any).data as any[];
+    expect(out.data.consentVersions.map((v: any) => v.hash)).toEqual(
+      restRows.map((v) => v.hash),
+    );
+  });
+
   test("consentPolicies lists what REST sees", async () => {
     const out = await gql(`{ consentPolicies { siteId enabled } }`);
     expect(out.errors).toBeUndefined();
@@ -229,7 +282,12 @@ describe("MCP surface", () => {
   });
 
   test("reads are `kind: \"read\"`, so a read-only key is not wrongly blocked", () => {
-    for (const name of ["consent.policies", "consent.policy", "consent.suggested_wording"]) {
+    for (const name of [
+      "consent.policies",
+      "consent.policy",
+      "consent.suggested_wording",
+      "consent.versions",
+    ]) {
       const at = MCP.indexOf(`name: "${name}"`);
       expect(at).toBeGreaterThan(-1);
       expect(MCP.slice(at, at + 120)).toContain('kind: "read"');
@@ -241,7 +299,7 @@ describe("CLI surface", () => {
   const CLI = read("packages/cli/src/consent.ts");
 
   test("every documented subcommand has a case", () => {
-    for (const sub of ["policies", "policy", "set", "rm", "wording"]) {
+    for (const sub of ["policies", "policy", "versions", "set", "rm", "wording"]) {
       expect(CLI).toContain(`case "${sub}"`);
       // The help text is a second registration point: a subcommand missing
       // from it is invisible to anyone who runs --help instead of reading the

@@ -22,7 +22,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex consent <policies|policy|set|rm|wording>
+const HELP = `backlex consent <policies|policy|versions|set|rm|wording>
 
   policies                             every site with a consent policy
   policy <siteId>                      one site's policy (null if unset)
@@ -31,6 +31,7 @@ const HELP = `backlex consent <policies|policy|set|rm|wording>
       [--position <bottom|top|corner>] [--policy-url <url>]
       [--max-age-days <n>] [--enabled|--disabled]
                                        create or replace a policy
+  versions <siteId> [--limit <n>]      artifacts this policy has compiled to
   rm <siteId>                          stop serving the banner
   wording                              suggested copy, as a starting point
 
@@ -128,6 +129,33 @@ export const runConsent = async (args: string[]): Promise<void> => {
           policyUrl: data.policyUrl ?? "—",
           decisionStandsForDays: data.cookieMaxAgeDays,
         });
+        return;
+      }
+
+      case "versions": {
+        const siteId = need(rest[0], "consent versions needs a site id.");
+        const limit = flag(rest, "--limit");
+        const qs = limit ? `?limit=${Number(limit)}` : "";
+        const { data } = await client.request<{ data: any[] }>(
+          "GET",
+          `${BASE}/policies/${encodeURIComponent(siteId)}/versions${qs}`,
+        );
+        if (json) {
+          printJson(data);
+          return;
+        }
+        if (!data.length) {
+          process.stderr.write(
+            "No artifacts yet — this site's policy has never been saved.\n",
+          );
+          return;
+        }
+        printTable(
+          data.map((v) => ({
+            hash: String(v.hash).slice(0, 12),
+            created: new Date(Number(v.createdAt)).toISOString(),
+          })),
+        );
         return;
       }
 

@@ -158,7 +158,13 @@ GET /api/consent/config?s=<siteId>
 
 Public, uncredentialed, `Access-Control-Allow-Origin: *`, `Cache-Control:
 public, max-age=300`, with an `ETag` that revalidates to a `304`. This is what a
-banner running on the customer's own domain reads. It carries no session, and
+banner running on the customer's own domain reads.
+
+**The `ETag` is the artifact hash itself** — a strong validator, `"<64 hex>"` —
+and it is named in `Access-Control-Expose-Headers` so cross-origin script can
+actually read it. That is not a caching detail: the hash cannot travel in the
+body, because the body is what is hashed, so this header is the only way a
+banner learns which artifact it is showing. A recorded consent stores that value. It carries no session, and
 the query behind it names its columns explicitly, so nothing the operator
 configured about the *site* — ignored IPs, excluded paths, the site's internal
 name — can reach it.

@@ -35,10 +35,15 @@
  * which means the 304 path works through the browser's own cache revalidation
  * on a plain `fetch`, and an author-set `If-None-Match` would trade a 304 for
  * an extra round-trip that then fails. The banner must not set it by hand.
+ *
+ * It does READ one header, though: the `ETag` carries the artifact hash and is
+ * named in `Access-Control-Expose-Headers`, because a response header is
+ * invisible to cross-origin script unless it is. That is how a recorded consent
+ * gets something immutable to point at.
  */
 import { Hono } from "hono";
 import type { AppBindings } from "../app";
-import { ifNoneMatch, weakETag } from "../lib/etag";
+import { ifNoneMatch } from "../lib/etag";
 import { rateLimitOk } from "../lib/rate-limit";
 import { setMeterTenant } from "../lib/usage-meter";
 import { requestMeta } from "../services/activity";
@@ -72,6 +77,11 @@ const CORS = { "Access-Control-Allow-Origin": "*" } as const;
 const HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": `public, max-age=${MAX_AGE}`,
+  // Response headers are NOT readable cross-origin unless they are named here —
+  // only the CORS-safelisted set is, and `ETag` is not in it. Without this the
+  // banner can see the artifact but not the hash that identifies it, which is
+  // the one thing a consent record has to store.
+  "Access-Control-Expose-Headers": "ETag",
   ...CORS,
 } as const;
 
@@ -128,7 +138,20 @@ export const consentPublicRoutes = new Hono<AppBindings>().get("/config", async 
   // pinned as a regression for the other public routes.
   if (hit.tenantId) setMeterTenant(c, hit.tenantId);
 
-  const etag = weakETag([hit.hash]);
+  // A STRONG ETag carrying the artifact hash verbatim, not `weakETag(hash)`.
+  //
+  // Two reasons, and the first is load-bearing rather than tidy. A consent
+  // record has to name the artifact the visitor was actually shown, and this
+  // header is the ONLY way the banner can learn it: the hash cannot go in the
+  // body, because the body is what is hashed, and `weakETag` runs FNV-1a over
+  // the digest and returns something else entirely (`W/"993x44"` for a hash
+  // beginning `62af6b12…`). Hashing a hash also buys nothing — the input is
+  // already a uniformly distributed 256-bit digest, so the weak variant only
+  // discards 224 bits of it.
+  //
+  // `ifNoneMatch` compares with the `W/` prefix stripped, so conditional
+  // requests behave identically either way.
+  const etag = `"${hit.hash}"`;
   const headers = { ...HEADERS, ETag: etag };
   // `c.body` does no conditional handling of its own, so the 304 is explicit.
   if (ifNoneMatch(c.req.header("if-none-match"), etag)) {

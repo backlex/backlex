@@ -131,6 +131,26 @@ describe("caching", () => {
     expect(second.headers.get("etag")).toBe(etag);
   });
 
+  test("the ETag IS the artifact hash, and a foreign origin can read it", async () => {
+    // The reason this matters is not caching. A consent record has to name the
+    // artifact the visitor was shown, and this header is the ONLY way a banner
+    // can learn it: the hash cannot go in the body, because the body is what is
+    // hashed. Shipped first as `weakETag(hash)`, which runs FNV-1a over the
+    // digest and returns a DIFFERENT value — so the hash was unreachable while
+    // five comments claimed the ETag carried it.
+    const res = await anonFetch(`/api/consent/config?s=${SITE}`);
+    const etag = res.headers.get("etag") ?? "";
+    expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
+
+    const versions = await h.fetch(`/api/admin/consent/policies/${SITE}/versions`);
+    const hashes = (((await versions.json()) as any).data as any[]).map((v) => v.hash);
+    expect(hashes).toContain(etag.slice(1, -1));
+
+    // …and it is readable cross-origin, which a response header is NOT by
+    // default — only the CORS-safelisted set is, and ETag is not among them.
+    expect(res.headers.get("access-control-expose-headers") ?? "").toContain("ETag");
+  });
+
   test("the ETag tracks content, not writes", async () => {
     const before = (await anonFetch(`/api/consent/config?s=${SITE}`)).headers.get("etag");
 

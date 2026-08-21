@@ -30,9 +30,11 @@
  * that bypasses this module.
  */
 import { AppError } from "@backlex/core";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { invalidateConsentConfig } from "./consent-config-cache";
+import { hashToken } from "./shared-links";
 
 export interface ConsentDbCtx {
   db: unknown;
@@ -41,6 +43,9 @@ export interface ConsentDbCtx {
 
 const policiesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.consentPolicies : sqlite.schema.consentPolicies;
+
+const versionsTable = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.consentVersions : sqlite.schema.consentVersions;
 
 const sitesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.analyticsSites : sqlite.schema.analyticsSites;
@@ -308,6 +313,126 @@ const toPolicy = (r: any): ConsentPolicy => ({
   updatedAt: tsValue(r.updatedAt),
 });
 
+/**
+ * ── The artifact ──────────────────────────────────────────────────────────
+ *
+ * What a browser is actually served, and the thing a consent record points at.
+ * A record that pointed at `consent_policies` would point at mutable state: the
+ * operator edits the wording, and every past visitor's evidence silently
+ * becomes a claim about text they were never shown.
+ *
+ * The hash is the identity. It is computed from THIS document and nothing else,
+ * which is why the fields below are chosen by what a visitor agreed to rather
+ * than by what the row happens to hold.
+ */
+export interface ConsentConfig {
+  /** Artifact schema version. A shape change becomes a deliberate, greppable
+   *  hash break instead of a silent one. */
+  v: 1;
+  site: string;
+  categories: OptionalCategory[];
+  undecided: UndecidedBehaviour;
+  tracker: TrackerCategory;
+  locale: string;
+  wording: Record<string, Partial<Record<WordingKey, string>>>;
+  policyUrl: string | null;
+  position: BannerPosition;
+  theme: Record<string, string>;
+  cookieDays: number;
+}
+
+/**
+ * Compile a policy into the document the config route serves.
+ *
+ * ── Built from a fixed literal, never a spread ────────────────────────────
+ * Key order is then a property of this function rather than of the row shape,
+ * so a column added to `consent_policies` later cannot silently enter the
+ * artifact and invalidate every cached ETag at once.
+ *
+ * ── Four fields are excluded, each for its own reason ─────────────────────
+ * `createdAt` / `updatedAt` — an empty-patch save moves `updatedAt`, so
+ * including it would make the hash a clock reading: every no-op save would mint
+ * a version row and bust every visitor's cache.
+ * `tenantId` — this body is served with `ACAO: *` to every visitor of a
+ * customer domain. A workspace id has no business travelling there.
+ * `enabled` — whether to show a banner is not part of what a visitor agreed
+ * to, and folding it in would give "live" two meanings that can disagree.
+ * It stays on the row and is read fresh at serve time, so switching the banner
+ * off is instant and toggling it never mints a version.
+ *
+ * ── The locale keys are SORTED, and that is not tidiness ──────────────────
+ * `parseWording` iterates `Object.entries`, which preserves the order the
+ * caller sent — so two byte-identical policies saved with their locales in a
+ * different order hashed differently (measured: `e80b8cb3…` against
+ * `ddb2be55…`). Worse, the two dialects disagree with each other: Postgres
+ * `jsonb` re-sorts object keys by (length, bytes) while SQLite stores the text
+ * as written, so the same policy would hash one way on D1 and another on
+ * Postgres. One level of sorting fixes both, because the inner blocks are
+ * already canonical — `toPolicy` re-runs `parseWording`, which rebuilds each
+ * block in `WORDING_KEYS` order — as are `categories` (rebuilt through
+ * `OPTIONAL_CATEGORIES`) and `theme` (rebuilt through `THEME_KEYS`).
+ *
+ * Pure: no clock, no db, no request. That is what lets a test assert the hash
+ * directly and what makes the sqlite and Postgres twins comparable.
+ */
+export const compileConsentConfig = (
+  siteId: string,
+  p: Pick<
+    ConsentPolicy,
+    | "categoriesOffered"
+    | "undecidedBehaviour"
+    | "trackerCategory"
+    | "wording"
+    | "defaultLocale"
+    | "policyUrl"
+    | "position"
+    | "theme"
+    | "cookieMaxAgeDays"
+  >,
+): ConsentConfig => {
+  const wording: Record<string, Partial<Record<WordingKey, string>>> = {};
+  for (const locale of Object.keys(p.wording).sort()) {
+    const block = p.wording[locale];
+    if (block) wording[locale] = block;
+  }
+  return {
+    v: 1,
+    site: siteId,
+    categories: p.categoriesOffered,
+    undecided: p.undecidedBehaviour,
+    tracker: p.trackerCategory,
+    locale: p.defaultLocale,
+    wording,
+    policyUrl: p.policyUrl,
+    position: p.position,
+    theme: p.theme,
+    cookieDays: p.cookieMaxAgeDays,
+  };
+};
+
+/** The canonical bytes. `JSON.stringify` over a document whose every key order
+ *  is fixed by construction, so this is deterministic without a sorting
+ *  serializer. */
+export const consentConfigBody = (cfg: ConsentConfig): string => JSON.stringify(cfg);
+
+/** SHA-256 hex of the canonical bytes, via the digest this repo already has —
+ *  rather than adding a second implementation, which is the same call
+ *  `tag-manager.ts` made for its container hash. */
+export const hashConsentConfig = (cfg: ConsentConfig): Promise<string> =>
+  hashToken(consentConfigBody(cfg));
+
+/**
+ * What the config route answers for a site that has no policy, has one that is
+ * switched off, or does not exist at all.
+ *
+ * Byte-identical in all three cases, and never a 404: a status that differs by
+ * whether an id exists is an enumeration oracle, and site ids are public. The
+ * banner's rule is `if (cfg.enabled === false) return;` — a live artifact
+ * carries no `enabled` key at all, because that field is not part of what a
+ * visitor agreed to.
+ */
+export const CONSENT_CONFIG_OFF = '{"v":1,"enabled":false}';
+
 export const listPolicies = async (
   ctx: ConsentDbCtx,
   tenantId: string | null,
@@ -374,6 +499,115 @@ export const getPolicyForSite = async (
 };
 
 /**
+ * Compile the artifact for the public config route.
+ *
+ * Not a wrapper around {@link getPolicyForSite}, deliberately. That one selects
+ * every column of both joined tables, which drags `analytics_sites`' operator
+ * settings — `ignored_ips`, `excluded_paths`, the site's internal name — into a
+ * function whose result is one `JSON.stringify` away from a body served to the
+ * whole internet. An explicit projection is the guard: a column added to either
+ * table cannot leak here by default, it has to be named.
+ *
+ * `enabled` is read LIVE and gated here rather than folded into the artifact,
+ * so switching the banner off takes effect without minting a version.
+ *
+ * The `innerJoin` is load-bearing for the same reason it is on
+ * {@link getPolicyForSite}: there is no foreign key, so deleting a site leaves
+ * its policy behind, and the customer's page still carries the snippet. Without
+ * the join a deleted site's banner would keep being served to its visitors.
+ *
+ * @internal Public-banner path only. NOT tenant-scoped — the site id is public
+ * by design and this can write nothing. The tenant comes back out so the caller
+ * can meter the request against the workspace that actually owns the traffic.
+ */
+export const getPublishedConsentConfig = async (
+  ctx: ConsentDbCtx,
+  siteId: string,
+): Promise<{ body: string; hash: string; tenantId: string | null } | null> => {
+  if (!siteId) return null;
+  const t = policiesTable(ctx.dialect);
+  const st = sitesTable(ctx.dialect);
+  const [row] = (await (ctx.db as any)
+    .select({
+      tenantId: t.tenantId,
+      enabled: t.enabled,
+      categoriesOffered: t.categoriesOffered,
+      undecidedBehaviour: t.undecidedBehaviour,
+      trackerCategory: t.trackerCategory,
+      wording: t.wording,
+      defaultLocale: t.defaultLocale,
+      policyUrl: t.policyUrl,
+      position: t.position,
+      theme: t.theme,
+      cookieMaxAgeDays: t.cookieMaxAgeDays,
+    })
+    .from(t)
+    .innerJoin(st, eq(st.id, t.siteId))
+    .where(eq(t.siteId, siteId))
+    .limit(1)) as any[];
+  if (!row || !row.enabled) return null;
+
+  // `wording` and `theme` are json columns and the two dialects hand them back
+  // differently — Postgres parses, SQLite returns the raw TEXT. `toPolicy`'s
+  // parsers absorb both, but a blob that is malformed at rest would throw out
+  // of the driver's row mapper before any of this runs, and on a public route
+  // that is a 500 for every visitor of the site over one bad row. Answering
+  // "off" is the safe read: it withholds a banner rather than serving a broken
+  // one, and it is visible to the operator as a banner that stopped appearing.
+  let cfg: ConsentConfig;
+  try {
+    cfg = compileConsentConfig(siteId, toPolicy({ ...row, siteId }));
+  } catch {
+    return null;
+  }
+  return {
+    body: consentConfigBody(cfg),
+    hash: await hashConsentConfig(cfg),
+    tenantId: row.tenantId ?? null,
+  };
+};
+
+export interface ConsentVersion {
+  id: string;
+  hash: string;
+  createdAt: number;
+}
+
+/**
+ * The artifacts a site's policy has compiled to, newest first.
+ *
+ * Ordered by `created_at` rather than by a version number, because there is no
+ * version number — see the table's own note. Two saves inside one millisecond
+ * would tie; that is acceptable for a history list and is not load-bearing
+ * anywhere, since a record resolves an artifact by HASH, never by position.
+ *
+ * The snapshot itself is not returned. A caller listing history wants to know
+ * which artifacts exist and when; the bodies are large (operator wording, up to
+ * twenty locales) and nothing an admin surface does needs twenty of them at
+ * once.
+ */
+export const listConsentVersions = async (
+  ctx: ConsentDbCtx,
+  tenantId: string | null,
+  siteId: string,
+  limit = 20,
+): Promise<ConsentVersion[]> => {
+  if (!siteId) return [];
+  const v = versionsTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ id: v.id, hash: v.hash, createdAt: v.createdAt })
+    .from(v)
+    .where(and(eq(v.siteId, siteId), tenantEq(v.tenantId, tenantId)))
+    .orderBy(desc(v.createdAt))
+    .limit(Math.min(100, Math.max(1, Math.floor(limit) || 20)))) as any[];
+  return rows.map((r) => ({
+    id: r.id,
+    hash: r.hash,
+    createdAt: tsValue(r.createdAt),
+  }));
+};
+
+/**
  * Remove a site's policy without a tenant scope — the cascade `deleteSite`
  * runs, since the site row it would scope against is the thing being deleted.
  *
@@ -389,7 +623,13 @@ export const deletePolicyForDeletedSite = async (
 ): Promise<void> => {
   if (!siteId) return;
   const t = policiesTable(ctx.dialect);
+  const v = versionsTable(ctx.dialect);
   await (ctx.db as any).delete(t).where(eq(t.siteId, siteId));
+  // The archive goes with it. There is no foreign key to do this — see the
+  // table's note — so leaving it out would strand every version row for a site
+  // that no longer exists, invisibly and forever.
+  await (ctx.db as any).delete(v).where(eq(v.siteId, siteId));
+  invalidateConsentConfig(siteId);
 };
 
 /**
@@ -460,9 +700,7 @@ export const savePolicy = async (
       : (existing?.cookieMaxAgeDays ?? 180);
 
   const t = policiesTable(ctx.dialect);
-  const row = {
-    siteId,
-    tenantId,
+  const resolved = {
     categoriesOffered:
       input.categoriesOffered !== undefined
         ? parseCategories(input.categoriesOffered)
@@ -474,10 +712,24 @@ export const savePolicy = async (
     // Validated the same way a wording key is: it names one of them, and it
     // lands in the same artifact served to every visitor.
     defaultLocale: localeTag(input.defaultLocale) ?? existing?.defaultLocale ?? "en",
-    policyUrl: input.policyUrl !== undefined ? httpUrl(input.policyUrl) : (existing?.policyUrl ?? null),
+    policyUrl:
+      input.policyUrl !== undefined ? httpUrl(input.policyUrl) : (existing?.policyUrl ?? null),
     position: oneOf(input.position, BANNER_POSITIONS) ?? existing?.position ?? "bottom",
     theme: input.theme !== undefined ? parseTheme(input.theme) : (existing?.theme ?? {}),
     cookieMaxAgeDays,
+  };
+
+  // Hashed from the RESOLVED values, not from `input` and not from `existing`:
+  // a partial patch merges with what is already stored, so hashing either side
+  // alone would identify an artifact that was never served.
+  const cfg = compileConsentConfig(siteId, resolved);
+  const artifactHash = await hashConsentConfig(cfg);
+
+  const row = {
+    siteId,
+    tenantId,
+    artifactHash,
+    ...resolved,
     enabled: input.enabled !== undefined ? input.enabled === true : (existing?.enabled ?? false),
     createdAt: tsParam(ctx.dialect, existing ? existing.createdAt : now),
     updatedAt: tsParam(ctx.dialect, now),
@@ -502,6 +754,11 @@ export const savePolicy = async (
         theme: row.theme,
         cookieMaxAgeDays: row.cookieMaxAgeDays,
         enabled: row.enabled,
+        // Derived from the fields above, so last-writer-wins is correct for it
+        // in a way it would not be for an operator-moved pointer. It has to be
+        // named here regardless: this `set` is an explicit list, so a column
+        // left out of it updates on insert and then never again.
+        artifactHash: row.artifactHash,
         updatedAt: row.updatedAt,
       },
       // Scoped so a site registered by another tenant cannot be overwritten by
@@ -531,6 +788,35 @@ export const savePolicy = async (
       "A consent policy already exists for this site under a different workspace. It has to be removed before this one can be saved.",
     );
   }
+
+  // Archive the artifact this save produced.
+  //
+  // AFTER the CONFLICT branch, deliberately: a caller who owns the site but
+  // whose policy row is held by another workspace must not leave a version row
+  // behind for a policy they were refused.
+  //
+  // `onConflictDoNothing` on `(site_id, hash)` is what makes the archive
+  // content-addressed rather than an audit log. Saving the same content twice —
+  // an empty patch, a form re-submit, or an operator reverting to last week's
+  // wording — adds nothing, so the table holds distinct artifacts rather than a
+  // row per click. It is also why there is no version counter to race on.
+  const v = versionsTable(ctx.dialect);
+  await (ctx.db as any)
+    .insert(v)
+    .values({
+      id: crypto.randomUUID(),
+      tenantId,
+      siteId,
+      hash: artifactHash,
+      snapshot: cfg,
+      createdAt: tsParam(ctx.dialect, now),
+    })
+    .onConflictDoNothing({ target: [v.siteId, v.hash] });
+
+  // The operator's next request must see what they just saved. Without this
+  // they save, reload their own site, and read the previous wording — which
+  // looks like a failed save rather than a one-minute memo.
+  invalidateConsentConfig(siteId);
   return saved;
 };
 
@@ -540,9 +826,17 @@ export const deletePolicy = async (
   siteId: string,
 ): Promise<void> => {
   const t = policiesTable(ctx.dialect);
+  const v = versionsTable(ctx.dialect);
   await (ctx.db as any)
     .delete(t)
     .where(and(eq(t.siteId, siteId), tenantEq(t.tenantId, tenantId)));
+  // Tenant-scoped like the policy delete above, and for the same reason: the
+  // site id is public, so an unscoped delete keyed on it alone would be a
+  // cross-tenant write primitive that any caller could aim at any site.
+  await (ctx.db as any)
+    .delete(v)
+    .where(and(eq(v.siteId, siteId), tenantEq(v.tenantId, tenantId)));
+  invalidateConsentConfig(siteId);
 };
 
 /**

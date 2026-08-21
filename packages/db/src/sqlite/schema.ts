@@ -3354,10 +3354,38 @@ export const consentPolicies = sqliteTable(
     cookieMaxAgeDays: integer("cookie_max_age_days").notNull().default(180),
     /** Whether the banner is served at all. */
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    /** Content hash of the artifact this policy currently compiles to.
+     *  DERIVED, not a pointer — see the pg twin for why there is no
+     *  `published_version_id`. Nullable: the migration cannot hash existing
+     *  rows, and nothing on the read path depends on it. */
+    artifactHash: text("artifact_hash"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
   (t) => [index("consent_policies_tenant_idx").on(t.tenantId)],
+);
+
+/**
+ * Every distinct artifact a site's consent policy has ever compiled to, so
+ * "which version did they agree to" has an answer that cannot be edited
+ * afterwards. Content-addressed rather than counter-versioned — consent has no
+ * draft to publish, so there is no version number to roll back to, and
+ * `(site_id, hash)` makes a repeated or reverted save a free no-op insert.
+ * The full argument is on the pg twin.
+ */
+export const consentVersions = sqliteTable(
+  "consent_versions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    /** SHA-256 of the canonical artifact JSON. This is the ETag. */
+    hash: text("hash").notNull(),
+    /** The compiled artifact, exactly as the config route serves it. */
+    snapshot: text("snapshot", { mode: "json" }).$type<unknown>().notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [uniqueIndex("consent_versions_site_hash_idx").on(t.siteId, t.hash)],
 );
 
 /**

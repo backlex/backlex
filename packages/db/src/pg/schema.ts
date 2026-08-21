@@ -3770,10 +3770,60 @@ export const consentPolicies = pgTable(
     /** Whether the banner is served at all. A site can hold a configured
      *  policy without showing anything yet. */
     enabled: boolean("enabled").notNull().default(false),
+    /** Content hash of the artifact this policy currently compiles to.
+     *
+     *  DERIVED, not a pointer. It is recomputed from the resolved row on every
+     *  save and always agrees with what the config route serves, which is why
+     *  it can be last-writer-wins. A `published_version_id` pointer was the
+     *  obvious shape and is deliberately absent: it would introduce a second
+     *  meaning of "live" that can disagree with `enabled`, and there is no
+     *  draft state here for it to point past. Nullable because the migration
+     *  cannot compute a SHA-256 for rows that already exist; nothing on the
+     *  read path depends on it, so a NULL is inert until the next save. */
+    artifactHash: text("artifact_hash"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("consent_policies_tenant_idx").on(t.tenantId)],
+);
+
+/**
+ * Every distinct artifact a site's consent policy has ever compiled to.
+ *
+ * This exists so "which version did they agree to" has an answer that cannot
+ * be edited afterwards. A consent record (a later phase) stores the hash it
+ * showed the visitor; this table is what that hash resolves to. Without it the
+ * evidence is a pointer into mutable state, which is no evidence at all.
+ *
+ * **Content-addressed, not counter-versioned** — and that is the difference
+ * from `tag_versions`, which this otherwise mirrors. A tag container has a
+ * draft the operator publishes, so a monotonic `version` is the number they
+ * roll back to. A consent policy has no draft: `consent_policies` is one row
+ * per site and `enabled` is the live switch. So there is nothing to publish,
+ * nothing to roll back to, and a counter would only be a race — the tag
+ * manager's `max(version) + 1` is an unguarded check-then-insert whose only
+ * guard is its unique index. Keying on `(site_id, hash)` removes the race and
+ * makes a repeated or reverted save a free no-op insert.
+ *
+ * No foreign key, matching every table in this block: D1 runs with foreign
+ * keys off, so a constraint that exists only on Postgres is a dialect
+ * difference pretending to be an invariant. The cascade is in the service.
+ */
+export const consentVersions = pgTable(
+  "consent_versions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    /** SHA-256 of the canonical artifact JSON. This is the ETag. */
+    hash: text("hash").notNull(),
+    /** The compiled artifact, exactly as the config route serves it. */
+    snapshot: jsonb("snapshot").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // No `updated_at`: the row is immutable by construction. Uniqueness on
+  // (site, hash) is what makes re-saving identical content free.
+  (t) => [uniqueIndex("consent_versions_site_hash_idx").on(t.siteId, t.hash)],
 );
 
 /**

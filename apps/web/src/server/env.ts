@@ -624,6 +624,22 @@ export interface Env {
    *  taken before the prune (`revisions` is in the dump). Defaults to 180. Set
    *  to `0` to disable. */
   REVISIONS_RETENTION_DAYS?: string;
+  /** Days of visitor consent decisions to keep. Defaults to **730** — the only
+   *  retention default in this file longer than a year, and deliberately so.
+   *
+   *  Every other clock here bounds an OPERATIONAL table: traces, analytics,
+   *  job history, revisions. Losing a row past its window costs visibility. A
+   *  consent record is the opposite kind of object — it is the answer to "prove
+   *  this visitor agreed", and a supervisory authority can ask that question
+   *  about a period long past. Common practice under GDPR is 12–24 months, so
+   *  the shortest defensible ceiling is two years, and the cost of the outlier
+   *  is one narrow table rather than the fastest-growing one.
+   *
+   *  It is a ceiling, not a target: an operator with a shorter documented
+   *  policy should lower it, and a record removed for any other reason (the
+   *  visitor withdrew, erasure ran) goes immediately regardless. Set to `0` to
+   *  disable pruning entirely. */
+  CONSENT_RECORDS_RETENTION_DAYS?: string;
   /** Maximum rows a single backup dump may carry before it refuses. The dump is
    *  assembled in memory, so past this point a large workspace OOMs the isolate
    *  instead of producing a backup — and an OOM leaves the tracking row stuck at
@@ -839,6 +855,7 @@ export const STRING_ENV_KEYS = [
   "JOBS_DEAD_LETTER_RETENTION_DAYS",
   "WEBHOOK_DELIVERIES_RETENTION_DAYS",
   "REVISIONS_RETENTION_DAYS",
+  "CONSENT_RECORDS_RETENTION_DAYS",
   "BACKUP_MAX_ROWS",
   "EXPORT_MAX_ROWS",
   "PG_STATEMENT_TIMEOUT_MS",

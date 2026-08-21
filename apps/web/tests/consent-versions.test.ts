@@ -237,7 +237,16 @@ describe("the archive is scoped and cascades", () => {
     expect(await countVersions(site)).toBe(0);
   });
 
-  test("deleting the policy removes its archive", async () => {
+  test("deleting the POLICY leaves the archive standing", async () => {
+    // This pinned the opposite when the archive first landed, and the opposite
+    // was wrong. `DELETE /policies/{siteId}` already ships a promise — "consent
+    // already recorded is evidence and is left alone; it is removed through the
+    // erasure surface, never as a side effect of reconfiguring a site" — in the
+    // deployed OpenAPI and the published SDK. A record points at an artifact by
+    // hash, so cascading here would leave every past record naming a document
+    // nobody can produce: the promise kept literally, gutted in substance.
+    //
+    // The policy row is config. The archive is evidence. Different lifetimes.
     const site = await newSite("delete-policy");
     await savePolicy(db, TENANT, site, {
       undecidedBehaviour: "block",
@@ -245,7 +254,8 @@ describe("the archive is scoped and cascades", () => {
     });
     expect(await countVersions(site)).toBe(1);
     await deletePolicy(db, TENANT, site);
-    expect(await countVersions(site)).toBe(0);
+    expect(await getPolicy(db, TENANT, site)).toBeNull();
+    expect(await countVersions(site)).toBe(1);
   });
 
   test("a cross-tenant delete removes neither", async () => {
@@ -259,7 +269,9 @@ describe("the archive is scoped and cascades", () => {
     expect(await getPolicy(db, TENANT, site)).not.toBeNull();
   });
 
-  test("deleting the site removes the archive with it", async () => {
+  test("deleting the SITE does remove the archive", async () => {
+    // The one case where evidence goes with configuration: removing a site
+    // removes the subject the evidence is about, not merely its settings.
     const site = await newSite("delete-site");
     await savePolicy(db, TENANT, site, {
       undecidedBehaviour: "block",

@@ -625,9 +625,12 @@ export const deletePolicyForDeletedSite = async (
   const t = policiesTable(ctx.dialect);
   const v = versionsTable(ctx.dialect);
   await (ctx.db as any).delete(t).where(eq(t.siteId, siteId));
-  // The archive goes with it. There is no foreign key to do this — see the
-  // table's note — so leaving it out would strand every version row for a site
-  // that no longer exists, invisibly and forever.
+  // The archive goes with it, and here that IS right: deleting a site removes
+  // the subject the evidence is about, not merely its configuration. There is
+  // no foreign key to do this — see the table's note — so leaving it out would
+  // strand every version row for a site that no longer exists, invisibly and
+  // forever. The visitor decisions themselves are removed by the caller, which
+  // owns both tables' lifecycle; see `services/analytics.ts::deleteSite`.
   await (ctx.db as any).delete(v).where(eq(v.siteId, siteId));
   invalidateConsentConfig(siteId);
 };
@@ -826,16 +829,19 @@ export const deletePolicy = async (
   siteId: string,
 ): Promise<void> => {
   const t = policiesTable(ctx.dialect);
-  const v = versionsTable(ctx.dialect);
   await (ctx.db as any)
     .delete(t)
     .where(and(eq(t.siteId, siteId), tenantEq(t.tenantId, tenantId)));
-  // Tenant-scoped like the policy delete above, and for the same reason: the
-  // site id is public, so an unscoped delete keyed on it alone would be a
-  // cross-tenant write primitive that any caller could aim at any site.
-  await (ctx.db as any)
-    .delete(v)
-    .where(and(eq(v.siteId, siteId), tenantEq(v.tenantId, tenantId)));
+  // **The archive deliberately SURVIVES.** An earlier version of this function
+  // cascaded into `consent_versions`, which quietly gutted the promise this
+  // endpoint already ships — "consent already recorded is evidence and is left
+  // alone; it is removed through the erasure surface, never as a side effect of
+  // reconfiguring a site." A record points at an artifact by hash, so deleting
+  // the artifacts leaves the record naming a document nobody can produce, which
+  // is the failure the archive exists to prevent. The policy row is config; the
+  // archive is evidence, and they do not share a lifetime.
+  //
+  // Removing a site is different — see `deletePolicyForDeletedSite`.
   invalidateConsentConfig(siteId);
 };
 

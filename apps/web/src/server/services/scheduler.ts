@@ -38,6 +38,7 @@ import { listConnectedProviders } from "./payments";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { pruneAnalyticsEvents, pruneErrorEvents } from "./analytics";
+import { pruneConsentRecords } from "./consent-records";
 import { pruneBroadcastMessages } from "./broadcast";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
@@ -157,6 +158,11 @@ const DEFAULT_WEBHOOK_DELIVERIES_RETENTION_DAYS = 30;
 // clock is deliberately the longest of the set because this is also the per-row
 // undo path, and pruned rows stay recoverable from any earlier backup.
 const DEFAULT_REVISIONS_RETENTION_DAYS = 180;
+/** Two years. The longest clock in this file, and the reason is in
+ *  `env.ts::CONSENT_RECORDS_RETENTION_DAYS`: every other prune here bounds an
+ *  operational table, while a consent record is the answer to "prove they
+ *  agreed" — a question a regulator can ask about a period long past. */
+const DEFAULT_CONSENT_RECORDS_RETENTION_DAYS = 730;
 
 const dueCronFunctions = (
   fns: FunctionRow[],
@@ -640,6 +646,25 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       await pruneBroadcastMessages(ctx, now.getTime());
     } catch (e) {
       console.error("[broadcast-prune] sweep failed", e);
+    }
+
+    // Visitor consent decisions. Its own try/catch like every prune above, and
+    // that is load-bearing rather than stylistic: `claimSweep` burns the 24-hour
+    // watermark BEFORE this block runs, so one uncaught throw here costs a full
+    // day of every other prune, not just this one.
+    try {
+      const consentDays = retentionOf(
+        env.CONSENT_RECORDS_RETENTION_DAYS,
+        DEFAULT_CONSENT_RECORDS_RETENTION_DAYS,
+      );
+      if (consentDays > 0) {
+        await pruneConsentRecords(
+          { db: ctx.db, dialect: ctx.dialect },
+          now.getTime() - consentDays * 86_400_000,
+        );
+      }
+    } catch (e) {
+      console.error("[consent-records-prune] sweep failed", e);
     }
   }
 };

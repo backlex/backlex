@@ -42,6 +42,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { hashToken } from "./shared-links";
 import { deletePolicyForDeletedSite } from "./consent";
+import { deleteSiteRecords } from "./consent-records";
 
 export interface AnalyticsDbCtx {
   db: unknown;
@@ -1592,6 +1593,11 @@ export const deleteSite = async (
   // is keyed on `site_id`, so the admin console (which iterates SITES) can
   // neither show it nor remove it, while the row stays live.
   await deletePolicyForDeletedSite(ctx, id);
+  // …and the visitor decisions recorded against it. Deleting a site removes the
+  // subject of the evidence, which is the one case where evidence does go with
+  // the configuration. Called from here rather than from `deletePolicy*` so the
+  // policy module and the records module do not have to import each other.
+  await deleteSiteRecords(ctx, id);
 };
 
 /**

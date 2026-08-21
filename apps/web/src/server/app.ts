@@ -482,14 +482,70 @@ export const createApp = (env: Env) => {
     path.startsWith("/book/") ||
     path.startsWith("/b/");
 
+  /**
+   * Paths a browser on somebody else's domain must be able to load as a
+   * SUBRESOURCE — a `<script src>`, not a `fetch()`.
+   *
+   * ── This was a live bug, and it was invisible from every test we had ──────
+   * `secureHeaders()` stamps `Cross-Origin-Resource-Policy: same-origin` on
+   * every response. CORP is enforced on **no-cors** requests, which is exactly
+   * what a classic `<script src>` is — so the analytics tag, the tag-manager
+   * container and the form embed loader were all being served with a header
+   * that tells the browser to throw them away. Measured in a real browser
+   * across two real origins: `net::ERR_BLOCKED_BY_RESPONSE.NotSameOrigin`, and
+   * confirmed on the deployed worker, not just locally.
+   *
+   * Nothing caught it because CORP has no effect same-origin, and every test
+   * and local smoke run for those features was same-origin: the in-process
+   * harness has no origin at all, and a puppeteer pass against localhost is
+   * loading the tag from the page's own host. An `ACAO: *` on the response
+   * looks like the cross-origin story is handled, and for `fetch()` it is —
+   * CORP does not apply to CORS-mode requests, which is why the consent config
+   * endpoint works either way.
+   *
+   * Relaxed per-path rather than globally, because `same-origin` is the right
+   * default for everything else: it is what stops a hostile page pulling an
+   * authenticated JSON response into itself as a no-cors subresource. Only
+   * documents that are public by design are listed, and each is public for a
+   * reason written down where it is served.
+   *
+   * ── Narrower than `isFramable`, deliberately ──────────────────────────────
+   * The framable set is NOT reused, even though it looks like the same list.
+   * CORP governs subresource loads; it does not block a cross-origin IFRAME
+   * unless the embedder sets COEP, which is why the form, booking and dashboard
+   * embeds work today with `same-origin` on them. And `/api/public/*` is
+   * fetched from INSIDE those iframes, where the document's own origin is ours
+   * — same-origin, so CORP never applies. Relaxing either would widen the hole
+   * without fixing anything.
+   */
+  const isPublicSubresource = (path: string): boolean =>
+    // The drop-in analytics tag and the per-site tag-manager container, both
+    // `<script src>` on a customer's own domain.
+    path === "/api/analytics/script.js" ||
+    path.startsWith("/api/analytics/tm/") ||
+    // The form embed loader — a `<script src>` that injects the iframe.
+    path === "/embed/form.js" ||
+    // `sendBeacon` is a no-cors request, so CORP is in scope for its response
+    // even though the beacon discards it.
+    path === "/api/analytics/collect" ||
+    // Read with `fetch()` today, so CORP does not currently bite — but it is
+    // public by the same argument, and the banner that will load beside it is a
+    // subresource.
+    path === "/api/consent/config";
+
   // Registered BEFORE secureHeaders so its post-phase runs LAST (Hono runs
   // post-middleware in reverse registration order) — this is the only place we
-  // can reliably strip the X-Frame-Options that secureHeaders() sets, for the
-  // framable embed surfaces. (The CSP `frame-ancestors *` set below already
-  // makes modern browsers ignore XFO, but we drop it for older agents too.)
+  // can reliably override the headers that secureHeaders() sets. Two of them:
+  // the X-Frame-Options on framable embed surfaces (the CSP `frame-ancestors *`
+  // set below already makes modern browsers ignore XFO, but we drop it for
+  // older agents too), and the CORP above.
   app.use("*", async (c, next) => {
     await next();
-    if (isFramable(new URL(c.req.url).pathname)) c.res.headers.delete("x-frame-options");
+    const path = new URL(c.req.url).pathname;
+    if (isFramable(path)) c.res.headers.delete("x-frame-options");
+    if (isPublicSubresource(path)) {
+      c.res.headers.set("cross-origin-resource-policy", "cross-origin");
+    }
   });
 
   app.use("*", secureHeaders());

@@ -392,7 +392,9 @@ export const pruneConsentRecords = async (
   const ids = (await (ctx.db as any)
     .select({ id: t.id })
     .from(t)
-    .where(lt(t.createdAt, cutoff))
+    // Cast for the same reason `routes/items.ts` does: `t` is a union of the
+    // two dialects' column types, and `lt`'s overloads do not resolve across it.
+    .where(lt(t.createdAt as any, cutoff))
     .limit(5_000)) as { id: string }[];
   if (!ids.length) return 0;
   await (ctx.db as any).delete(t).where(

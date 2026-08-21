@@ -836,6 +836,10 @@ export const createApp = (env: Env) => {
   //    what the operator publishes to their own visitors; the projection behind
   //    it names its columns so the site's operator settings cannot reach the
   //    body. See `routes/consent-public.ts`.
+  //  - `/api/consent/record` — where that banner posts the visitor's decision,
+  //    and where the visitor withdraws it. The only write on this list, so it
+  //    carries four ceilings rather than one and accepts nothing unless the site
+  //    has an ENABLED consent policy. Same file.
   //
   // Matched against `c.req.path`, which excludes the query string — so
   // `/api/consent/config?s=…` is exempt on the exact entry and needs no prefix.
@@ -843,6 +847,7 @@ export const createApp = (env: Env) => {
     "/api/analytics/collect",
     "/api/analytics/script.js",
     "/api/consent/config",
+    "/api/consent/record",
   ];
   // The tag manager's per-site container joins them, and it is a path
   // PARAMETER, so it needs a prefix rather than another exact entry. The exact

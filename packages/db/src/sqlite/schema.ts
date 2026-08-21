@@ -3389,6 +3389,45 @@ export const consentVersions = sqliteTable(
 );
 
 /**
+ * A visitor's decision, and what it was a decision about. Append-only: no
+ * `updated_at`, no update path in the service, and a change of mind is a new
+ * row. `subject_id` is caller-supplied and is a correlator, not an identity;
+ * the IP is stored as a SALTED hash or not at all; `hash_grade` records whether
+ * the artifact the visitor named still resolves. The full argument is on the pg
+ * twin.
+ */
+export const consentRecords = sqliteTable(
+  "consent_records",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    subjectId: text("subject_id").notNull(),
+    policyHash: text("policy_hash"),
+    versionId: text("version_id"),
+    /** `current` | `archived` | `unresolved`. */
+    hashGrade: text("hash_grade").notNull(),
+    /** `granted` | `denied` | `partial`, derived server-side from `grants`. */
+    decision: text("decision").notNull(),
+    grants: text("grants", { mode: "json" }).$type<Record<string, boolean>>().notNull(),
+    /** `banner` | `preferences` | `api` | `signal`. */
+    source: text("source").notNull(),
+    locale: text("locale"),
+    country: text("country"),
+    /** Salted SHA-256 of the request IP — never the address. */
+    ipHash: text("ip_hash"),
+    userAgent: text("user_agent"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("consent_records_site_subject_idx").on(t.siteId, t.subjectId, t.createdAt),
+    index("consent_records_tenant_subject_idx").on(t.tenantId, t.subjectId),
+    index("consent_records_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("consent_records_created_idx").on(t.createdAt),
+  ],
+);
+
+/**
  * ── Tag manager ───────────────────────────────────────────────────────────
  *
  * A GTM-style container, hung off the site that already carries the tag. The

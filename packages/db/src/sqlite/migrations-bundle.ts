@@ -133,6 +133,7 @@ import m126 from "../../drizzle/sqlite/20260818210000_analytics_path_base/migrat
 import m127 from "../../drizzle/sqlite/20260819090000_tag_manager/migration.sql" with { type: "text" };
 import m128 from "../../drizzle/sqlite/20260819100000_consent_policies/migration.sql" with { type: "text" };
 import m129 from "../../drizzle/sqlite/20260821090000_consent_versions/migration.sql" with { type: "text" };
+import m130 from "../../drizzle/sqlite/20260821140000_consent_records/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -270,4 +271,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260819090000_tag_manager", sql: m127 },
   { name: "20260819100000_consent_policies", sql: m128 },
   { name: "20260821090000_consent_versions", sql: m129 },
+  { name: "20260821140000_consent_records", sql: m130 },
 ];

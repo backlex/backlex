@@ -128,6 +128,7 @@ import m121 from "../../drizzle/pg/20260818210000_analytics_path_base/migration.
 import m122 from "../../drizzle/pg/20260819090000_tag_manager/migration.sql" with { type: "text" };
 import m123 from "../../drizzle/pg/20260819100000_consent_policies/migration.sql" with { type: "text" };
 import m124 from "../../drizzle/pg/20260821090000_consent_versions/migration.sql" with { type: "text" };
+import m125 from "../../drizzle/pg/20260821140000_consent_records/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -260,4 +261,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260819090000_tag_manager", sql: m122 },
   { name: "20260819100000_consent_policies", sql: m123 },
   { name: "20260821090000_consent_versions", sql: m124 },
+  { name: "20260821140000_consent_records", sql: m125 },
 ];

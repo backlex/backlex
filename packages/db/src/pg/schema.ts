@@ -3827,6 +3827,98 @@ export const consentVersions = pgTable(
 );
 
 /**
+ * A visitor's decision, and what it was a decision ABOUT.
+ *
+ * ── Append-only, and that is four mechanical properties, not a promise ────
+ * There is no `updated_at` column; the service exports an insert, reads, and
+ * deletes, but no update; a visitor who changes their mind gets a NEW row, with
+ * the latest `created_at` for `(site_id, subject_id)` standing as the answer;
+ * and only three things remove a row — the retention prune, the erasure
+ * surface, and the visitor's own withdrawal. All three are removals, none is an
+ * edit. Editing a decision after the fact is the one thing evidence may not
+ * permit.
+ *
+ * Deliberately NOT `signature_signers`' shape, which is minted empty at send
+ * time and filled by a guarded conditional UPDATE. That works because one token
+ * addresses one person one time. A banner has no such token.
+ *
+ * ── `subject_id` is a correlator, not an identity ─────────────────────────
+ * The banner mints it in first-party storage on the customer's own origin, so
+ * it is entirely caller-supplied and unauthenticated. It is what lets a visitor
+ * be shown their own decision and withdraw it; it proves nothing about who they
+ * are, and the docs say so rather than implying otherwise.
+ *
+ * ── The IP is stored as a SALTED hash, or not at all ──────────────────────
+ * Storing the address would make this table its own processing activity — an IP
+ * is personal data — while proving very little: `requestMeta` reads
+ * `cf-connecting-ip` FIRST on every runtime and nothing in the four entry
+ * points sets or strips it, so on any deploy not behind Cloudflare that header
+ * is whatever the caller typed. A plain digest would not help either: the IPv4
+ * space is 2^32 and enumerates in seconds, so an unsalted hash is not a
+ * pseudonym. Same reasoning as `erasure_requests.subject_hash`.
+ *
+ * ── `hash_grade` exists because "which text did they agree to" has three
+ *    answers, not two ──────────────────────────────────────────────────────
+ * The artifact hash the visitor reports is resolved once, at ingest, and the
+ * result recorded: `current` (it is the live artifact), `archived` (a real
+ * artifact, since superseded) or `unresolved` (it matched nothing). An operator
+ * handing a regulator a consent log has to know which rows point at something —
+ * the same doctrine as `filesUnreachable` on the erasure report. An unknown
+ * hash is never a reason to REFUSE the record: refusing does not un-consent
+ * anyone, it only destroys the evidence while the site keeps behaving as
+ * consented.
+ *
+ * No foreign key on `site_id` or `version_id`, matching every table in this
+ * block: D1 runs with foreign keys off.
+ */
+export const consentRecords = pgTable(
+  "consent_records",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    siteId: text("site_id").notNull(),
+    /** Durable id the banner minted in first-party storage. Caller-supplied. */
+    subjectId: text("subject_id").notNull(),
+    /** The artifact hash the visitor reports being shown. Nullable: a site can
+     *  serve `enabled:false`, which carries no hash at all. */
+    policyHash: text("policy_hash"),
+    /** The `consent_versions.id` that hash resolved to, or NULL. */
+    versionId: text("version_id"),
+    /** `current` | `archived` | `unresolved` — see the note above. */
+    hashGrade: text("hash_grade").notNull(),
+    /** `granted` | `denied` | `partial`. Derived SERVER-SIDE from `grants`,
+     *  never taken from the body, so it cannot disagree with them. */
+    decision: text("decision").notNull(),
+    /** `{ functional: true, analytics: false, marketing: false }`, clamped to
+     *  the categories the resolved artifact actually offered. */
+    grants: jsonb("grants").$type<Record<string, boolean>>().notNull(),
+    /** How the decision was made: `banner` | `preferences` | `api` | `signal`
+     *  (GPC/DNT). A regulator's first question about a "granted" is whether a
+     *  human clicked anything. */
+    source: text("source").notNull(),
+    /** Which locale's wording was on screen. The artifact holds every locale,
+     *  so without this the record names a document but not the text. */
+    locale: text("locale"),
+    country: text("country"),
+    /** Salted SHA-256 of the request IP — never the address. See above. */
+    ipHash: text("ip_hash"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The read a visitor's own withdrawal and "what do they currently say"
+    // both make. `created_at` is in the key so latest-wins needs no sort.
+    index("consent_records_site_subject_idx").on(t.siteId, t.subjectId, t.createdAt),
+    // Erasure locates a subject across every site in one workspace.
+    index("consent_records_tenant_subject_idx").on(t.tenantId, t.subjectId),
+    // The admin log, newest first.
+    index("consent_records_tenant_created_idx").on(t.tenantId, t.createdAt),
+    // The retention prune, which is tenant-blind by design.
+    index("consent_records_created_idx").on(t.createdAt),
+  ],
+);
+
+/**
  * ── Tag manager ───────────────────────────────────────────────────────────
  *
  * A GTM-style container, hung off the site that already carries the tag. The

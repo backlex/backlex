@@ -381,6 +381,10 @@ const ROUTE_FAMILIES: Record<string, Family> = {
     retiredBy: "tag-manager",
   },
   "/api/admin/consent": { client: "consent" },
+  "/api/consent": {
+    serverOnly:
+      "The config document a cookie banner reads on the customer's own domain, addressed by a public site id and no credential at all. It is the same shape of exclusion as the collect route: hand-written plain JS on a foreign origin, an uncredentialed `ACAO: *` response, and a body that is only ever what the operator already published to their own anonymous visitors. An SDK method would have to carry credentials the banner must not hold, to fetch a document any visitor can already read. Everything an application would automate — writing the policy, reading its version history — is on `consent` against the admin surface.",
+  },
   "/api/admin/approvals": { client: "approvals" },
   "/api/admin/auth": ADMIN,
   "/api/admin/auth-hooks": { client: "auth-hooks" },

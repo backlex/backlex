@@ -34,6 +34,7 @@ import { advisorRoutes } from "./routes/advisor";
 import { analyticsRoutes } from "./routes/analytics";
 import { tagManagerRoutes } from "./routes/tag-manager";
 import { consentRoutes } from "./routes/consent";
+import { consentPublicRoutes } from "./routes/consent-public";
 import { analyticsCollectRoutes } from "./routes/analytics-collect";
 import { analyticsIngestRoutes } from "./routes/analytics-ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
@@ -763,8 +764,8 @@ export const createApp = (env: Env) => {
       ],
     }),
   );
-  // Two carve-outs from the credentialed CORS policy above, for the same
-  // reason: both serve documents/endpoints that ANY origin must be able to
+  // Carve-outs from the credentialed CORS policy above, all for the same
+  // reason: each serves a document or endpoint that ANY origin must be able to
   // reach, and the policy here would replace their own `ACAO: *` with a single
   // allowed origin — which is exactly wrong for them.
   //
@@ -774,10 +775,22 @@ export const createApp = (env: Env) => {
   //    send a header or survive a preflight. The route answers `ACAO: *`
   //    WITHOUT credentials and is append-only; it can never read a row back.
   //    See `routes/analytics-collect.ts` for what replaces the origin check.
-  const CORS_EXEMPT = ["/api/analytics/collect", "/api/analytics/script.js"];
+  //  - `/api/consent/config` — what a cookie banner on a customer's own domain
+  //    reads to know what to show. Read-only, session-free, and it returns only
+  //    what the operator publishes to their own visitors; the projection behind
+  //    it names its columns so the site's operator settings cannot reach the
+  //    body. See `routes/consent-public.ts`.
+  //
+  // Matched against `c.req.path`, which excludes the query string — so
+  // `/api/consent/config?s=…` is exempt on the exact entry and needs no prefix.
+  const CORS_EXEMPT = [
+    "/api/analytics/collect",
+    "/api/analytics/script.js",
+    "/api/consent/config",
+  ];
   // The tag manager's per-site container joins them, and it is a path
-  // PARAMETER, so it needs a prefix rather than a third exact entry. Both exact
-  // entries stay — the two older paths are not under this prefix.
+  // PARAMETER, so it needs a prefix rather than another exact entry. The exact
+  // entries above stay — none of those paths is under this prefix.
   //
   // Worth naming what this exemption actually does, because "CORS" sends the
   // next person to the wrong layer: a `<script src>` without `crossorigin` is
@@ -1007,6 +1020,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/analytics", analyticsRoutes);
   app.route("/api/admin/tag-manager", tagManagerRoutes);
   app.route("/api/admin/consent", consentRoutes);
+  app.route("/api/consent", consentPublicRoutes);
   // Public ingest — authenticated by a publishable key or a normal session,
   // never anonymous. Kept off `/api/admin/*` because client bundles call it.
   app.route("/api/analytics", analyticsCollectRoutes);

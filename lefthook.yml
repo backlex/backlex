@@ -40,7 +40,12 @@ pre-commit:
     # guarantee is `consent-banner-bundle.test.ts`, which re-runs the same
     # comparison inside `bun test` and therefore inside CI.
     - name: consent-banner-in-sync
-      glob: "apps/web/src/client/consent-banner/**/*.ts"
+      # NOT `**/*.ts`: these sources sit directly in the directory with no
+      # intermediate folder, and `**` demands one, so that glob matched NOTHING.
+      # The migration job above only works because its paths really are nested.
+      # A glob that matches nothing skips SILENTLY, which in the hook output
+      # reads exactly like a job that ran and passed.
+      glob: "apps/web/src/client/consent-banner/*"
       run: bun scripts/gen-consent-banner.ts && git diff --exit-code apps/web/src/server/services/consent-banner-bundle.ts
 
 # Pre-push: full CI parity. Branch protection on GitHub isn't available on

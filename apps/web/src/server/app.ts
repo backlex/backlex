@@ -531,7 +531,13 @@ export const createApp = (env: Env) => {
     // Read with `fetch()` today, so CORP does not currently bite — but it is
     // public by the same argument, and the banner that will load beside it is a
     // subresource.
-    path === "/api/consent/config";
+    path === "/api/consent/config" ||
+    // Its sibling, and the one that WAS missing. The POST takes `text/plain`
+    // specifically so `navigator.sendBeacon` can fire it during page unload —
+    // and a beacon is a no-cors request, which is the exact shape CORP bites.
+    // `/api/analytics/collect` was relaxed for this reason and this one was
+    // not, which is the same omission twice rather than a distinction.
+    path === "/api/consent/record";
 
   // Registered BEFORE secureHeaders so its post-phase runs LAST (Hono runs
   // post-middleware in reverse registration order) — this is the only place we

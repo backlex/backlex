@@ -73,6 +73,11 @@ test("every surface a foreign page loads as a subresource is cross-origin", asyn
     // never actually broken, but it is public by the same argument and a
     // banner loader may yet reach it as a subresource.
     "/api/consent/config",
+    // Where a banner posts a decision. It takes `text/plain` precisely so
+    // `navigator.sendBeacon` can fire it during unload, and a beacon is
+    // no-cors — the same argument that relaxed `/api/analytics/collect`. It
+    // was missed when this list was first written.
+    "/api/consent/record",
     // The embeddable form loader — a `<script src>` that injects the iframe.
     "/embed/form.js",
   ];

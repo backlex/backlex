@@ -22,7 +22,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { SUBAPPS } from "../src/server/routes/openapi";
 import staticSpec from "../src/server/lib/openapi-static.generated.json";
 
@@ -148,4 +148,35 @@ describe("OpenAPI sub-app coverage", () => {
     // document. Anything far below the current count means regeneration broke.
     expect(paths.length).toBeGreaterThan(300);
   });
+});
+
+/**
+ * The checked-in spec must match what the generator produces RIGHT NOW.
+ *
+ * `apps/web/package.json`'s `build` regenerates this file before every vite
+ * build, so a route added without regenerating leaves the committed copy one
+ * commit stale — and nothing noticed until a push regenerated it and left the
+ * diff sitting in the working tree. That is exactly what happened to
+ * `/api/admin/consent/postures/suggested`.
+ *
+ * The lefthook job beside `migration-bundles-in-sync` and
+ * `consent-banner-in-sync` is the fast feedback; this is the guarantee. Its
+ * glob watches the ROUTE sources, so editing the generator or the generated
+ * file by hand never fires it, and `--no-verify` skips it. This runs inside
+ * `bun test`, and therefore inside CI, with none of those holes.
+ */
+describe("the generated spec is in sync with the routes", () => {
+  test("regenerating produces byte-identical output", async () => {
+    const { buildStable, emit } = await import("../scripts/gen-openapi-static");
+    const fresh = emit(await buildStable());
+    const onDisk = readFileSync(
+      resolve(import.meta.dir, "..", "src/server/lib/openapi-static.generated.json"),
+      "utf8",
+    );
+    expect(
+      fresh === onDisk
+        ? "in sync"
+        : "STALE — run: bun run --cwd apps/web gen:openapi-static",
+    ).toBe("in sync");
+  }, 60_000);
 });

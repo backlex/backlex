@@ -136,9 +136,24 @@ The order is locked: refresh → secondary actions → primary CTA on the right.
 
 ### Sidebar
 
-`AppSidebar` is collapsible-icon. Nav items live in `client/lib/nav.ts`
-(single source for sidebar AND command palette). To add a route, add it
-to `NAV_ITEMS` first.
+`AppSidebar` is collapsible-icon. Nav items live in
+`client/admin/config.ts` as themed group arrays — `NAV_PRIMARY`, `NAV_DATA`,
+`NAV_AUTOMATION`, `NAV_OBSERVABILITY` — plus `NAV_DEVELOPERS` and
+`NAV_SETTINGS`. Adding a route takes **three** edits and missing any one of
+them fails quietly:
+
+1. the group array, which is what the sidebar renders;
+2. the `NAV_ITEMS` concatenation below it, which is the ONLY thing the URL
+   router and the command palette read — a row left out of it renders, is
+   clickable, and rewrites the URL back to where you came from;
+3. `client/admin/ui.tsx::NAV_LABELS`, or the sidebar shows the raw lowercase id.
+   Do not check this from the command palette: it filters on the label, so a
+   missing entry still matches what you typed.
+
+(This section used to name `client/lib/nav.ts`. That file existed, was imported
+by nothing, and listed routes that did not exist — following the instruction
+produced a green lint, a green typecheck, a green suite and no visible change.
+It has been deleted.)
 
 **No nested groups.** If a feature warrants a submenu, it gets a top-level
 nav entry instead — flat is faster to scan.

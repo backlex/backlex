@@ -52,7 +52,16 @@ const sortKeys = <T>(obj: Record<string, T> | undefined): Record<string, T> | un
   ) as Record<string, T>;
 };
 
-const main = async (): Promise<void> => {
+/**
+ * The document, in the exact shape that gets written.
+ *
+ * Split out of `main` so a test can regenerate and compare without writing to
+ * the tree — the same seam `scripts/gen-consent-banner.ts` exposes, and for the
+ * same reason: the lefthook job that guards this globs the SOURCES, so editing
+ * the generated file or this generator by hand never fires it, and
+ * `--no-verify` skips it outright.
+ */
+export const buildStable = async (): Promise<Record<string, unknown>> => {
   // Populate the global registry's lazily-loaded sibling metadata first.
   await loadMetadata();
   const doc = buildStaticDoc({ subApps: SUBAPPS });
@@ -74,7 +83,17 @@ const main = async (): Promise<void> => {
         }
       : {}),
   };
-  writeFileSync(OUT, `${JSON.stringify(stable)}\n`);
+  return stable as Record<string, unknown>;
+};
+
+/** The exact bytes on disk, so a comparison is byte-for-byte rather than
+ *  structural — a re-serialisation with different spacing is drift too. */
+export const emit = (stable: unknown): string => `${JSON.stringify(stable)}\n`;
+
+const main = async (): Promise<void> => {
+  const stable = await buildStable();
+  const pathCount = Object.keys((stable.paths ?? {}) as Record<string, unknown>).length;
+  writeFileSync(OUT, emit(stable));
   console.log(`[gen-openapi-static] wrote ${pathCount} static paths → ${OUT}`);
 };
 

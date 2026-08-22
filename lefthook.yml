@@ -47,6 +47,27 @@ pre-commit:
       # reads exactly like a job that ran and passed.
       glob: "apps/web/src/client/consent-banner/*"
       run: bun scripts/gen-consent-banner.ts && git diff --exit-code apps/web/src/server/services/consent-banner-bundle.ts
+    # Third of the same shape, and it exists because the failure already
+    # happened: `apps/web`'s `build` regenerates the static OpenAPI doc before
+    # every vite build, so a route added without regenerating leaves the
+    # committed copy one commit behind. `/api/admin/consent/postures/suggested`
+    # shipped that way — the push's OWN build produced the diff and left it
+    # sitting in the working tree, where nothing was looking.
+    #
+    # TWO globs, because route files live BOTH directly in the folder and one
+    # level down (`routes/items/`, `routes/roles/`). `*` alone misses the
+    # nested ones, `**/*` alone misses the flat ones — and a glob that matches
+    # nothing SKIPS SILENTLY, which in the hook output reads exactly like a job
+    # that ran and passed.
+    #
+    # The guarantee is the twin in
+    # `apps/web/tests/openapi-subapp-coverage.test.ts`, which runs in CI and has
+    # none of this hook's holes.
+    - name: openapi-spec-in-sync
+      glob:
+        - "apps/web/src/server/routes/*.ts"
+        - "apps/web/src/server/routes/*/*.ts"
+      run: bun run --cwd apps/web gen:openapi-static && git diff --exit-code apps/web/src/server/lib/openapi-static.generated.json
 
 # Pre-push: full CI parity. Branch protection on GitHub isn't available on
 # free/private repos, so this hook is the only thing standing between a

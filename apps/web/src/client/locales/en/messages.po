@@ -2176,6 +2176,10 @@ msgstr "Advanced"
 msgid "Advanced — cross-field rule"
 msgstr "Advanced — cross-field rule"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Advertising and retargeting. Does not fire unless the visitor agrees."
+msgstr "Advertising and retargeting. Does not fire unless the visitor agrees."
+
 #: src/client/admin/pages/observability/advisor.tsx
 #: src/client/admin/ui.tsx
 msgid "Advisor"
@@ -2460,6 +2464,10 @@ msgstr "Also arrives ready to run"
 msgid "Also show rows that are out of play"
 msgstr "Also show rows that are out of play"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Always fires. The site cannot run without it, so nothing is asked."
+msgstr "Always fires. The site cannot run without it, so nothing is asked."
+
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "always on"
 msgstr "always on"
@@ -2521,6 +2529,7 @@ msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "An MCP client is asking to access this workspace on your behalf."
 
 #: src/client/admin/pages/observability/analytics.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/ui.tsx
 msgid "Analytics"
 msgstr "Analytics"
@@ -4733,6 +4742,10 @@ msgstr "Connection URL"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Consent"
 msgstr "Consent"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Consent category"
+msgstr "Consent category"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Consent checkbox"
@@ -8380,6 +8393,10 @@ msgstr "Function saved."
 msgid "Function scaffold ready."
 msgstr "Function scaffold ready."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Functional"
+msgstr "Functional"
+
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
@@ -10577,6 +10594,10 @@ msgstr "Mark paid"
 msgid "Marked as a no-show."
 msgstr "Marked as a no-show."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Marketing"
+msgstr "Marketing"
+
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Marketplace category"
 msgstr "Marketplace category"
@@ -10730,6 +10751,10 @@ msgstr "mean value"
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "measured"
 msgstr "measured"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Measurement. Does not fire unless the visitor agrees."
+msgstr "Measurement. Does not fire unless the visitor agrees."
 
 #: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Measures every visitor. Defensible because the tag stores nothing on the device and its visitor id rotates daily — but that is a legal position, not a fact."
@@ -14525,6 +14550,10 @@ msgstr "Prefer a password?"
 #: src/client/admin/pages/account-page.tsx
 msgid "Preferences"
 msgstr "Preferences"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Preferences and convenience. Does not fire unless the visitor agrees."
+msgstr "Preferences and convenience. Does not fire unless the visitor agrees."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Preferences saved."
@@ -18833,6 +18862,7 @@ msgid "Stream"
 msgstr "Stream"
 
 #: src/client/admin/pages/observability/consent-tab.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Strictly necessary"
 msgstr "Strictly necessary"
 
@@ -20064,6 +20094,12 @@ msgstr "This text has no Latin letters to build a URL from — type a slug in th
 #: src/client/components/boot-screen.tsx
 msgid "This usually clears on its own in a moment. We'll keep trying automatically."
 msgstr "This usually clears on its own in a moment. We'll keep trying automatically."
+
+#. placeholder {0}: declaredFor(tag.templateId) .map((c) => consentOptions.find((o) => o.value === c)?.label ?? c) .join(" + ")
+#. placeholder {0}: template.consentCategories .map((c) => consentOptions.find((o) => o.value === c)?.label ?? c) .join(" + ")
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "This vendor declares itself {0}."
+msgstr "This vendor declares itself {0}."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "This weakens two-factor authentication"
@@ -21425,6 +21461,10 @@ msgstr "Welcome back"
 #: src/client/pages/sign-in.tsx
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "What a visitor's refusal switches off."
+msgstr "What a visitor's refusal switches off."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "What an editor will see"

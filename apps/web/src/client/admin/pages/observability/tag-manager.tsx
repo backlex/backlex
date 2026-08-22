@@ -6,7 +6,7 @@
 // Its own page rather than a seventh tab on analytics.tsx: that file is already
 // six tabs and two thousand lines, and this is a different product surface.
 import type { PushToast } from "../../types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "../../ui";
@@ -53,6 +53,22 @@ const fmtWhen = (ms: number): string =>
     minute: "2-digit",
   });
 
+/**
+ * Every category a tag can be filed under, strictest first.
+ *
+ * The order is the whole point, not presentation. When a vendor declares more
+ * than one — Yandex Metrica and Microsoft Clarity each declare analytics AND
+ * marketing, because a Metrica goal can drive Direct retargeting — the column
+ * holds exactly one value, so something has to choose. It chooses the strictest
+ * one the vendor declared: under-declaring a tag to a consent tool that is
+ * behaving correctly is the failure that matters, and it is the one a visitor
+ * cannot see.
+ */
+const CONSENT_CATEGORIES = ["marketing", "analytics", "functional", "none"] as const;
+
+const strictestCategory = (declared: readonly string[] | undefined): string =>
+  CONSENT_CATEGORIES.find((c) => declared?.includes(c)) ?? "marketing";
+
 export function TagManagerPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [tab, setTab] = useState<Tab>("tags");
@@ -86,6 +102,41 @@ export function TagManagerPage({ pushToast }: { pushToast: PushToast }) {
 
   const templates = vocabulary.data?.data.templates ?? [];
   const triggerTypes = vocabulary.data?.data.triggerTypes ?? [];
+
+  // Each option carries what a refusal actually switches off. "Functional"
+  // versus "analytics" is not self-evident, and this is the field that decides
+  // whether a visitor saying no reaches this tag at all.
+  const consentOptions = [
+    {
+      value: "marketing",
+      label: t`Marketing`,
+      hint: t`Advertising and retargeting. Does not fire unless the visitor agrees.`,
+    },
+    {
+      value: "analytics",
+      label: t`Analytics`,
+      hint: t`Measurement. Does not fire unless the visitor agrees.`,
+    },
+    {
+      value: "functional",
+      label: t`Functional`,
+      hint: t`Preferences and convenience. Does not fire unless the visitor agrees.`,
+    },
+    {
+      value: "none",
+      label: t`Strictly necessary`,
+      hint: t`Always fires. The site cannot run without it, so nothing is asked.`,
+    },
+  ];
+
+  // The row is a list to scan, not a decision being made: the label alone, so
+  // four rows do not repeat the same sentence four times. The dialog keeps the
+  // hints, which is where an operator is actually choosing.
+  const rowConsentOptions = consentOptions.map(({ value, label }) => ({ value, label }));
+
+  /** What the vendor itself says this tag is for, when it says anything. */
+  const declaredFor = (templateId: string | null | undefined): string[] =>
+    (templateId && templates.find((x) => x.id === templateId)?.consentCategories) || [];
 
   if (sites.isLoading || vocabulary.isLoading) return <TagManagerSkeleton />;
 
@@ -205,13 +256,36 @@ export function TagManagerPage({ pushToast }: { pushToast: PushToast }) {
             <ScrollArea className="w-full border-t" viewportClassName="max-h-[60vh]">
               <div className="divide-y">
                 {(tags.data?.data ?? []).map((tag) => (
-                  <div key={tag.id} className="flex items-center gap-3 p-4">
+                  <div key={tag.id} className="flex flex-wrap items-center gap-3 p-4">
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{tag.name}</div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {tag.templateId ?? tag.kind} · {tag.consentCategory}
+                        {tag.templateId ?? tag.kind}
                       </div>
+                      {/* Only when the operator's filing is LAXER than what the
+                          vendor declares. Said rather than corrected: moving a
+                          tag between categories changes who it fires for, and
+                          that is a compliance call to make deliberately. */}
+                      {declaredFor(tag.templateId).length > 0 &&
+                        !declaredFor(tag.templateId).includes(tag.consentCategory) && (
+                          <div className="truncate text-xs text-amber-600 dark:text-amber-500">
+                            {t`This vendor declares itself ${declaredFor(tag.templateId)
+                              .map((c) => consentOptions.find((o) => o.value === c)?.label ?? c)
+                              .join(" + ")}.`}
+                          </div>
+                        )}
                     </div>
+                    {/* Full width on its own line on a phone, inline from sm:
+                        up — the row already carries a name, a switch and a
+                        delete, and a fourth control inline overflows 390px. */}
+                    <Select
+                      value={tag.consentCategory}
+                      onValueChange={(consentCategory) =>
+                        updateTag.mutate({ id: tag.id, patch: { consentCategory } })
+                      }
+                      className="order-last w-full min-w-0 sm:order-none sm:w-44"
+                      options={rowConsentOptions}
+                    />
                     <Switch
                       checked={tag.enabled}
                       onChange={(enabled) =>
@@ -377,6 +451,7 @@ export function TagManagerPage({ pushToast }: { pushToast: PushToast }) {
         open={tagOpen}
         onOpenChange={setTagOpen}
         templates={templates}
+        consentOptions={consentOptions}
         triggers={(triggers.data?.data ?? []).map((tr) => ({ id: tr.id, name: tr.name }))}
         onCreate={(input) => {
           // Optimistic: the dialog closes and the row appears before the
@@ -407,21 +482,36 @@ function NewTagDialog({
   open,
   onOpenChange,
   templates,
+  consentOptions,
   triggers,
   onCreate,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  templates: { id: string; label: string; params: { key: string; label: string; required: boolean; kind: string; options?: { value: string; label: string }[]; placeholder?: string; help?: string; formatDocumented: boolean }[] }[];
+  consentOptions: { value: string; label: string; hint: string }[];
+  templates: { id: string; label: string; consentCategories?: string[]; params: { key: string; label: string; required: boolean; kind: string; options?: { value: string; label: string }[]; placeholder?: string; help?: string; formatDocumented: boolean }[] }[];
   triggers: { id: string; name: string }[];
   onCreate: (input: Record<string, unknown>) => void;
 }) {
   const [templateId, setTemplateId] = useState("");
   const [name, setName] = useState("");
   const [params, setParams] = useState<Record<string, string>>({});
+  const { t } = useLingui();
   const [triggerId, setTriggerId] = useState("");
+  const [consentCategory, setConsentCategory] = useState("marketing");
+  const [categoryTouched, setCategoryTouched] = useState(false);
 
   const template = templates.find((x) => x.id === templateId);
+
+  // Follow the vendor until the operator says otherwise. Every tag ever created
+  // here was filed `marketing` because that was the column default, which is
+  // wrong for the analytics-only vendors and is the reason this field is on the
+  // dialog at all. `categoryTouched` is what keeps a deliberate choice from
+  // being overwritten by the next vendor change.
+  useEffect(() => {
+    if (!template || categoryTouched) return;
+    setConsentCategory(strictestCategory(template.consentCategories));
+  }, [template, categoryTouched]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -487,6 +577,28 @@ function NewTagDialog({
 
             <label className="block space-y-1">
               <span className="text-sm font-medium">
+                <Trans>Consent category</Trans>
+              </span>
+              <Select
+                value={consentCategory}
+                onValueChange={(v) => {
+                  setCategoryTouched(true);
+                  setConsentCategory(v);
+                }}
+                className="w-full min-w-0"
+                options={consentOptions}
+              />
+              <span className="block text-xs text-muted-foreground">
+                {template?.consentCategories?.length
+                  ? t`This vendor declares itself ${template.consentCategories
+                      .map((c) => consentOptions.find((o) => o.value === c)?.label ?? c)
+                      .join(" + ")}.`
+                  : t`What a visitor's refusal switches off.`}
+              </span>
+            </label>
+
+            <label className="block space-y-1">
+              <span className="text-sm font-medium">
                 <Trans>Fires on</Trans>
               </span>
               <Select
@@ -509,6 +621,7 @@ function NewTagDialog({
                 name: name || template?.label,
                 kind: "template",
                 templateId,
+                consentCategory,
                 params,
                 triggerIds: [triggerId],
               })

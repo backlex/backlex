@@ -501,3 +501,111 @@ describe("the admin form can write every key the policy stores", () => {
     }
   });
 });
+
+/**
+ * The banner's own delivery must not write to the device.
+ *
+ * Prior blocking is this feature's central claim, and it is undermined by
+ * anything backlex itself stores on a visitor before they answer. The tenant
+ * middleware was pinning a 30-day `backlex-tenant` cookie on every anonymous
+ * fetch of the per-site file — the file that CARRIES the banner — because it
+ * resolves a default workspace for callers with no session.
+ *
+ * Found by reading the response headers of a real cross-origin load, not by a
+ * test: the in-process harness has no browser to store a cookie in, so nothing
+ * would have failed. Pinned here so it cannot come back.
+ */
+describe("nothing is stored on a visitor before they decide", () => {
+  const PUBLIC = [
+    "/api/analytics/script.js",
+    "/api/analytics/collect",
+    "/api/consent/config",
+    "/api/consent/record",
+  ];
+
+  test("no public subresource sets the workspace cookie", async () => {
+    for (const path of PUBLIC) {
+      const res = await h.app.fetch(
+        new Request(`${h.env.APP_URL}${path}`, {
+          headers: { Origin: "https://customer.example" },
+        }),
+      );
+      const setCookie = res.headers.get("set-cookie") ?? "";
+      expect(`${path} sets backlex-tenant: ${setCookie.includes("backlex-tenant")}`).toBe(
+        `${path} sets backlex-tenant: false`,
+      );
+    }
+  });
+
+  test("…including the per-site file, which is the one that carries the banner", async () => {
+    const res = await h.app.fetch(
+      new Request(`${h.env.APP_URL}/api/analytics/tm/${SITE}.js`, {
+        headers: { Origin: "https://customer.example" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("set-cookie") ?? "").not.toContain("backlex-tenant");
+    // A Set-Cookie on a `public, max-age=900` response is also what makes a
+    // shared cache refuse to store it, so this is a caching assertion too.
+    expect(res.headers.get("cache-control") ?? "").toContain("max-age");
+  });
+
+  test("an authenticated admin request still gets it, so the fix is scoped", async () => {
+    // Negative control. Without this, deleting the cookie everywhere would pass
+    // the two tests above and break workspace routing for the whole admin.
+    const res = await h.fetch("/api/collections");
+    expect(res.headers.get("set-cookie") ?? "").toContain("backlex-tenant");
+  });
+});
+
+/**
+ * A site can run a banner without running a tag manager.
+ *
+ * The per-site file checked for a published CONTAINER first and answered an
+ * empty 200 when there was none — before it ever looked for a consent policy.
+ * So an operator who turned the cookie banner on and never opened the tag
+ * manager was served nothing, and no banner appeared. Every existing test seeds
+ * a container, which is why nothing failed.
+ */
+describe("the banner reaches a site with no tag container", () => {
+  test("the per-site file boots it anyway", async () => {
+    const site = await makeSite(h, "banner-only.example");
+    // Deliberately no tag container: this is the whole case.
+    const off = await h.app.fetch(new Request(`${h.env.APP_URL}/api/analytics/tm/${site}.js`));
+    expect(off.status).toBe(200);
+    // Nothing published and no policy — still silent, because a body that
+    // appears only for real site ids is an oracle for enumerating them.
+    expect((await off.text()).length).toBe(0);
+
+    const put = await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        undecidedBehaviour: "block",
+        trackerCategory: "none",
+        categoriesOffered: ["analytics"],
+        enabled: true,
+      }),
+    });
+    expect(put.status).toBe(200);
+
+    const on = await h.app.fetch(new Request(`${h.env.APP_URL}/api/analytics/tm/${site}.js`));
+    const body = await on.text();
+    expect(on.status).toBe(200);
+    expect(body.length).toBeGreaterThan(0);
+    expect(body).toContain("__backlexConsentBanner(");
+    // The tracker comes with it — it owns `backlex.consent()`, which is the
+    // seam the banner writes the grant map through.
+    expect(body).toContain("__backlexTrackerInit(");
+    // …and nothing to interpret, because there is no container.
+    expect(body).not.toContain("__backlexTM(");
+  });
+
+  test("an unknown site id is still silent", async () => {
+    const res = await h.app.fetch(
+      new Request(`${h.env.APP_URL}/api/analytics/tm/00000000-0000-4000-8000-000000000000.js`),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.text()).length).toBe(0);
+  });
+});

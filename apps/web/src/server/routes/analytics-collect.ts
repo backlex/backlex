@@ -360,16 +360,6 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
 
     if (!hit) {
       const published = await getPublishedArtifact({ db: ctx.db, dialect: ctx.dialect }, siteId);
-      // An unknown or unpublished site gets an empty 200 rather than a 404, for
-      // the same reason the collect route answers 202: a status code that
-      // differs by whether an id exists is an oracle for enumerating ids.
-      if (!published) {
-        return c.body("", 200, {
-          "Content-Type": "application/javascript; charset=utf-8",
-          "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
-          "Access-Control-Allow-Origin": "*",
-        });
-      }
       const endpoint = origin + "/api/analytics/collect";
 
       // The consent policy travels WITH the container, and the order below is
@@ -394,6 +384,28 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
         }
       }
 
+      // An unknown site gets an empty 200 rather than a 404, for the same
+      // reason the collect route answers 202: a status code that differs by
+      // whether an id exists is an oracle for enumerating ids.
+      //
+      // This check USED to sit above the consent lookup and test `published`
+      // alone — so a site that switched the cookie banner on and never touched
+      // the tag manager was served an empty file, and got no banner at all.
+      // The one operator who most needs the banner to appear is the one who
+      // is not using the tag manager, and they were the one it never reached.
+      //
+      // It discloses nothing new: `GET /api/consent/config?s=<id>` already
+      // answers a real artifact for an enabled policy and a byte-identical
+      // "off" document for everything else, because the banner cannot work
+      // otherwise.
+      if (!published && !consent) {
+        return c.body("", 200, {
+          "Content-Type": "application/javascript; charset=utf-8",
+          "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
+          "Access-Control-Allow-Origin": "*",
+        });
+      }
+
       const body = [
         TRACKER_JS,
         // Only when there is a policy to show. A site with none — or one that
@@ -414,7 +426,10 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
               endpoint: origin + "/api/consent/record",
             })});`
           : "",
-        `;__backlexTM(${safeJson(published.artifact)});`,
+        // No container is a legitimate state now, not an impossible one: a
+        // consent-only site is served the tracker and the banner and nothing
+        // to interpret.
+        published ? `;__backlexTM(${safeJson(published.artifact)});` : "",
       ]
         .filter(Boolean)
         .join("\n");
@@ -424,8 +439,12 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
         // The consent hash joins the container hash in the cache entry, so a
         // policy edit changes the validator below even though the container
         // itself did not move.
-        hash: consent ? `${published.hash}:${consent.hash}` : published.hash,
-        tenantId: published.tenantId,
+        hash: published
+          ? consent
+            ? `${published.hash}:${consent.hash}`
+            : published.hash
+          : `consent:${consent?.hash ?? ""}`,
+        tenantId: published?.tenantId ?? consent?.tenantId ?? null,
       };
       setContainerEntry(siteId, origin, hit);
     }

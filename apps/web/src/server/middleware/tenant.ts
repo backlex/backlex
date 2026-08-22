@@ -4,6 +4,7 @@ import { and, eq, ne, or } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { isPublicSubresource } from "../lib/public-paths";
 import type { AppBindings } from "../app";
 import {
   getCachedMembership,
@@ -523,6 +524,18 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // closed-over `tenantId` from the pre-next phase clobbers their cookie.
   const finalTenantId =
     (c.get("auth")?.tenantId as string | null | undefined) ?? tenantId;
+
+  // Not on the documents customers embed on their own sites. An anonymous
+  // visitor loading the analytics tag, the tag container or the consent banner
+  // was being pinned to a default workspace for 30 days by a cookie that
+  // `SameSite=Lax` guarantees is never sent back on a cross-site subresource
+  // request — dead storage that also suppresses shared caching, and that the
+  // consent banner's own delivery cannot be writing before the visitor has
+  // answered it. Neither set NOR deleted here: the delete branch exists for the
+  // cross-tenant admin shortcut, which needs a header these paths never carry.
+  // See `lib/public-paths.ts`.
+  if (isPublicSubresource(new URL(c.req.url).pathname)) return;
+
   if (finalTenantId && pinTenantCookie) {
     setCookie(c, TENANT_COOKIE, finalTenantId, {
       httpOnly: false,

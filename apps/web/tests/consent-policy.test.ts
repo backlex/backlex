@@ -30,6 +30,8 @@ import {
   suggestedWording,
   deletePolicy,
 } from "../src/server/services/consent";
+import { CONSENT_CATEGORIES as TAG_MANAGER_CATEGORIES } from "../src/server/services/tag-templates";
+import { TRACKER_JS } from "../src/server/services/analytics-tracker";
 
 let h: TestHarness;
 let db: never;
@@ -69,6 +71,30 @@ describe("the vocabulary", () => {
       "analytics",
       "marketing",
     ]);
+
+    // ...and this is the half that was missing. The assertion above pins only
+    // THIS module's copy, so renaming the tag manager's alone failed nothing —
+    // `tag-templates.test.ts` merely checks each template's categories are
+    // members of that same local list, which stays true after a rename. The
+    // sentence in `consent.ts`'s header claimed a guarantee no test provided.
+    expect([...TAG_MANAGER_CATEGORIES]).toEqual([...CONSENT_CATEGORIES]);
+  });
+
+  test("and the same three strings the browser tag grants against", () => {
+    // A THIRD copy, and the one that cannot be imported: the tag is a string
+    // compiled into a template literal, so a rename here is invisible to the
+    // type system in a way the other two are not. It is still a copy on
+    // purpose — the tag ships to a customer's page and must not drag a server
+    // module's imports along with it.
+    //
+    // Built from the exported list rather than written out, so this fails on a
+    // rename instead of quietly describing whatever the tag happens to say.
+    const literal = `var OPTIONAL = [${OPTIONAL_CATEGORIES.map((c) => `"${c}"`).join(", ")}];`;
+    expect(TRACKER_JS).toContain(literal);
+
+    // `none` is the fourth, and it is never in that array by definition — the
+    // tag has to special-case it instead.
+    expect(TRACKER_JS).toContain('category === "none"');
   });
 
   test("never offers `none` as a visitor choice", () => {

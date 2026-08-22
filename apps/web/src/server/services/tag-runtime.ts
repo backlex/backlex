@@ -52,11 +52,15 @@ window.__backlexTM = function (container) {
   } catch (e) {}
 
   // -- Consent -------------------------------------------------------------
-  // Reuses the tracker's read when the two ship together, which is the normal
-  // case, so there is ONE implementation of "did the visitor say no" rather
-  // than two that can drift. The per-category read is additional: a marketing
-  // tag is gated on ad_storage, an analytics tag on analytics_storage, and
-  // either falls back to the tracker's overall verdict.
+  // The tracker owns the answer; this is the chain that finds it. When the two
+  // ship together -- the normal case, one file -- consentDenied() below asks
+  // the tracker's per-category seam and stops there, so a site gets ONE verdict
+  // rather than two that can drift apart on the same page.
+  //
+  // The dataLayer read kept below is the fallback for the case that is not
+  // normal but is real: a page whose tracker is older than this runtime, or
+  // never booted at all. It reads a marketing tag off ad_storage and everything
+  // else off analytics_storage, which is all a two-key map can say.
   function gtagState(key) {
     try {
       var dl = window.dataLayer;
@@ -73,9 +77,32 @@ window.__backlexTM = function (container) {
 
   function consentDenied(category) {
     if (!category || category === "none") return false;
+
+    // The tracker's per-category answer first. It already folds the dataLayer
+    // in, so when it speaks there is nothing left to ask -- and it is the only
+    // source that can distinguish "functional" from "analytics", which the
+    // two-key gtag map below cannot.
+    //
+    // Read strictly in BOTH directions. A global that answered undefined would
+    // otherwise either block every tag on the page or none of them, depending
+    // on which way the comparison was written.
+    try {
+      var granted = window.__backlexConsentGranted;
+      if (typeof granted === "function") {
+        var v = granted(category);
+        if (v === true) return false;
+        if (v === false) return true;
+      }
+    } catch (e) {}
+
     var key = category === "marketing" ? "ad_storage" : "analytics_storage";
     var explicit = gtagState(key);
     if (explicit) return explicit === "denied";
+
+    // Last: the arity-0 seam a tracker older than the per-category one still
+    // exports. A page can hold a /script.js cached for an hour beside a
+    // fifteen-minute container, and whichever booted first is the one that
+    // installed the globals -- so this is a live combination, not a legacy one.
     try {
       if (typeof window.__backlexConsentDenied === "function") {
         return window.__backlexConsentDenied() === true;
@@ -318,13 +345,18 @@ const TAIL = String.raw`
   }
 
   function fire(tag, ev) {
+    // Consent is checked BEFORE the fire budget, not after it. Both budgets are
+    // WRITES -- once_per_page marks the tag and once_per_visitor_day puts the
+    // day into localStorage -- so checking second spent the tag's single chance
+    // on a fire that never happened. A visitor who accepted a moment later got
+    // nothing at all for the rest of the page, or the rest of the day.
+    if (consentDenied(tag.consent)) return;
     if (tag.fire === "once_per_page") {
       if (firedThisPage[tag.id]) return;
       firedThisPage[tag.id] = 1;
     } else if (tag.fire === "once_per_visitor_day") {
       if (alreadyFiredToday(tag.id)) return;
     }
-    if (consentDenied(tag.consent)) return;
 
     try {
       if (tag.kind === "template") {

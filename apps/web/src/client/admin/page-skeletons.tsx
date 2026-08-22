@@ -298,12 +298,16 @@ function AnalyticsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={4} />
-      {/* Six tab pills: overview, realtime, funnel, retention, errors, sites.
+      {/* Five tab pills: overview, realtime, funnel, retention, errors. It said
+          SIX and listed `sites`, and had been wrong since consent landed and
+          made it seven — a strip that changes width on load is a visible jump,
+          which is the one thing this file exists to prevent. Sites and consent
+          are their own pages now.
           The sessions block below the breakdowns is NOT reserved here: it only
           renders when tag traffic exists, and a skeleton for something that
           may never appear is its own layout jump. */}
       <div className="flex items-center gap-1.5">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-9 w-[92px]" />
         ))}
       </div>
@@ -1216,6 +1220,35 @@ const TagManagerSkeletonImpl = () => (
 export const TagManagerSkeleton = withSkeletonDelay(TagManagerSkeletonImpl);
 
 /**
+ * Websites — a header with two actions, then a card per registered site.
+ *
+ * Defined here rather than in the page for the same reason every skeleton is:
+ * importing the page module would pull its lazy chunk into the eager bundle,
+ * which is the cost this placeholder exists to avoid. The page imports THIS,
+ * never the other way round.
+ */
+const WebsitesSkeletonImpl = () => (
+  <div className="space-y-6">
+    <HeaderSkeleton />
+    {[0, 1, 2].map((i) => (
+      <CardSkeleton key={i} />
+    ))}
+  </div>
+);
+export const WebsitesSkeleton = withSkeletonDelay(WebsitesSkeletonImpl);
+
+/** Cookie consent — a header, then a card per website carrying its policy. */
+const ConsentSkeletonImpl = () => (
+  <div className="space-y-6">
+    <HeaderSkeleton />
+    {[0, 1].map((i) => (
+      <CardSkeleton key={i} />
+    ))}
+  </div>
+);
+export const ConsentSkeleton = withSkeletonDelay(ConsentSkeletonImpl);
+
+/**
  * Resolves a nav id to its matching page skeleton. Used as the lazy-page
  * `<Suspense>` fallback so the chunk-loading placeholder already mirrors the
  * page being opened. Falls back to a generic header + card stack.
@@ -1267,6 +1300,10 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <AnalyticsSkeleton />;
     case "tag-manager":
       return <TagManagerSkeleton />;
+    case "websites":
+      return <WebsitesSkeleton />;
+    case "consent":
+      return <ConsentSkeleton />;
     case "advisor":
       return <AdvisorSkeleton />;
     case "schema-graph":

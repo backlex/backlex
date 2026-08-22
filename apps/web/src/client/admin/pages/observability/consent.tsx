@@ -1,4 +1,4 @@
-// Cookie consent — the admin tab for the policy a site publishes.
+// Cookie consent — the policy a website publishes, and its own page.
 //
 // Extracted from `analytics.tsx` rather than living in it: consent is not
 // measurement, the page was already past 2,400 lines, and the two components
@@ -8,11 +8,11 @@ import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { PushToast } from "../../types";
 import { I } from "../../icons";
-import { Badge, Button, EmptyState } from "../../ui";
+import { ConsentSkeleton } from "../../page-skeletons";
+import { Badge, Button, EmptyState, PageHeader } from "../../ui";
 import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
-import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   Dialog,
   DialogBody,
@@ -52,7 +52,17 @@ import { BUILTIN_STRINGS } from "../../../consent-banner/strings";
  * refuses to invent one, and a form that arrived with something already chosen
  * would quietly undo both.
  */
-export function ConsentTab({ pushToast }: { pushToast: PushToast }) {
+export function ConsentPage({
+  pushToast,
+  setActiveNav,
+}: {
+  pushToast: PushToast;
+  /** Prop-drilled rather than `useNavigate`, because `app.tsx`'s `vNav` saves
+   *  pane scroll, warms the target's lazy chunk and commits inside a view
+   *  transition. A raw navigate skips all three and flashes a Suspense
+   *  skeleton where nothing else in this admin does. */
+  setActiveNav?: (id: string) => void;
+}) {
   const { t } = useLingui();
   const sitesQ = useAnalyticsSites();
   const policiesQ = useConsentPolicies();
@@ -64,23 +74,26 @@ export function ConsentTab({ pushToast }: { pushToast: PushToast }) {
   const policies = policiesQ.data?.data ?? [];
   const policyFor = (siteId: string) => policies.find((p) => p.siteId === siteId) ?? null;
 
-  if (sitesQ.isLoading || policiesQ.isLoading) {
-    return (
-      <div className="flex flex-col gap-3">
-        {[0, 1].map((i) => (
-          <Skeleton key={i} className="h-[132px] w-full rounded-control" />
-        ))}
-      </div>
-    );
-  }
+  if (sitesQ.isLoading || policiesQ.isLoading) return <ConsentSkeleton />;
 
   return (
     <div className="flex flex-col gap-3">
+      <PageHeader
+        title={t`Cookie consent`}
+        description={t`What each website asks its visitors, and what runs before they answer. One policy per website.`}
+      />
       {sites.length === 0 ? (
         <EmptyState
-          icon={I.Shield}
+          icon={I.Cookie}
           title={t`No websites registered`}
-          description={t`A consent banner is served for a registered site. Add one on the Sites tab first, then decide here what its visitors are asked.`}
+          description={t`A consent banner is served for a registered website. Register one first, then decide here what its visitors are asked.`}
+          action={
+            setActiveNav && (
+              <Button onClick={() => setActiveNav("websites")}>
+                <Trans>Go to Websites</Trans>
+              </Button>
+            )
+          }
         />
       ) : (
         sites.map((s: ApiAnalyticsSite) => {

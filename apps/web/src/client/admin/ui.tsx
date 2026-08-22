@@ -19,7 +19,7 @@ import { msg } from "@lingui/core/macro";
 import type { MessageDescriptor } from "@lingui/core";
 import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible, type MeNav, type NavItem } from "./config";
+import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_WEBSITE, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible, type MeNav, type NavItem } from "./config";
 import { prefetchPage } from "./lib/page-prefetch";
 import { resolveCollectionColor } from "./lib/collection-colors";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
@@ -597,6 +597,11 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   traces: msg`Traces`,
   usage: msg`Usage`,
   analytics: msg`Analytics`,
+  websites: msg`Websites`,
+  // "Cookie consent", not "Consent": `App.tsx` already routes `/oauth/consent`
+  // to a different, shipped consent screen, and the Turkish translator had
+  // already disambiguated the bare word by hand as "Çerez onayı".
+  consent: msg`Cookie consent`,
   "tag-manager": msg`Tag manager`,
   advisor: msg`Advisor`,
   "schema-graph": msg`Schema graph`,
@@ -799,6 +804,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
           { key: "primary", label: null, entries: NAV_PRIMARY as SidebarNavEntry[] },
           { key: "data", label: <Trans>Data</Trans>, entries: NAV_DATA as SidebarNavEntry[] },
           { key: "automation", label: <Trans>Automation</Trans>, entries: NAV_AUTOMATION as SidebarNavEntry[] },
+          { key: "website", label: <Trans>Website</Trans>, entries: NAV_WEBSITE as SidebarNavEntry[] },
           { key: "observability", label: <Trans>Observability</Trans>, entries: NAV_OBSERVABILITY as SidebarNavEntry[] },
           { key: "developers", label: <Trans>Developers</Trans>, entries: developers },
           { key: "admin", label: <Trans>Admin</Trans>, entries: settings as SidebarNavEntry[] },

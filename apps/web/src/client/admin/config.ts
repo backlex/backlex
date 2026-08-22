@@ -213,13 +213,32 @@ export const NAV_AUTOMATION: NavItem[] = [
   { id: "realtime", icon: "Zap" },
 ];
 
+// Website — the sites you registered, and the things that run ON them.
+//
+// Its own group rather than three rows under Observability, and the reason is
+// the defect it fixes: `websites` is a REGISTRY that three features resolve
+// against, and it used to be a TAB inside one of them. Every column of
+// `analytics_sites` is a setting — name, domain, tz, excluded paths, ignored
+// ips, bot filtering — so it fails the "what happened, health, and history"
+// description next door, and `DESIGN.md` already says a feature that warrants a
+// submenu gets a top-level entry instead.
+//
+// `analytics` deliberately does NOT move here. `analytics_events.site_id` is
+// NULLABLE ("NULL for SDK / server-side traffic"), so analytics reports over a
+// stream that is not site-scoped — it really is "what happened". The other
+// three are configuration for a specific site.
+export const NAV_WEBSITE: NavItem[] = [
+  { id: "websites", icon: "Globe" },
+  { id: "tag-manager", icon: "Tag" },
+  { id: "consent", icon: "Cookie" },
+];
+
 // Observability — what happened, health, and history.
 export const NAV_OBSERVABILITY: NavItem[] = [
   { id: "logs", icon: "ScrollText" },
   { id: "traces", icon: "Activity" },
   { id: "usage", icon: "Gauge" },
   { id: "analytics", icon: "BarChart" },
-  { id: "tag-manager", icon: "Tag" },
   { id: "advisor", icon: "ShieldAlert" },
   { id: "kpis", icon: "Gauge" },
   { id: "insights", icon: "BarChart" },
@@ -233,6 +252,7 @@ export const NAV_ITEMS: NavItem[] = [
   ...NAV_PRIMARY,
   ...NAV_DATA,
   ...NAV_AUTOMATION,
+  ...NAV_WEBSITE,
   ...NAV_OBSERVABILITY,
 ];
 

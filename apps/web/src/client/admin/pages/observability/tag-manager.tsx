@@ -69,7 +69,15 @@ const CONSENT_CATEGORIES = ["marketing", "analytics", "functional", "none"] as c
 const strictestCategory = (declared: readonly string[] | undefined): string =>
   CONSENT_CATEGORIES.find((c) => declared?.includes(c)) ?? "marketing";
 
-export function TagManagerPage({ pushToast }: { pushToast: PushToast }) {
+export function TagManagerPage({
+  pushToast,
+  setActiveNav,
+}: {
+  pushToast: PushToast;
+  /** Prop-drilled, not `useNavigate`: `app.tsx`'s `vNav` saves pane scroll,
+   *  warms the target chunk and commits inside a view transition. */
+  setActiveNav?: (id: string) => void;
+}) {
   const { t } = useLingui();
   const [tab, setTab] = useState<Tab>("tags");
   const [siteId, setSiteId] = useState<string | null>(null);
@@ -147,7 +155,14 @@ export function TagManagerPage({ pushToast }: { pushToast: PushToast }) {
         <EmptyState
           icon={I.Tag}
           title={t`Register a website first`}
-          description={t`Tags are configured per site. Add one under Analytics → Sites, then come back.`}
+          description={t`Tags are configured per website. Register one on the Websites page, then come back.`}
+          action={
+            setActiveNav && (
+              <Button onClick={() => setActiveNav("websites")}>
+                <Trans>Go to Websites</Trans>
+              </Button>
+            )
+          }
         />
       </div>
     );

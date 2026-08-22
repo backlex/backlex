@@ -515,7 +515,7 @@ describe("the admin form can write every key the policy stores", () => {
     // differently: a key with no field is a string an operator can never set,
     // and a field writing a key the policy drops is one they type, save, and
     // silently lose.
-    const tab = read("apps/web/src/client/admin/pages/observability/consent-tab.tsx");
+    const tab = read("apps/web/src/client/admin/pages/observability/consent.tsx");
     // `\s*` on purpose: one entry is wrapped across lines by the formatter,
     // and a regex that assumed one line would silently miss it — reporting a
     // missing field for one that is right there.
@@ -529,7 +529,7 @@ describe("the admin form can write every key the policy stores", () => {
   });
 
   test("and every theme token has one too", () => {
-    const tab = read("apps/web/src/client/admin/pages/observability/consent-tab.tsx");
+    const tab = read("apps/web/src/client/admin/pages/observability/consent.tsx");
     for (const key of THEME_KEYS) {
       expect(`${key} has a field: ${tab.includes(`key: "${key}"`)}`).toBe(
         `${key} has a field: true`,

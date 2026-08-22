@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup } from "@testing-library/react";
-import { ConsentTab } from "../../src/client/admin/pages/observability/consent-tab";
+import { ConsentPage } from "../../src/client/admin/pages/observability/consent";
 import { renderWithProviders } from "./render";
 
 /**
@@ -56,7 +56,7 @@ const POLICY = {
 
 let puts: { url: string; body: any }[] = [];
 
-const mockRoutes = (policies: unknown[], opts: { slowSites?: boolean } = {}) => {
+const mockRoutes = (policies: unknown[], opts: { slowSites?: boolean | number } = {}) => {
   puts = [];
   global.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url =
@@ -67,7 +67,10 @@ const mockRoutes = (policies: unknown[], opts: { slowSites?: boolean } = {}) => 
     }
     if (url.includes("/api/admin/consent/policies")) return json({ data: policies });
     if (url.includes("/api/admin/analytics/sites")) {
-      if (opts.slowSites) await new Promise((r) => setTimeout(r, 50));
+      if (opts.slowSites) {
+        const ms = typeof opts.slowSites === "number" ? opts.slowSites : 50;
+        await new Promise((r) => setTimeout(r, ms));
+      }
       return json({ data: SITES });
     }
     return json({ data: [] });
@@ -96,10 +99,29 @@ const buttonByText = (text: string): HTMLButtonElement | undefined =>
 afterEach(() => cleanup());
 
 describe("the loading state", () => {
-  test("is a skeleton, never a 'Loading…' string or a bare spinner", async () => {
-    mockRoutes([], { slowSites: true });
-    const { container } = renderWithProviders(<ConsentTab pushToast={() => {}} />);
-    // Before the queries settle.
+  test("a fast load shows no skeleton at all — no flash", async () => {
+    // 50ms, inside `page-skeletons.tsx`'s SKELETON_DELAY_MS (200). Every page
+    // skeleton is wrapped in `withSkeletonDelay`, which renders `null` until
+    // the window elapses precisely so a quick load goes straight to content.
+    // This page carried its own UNDELAYED skeleton while it was a tab, so it
+    // used to flash one on every render; moving it to `page-skeletons.tsx`
+    // fixed that, and this is the assertion that says so.
+    mockRoutes([], { slowSites: 50 });
+    const { container } = renderWithProviders(<ConsentPage pushToast={() => {}} />);
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBe(0);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 120));
+    });
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBe(0);
+    await settle();
+  });
+
+  test("a slow one shows a skeleton, never a 'Loading…' string or a bare spinner", async () => {
+    mockRoutes([], { slowSites: 600 });
+    const { container } = renderWithProviders(<ConsentPage pushToast={() => {}} />);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 300));
+    });
     expect(container.textContent ?? "").not.toContain("Loading");
     expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
     await settle();
@@ -109,7 +131,7 @@ describe("the loading state", () => {
 describe("a site with no policy", () => {
   test("says so, rather than showing an empty policy", async () => {
     mockRoutes([]);
-    const { container } = renderWithProviders(<ConsentTab pushToast={() => {}} />);
+    const { container } = renderWithProviders(<ConsentPage pushToast={() => {}} />);
     await settle();
     const text = container.textContent ?? "";
     // The honest reading: nothing configured means nothing asked and nothing
@@ -124,7 +146,7 @@ describe("a site with no policy", () => {
 describe("a configured site", () => {
   test("shows the posture on the card, not just that a policy exists", async () => {
     mockRoutes([POLICY]);
-    const { container } = renderWithProviders(<ConsentTab pushToast={() => {}} />);
+    const { container } = renderWithProviders(<ConsentPage pushToast={() => {}} />);
     await settle();
     const text = container.textContent ?? "";
     expect(text).toContain("Banner live");
@@ -137,7 +159,7 @@ describe("a configured site", () => {
 describe("the two decisions with no default", () => {
   test("open empty, and Save stays disabled until both are answered", async () => {
     mockRoutes([]);
-    renderWithProviders(<ConsentTab pushToast={() => {}} />);
+    renderWithProviders(<ConsentPage pushToast={() => {}} />);
     await settle();
 
     await click(buttonByText("Set up consent")!);
@@ -159,7 +181,7 @@ describe("the two decisions with no default", () => {
 
   test("the option hints state the consequence, not just the value", async () => {
     mockRoutes([]);
-    renderWithProviders(<ConsentTab pushToast={() => {}} />);
+    renderWithProviders(<ConsentPage pushToast={() => {}} />);
     await settle();
     await click(buttonByText("Set up consent")!);
     await settle();
@@ -180,7 +202,7 @@ describe("the two decisions with no default", () => {
 describe("editing an existing policy", () => {
   test("seeds from the stored policy and can save without restating it", async () => {
     mockRoutes([POLICY]);
-    renderWithProviders(<ConsentTab pushToast={() => {}} />);
+    renderWithProviders(<ConsentPage pushToast={() => {}} />);
     await settle();
 
     await click(buttonByText("Edit policy")!);
@@ -204,7 +226,7 @@ describe("editing an existing policy", () => {
 
   test("the dialog closes immediately — the save is optimistic", async () => {
     mockRoutes([POLICY]);
-    renderWithProviders(<ConsentTab pushToast={() => {}} />);
+    renderWithProviders(<ConsentPage pushToast={() => {}} />);
     await settle();
     await click(buttonByText("Edit policy")!);
     await settle();
@@ -224,7 +246,7 @@ describe("with no sites at all", () => {
       return json({ data: [] });
     }) as unknown as typeof fetch;
 
-    const { container } = renderWithProviders(<ConsentTab pushToast={() => {}} />);
+    const { container } = renderWithProviders(<ConsentPage pushToast={() => {}} />);
     await settle();
     expect(container.textContent ?? "").toContain("No websites registered");
   });

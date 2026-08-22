@@ -591,3 +591,126 @@ describe("admin UI conventions", () => {
     }
   });
 });
+
+/**
+ * The nav is wired in three places and two of them fail SILENTLY.
+ *
+ * Nothing in this repo asserted any of it before the Websites/Consent split, so
+ * these are new. The failure modes, in the order they bite:
+ *
+ *  - A group array registered in the sidebar but left out of the `NAV_ITEMS`
+ *    concatenation: the row renders, is clickable, and `app.tsx` rewrites the
+ *    URL's meaning back to where you came from, because `NAV_IDS` is built from
+ *    `NAV_ITEMS` alone. Clicking the sidebar cannot reproduce it.
+ *  - A missing `NAV_LABELS` entry: the sidebar shows the raw lowercase id, and
+ *    `i18n._({id})` returns the id by design, so nothing throws. The command
+ *    palette then HIDES the defect — it filters on the label, so typing
+ *    "consent" still finds a row labelled `consent`.
+ */
+describe("the admin nav is wired end to end", () => {
+  // Relative to `src/client`, which this file already resolves.
+  const src = (p: string) => readFileSync(join(CLIENT, p), "utf8");
+
+  test("every group array is part of the NAV_ITEMS concatenation", () => {
+    const config = src("admin/config.ts");
+    const groups = [...config.matchAll(/export const (NAV_[A-Z_]+): NavItem\[\]/g)].map(
+      (m) => m[1]!,
+    );
+    // The union itself, and the two rendered outside it, are not members.
+    const members = groups.filter(
+      (g) => !["NAV_ITEMS", "NAV_DEVELOPERS", "NAV_SETTINGS"].includes(g),
+    );
+    expect(members.length).toBeGreaterThan(3);
+
+    const concat = config.slice(config.indexOf("export const NAV_ITEMS"));
+    const listed = concat.slice(0, concat.indexOf("];"));
+    for (const g of members) {
+      expect(`${g} is spread into NAV_ITEMS: ${listed.includes(`...${g}`)}`).toBe(
+        `${g} is spread into NAV_ITEMS: true`,
+      );
+    }
+  });
+
+  test("every group array is rendered by the sidebar", () => {
+    // The other direction: an array that exists and is in `NAV_ITEMS` but is
+    // never rendered gives a reachable URL with no way to click to it.
+    const config = src("admin/config.ts");
+    const ui = src("admin/ui.tsx");
+    const groups = [...config.matchAll(/export const (NAV_[A-Z_]+): NavItem\[\]/g)]
+      .map((m) => m[1]!)
+      .filter((g) => !["NAV_ITEMS"].includes(g));
+    for (const g of groups) {
+      expect(`${g} reaches the sidebar: ${ui.includes(g)}`).toBe(
+        `${g} reaches the sidebar: true`,
+      );
+    }
+  });
+
+  test("every nav id has a label, so none renders as a raw slug", () => {
+    const config = src("admin/config.ts");
+    const ui = src("admin/ui.tsx");
+    const ids = [...config.matchAll(/\{ id: "([a-z0-9-]+)", icon:/g)].map((m) => m[1]!);
+    expect(ids.length).toBeGreaterThan(20);
+
+    const labels = ui.slice(ui.indexOf("const NAV_LABELS"));
+    const labelBlock = labels.slice(0, labels.indexOf("\n};"));
+    for (const id of ids) {
+      const quoted = labelBlock.includes(`"${id}":`);
+      const bare = new RegExp(`^\\s*${id}: msg\``, "m").test(labelBlock);
+      expect(`${id} has a NAV_LABELS entry: ${quoted || bare}`).toBe(
+        `${id} has a NAV_LABELS entry: true`,
+      );
+    }
+  });
+
+  test("every nav id with a lazy page is prefetchable and has a skeleton", () => {
+    // Not every id is lazy — some pages render inline. But an id that IS lazy
+    // and is missing from `LOADERS` flashes a Suspense fallback on every
+    // navigation, which is the exact cost `page-prefetch.ts` exists to avoid.
+    const app = src("admin/app.tsx");
+    const prefetch = src("admin/lib/page-prefetch.ts");
+    const skeletons = src("admin/page-skeletons.tsx");
+    for (const id of ["websites", "consent", "tag-manager"]) {
+      expect(`${id} is lazy: ${app.includes(`pages/observability/${id}`)}`).toBe(
+        `${id} is lazy: true`,
+      );
+      expect(`${id} is prefetchable: ${prefetch.includes(`observability/${id}`)}`).toBe(
+        `${id} is prefetchable: true`,
+      );
+      expect(`${id} has a skeleton case: ${skeletons.includes(`case "${id}":`)}`).toBe(
+        `${id} has a skeleton case: true`,
+      );
+    }
+  });
+
+  test("the tabs that became pages redirect, so old deep links do not land on Overview", () => {
+    // `/analytics/sites` still passes `NAV_IDS.has("analytics")`, and the
+    // unknown second segment falls back to the default tab — so without a
+    // redirect the address bar keeps saying `sites` while Overview renders and
+    // the operator concludes the feature was deleted.
+    const app = src("admin/app.tsx");
+    expect(app).toContain('segs[1] === "sites"');
+    expect(app).toContain('navigate("/websites"');
+    expect(app).toContain('segs[1] === "consent"');
+    expect(app).toContain('navigate("/consent"');
+  });
+
+  test("the surfaces that need a website can reach the page that registers one", () => {
+    // Requirement, not decoration: both empty states used to name a tab and
+    // offer no way to get to it, and one of them named a tab that no longer
+    // exists.
+    for (const f of [
+      "admin/pages/observability/consent.tsx",
+      "admin/pages/observability/tag-manager.tsx",
+    ]) {
+      const s = src(f);
+      expect(`${f} offers the CTA: ${s.includes('setActiveNav("websites")')}`).toBe(
+        `${f} offers the CTA: true`,
+      );
+      // …and no longer points at a tab that is gone.
+      expect(`${f} still says "Sites tab": ${/Sites tab|Analytics → Sites/.test(s)}`).toBe(
+        `${f} still says "Sites tab": false`,
+      );
+    }
+  });
+});

@@ -30,7 +30,7 @@ up front saves an afternoon:
 
 | | |
 |---|---|
-| **Site** | The container. The one you already registered under Analytics → Sites; there is no second id to manage. |
+| **Site** | The container. The one you already registered under **Website → Websites**; there is no second id to manage. |
 | **Tag** | The thing that fires. A vendor template, an image pixel, a backlex event, or custom code. |
 | **Trigger** | When it fires. Page view, DOM ready, window load, history change, click, link click, form submit, scroll depth, element visible, timer, or a custom event. |
 | **Variable** | Something read off the page: a constant, a URL query parameter, a first-party cookie, a `dataLayer` key, or a JavaScript expression. |

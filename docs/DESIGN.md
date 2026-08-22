@@ -138,8 +138,8 @@ The order is locked: refresh → secondary actions → primary CTA on the right.
 
 `AppSidebar` is collapsible-icon. Nav items live in
 `client/admin/config.ts` as themed group arrays — `NAV_PRIMARY`, `NAV_DATA`,
-`NAV_AUTOMATION`, `NAV_OBSERVABILITY` — plus `NAV_DEVELOPERS` and
-`NAV_SETTINGS`. Adding a route takes **three** edits and missing any one of
+`NAV_AUTOMATION`, `NAV_WEBSITE`, `NAV_OBSERVABILITY` — plus `NAV_DEVELOPERS`
+and `NAV_SETTINGS`. Adding a route takes **three** edits and missing any one of
 them fails quietly:
 
 1. the group array, which is what the sidebar renders;

@@ -65,7 +65,7 @@ site and paste one line:
         data-site="<site-id>"></script>
 ```
 
-Register it under **Analytics → Sites** (or `backlex analytics sites add --name
+Register it under **Website → Websites** (or `backlex analytics sites add --name
 "Marketing" --domain example.com`, which prints the snippet for you). The site
 id is public by design: it names a destination, it does not authenticate one.
 
@@ -129,7 +129,7 @@ allowed. GPC and DNT are checked separately and stop the tag whatever the map
 says.
 
 The same map gates your third-party tags through the tag manager: see
-[Tag manager → Consent](tag-manager.md). GPC and DNT deliberately do **not**
+[Cookie consent](cookie-consent.md). GPC and DNT do **not**
 reach those — they stop this tag only.
 
 **The state is enforced on the server too**: a denied event is dropped by the
@@ -583,13 +583,17 @@ or a failed batch without pulling in the SDK.
 
 ## Admin UI
 
-**Observability → Analytics**, six tabs over one shared time window:
-Overview (counters, daily chart, top-N), Realtime (the last 30 minutes, with
-a Live toggle), Funnel (a step builder that only
-offers event names you've actually tracked), Retention (the cohort grid), and
-Errors (crash groups + triage, with the stack trace and affected-visitor count
-in the detail dialog), and Sites (register a website, copy its snippet, toggle
-bot filtering and the origin check).
+**Observability → Analytics**, five tabs over one shared time window:
+Overview (counters, daily chart, top-N), Realtime (the last 30 minutes, with a
+Live toggle), Funnel (a step builder that only offers event names you've
+actually tracked), Retention (the cohort grid), and Errors (crash groups +
+triage, with the stack trace and affected-visitor count in the detail dialog).
+
+Registering a website is **not** here — it is **Website → Websites**, its own
+page, because the tag manager and the cookie banner attach to the same registry
+and neither is a measurement feature. Analytics stays under Observability
+because the stream it reports over is not site-scoped: `analytics_events.site_id`
+is nullable for SDK and server-side traffic.
 
 ## Implementation notes
 

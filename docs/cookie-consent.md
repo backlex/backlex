@@ -7,8 +7,13 @@ A site registered for [web analytics](/analytics/) can also publish a **consent
 policy**: what its visitors are asked, and what is withheld until they answer.
 
 This page covers the policy, the artifact a decision points at, and
-[the banner](#the-banner) that renders it. The gating of third-party tags is
-documented next door in [Tag manager → Consent](/tag-manager/).
+[the banner](#the-banner) that renders it. The tags it gates are configured next
+door in the [tag manager](./tag-manager.md); both attach to a website you
+register under **Website → Websites**.
+
+In the admin it is **Website → Cookie consent**. It used to be a tab inside
+Analytics, which put a compliance decision inside a reporting page and made the
+site registry reachable only through one of its three consumers.
 
 > **What the browser enforces today, and what it does not.** Per-category
 > gating is live, and so is the banner: `undecidedBehaviour` is honoured before

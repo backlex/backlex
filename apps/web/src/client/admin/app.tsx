@@ -133,6 +133,8 @@ const TracesPage = lazy(() => import("./pages/observability/traces").then((m) =>
 const UsagePage = lazy(() => import("./pages/observability/usage").then((m) => ({ default: m.UsagePage })));
 const AnalyticsPage = lazy(() => import("./pages/observability/analytics").then((m) => ({ default: m.AnalyticsPage })));
 const TagManagerPage = lazy(() => import("./pages/observability/tag-manager").then((m) => ({ default: m.TagManagerPage })));
+const WebsitesPage = lazy(() => import("./pages/observability/websites").then((m) => ({ default: m.WebsitesPage })));
+const ConsentPage = lazy(() => import("./pages/observability/consent").then((m) => ({ default: m.ConsentPage })));
 const AdvisorPage = lazy(() => import("./pages/observability/advisor").then((m) => ({ default: m.AdvisorPage })));
 const SchemaGraphPage = lazy(() => import("./pages/data/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
 const SearchPlaygroundPage = lazy(() => import("./pages/data/search-playground").then((m) => ({ default: m.SearchPlaygroundPage })));
@@ -297,9 +299,20 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
 
   // The standalone "Activity log" page was merged into "Logs" — keep old
   // `/activity` deep links working by redirecting them to the unified page.
+  //
+  // Same treatment for the two Analytics TABS that became pages. Without it the
+  // failure is silent and reads as deletion: `segs[0]` is still "analytics" so
+  // `NAV_IDS.has()` passes, the unknown `segs[1]` falls back to "overview", and
+  // the address bar keeps saying `/analytics/sites` while Overview renders.
   useEffect(() => {
     if (segs[0] === "activity") navigate("/logs", { replace: true });
-  }, [segs[0], navigate]);
+    if (segs[0] === "analytics" && segs[1] === "sites") {
+      navigate("/websites", { replace: true });
+    }
+    if (segs[0] === "analytics" && segs[1] === "consent") {
+      navigate("/consent", { replace: true });
+    }
+  }, [segs[0], segs[1], navigate]);
 
   const navTo = useCallback((id: string) => { vNav("/" + id); }, [vNav]);
   // `/collections/:slug/:tab` — the tab sits under the open collection, so
@@ -1236,7 +1249,13 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "traces" && <TracesPage pushToast={pushToast} />}
             {activeNav === "usage" && <UsagePage pushToast={pushToast} />}
             {activeNav === "analytics" && <AnalyticsPage pushToast={pushToast} />}
-            {activeNav === "tag-manager" && <TagManagerPage pushToast={pushToast} />}
+            {activeNav === "tag-manager" && (
+              <TagManagerPage pushToast={pushToast} setActiveNav={setActiveNav} />
+            )}
+            {activeNav === "websites" && <WebsitesPage pushToast={pushToast} />}
+            {activeNav === "consent" && (
+              <ConsentPage pushToast={pushToast} setActiveNav={setActiveNav} />
+            )}
             {activeNav === "advisor" && <AdvisorPage pushToast={pushToast} />}
             {activeNav === "schema-graph" && <SchemaGraphPage pushToast={pushToast} />}
             {activeNav === "search" && <SearchPlaygroundPage pushToast={pushToast} />}

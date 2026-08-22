@@ -44,12 +44,15 @@ import { dailyVisitorId } from "../services/analytics-identity";
 import { enrichmentFromRequest, parseUserAgent } from "../services/analytics-enrich";
 import { TRACKER_BOOT_JS, TRACKER_JS } from "../services/analytics-tracker";
 import { TAG_RUNTIME_JS, safeJson } from "../services/tag-runtime";
+import { CONSENT_BANNER_JS } from "../services/consent-banner-bundle";
+import { getPublishedConsentConfig } from "../services/consent";
 import { getPublishedArtifact } from "../services/tag-manager";
 import { ifNoneMatch, weakETag, weakHash } from "../lib/etag";
 import {
   getContainerEntry,
   setContainerEntry,
 } from "../services/tag-container-cache";
+import { getConsentEntry, setConsentEntry } from "../services/consent-config-cache";
 
 /**
  * Per-(site, IP) budget.
@@ -107,7 +110,7 @@ const CONTAINER_MAX_AGE = 900;
  * describing the code. Computed once per isolate over ~36 KB, which is FNV-1a
  * over a string already resident in memory.
  */
-const RUNTIME_FINGERPRINT = weakHash(TRACKER_JS + TAG_RUNTIME_JS);
+const RUNTIME_FINGERPRINT = weakHash(TRACKER_JS + TAG_RUNTIME_JS + CONSENT_BANNER_JS);
 
 /** CORS for an uncredentialed, append-only, cross-origin endpoint. */
 const corsHeaders = {
@@ -368,13 +371,62 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
         });
       }
       const endpoint = origin + "/api/analytics/collect";
+
+      // The consent policy travels WITH the container, and the order below is
+      // the entire reason prior blocking works.
+      //
+      // `__backlexTM` arms its triggers synchronously and a pageview trigger
+      // fires immediately, so whatever decides which tags may run has to have
+      // decided before that call. A banner that fetched `/api/consent/config`
+      // could not: a round trip cannot finish first, and every pageview tag
+      // would fire while it was in flight. So the artifact is compiled in, the
+      // banner boots between the tracker and the container, and by the time
+      // the container starts the grant map already says no.
+      //
+      // Read through the same per-isolate memo the public config route uses,
+      // so this costs one query a minute per site rather than one per visitor.
+      let consent = getConsentEntry(siteId, now);
+      if (!consent) {
+        const pub = await getPublishedConsentConfig({ db: ctx.db, dialect: ctx.dialect }, siteId);
+        if (pub) {
+          consent = { at: now, body: pub.body, hash: pub.hash, tenantId: pub.tenantId };
+          setConsentEntry(siteId, consent);
+        }
+      }
+
       const body = [
         TRACKER_JS,
+        // Only when there is a policy to show. A site with none — or one that
+        // is disabled — pays nothing for the banner, and `CONSENT_CONFIG_OFF`
+        // is byte-identical across four different situations anyway, so
+        // shipping it would embed a document that says nothing.
+        consent ? CONSENT_BANNER_JS : "",
         TAG_RUNTIME_JS,
         `;__backlexTrackerInit(${safeJson({ s: siteId, e: endpoint })});`,
+        consent
+          ? `;__backlexConsentBanner(${safeJson({
+              cfg: JSON.parse(consent.body),
+              // Bare hex. The public route serves this hash inside an ETag,
+              // where it is QUOTED — and `SHA256_HEX_RE` rejects the quotes,
+              // which would silently downgrade every record this banner
+              // writes to `hashGrade: "unresolved"`.
+              hash: consent.hash,
+              endpoint: origin + "/api/consent/record",
+            })});`
+          : "",
         `;__backlexTM(${safeJson(published.artifact)});`,
-      ].join("\n");
-      hit = { at: now, body, hash: published.hash, tenantId: published.tenantId };
+      ]
+        .filter(Boolean)
+        .join("\n");
+      hit = {
+        at: now,
+        body,
+        // The consent hash joins the container hash in the cache entry, so a
+        // policy edit changes the validator below even though the container
+        // itself did not move.
+        hash: consent ? `${published.hash}:${consent.hash}` : published.hash,
+        tenantId: published.tenantId,
+      };
       setContainerEntry(siteId, origin, hit);
     }
 

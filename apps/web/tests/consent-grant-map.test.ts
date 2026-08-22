@@ -58,6 +58,15 @@ const bootTracker = (cfg: unknown = { s: "site-1", e: "https://api.example/colle
   w.__backlexTrackerInit(cfg);
 };
 
+// Captured ONCE, before anything replaces them — see the note in
+// consent-banner.test.ts: these are process globals shared with every other
+// spec in the run.
+const NATIVE = {
+  Blob: w.Blob,
+  Image: w.Image,
+  sendBeacon: w.navigator.sendBeacon,
+};
+
 beforeEach(() => {
   setUrl("https://shop.example/pricing");
   w.navigator.sendBeacon = (_url: string, body: unknown) => {
@@ -100,6 +109,9 @@ afterEach(() => {
 
 afterAll(() => {
   setUrl(ORIGINAL_URL);
+  w.Blob = NATIVE.Blob;
+  w.Image = NATIVE.Image;
+  w.navigator.sendBeacon = NATIVE.sendBeacon;
   delete w.__backlexTagBooted;
   delete w.backlex;
   delete w.__backlexConsentGranted;

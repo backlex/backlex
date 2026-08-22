@@ -220,6 +220,7 @@ describe("repeat visits are cheap", () => {
     const { weakETag, weakHash } = await import("../src/server/lib/etag");
     const { TRACKER_JS } = await import("../src/server/services/analytics-tracker");
     const { TAG_RUNTIME_JS } = await import("../src/server/services/tag-runtime");
+    const { CONSENT_BANNER_JS } = await import("../src/server/services/consent-banner-bundle");
     const published = await getPublishedArtifact(db, SITE);
 
     // Both halves really are in the body, so both belong in its validator.
@@ -227,7 +228,7 @@ describe("repeat visits are cheap", () => {
     expect(body).toContain(TAG_RUNTIME_JS);
 
     expect(etag).toBe(
-      weakETag([published!.hash, weakHash(TRACKER_JS + TAG_RUNTIME_JS)]),
+      weakETag([published!.hash, weakHash(TRACKER_JS + TAG_RUNTIME_JS + CONSENT_BANNER_JS)]),
     );
     // ...and the artifact hash alone is NOT the validator any more, which is the
     // whole point: this is the assertion that fails if someone reverts to it.

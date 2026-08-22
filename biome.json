@@ -18,7 +18,8 @@
       "!**/node_modules",
       "!**/drizzle",
       "!**/.claude",
-      "!**/tsconfig*.json"
+      "!**/tsconfig*.json",
+      "!apps/web/src/server/services/consent-banner-bundle.ts"
     ]
   },
   "linter": {

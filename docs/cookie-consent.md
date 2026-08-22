@@ -6,22 +6,19 @@ description: The policy a site publishes to its visitors — which categories it
 A site registered for [web analytics](/analytics/) can also publish a **consent
 policy**: what its visitors are asked, and what is withheld until they answer.
 
-This page covers the policy — the configuration half. The banner that renders
-it, the visitor's recorded decision, and the gating of third-party tags are
-built on top of it and are documented separately as they land.
+This page covers the policy, the artifact a decision points at, and
+[the banner](#the-banner) that renders it. The gating of third-party tags is
+documented next door in [Tag manager → Consent](/tag-manager/).
 
 > **What the browser enforces today, and what it does not.** Per-category
-> gating is live: the analytics tag holds a grant map, `backlex.consent()`
-> takes a per-category object, and the tag manager gates every tag on it —
-> see [Tag manager → Consent](/tag-manager/) and
-> [Analytics → Consent](/analytics/).
+> gating is live, and so is the banner: `undecidedBehaviour` is honoured before
+> a visitor answers — see [The banner](#the-banner) below.
 >
-> The two fields below are **published but not yet consumed by the tag**. They
-> ship in `GET /api/consent/config`, and nothing in the browser fetches that
-> document yet, so today the tag files itself under `analytics` and treats a
-> category nobody has answered for as allowed. Setting them still records the
-> posture you chose, and the banner phase is what delivers it. Until then, do
-> not read `undecided: block` as a guarantee the browser is enforcing.
+> `trackerCategory` is still **published but not consumed**. It ships in
+> `GET /api/consent/config`, and the tag files itself under `analytics`
+> regardless, so a site that chose `none` is gated anyway when a visitor
+> declines analytics. Setting it records the posture you chose; the gating
+> phase is what delivers it.
 
 ```bash
 backlex consent set <siteId> \
@@ -263,14 +260,94 @@ implementations that can drift — it is one, reached five ways. That is what
 own default would look correct in isolation and would have routed around the one
 rule the feature is built on.
 
+## The banner
+
+A site with an **enabled** policy gets a banner, and it arrives inside the file
+the page already loads — `/api/analytics/tm/<site-id>.js`, the same one that
+carries the tracker and your tag container. There is nothing extra to install.
+
+### Prior blocking is why it is not a separate file
+
+The container runtime arms its triggers **synchronously**, and a page-view
+trigger fires immediately. So whatever decides which tags may run has to have
+decided *before* that call — which rules out a banner that fetches its own
+configuration, because a network round trip cannot finish first.
+
+A banner that fetches would appear, record a decision, and block nothing on
+first paint. That is the failure this whole feature exists to avoid, so the
+policy is compiled into the per-site file and the file is ordered
+tracker → banner → container. By the time your tags are armed, the grant map
+already says no.
+
+The cost is that a policy edit reaches visitors on the same fifteen-minute
+cache window as a container publish, rather than instantly.
+
+### What it stores
+
+One first-party cookie on **your** domain, `blx_consent`, holding a random
+opaque id, the categories granted, the policy version shown, and a timestamp.
+It carries `SameSite=Lax`, and `Secure` only on `https` — an unconditional
+`Secure` would make a browser drop the whole cookie on an http page, so every
+visitor would be asked again on every page.
+
+It cannot be `HttpOnly`, and that is not a choice: the banner runs on your
+origin, backlex is cross-origin to it, so a `Set-Cookie` from backlex would be
+a third-party cookie — blocked in Safari and Firefox, partitioned in Chrome.
+The decision travels to the server in the beacon body instead, which is why
+`POST /api/consent/record` takes a subject id rather than reading a cookie.
+
+The id is random and derived from nothing about the visitor. It exists because
+the analytics visitor id rotates at UTC midnight by design and therefore cannot
+key a consent record that has to outlive it.
+
+> **Showing a banner starts processing that the tracker alone did not.** Every
+> recorded decision stores a salted hash of the visitor's IP, their
+> user-agent, and a country derived from the request — that is what makes the
+> record evidence. If you chose backlex's tracker partly because it stores
+> nothing on the device, note that the banner is a separate decision with its
+> own basis, and say so in your privacy notice.
+
+### What a visitor sees
+
+Accept all, Reject all, and Manage — which reveals a checkbox per category you
+offered, and a Save. Rejecting is exactly as many clicks as accepting, which is
+the requirement, not a courtesy.
+
+The banner renders in a **shadow root**, so your CSS cannot break it and its CSS
+cannot leak into your page. Two honest limits: a browser without `attachShadow`
+falls back to a namespaced element with weaker isolation, and a shadow root does
+**not** escape your Content-Security-Policy — a strict `style-src` can block the
+banner's stylesheet while its markup still renders.
+
+### Withdrawal
+
+The banner publishes `window.__backlexConsent.open()`. Wire it to a "Cookie
+settings" link in your footer and a visitor can change their mind at any time,
+which is what makes withdrawal as easy as granting.
+
+### Wording
+
+Your `wording` wins **per key**, not per locale block: translate the title and
+nothing else and you get your title with backlex's everything-else, in English
+or Turkish, rather than a half-empty banner. Every string is inserted with
+`textContent` — never `innerHTML` — which is why the API stores your text
+unescaped and a test fails if the banner source so much as mentions `innerHTML`.
+
 ## What this does not do yet
 
 Stated plainly, because a consent feature is a compliance claim and the failure
 mode is an operator believing they are covered because a setting exists:
 
-- **Nothing is rendered or blocked yet.** This ships the policy and the document
-  a banner would read; the banner itself, the preference centre, the visitor
-  records and the prior blocking of third-party tags are separate surfaces.
+- **No standalone preference centre.** `window.__backlexConsent.open()` reopens
+  the banner, which is where a visitor changes or withdraws a decision. A
+  dedicated page listing every cookie you set is not built.
+- **`trackerCategory` is not enforced by the tag.** It is published in the
+  artifact and recorded on the policy; the tag still files itself under
+  `analytics`.
+- **GPC and Do Not Track do not gate third-party tags.** They stop backlex's own
+  tracker. Extending them to your tags switches off live pixels for visitors
+  whose operator chose nothing, so it ships with a per-site switch rather than
+  as a side effect.
 - **No automatic cookie scanning.** Enumerating the cookies a site actually sets
   needs a headless-browser crawler; you declare yours.
 - **No IAB TCF.** The technical surface is plannable; the certification half —

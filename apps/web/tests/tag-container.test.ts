@@ -13,6 +13,7 @@ import { getSiteById } from "../src/server/services/analytics";
 import {
   createTag,
   createTrigger,
+  getPublishedArtifact,
   publishContainer,
 } from "../src/server/services/tag-manager";
 
@@ -199,5 +200,37 @@ describe("repeat visits are cheap", () => {
     await publishContainer(db, TENANT, site, {}, "u1");
     const other = (await container(site)).headers.get("etag");
     expect(other).not.toBe(before);
+  });
+
+  test("the ETag also covers the runtime, not only the published artifact", async () => {
+    // The file served here is tracker + runtime + artifact, but the validator
+    // was derived from the artifact hash alone. So a browser holding a cached
+    // container revalidated, got a bodyless 304 -- which refreshes the freshness
+    // window -- and went on executing the OLD runtime indefinitely. A fix to the
+    // consent gate could not be pushed to a live site at all; it waited on an
+    // operator republishing for some unrelated reason.
+    //
+    // Asserted through the SERVED body rather than by reaching into the route,
+    // so it fails if the fingerprint ever stops being part of the validator.
+    const res = await container(SITE);
+    const etag = res.headers.get("etag");
+    const body = await res.text();
+    expect(etag).toBeTruthy();
+
+    const { weakETag, weakHash } = await import("../src/server/lib/etag");
+    const { TRACKER_JS } = await import("../src/server/services/analytics-tracker");
+    const { TAG_RUNTIME_JS } = await import("../src/server/services/tag-runtime");
+    const published = await getPublishedArtifact(db, SITE);
+
+    // Both halves really are in the body, so both belong in its validator.
+    expect(body).toContain(TRACKER_JS);
+    expect(body).toContain(TAG_RUNTIME_JS);
+
+    expect(etag).toBe(
+      weakETag([published!.hash, weakHash(TRACKER_JS + TAG_RUNTIME_JS)]),
+    );
+    // ...and the artifact hash alone is NOT the validator any more, which is the
+    // whole point: this is the assertion that fails if someone reverts to it.
+    expect(etag).not.toBe(weakETag([published!.hash]));
   });
 });

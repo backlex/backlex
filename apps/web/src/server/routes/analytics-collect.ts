@@ -45,7 +45,7 @@ import { enrichmentFromRequest, parseUserAgent } from "../services/analytics-enr
 import { TRACKER_BOOT_JS, TRACKER_JS } from "../services/analytics-tracker";
 import { TAG_RUNTIME_JS, safeJson } from "../services/tag-runtime";
 import { getPublishedArtifact } from "../services/tag-manager";
-import { ifNoneMatch, weakETag } from "../lib/etag";
+import { ifNoneMatch, weakETag, weakHash } from "../lib/etag";
 import {
   getContainerEntry,
   setContainerEntry,
@@ -91,6 +91,23 @@ const MAX_BODY_BYTES = 8_192;
  * The ETag is what turns the post-expiry request into a bodyless 304.
  */
 const CONTAINER_MAX_AGE = 900;
+
+/**
+ * The other half of what the `/tm` file actually IS.
+ *
+ * The body served there is the tracker plus the container runtime plus the
+ * published artifact, but the ETag was derived from the artifact hash alone —
+ * so a browser holding a cached container revalidated, got a 304, and kept
+ * executing the OLD runtime until the operator happened to republish. A fix to
+ * the consent gate could not be pushed to a live site at all; it waited on an
+ * unrelated human action that might never come.
+ *
+ * Derived from the source rather than a hand-bumped constant, because a
+ * constant someone must remember to bump is a constant that silently stops
+ * describing the code. Computed once per isolate over ~36 KB, which is FNV-1a
+ * over a string already resident in memory.
+ */
+const RUNTIME_FINGERPRINT = weakHash(TRACKER_JS + TAG_RUNTIME_JS);
 
 /** CORS for an uncredentialed, append-only, cross-origin endpoint. */
 const corsHeaders = {
@@ -367,7 +384,7 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
     // which is the DEFAULT one. That exact defect is pinned as a regression.
     if (hit.tenantId) setMeterTenant(c, hit.tenantId);
 
-    const etag = weakETag([hit.hash]);
+    const etag = weakETag([hit.hash, RUNTIME_FINGERPRINT]);
     const headers = {
       "Content-Type": "application/javascript; charset=utf-8",
       "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,

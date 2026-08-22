@@ -3352,6 +3352,19 @@ export const consentPolicies = sqliteTable(
     theme: text("theme", { mode: "json" }).$type<Record<string, string> | null>(),
     /** How long a visitor's decision stands before they are asked again. */
     cookieMaxAgeDays: integer("cookie_max_age_days").notNull().default(180),
+    /** `"tracker" | "all" | "off"` — what GPC and Do Not Track govern.
+     *  `tracker` (the default, and what every site does today) lets them stop
+     *  backlex's own tag and nothing else; `all` widens them to deny every
+     *  optional category, so the tag manager refuses third-party tags too;
+     *  `off` reads neither. Defaulted, unlike `undecided_behaviour` and
+     *  `tracker_category`, because here one answer IS safe: it is the
+     *  behaviour already live, and the other switches off working pixels.
+     *
+     *  Deliberately NOT in the consent artifact — that is recompiled and
+     *  re-hashed on every read, so adding a field to it would archive every
+     *  recorded decision and re-ask every visitor on deploy. It rides the
+     *  per-site container instead. */
+    signalHandling: text("signal_handling").notNull().default("tracker"),
     /** Whether the banner is served at all. */
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
     /** Content hash of the artifact this policy currently compiles to.

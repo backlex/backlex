@@ -1,0 +1,34 @@
+-- What a site does with Global Privacy Control and Do Not Track.
+--
+-- Until now those two signals stopped backlex's OWN tracker and nothing else:
+-- `optedOut()` in `analytics-tracker.ts` reads them, and `consentGranted()`
+-- deliberately does not. Widening them to third-party tags cannot be a side
+-- effect of a deploy — every `tag_definitions.consent_category` is NOT NULL
+-- DEFAULT 'marketing', so it would switch off live pixels on every customer
+-- site at once, for visitors whose operator never chose anything.
+--
+-- Hence a per-site switch, and hence its default is the behaviour that is
+-- already live:
+--
+--   'tracker'  GPC/DNT stop backlex's own tag. Third-party tags are governed by
+--              consent alone. What every site does today.
+--   'all'      GPC/DNT additionally deny every optional category, so the tag
+--              manager's own gate refuses them too. This is the CCPA reading,
+--              where GPC is a legal opt-out rather than a preference.
+--   'off'      Neither signal is read. DNT is a dead standard the W3C retired
+--              and some operators will not want it deciding anything; saying so
+--              explicitly is better than a site quietly ignoring it.
+--
+-- NOT part of the consent artifact, and that is load-bearing.
+-- `getPublishedConsentConfig` RECOMPUTES the artifact and its hash on every
+-- read rather than serving a stored body, so a new field in `ConsentConfig`
+-- would change the hash of every policy the moment this deploys — flipping
+-- every recorded decision from `hash_grade = 'current'` to `'archived'` and
+-- making every banner re-ask, worldwide, for a change no visitor was shown.
+-- It travels in the per-site container instead, which nothing hashes.
+--
+-- Replayable: `IF NOT EXISTS`, because the boot-time runner re-applies every
+-- migration file on every start.
+
+ALTER TABLE "consent_policies"
+  ADD COLUMN IF NOT EXISTS "signal_handling" text NOT NULL DEFAULT 'tracker';

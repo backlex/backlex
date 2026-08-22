@@ -8582,6 +8582,10 @@ msgstr "Global"
 msgid "Global default"
 msgstr "Global default"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Global Privacy Control & Do Not Track"
+msgstr "Global Privacy Control & Do Not Track"
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. On Bun or with an executor configured, also <3>await ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai</3> — on the in-isolate QuickJS fallback those refuse by name."
 msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. On Bun or with an executor configured, also <3>await ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai</3> — on the in-isolate QuickJS fallback those refuse by name."
@@ -9040,6 +9044,10 @@ msgstr "If set, visitors are sent there instead of seeing the message."
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Ignore"
 msgstr "Ignore"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Ignore both signals"
+msgstr "Ignore both signals"
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Ignored"
@@ -11393,6 +11401,10 @@ msgstr "needs {0}"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "needs TURNSTILE_SITE_KEY on the server"
 msgstr "needs TURNSTILE_SITE_KEY on the server"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Neither is read. Do Not Track is a standard the W3C retired; Global Privacy Control is not, and in California it carries legal weight."
+msgstr "Neither is read. Do Not Track is a standard the W3C retired; Global Privacy Control is not, and in California it carries legal weight."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Net revenue"
@@ -18880,6 +18892,14 @@ msgstr "Steps"
 msgid "Still free"
 msgstr "Still free"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Stop backlex's tag only"
+msgstr "Stop backlex's tag only"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Stop every optional tag"
+msgstr "Stop every optional tag"
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Stop trusting this issuer?"
 msgstr "Stop trusting this issuer?"
@@ -20612,6 +20632,10 @@ msgstr "Translations"
 msgid "transport default"
 msgstr "transport default"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Treats the signals as a refusal for every category, so third-party tags stop too. This is the CCPA reading — and it will stop pixels that fire today."
+msgstr "Treats the signals as a refusal for every category, so third-party tags stop too. This is the CCPA reading — and it will stop pixels that fire today."
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Trigger"
 msgstr "Trigger"
@@ -21677,6 +21701,10 @@ msgstr "What this role can do…"
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "What to do"
 msgstr "What to do"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "What your site does today. Your other tags are governed by consent alone."
+msgstr "What your site does today. Your other tags are governed by consent alone."
 
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "whatever the collection has enabled"

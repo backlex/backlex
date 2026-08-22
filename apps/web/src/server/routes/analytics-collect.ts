@@ -45,7 +45,7 @@ import { enrichmentFromRequest, parseUserAgent } from "../services/analytics-enr
 import { TRACKER_BOOT_JS, TRACKER_JS } from "../services/analytics-tracker";
 import { TAG_RUNTIME_JS, safeJson } from "../services/tag-runtime";
 import { CONSENT_BANNER_JS } from "../services/consent-banner-bundle";
-import { getPublishedConsentConfig } from "../services/consent";
+import { getPublishedConsentConfig, getTagConsentSettings } from "../services/consent";
 import { getPublishedArtifact } from "../services/tag-manager";
 import { ifNoneMatch, weakETag, weakHash } from "../lib/etag";
 import {
@@ -398,7 +398,30 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
       // answers a real artifact for an enabled policy and a byte-identical
       // "off" document for everything else, because the banner cannot work
       // otherwise.
-      if (!published && !consent) {
+      // Read from the policy ROW rather than from `consent` above, because
+      // `consent` is null whenever the BANNER is switched off — and neither of
+      // these two settings is about the banner. A site that shows no banner can
+      // still have filed backlex's own tag as strictly necessary, or still want
+      // GPC to stop every tag. One extra query per container-cache miss, which
+      // is once per site per origin per fifteen minutes.
+      const tagConsent = await getTagConsentSettings(
+        { db: ctx.db, dialect: ctx.dialect },
+        siteId,
+      );
+
+      // `tagConsent` counts too, and it is the reason a site with neither a
+      // container nor a banner can still be served: the tag-manager snippet is
+      // a legitimate analytics-only install, and on it `trackerCategory` is the
+      // only thing that can say backlex's own tag is strictly necessary.
+      //
+      // The cost, stated rather than hidden: this distinguishes "site id with a
+      // consent policy row, banner disabled" from "unknown site id", which
+      // `/api/consent/config` deliberately does not — it answers the same "off"
+      // document for both. Site ids are v4 UUIDs, so the oracle only helps
+      // someone who already holds an id, and anyone holding one read it out of
+      // the snippet on the page. A setting that saves, reads back and silently
+      // does nothing is the worse failure.
+      if (!published && !consent && !tagConsent) {
         return c.body("", 200, {
           "Content-Type": "application/javascript; charset=utf-8",
           "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
@@ -414,7 +437,28 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
         // shipping it would embed a document that says nothing.
         consent ? CONSENT_BANNER_JS : "",
         TAG_RUNTIME_JS,
-        `;__backlexTrackerInit(${safeJson({ s: siteId, e: endpoint })});`,
+        // Two fields the tracker cannot read any other way on this install.
+        //
+        // `t` — the site's `trackerCategory`. The tracker filed itself under
+        // "analytics" and said so in a comment: "the per-site posture that
+        // could file it under 'none' instead already ships in the consent
+        // artifact, but nothing delivers that artifact to a browser yet". It
+        // does now, so the assumption goes.
+        //
+        // `g` — what GPC and Do Not Track govern. It is NOT in the artifact and
+        // must not be: that document is recompiled and re-hashed on every read,
+        // so a field there would archive every recorded decision on deploy.
+        // Nothing hashes this file, which is why the switch rides here.
+        //
+        // A script ATTRIBUTE could carry neither: `document.currentScript` is
+        // null for an injected script, which is the shape of the snippet
+        // operators paste, so the tracker's `self` is null on this whole path.
+        `;__backlexTrackerInit(${safeJson({
+          s: siteId,
+          e: endpoint,
+          t: tagConsent?.tracker,
+          g: tagConsent?.signals,
+        })});`,
         consent
           ? `;__backlexConsentBanner(${safeJson({
               cfg: JSON.parse(consent.body),
@@ -436,15 +480,29 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
       hit = {
         at: now,
         body,
-        // The consent hash joins the container hash in the cache entry, so a
-        // policy edit changes the validator below even though the container
-        // itself did not move.
-        hash: published
-          ? consent
-            ? `${published.hash}:${consent.hash}`
-            : published.hash
-          : `consent:${consent?.hash ?? ""}`,
-        tenantId: published?.tenantId ?? consent?.tenantId ?? null,
+        // Everything the BODY depends on, because this string IS the ETag.
+        // A policy edit therefore changes the validator even though the
+        // container itself did not move.
+        //
+        // The tag settings have to be in it too: they are not in the artifact
+        // by design, so `consent.hash` cannot move when they change — a browser
+        // holding the old file would revalidate, be told 304, and that 304
+        // refreshes its freshness, so it keeps the old switch for as long as it
+        // keeps asking. Unbounded staleness, on the setting an operator turns
+        // on precisely because they want it to take effect.
+        //
+        // Empty parts are DROPPED, not joined as blanks. A site with a
+        // container and no consent policy has to keep the validator it already
+        // had — otherwise this deploy alone re-downloads every container in
+        // production for a change that affects none of them.
+        hash: [
+          published?.hash,
+          consent?.hash,
+          tagConsent ? `${tagConsent.tracker}/${tagConsent.signals}` : null,
+        ]
+          .filter(Boolean)
+          .join(":"),
+        tenantId: published?.tenantId ?? consent?.tenantId ?? tagConsent?.tenantId ?? null,
       };
       setContainerEntry(siteId, origin, hit);
     }

@@ -52,6 +52,7 @@ const bootTracker = (cfg: unknown = { s: "site-1", e: "https://api.example/colle
   delete w.backlex;
   delete w.__backlexConsentGranted;
   delete w.__backlexConsentDenied;
+  delete w.__backlexSignalsRefuseAll;
   delete w.dataLayer;
   sent = [];
   new Function(TRACKER_JS)();
@@ -116,6 +117,10 @@ afterAll(() => {
   delete w.backlex;
   delete w.__backlexConsentGranted;
   delete w.__backlexConsentDenied;
+  // Added with the signal switch, and it leaks the same way the two above do:
+  // these are PROCESS globals under the happy-dom preload, shared with ~500
+  // other spec files in the run.
+  delete w.__backlexSignalsRefuseAll;
 });
 
 /** The tag reads `navigator.doNotTrack` through a getter-only accessor under
@@ -431,5 +436,144 @@ describe("a denied tag spends nothing on its way to not firing", () => {
     bootContainer([pixelTag("daily", "marketing", "once_per_visitor_day")]);
     expect(w.__fired).toEqual([]);
     expect(localStorage.getItem("backlex.tm.daily")).toBe(null);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * GPC and Do Not Track, and how far the site lets them reach.
+ *
+ * Until the signal phase they stopped backlex's own tag and nothing else, and
+ * the tracker source said so in a comment. Widening them cannot be a deploy's
+ * side effect: `tag_definitions.consent_category` is `NOT NULL DEFAULT
+ * 'marketing'`, so a browser-side flip would switch off live pixels on every
+ * customer site at once, for visitors whose operator chose nothing. Hence a
+ * per-site switch that defaults to the behaviour already live, and hence these
+ * specs — which check BOTH directions of it, because a switch that only ever
+ * blocks more is not a switch.
+ */
+const gpc = () => {
+  w.navigator.globalPrivacyControl = true;
+};
+
+const cfg = (extra: Record<string, unknown> = {}) => ({
+  s: "site-1",
+  e: "https://api.example/collect",
+  ...extra,
+});
+
+/** Named events that reached the wire.
+ *
+ *  Filtered rather than compared whole, because booting the tracker sends an
+ *  automatic `page_view` BEFORE any of these tests can call `backlex.consent()`
+ *  — that global does not exist until boot returns. Asserting on `sent` itself
+ *  would therefore be asserting about a beacon fired under the previous consent
+ *  state, which is a different question from the one being asked. */
+const probes = () => sent.filter((b) => b.n === "probe");
+
+describe("what GPC and Do Not Track are allowed to govern", () => {
+  test("the default stops our own tag and leaves third-party tags alone", () => {
+    gpc();
+    bootTracker(cfg());
+    w.backlex("probe");
+    expect(probes()).toEqual([]); // ours is stopped, as it always was
+
+    // …and a marketing pixel still fires, because that is what every site does
+    // today and this phase must not change it by existing.
+    expect(w.__backlexConsentGranted("marketing")).toBe(true);
+    bootContainer([pixelTag("px", "marketing")]);
+    expect(w.__fired).toEqual(["px"]);
+  });
+
+  test("`all` widens them to every optional category, through the real runtime", () => {
+    gpc();
+    bootTracker(cfg({ g: "all" }));
+    expect(w.__backlexConsentGranted("marketing")).toBe(false);
+    expect(w.__backlexConsentGranted("analytics")).toBe(false);
+    expect(w.__backlexConsentGranted("functional")).toBe(false);
+    // `none` is not a category a visitor can refuse, signal or no signal.
+    expect(w.__backlexConsentGranted("none")).toBe(true);
+
+    bootContainer([pixelTag("px", "marketing"), pixelTag("essential", "none")]);
+    expect(w.__fired).toEqual(["essential"]);
+  });
+
+  test("`off` reads neither, so our own tag sends", () => {
+    gpc();
+    setDnt();
+    bootTracker(cfg({ g: "off" }));
+    w.backlex("probe");
+    expect(probes().length).toBe(1);
+    expect(w.__backlexConsentGranted("marketing")).toBe(true);
+  });
+
+  test("Do Not Track rides the same switch", () => {
+    setDnt();
+    bootTracker(cfg({ g: "all" }));
+    expect(w.__backlexConsentGranted("marketing")).toBe(false);
+  });
+
+  test("an explicit grant beats the signal, because that is the site speaking", () => {
+    // Ordering, not tolerance. A banner that recorded "yes, marketing" for THIS
+    // visitor is more specific than a browser-wide preference, and a CMP whose
+    // recorded consent were silently overridden would be recording a decision
+    // it does not honour.
+    gpc();
+    bootTracker(cfg({ g: "all" }));
+    w.backlex.consent({ functional: false, analytics: false, marketing: true });
+    expect(w.__backlexConsentGranted("marketing")).toBe(true);
+    bootContainer([pixelTag("px", "marketing")]);
+    expect(w.__fired).toEqual(["px"]);
+  });
+
+  test("…and an explicit refusal still refuses under `off`", () => {
+    // The other direction of the same rule. `off` turns the SIGNALS off, not
+    // consent — a switch that let a site ignore a recorded refusal would be a
+    // compliance hole with a friendly name.
+    bootTracker(cfg({ g: "off" }));
+    w.backlex.consent({ functional: false, analytics: false, marketing: false });
+    expect(w.__backlexConsentGranted("marketing")).toBe(false);
+    bootContainer([pixelTag("px", "marketing")]);
+    expect(w.__fired).toEqual([]);
+  });
+});
+
+describe("how the site files backlex's own tag", () => {
+  test("`none` keeps measuring when analytics consent is refused", () => {
+    // The tracker hardcoded "analytics" and said so: "the per-site posture that
+    // could file it under 'none' instead already ships in the consent artifact,
+    // but nothing delivers that artifact to a browser yet". It does now.
+    bootTracker(cfg({ t: "none" }));
+    w.backlex.consent("denied");
+    w.backlex("probe");
+    expect(probes().length).toBe(1);
+  });
+
+  test("`analytics` is stopped by the same refusal", () => {
+    bootTracker(cfg({ t: "analytics" }));
+    w.backlex.consent("denied");
+    w.backlex("probe");
+    expect(probes()).toEqual([]);
+  });
+
+  test("absent, it stays `analytics` — the plain /script.js install", () => {
+    // No policy is delivered on that path, so the assumption it has always made
+    // has to survive: a site with no consent policy must not start measuring
+    // visitors who refused.
+    bootTracker(cfg());
+    w.backlex.consent("denied");
+    w.backlex("probe");
+    expect(probes()).toEqual([]);
+  });
+
+  test("`none` is still stopped by GPC, because the two are orthogonal", () => {
+    // Filing the tag as strictly necessary answers the CONSENT question. It
+    // does not answer the signal question — an operator who wants to measure
+    // through GPC has to say that too, with `off`.
+    gpc();
+    bootTracker(cfg({ t: "none" }));
+    w.backlex("probe");
+    expect(probes()).toEqual([]);
   });
 });

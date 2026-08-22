@@ -20,6 +20,7 @@ import { createClient } from "../../../packages/client/src/index";
 import {
   OPTIONAL_CATEGORIES,
   THEME_KEYS,
+  SIGNAL_HANDLING,
   TRACKER_CATEGORIES,
   UNDECIDED_BEHAVIOURS,
   WORDING_KEYS,
@@ -451,6 +452,41 @@ describe("the vocabulary is one list, spelled the same everywhere", () => {
     expect(rest).toContain("z.enum(TRACKER_CATEGORIES)");
   });
 
+  test("…and the newer vocabulary, checked as QUOTED literals", () => {
+    // `SIGNAL_HANDLING` cannot use the substring check below and the difference
+    // is not pedantic: its values are `tracker`, `all` and `off`, and a file
+    // that merely says "the tracker" or "all of them" would satisfy
+    // `src.includes("all")` while knowing nothing about the enum. Every one of
+    // these four surfaces would pass vacuously. So the literal has to be
+    // matched in the form it is actually written in: quoted.
+    // Three surfaces write the vocabulary as quoted literals — a TS union, a
+    // JSON-Schema enum, a GraphQL enum value.
+    const quotedSources: [string, string][] = [
+      ["SDK", read("packages/client/src/clients/consent.ts")],
+      ["MCP", read("apps/web/src/server/mcp/tools/consent.ts")],
+      ["GraphQL", read("apps/web/src/server/services/graphql/consent.ts")],
+    ];
+    for (const [name, src] of quotedSources) {
+      for (const v of SIGNAL_HANDLING) {
+        const quoted = src.includes(`"${v}"`) || src.includes(`'${v}'`);
+        expect(`${name} spells ${v}: ${quoted}`).toBe(`${name} spells ${v}: true`);
+      }
+    }
+
+    // The CLI deliberately does not restate the enum in code — it forwards the
+    // flag and lets the server's rejection explain the values, which is written
+    // down where the flag is parsed. What it DOES own is the usage line, and
+    // that is a real spelling that can drift, so it is checked in the form it
+    // is actually written: pipe-joined inside angle brackets.
+    expect(read("packages/cli/src/consent.ts")).toContain(
+      `<${SIGNAL_HANDLING.join("|")}>`,
+    );
+    // REST imports the constant, so it cannot drift at all.
+    expect(read("apps/web/src/server/routes/consent.ts")).toContain(
+      "z.enum(SIGNAL_HANDLING)",
+    );
+  });
+
   test("the four surfaces that must restate it spell it identically", () => {
     const sources: [string, string][] = [
       ["SDK", read("packages/client/src/clients/consent.ts")],
@@ -607,5 +643,221 @@ describe("the banner reaches a site with no tag container", () => {
     );
     expect(res.status).toBe(200);
     expect((await res.text()).length).toBe(0);
+  });
+});
+
+/**
+ * The GPC / Do Not Track switch.
+ *
+ * Its load-bearing property is not that it saves — it is that it saves WITHOUT
+ * touching the artifact. `getPublishedConsentConfig` recompiles and re-hashes
+ * the document on every read rather than serving a stored body, so a field
+ * added to `ConsentConfig` changes the hash of every policy the instant it
+ * deploys: every recorded decision flips from `hash_grade: "current"` to
+ * `"archived"`, and every visitor holding a cookie is asked again, worldwide,
+ * about a change none of them was shown. So the switch rides the per-site
+ * container, which nothing hashes, and this is what says so.
+ */
+describe("what GPC and Do Not Track govern", () => {
+  test("it defaults to the behaviour already live, and round-trips", async () => {
+    const site = await makeSite(h, "signals.example");
+    await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        undecidedBehaviour: "block",
+        trackerCategory: "analytics",
+        categoriesOffered: ["analytics", "marketing"],
+        enabled: true,
+      }),
+    });
+    const first = await h.fetch(`/api/admin/consent/policies/${site}`);
+    expect(((await first.json()) as any).data.signalHandling).toBe("tracker");
+
+    const put = await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signalHandling: "all" }),
+    });
+    expect(((await put.json()) as any).data.signalHandling).toBe("all");
+    // …and carried forward when a later save omits it, like the two postures.
+    const later = await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ position: "top" }),
+    });
+    expect(((await later.json()) as any).data.signalHandling).toBe("all");
+  });
+
+  test("changing it mints NO new artifact, because it is not in the artifact", async () => {
+    const { listConsentVersions } = await import("../src/server/services/consent");
+    const { buildContext } = await import("../src/server/context");
+    const { getSiteById } = await import("../src/server/services/analytics");
+    const ctx = await buildContext(h.env);
+    const db = { db: ctx.db, dialect: ctx.dialect } as never;
+
+    const site = await makeSite(h, "hash-stability.example");
+    const save = (body: unknown) =>
+      h.fetch(`/api/admin/consent/policies/${site}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    await save({
+      undecidedBehaviour: "block",
+      trackerCategory: "analytics",
+      categoriesOffered: ["analytics"],
+      enabled: true,
+    });
+    const tenant = (await getSiteById(db, site))!.tenantId;
+    const before = await listConsentVersions(db, tenant, site);
+    expect(before.length).toBe(1);
+
+    await save({ signalHandling: "all" });
+    const after = await listConsentVersions(db, tenant, site);
+    expect(after.length).toBe(1);
+    expect(after[0]!.hash).toBe(before[0]!.hash);
+
+    // Non-vacuous: a field that IS in the artifact still mints one, so the
+    // assertion above is about this field and not about a dead code path.
+    await save({ position: "top" });
+    const moved = await listConsentVersions(db, tenant, site);
+    expect(moved.length).toBe(2);
+  });
+
+  test("the per-site file carries it, and the tracker's own category, to the browser", async () => {
+    const site = await makeSite(h, "delivery.example");
+    await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        undecidedBehaviour: "block",
+        trackerCategory: "none",
+        signalHandling: "all",
+        categoriesOffered: ["marketing"],
+        enabled: true,
+      }),
+    });
+    const res = await h.app.fetch(new Request(`${h.env.APP_URL}/api/analytics/tm/${site}.js`));
+    const body = await res.text();
+    const init = body.match(/__backlexTrackerInit\((\{.*?\})\);/);
+    expect(init).toBeTruthy();
+    const cfg = JSON.parse(init![1]!);
+    expect(cfg.t).toBe("none");
+    expect(cfg.g).toBe("all");
+
+    // And NOT in the artifact the banner is handed — that is the whole point.
+    const banner = body.match(/__backlexConsentBanner\((\{.*\})\);/);
+    expect(banner).toBeTruthy();
+    expect(JSON.stringify(JSON.parse(banner![1]!).cfg)).not.toContain("signalHandling");
+  });
+
+  test("a site with no consent policy sends neither, so /script.js keeps its assumptions", async () => {
+    // The tracker falls back to `analytics` + `tracker` when these are absent,
+    // which is what every install without a policy has always done. Sending an
+    // undefined would be the same thing; sending a WRONG value would not.
+    const site = await makeSite(h, "no-policy.example");
+    const res = await h.app.fetch(new Request(`${h.env.APP_URL}/api/analytics/tm/${site}.js`));
+    expect((await res.text()).length).toBe(0);
+  });
+});
+
+/**
+ * The two tag-side settings do not depend on the banner being shown.
+ *
+ * `getPublishedConsentConfig` answers null for a disabled policy — correctly,
+ * because `enabled` decides whether a banner appears. Deriving `trackerCategory`
+ * and `signalHandling` from that read would make both silently inert on a site
+ * that runs tags and no banner, which is the shape a compliance bug takes here:
+ * a setting that saves, reads back correctly, and does nothing.
+ */
+describe("tag settings reach the browser without a banner", () => {
+  test("a disabled policy still files the tracker and still governs the signals", async () => {
+    const site = await makeSite(h, "no-banner.example");
+    await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        undecidedBehaviour: "block",
+        trackerCategory: "none",
+        signalHandling: "all",
+        categoriesOffered: ["marketing"],
+        enabled: false,
+      }),
+    });
+
+    const body = await (
+      await h.app.fetch(new Request(`${h.env.APP_URL}/api/analytics/tm/${site}.js`))
+    ).text();
+    const init = body.match(/__backlexTrackerInit\((\{.*?\})\);/);
+    expect(init).toBeTruthy();
+    const cfg = JSON.parse(init![1]!);
+    expect(cfg.t).toBe("none");
+    expect(cfg.g).toBe("all");
+
+    // …and no banner, which is what `enabled: false` is actually for. This is
+    // the assertion that makes the two above about the SETTINGS rather than
+    // about the policy being served wholesale.
+    expect(body).not.toContain("__backlexConsentBanner(");
+  });
+});
+
+/**
+ * Changing the switch has to REACH a browser — eventually, and at all.
+ *
+ * The switch is invisible to the artifact hash by construction: it is not in
+ * the artifact, so `consent.hash` cannot move when it changes. Without the ETag
+ * carrying it, a browser holding the old file revalidates, is told 304, and
+ * that 304 refreshes its freshness — so it keeps the old behaviour for as long
+ * as it keeps asking. That is unbounded staleness, and it is the failure where
+ * an operator turns GPC enforcement on and it silently never arrives.
+ *
+ * **What this does NOT claim**, because a real browser was used to check and it
+ * does not hold: that the change lands immediately. `Cache-Control: public,
+ * max-age=900` with no `must-revalidate` — deliberate, see the route — means a
+ * warm browser cache does not ask at all for fifteen minutes. Measured: after
+ * flipping the switch, a page reloaded with the cache warm still ran the old
+ * one. So the bound is the container's own TTL, the same as any tag change, and
+ * what the ETag buys is that the bound EXISTS.
+ */
+describe("a change to the switch invalidates what a browser holds", () => {
+  test("the ETag moves, so a revalidating browser is given the new file", async () => {
+    const site = await makeSite(h, "etag-signals.example");
+    const save = (body: unknown) =>
+      h.fetch(`/api/admin/consent/policies/${site}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    await save({
+      undecidedBehaviour: "block",
+      trackerCategory: "analytics",
+      categoriesOffered: ["marketing"],
+      enabled: true,
+    });
+
+    const url = `${h.env.APP_URL}/api/analytics/tm/${site}.js`;
+    const first = await h.app.fetch(new Request(url));
+    const etag1 = first.headers.get("etag");
+    expect(etag1).toBeTruthy();
+    expect(await first.text()).toContain('"g":"tracker"');
+
+    // The same request twice is the same ETag — otherwise the assertion below
+    // would pass for any two requests at all.
+    const again = await h.app.fetch(new Request(url));
+    expect(again.headers.get("etag")).toBe(etag1);
+
+    await save({ signalHandling: "all" });
+    const after = await h.app.fetch(new Request(url));
+    expect(after.headers.get("etag")).not.toBe(etag1);
+    expect(await after.text()).toContain('"g":"all"');
+
+    // The exchange a browser makes once `max-age` HAS expired: it offers the
+    // ETag it holds and must be given the new file rather than a 304. This is
+    // the assertion that bounds the staleness; it does not remove it.
+    const conditional = await h.app.fetch(
+      new Request(url, { headers: { "If-None-Match": etag1! } }),
+    );
+    expect(conditional.status).toBe(200);
   });
 });

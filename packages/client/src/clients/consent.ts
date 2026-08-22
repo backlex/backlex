@@ -46,6 +46,22 @@ export type UndecidedBehaviour = "block" | "allow";
  */
 export type TrackerCategory = "none" | "analytics";
 
+/**
+ * What Global Privacy Control and Do Not Track are allowed to govern.
+ *
+ * - `tracker` — they stop backlex's own tag and nothing else. What every site
+ *   does today, and the default.
+ * - `all` — they additionally deny every optional category, so the tag manager
+ *   refuses third-party tags too. The CCPA reading, where GPC is a legal
+ *   opt-out rather than a preference.
+ * - `off` — neither signal is read.
+ *
+ * Unlike the two above this one HAS a default, because here one answer is
+ * plainly safe: it is the behaviour already live everywhere, and the
+ * alternative switches off working pixels on a site that chose nothing.
+ */
+export type SignalHandling = "tracker" | "all" | "off";
+
 export type BannerPosition = "bottom" | "top" | "corner";
 
 export interface ConsentPolicy {
@@ -54,6 +70,7 @@ export interface ConsentPolicy {
   categoriesOffered: ConsentCategory[];
   undecidedBehaviour: UndecidedBehaviour;
   trackerCategory: TrackerCategory;
+  signalHandling: SignalHandling;
   /** Per-locale banner copy, `{ en: { title, body, … } }`. Server-owned: the
    *  page never supplies it, so the text a visitor was held to is the text the
    *  workspace published. */
@@ -84,6 +101,7 @@ export interface ConsentPolicyInput {
   categoriesOffered?: ConsentCategory[];
   undecidedBehaviour?: UndecidedBehaviour;
   trackerCategory?: TrackerCategory;
+  signalHandling?: SignalHandling;
   wording?: Record<string, Record<string, string>>;
   defaultLocale?: string;
   policyUrl?: string | null;

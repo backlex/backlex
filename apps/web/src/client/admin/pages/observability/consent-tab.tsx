@@ -264,6 +264,9 @@ export function ConsentPolicyDialog({
   // form where the operator most needs to be told they must choose.
   const [undecided, setUndecided] = useState<string | undefined>(undefined);
   const [tracker, setTracker] = useState<string | undefined>(undefined);
+  // Unlike the two above this one has a real default, so it is a plain string
+  // rather than `string | undefined` — there is no "unset" to represent.
+  const [signals, setSignals] = useState<string>("tracker");
   const [cats, setCats] = useState<string[]>([]);
   const [position, setPosition] = useState<string>("bottom");
   const [policyUrl, setPolicyUrl] = useState("");
@@ -285,6 +288,7 @@ export function ConsentPolicyDialog({
     setLoadedFor(site.id);
     setUndecided(policy?.undecidedBehaviour ?? undefined);
     setTracker(policy?.trackerCategory ?? undefined);
+    setSignals(policy?.signalHandling ?? "tracker");
     setCats(policy?.categoriesOffered ?? []);
     setPosition(policy?.position ?? "bottom");
     setPolicyUrl(policy?.policyUrl ?? "");
@@ -389,6 +393,34 @@ export function ConsentPolicyDialog({
                     value: "analytics",
                     label: t`Gate it like any other tag`,
                     hint: t`The tag waits for consent. The safest reading, and it costs you the visitors who never answer.`,
+                  },
+                ]}
+              />
+            </label>
+
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-[12.5px] text-muted-foreground">
+                <Trans>Global Privacy Control &amp; Do Not Track</Trans>
+              </span>
+              <Select
+                className="min-w-0"
+                value={signals}
+                onChange={(v) => setSignals(v || "tracker")}
+                options={[
+                  {
+                    value: "tracker",
+                    label: t`Stop backlex's tag only`,
+                    hint: t`What your site does today. Your other tags are governed by consent alone.`,
+                  },
+                  {
+                    value: "all",
+                    label: t`Stop every optional tag`,
+                    hint: t`Treats the signals as a refusal for every category, so third-party tags stop too. This is the CCPA reading — and it will stop pixels that fire today.`,
+                  },
+                  {
+                    value: "off",
+                    label: t`Ignore both signals`,
+                    hint: t`Neither is read. Do Not Track is a standard the W3C retired; Global Privacy Control is not, and in California it carries legal weight.`,
                   },
                 ]}
               />
@@ -601,6 +633,7 @@ export function ConsentPolicyDialog({
               onSave({
                 undecidedBehaviour: undecided as "block" | "allow",
                 trackerCategory: tracker as "none" | "analytics",
+                signalHandling: signals as "tracker" | "all" | "off",
                 categoriesOffered: cats as ("functional" | "analytics" | "marketing")[],
                 position: position as "bottom" | "top" | "corner",
                 policyUrl: policyUrl.trim() || null,

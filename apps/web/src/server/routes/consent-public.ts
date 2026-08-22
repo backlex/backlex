@@ -182,7 +182,12 @@ export const consentPublicRoutes = new Hono<AppBindings>().get("/config", async 
       siteId,
     );
     if (!published) return off();
-    hit = { at: now, body: published.body, hash: published.hash, tenantId: published.tenantId };
+    hit = {
+      at: now,
+      body: published.body,
+      hash: published.hash,
+      tenantId: published.tenantId,
+    };
     setConsentEntry(siteId, hit);
   }
 

@@ -93,6 +93,38 @@ window.__backlexTrackerInit = function (cfg) {
   var OPTIONAL = ["functional", "analytics", "marketing"];
   var grants = {};
 
+  // Two per-site answers the server compiles into the file, alongside the
+  // consent seam rather than below it, because consentGranted() reads one of
+  // them and is exported before the boot guards run.
+  //
+  // Neither can arrive as a script ATTRIBUTE: document.currentScript is null
+  // for a dynamically injected script, which is exactly the async snippet
+  // operators paste, so self is null on the whole tag-manager path. The
+  // fallbacks are what a plain /script.js install has always assumed.
+  var trackerCategory = cfg && cfg.t ? cfg.t : "analytics";
+  var signals = cfg && cfg.g ? cfg.g : "tracker";
+
+  // Do Not Track and Global Privacy Control, in ONE place.
+  //
+  // A function declaration, so consentGranted() above can call it while
+  // honorDnt below is still hoisted-undefined -- it is only ever CALLED after
+  // init has run to the end, and reading the attribute at call time is what
+  // makes that safe.
+  //
+  // GPC is not gated on honorDnt: data-respect-dnt was named for Do Not
+  // Track, and GPC is a different thing -- a signal with actual legal weight
+  // under CCPA/CPRA rather than a retired W3C draft. Turning both off is what
+  // signals === "off" is for, and unlike the attribute it reaches the
+  // tag-manager install.
+  function signalOptOut() {
+    if (signals === "off") return false;
+    try {
+      if (honorDnt && (nav.doNotTrack === "1" || window.doNotTrack === "1")) return true;
+      if (nav.globalPrivacyControl === true) return true;
+    } catch (e) {}
+    return false;
+  }
+
   // Which Consent Mode key speaks for a category.
   function storageKey(category) {
     if (category === "marketing") return "ad_storage";
@@ -133,25 +165,56 @@ window.__backlexTrackerInit = function (cfg) {
   //
   // An explicit call beats the dataLayer, because that is the site owner
   // speaking directly rather than us inferring. With neither, the answer is
-  // yes -- the pre-policy default. The per-site "undecided" posture that can
-  // change that answer is published in the consent artifact already, but
-  // nothing delivers the artifact to a browser yet.
+  // yes -- the pre-policy default.
   //
-  // GPC and Do Not Track are deliberately NOT read here. They gate THIS tag,
-  // in optedOut() below, exactly as they always have. Extending them to
-  // third-party tags stops tags that fire today, on sites whose operator took
-  // no action, and belongs with the gating work that can also hand that
-  // operator a switch.
+  // On a site with a banner that default is barely reachable: the banner writes
+  // a TOTAL grant map before the container arms, applying the per-site
+  // "undecided" posture, so grants[category] is already set. It stands for the
+  // plain /script.js install, where no policy is delivered at all.
+  //
+  // GPC and Do Not Track reach third-party tags only when the SITE says so.
+  //
+  // They used to be read in optedOut() alone, gating this tag and nothing else,
+  // because widening them cannot be a side effect of a deploy: every tag the
+  // manager compiles is filed under "marketing" by default, so a browser-side
+  // flip would switch off live pixels on every customer site at once, for
+  // visitors whose operator chose nothing. The switch is per site, it defaults
+  // to that same behaviour, and it arrives in cfg.g -- see SIGNAL_HANDLING.
+  //
+  // Ordered AFTER the explicit call and BEFORE the dataLayer: an operator or a
+  // banner naming this category outright is the site speaking about this
+  // visitor, which beats a browser-wide preference; a two-key gtag map is a
+  // weaker signal than a header the visitor's own agent set.
   function consentGranted(category) {
     if (!category || category === "none") return true;
     if (grants[category] === true) return true;
     if (grants[category] === false) return false;
+    if (signals === "all" && signalOptOut()) return false;
     return stateFor(category) !== "denied";
   }
 
   // The seam the tag-manager runtime gates every third-party tag through, so
   // there is ONE answer to "did the visitor say no" rather than two that drift.
   window.__backlexConsentGranted = consentGranted;
+
+  // Whether the signals amount to a refusal ON THIS SITE. Exported for the
+  // banner, and it exists because of a hole real measurement found:
+  //
+  // consentGranted() consults the grant map FIRST, and the banner always writes
+  // a TOTAL map before the container arms -- so grants[category] is never
+  // undefined on a site running a banner, and the signal branch below it was
+  // dead code there. With undecided = "allow" that meant a GPC visitor who had
+  // not answered got every tag fired on a site whose operator had explicitly
+  // asked for the opposite.
+  //
+  // The fix belongs in the banner, because only the banner can tell an
+  // UNDECIDED posture from a decision, and the two must be treated differently:
+  // a signal outranks a guess about a visitor, and does not outrank that
+  // visitor's own recorded answer. The logic still lives here so there is one
+  // implementation of it.
+  window.__backlexSignalsRefuseAll = function () {
+    return signals === "all" && signalOptOut();
+  };
 
   // The name a container compiled before this existed still calls. A browser
   // can hold a container for fifteen minutes and a /script.js for an hour, so
@@ -208,13 +271,14 @@ window.__backlexTrackerInit = function (cfg) {
   var LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]", "0.0.0.0"];
 
   function optedOut() {
-    // The tag files itself under "analytics". The per-site posture that could
-    // file it under "none" instead -- strictly necessary, measures everyone --
-    // already ships in the consent artifact, but nothing delivers that
-    // artifact to a browser yet, so this is the assumption until it does.
-    if (!consentGranted("analytics")) return true;
-    if (honorDnt && (nav.doNotTrack === "1" || window.doNotTrack === "1")) return true;
-    if (nav.globalPrivacyControl === true) return true;
+    // The site's own answer for how THIS tag is classified, delivered in the
+    // per-site file. "none" means the operator filed it as strictly necessary
+    // -- it stores nothing on the device and its visitor id rotates daily --
+    // and consentGranted("none") is true, so only the signals below can stop
+    // it. Absent (the plain /script.js install, where there is no policy to
+    // read), it stays "analytics", which is what it has always assumed.
+    if (!consentGranted(trackerCategory)) return true;
+    if (signalOptOut()) return true;
     // A dev machine's traffic is noise in a production report, and forgetting
     // to strip the tag before running locally is the normal case, not the
     // exception. Opt in with data-allow-localhost="true".

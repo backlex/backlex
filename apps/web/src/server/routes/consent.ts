@@ -21,6 +21,7 @@ import { listConsentRecords } from "../services/consent-records";
 import {
   BANNER_POSITIONS,
   OPTIONAL_CATEGORIES,
+  SIGNAL_HANDLING,
   TRACKER_CATEGORIES,
   UNDECIDED_BEHAVIOURS,
   WORDING_KEYS,
@@ -62,6 +63,7 @@ const Policy = z
     position: z.enum(BANNER_POSITIONS),
     theme: z.record(z.string(), z.string()),
     cookieMaxAgeDays: z.number().int(),
+    signalHandling: z.enum(SIGNAL_HANDLING),
     enabled: z.boolean(),
     createdAt: z.number().int(),
     updatedAt: z.number().int(),
@@ -121,6 +123,7 @@ const PolicyInputSchema = z.object({
   position: z.enum(BANNER_POSITIONS).optional(),
   theme: z.record(z.string(), z.string().max(60)).optional(),
   cookieMaxAgeDays: z.number().int().min(1).max(730).optional(),
+  signalHandling: z.enum(SIGNAL_HANDLING).optional(),
   enabled: z.boolean().optional(),
 });
 

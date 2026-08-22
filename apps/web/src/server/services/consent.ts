@@ -34,6 +34,12 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { invalidateConsentConfig } from "./consent-config-cache";
+// The per-site FILE bakes the artifact and the tag settings into its body,
+// so a policy write invalidates that memo too. Without it a wording edit —
+// or a change to what GPC governs — waits out the container TTL before any
+// visitor sees it, which reads to an operator exactly like a save that did
+// not take.
+import { invalidateContainer } from "./tag-container-cache";
 import { hashToken } from "./shared-links";
 
 export interface ConsentDbCtx {
@@ -75,6 +81,33 @@ export type TrackerCategory = (typeof TRACKER_CATEGORIES)[number];
 
 export const BANNER_POSITIONS = ["bottom", "top", "corner"] as const;
 export type BannerPosition = (typeof BANNER_POSITIONS)[number];
+
+/**
+ * What Global Privacy Control and Do Not Track are allowed to govern.
+ *
+ * Until this existed they stopped backlex's OWN tag and nothing else:
+ * `optedOut()` reads them, `consentGranted()` deliberately does not, and the
+ * tracker source says so in a comment. Widening them is not a deploy-time
+ * decision, because every `tag_definitions.consent_category` is `NOT NULL
+ * DEFAULT 'marketing'` — flipping the seam would switch off live pixels on
+ * every customer site at once, for visitors whose operator chose nothing.
+ *
+ *   `tracker`  what every site does today, and the default.
+ *   `all`      the signals additionally deny every optional category, so the
+ *              tag manager's own gate refuses third-party tags. The CCPA
+ *              reading, where GPC is a legal opt-out and not a preference.
+ *   `off`      neither signal is read. DNT is a standard the W3C retired, and
+ *              an operator who does not want it deciding anything should be
+ *              able to say so rather than have a site quietly ignore it.
+ *
+ * **This one HAS a default**, unlike `undecidedBehaviour` and
+ * `trackerCategory`. Those two are refused on a first save because neither
+ * answer is safe to pick for an operator. Here one answer plainly is: it is the
+ * behaviour that is already live everywhere, and the alternative takes working
+ * measurement away from a site that never asked.
+ */
+export const SIGNAL_HANDLING = ["tracker", "all", "off"] as const;
+export type SignalHandling = (typeof SIGNAL_HANDLING)[number];
 
 /**
  * The strings the banner renders, and the only ones it will read.
@@ -139,6 +172,8 @@ export interface ConsentPolicy {
   position: BannerPosition;
   theme: Record<string, string>;
   cookieMaxAgeDays: number;
+  /** See `SIGNAL_HANDLING`. Not part of the artifact — it rides the container. */
+  signalHandling: SignalHandling;
   enabled: boolean;
   createdAt: number;
   updatedAt: number;
@@ -154,6 +189,7 @@ export interface ConsentPolicyInput {
   position?: unknown;
   theme?: unknown;
   cookieMaxAgeDays?: unknown;
+  signalHandling?: unknown;
   enabled?: unknown;
 }
 
@@ -317,6 +353,9 @@ const toPolicy = (r: any): ConsentPolicy => ({
   position: (oneOf(r.position, BANNER_POSITIONS) ?? "bottom") as BannerPosition,
   theme: parseTheme(r.theme),
   cookieMaxAgeDays: Number(r.cookieMaxAgeDays ?? 180),
+  // Unlike the two above, this `??` IS a default rather than a safe reading —
+  // the column carries one, and `tracker` is what every site already does.
+  signalHandling: (oneOf(r.signalHandling, SIGNAL_HANDLING) ?? "tracker") as SignalHandling,
   enabled: Boolean(r.enabled),
   createdAt: tsValue(r.createdAt),
   updatedAt: tsValue(r.updatedAt),
@@ -576,6 +615,57 @@ export const getPublishedConsentConfig = async (
   };
 };
 
+/**
+ * The two policy fields the TAG needs, whether or not a banner is served.
+ *
+ * Separate from `getPublishedConsentConfig` because that one answers `null` for
+ * a disabled policy — correctly, since `enabled` decides whether a banner is
+ * shown. But `trackerCategory` and `signalHandling` are not about the banner:
+ * an operator can legitimately run no banner and still have filed backlex's own
+ * tag as strictly necessary, or still want GPC to stop every tag. Reading them
+ * through the banner's switch would make both silently inert in exactly that
+ * configuration, which is the shape a compliance bug takes here — a setting
+ * that exists, reads back correctly, and does nothing.
+ *
+ * Called once per container-cache MISS (fifteen minutes per site per origin),
+ * beside the artifact read that is already there.
+ */
+export const getTagConsentSettings = async (
+  ctx: ConsentDbCtx,
+  siteId: string,
+): Promise<{
+  tracker: TrackerCategory;
+  signals: SignalHandling;
+  tenantId: string | null;
+} | null> => {
+  if (!siteId) return null;
+  const t = policiesTable(ctx.dialect);
+  const st = sitesTable(ctx.dialect);
+  const [row] = (await (ctx.db as any)
+    .select({
+      trackerCategory: t.trackerCategory,
+      signalHandling: t.signalHandling,
+      // Returned so the container route can meter a request it now answers for
+      // a site whose ONLY consent state is a disabled policy. Without it that
+      // fetch bills whichever workspace the tenant middleware resolved, which
+      // is the DEFAULT one — the exact defect the route's own comment says is
+      // pinned as a regression.
+      tenantId: t.tenantId,
+    })
+    .from(t)
+    // Joined to the site for the same reason the artifact read is: a policy
+    // whose site was deleted must not keep answering for that id.
+    .innerJoin(st, eq(st.id, t.siteId))
+    .where(eq(t.siteId, siteId))
+    .limit(1)) as any[];
+  if (!row) return null;
+  return {
+    tracker: (oneOf(row.trackerCategory, TRACKER_CATEGORIES) ?? "analytics") as TrackerCategory,
+    signals: (oneOf(row.signalHandling, SIGNAL_HANDLING) ?? "tracker") as SignalHandling,
+    tenantId: row.tenantId ?? null,
+  };
+};
+
 export interface ConsentVersion {
   id: string;
   hash: string;
@@ -642,6 +732,7 @@ export const deletePolicyForDeletedSite = async (
   // owns both tables' lifecycle; see `services/analytics.ts::deleteSite`.
   await (ctx.db as any).delete(v).where(eq(v.siteId, siteId));
   invalidateConsentConfig(siteId);
+  invalidateContainer(siteId);
 };
 
 /**
@@ -729,6 +820,12 @@ export const savePolicy = async (
     position: oneOf(input.position, BANNER_POSITIONS) ?? existing?.position ?? "bottom",
     theme: input.theme !== undefined ? parseTheme(input.theme) : (existing?.theme ?? {}),
     cookieMaxAgeDays,
+    // Rides `resolved` into the ROW but never into the artifact:
+    // `compileConsentConfig` builds from a fixed literal rather than a spread,
+    // which is precisely so an extra key here cannot enter the hashed document
+    // and invalidate every visitor's decision at once.
+    signalHandling:
+      oneOf(input.signalHandling, SIGNAL_HANDLING) ?? existing?.signalHandling ?? "tracker",
   };
 
   // Hashed from the RESOLVED values, not from `input` and not from `existing`:
@@ -765,6 +862,7 @@ export const savePolicy = async (
         position: row.position,
         theme: row.theme,
         cookieMaxAgeDays: row.cookieMaxAgeDays,
+        signalHandling: row.signalHandling,
         enabled: row.enabled,
         // Derived from the fields above, so last-writer-wins is correct for it
         // in a way it would not be for an operator-moved pointer. It has to be
@@ -829,6 +927,7 @@ export const savePolicy = async (
   // they save, reload their own site, and read the previous wording — which
   // looks like a failed save rather than a one-minute memo.
   invalidateConsentConfig(siteId);
+  invalidateContainer(siteId);
   return saved;
 };
 
@@ -852,6 +951,7 @@ export const deletePolicy = async (
   //
   // Removing a site is different — see `deletePolicyForDeletedSite`.
   invalidateConsentConfig(siteId);
+  invalidateContainer(siteId);
 };
 
 /**

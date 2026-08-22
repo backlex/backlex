@@ -148,3 +148,36 @@ test(
   },
   PGLITE_TEST_TIMEOUT_MS,
 );
+
+test(
+  "the signal switch survives the Postgres upsert's explicit SET list",
+  async () => {
+    if (!harness) return;
+    // A column absent from `onConflictDoUpdate`'s `set` writes on INSERT and
+    // then never again — the SQLite suite caught exactly that for this field,
+    // and the clause is dialect-branched (`ON CONFLICT … DO UPDATE … WHERE`),
+    // so the fix has to be shown to hold here rather than inferred.
+    const save = (body: unknown) =>
+      harness!.fetch(`/api/admin/consent/policies/${SITE}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    await save({
+      undecidedBehaviour: "block",
+      trackerCategory: "analytics",
+      categoriesOffered: ["analytics"],
+      enabled: true,
+    });
+    const created = await harness.fetch(`/api/admin/consent/policies/${SITE}`);
+    expect(((await created.json()) as any).data.signalHandling).toBe("tracker");
+
+    // The UPDATE arm, which is the one that differs.
+    const updated = await save({ signalHandling: "all" });
+    expect(((await updated.json()) as any).data.signalHandling).toBe("all");
+    const reread = await harness.fetch(`/api/admin/consent/policies/${SITE}`);
+    expect(((await reread.json()) as any).data.signalHandling).toBe("all");
+  },
+  PGLITE_TEST_TIMEOUT_MS,
+);

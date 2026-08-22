@@ -8582,6 +8582,10 @@ msgstr "Global"
 msgid "Global default"
 msgstr "Global varsayılan"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Global Privacy Control & Do Not Track"
+msgstr "Global Privacy Control ve Do Not Track"
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. On Bun or with an executor configured, also <3>await ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai</3> — on the in-isolate QuickJS fallback those refuse by name."
 msgstr "Global'ler: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Bun üzerinde ya da bir yürütücü yapılandırıldığında ayrıca <3>await ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai</3> — izolat içi QuickJS yedeğinde bunlar adıyla reddeder."
@@ -9040,6 +9044,10 @@ msgstr "Ayarlanırsa ziyaretçi mesaj yerine bu adrese yönlendirilir."
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Ignore"
 msgstr "Yoksay"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Ignore both signals"
+msgstr "İkisini de yok say"
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Ignored"
@@ -11393,6 +11401,10 @@ msgstr "{0} gerekir"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "needs TURNSTILE_SITE_KEY on the server"
 msgstr "sunucuda TURNSTILE_SITE_KEY gerektirir"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Neither is read. Do Not Track is a standard the W3C retired; Global Privacy Control is not, and in California it carries legal weight."
+msgstr "Hiçbiri okunmaz. Do Not Track, W3C'nin geri çektiği bir standart; Global Privacy Control değil ve Kaliforniya'da yasal ağırlığı var."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Net revenue"
@@ -18880,6 +18892,14 @@ msgstr "Adımlar"
 msgid "Still free"
 msgstr "Boş kalan"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Stop backlex's tag only"
+msgstr "Yalnızca backlex'in etiketini durdur"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Stop every optional tag"
+msgstr "İsteğe bağlı her etiketi durdur"
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Stop trusting this issuer?"
 msgstr "Bu sağlayıcıya güvenmeyi bırakılsın mı?"
@@ -20612,6 +20632,10 @@ msgstr "Çeviriler"
 msgid "transport default"
 msgstr "taşıyıcı varsayılanı"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Treats the signals as a refusal for every category, so third-party tags stop too. This is the CCPA reading — and it will stop pixels that fire today."
+msgstr "Sinyalleri her kategori için ret sayar, böylece üçüncü taraf etiketleri de durur. CCPA okuması budur — ve bugün çalışan pikselleri durduracaktır."
+
 #: src/client/admin/pages/automation/functions.tsx
 msgid "Trigger"
 msgstr "Tetikleyici"
@@ -21677,6 +21701,10 @@ msgstr "Bu rolün yapabilecekleri…"
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "What to do"
 msgstr "Ne yapılsın"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "What your site does today. Your other tags are governed by consent alone."
+msgstr "Sitenizin bugün yaptığı şey. Diğer etiketleriniz yalnızca onaya tabidir."
 
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "whatever the collection has enabled"

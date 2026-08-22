@@ -3767,6 +3767,20 @@ export const consentPolicies = pgTable(
     /** How long a visitor's decision stands before they are asked again. The
      *  CNIL's guidance is 6 months, which is where 180 comes from. */
     cookieMaxAgeDays: integer("cookie_max_age_days").notNull().default(180),
+    /** `"tracker" | "all" | "off"` — what GPC and Do Not Track govern.
+     *  `tracker` (the default, and what every site does today) lets them stop
+     *  backlex's own tag and nothing else; `all` widens them to deny every
+     *  optional category, so the tag manager refuses third-party tags too;
+     *  `off` reads neither. Defaulted, unlike `undecided_behaviour` and
+     *  `tracker_category`, because here one answer IS safe: it is the
+     *  behaviour already live, and the other switches off working pixels on
+     *  sites whose operator chose nothing.
+     *
+     *  Deliberately NOT in the consent artifact — that is recompiled and
+     *  re-hashed on every read, so adding a field to it would archive every
+     *  recorded decision and re-ask every visitor on deploy. It rides the
+     *  per-site container instead, which nothing hashes. */
+    signalHandling: text("signal_handling").notNull().default("tracker"),
     /** Whether the banner is served at all. A site can hold a configured
      *  policy without showing anything yet. */
     enabled: boolean("enabled").notNull().default(false),

@@ -288,3 +288,72 @@ describe("metering", () => {
     expect(await billed(defaultTenant)).toBe(defaultBefore);
   });
 });
+
+/**
+ * The container route now answers for a site whose ONLY consent state is a
+ * DISABLED policy — no banner, no published tag container. That path resolves
+ * neither `published` nor `consent`, so the tenant it meters against has to
+ * come from the policy row, or the request bills the DEFAULT workspace and the
+ * site's owner gets their public traffic paid for by someone else.
+ *
+ * Uses the same second-workspace methodology as the block above, and for the
+ * same reason: the harness admin's tenant IS the default one, so a fixture on
+ * it would compare correct attribution against the fallback's answer and get
+ * the same number either way.
+ */
+describe("the container route meters a banner-less consent site", () => {
+  test("a tag-settings-only file bills the site's owner", async () => {
+    const { resetUsageState, flushUsage } = await import("../src/server/services/usage");
+    const ctx = await buildContext(h.env);
+    const anyDb = ctx.db as any;
+    const sqliteSchema = (await import("@backlex/db/sqlite")).schema;
+    const { eq } = await import("drizzle-orm");
+
+    const defaultTenant = ((await anyDb.select().from(sqliteSchema.tenants)) as {
+      id: string;
+    }[])[0]!.id;
+    const ownerTenant = crypto.randomUUID();
+    await anyDb.insert(sqliteSchema.tenants).values({
+      id: ownerTenant,
+      slug: `tm-owner-${ownerTenant.slice(0, 8)}`,
+      name: "Container owner workspace",
+    });
+    const siteId = crypto.randomUUID();
+    await anyDb.insert(sqliteSchema.analyticsSites).values({
+      id: siteId,
+      tenantId: ownerTenant,
+      name: "Owned, banner-less",
+      domain: `tm-owned-${siteId.slice(0, 8)}.example`,
+    });
+    // DISABLED: no banner is served, and there is no tag container either.
+    await savePolicy(db, ownerTenant, siteId, {
+      undecidedBehaviour: "block",
+      trackerCategory: "none",
+      signalHandling: "all",
+      enabled: false,
+    });
+    expect(ownerTenant).not.toBe(defaultTenant);
+
+    const billed = async (tid: string): Promise<number> => {
+      await flushUsage(ctx);
+      const rows = (await anyDb
+        .select()
+        .from(sqliteSchema.usageCounters)
+        .where(eq(sqliteSchema.usageCounters.tenantId, tid))) as { requests: number }[];
+      return rows.reduce((n, r) => n + Number(r.requests ?? 0), 0);
+    };
+    resetUsageState();
+    const ownerBefore = await billed(ownerTenant);
+    const defaultBefore = await billed(defaultTenant);
+
+    const res = await anonFetch(`/api/analytics/tm/${siteId}.js`);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    // The premise: this really is the tag-settings-only path.
+    expect(body).toContain('"g":"all"');
+    expect(body).not.toContain("__backlexConsentBanner(");
+
+    expect(await billed(ownerTenant)).toBeGreaterThan(ownerBefore);
+    expect(await billed(defaultTenant)).toBe(defaultBefore);
+  });
+});

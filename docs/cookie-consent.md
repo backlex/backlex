@@ -72,6 +72,60 @@ Either way, processing a visitor's IP still needs a lawful basis. `none` is a
 claim that Art. 5(3) does not apply; it is not a claim that nothing is
 processed.
 
+## Global Privacy Control and Do Not Track
+
+A third setting, `signalHandling`, decides how far those two browser signals
+reach. **Unlike the two above it has a default**, because here one answer is
+plainly safe:
+
+| | |
+|---|---|
+| `tracker` | **The default.** The signals stop backlex's own tag and nothing else. Your other tags are governed by consent alone. |
+| `all` | The signals additionally deny **every** optional category, so the tag manager refuses third-party tags too. This is the CCPA reading, where GPC is a legal opt-out rather than a preference. |
+| `off` | Neither signal is read. |
+
+**Why `all` is not the default, even though it is the stricter answer.** Every
+tag you create is filed under `marketing` unless you say otherwise, so turning
+this on globally would stop working pixels on every site at once, for visitors
+whose operator never chose anything. A compliance feature that silently breaks
+measurement teaches operators to switch it off, which is worse than asking.
+
+**Ordering, when several things have an opinion.** An explicit decision — from
+the banner, or from `backlex.consent()` — wins over the signals, because it is
+your site speaking about *this* visitor rather than a browser-wide preference.
+The signals in turn beat a stale `gtag` entry. And `off` turns the *signals*
+off, not consent: a recorded refusal is still a refusal.
+
+**How long a change takes to arrive.** Up to fifteen minutes, the same as any
+tag change. The per-site file is served `public, max-age=900`, so a browser that
+already has it does not ask again until that expires — measured in a real
+browser, not assumed. When it does ask, it gets the new file: the setting is
+folded into the file's ETag precisely so that a revalidation cannot be answered
+`304` with the old switch still in it, which would make the staleness unbounded
+rather than bounded.
+
+`off` exists because Do Not Track is a standard the W3C retired and a header
+some browsers set by default; Global Privacy Control is neither, and in
+California it carries legal weight. Turning both off is a decision, so it is
+spelled out rather than inferred from a missing attribute.
+
+> The old `data-respect-dnt` attribute still works on the plain
+> `/api/analytics/script.js` install, and only there. It cannot work on the tag
+> manager's snippet at all: `document.currentScript` is `null` for a
+> dynamically injected script, so there is no element to read an attribute
+> from. That is why this is a policy field and not a second attribute.
+
+## What the tracker is filed as, and what that now does
+
+`trackerCategory` used to be recorded and published and read by nothing — the
+tag filed itself under `analytics` regardless. It is now delivered to the
+browser in the per-site file, so `none` really does mean "strictly necessary,
+measures everyone".
+
+The two settings are **orthogonal**. Filing the tag as `none` answers the
+consent question; it does not answer the signal question. A site that wants to
+measure through GPC has to say so with `signalHandling: "off"` as well.
+
 ## Categories
 
 `categoriesOffered` is a **list**, not a switch:
@@ -144,7 +198,7 @@ which policy is live.
 
 ### What is in the artifact, and what is not
 
-Four fields of the policy row are deliberately excluded, because the artifact
+Five fields of the policy row are deliberately excluded, because the artifact
 describes *what a visitor agreed to* rather than *what the table holds*:
 
 | Excluded | Why |
@@ -152,6 +206,10 @@ describes *what a visitor agreed to* rather than *what the table holds*:
 | `updatedAt` / `createdAt` | An empty save moves `updatedAt`. Including it would make the hash a clock reading, so every no-op save would mint an artifact and bust every visitor's cache. |
 | `tenantId` | The artifact is served with `Access-Control-Allow-Origin: *` to every visitor of a customer's domain. A workspace id has no business travelling there. |
 | `enabled` | Whether to show a banner is not something a visitor agreed to. It stays on the row and is read fresh on every request, so switching a banner off is instant and toggling it never mints an artifact. |
+| `signalHandling` | Same argument, and a sharper consequence. The artifact is **recompiled and re-hashed on every read** rather than served from storage, so a field added here changes the hash of every policy the moment it deploys — archiving every recorded decision and re-asking every visitor about a change none of them was shown. It travels in the per-site container instead, which nothing hashes. |
+
+That last row is why changing `signalHandling` does not appear in a site's
+version history: nothing about the document a visitor was shown has changed.
 
 Locale keys in `wording` are **sorted** before hashing. Without that, two
 byte-identical policies saved with their locales in a different order hash
@@ -393,13 +451,6 @@ mode is an operator believing they are covered because a setting exists:
 - **No standalone preference centre.** Reopening the banner *is* the preference
   centre — it carries the categories, the consent id and the withdrawal. What
   is not built is a dedicated page listing every cookie you set, name by name.
-- **`trackerCategory` is not enforced by the tag.** It is published in the
-  artifact and recorded on the policy; the tag still files itself under
-  `analytics`.
-- **GPC and Do Not Track do not gate third-party tags.** They stop backlex's own
-  tracker. Extending them to your tags switches off live pixels for visitors
-  whose operator chose nothing, so it ships with a per-site switch rather than
-  as a side effect.
 - **No automatic cookie scanning.** Enumerating the cookies a site actually sets
   needs a headless-browser crawler; you declare yours.
 - **No IAB TCF.** The technical surface is plannable; the certification half —

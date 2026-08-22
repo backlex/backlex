@@ -910,6 +910,12 @@ export function useSaveConsentPolicy() {
             position: v.patch.position ?? "bottom",
             theme: v.patch.theme ?? {},
             cookieMaxAgeDays: v.patch.cookieMaxAgeDays ?? 180,
+            // The server's own default, restated here because an optimistic row
+            // has to look like what the save will actually produce. Unlike the
+            // two postures above, omitting this is legitimate — it is the only
+            // consent field that HAS a default — so a missing value must paint
+            // as `tracker` rather than block the row from being painted.
+            signalHandling: v.patch.signalHandling ?? "tracker",
             enabled: v.patch.enabled ?? false,
             createdAt: Date.now(),
             updatedAt: Date.now(),

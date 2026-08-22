@@ -51,6 +51,20 @@ const POLICY_PROPS = {
       "that is a legal position, not a fact. `analytics` gates it like any " +
       "other tag. Also has no default, for the same reason.",
   },
+  signalHandling: {
+    type: "string",
+    enum: ["tracker", "all", "off"],
+    description:
+      "What Global Privacy Control and Do Not Track govern. `tracker` lets them " +
+      "stop backlex's own tag and nothing else — what every site does today, " +
+      "and the DEFAULT. `all` widens them to deny every optional category, so " +
+      "the tag manager refuses third-party tags too; that is the CCPA reading, " +
+      "where GPC is a legal opt-out rather than a preference. `off` reads " +
+      "neither. Unlike the two fields above this one HAS a default, because " +
+      "here one answer is safe: `all` takes working measurement away from a " +
+      "site whose operator never asked for it, so it must be chosen, not " +
+      "inherited.",
+  },
   categoriesOffered: {
     type: "array",
     items: { type: "string", enum: ["functional", "analytics", "marketing"] },

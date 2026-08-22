@@ -28,6 +28,7 @@ const HELP = `backlex consent <policies|policy|versions|records|set|rm|wording>
   policy <siteId>                      one site's policy (null if unset)
   set <siteId> --undecided <block|allow> --tracker <none|analytics>
       [--categories functional,analytics,marketing]
+      [--signals <tracker|all|off>]
       [--position <bottom|top|corner>] [--policy-url <url>]
       [--max-age-days <n>] [--enabled|--disabled]
                                        create or replace a policy
@@ -52,7 +53,20 @@ The two decisions with no default:
   --tracker analytics  the tag waits for consent like any other.
 
 Both are required the first time a policy is saved and carried forward when
-omitted on a later one. Common: --json prints raw JSON.
+omitted on a later one.
+
+The switch that DOES have a default:
+
+  --signals tracker    GPC and Do Not Track stop backlex's own tag and nothing
+                       else. What every site does today, and what you get by
+                       saying nothing.
+  --signals all        they also deny every optional category, so third-party
+                       tags stop too — the CCPA reading, where GPC is a legal
+                       opt-out. This stops pixels that fire today; that is why
+                       it is a choice and not the default.
+  --signals off        neither signal is read.
+
+Common: --json prints raw JSON.
 `;
 
 const BASE = "/api/admin/consent";
@@ -78,6 +92,7 @@ const summarize = (p: any) => ({
   banner: p.enabled ? "live" : "off",
   undecided: p.undecidedBehaviour,
   tracker: p.trackerCategory,
+  signals: p.signalHandling,
   asks: (p.categoriesOffered ?? []).join(",") || "—",
 });
 
@@ -205,6 +220,10 @@ export const runConsent = async (args: string[]): Promise<void> => {
         // that explanation in the CLI is a second thing to drift.
         if (undecided) body.undecidedBehaviour = undecided;
         if (tracker) body.trackerCategory = tracker;
+        // Unlike the two above this one DOES have a server-side default, so
+        // omitting it on a first save is fine and means "what every site does".
+        const signals = flag(rest, "--signals");
+        if (signals) body.signalHandling = signals;
 
         const cats = flag(rest, "--categories");
         if (cats !== undefined) {

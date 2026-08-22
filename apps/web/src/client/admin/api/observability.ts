@@ -695,6 +695,12 @@ export type ConsentCategory = "functional" | "analytics" | "marketing";
 export type UndecidedBehaviour = "block" | "allow";
 export type TrackerCategory = "none" | "analytics";
 export type BannerPosition = "bottom" | "top" | "corner";
+/** What GPC and Do Not Track govern. `tracker` (the default, and what every
+ *  site does today) lets them stop backlex's own tag and nothing else; `all`
+ *  widens them to deny every optional category; `off` reads neither. This one
+ *  HAS a default, unlike the two above, which is why it is not optional on the
+ *  read type and needs no "choose one" placeholder in the form. */
+export type SignalHandling = "tracker" | "all" | "off";
 
 export interface ApiConsentPolicy {
   siteId: string;
@@ -707,6 +713,7 @@ export interface ApiConsentPolicy {
   position: BannerPosition;
   theme: Record<string, string>;
   cookieMaxAgeDays: number;
+  signalHandling: SignalHandling;
   enabled: boolean;
   createdAt: number;
   updatedAt: number;
@@ -722,6 +729,7 @@ export interface ApiConsentPolicyInput {
   position?: BannerPosition;
   theme?: Record<string, string>;
   cookieMaxAgeDays?: number;
+  signalHandling?: SignalHandling;
   enabled?: boolean;
 }
 

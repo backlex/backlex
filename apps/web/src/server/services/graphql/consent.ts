@@ -120,6 +120,29 @@ const TrackerCategoryEnum = new GraphQLEnumType({
   },
 });
 
+const SignalHandlingEnum = new GraphQLEnumType({
+  name: "SignalHandling",
+  description:
+    "What Global Privacy Control and Do Not Track are allowed to govern on this site.",
+  values: {
+    tracker: {
+      value: "tracker",
+      description:
+        "They stop backlex's own tag and nothing else. What every site does today, and the default — widening them cannot be a side effect of a deploy, because every tag is filed under marketing by default and live pixels would stop worldwide.",
+    },
+    all: {
+      value: "all",
+      description:
+        "They additionally deny every optional category, so the tag manager refuses third-party tags too. The CCPA reading, where GPC is a legal opt-out rather than a preference.",
+    },
+    off: {
+      value: "off",
+      description:
+        "Neither signal is read. Do Not Track is a standard the W3C retired, and an operator who does not want it deciding anything should be able to say so.",
+    },
+  },
+});
+
 const BannerPositionEnum = new GraphQLEnumType({
   name: "BannerPosition",
   values: {
@@ -167,6 +190,11 @@ const ConsentPolicyType = new GraphQLObjectType({
       type: new GraphQLNonNull(GraphQLInt),
       description: "How long a decision stands before the visitor is asked again.",
     },
+    signalHandling: {
+      type: new GraphQLNonNull(SignalHandlingEnum),
+      description:
+        "`tracker` lets GPC and Do Not Track stop backlex's own tag and nothing else (the default, and what every site does today); `all` widens them to deny every optional category so third-party tags stop too; `off` reads neither.",
+    },
     enabled: { type: new GraphQLNonNull(GraphQLBoolean) },
     // `GraphQLFloat`, not `Int` — and this was a real bug, not a style choice.
     // These are epoch MILLISECONDS, so every value is past Int32's 2.1e9
@@ -197,6 +225,11 @@ const ConsentPolicyInputType = new GraphQLInputObjectType({
     position: { type: BannerPositionEnum },
     theme: { type: JSONScalar },
     cookieMaxAgeDays: { type: GraphQLInt },
+    signalHandling: {
+      type: SignalHandlingEnum,
+      description:
+        "`tracker` | `all` | `off`. Unlike the two above this HAS a default (`tracker`), because here one answer is safe — it is the behaviour already live.",
+    },
     enabled: { type: GraphQLBoolean },
   },
 });

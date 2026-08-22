@@ -54,6 +54,7 @@ const reset = (keepCookie = false) => {
     "__backlexConsentBannerBooted",
     "__backlexConsent",
     "__backlexTagBooted",
+    "__backlexSignalsRefuseAll",
     "__backlexTMBooted",
     "backlex",
     "dataLayer",
@@ -503,5 +504,71 @@ describe("withdrawal", () => {
     // A listener that outlived its banner would throw on the next Escape.
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(shadow()).toBe(null);
+  });
+});
+
+/**
+ * A browser signal outranks the operator's GUESS, and not the visitor's answer.
+ *
+ * Found by driving a real browser rather than by reading: `consentGranted()`
+ * consults the grant map first, and the banner always writes a TOTAL map before
+ * the container arms — so on any site running a banner the tracker's own signal
+ * branch was unreachable. With `undecided: "allow"` that meant a visitor
+ * sending Global Privacy Control, on a site whose operator had explicitly asked
+ * for GPC to stop everything, got every tag fired at them.
+ *
+ * The distinction can only be made here: the tracker receives a flat map and
+ * cannot tell "nobody has answered, so the operator said allow" from "this
+ * visitor pressed Accept all".
+ */
+describe("a browser signal against an undecided posture", () => {
+  const ALLOW = { ...CFG, undecided: "allow" };
+
+  test("`allow` grants nothing when the site made the signals a refusal", () => {
+    const seen: any[] = [];
+    w.backlex = { consent: (v: any) => seen.push(v) };
+    w.__backlexSignalsRefuseAll = () => true;
+    bootBanner(ALLOW);
+    expect(seen).toEqual([{ functional: false, analytics: false, marketing: false }]);
+  });
+
+  test("…and still grants everything when they are not", () => {
+    // The other direction, which is what makes the assertion above about the
+    // signal rather than about `allow` being broken.
+    const seen: any[] = [];
+    w.backlex = { consent: (v: any) => seen.push(v) };
+    w.__backlexSignalsRefuseAll = () => false;
+    bootBanner(ALLOW);
+    expect(seen).toEqual([{ functional: true, analytics: true, marketing: true }]);
+  });
+
+  test("a recorded decision outranks the signal, because it is an answer", () => {
+    // Accept all, then return with the signal raised. The visitor said yes to
+    // this site; a browser-wide preference does not overrule that, and a CMP
+    // whose stored consent were silently ignored would be recording decisions
+    // it does not honour.
+    w.__backlexSignalsRefuseAll = () => false;
+    bootBanner(ALLOW);
+    buttonNamed("Accept all")?.click();
+
+    const seen: any[] = [];
+    reset(true);
+    w.backlex = { consent: (v: any) => seen.push(v) };
+    w.__backlexSignalsRefuseAll = () => true;
+    bootBanner(ALLOW);
+    expect(seen).toEqual([{ functional: true, analytics: true, marketing: true }]);
+  });
+
+  test("a missing tracker does not take the banner down with it", () => {
+    // The seam is exported by the tracker, which is concatenated ahead of this
+    // file — but a page that broke it must still get a banner.
+    w.__backlexSignalsRefuseAll = () => {
+      throw new Error("no tracker");
+    };
+    const seen: any[] = [];
+    w.backlex = { consent: (v: any) => seen.push(v) };
+    bootBanner(ALLOW);
+    expect(seen).toEqual([{ functional: true, analytics: true, marketing: true }]);
+    expect(shadow()).not.toBe(null);
   });
 });

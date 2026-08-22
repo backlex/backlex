@@ -66,6 +66,10 @@ interface BootConfig {
 
 type W = typeof globalThis & {
   backlex?: { consent?: (v: unknown) => void };
+  /** Exported by the tracker: do GPC / Do Not Track amount to a refusal of
+   *  every optional category on this site? Only ever true when the site chose
+   *  `signalHandling: "all"`. */
+  __backlexSignalsRefuseAll?: () => boolean;
   __backlexConsentBanner?: (c: unknown) => void;
   __backlexConsentBannerBooted?: number;
   __backlexConsentOpenerArmed?: number;
@@ -78,6 +82,28 @@ type W = typeof globalThis & {
 };
 
 const w = globalThis as W;
+
+/**
+ * The posture for a visitor who has not answered.
+ *
+ * `undecided` is the operator's guess, and a browser signal outranks a guess:
+ * a visitor sending Global Privacy Control on a site that chose
+ * `signalHandling: "all"` is refusing, and `allow` must not fire tags at them.
+ *
+ * It does NOT outrank a real decision — that path never reaches here. The
+ * distinction is the whole reason this lives in the banner: the tracker is
+ * handed a flat grant map and cannot tell a guess from an answer.
+ */
+const undecidedPosture = (categories: string[], allow: boolean): Record<string, boolean> => {
+  let refuse = false;
+  try {
+    refuse = w.__backlexSignalsRefuseAll?.() === true;
+  } catch {
+    // The tracker is concatenated ahead of this file, but a page that broke it
+    // must not take the banner down with it.
+  }
+  return uniform(categories, allow && !refuse);
+};
 
 /** Grant every offered category, or none of them. */
 const uniform = (categories: string[], value: boolean): Record<string, boolean> => {
@@ -200,7 +226,9 @@ export const boot = (boot0: unknown): void => {
   // What the manage view shows, and it MOVES. Reading `prior` at render time
   // was wrong once already: a visitor who accepted, then reopened to switch
   // marketing off, was shown the boxes as they stood BEFORE they accepted.
-  let current = prior ? { ...prior.g } : uniform(categories, cfg.undecided === "allow");
+  let current = prior
+    ? { ...prior.g }
+    : undecidedPosture(categories, cfg.undecided === "allow");
   let subjectId = prior?.id || mintSubjectId();
 
   // The line prior blocking rests on, and it runs before the container starts.

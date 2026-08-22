@@ -129,6 +129,45 @@ describe("SDK surface", () => {
     expect((await client.consent.versions(site, { limit: 1 })).data.length).toBe(1);
   });
 
+  test("records reaches the visitor decisions, and never the IP digest", async () => {
+    const { recordConsent } = await import("../src/server/services/consent-records");
+    const { buildContext } = await import("../src/server/context");
+    const { getSiteById } = await import("../src/server/services/analytics");
+    const ctx = await buildContext(sdk.env);
+    const db = { db: ctx.db, dialect: ctx.dialect } as never;
+    const tenant = (await getSiteById(db, site))!.tenantId;
+
+    await recordConsent(db, {
+      siteId: site,
+      tenantId: tenant,
+      subjectId: "sdk-visitor-aaaaaaaa",
+      policyHash: null,
+      currentHash: null,
+      offered: ["marketing"],
+      grants: { marketing: true },
+      source: "banner",
+      locale: "en",
+      country: null,
+      // A real digest, so the negative assertion below is not vacuous.
+      ipHash: "f".repeat(64),
+      userAgent: "probe",
+    });
+
+    const rows = await client.consent.records(site);
+    expect(rows.data.length).toBeGreaterThan(0);
+    expect(rows.data[0]!.decision).toBe("granted");
+    expect(rows.data[0]!.subjectId).toBe("sdk-visitor-aaaaaaaa");
+    // The digest exists so two records can be correlated in an investigation,
+    // not so it travels to a client and into a screenshot.
+    expect(JSON.stringify(rows.data)).not.toContain("f".repeat(64));
+    expect(Object.keys(rows.data[0]!)).not.toContain("ipHash");
+
+    // The subject filter narrows rather than being ignored.
+    expect(
+      (await client.consent.records(site, { subjectId: "nobody-aaaaaaaaaaaaa" })).data.length,
+    ).toBe(0);
+  });
+
   test("the SDK adds no default of its own", async () => {
     // The one thing a convenience layer is tempted to do. If this ever starts
     // succeeding, a caller acquired a compliance posture from a TypeScript
@@ -231,6 +270,19 @@ describe("GraphQL surface", () => {
     );
   });
 
+  test("consentRecords reaches the same rows REST does", async () => {
+    const out = await gql(
+      `query($s: ID!) { consentRecords(siteId: $s) { id subjectId decision hashGrade createdAt } }`,
+      { s: SITE },
+    );
+    expect(out.errors).toBeUndefined();
+    expect(Array.isArray(out.data.consentRecords)).toBe(true);
+
+    const rest = await h.fetch(`/api/admin/consent/policies/${SITE}/records`);
+    const restRows = ((await rest.json()) as any).data as any[];
+    expect(out.data.consentRecords.map((r: any) => r.id)).toEqual(restRows.map((r) => r.id));
+  });
+
   test("consentPolicies lists what REST sees", async () => {
     const out = await gql(`{ consentPolicies { siteId enabled } }`);
     expect(out.errors).toBeUndefined();
@@ -287,6 +339,7 @@ describe("MCP surface", () => {
       "consent.policy",
       "consent.suggested_wording",
       "consent.versions",
+      "consent.records",
     ]) {
       const at = MCP.indexOf(`name: "${name}"`);
       expect(at).toBeGreaterThan(-1);
@@ -299,7 +352,7 @@ describe("CLI surface", () => {
   const CLI = read("packages/cli/src/consent.ts");
 
   test("every documented subcommand has a case", () => {
-    for (const sub of ["policies", "policy", "versions", "set", "rm", "wording"]) {
+    for (const sub of ["policies", "policy", "versions", "records", "set", "rm", "wording"]) {
       expect(CLI).toContain(`case "${sub}"`);
       // The help text is a second registration point: a subcommand missing
       // from it is invisible to anyone who runs --help instead of reading the

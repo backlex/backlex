@@ -126,7 +126,7 @@ Usage:
       Product analytics + crash reporting. \`ingest-key mint\` prints the
       publishable client key.
 
-  backlex consent <policies|policy|versions|set|rm|wording>
+  backlex consent <policies|policy|versions|records|set|rm|wording>
       Cookie consent. \`set\` requires --undecided and --tracker the first
       time: both are compliance postures with no safe default.
 

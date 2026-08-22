@@ -22,7 +22,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex consent <policies|policy|versions|set|rm|wording>
+const HELP = `backlex consent <policies|policy|versions|records|set|rm|wording>
 
   policies                             every site with a consent policy
   policy <siteId>                      one site's policy (null if unset)
@@ -32,6 +32,8 @@ const HELP = `backlex consent <policies|policy|versions|set|rm|wording>
       [--max-age-days <n>] [--enabled|--disabled]
                                        create or replace a policy
   versions <siteId> [--limit <n>]      artifacts this policy has compiled to
+  records <siteId> [--subject <id>]    decisions visitors recorded
+          [--limit <n>]
   rm <siteId>                          stop serving the banner
   wording                              suggested copy, as a starting point
 
@@ -154,6 +156,40 @@ export const runConsent = async (args: string[]): Promise<void> => {
           data.map((v) => ({
             hash: String(v.hash).slice(0, 12),
             created: new Date(Number(v.createdAt)).toISOString(),
+          })),
+        );
+        return;
+      }
+
+      case "records": {
+        const siteId = need(rest[0], "consent records needs a site id.");
+        const q = new URLSearchParams();
+        const subject = flag(rest, "--subject");
+        if (subject) q.set("subjectId", subject);
+        const limit = flag(rest, "--limit");
+        if (limit) q.set("limit", String(Number(limit)));
+        const qs = q.toString();
+        const { data } = await client.request<{ data: any[] }>(
+          "GET",
+          `${BASE}/policies/${encodeURIComponent(siteId)}/records${qs ? `?${qs}` : ""}`,
+        );
+        if (json) {
+          printJson(data);
+          return;
+        }
+        if (!data.length) {
+          process.stderr.write("No decisions recorded for that site yet.\n");
+          return;
+        }
+        printTable(
+          data.map((r) => ({
+            when: new Date(Number(r.createdAt)).toISOString(),
+            decision: r.decision,
+            source: r.source,
+            // Truncated on purpose: the full id is the visitor's handle and a
+            // terminal is a place things get pasted from.
+            subject: String(r.subjectId).slice(0, 12),
+            policy: r.hashGrade,
           })),
         );
         return;

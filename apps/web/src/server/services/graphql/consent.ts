@@ -40,6 +40,7 @@ import {
   suggestedWording,
   type ConsentPolicyInput,
 } from "../consent";
+import { listConsentRecords } from "../consent-records";
 
 /** Consent configuration is workspace-wide, like the analytics settings it sits
  *  beside — the same admin gate. */
@@ -215,6 +216,39 @@ const ConsentVersionType = new GraphQLObjectType({
   },
 });
 
+const ConsentRecordType = new GraphQLObjectType({
+  name: "ConsentRecord",
+  description:
+    "One visitor's recorded decision. Append-only: a change of mind is a new row, so the newest for a subject is the standing answer.",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    siteId: { type: new GraphQLNonNull(GraphQLID) },
+    subjectId: {
+      type: new GraphQLNonNull(GraphQLString),
+      description:
+        "The durable id the visitor's own banner minted. A correlator, not an identity — it says two decisions came from the same browser and nothing about who that is.",
+    },
+    policyHash: { type: GraphQLString },
+    versionId: { type: GraphQLID },
+    hashGrade: {
+      type: new GraphQLNonNull(GraphQLString),
+      description:
+        "`current`, `archived` or `unresolved` — whether the artifact the visitor named still resolves. An unresolved hash was never a reason to refuse the record.",
+    },
+    decision: { type: new GraphQLNonNull(GraphQLString) },
+    grants: { type: JSONScalar },
+    source: {
+      type: new GraphQLNonNull(GraphQLString),
+      description: "`banner` | `preferences` | `api` | `signal` — whether a human clicked anything.",
+    },
+    locale: { type: GraphQLString },
+    country: { type: GraphQLString },
+    userAgent: { type: GraphQLString },
+    // Float, not Int: epoch ms is past Int32 and `Int` throws on serialization.
+    createdAt: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
 export const consentQueryFields: Record<
   string,
   GraphQLFieldConfig<unknown, GqlCtx>
@@ -249,6 +283,24 @@ export const consentQueryFields: Record<
           String((args as any).siteId),
           (args as any).limit ?? undefined,
         ),
+      ),
+  },
+  consentRecords: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ConsentRecordType))),
+    description:
+      "Decisions visitors recorded on a site, newest first. The salted IP digest the server stores is deliberately not exposed.",
+    args: {
+      siteId: { type: new GraphQLNonNull(GraphQLID) },
+      subjectId: { type: GraphQLString },
+      limit: { type: GraphQLInt },
+    },
+    resolve: async (_src, args, gqlCtx) =>
+      surfacing(() =>
+        listConsentRecords(dbOf(gqlCtx), requireConsentAdmin(gqlCtx), {
+          siteId: String((args as any).siteId),
+          subjectId: (args as any).subjectId ?? undefined,
+          limit: (args as any).limit ?? undefined,
+        }),
       ),
   },
   consentSuggestedWording: {

@@ -209,6 +209,42 @@ export const consentVersions: McpTool = {
   },
 };
 
+export const consentRecords: McpTool = {
+  name: "consent.records",
+  kind: "read",
+  description:
+    "Decisions visitors recorded on a site, newest first. Each row names the " +
+    "artifact the visitor was shown, so a decision resolves to the exact text " +
+    "they agreed to, and carries whether that artifact still exists " +
+    "(`current` / `archived` / `unresolved`). The salted IP digest is not " +
+    "returned. Pass `subjectId` to see what one visitor currently says — the " +
+    "newest row is the standing answer, because a change of mind is a new row " +
+    "rather than an edit.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      ...SITE_ARG,
+      subjectId: {
+        type: "string",
+        description: "The visitor's durable id, if you are asking about one visitor.",
+      },
+      limit: { type: "number", description: "How many to return (1-200, default 50)." },
+    },
+    required: ["siteId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const q = new URLSearchParams();
+    if (args.subjectId !== undefined) q.set("subjectId", String(args.subjectId));
+    if (args.limit !== undefined) q.set("limit", String(Number(args.limit)));
+    const qs = q.toString();
+    const res = await ctx.fetchInternal(
+      `/api/admin/consent/policies/${encodeURIComponent(String(args.siteId))}/records${qs ? `?${qs}` : ""}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const consentTools: McpTool[] = [
   consentPolicies,
   consentPolicy,
@@ -216,4 +252,5 @@ export const consentTools: McpTool[] = [
   consentDeletePolicy,
   consentSuggestedWording,
   consentVersions,
+  consentRecords,
 ];

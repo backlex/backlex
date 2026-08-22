@@ -107,6 +107,32 @@ export interface ConsentVersion {
   createdAt: number;
 }
 
+/**
+ * One visitor's recorded decision.
+ *
+ * `subjectId` is the durable id their banner minted in their own browser. It is
+ * a correlator, not an identity — it says two decisions came from the same
+ * browser and nothing about who that is. The salted IP digest the server stores
+ * is deliberately not exposed here.
+ */
+export interface ConsentRecord {
+  id: string;
+  siteId: string;
+  subjectId: string;
+  /** The artifact hash the visitor was shown, as they reported it. */
+  policyHash: string | null;
+  versionId: string | null;
+  /** Whether that hash still resolves: `current`, `archived` or `unresolved`. */
+  hashGrade: "current" | "archived" | "unresolved";
+  decision: "granted" | "denied" | "partial";
+  grants: Record<string, boolean>;
+  source: "banner" | "preferences" | "api" | "signal";
+  locale: string | null;
+  country: string | null;
+  userAgent: string | null;
+  createdAt: number;
+}
+
 export interface ConsentClient {
   /** Every site that has a policy. Sites without one are absent, not empty. */
   policies(): Promise<{ data: ConsentPolicy[] }>;
@@ -133,6 +159,17 @@ export interface ConsentClient {
    * same content twice reuses the existing artifact, so a revert adds nothing.
    */
   versions(siteId: string, opts?: { limit?: number }): Promise<{ data: ConsentVersion[] }>;
+  /**
+   * Decisions visitors recorded on this site, newest first.
+   *
+   * Each row names the artifact the visitor saw, so a decision resolves to the
+   * exact text they agreed to. Pass `subjectId` to answer "what does this one
+   * visitor currently say" — the latest row wins.
+   */
+  records(
+    siteId: string,
+    opts?: { subjectId?: string; limit?: number },
+  ): Promise<{ data: ConsentRecord[] }>;
 }
 
 export const makeConsent = (core: ClientCore): ConsentClient => {
@@ -151,6 +188,16 @@ export const makeConsent = (core: ClientCore): ConsentClient => {
         "GET",
         "/api/admin/consent/wording/suggested",
       ),
+    records: (siteId: string, opts?: { subjectId?: string; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (opts?.subjectId !== undefined) q.set("subjectId", String(opts.subjectId));
+      if (opts?.limit !== undefined) q.set("limit", String(opts.limit));
+      const qs = q.toString();
+      return core.request<{ data: ConsentRecord[] }>(
+        "GET",
+        `${at(siteId)}/records${qs ? `?${qs}` : ""}`,
+      );
+    },
     versions: (siteId: string, opts?: { limit?: number }) =>
       core.request<{ data: ConsentVersion[] }>(
         "GET",

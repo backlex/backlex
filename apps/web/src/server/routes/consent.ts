@@ -17,6 +17,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { recordActivity, requestMeta } from "../services/activity";
+import { listConsentRecords } from "../services/consent-records";
 import {
   BANNER_POSITIONS,
   OPTIONAL_CATEGORIES,
@@ -76,6 +77,27 @@ const Version = z
     createdAt: z.number().int(),
   })
   .openapi("ConsentVersion");
+
+const Record_ = z
+  .object({
+    id: z.string(),
+    siteId: z.string(),
+    /** The visitor's own durable id. Caller-supplied by design — a correlator,
+     *  not an identity. */
+    subjectId: z.string(),
+    policyHash: z.string().nullable(),
+    versionId: z.string().nullable(),
+    /** Whether the artifact they named still resolves. */
+    hashGrade: z.enum(["current", "archived", "unresolved"]),
+    decision: z.enum(["granted", "denied", "partial"]),
+    grants: z.record(z.string(), z.boolean()),
+    source: z.enum(["banner", "preferences", "api", "signal"]),
+    locale: z.string().nullable(),
+    country: z.string().nullable(),
+    userAgent: z.string().nullable(),
+    createdAt: z.number().int(),
+  })
+  .openapi("ConsentRecord");
 
 /**
  * `undecidedBehaviour` and `trackerCategory` are optional HERE and required by
@@ -327,6 +349,52 @@ export const consentRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         auth.tenantId ?? null,
         siteId,
         limit,
+      );
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/policies/{siteId}/records",
+      tags: TAGS,
+      summary: "Decisions visitors recorded on this site",
+      description:
+        "Newest first. Each row names the artifact the visitor was shown, so a " +
+        "decision can be resolved to the exact text they agreed to. The salted " +
+        "IP digest is deliberately NOT returned: it exists so two records can " +
+        "be correlated during an investigation, not so a per-visitor identifier " +
+        "appears on screen. Records are removed by the visitor's own withdrawal " +
+        "or through the erasure surface, never by reconfiguring the site.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        params: z.object({ siteId: z.string() }),
+        query: z.object({
+          subjectId: z.string().max(64).optional(),
+          limit: z.coerce.number().int().min(1).max(200).optional(),
+        }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(Record_) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      const { siteId } = c.req.valid("param");
+      const { subjectId, limit } = c.req.valid("query");
+      const data = await listConsentRecords(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        { siteId, subjectId, limit },
       );
       return c.json({ data });
     },

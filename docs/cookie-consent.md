@@ -233,15 +233,16 @@ the id in the visitor's own browser.
 
 | Surface | How |
 |---|---|
-| REST | `GET/PUT/DELETE /api/admin/consent/policies/{siteId}`, `GET …/{siteId}/versions` |
-| SDK | `client.consent.savePolicy(siteId, { … })`, `client.consent.versions(siteId)` |
-| GraphQL | `consentPolicies`, `consentPolicy`, `consentVersions`, `consentSavePolicy`, `consentDeletePolicy` |
-| MCP | `consent.policies`, `consent.policy`, `consent.versions`, `consent.save_policy`, `consent.delete_policy` |
-| CLI | `backlex consent <policies\|policy\|versions\|set\|rm\|wording>` |
+| REST | `GET/PUT/DELETE /api/admin/consent/policies/{siteId}`, `GET …/{siteId}/versions`, `GET …/{siteId}/records` |
+| SDK | `client.consent.savePolicy(siteId, { … })`, `client.consent.versions(siteId)`, `client.consent.records(siteId)` |
+| GraphQL | `consentPolicies`, `consentPolicy`, `consentVersions`, `consentRecords`, `consentSavePolicy`, `consentDeletePolicy` |
+| MCP | `consent.policies`, `consent.policy`, `consent.versions`, `consent.records`, `consent.save_policy`, `consent.delete_policy` |
+| CLI | `backlex consent <policies\|policy\|versions\|records\|set\|rm\|wording>` |
 
-The public config endpoint above is deliberately absent from this table: it is
-read by a banner on a foreign origin with no credential, so it has no SDK, MCP
-or CLI twin.
+The two PUBLIC endpoints are deliberately absent from this table —
+`GET /api/consent/config` and `POST`/`DELETE /api/consent/record`. They are
+reached by a banner on a foreign origin with no credential, so an SDK method
+would have to carry credentials the banner must not hold.
 
 All five call the same `services/consent`, so the refusal above is not five
 implementations that can drift — it is one, reached five ways. That is what

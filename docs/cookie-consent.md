@@ -313,6 +313,12 @@ Accept all, Reject all, and Manage — which reveals a checkbox per category you
 offered, and a Save. Rejecting is exactly as many clicks as accepting, which is
 the requirement, not a courtesy.
 
+Manage also shows a **Strictly necessary** row, checked and disabled. It is not
+a choice and is not offered as one; it is there because the site does set those
+cookies whatever the visitor answers, and saying so is more honest than a panel
+that implies everything is optional. Its two strings are `necessaryLabel` and
+`necessaryBody`, which the policy has always accepted.
+
 The banner renders in a **shadow root**, so your CSS cannot break it and its CSS
 cannot leak into your page. Two honest limits: a browser without `attachShadow`
 falls back to a namespaced element with weaker isolation, and a shadow root does
@@ -321,9 +327,55 @@ banner's stylesheet while its markup still renders.
 
 ### Withdrawal
 
-The banner publishes `window.__backlexConsent.open()`. Wire it to a "Cookie
-settings" link in your footer and a visitor can change their mind at any time,
-which is what makes withdrawal as easy as granting.
+GDPR Art. 7(3) requires taking consent back to be as easy as giving it, so there
+are two ways to reopen the banner and neither of them costs the visitor a
+search.
+
+**Mark up an element.** Any element carrying `data-backlex-consent-open` opens
+the preference centre when clicked — no script of your own, which matters on a
+hosted CMS where a footer link is all you get:
+
+```html
+<a href="#" data-backlex-consent-open>Cookie settings</a>
+```
+
+**Or call it.** `window.__backlexConsent` publishes four things:
+
+| | |
+|---|---|
+| `open()` | Reopen the banner, with the boxes as the visitor last left them. |
+| `close()` | Dismiss it without deciding. Only meaningful once they have. |
+| `withdraw()` | Deny every optional category, drop the cookie, and ask the server to erase the record. |
+| `decision()` | What is on file: `{ id, g, v, t }`, or `null`. |
+
+The handle exists from the moment the per-site file runs, including on page
+loads where the banner never appears because the visitor already answered —
+which is, of course, the only kind of page load on which withdrawal is a
+question at all.
+
+#### What the reopened banner offers that the first one does not
+
+A close control, a **Withdraw** link, and the visitor's **consent id**. The
+first two exist only once a decision is on file: an undecided visitor is given
+no exit that is not a decision, and pays nothing for it, because Reject all is
+one click on the first layer.
+
+The id is the part worth reading twice. A consent record for an anonymous
+visitor is reachable **by that id and nothing else** — see
+[Data-subject erasure](./erasure.md), which is explicit that an `email` request
+does not reach it. Showing it is what turns the right to erasure into something
+a visitor can actually exercise, and `withdraw()` exercises it for them.
+
+Withdrawing re-mints the id afterwards. A later decision therefore cannot be
+joined to the record just erased, which is the difference between "erased" and
+"erased until you press a button".
+
+**The id is not a secret, and showing it does not make it one.** It already
+lives in a first-party cookie any script on your page can read, and it travels
+in every decision beacon. What it authorises is exactly one thing: deleting the
+consent record it names — which is the subject's own right. It grants no read
+access, and `DELETE /api/consent/record` answers `{"cleared":true}` whether the
+id was real or not, so it cannot be used to find out whose is.
 
 ### Wording
 
@@ -338,9 +390,9 @@ unescaped and a test fails if the banner source so much as mentions `innerHTML`.
 Stated plainly, because a consent feature is a compliance claim and the failure
 mode is an operator believing they are covered because a setting exists:
 
-- **No standalone preference centre.** `window.__backlexConsent.open()` reopens
-  the banner, which is where a visitor changes or withdraws a decision. A
-  dedicated page listing every cookie you set is not built.
+- **No standalone preference centre.** Reopening the banner *is* the preference
+  centre — it carries the categories, the consent id and the withdrawal. What
+  is not built is a dedicated page listing every cookie you set, name by name.
 - **`trackerCategory` is not enforced by the tag.** It is published in the
   artifact and recorded on the policy; the tag still files itself under
   `analytics`.

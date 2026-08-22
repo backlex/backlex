@@ -75,9 +75,14 @@ table anywhere that maps a person to it. Two consequences, both deliberate:
   a value the subject supplied. That is the same property that makes the id
   privacy-preserving in the first place.
 
-The visitor's own way out does not involve you at all: the banner's "forget me"
-control deletes exactly the same rows, with no operator in the loop and no
-request to file.
+**Where the visitor gets the id to give you.** Reopening the banner shows it,
+under "Your consent id" — that is what makes this right exercisable rather than
+merely documented. See [Withdrawal](./cookie-consent.md#withdrawal) for the two
+ways to reopen it.
+
+The visitor's own way out does not involve you at all: the banner's **Withdraw**
+link deletes exactly the same rows, with no operator in the loop and no request
+to file.
 
 ## What a run reaches
 

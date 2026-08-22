@@ -20,6 +20,7 @@ import { CONSENT_BANNER_JS } from "../src/server/services/consent-banner-bundle"
 import { TRACKER_JS } from "../src/server/services/analytics-tracker";
 import { TAG_RUNTIME_JS } from "../src/server/services/tag-runtime";
 import { WORDING_KEYS } from "../src/server/services/consent";
+import { BUILTIN_STRINGS } from "../src/client/consent-banner/strings";
 import { buildBanner, emit } from "../../../scripts/gen-consent-banner";
 
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
@@ -77,12 +78,22 @@ const NATIVE = {
   Blob: w.Blob,
   Image: w.Image,
   sendBeacon: w.navigator.sendBeacon,
+  fetch: w.fetch,
 };
+
+/** Every `fetch` the banner makes. Withdrawal cannot use `sendBeacon` — a
+ *  DELETE is never a simple request — so this is the only place it shows up. */
+let fetched: Array<{ url: string; method: string }> = [];
 
 beforeEach(() => {
   w.happyDOM?.setURL?.("https://shop.example/pricing");
   reset();
   posted = [];
+  fetched = [];
+  w.fetch = ((url: any, init: any) => {
+    fetched.push({ url: String(url), method: String(init?.method ?? "GET") });
+    return Promise.resolve({ ok: true, status: 200 });
+  }) as unknown as typeof fetch;
   w.navigator.sendBeacon = (_u: string, b: any) => {
     posted.push(JSON.parse(String(b?.__text ?? b)));
     return true;
@@ -102,6 +113,7 @@ afterAll(() => {
   w.Blob = NATIVE.Blob;
   w.Image = NATIVE.Image;
   w.navigator.sendBeacon = NATIVE.sendBeacon;
+  w.fetch = NATIVE.fetch;
 });
 
 const bootBanner = (cfg: Record<string, unknown> = CFG) => {
@@ -166,6 +178,33 @@ describe("the wording contract", () => {
     );
     for (const key of WORDING_KEYS) {
       expect(`${key} has a built-in: ${src.includes(`${key}:`)}`).toBe(`${key} has a built-in: true`);
+    }
+  });
+
+  test("…and every key actually reaches the DOM", () => {
+    // The check above passes on a built-in that nothing renders, and TWO keys
+    // were in exactly that state: `necessaryLabel` and `necessaryBody` shipped
+    // with the policy and were never drawn, because "necessary" is not one of
+    // `OPTIONAL_CATEGORIES` and so never appears in the offered list.
+    // Assert against the rendered tree instead of the source file.
+    const cfg = { ...CFG, policyUrl: "https://shop.example/cookies" };
+    bootBanner(cfg);
+    buttonNamed("Accept all")?.click();
+    // Reopened, and therefore DECIDED: `close` and `withdraw` only exist for a
+    // visitor who has something to close on and something to withdraw.
+    w.__backlexConsent.open();
+
+    const root = shadow();
+    const labels = [...(root?.querySelectorAll("[aria-label]") ?? [])].map(
+      (n) => n.getAttribute("aria-label") ?? "",
+    );
+    const rendered = `${root?.textContent ?? ""}\n${labels.join("\n")}`;
+    const en = BUILTIN_STRINGS.en as Record<string, string>;
+    for (const key of WORDING_KEYS) {
+      const text = en[key] ?? "";
+      expect(`${key} is on screen: ${rendered.includes(text)}`).toBe(
+        `${key} is on screen: true`,
+      );
     }
   });
 
@@ -348,5 +387,121 @@ describe("rendering on a page we do not own", () => {
     expect(shadow()).toBe(null);
     w.__backlexConsent.open();
     expect(shadow()).not.toBe(null);
+  });
+});
+
+/**
+ * Withdrawal — GDPR Art. 7(3): as easy to take back as it was to give.
+ *
+ * The seam these drive was published in `docs/cookie-consent.md` one phase
+ * before it worked. `boot()` installed `window.__backlexConsent` AFTER the
+ * early return it takes for a visitor whose decision is current — so the one
+ * population that needs a "Cookie settings" link was the one population for
+ * which the handle was `undefined`. The reopen test that existed passed
+ * because it reopened within the FIRST page load, where the handle is set.
+ */
+describe("withdrawal", () => {
+  const secondLoad = () => {
+    reset(true); // the cookie survives; this is a navigation, not a new visitor
+    w.backlex = { consent: () => {} };
+    bootBanner();
+  };
+
+  test("the handle exists on the SECOND page load, which is the only one that matters", () => {
+    bootBanner();
+    buttonNamed("Accept all")?.click();
+    secondLoad();
+
+    expect(shadow()).toBe(null); // still does not re-ask
+    expect(typeof w.__backlexConsent?.open).toBe("function");
+    w.__backlexConsent.open();
+    expect(shadow()).not.toBe(null);
+  });
+
+  test("reopening shows what they chose, not what they had before choosing", () => {
+    // `undecided` is `block`, so a stale read shows every box UNCHECKED — the
+    // visitor accepted and is then shown a panel claiming they refused.
+    bootBanner();
+    buttonNamed("Accept all")?.click();
+    w.__backlexConsent.open();
+
+    const boxes = [...(shadow()?.querySelectorAll("input[type=checkbox]") ?? [])] as HTMLInputElement[];
+    // The first row is "strictly necessary": checked and disabled, and it must
+    // never reach a saved grant map.
+    expect(boxes[0]?.disabled).toBe(true);
+    expect(boxes.slice(1).map((b) => b.checked)).toEqual([true, true, true]);
+  });
+
+  test("withdrawing denies everything, drops the cookie, and erases the record", () => {
+    const seen: any[] = [];
+    bootBanner();
+    buttonNamed("Accept all")?.click();
+    const id = w.__backlexConsent.decision()?.id;
+    expect(id).toBeTruthy();
+
+    w.backlex = { consent: (v: any) => seen.push(v) };
+    w.__backlexConsent.open();
+    buttonNamed("Withdraw and delete my record")?.click();
+
+    expect(seen).toEqual([{ functional: false, analytics: false, marketing: false }]);
+    // The VALUE, not the name: `Max-Age=0` evicts the entry in a browser, and
+    // happy-dom leaves a valueless `blx_consent=` behind. Both are forgotten —
+    // `readDecision()` answers null for either — so assert what is actually
+    // load-bearing, which is that no decision survives.
+    expect(document.cookie).not.toContain("blx_consent=%7B");
+    expect(w.__backlexConsent.decision()).toBe(null);
+    expect(shadow()).toBe(null);
+
+    // `sendBeacon` cannot carry a DELETE, so this is the one banner call that
+    // has to be a real preflighted request.
+    const del = fetched.find((f) => f.method === "DELETE");
+    expect(del).toBeTruthy();
+    expect(del!.url).toContain(`u=${id}`);
+    expect(del!.url).toContain("s=site-1");
+
+    // A later decision must not be joinable to the record just erased.
+    w.__backlexConsent.open();
+    expect(w.__backlexConsent.decision()).toBe(null);
+    buttonNamed("Reject all")?.click();
+    expect(posted[posted.length - 1].u).not.toBe(id);
+  });
+
+  test("a marked-up element opens it, with no JavaScript from the operator", () => {
+    // The realistic install: a hosted CMS where a footer link is all you get.
+    bootBanner();
+    buttonNamed("Accept all")?.click();
+    secondLoad();
+
+    const link = document.createElement("a");
+    link.setAttribute("data-backlex-consent-open", "");
+    link.textContent = "Cookie settings";
+    document.body.appendChild(link);
+    link.click();
+
+    expect(shadow()).not.toBe(null);
+    link.remove();
+  });
+
+  test("an undecided visitor is offered no exit that is not a decision", () => {
+    bootBanner();
+    const root = shadow();
+    expect(root?.querySelector(".blx-close")).toBe(null);
+    expect(buttonNamed("Withdraw and delete my record")).toBeUndefined();
+    // …and pays nothing for it: refusing is one click, on the first layer.
+    expect(buttonNamed("Reject all")).toBeTruthy();
+  });
+
+  test("a reopened banner closes on Escape, and unbinds when it goes", () => {
+    bootBanner();
+    buttonNamed("Accept all")?.click();
+    w.__backlexConsent.open();
+    expect(shadow()).not.toBe(null);
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(shadow()).toBe(null);
+
+    // A listener that outlived its banner would throw on the next Escape.
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(shadow()).toBe(null);
   });
 });

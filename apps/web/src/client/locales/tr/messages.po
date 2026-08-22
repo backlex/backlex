@@ -4247,6 +4247,10 @@ msgstr "kapat"
 msgid "Close"
 msgstr "Kapat"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Close button"
+msgstr "Kapatma düğmesi"
+
 #: src/client/pages/sign-up.tsx
 msgid "Closed instance."
 msgstr "Kapalı örnek."
@@ -4789,6 +4793,10 @@ msgstr "Onay kategorisi"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Consent checkbox"
 msgstr "Onay kutusu"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Consent id — label"
+msgstr "Onay kimliği — etiket"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "consent must be accepted — always required"
@@ -21895,6 +21903,10 @@ msgstr "Bu ayarla <0>0532 111 22 33</0> şöyle saklanır: <1>{example}</1>."
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Withdraw"
 msgstr "Geri çek"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Withdraw link"
+msgstr "Geri çekme bağlantısı"
 
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Without a default, only numbers written in full international form are accepted — which is the safe answer, since the same national number exists in dozens of countries."

@@ -241,6 +241,9 @@ export function ConsentPolicyDialog({
       label: t`Strictly necessary — name`,
     },
     { key: "necessaryBody", label: t`Strictly necessary — description` },
+    { key: "close", label: t`Close button` },
+    { key: "withdraw", label: t`Withdraw link` },
+    { key: "idLabel", label: t`Consent id — label` },
   ];
 
   /** `THEME_KEYS` from the same module, with the banner's own defaults shown as

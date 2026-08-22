@@ -99,6 +99,15 @@ export const WORDING_KEYS = [
   "marketingBody",
   "necessaryLabel",
   "necessaryBody",
+  // Withdrawal. Added by the preference-centre phase: a decided visitor can
+  // reopen the banner, so it needs a way OUT that is not a decision, a control
+  // that revokes everything, and a name for the id they quote to ask for
+  // erasure. `docs/erasure.md` reaches an anonymous visitor's consent record by
+  // that id alone, so a banner that never shows it makes the right
+  // unexercisable.
+  "close",
+  "withdraw",
+  "idLabel",
 ] as const;
 export type WordingKey = (typeof WORDING_KEYS)[number];
 
@@ -874,6 +883,9 @@ export const suggestedWording = (): Record<string, Record<WordingKey, string>> =
     analyticsBody: "Helps us understand which pages are used, in aggregate.",
     marketingLabel: "Marketing",
     marketingBody: "Used to show you ads that are relevant to you.",
+    close: "Close",
+    withdraw: "Withdraw my consent and delete my record",
+    idLabel: "Your consent id",
   },
   tr: {
     title: "Bu sitede çerezler",
@@ -891,5 +903,8 @@ export const suggestedWording = (): Record<string, Record<WordingKey, string>> =
     analyticsBody: "Hangi sayfaların kullanıldığını toplu olarak anlamamıza yardımcı olur.",
     marketingLabel: "Pazarlama",
     marketingBody: "Size uygun reklamlar göstermek için kullanılır.",
+    close: "Kapat",
+    withdraw: "Onayımı geri çek ve kaydımı sil",
+    idLabel: "Onay kimliğiniz",
   },
 });

@@ -39,6 +39,9 @@ export const BUILTIN_STRINGS: Record<string, Strings> = {
     marketingBody: "Used to show you relevant advertising elsewhere.",
     necessaryLabel: "Strictly necessary",
     necessaryBody: "Required for the site to work, so it is always on.",
+    close: "Close",
+    withdraw: "Withdraw and delete my record",
+    idLabel: "Your consent id",
   },
   tr: {
     title: "Çerezler",
@@ -56,6 +59,9 @@ export const BUILTIN_STRINGS: Record<string, Strings> = {
     marketingBody: "Başka yerlerde size ilgili reklamları göstermek için kullanılır.",
     necessaryLabel: "Zorunlu",
     necessaryBody: "Sitenin çalışması için gereklidir, bu yüzden her zaman açıktır.",
+    close: "Kapat",
+    withdraw: "Onayımı geri çek ve kaydımı sil",
+    idLabel: "Onay kimliğiniz",
   },
 };
 

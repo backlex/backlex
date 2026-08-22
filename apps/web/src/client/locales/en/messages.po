@@ -4247,6 +4247,10 @@ msgstr "close"
 msgid "Close"
 msgstr "Close"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Close button"
+msgstr "Close button"
+
 #: src/client/pages/sign-up.tsx
 msgid "Closed instance."
 msgstr "Closed instance."
@@ -4789,6 +4793,10 @@ msgstr "Consent category"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Consent checkbox"
 msgstr "Consent checkbox"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Consent id — label"
+msgstr "Consent id — label"
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "consent must be accepted — always required"
@@ -21895,6 +21903,10 @@ msgstr "With this set, <0>0532 111 22 33</0> is stored as <1>{example}</1>."
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Withdraw"
 msgstr "Withdraw"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Withdraw link"
+msgstr "Withdraw link"
 
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Without a default, only numbers written in full international form are accepted — which is the safe answer, since the same national number exists in dozens of countries."

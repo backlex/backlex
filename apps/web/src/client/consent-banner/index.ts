@@ -28,7 +28,13 @@
  * stores nothing, which is the claim `trackerCategory: "none"` rests on, and
  * it stays true.
  */
-import { readDecision, writeDecision, mintSubjectId, type Decision } from "./cookie";
+import {
+  clearDecision,
+  mintSubjectId,
+  readDecision,
+  writeDecision,
+  type Decision,
+} from "./cookie";
 import { resolveStrings } from "./strings";
 import { mount } from "./render";
 
@@ -62,8 +68,11 @@ type W = typeof globalThis & {
   backlex?: { consent?: (v: unknown) => void };
   __backlexConsentBanner?: (c: unknown) => void;
   __backlexConsentBannerBooted?: number;
+  __backlexConsentOpenerArmed?: number;
   __backlexConsent?: {
     open: () => void;
+    close: () => void;
+    withdraw: () => void;
     decision: () => Decision | null;
   };
 };
@@ -133,6 +142,42 @@ const postDecision = (boot: BootConfig, d: Decision, source: string): void => {
   }
 };
 
+/**
+ * Withdraw: erase the record, not just stop honouring it.
+ *
+ * `DELETE /api/consent/record` has existed since the records phase, and its own
+ * docblock says it is "the ONLY erasure path that can reach an anonymous
+ * visitor" — with, until now, no caller anywhere. `sendBeacon` cannot send it:
+ * a method outside the safelisted set always preflights, which is why the route
+ * grew an `.options()` handler the POST does not need.
+ */
+const forget = (boot: BootConfig, subjectId: string): void => {
+  const url =
+    boot.endpoint +
+    "?s=" +
+    encodeURIComponent(boot.cfg.site) +
+    "&u=" +
+    encodeURIComponent(subjectId);
+  try {
+    void fetch(url, {
+      method: "DELETE",
+      keepalive: true,
+      mode: "cors",
+      credentials: "omit",
+    }).catch(() => {});
+  } catch {
+    // The cookie is already gone either way, so the visitor's browser has
+    // forgotten regardless. A failed DELETE loses the server's copy, not their
+    // withdrawal.
+  }
+};
+
+/** An element an operator can mark up instead of writing JavaScript.
+ *  NOT `data-backlex-consent` — `render.ts` puts that one on the banner's own
+ *  host element, and a delegated handler matching it would reopen the banner
+ *  on every click inside it. */
+const OPENER_ATTR = "data-backlex-consent-open";
+
 export const boot = (boot0: unknown): void => {
   const boot1 = boot0 as BootConfig | null;
   if (!boot1 || !boot1.cfg || boot1.cfg.enabled === false) return;
@@ -152,27 +197,50 @@ export const boot = (boot0: unknown): void => {
   // for this page load so nothing fires that they refused, but ask again.
   const stale = !!prior && prior.v !== boot1.hash;
 
-  if (prior) {
-    applyGrants(prior.g);
-    if (!stale) return;
-  } else {
-    // Nobody has answered. This is the line prior blocking rests on, and it
-    // runs before the container is started.
-    applyGrants(uniform(categories, cfg.undecided === "allow"));
-  }
+  // What the manage view shows, and it MOVES. Reading `prior` at render time
+  // was wrong once already: a visitor who accepted, then reopened to switch
+  // marketing off, was shown the boxes as they stood BEFORE they accepted.
+  let current = prior ? { ...prior.g } : uniform(categories, cfg.undecided === "allow");
+  let subjectId = prior?.id || mintSubjectId();
+
+  // The line prior blocking rests on, and it runs before the container starts.
+  applyGrants(current);
 
   const strings = resolveStrings(cfg.wording, cfg.locale);
-  const id = prior?.id || mintSubjectId();
-
   let banner: { destroy: () => void } | null = null;
 
+  const close = (): void => {
+    banner?.destroy();
+    banner = null;
+  };
+
   const decide = (grants: Record<string, boolean>, source: string): void => {
-    const d: Decision = { id, g: grants, v: boot1.hash, t: Date.now() };
+    const d: Decision = { id: subjectId, g: grants, v: boot1.hash, t: Date.now() };
+    current = grants;
     applyGrants(grants);
     writeDecision(d, cookieDays);
     postDecision(boot1, d, source);
-    banner?.destroy();
-    banner = null;
+    close();
+  };
+
+  /**
+   * Withdrawal, which GDPR Art. 7(3) requires to be as easy as granting.
+   *
+   * Three things, in an order that survives any one of them failing: deny
+   * everything locally so nothing keeps running while the network settles,
+   * drop the cookie, then ask the server to erase the record. The id is
+   * re-minted afterwards, so a decision they make later cannot be joined to
+   * the record they just had deleted — keeping it would make "erased" mean
+   * "erased until you press a button".
+   */
+  const withdraw = (): void => {
+    const erased = subjectId;
+    current = uniform(categories, false);
+    applyGrants(current);
+    clearDecision();
+    forget(boot1, erased);
+    subjectId = mintSubjectId();
+    close();
   };
 
   const open = (): void => {
@@ -180,19 +248,64 @@ export const boot = (boot0: unknown): void => {
     banner = mount({
       strings,
       categories,
-      grants: prior?.g || uniform(categories, cfg.undecided === "allow"),
+      grants: current,
       position: String(cfg.position || "bottom"),
       theme: cfg.theme || {},
       policyUrl: cfg.policyUrl || null,
+      subjectId,
+      // Asked at MOUNT, not captured at boot: withdrawing clears the cookie, so
+      // the next open must offer neither a close nor a withdraw.
+      decided: readDecision() !== null,
       onAcceptAll: () => decide(uniform(categories, true), "banner"),
       onRejectAll: () => decide(uniform(categories, false), "banner"),
       onSave: (g) => decide(g, "preferences"),
+      onWithdraw: withdraw,
+      onClose: close,
     });
   };
 
-  // A handle the operator can wire to their own "Cookie settings" link, which
+  // The handle an operator wires to their own "Cookie settings" control, which
   // is what makes withdrawal as easy as granting.
-  w.__backlexConsent = { open, decision: readDecision };
+  //
+  // Installed BEFORE the early return below, and that ordering is the whole
+  // point. It used to sit after it, so the one visitor who needs it — the one
+  // who already decided — was the one visitor for whom it was `undefined`, and
+  // `docs/cookie-consent.md` told operators to wire a footer link to it.
+  w.__backlexConsent = { open, close, withdraw, decision: readDecision };
+
+  // …and a version for operators who cannot add script to their pages at all,
+  // which on a hosted CMS is most of them. One attribute on a footer link.
+  // Capture phase, so a page that stops propagation on its own handlers does
+  // not silently take the control away.
+  if (!w.__backlexConsentOpenerArmed) {
+    w.__backlexConsentOpenerArmed = 1;
+    try {
+      document.addEventListener(
+        "click",
+        (e) => {
+          try {
+            const t = e.target as HTMLElement | null;
+            if (!t || !t.closest) return;
+            if (!t.closest("[" + OPENER_ATTR + "]")) return;
+            e.preventDefault();
+            // Through the HANDLE, not this closure's `open`. A listener cannot
+            // be unbound without the reference that made it, so one that
+            // captured a superseded boot would keep mounting that boot's
+            // banner forever.
+            w.__backlexConsent?.open();
+          } catch {
+            // Never throw out of a click handler on somebody else's page.
+          }
+        },
+        true,
+      );
+    } catch {
+      /* no delegation, but `__backlexConsent.open()` still works */
+    }
+  }
+
+  // Decided, against the policy they are being served: nothing to ask.
+  if (prior && !stale) return;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", open);

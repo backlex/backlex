@@ -33,6 +33,10 @@ import {
   useDeleteConsentPolicy,
   useSaveConsentPolicy,
 } from "../../queries";
+import { consentApi } from "../../api/observability";
+import { BUILTIN_STRINGS } from "../../../consent-banner/strings";
+
+
 
 /**
  * Cookie consent — one policy per registered site.
@@ -155,6 +159,7 @@ export function ConsentTab({ pushToast }: { pushToast: PushToast }) {
       <ConsentPolicyDialog
         site={editing}
         policy={editing ? policyFor(editing.id) : null}
+        pushToast={pushToast}
         onClose={() => setEditing(null)}
         onSave={(patch) => {
           if (!editing) return;
@@ -190,13 +195,65 @@ export function ConsentPolicyDialog({
   policy,
   onClose,
   onSave,
+  pushToast,
 }: {
   site: ApiAnalyticsSite | null;
   policy: ApiConsentPolicy | null;
   onClose: () => void;
   onSave: (patch: ApiConsentPolicyInput) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
+
+  /**
+   * The fifteen strings the banner renders, in the order it renders them.
+   *
+   * Mirrors `WORDING_KEYS` in `services/consent.ts`, which is a CLOSED list
+   * precisely so this form can be generated from it rather than drifting from it.
+   * `consent-surfaces.test.ts` fails if the two stop agreeing — a key the policy
+   * accepts but no field writes is a string an operator can never set, and a
+   * field writing a key the policy drops is one they set and lose on save.
+   *
+   * Labels are thunks so `t` is called during render, inside the lingui provider,
+   * rather than once at module load where the locale is not yet resolved.
+   */
+  // Placeholders are the banner's OWN built-in text, imported rather than
+  // retyped: it is what actually renders when a field is left blank, it
+  // follows `editLocale`, and a copy here would drift the moment either side
+  // was reworded. `strings.ts` is a plain object with no imports, so this
+  // costs the admin bundle nothing but the strings themselves.
+  const WORDING_FIELDS = [
+    { key: "title", label: t`Title` },
+    { key: "body", label: t`Body` },
+    { key: "acceptAll", label: t`Accept button` },
+    { key: "rejectAll", label: t`Reject button` },
+    { key: "manage", label: t`Manage button` },
+    { key: "save", label: t`Save button` },
+    { key: "policyLink", label: t`Policy link text` },
+    { key: "functionalLabel", label: t`Functional — name` },
+    { key: "functionalBody", label: t`Functional — description` },
+    { key: "analyticsLabel", label: t`Analytics — name` },
+    { key: "analyticsBody", label: t`Analytics — description` },
+    { key: "marketingLabel", label: t`Marketing — name` },
+    { key: "marketingBody", label: t`Marketing — description` },
+    {
+      key: "necessaryLabel",
+      label: t`Strictly necessary — name`,
+    },
+    { key: "necessaryBody", label: t`Strictly necessary — description` },
+  ];
+
+  /** `THEME_KEYS` from the same module, with the banner's own defaults shown as
+   *  placeholders so a blank field reads as "the default" rather than "unset". */
+  const THEME_FIELDS = [
+    { key: "background", label: t`Background`, placeholder: "#ffffff" },
+    { key: "foreground", label: t`Text`, placeholder: "#18181b" },
+    { key: "accent", label: t`Accent`, placeholder: "#4f46e5" },
+    { key: "accentForeground", label: t`Accent text`, placeholder: "#ffffff" },
+    { key: "border", label: t`Border`, placeholder: "#e4e4e7" },
+    { key: "radius", label: t`Corner radius`, placeholder: "10px" },
+  ];
+
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   // `undefined`, never "". The admin Select maps an empty string to a sentinel
   // meaning "this option IS selected", so `value=""` renders a trigger that is
@@ -209,6 +266,14 @@ export function ConsentPolicyDialog({
   const [policyUrl, setPolicyUrl] = useState("");
   const [maxAge, setMaxAge] = useState("180");
   const [enabled, setEnabled] = useState(false);
+  const [defaultLocale, setDefaultLocale] = useState("en");
+  const [wording, setWording] = useState<Record<string, Record<string, string>>>({});
+  const [theme, setTheme] = useState<Record<string, string>>({});
+  // Which locale block the fields below are editing. Separate from
+  // `defaultLocale`, because an operator writes Turkish while English stays the
+  // default all the time.
+  const [editLocale, setEditLocale] = useState("en");
+  const [openSection, setOpenSection] = useState<"none" | "wording" | "theme">("none");
 
   // Seeded in render rather than an effect, matching SiteSettingsDialog: it
   // keeps the dialog a pure function of props and avoids the StrictMode
@@ -222,7 +287,39 @@ export function ConsentPolicyDialog({
     setPolicyUrl(policy?.policyUrl ?? "");
     setMaxAge(String(policy?.cookieMaxAgeDays ?? 180));
     setEnabled(policy?.enabled ?? false);
+    setDefaultLocale(policy?.defaultLocale ?? "en");
+    setWording(policy?.wording ?? {});
+    setTheme(policy?.theme ?? {});
+    setEditLocale(policy?.defaultLocale ?? "en");
+    setOpenSection("none");
   }
+
+  const setWord = (key: string, value: string) =>
+    setWording((prev) => ({
+      ...prev,
+      [editLocale]: { ...(prev[editLocale] ?? {}), [key]: value },
+    }));
+
+  /**
+   * Fill the blanks from the server's suggestion.
+   *
+   * Only the blanks: `suggestedWording()` is documented as a SUGGESTION and not
+   * a fallback, and overwriting a sentence an operator had reviewed with a
+   * lawyer to "help" is the one thing this button must never do.
+   */
+  const useSuggested = async () => {
+    try {
+      const res = await consentApi.suggestedWording();
+      const block = res.data?.[editLocale] ?? res.data?.[editLocale.split("-")[0] ?? ""] ?? {};
+      setWording((prev) => {
+        const mine = { ...(prev[editLocale] ?? {}) };
+        for (const k of Object.keys(block)) if (!mine[k]) mine[k] = block[k] as string;
+        return { ...prev, [editLocale]: mine };
+      });
+    } catch {
+      pushToast(t`Could not load the suggested wording.`, "error");
+    }
+  };
 
   const toggleCat = (c: string) =>
     setCats((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
@@ -368,6 +465,107 @@ export function ConsentPolicyDialog({
               />
             </label>
 
+
+            <div className="flex min-w-0 flex-col gap-1.5 border-t pt-4">
+              <span className="text-[12.5px] text-muted-foreground">
+                <Trans>Banner language</Trans>
+              </span>
+              <Select
+                className="min-w-0"
+                value={defaultLocale}
+                onChange={(v) => {
+                  setDefaultLocale(v);
+                  setEditLocale(v);
+                }}
+                options={[
+                  { value: "en", label: t`English` },
+                  { value: "tr", label: t`Turkish` },
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>
+                  The banner ships built-in text in both. Write your own below to
+                  replace it — key by key, so a partial translation still renders.
+                </Trans>
+              </span>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  variant={openSection === "wording" ? "primary" : "outline"}
+                  onClick={() => setOpenSection(openSection === "wording" ? "none" : "wording")}
+                >
+                  <Trans>Wording</Trans>
+                </Button>
+                <Button
+                  variant={openSection === "theme" ? "primary" : "outline"}
+                  onClick={() => setOpenSection(openSection === "theme" ? "none" : "theme")}
+                >
+                  <Trans>Appearance</Trans>
+                </Button>
+              </div>
+
+              {openSection === "wording" && (
+                <div className="flex min-w-0 flex-col gap-3 rounded-md border p-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(["en", "tr"] as const).map((l) => (
+                      <Button
+                        key={l}
+                        variant={editLocale === l ? "primary" : "outline"}
+                        onClick={() => setEditLocale(l)}
+                      >
+                        {l}
+                      </Button>
+                    ))}
+                    <Button variant="outline" onClick={useSuggested}>
+                      <Trans>Fill the blanks</Trans>
+                    </Button>
+                  </div>
+                  {WORDING_FIELDS.map((f) => (
+                    <label key={f.key} className="flex min-w-0 flex-col gap-1">
+                      <span className="text-[12.5px] text-muted-foreground">{f.label}</span>
+                      <Input
+                        value={wording[editLocale]?.[f.key] ?? ""}
+                        placeholder={BUILTIN_STRINGS[editLocale]?.[f.key] ?? ""}
+                        onChange={(e) => setWord(f.key, e.target.value)}
+                      />
+                    </label>
+                  ))}
+                  <span className="text-[11.5px] text-muted-foreground">
+                    <Trans>
+                      Left blank, the banner uses its own text. What you write here is
+                      what a visitor is held to have agreed to, so it is stored exactly
+                      as typed and never rewritten.
+                    </Trans>
+                  </span>
+                </div>
+              )}
+
+              {openSection === "theme" && (
+                <div className="grid min-w-0 gap-3 rounded-md border p-3 sm:grid-cols-2">
+                  {THEME_FIELDS.map((f) => (
+                    <label key={f.key} className="flex min-w-0 flex-col gap-1">
+                      <span className="text-[12.5px] text-muted-foreground">{f.label}</span>
+                      <Input
+                        value={theme[f.key] ?? ""}
+                        placeholder={f.placeholder}
+                        onChange={(e) =>
+                          setTheme((prev) => ({ ...prev, [f.key]: e.target.value }))
+                        }
+                      />
+                    </label>
+                  ))}
+                  <span className="text-[11.5px] text-muted-foreground sm:col-span-2">
+                    <Trans>
+                      Anything left blank uses the banner's default. Values are CSS
+                      colours and lengths; the banner refuses anything that is not.
+                    </Trans>
+                  </span>
+                </div>
+              )}
+            </div>
+
             <div className="flex min-w-0 flex-col gap-1.5">
               <span className="text-[12.5px] text-muted-foreground">
                 <Trans>Show the banner</Trans>
@@ -404,6 +602,9 @@ export function ConsentPolicyDialog({
                 position: position as "bottom" | "top" | "corner",
                 policyUrl: policyUrl.trim() || null,
                 cookieMaxAgeDays: Number(maxAge) || 180,
+                defaultLocale: defaultLocale.trim() || "en",
+                wording,
+                theme,
                 enabled,
               })
             }

@@ -1544,12 +1544,25 @@ msgid "accent"
 msgstr "vurgu rengi"
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Accent"
 msgstr "Vurgu rengi"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Accent for the icon in nav and lists."
 msgstr "Gezinti ve listelerdeki ikonun vurgu rengi."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Accent text"
+msgstr "Vurgu üstü metin"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Accept all"
+#~ msgstr "Tümünü kabul et"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Accept button"
+msgstr "Kabul düğmesi"
 
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
@@ -2534,6 +2547,14 @@ msgstr "Bir MCP istemcisi bu çalışma alanına sizin adınıza erişmek istiyo
 msgid "Analytics"
 msgstr "Analitik"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Analytics — description"
+msgstr "Analitik — açıklama"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Analytics — name"
+msgstr "Analitik — ad"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Analytics ingest key"
 msgstr "Analitik veri alma anahtarı"
@@ -2670,6 +2691,10 @@ msgstr "Herkes, istediği zaman"
 msgid "Anyone, even signed out"
 msgstr "Herkes, oturum açmamış olsa bile"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Anything left blank uses the banner's default. Values are CSS colours and lengths; the banner refuses anything that is not."
+msgstr "Boş bırakılan her alan banner'ın varsayılanını kullanır. Değerler CSS renk ve uzunluklarıdır; banner bunun dışındakini kabul etmez."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "AOV"
 msgstr "Ortalama sepet"
@@ -2707,6 +2732,7 @@ msgstr "app (çalışma alanı son kullanıcıları)"
 msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
 msgstr "Uygulama katmanı tetikleyicisi — backlex'te DB yabancı anahtarı yok, bu yüzden silmede uygulanır."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/settings/index.tsx
 msgid "Appearance"
 msgstr "Görünüm"
@@ -3209,6 +3235,10 @@ msgstr "başlangıç numarasına döner"
 msgid "Back up now"
 msgstr "Şimdi yedekle"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Background"
+msgstr "Arka plan"
+
 #: src/client/admin/pages/access/rls-card.tsx
 msgid "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
 msgstr "backlex bu tabloların sahibi değil, bu yüzden uygulama reddedildi — orada satır güvenliğini açmak backlex'in kendi sorgularını filtrelerdi:"
@@ -3273,6 +3303,10 @@ msgstr "Yedekler"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "balanced — recommended for most queries"
 msgstr "dengeli — çoğu sorgu için önerilir"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Banner language"
+msgstr "Banner dili"
 
 #: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Banner live"
@@ -3402,6 +3436,7 @@ msgid "Blocks sign-in and drops all active sessions immediately."
 msgstr "Girişi engeller ve tüm etkin oturumları hemen sonlandırır."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Body"
 msgstr "İçerik"
 
@@ -3475,6 +3510,10 @@ msgstr "Rezervasyonlar"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
 msgstr "Rezervasyonlar burası dışında hiçbir yere kaydedilmiyor. Bu müşterilerin var olduğu tek yer defterin kendisi."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Border"
+msgstr "Kenarlık"
 
 #: src/client/admin/collections/items.tsx
 msgid "Both"
@@ -4820,9 +4859,17 @@ msgstr "Şu süre içinde dönüşsün"
 msgid "Cookie consent ID"
 msgstr "Çerez izni kimliği"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Cookie policy"
+#~ msgstr "Çerez politikası"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Cookieless"
 msgstr "Çerezsiz"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Cookies"
+#~ msgstr "Çerezler"
 
 #: src/client/admin/ui.tsx
 msgid "copied"
@@ -4976,6 +5023,10 @@ msgstr "Snippet kopyalanıyor"
 msgid "Corner card"
 msgstr "Köşe kartı"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Corner radius"
+msgstr "Köşe yuvarlaklığı"
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
@@ -5047,6 +5098,10 @@ msgstr "Günlükler dışa aktarılamadı."
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Could not export runs."
 msgstr "Çalıştırmalar dışa aktarılamadı."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Could not load the suggested wording."
+msgstr "Önerilen metin yüklenemedi."
 
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not post comment."
@@ -7129,6 +7184,10 @@ msgstr "Uygulama"
 msgid "engagement depth"
 msgstr "etkileşim derinliği"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "English"
+msgstr "İngilizce"
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Enough to create it — the opening hours, the questions and the rest are set on the resource itself."
 msgstr "Oluşturmaya yetecek kadarı — çalışma saatleri, sorular ve gerisi kaynağın kendi üzerinde ayarlanır."
@@ -7927,6 +7986,10 @@ msgstr "Eklemek için bir başlangıç girin. Bağlanacak bir şey olmadan her t
 msgid "Fill in the address fields to look this up automatically."
 msgstr "Otomatik aramak için adres alanlarını doldurun."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Fill the blanks"
+msgstr "Boşlukları doldur"
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
@@ -8396,6 +8459,14 @@ msgstr "Fonksiyon iskeleti hazır."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Functional"
 msgstr "İşlevsel"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Functional — description"
+msgstr "İşlevsel — açıklama"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Functional — name"
+msgstr "İşlevsel — ad"
 
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/overview.tsx
@@ -10095,6 +10166,10 @@ msgstr "İki tarih gerçekten bağımsız olmadıkça açık bırakın. Boş bir
 msgid "Leave to user"
 msgstr "Kullanıcıya bırak"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+msgstr "Boş bırakılırsa banner kendi metnini kullanır. Buraya yazdığınız şey, ziyaretçinin kabul etmiş sayıldığı metindir; bu yüzden yazdığınız gibi saklanır ve hiçbir zaman yeniden yazılmaz."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Left empty, an answer outside the list fails the step instead of guessing."
 msgstr "Boş bırakılırsa, listede olmayan bir yanıt tahmin etmek yerine adımı başarısız kılar."
@@ -10538,6 +10613,10 @@ msgstr "Varsayılan yap"
 msgid "Manage"
 msgstr "Yönet"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Manage button"
+msgstr "Yönet düğmesi"
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Manage locales"
 msgstr "Yerel ayarları yönet"
@@ -10597,6 +10676,14 @@ msgstr "Gelmedi olarak işaretlendi."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Marketing"
 msgstr "Pazarlama"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Marketing — description"
+msgstr "Pazarlama — açıklama"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Marketing — name"
+msgstr "Pazarlama — ad"
 
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Marketplace category"
@@ -14492,6 +14579,10 @@ msgstr "rclone, aws-cli, mc veya herhangi bir yedekleme aracını bu çalışma 
 msgid "Policy"
 msgstr "Politika"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Policy link text"
+msgstr "Politika bağlantı metni"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Policy URL"
 msgstr "Sözleşme URL'si"
@@ -15601,6 +15692,14 @@ msgstr "Yeniden kur / yükselt"
 #: src/client/pages/approve-request.tsx
 msgid "Reject"
 msgstr "Reddet"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Reject all"
+#~ msgstr "Tümünü reddet"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Reject button"
+msgstr "Reddet düğmesi"
 
 #: src/client/admin/fields/edit-field.tsx
 msgid "Reject inserts/updates that omit this column."
@@ -16880,6 +16979,10 @@ msgstr "Yine de kaydet"
 msgid "Save as <0>(optional)</0>"
 msgstr "Farklı kaydet <0>(isteğe bağlı)</0>"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Save button"
+msgstr "Kaydet düğmesi"
+
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/app-users.tsx
@@ -16890,6 +16993,10 @@ msgstr "Farklı kaydet <0>(isteğe bağlı)</0>"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Save changes"
 msgstr "Değişiklikleri kaydet"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Save choices"
+#~ msgstr "Seçimleri kaydet"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Save credentials"
@@ -18866,6 +18973,14 @@ msgstr "Akış"
 msgid "Strictly necessary"
 msgstr "Zorunlu"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Strictly necessary — description"
+msgstr "Zorunlu — açıklama"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Strictly necessary — name"
+msgstr "Zorunlu — ad"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Stripe and Polar both record this against the refund."
 msgstr "Stripe ve Polar bunu iadenin kaydına işler."
@@ -19347,6 +19462,10 @@ msgstr "Test aracı"
 msgid "Testing…"
 msgstr "Test ediliyor…"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Text"
+msgstr "Metin"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Text to classify"
 msgstr "Sınıflandırılacak metin"
@@ -19412,6 +19531,10 @@ msgstr "Yetkilendirme akışı yönlendirme döndürmedi — istemciden baştan 
 #: src/client/admin/pages/data/database.tsx
 msgid "The backup did not finish."
 msgstr "Yedekleme tamamlanmadı."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
+msgstr "Banner her iki dilde de yerleşik metinle gelir. Değiştirmek için aşağıya kendi metninizi yazın — alan alan, böylece kısmi bir çeviri de düzgün görünür."
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
@@ -20182,6 +20305,7 @@ msgid "Timestamps across the admin render in this zone."
 msgstr "Yönetici panelindeki tüm zaman damgaları bu dilimde gösterilir."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Title"
@@ -20539,6 +20663,10 @@ msgstr "Koleksiyona yeniden kaydetmeyi dene."
 #: src/client/admin/collections/item-views.tsx
 msgid "Tue"
 msgstr "Sal"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Turkish"
+msgstr "Türkçe"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
@@ -21713,6 +21841,10 @@ msgstr "kalan bakiyenin tamamı"
 msgid "Why are you declining? (optional)"
 msgstr "Neden reddediyorsunuz? (isteğe bağlı)"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Why you use cookies, in a sentence."
+#~ msgstr "Çerezleri neden kullandığınız, tek cümleyle."
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
@@ -21767,6 +21899,10 @@ msgstr "Geri çek"
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Without a default, only numbers written in full international form are accepted — which is the safe answer, since the same national number exists in dozens of countries."
 msgstr "Varsayılan olmadan yalnızca tam uluslararası biçimde yazılmış numaralar kabul edilir — aynı ulusal numara onlarca ülkede bulunduğu için güvenli olan cevap budur."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Wording"
+msgstr "Metinler"
 
 #: src/client/admin/collections/items.tsx
 msgid "Words"

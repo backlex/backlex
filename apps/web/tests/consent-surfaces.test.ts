@@ -19,8 +19,10 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { createClient } from "../../../packages/client/src/index";
 import {
   OPTIONAL_CATEGORIES,
+  THEME_KEYS,
   TRACKER_CATEGORIES,
   UNDECIDED_BEHAVIOURS,
+  WORDING_KEYS,
 } from "../src/server/services/consent";
 
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
@@ -466,6 +468,36 @@ describe("the vocabulary is one list, spelled the same everywhere", () => {
           `${name} knows \`${v}\`: true`,
         );
       }
+    }
+  });
+});
+
+describe("the admin form can write every key the policy stores", () => {
+  test("WORDING_KEYS and the consent tab's fields are the same list", () => {
+    // `WORDING_KEYS` is a CLOSED list specifically so the form can be generated
+    // from it instead of drifting from it. Both directions matter and they fail
+    // differently: a key with no field is a string an operator can never set,
+    // and a field writing a key the policy drops is one they type, save, and
+    // silently lose.
+    const tab = read("apps/web/src/client/admin/pages/observability/consent-tab.tsx");
+    // `\s*` on purpose: one entry is wrapped across lines by the formatter,
+    // and a regex that assumed one line would silently miss it — reporting a
+    // missing field for one that is right there.
+    const fields = [...tab.matchAll(/key: "([a-zA-Z]+)",\s*label:/g)].map((m) => m[1]);
+    const wordingFields = fields.filter((f) => (WORDING_KEYS as readonly string[]).includes(f!));
+
+    for (const key of WORDING_KEYS) {
+      expect(`${key} has a field: ${fields.includes(key)}`).toBe(`${key} has a field: true`);
+    }
+    expect(wordingFields.length).toBe(WORDING_KEYS.length);
+  });
+
+  test("and every theme token has one too", () => {
+    const tab = read("apps/web/src/client/admin/pages/observability/consent-tab.tsx");
+    for (const key of THEME_KEYS) {
+      expect(`${key} has a field: ${tab.includes(`key: "${key}"`)}`).toBe(
+        `${key} has a field: true`,
+      );
     }
   });
 });

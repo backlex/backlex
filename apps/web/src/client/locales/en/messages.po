@@ -1544,12 +1544,25 @@ msgid "accent"
 msgstr "accent"
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Accent"
 msgstr "Accent"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Accent for the icon in nav and lists."
 msgstr "Accent for the icon in nav and lists."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Accent text"
+msgstr "Accent text"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Accept all"
+#~ msgstr "Accept all"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Accept button"
+msgstr "Accept button"
 
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
@@ -2534,6 +2547,14 @@ msgstr "An MCP client is asking to access this workspace on your behalf."
 msgid "Analytics"
 msgstr "Analytics"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Analytics — description"
+msgstr "Analytics — description"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Analytics — name"
+msgstr "Analytics — name"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Analytics ingest key"
 msgstr "Analytics ingest key"
@@ -2670,6 +2691,10 @@ msgstr "Anyone, any time"
 msgid "Anyone, even signed out"
 msgstr "Anyone, even signed out"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Anything left blank uses the banner's default. Values are CSS colours and lengths; the banner refuses anything that is not."
+msgstr "Anything left blank uses the banner's default. Values are CSS colours and lengths; the banner refuses anything that is not."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "AOV"
 msgstr "AOV"
@@ -2707,6 +2732,7 @@ msgstr "app (workspace end-users)"
 msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
 msgstr "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/settings/index.tsx
 msgid "Appearance"
 msgstr "Appearance"
@@ -3209,6 +3235,10 @@ msgstr "back to the starting number"
 msgid "Back up now"
 msgstr "Back up now"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Background"
+msgstr "Background"
+
 #: src/client/admin/pages/access/rls-card.tsx
 msgid "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
 msgstr "backlex does not own these tables, so applying is refused — enabling row security there would filter backlex's own queries:"
@@ -3273,6 +3303,10 @@ msgstr "Backups"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "balanced — recommended for most queries"
 msgstr "balanced — recommended for most queries"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Banner language"
+msgstr "Banner language"
 
 #: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Banner live"
@@ -3402,6 +3436,7 @@ msgid "Blocks sign-in and drops all active sessions immediately."
 msgstr "Blocks sign-in and drops all active sessions immediately."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 msgid "Body"
 msgstr "Body"
 
@@ -3475,6 +3510,10 @@ msgstr "Bookings"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
 msgstr "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Border"
+msgstr "Border"
 
 #: src/client/admin/collections/items.tsx
 msgid "Both"
@@ -4820,9 +4859,17 @@ msgstr "Convert within"
 msgid "Cookie consent ID"
 msgstr "Cookie consent ID"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Cookie policy"
+#~ msgstr "Cookie policy"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Cookieless"
 msgstr "Cookieless"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Cookies"
+#~ msgstr "Cookies"
 
 #: src/client/admin/ui.tsx
 msgid "copied"
@@ -4976,6 +5023,10 @@ msgstr "Copying snippet"
 msgid "Corner card"
 msgstr "Corner card"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Corner radius"
+msgstr "Corner radius"
+
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
@@ -5047,6 +5098,10 @@ msgstr "Could not export logs."
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Could not export runs."
 msgstr "Could not export runs."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Could not load the suggested wording."
+msgstr "Could not load the suggested wording."
 
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not post comment."
@@ -7129,6 +7184,10 @@ msgstr "Enforcement"
 msgid "engagement depth"
 msgstr "engagement depth"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "English"
+msgstr "English"
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Enough to create it — the opening hours, the questions and the rest are set on the resource itself."
 msgstr "Enough to create it — the opening hours, the questions and the rest are set on the resource itself."
@@ -7927,6 +7986,10 @@ msgstr "Fill in a start to attach one. Reaches every calendar app — nothing to
 msgid "Fill in the address fields to look this up automatically."
 msgstr "Fill in the address fields to look this up automatically."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Fill the blanks"
+msgstr "Fill the blanks"
+
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
@@ -8396,6 +8459,14 @@ msgstr "Function scaffold ready."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Functional"
 msgstr "Functional"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Functional — description"
+msgstr "Functional — description"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Functional — name"
+msgstr "Functional — name"
 
 #: src/client/admin/pages/automation/functions.tsx
 #: src/client/admin/pages/overview.tsx
@@ -10095,6 +10166,10 @@ msgstr "Leave this on unless the two dates are genuinely independent. An empty e
 msgid "Leave to user"
 msgstr "Leave to user"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+msgstr "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Left empty, an answer outside the list fails the step instead of guessing."
 msgstr "Left empty, an answer outside the list fails the step instead of guessing."
@@ -10538,6 +10613,10 @@ msgstr "Make default"
 msgid "Manage"
 msgstr "Manage"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Manage button"
+msgstr "Manage button"
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Manage locales"
 msgstr "Manage locales"
@@ -10597,6 +10676,14 @@ msgstr "Marked as a no-show."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Marketing"
 msgstr "Marketing"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Marketing — description"
+msgstr "Marketing — description"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Marketing — name"
+msgstr "Marketing — name"
 
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Marketplace category"
@@ -14492,6 +14579,10 @@ msgstr "Point rclone, aws-cli, mc or any backup tool at this workspace's objects
 msgid "Policy"
 msgstr "Policy"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Policy link text"
+msgstr "Policy link text"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Policy URL"
 msgstr "Policy URL"
@@ -15601,6 +15692,14 @@ msgstr "Reinstall / upgrade"
 #: src/client/pages/approve-request.tsx
 msgid "Reject"
 msgstr "Reject"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Reject all"
+#~ msgstr "Reject all"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Reject button"
+msgstr "Reject button"
 
 #: src/client/admin/fields/edit-field.tsx
 msgid "Reject inserts/updates that omit this column."
@@ -16880,6 +16979,10 @@ msgstr "Save anyway"
 msgid "Save as <0>(optional)</0>"
 msgstr "Save as <0>(optional)</0>"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Save button"
+msgstr "Save button"
+
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/app-users.tsx
@@ -16890,6 +16993,10 @@ msgstr "Save as <0>(optional)</0>"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Save changes"
 msgstr "Save changes"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Save choices"
+#~ msgstr "Save choices"
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Save credentials"
@@ -18866,6 +18973,14 @@ msgstr "Stream"
 msgid "Strictly necessary"
 msgstr "Strictly necessary"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Strictly necessary — description"
+msgstr "Strictly necessary — description"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Strictly necessary — name"
+msgstr "Strictly necessary — name"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Stripe and Polar both record this against the refund."
 msgstr "Stripe and Polar both record this against the refund."
@@ -19347,6 +19462,10 @@ msgstr "Tester"
 msgid "Testing…"
 msgstr "Testing…"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Text"
+msgstr "Text"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Text to classify"
 msgstr "Text to classify"
@@ -19412,6 +19531,10 @@ msgstr "The authorization flow returned no redirect — start over from the clie
 #: src/client/admin/pages/data/database.tsx
 msgid "The backup did not finish."
 msgstr "The backup did not finish."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
+msgstr "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
@@ -20182,6 +20305,7 @@ msgid "Timestamps across the admin render in this zone."
 msgstr "Timestamps across the admin render in this zone."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/observability/consent-tab.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Title"
@@ -20539,6 +20663,10 @@ msgstr "Try recording it into the collection again."
 #: src/client/admin/collections/item-views.tsx
 msgid "Tue"
 msgstr "Tue"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Turkish"
+msgstr "Turkish"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
@@ -21713,6 +21841,10 @@ msgstr "whole remaining balance"
 msgid "Why are you declining? (optional)"
 msgstr "Why are you declining? (optional)"
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+#~ msgid "Why you use cookies, in a sentence."
+#~ msgstr "Why you use cookies, in a sentence."
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
@@ -21767,6 +21899,10 @@ msgstr "Withdraw"
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Without a default, only numbers written in full international form are accepted — which is the safe answer, since the same national number exists in dozens of countries."
 msgstr "Without a default, only numbers written in full international form are accepted — which is the safe answer, since the same national number exists in dozens of countries."
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Wording"
+msgstr "Wording"
 
 #: src/client/admin/collections/items.tsx
 msgid "Words"

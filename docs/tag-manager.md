@@ -104,14 +104,32 @@ nonce, custom tags will not run. Vendor templates are unaffected.
 ## Consent
 
 Every tag declares a category — `marketing`, `analytics`, `functional`, or
-`none` — and the runtime checks it before firing, using the signals the
-analytics tag already reads:
+`none` — and the runtime checks it before firing. The check asks the analytics
+tag, which holds one grant map for the whole page, so a site gets one verdict
+rather than two that drift apart. In order:
 
-- Google Consent Mode entries in `dataLayer` (`ad_storage` for marketing tags,
-  `analytics_storage` for analytics ones)
-- `navigator.globalPrivacyControl`
-- Do Not Track
-- an explicit `backlex.consent("denied")`
+- an explicit `backlex.consent(...)` — a string, or a per-category map
+- Google Consent Mode entries in `dataLayer`: `ad_storage` for marketing,
+  `analytics_storage` for analytics, `functionality_storage` for functional
+  (falling back to `analytics_storage` when the more specific key is absent)
+
+An explicit call wins over `dataLayer`, because that is the site owner speaking
+directly rather than us inferring. A category nothing has spoken about is
+allowed to fire; `none` is never gated at all.
+
+**Global Privacy Control and Do Not Track do NOT gate third-party tags** — they
+stop backlex's own analytics tag, and only that. This page used to say
+otherwise, which was wrong. Extending them to your tags would switch off live
+pixels on every site at once, for visitors whose operator never chose that, so
+it lands with the prior-blocking work — together with a per-site switch and a
+published category for every tag, neither of which exists yet.
+
+Changing a tag's category takes effect on your **next publish**, like every
+other tag edit.
+
+If a tag is filed under a category laxer than the vendor declares, the tag list
+says so rather than silently correcting it: moving a tag between categories
+changes who it fires for, and that is a decision to make on purpose.
 
 Two of the vendors backlex ships are declared as **both** analytics and
 marketing, and that is deliberate rather than a mistake:

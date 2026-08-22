@@ -104,19 +104,45 @@ legitimate privacy lever and also a visible discontinuity in the numbers.
 ### Consent, and what "cookieless" does and does not mean
 
 The tag ships **the mechanical half of Consent Mode**: it reads gtag's
-`dataLayer` for `analytics_storage`, `navigator.globalPrivacyControl` and
-`DNT`, and it exposes an explicit override for a consent tool that is not
-gtag-shaped:
+`dataLayer`, `navigator.globalPrivacyControl` and `DNT`, and it exposes an
+explicit override for a consent tool that is not gtag-shaped:
 
 ```js
-backlex.consent("denied");   // and "granted"
+backlex.consent("denied");                 // grants nothing
+backlex.consent("granted");                // grants every optional category
+backlex.consent({ analytics: true });      // a decision, per category
+backlex.consent(null);                     // back to undecided
 ```
 
+The tag holds a **grant map** over the four categories the tag manager files
+tags under — `functional`, `analytics`, `marketing`, and `none`, which is never
+gated. The tag files *itself* under `analytics`, so denying that category stops
+it; denying only `marketing` does not.
+
+**The object form is a decision, not a patch.** A category you leave out is
+denied, not left alone — the same rule the server applies when it stores a
+consent record, because absence is not consent. Pass the whole map.
+
 An explicit call wins over the dataLayer — that is the site owner speaking
-directly rather than us inferring. **The state is enforced on the server too**:
-a denied event is dropped by the collect route regardless of what a modified
-tag chooses to send, because a client-side check is advice and this is the half
-an operator can point at in an audit.
+directly rather than us inferring. A category nothing has spoken about is
+allowed. GPC and DNT are checked separately and stop the tag whatever the map
+says.
+
+The same map gates your third-party tags through the tag manager: see
+[Tag manager → Consent](tag-manager.md). GPC and DNT deliberately do **not**
+reach those — they stop this tag only.
+
+**The state is enforced on the server too**: a denied event is dropped by the
+collect route regardless of what a modified tag chooses to send, because a
+client-side check is advice and this is the half an operator can point at in an
+audit. Note what the stock tag actually puts on the wire, though — it reports
+`"granted"` only when a site explicitly granted, and reports nothing at all
+when the visitor has not answered. It never reports a denial, because a denied
+tag stops before it builds a request: a visitor who said no, or whose browser
+said no for them, sends nothing. That is the intended behaviour and it is also
+why the server cannot tell "declined" from "never visited" — closing that gap
+needs the consent banner, which has a durable subject id to attach a decision
+to.
 
 GA4's *other* half of Consent Mode is behavioural modeling — statistically
 inferring the conversions it was not allowed to observe. That is not

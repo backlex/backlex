@@ -10,6 +10,19 @@ This page covers the policy — the configuration half. The banner that renders
 it, the visitor's recorded decision, and the gating of third-party tags are
 built on top of it and are documented separately as they land.
 
+> **What the browser enforces today, and what it does not.** Per-category
+> gating is live: the analytics tag holds a grant map, `backlex.consent()`
+> takes a per-category object, and the tag manager gates every tag on it —
+> see [Tag manager → Consent](/tag-manager/) and
+> [Analytics → Consent](/analytics/).
+>
+> The two fields below are **published but not yet consumed by the tag**. They
+> ship in `GET /api/consent/config`, and nothing in the browser fetches that
+> document yet, so today the tag files itself under `analytics` and treats a
+> category nobody has answered for as allowed. Setting them still records the
+> posture you chose, and the banner phase is what delivers it. Until then, do
+> not read `undecided: block` as a guarantee the browser is enforcing.
+
 ```bash
 backlex consent set <siteId> \
   --undecided block \

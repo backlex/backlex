@@ -403,7 +403,10 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
       // these two settings is about the banner. A site that shows no banner can
       // still have filed backlex's own tag as strictly necessary, or still want
       // GPC to stop every tag. One extra query per container-cache miss, which
-      // is once per site per origin per fifteen minutes.
+      // is once per site per origin per MINUTE — `tag-container-cache.ts`
+      // memoises for `TTL_MS = 60_000`. The fifteen minutes elsewhere in this
+      // file is `CONTAINER_MAX_AGE`, the BROWSER's cache, which is a different
+      // number about a different cache.
       const tagConsent = await getTagConsentSettings(
         { db: ctx.db, dialect: ctx.dialect },
         siteId,

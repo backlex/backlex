@@ -235,3 +235,56 @@ describe("repeat visits are cheap", () => {
     expect(etag).not.toBe(weakETag([published!.hash]));
   });
 });
+
+/**
+ * The container body is the SAME for every visitor, whatever the edge says
+ * about where they are.
+ *
+ * The regional-presets phase measured this and stopped there: the file is
+ * `public, max-age=900` behind a memo keyed on `(siteId, origin)` with no
+ * country in it and no `Vary` — and no `Vary` could help, because every geo
+ * source this repo has is a header the EDGE injects, never one the browser
+ * sent, so no cache can key on it. Whoever missed the cache first would fix the
+ * posture for everyone behind it. This is the tripwire against the next person
+ * "finishing" the phase by wiring `enrichmentFromRequest` into the handler,
+ * which is one import away — `analytics-collect.ts` already imports it for the
+ * write path.
+ */
+describe("the per-site file is geo-blind", () => {
+  test("two countries get byte-identical bodies and the same ETag", async () => {
+    // The MEMO has to be cleared between the two requests, and that is the
+    // whole methodology rather than hygiene. `getContainerEntry` is keyed on
+    // (siteId, origin), so a second request hits the first one's cached body
+    // and agrees with it no matter what the handler does — measured: without
+    // this the test stayed GREEN with `cf-ipcountry` deliberately spliced into
+    // the body, which is precisely the bug it exists to catch. Clearing it
+    // makes both requests take the compile path, where the difference would be.
+    const { invalidateContainer } = await import(
+      "../src/server/services/tag-container-cache"
+    );
+    const withCountry = async (country: string) => {
+      invalidateContainer(SITE);
+      const res = await h.app.fetch(
+        new Request(`${h.env.APP_URL}/api/analytics/tm/${SITE}.js`, {
+          headers: {
+            "cf-ipcountry": country,
+            "x-vercel-ip-country": country,
+            "x-backlex-country": country,
+          },
+        }),
+      );
+      return { etag: res.headers.get("etag"), vary: res.headers.get("vary"), body: await res.text() };
+    };
+
+    const de = await withCountry("DE");
+    const us = await withCountry("US");
+
+    // The premise: this is a real body, not two empty 200s agreeing vacuously.
+    expect(de.body.length).toBeGreaterThan(1000);
+    expect(de.body).toBe(us.body);
+    expect(de.etag).toBe(us.etag);
+    // …and nothing on the response invites a cache to split on a header it
+    // will never see.
+    expect(de.vary).toBeNull();
+  });
+});

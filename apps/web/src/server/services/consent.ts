@@ -627,7 +627,9 @@ export const getPublishedConsentConfig = async (
  * configuration, which is the shape a compliance bug takes here — a setting
  * that exists, reads back correctly, and does nothing.
  *
- * Called once per container-cache MISS (fifteen minutes per site per origin),
+ * Called once per container-cache MISS — a MINUTE per site per origin, not the
+ * fifteen the browser cache runs for (`tag-container-cache.ts` memoises for
+ * `TTL_MS = 60_000`; `CONTAINER_MAX_AGE` is the other number) —
  * beside the artifact read that is already there.
  */
 export const getTagConsentSettings = async (
@@ -1008,3 +1010,115 @@ export const suggestedWording = (): Record<string, Record<WordingKey, string>> =
     idLabel: "Onay kimliğiniz",
   },
 });
+
+/**
+ * Named readings of three privacy regimes, offered as a starting point.
+ *
+ * ── A SELECTOR, not a posture ─────────────────────────────────────────────
+ * Every value below is already expressible today: GDPR is `block`, CCPA is
+ * `allow` plus `signalHandling: "all"`, KVKK is `block` with a Turkish locale.
+ * Nothing here is new behaviour. What is new is that an operator no longer has
+ * to know which combination of three independent fields their regulator
+ * implies — which is the actual difficulty, and the only one worth solving.
+ *
+ * ── It is a SUGGESTION, not a fallback: nothing reads this at serve time ───
+ * The same sentence as `suggestedWording()` above, and for a stronger reason.
+ * Applying a preset patches the ADMIN FORM; the operator then presses Save and
+ * `savePolicy` is still the only writer, refusal and all. There is deliberately
+ * no endpoint that applies one: a preset that wrote to the row would be exactly
+ * the "posture acquired by omission" that `savePolicy` refuses a first save to
+ * prevent, wearing a friendlier name.
+ *
+ * ── And it is NOT regional, however much the names suggest otherwise ───────
+ * `appliesTo` is prose an operator reads. It is never matched against a
+ * request, and no country list ships anywhere in this repo, because backlex
+ * cannot serve two postures to one site:
+ *
+ *  - The file that carries the banner is `public, max-age=900` behind a memo
+ *    keyed on `(siteId, origin)`. A body that varied by the caller's country
+ *    would hand the first visitor's posture to everyone behind that cache.
+ *  - `Vary` cannot express it: every geo source this repo has —
+ *    `request.cf.country`, `cf-ipcountry`, `x-vercel-ip-country`, `x-nf-geo` —
+ *    is injected by the edge AFTER the browser sent its request, so no cache
+ *    can key on it.
+ *  - A consent record names the artifact by hash, and both visitors would name
+ *    the same one. The evidence could not show that it happened.
+ *
+ * `trackerCategory` is `analytics` in all three. Filing backlex's own tag as
+ * strictly necessary is a legal position rather than a fact — `savePolicy` says
+ * so when it refuses — and a preset must never be the thing that talks an
+ * operator out of gating it.
+ */
+export const POSTURE_PRESETS = ["gdpr", "ccpa", "kvkk"] as const;
+export type PosturePreset = (typeof POSTURE_PRESETS)[number];
+
+export interface PosturePresetDef {
+  id: PosturePreset;
+  label: string;
+  /** Typed as a subset of what `savePolicy` accepts, so a preset cannot grow a
+   *  field the only writer would ignore. */
+  policy: Required<
+    Pick<
+      ConsentPolicy,
+      | "undecidedBehaviour"
+      | "trackerCategory"
+      | "signalHandling"
+      | "defaultLocale"
+      | "categoriesOffered"
+    >
+  >;
+  /** Prose. Read by a person, never matched against a request. */
+  appliesTo: string;
+  /** What choosing this costs, in the operator's own terms. Rendered beside the
+   *  control, because a preset that showed only its upside would be an
+   *  advertisement rather than a starting point. */
+  caveat: string;
+}
+
+export const suggestedPostures = (): PosturePresetDef[] => [
+  {
+    id: "gdpr",
+    label: "GDPR / ePrivacy",
+    policy: {
+      undecidedBehaviour: "block",
+      trackerCategory: "analytics",
+      signalHandling: "tracker",
+      defaultLocale: "en",
+      categoriesOffered: ["functional", "analytics", "marketing"],
+    },
+    appliesTo:
+      "The EU and EEA, and the UK under its own retained version. The strictest of the three, and the only one lawful across Europe.",
+    caveat:
+      "You lose measurement on every visitor who ignores the banner — that is not a bug in the setting, it is what prior consent means.",
+  },
+  {
+    id: "ccpa",
+    label: "CCPA / CPRA",
+    policy: {
+      undecidedBehaviour: "allow",
+      trackerCategory: "analytics",
+      signalHandling: "all",
+      defaultLocale: "en",
+      categoriesOffered: ["functional", "analytics", "marketing"],
+    },
+    appliesTo:
+      "California. An opt-out model: tags fire until the visitor declines, and Global Privacy Control counts as that decline rather than as a preference.",
+    caveat:
+      '"Allow until they decline" is NOT lawful in the EU. backlex serves one policy per site and cannot serve two — if any of your traffic is European, this is the wrong preset for the whole site. Note also that this repo can see a visitor\'s country and never their state, so nothing here can be scoped to California for you.',
+  },
+  {
+    id: "kvkk",
+    label: "KVKK (Türkiye)",
+    policy: {
+      undecidedBehaviour: "block",
+      trackerCategory: "analytics",
+      signalHandling: "tracker",
+      defaultLocale: "tr",
+      categoriesOffered: ["functional", "analytics", "marketing"],
+    },
+    appliesTo:
+      "Türkiye. Explicit consent before optional processing, so the posture matches GDPR; what differs is the language your visitors are asked in.",
+    caveat:
+      "Sets the banner's default language to Turkish. It does not write any wording — the Turkish copy under Wording is still yours to review, and until you save some the banner falls back to its own built-in Turkish.",
+  },
+];

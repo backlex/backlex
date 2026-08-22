@@ -26,8 +26,8 @@
  *
  * ── Drift ─────────────────────────────────────────────────────────────────
  * `lefthook.yml` regenerates and `git diff --exit-code`s this on commit, and
- * `consent-banner-bundle.test.ts` re-runs the same comparison inside `bun test`
- * so CI catches what a `--no-verify` push would carry through. The hook alone
+ * `apps/web/tests/consent-banner.test.ts` re-runs the same comparison inside
+ * `bun test`, so CI catches what a `--no-verify` push would carry through. The hook alone
  * is not enough: its glob watches the SOURCES, so editing this generator or the
  * generated file by hand never triggers it.
  */

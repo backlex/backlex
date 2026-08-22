@@ -861,3 +861,172 @@ describe("a change to the switch invalidates what a browser holds", () => {
     expect(conditional.status).toBe(200);
   });
 });
+
+/**
+ * Posture presets are OFFERED, never applied.
+ *
+ * The whole feature rests on `savePolicy` refusing a first save that does not
+ * name a posture — "neither answer is safe to choose for an operator". A preset
+ * that wrote to the row would be that same acquisition-by-omission wearing a
+ * friendlier name, so there is deliberately no endpoint that applies one and
+ * these specs are what stop somebody adding it.
+ */
+describe("posture presets", () => {
+  test("every preset is a valid `savePolicy` input, field for field", async () => {
+    const { suggestedPostures, POSTURE_PRESETS } = await import(
+      "../src/server/services/consent"
+    );
+    const presets = suggestedPostures();
+    expect(presets.map((p) => p.id).sort()).toEqual([...POSTURE_PRESETS].sort());
+
+    for (const p of presets) {
+      // Every value passes the SAME allow-lists the writer uses. A preset that
+      // named a value `savePolicy` silently drops would look applied and be
+      // ignored — the worst of both.
+      expect(`${p.id} undecided: ${UNDECIDED_BEHAVIOURS.includes(p.policy.undecidedBehaviour)}`)
+        .toBe(`${p.id} undecided: true`);
+      expect(`${p.id} tracker: ${TRACKER_CATEGORIES.includes(p.policy.trackerCategory)}`)
+        .toBe(`${p.id} tracker: true`);
+      expect(`${p.id} signals: ${SIGNAL_HANDLING.includes(p.policy.signalHandling)}`)
+        .toBe(`${p.id} signals: true`);
+      for (const c of p.policy.categoriesOffered) {
+        expect(`${p.id} category ${c}: ${OPTIONAL_CATEGORIES.includes(c)}`).toBe(
+          `${p.id} category ${c}: true`,
+        );
+      }
+      // Prose an operator reads. The caveat is not optional decoration: a
+      // preset shown without its cost is an advertisement.
+      expect(p.appliesTo.length).toBeGreaterThan(20);
+      expect(p.caveat.length).toBeGreaterThan(20);
+    }
+
+    // The CCPA preset must say the thing that gets an operator sued if it is
+    // missing, and must not pretend to know a US state.
+    const ccpa = presets.find((p) => p.id === "ccpa")!;
+    expect(ccpa.policy.undecidedBehaviour).toBe("allow");
+    expect(ccpa.policy.signalHandling).toBe("all");
+    // Case-insensitive: the sentence emphasises NOT, and pinning the casing
+    // would make this a test of a typography choice rather than of the warning.
+    expect(ccpa.caveat.toLowerCase()).toContain("not lawful in the eu");
+    expect(ccpa.caveat.toLowerCase()).toContain("never their state");
+  });
+
+  test("no preset carries a field the writer does not accept", async () => {
+    const { suggestedPostures } = await import("../src/server/services/consent");
+    // The input type is structural, so a stray key would typecheck as a subset
+    // of nothing and fail only at runtime, silently.
+    const ACCEPTED = [
+      "undecidedBehaviour",
+      "trackerCategory",
+      "signalHandling",
+      "defaultLocale",
+      "categoriesOffered",
+    ];
+    for (const p of suggestedPostures()) {
+      for (const k of Object.keys(p.policy)) {
+        expect(`${p.id} names ${k}: ${ACCEPTED.includes(k)}`).toBe(`${p.id} names ${k}: true`);
+      }
+    }
+  });
+
+  test("the route has no write path at all", () => {
+    // Break-verified and found VACUOUS first time round: the behavioural test
+    // below cannot see an apply endpoint that writes a DIFFERENT site, and a
+    // route that merely returned altered presets left it green. So the check
+    // is structural as well — the preset handler must not so much as mention
+    // the only writer.
+    const src = read("apps/web/src/server/routes/consent.ts");
+    const at = src.indexOf('path: "/postures/suggested"');
+    expect(at).toBeGreaterThan(-1);
+    const handler = src.slice(at);
+    expect(handler).toContain("suggestedPostures()");
+    expect(`the preset handler calls savePolicy: ${handler.includes("savePolicy")}`).toBe(
+      "the preset handler calls savePolicy: false",
+    );
+    // Nor may any other surface offer one. `apply` is the word this feature
+    // must not acquire.
+    for (const f of [
+      "packages/client/src/clients/consent.ts",
+      "apps/web/src/server/mcp/tools/consent.ts",
+      "apps/web/src/server/services/graphql/consent.ts",
+    ]) {
+      const s2 = read(f);
+      expect(`${f} offers applyPosture: ${/applyPosture|apply_posture|consentApplyPosture/.test(s2)}`)
+        .toBe(`${f} offers applyPosture: false`);
+    }
+  });
+
+  test("reading a preset does not touch a stored policy", async () => {
+    // The load-bearing one. Save a posture the presets DISAGREE with, read the
+    // presets, and prove the row did not move.
+    const site = await makeSite(h, "presets-readonly.example");
+    await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        undecidedBehaviour: "allow",
+        trackerCategory: "analytics",
+        signalHandling: "off",
+        enabled: true,
+      }),
+    });
+
+    const res = await h.fetch("/api/admin/consent/postures/suggested");
+    expect(res.status).toBe(200);
+    const presets = ((await res.json()) as any).data as any[];
+    // The premise: the gdpr preset really does disagree with what is stored, so
+    // "unchanged" below is not unchanged-by-coincidence.
+    expect(presets.find((p) => p.id === "gdpr").policy.undecidedBehaviour).toBe("block");
+
+    const after = await h.fetch(`/api/admin/consent/policies/${site}`);
+    const policy = ((await after.json()) as any).data;
+    expect(policy.undecidedBehaviour).toBe("allow");
+    expect(policy.signalHandling).toBe("off");
+  });
+
+  test("…and mints no artifact version either", async () => {
+    const { listConsentVersions } = await import("../src/server/services/consent");
+    const { buildContext } = await import("../src/server/context");
+    const { getSiteById } = await import("../src/server/services/analytics");
+    const ctx = await buildContext(h.env);
+    const db = { db: ctx.db, dialect: ctx.dialect } as never;
+
+    const site = await makeSite(h, "presets-no-version.example");
+    await h.fetch(`/api/admin/consent/policies/${site}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        undecidedBehaviour: "block",
+        trackerCategory: "analytics",
+        enabled: true,
+      }),
+    });
+    const tenant = (await getSiteById(db, site))!.tenantId;
+    const before = await listConsentVersions(db, tenant, site);
+    await h.fetch("/api/admin/consent/postures/suggested");
+    expect((await listConsentVersions(db, tenant, site)).length).toBe(before.length);
+  });
+
+  test("the presets reach all five surfaces", () => {
+    // `suggestedWording`'s footprint is the template; a preset endpoint the SDK
+    // or the CLI cannot reach is one an operator cannot use from where they work.
+    const pairs: [string, string, string][] = [
+      ["REST", "apps/web/src/server/routes/consent.ts", "/postures/suggested"],
+      ["SDK", "packages/client/src/clients/consent.ts", "suggestedPostures"],
+      ["GraphQL", "apps/web/src/server/services/graphql/consent.ts", "consentSuggestedPostures"],
+      ["MCP", "apps/web/src/server/mcp/tools/consent.ts", "consent.suggested_postures"],
+      ["CLI", "packages/cli/src/consent.ts", "postures/suggested"],
+      ["admin", "apps/web/src/client/admin/api/observability.ts", "postures/suggested"],
+    ];
+    for (const [name, file, needle] of pairs) {
+      expect(`${name} reaches presets: ${read(file).includes(needle)}`).toBe(
+        `${name} reaches presets: true`,
+      );
+    }
+    // And the MCP tool must be REGISTERED, not merely defined — an exported
+    // const nothing lists is a tool no agent can call.
+    expect(read("apps/web/src/server/mcp/tools/consent.ts")).toContain(
+      "consentSuggestedPostures,\n  consentVersions",
+    );
+  });
+});

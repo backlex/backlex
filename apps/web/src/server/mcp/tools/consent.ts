@@ -259,12 +259,36 @@ export const consentRecords: McpTool = {
   },
 };
 
+export const consentSuggestedPostures: McpTool = {
+  name: "consent.suggested_postures",
+  kind: "read",
+  description:
+    "Named readings of GDPR/ePrivacy, CCPA/CPRA and KVKK, offered as a " +
+    "starting point. A SELECTOR, not a posture: every value each preset names " +
+    "is already expressible through consent.save_policy, and what it saves an " +
+    "operator is knowing which combination of three independent fields their " +
+    "regulator implies. Never applied automatically and there is no tool that " +
+    "applies one — pass `policy` into consent.save_policy yourself, so the " +
+    "refusal on a first save stays the only way a posture is ever stored. " +
+    "`appliesTo` is prose for a person to read and is NEVER matched against a " +
+    "request: backlex serves one policy per site and cannot serve two, so do " +
+    "not offer to pick a preset from a visitor's location. Always show the " +
+    "operator the `caveat` — the CCPA one says plainly that `allow` is not " +
+    "lawful in the EU.",
+  inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  handler: async (_args, ctx) => {
+    const res = await ctx.fetchInternal("/api/admin/consent/postures/suggested");
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const consentTools: McpTool[] = [
   consentPolicies,
   consentPolicy,
   consentSavePolicy,
   consentDeletePolicy,
   consentSuggestedWording,
+  consentSuggestedPostures,
   consentVersions,
   consentRecords,
 ];

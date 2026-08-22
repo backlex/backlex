@@ -37,6 +37,7 @@ import {
   listConsentVersions,
   listPolicies,
   savePolicy,
+  suggestedPostures,
   suggestedWording,
   type ConsentPolicyInput,
 } from "../consent";
@@ -335,6 +336,15 @@ export const consentQueryFields: Record<
           limit: (args as any).limit ?? undefined,
         }),
       ),
+  },
+  consentSuggestedPostures: {
+    type: new GraphQLNonNull(JSONScalar),
+    description:
+      "Named readings of GDPR/ePrivacy, CCPA/CPRA and KVKK, as combinations of fields that already exist — a selector, not a posture. Never applied automatically and there is no mutation that applies one: spread `policy` into your own `consentSavePolicy` call, so the refusal on a first save stays the only way a posture is stored. `appliesTo` is prose for a person; nothing here is matched against a request, because backlex serves one policy per site and cannot serve two. Render `caveat` — the CCPA entry's says plainly that `allow` is not lawful in the EU.",
+    resolve: async (_src, _args, gqlCtx) => {
+      requireConsentAdmin(gqlCtx);
+      return suggestedPostures();
+    },
   },
   consentSuggestedWording: {
     type: new GraphQLNonNull(JSONScalar),

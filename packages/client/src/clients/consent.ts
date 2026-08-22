@@ -62,6 +62,29 @@ export type TrackerCategory = "none" | "analytics";
  */
 export type SignalHandling = "tracker" | "all" | "off";
 
+/**
+ * A named reading of a privacy regime, offered as a starting point.
+ *
+ * `policy` is a strict subset of `ConsentPolicyInput`, so applying a preset is
+ * literally "spread these fields into the save you were going to make anyway".
+ * `appliesTo` and `caveat` are prose: read them, do not match on them.
+ */
+export interface PosturePreset {
+  id: "gdpr" | "ccpa" | "kvkk";
+  label: string;
+  policy: {
+    undecidedBehaviour: UndecidedBehaviour;
+    trackerCategory: TrackerCategory;
+    signalHandling: SignalHandling;
+    defaultLocale: string;
+    categoriesOffered: ConsentCategory[];
+  };
+  appliesTo: string;
+  /** What choosing it costs. Render it — a preset shown without its cost is an
+   *  advertisement rather than a starting point. */
+  caveat: string;
+}
+
 export type BannerPosition = "bottom" | "top" | "corner";
 
 export interface ConsentPolicy {
@@ -170,6 +193,22 @@ export interface ConsentClient {
    */
   suggestedWording(): Promise<{ data: Record<string, Record<string, string>> }>;
   /**
+   * Named readings of three privacy regimes, as a starting point.
+   *
+   * A SELECTOR, not a posture: every value each preset names is already
+   * expressible through `savePolicy`. What it saves an operator is knowing
+   * which combination of three independent fields their regulator implies.
+   *
+   * Never applied automatically, and there is no endpoint that applies one —
+   * you patch your own form with `preset.policy` and call `savePolicy`, so the
+   * refusal on a first save stays the only way a posture is ever stored.
+   *
+   * `appliesTo` is prose for a person. Nothing here is matched against a
+   * request: backlex serves ONE policy per site, so a preset cannot be picked
+   * per visitor. See `caveat` on the CCPA entry for what that costs.
+   */
+  suggestedPostures(): Promise<{ data: PosturePreset[] }>;
+  /**
    * Artifacts this site's policy has compiled to, newest first.
    *
    * A history of distinct CONTENT, not a log of saves: there is no publish step
@@ -205,6 +244,11 @@ export const makeConsent = (core: ClientCore): ConsentClient => {
       core.request<{ data: Record<string, Record<string, string>> }>(
         "GET",
         "/api/admin/consent/wording/suggested",
+      ),
+    suggestedPostures: () =>
+      core.request<{ data: PosturePreset[] }>(
+        "GET",
+        "/api/admin/consent/postures/suggested",
       ),
     records: (siteId: string, opts?: { subjectId?: string; limit?: number }) => {
       const q = new URLSearchParams();

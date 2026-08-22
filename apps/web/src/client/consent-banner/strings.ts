@@ -81,6 +81,55 @@ export const builtinFor = (locale: string | undefined): Strings => {
 };
 
 /**
+ * Which locale to render, given what the visitor asked their browser for.
+ *
+ * ── Only ever a block the OPERATOR authored ───────────────────────────────
+ * This picks between `wording` blocks and nothing else. It will not select a
+ * language that exists only as a built-in, because `services/consent.ts` says
+ * the rule for that case plainly: silently substituting text an operator never
+ * reviewed "is the same mistake as defaulting the posture". A visitor whose
+ * browser asks for German on a site with English and Turkish blocks therefore
+ * gets the operator's chosen default, not our German.
+ *
+ * ── This is language, NOT a posture, and the difference is the whole point ─
+ * The banner deliberately infers nothing about WHERE a visitor is: geo is an IP
+ * guess, `navigator.language` is a device setting, and neither may decide
+ * whether a tag fires. `Accept-Language` deciding which of two texts the
+ * operator already wrote gets shown is a different kind of claim — it changes
+ * no grant, no category and no hash. See `suggestedPostures()` for why the
+ * posture half cannot work at all.
+ */
+export const pickLocale = (
+  wording: Record<string, Record<string, string>> | undefined,
+  fallback: string,
+  langs: readonly string[] | undefined,
+): string => {
+  const blocks = wording || {};
+  // `hasOwnProperty`, not a bare lookup: `langs` comes from the VISITOR, and a
+  // browser reporting `constructor` or `toString` would otherwise reach a
+  // prototype member and have it read as a locale the operator authored. Both
+  // happen to have no own enumerable keys today, so the length check below
+  // catches them by accident — this makes it on purpose.
+  const own = Object.prototype.hasOwnProperty;
+  const authored = (tag: string): boolean => {
+    if (!own.call(blocks, tag)) return false;
+    const b = blocks[tag];
+    return !!b && typeof b === "object" && Object.keys(b).length > 0;
+  };
+  const list = Array.isArray(langs) ? langs : [];
+  for (let i = 0; i < list.length; i++) {
+    const tag = String(list[i] || "").toLowerCase();
+    if (!tag) continue;
+    // Exact tag first (`pt-br` before `pt`), so an operator who wrote both is
+    // not collapsed into the broader one.
+    if (authored(tag)) return tag;
+    const base = tag.split("-")[0] || "";
+    if (base && authored(base)) return base;
+  }
+  return fallback;
+};
+
+/**
  * Operator wording over built-ins, one key at a time.
  *
  * `wording` may legitimately be `{}` — the policy saves without it — and a

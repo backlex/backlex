@@ -30,6 +30,7 @@ import type {
 import {
   useAnalyticsSites,
   useConsentPolicies,
+  useSuggestedPostures,
   useDeleteConsentPolicy,
   useSaveConsentPolicy,
 } from "../../queries";
@@ -280,6 +281,12 @@ export function ConsentPolicyDialog({
   // default all the time.
   const [editLocale, setEditLocale] = useState("en");
   const [openSection, setOpenSection] = useState<"none" | "wording" | "theme">("none");
+  // The presets the server offers, and which one was last applied. `applied` is
+  // presentational ONLY — it drives the caveat below and is never saved, because
+  // a stored preset would be an applied preset and the operator's Save would
+  // stop being the thing that decides.
+  const presets = useSuggestedPostures().data?.data ?? [];
+  const [applied, setApplied] = useState<string | undefined>(undefined);
 
   // Seeded in render rather than an effect, matching SiteSettingsDialog: it
   // keeps the dialog a pure function of props and avoids the StrictMode
@@ -298,6 +305,9 @@ export function ConsentPolicyDialog({
     setWording(policy?.wording ?? {});
     setTheme(policy?.theme ?? {});
     setEditLocale(policy?.defaultLocale ?? "en");
+    // Reopening on another site must not carry a chip that describes the
+    // previous one's fields.
+    setApplied(undefined);
     setOpenSection("none");
   }
 
@@ -314,6 +324,31 @@ export function ConsentPolicyDialog({
    * a fallback, and overwriting a sentence an operator had reviewed with a
    * lawyer to "help" is the one thing this button must never do.
    */
+  /**
+   * Apply a preset to the FORM, and to nothing else.
+   *
+   * Unlike `useSuggested` below this deliberately DOES overwrite the posture
+   * Selects — the operator picked a control named after a regime, so leaving
+   * their old answer in place would be the surprising outcome. What it must not
+   * touch is `wording`: that map is per locale, so moving `defaultLocale` to
+   * `tr` has to leave an authored `en` block exactly where it was.
+   *
+   * It never calls `savePolicy`. The operator watches four controls move and
+   * presses Save themselves, which is the whole reason there is no endpoint
+   * that applies one — see `suggestedPostures()` in `services/consent.ts`.
+   */
+  const applyPreset = (id: string) => {
+    const preset = presets.find((p) => p.id === id);
+    if (!preset) return;
+    setUndecided(preset.policy.undecidedBehaviour);
+    setTracker(preset.policy.trackerCategory);
+    setSignals(preset.policy.signalHandling);
+    setCats([...preset.policy.categoriesOffered]);
+    setDefaultLocale(preset.policy.defaultLocale);
+    setEditLocale(preset.policy.defaultLocale);
+    setApplied(id);
+  };
+
   const useSuggested = async () => {
     try {
       const res = await consentApi.suggestedWording();
@@ -344,6 +379,36 @@ export function ConsentPolicyDialog({
         </DialogHeader>
         <DialogBody>
           <div className="flex min-w-0 flex-col gap-3.5">
+            {presets.length > 0 && (
+              <label className="flex min-w-0 flex-col gap-1.5">
+                <span className="text-[12.5px] text-muted-foreground">
+                  <Trans>Start from a preset</Trans>
+                </span>
+                <Select
+                  className="min-w-0"
+                  value={applied}
+                  onChange={(v) => v && applyPreset(v)}
+                  placeholder={t`Optional — fills the fields below`}
+                  options={presets.map((p) => ({
+                    value: p.id,
+                    label: p.label,
+                    hint: p.appliesTo,
+                  }))}
+                />
+                <span className="text-[11.5px] text-muted-foreground">
+                  {applied ? (
+                    presets.find((p) => p.id === applied)?.caveat
+                  ) : (
+                    <Trans>
+                      Fills the fields below so you can check them. Nothing is saved until
+                      you press Save, and a preset is never matched against a visitor —
+                      one site has one policy.
+                    </Trans>
+                  )}
+                </span>
+              </label>
+            )}
+
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-[12.5px] text-muted-foreground">
                 <Trans>Before a visitor decides</Trans>

@@ -161,6 +161,7 @@ export const queryKeys = {
   tagVersions: (siteId: string) => ["tag-manager", "versions", siteId] as const,
   tagInstall: (siteId: string) => ["tag-manager", "install", siteId] as const,
   consentPolicies: () => ["consent", "policies"] as const,
+  consentPostures: () => ["consent", "postures"] as const,
   analyticsSegments: () => ["analytics", "segments"] as const,
   analyticsRevenue: (days: number, siteId: string | null) =>
     ["analytics", "revenue", days, siteId ?? ""] as const,
@@ -870,6 +871,27 @@ export function useConsentPolicies() {
   return useQuery({
     queryKey: consentKey(),
     queryFn: () => consentApi.policies(),
+  });
+}
+
+/**
+ * The posture presets the server offers.
+ *
+ * A query rather than an imperative fetch in the dialog, and rather than an
+ * effect: it has to be resolved BEFORE the Select renders its options, and this
+ * file's dialogs deliberately seed state in render rather than in `useEffect`
+ * (StrictMode doubles those, and this codebase has been bitten). React Query
+ * dedupes across mounts, so opening the dialog twice costs one request.
+ *
+ * `staleTime: Infinity` because the answer is a pure function on the server —
+ * `suggestedPostures()` reads no database and no clock — so it can only change
+ * when a deploy changes it.
+ */
+export function useSuggestedPostures() {
+  return useQuery({
+    queryKey: queryKeys.consentPostures(),
+    queryFn: () => consentApi.suggestedPostures(),
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 

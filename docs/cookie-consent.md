@@ -72,6 +72,51 @@ Either way, processing a visitor's IP still needs a lawful basis. `none` is a
 claim that Art. 5(3) does not apply; it is not a claim that nothing is
 processed.
 
+## Presets are a starting point, and they are not regional
+
+Three named readings are offered — **GDPR / ePrivacy**, **CCPA / CPRA** and
+**KVKK** — as combinations of settings that already exist:
+
+| Preset | Before a decision | Our tag | GPC / DNT | Language |
+|---|---|---|---|---|
+| GDPR / ePrivacy | `block` | `analytics` | `tracker` | `en` |
+| CCPA / CPRA | `allow` | `analytics` | `all` | `en` |
+| KVKK | `block` | `analytics` | `tracker` | `tr` |
+
+A preset is a **selector, not a posture**. Every value it names you could have
+typed yourself; what it saves you is knowing which combination of three
+independent fields your regulator implies.
+
+**Nothing applies one for you.** There is no endpoint that writes a preset —
+not in REST, the SDK, GraphQL, MCP or the CLI. Choosing one fills the form in
+front of you, and you press Save; the refusal on a first save stays the only way
+a posture is ever stored. That is deliberate: a preset that wrote to the row
+would be the same acquiring-a-posture-by-omission the refusal exists to prevent,
+wearing a friendlier name.
+
+**They are named after regimes, and they are still not matched against your
+visitors.** backlex will not pick a posture from an IP, and cannot:
+
+- The file that delivers the banner is served `public, max-age=900` behind a
+  memo keyed on `(site, origin)`. A body that varied by the caller's country
+  would hand the **first** visitor's posture to everyone behind that cache —
+  warmed by an American, a European gets tags fired before consent, on a page
+  where a banner appeared.
+- `Vary` cannot fix it. Every geo source that exists here — `request.cf.country`,
+  `cf-ipcountry`, `x-vercel-ip-country`, `x-nf-geo` — is a header the **edge**
+  injects after the browser has already sent its request. No cache can key on a
+  header the client never sent.
+- The evidence could not even show it happened: a consent record names the
+  artifact by its hash, and both visitors would name the same one — graded
+  `current`, the grade that means the evidence is sound.
+
+Two more reasons worth knowing before you ask for it anyway: backlex sees a
+visitor's **country and never their state**, so nothing can be scoped to
+California, which is the only place CCPA applies; and on a self-hosted install
+there is no geo header at all.
+
+**One site, one policy, one posture.** If you need two, run two sites.
+
 ## Global Privacy Control and Do Not Track
 
 A third setting, `signalHandling`, decides how far those two browser signals
@@ -301,11 +346,11 @@ the id in the visitor's own browser.
 
 | Surface | How |
 |---|---|
-| REST | `GET/PUT/DELETE /api/admin/consent/policies/{siteId}`, `GET …/{siteId}/versions`, `GET …/{siteId}/records` |
-| SDK | `client.consent.savePolicy(siteId, { … })`, `client.consent.versions(siteId)`, `client.consent.records(siteId)` |
-| GraphQL | `consentPolicies`, `consentPolicy`, `consentVersions`, `consentRecords`, `consentSavePolicy`, `consentDeletePolicy` |
-| MCP | `consent.policies`, `consent.policy`, `consent.versions`, `consent.records`, `consent.save_policy`, `consent.delete_policy` |
-| CLI | `backlex consent <policies\|policy\|versions\|records\|set\|rm\|wording>` |
+| REST | `GET/PUT/DELETE /api/admin/consent/policies/{siteId}`, `GET …/{siteId}/versions`, `GET …/{siteId}/records`, `GET /api/admin/consent/postures/suggested` |
+| SDK | `client.consent.savePolicy(siteId, { … })`, `client.consent.versions(siteId)`, `client.consent.records(siteId)`, `client.consent.suggestedPostures()` |
+| GraphQL | `consentPolicies`, `consentPolicy`, `consentVersions`, `consentRecords`, `consentSavePolicy`, `consentDeletePolicy`, `consentSuggestedPostures` |
+| MCP | `consent.policies`, `consent.policy`, `consent.versions`, `consent.records`, `consent.save_policy`, `consent.delete_policy`, `consent.suggested_postures` |
+| CLI | `backlex consent <policies\|policy\|versions\|records\|set\|rm\|wording\|postures>` |
 
 The two PUBLIC endpoints are deliberately absent from this table —
 `GET /api/consent/config` and `POST`/`DELETE /api/consent/record`. They are
@@ -435,6 +480,23 @@ consent record it names — which is the subject's own right. It grants no read
 access, and `DELETE /api/consent/record` answers `{"cleared":true}` whether the
 id was real or not, so it cannot be used to find out whose is.
 
+### Which language a visitor sees
+
+The banner picks the locale block whose language the visitor's browser asked
+for, and **only** from blocks you actually wrote. A visitor whose browser asks
+for German, on a site where you wrote English and Turkish, gets your default —
+not backlex's built-in German, because substituting text you never reviewed is
+the same mistake as defaulting the posture. With no match, `defaultLocale` wins.
+
+The recorded decision names the locale that was **rendered**, not the policy's
+default, so a consent record tells you which of your texts that visitor was
+actually held to.
+
+This is the one thing the banner infers about a visitor, and it is deliberately
+not a posture: it changes no grant, no category and no hash. `Accept-Language`
+choosing between two texts you already wrote is a different claim from an IP
+guess deciding whether a tag may fire.
+
 ### Wording
 
 Your `wording` wins **per key**, not per locale block: translate the title and
@@ -451,6 +513,10 @@ mode is an operator believing they are covered because a setting exists:
 - **No standalone preference centre.** Reopening the banner *is* the preference
   centre — it carries the categories, the consent id and the withdrawal. What
   is not built is a dedicated page listing every cookie you set, name by name.
+- **No geo-targeted posture.** backlex will not choose your compliance posture
+  from a visitor's IP, and the reason is structural rather than a backlog item —
+  see [Presets are a starting point](#presets-are-a-starting-point-and-they-are-not-regional).
+  One site, one policy, one posture; if you need two, run two sites.
 - **No automatic cookie scanning.** Enumerating the cookies a site actually sets
   needs a headless-browser crawler; you declare yours.
 - **No IAB TCF.** The technical surface is plannable; the certification half —

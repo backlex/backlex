@@ -35,7 +35,7 @@ import {
   writeDecision,
   type Decision,
 } from "./cookie";
-import { resolveStrings } from "./strings";
+import { pickLocale, resolveStrings } from "./strings";
 import { mount } from "./render";
 
 interface ConsentConfig {
@@ -137,13 +137,20 @@ const applyGrants = (grants: Record<string, boolean>): void => {
  * a `denied` — silently, at 202. `sendBeacon` with a `text/plain` body keeps
  * the request simple, which is why the route accepts that content type.
  */
-const postDecision = (boot: BootConfig, d: Decision, source: string): void => {
+const postDecision = (
+  boot: BootConfig,
+  d: Decision,
+  source: string,
+  locale: string,
+): void => {
   const body = JSON.stringify({
     s: boot.cfg.site,
     u: d.id,
     h: boot.hash,
     g: d.g,
-    l: boot.cfg.locale || "",
+    // The locale actually RENDERED, not the policy's default. A record naming a
+    // language the visitor never saw is evidence about the wrong text.
+    l: locale,
     src: source,
   });
   try {
@@ -234,7 +241,22 @@ export const boot = (boot0: unknown): void => {
   // The line prior blocking rests on, and it runs before the container starts.
   applyGrants(current);
 
-  const strings = resolveStrings(cfg.wording, cfg.locale);
+  // The locale a visitor is actually shown, which is not necessarily the one the
+  // policy defaults to. It only ever resolves to a block the operator wrote —
+  // see `pickLocale` — so the multi-locale payload the artifact has always
+  // carried finally has a consumer, and a visitor asking for a language nobody
+  // authored still gets the operator's default rather than our built-ins.
+  //
+  // Used for BOTH what is rendered and what is recorded, because those two must
+  // not be allowed to disagree.
+  let shownLocale = String(cfg.locale || "en");
+  try {
+    shownLocale = pickLocale(cfg.wording, shownLocale, navigator.languages);
+  } catch {
+    // A page can define a hostile `navigator`. The policy default is still a
+    // correct answer, just not the best available one.
+  }
+  const strings = resolveStrings(cfg.wording, shownLocale);
   let banner: { destroy: () => void } | null = null;
 
   const close = (): void => {
@@ -247,7 +269,7 @@ export const boot = (boot0: unknown): void => {
     current = grants;
     applyGrants(grants);
     writeDecision(d, cookieDays);
-    postDecision(boot1, d, source);
+    postDecision(boot1, d, source, shownLocale);
     close();
   };
 

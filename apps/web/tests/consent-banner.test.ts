@@ -572,3 +572,89 @@ describe("a browser signal against an undecided posture", () => {
     expect(shadow()).not.toBe(null);
   });
 });
+
+/**
+ * Which language the visitor is shown — and it is the ONE thing the banner
+ * infers about them.
+ *
+ * Deliberately narrow. The regional-presets phase established that geo cannot
+ * decide a posture (the file that carries this bundle is cached and identical
+ * for everyone), and `Intl`/`navigator` are device settings rather than
+ * location. Language is a different claim: it changes no grant, no category and
+ * no hash, and it only ever selects between texts the OPERATOR wrote.
+ */
+describe("the locale a visitor is actually shown", () => {
+  const NAV = Object.getOwnPropertyDescriptor(w.navigator, "languages");
+  const speak = (...langs: string[]) => {
+    Object.defineProperty(w.navigator, "languages", {
+      get: () => langs,
+      configurable: true,
+    });
+  };
+  afterAll(() => {
+    if (NAV) Object.defineProperty(w.navigator, "languages", NAV);
+    else delete (w.navigator as any).languages;
+  });
+
+  const withTr = {
+    ...CFG,
+    locale: "en",
+    wording: { en: { title: "Cookies" }, tr: { title: "Çerezler", acceptAll: "Kabul et" } },
+  };
+
+  test("an operator-authored block wins over the policy default", () => {
+    speak("tr-TR", "tr", "en");
+    bootBanner(withTr);
+    expect(shadow()?.textContent ?? "").toContain("Çerezler");
+    expect(buttonNamed("Kabul et")).toBeTruthy();
+  });
+
+  test("…and the decision records the locale that was RENDERED", () => {
+    // A record naming a language the visitor never saw is evidence about the
+    // wrong text — the artifact carries every locale, so only this says which.
+    speak("tr-TR", "tr");
+    bootBanner(withTr);
+    buttonNamed("Kabul et")?.click();
+    expect(posted[0].l).toBe("tr");
+  });
+
+  test("a language nobody authored falls back to the operator's default", () => {
+    // NOT to our built-in German. `services/consent.ts` calls substituting text
+    // an operator never reviewed "the same mistake as defaulting the posture".
+    speak("de-DE", "de");
+    bootBanner(withTr);
+    expect(shadow()?.textContent ?? "").toContain("Cookies");
+    buttonNamed("Accept all")?.click();
+    expect(posted[0].l).toBe("en");
+  });
+
+  test("an empty block does not count as authored", () => {
+    speak("tr", "en");
+    bootBanner({ ...CFG, locale: "en", wording: { en: { title: "Cookies" }, tr: {} } });
+    buttonNamed("Accept all")?.click();
+    expect(posted[0].l).toBe("en");
+  });
+
+  test("a prototype key is not a locale the operator authored", () => {
+    // `navigator.languages` is the VISITOR's. A bare `wording[tag]` lookup
+    // would reach `Object.prototype` for these and read it as an authored
+    // block; the posted locale is the observable consequence, since it is what
+    // a regulator would be shown as the text this visitor agreed to.
+    speak("constructor", "__proto__", "tostring");
+    bootBanner(withTr);
+    buttonNamed("Accept all")?.click();
+    expect(posted[0].l).toBe("en");
+  });
+
+  test("a hostile navigator does not take the banner down", () => {
+    Object.defineProperty(w.navigator, "languages", {
+      get() {
+        throw new Error("nope");
+      },
+      configurable: true,
+    });
+    bootBanner(withTr);
+    expect(shadow()).not.toBe(null);
+    expect(shadow()?.textContent ?? "").toContain("Cookies");
+  });
+});

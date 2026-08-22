@@ -702,6 +702,31 @@ export type BannerPosition = "bottom" | "top" | "corner";
  *  read type and needs no "choose one" placeholder in the form. */
 export type SignalHandling = "tracker" | "all" | "off";
 
+/**
+ * A named reading of a privacy regime, offered as a starting point.
+ *
+ * `policy` is a strict subset of `ApiConsentPolicyInput`, so applying one is
+ * "spread these fields into the form". There is deliberately no endpoint that
+ * applies a preset: the operator watches the controls move and presses Save,
+ * which is what keeps the choice theirs.
+ *
+ * `appliesTo` and `caveat` are prose. Render the caveat — a preset shown
+ * without its cost is an advertisement rather than a starting point.
+ */
+export interface ApiPosturePreset {
+  id: "gdpr" | "ccpa" | "kvkk";
+  label: string;
+  policy: {
+    undecidedBehaviour: UndecidedBehaviour;
+    trackerCategory: TrackerCategory;
+    signalHandling: SignalHandling;
+    defaultLocale: string;
+    categoriesOffered: ConsentCategory[];
+  };
+  appliesTo: string;
+  caveat: string;
+}
+
 export interface ApiConsentPolicy {
   siteId: string;
   categoriesOffered: ConsentCategory[];
@@ -752,4 +777,6 @@ export const consentApi = {
     api<Envelope<Record<string, Record<string, string>>>>(
       "/api/admin/consent/wording/suggested",
     ),
+  suggestedPostures: () =>
+    api<Envelope<ApiPosturePreset[]>>("/api/admin/consent/postures/suggested"),
 };

@@ -37,7 +37,7 @@ pre-commit:
     # This hook is the fast feedback, NOT the guarantee. Its glob watches the
     # SOURCES, so hand-editing the generated file or editing the generator
     # itself never triggers it, and `--no-verify` skips it entirely. The
-    # guarantee is `consent-banner-bundle.test.ts`, which re-runs the same
+    # guarantee is `apps/web/tests/consent-banner.test.ts`, which re-runs the same
     # comparison inside `bun test` and therefore inside CI.
     - name: consent-banner-in-sync
       # NOT `**/*.ts`: these sources sit directly in the directory with no

@@ -22,7 +22,7 @@ import {
   resolveContext,
 } from "./client";
 
-const HELP = `backlex consent <policies|policy|versions|records|set|rm|wording>
+const HELP = `backlex consent <policies|policy|versions|records|set|rm|wording|postures>
 
   policies                             every site with a consent policy
   policy <siteId>                      one site's policy (null if unset)
@@ -37,6 +37,8 @@ const HELP = `backlex consent <policies|policy|versions|records|set|rm|wording>
           [--limit <n>]
   rm <siteId>                          stop serving the banner
   wording                              suggested copy, as a starting point
+  postures                             GDPR / CCPA / KVKK readings, as flags
+                                       you can paste into "set"
 
 The two decisions with no default:
 
@@ -272,6 +274,40 @@ export const runConsent = async (args: string[]): Promise<void> => {
         if (!json) {
           process.stderr.write(
             "\nA starting point, not a default: nothing is applied until you save it.\n",
+          );
+        }
+        return;
+      }
+
+      case "postures": {
+        const { data } = await client.request<{ data: any[] }>(
+          "GET",
+          `${BASE}/postures/suggested`,
+        );
+        if (json) {
+          printJson(data);
+        } else {
+          // Not `printJson`: the caveat is the half an operator most needs and
+          // the least likely to read out of a JSON blob, so it gets its own
+          // line rather than a key.
+          printJson(
+            data.map((p) => ({
+              preset: p.id,
+              label: p.label,
+              set: [
+                `--undecided ${p.policy.undecidedBehaviour}`,
+                `--tracker ${p.policy.trackerCategory}`,
+                `--signals ${p.policy.signalHandling}`,
+                `--categories ${(p.policy.categoriesOffered ?? []).join(",")}`,
+              ].join(" "),
+              appliesTo: p.appliesTo,
+              caveat: p.caveat,
+            })),
+          );
+          process.stderr.write(
+            "\nA starting point, not a default: nothing is applied until you run" +
+              " `consent set` yourself. These are NOT matched against a visitor's" +
+              " location — backlex serves one policy per site and cannot serve two.\n",
           );
         }
         return;

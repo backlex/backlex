@@ -21,6 +21,7 @@ import { listConsentRecords } from "../services/consent-records";
 import {
   BANNER_POSITIONS,
   OPTIONAL_CATEGORIES,
+  POSTURE_PRESETS,
   SIGNAL_HANDLING,
   TRACKER_CATEGORIES,
   UNDECIDED_BEHAVIOURS,
@@ -30,6 +31,7 @@ import {
   listPolicies,
   savePolicy,
   listConsentVersions,
+  suggestedPostures,
   suggestedWording,
 } from "../services/consent";
 
@@ -113,6 +115,26 @@ const Record_ = z
  * A 422 from zod would say "Required", which teaches an operator nothing about
  * why there is no default.
  */
+/** A preset is a `savePolicy` input plus two prose fields. It is described here
+ *  rather than typed loosely so the OpenAPI document says what an operator gets,
+ *  and so `caveat` is visibly part of the contract — a preset rendered without
+ *  its cost is an advertisement. */
+const Posture = z
+  .object({
+    id: z.enum(POSTURE_PRESETS),
+    label: z.string(),
+    policy: z.object({
+      undecidedBehaviour: z.enum(UNDECIDED_BEHAVIOURS),
+      trackerCategory: z.enum(TRACKER_CATEGORIES),
+      signalHandling: z.enum(SIGNAL_HANDLING),
+      defaultLocale: z.string(),
+      categoriesOffered: z.array(z.enum(OPTIONAL_CATEGORIES)),
+    }),
+    appliesTo: z.string(),
+    caveat: z.string(),
+  })
+  .openapi("ConsentPosturePreset");
+
 const PolicyInputSchema = z.object({
   categoriesOffered: z.array(z.enum(OPTIONAL_CATEGORIES)).optional(),
   undecidedBehaviour: z.enum(UNDECIDED_BEHAVIOURS).optional(),
@@ -430,5 +452,37 @@ export const consentRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const auth = c.get("auth");
       requireAdmin(auth.roles);
       return c.json({ data: suggestedWording() });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/postures/suggested",
+      tags: TAGS,
+      summary: "Suggested postures for three privacy regimes",
+      description:
+        "Named readings of GDPR/ePrivacy, CCPA/CPRA and KVKK, as combinations " +
+        "of fields that already exist. Like the suggested wording, it is never " +
+        "applied automatically: there is no endpoint that writes one. Applying " +
+        "a preset fills the form and the operator saves it, so the refusal on " +
+        "a first save is still the only way a posture is ever stored. " +
+        "`appliesTo` is prose for a person to read — nothing here is matched " +
+        "against a request, and backlex cannot serve two postures to one site.",
+      security: SECURITY,
+      middleware: [requireUser],
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(Posture) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const auth = c.get("auth");
+      requireAdmin(auth.roles);
+      return c.json({ data: suggestedPostures() });
     },
   );

@@ -8004,6 +8004,10 @@ msgstr "Fill the blanks"
 msgid "Fill the required fields."
 msgstr "Fill the required fields."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Fills the fields below so you can check them. Nothing is saved until you press Save, and a preset is never matched against a visitor — one site has one policy."
+msgstr "Fills the fields below so you can check them. Nothing is saved until you press Save, and a preset is never matched against a visitor — one site has one policy."
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Fills the preview and the test render. The row arrives as `data`."
 msgstr "Fills the preview and the test render. The row arrives as `data`."
@@ -13493,6 +13497,10 @@ msgstr "Optional — a room with no name is labelled after its first message."
 msgid "Optional — a timestamped name is generated if you leave this blank."
 msgstr "Optional — a timestamped name is generated if you leave this blank."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Optional — fills the fields below"
+msgstr "Optional — fills the fields below"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "optional — leave empty to import headers only"
 msgstr "optional — leave empty to import headers only"
@@ -18774,6 +18782,10 @@ msgstr "Start collapsed"
 #: src/client/admin/collections/collections-index.tsx
 msgid "Start from"
 msgstr "Start from"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Start from a preset"
+msgstr "Start from a preset"
 
 #. placeholder {0}: includedTables.length
 #: src/client/admin/pages/data/database-import.tsx

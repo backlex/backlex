@@ -8004,6 +8004,10 @@ msgstr "Boşlukları doldur"
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Fills the fields below so you can check them. Nothing is saved until you press Save, and a preset is never matched against a visitor — one site has one policy."
+msgstr "Aşağıdaki alanları doldurur, siz de kontrol edersiniz. Kaydet'e basana kadar hiçbir şey kaydedilmez ve bir ön ayar hiçbir zaman ziyaretçiye göre eşleştirilmez — bir sitenin bir politikası vardır."
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Fills the preview and the test render. The row arrives as `data`."
 msgstr "Önizlemeyi ve deneme çıktısını doldurur. Satır `data` olarak gelir."
@@ -13493,6 +13497,10 @@ msgstr "İsteğe bağlı — adı olmayan oda ilk mesajına göre adlandırılı
 msgid "Optional — a timestamped name is generated if you leave this blank."
 msgstr "İsteğe bağlı — boş bırakırsanız zaman damgalı bir ad oluşturulur."
 
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Optional — fills the fields below"
+msgstr "İsteğe bağlı — aşağıdaki alanları doldurur"
+
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "optional — leave empty to import headers only"
 msgstr "isteğe bağlı — boş bırakılırsa yalnızca başlıklar aktarılır"
@@ -18774,6 +18782,10 @@ msgstr "Katlanmış başlat"
 #: src/client/admin/collections/collections-index.tsx
 msgid "Start from"
 msgstr "Başlangıç noktası"
+
+#: src/client/admin/pages/observability/consent-tab.tsx
+msgid "Start from a preset"
+msgstr "Bir ön ayardan başla"
 
 #. placeholder {0}: includedTables.length
 #: src/client/admin/pages/data/database-import.tsx

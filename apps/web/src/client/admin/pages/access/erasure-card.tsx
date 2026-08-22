@@ -43,7 +43,7 @@ export type ErasureRequest = {
   limits: string[];
 };
 
-type Subject = { type: "app_user" | "email"; value: string };
+type Subject = { type: "app_user" | "email" | "consent_id"; value: string };
 
 const countLine = (counts: Record<string, number> | undefined) => {
   if (!counts) return "";
@@ -248,6 +248,7 @@ function ErasureDialog({
                     options={[
                       { value: "email", label: t`Email address` },
                       { value: "app_user", label: t`End-user ID` },
+                      { value: "consent_id", label: t`Cookie consent ID` },
                     ]}
                     className="min-w-0"
                   />
@@ -255,10 +256,22 @@ function ErasureDialog({
 
                 <label className="block">
                   <span className="mb-1 block text-[11.5px] font-medium">
-                    {subject.type === "email" ? <Trans>Email address</Trans> : <Trans>End-user ID</Trans>}
+                    {subject.type === "email" ? (
+                      <Trans>Email address</Trans>
+                    ) : subject.type === "consent_id" ? (
+                      <Trans>Cookie consent ID</Trans>
+                    ) : (
+                      <Trans>End-user ID</Trans>
+                    )}
                   </span>
                   <Input
-                    placeholder={subject.type === "email" ? "alice@example.com" : t`the user's id`}
+                    placeholder={
+                      subject.type === "email"
+                        ? "alice@example.com"
+                        : subject.type === "consent_id"
+                          ? t`the id from the visitor's banner`
+                          : t`the user's id`
+                    }
                     value={subject.value}
                     onChange={(e) => setSubject((s) => ({ ...s, value: e.target.value }))}
                   />
@@ -266,6 +279,13 @@ function ErasureDialog({
                     <span className="mt-1 block text-[11px] text-muted-foreground">
                       <Trans>
                         An address with no account still counts — it may appear in a collection.
+                      </Trans>
+                    </span>
+                  ) : subject.type === "consent_id" ? (
+                    <span className="mt-1 block text-[11px] text-muted-foreground">
+                      <Trans>
+                        Reaches their cookie-consent records and nothing else. The visitor has to
+                        give you this — it lives in their browser and you cannot look it up.
                       </Trans>
                     </span>
                   ) : null}

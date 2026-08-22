@@ -217,8 +217,17 @@ banner on the visitor's own device, and it is stored separately — see the
 consent-records surface when it lands.
 
 Deleting a policy stops the banner. It does **not** delete consent already
-recorded: that goes through [erasure](/erasure/), never a side effect of
-reconfiguring a site.
+recorded, and it no longer deletes the artifact archive either — a record points
+at an artifact by hash, so removing the artifacts would leave every past record
+naming a document nobody can produce. The policy row is configuration; the
+archive and the records are evidence. Deleting the **site** takes all three,
+because that removes the subject the evidence is about.
+
+Recorded consent is removed through [erasure](/erasure/) with
+`subject.type = "consent_id"`, or by the visitor themselves through the banner's
+"forget me" control. An `email` or `app_user` erasure request will **not** reach
+it: a consent record carries no address and no account, and the only handle is
+the id in the visitor's own browser.
 
 ## Surfaces
 

@@ -4803,6 +4803,10 @@ msgstr "conventional column present"
 msgid "Convert within"
 msgstr "Convert within"
 
+#: src/client/admin/pages/access/erasure-card.tsx
+msgid "Cookie consent ID"
+msgstr "Cookie consent ID"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Cookieless"
 msgstr "Cookieless"
@@ -15130,6 +15134,10 @@ msgstr "Re-running…"
 msgid "Reachable — {0} tables found."
 msgstr "Reachable — {0} tables found."
 
+#: src/client/admin/pages/access/erasure-card.tsx
+msgid "Reaches their cookie-consent records and nothing else. The visitor has to give you this — it lives in their browser and you cannot look it up."
+msgstr "Reaches their cookie-consent records and nothing else. The visitor has to give you this — it lives in their browser and you cannot look it up."
+
 #: src/client/admin/pages/access/app-users.tsx
 msgid "Reactivate end-user"
 msgstr "Reactivate end-user"
@@ -19475,6 +19483,10 @@ msgstr "The full secret is shown once after creation — copy it somewhere safe.
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
 msgstr "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
+
+#: src/client/admin/pages/access/erasure-card.tsx
+msgid "the id from the visitor's banner"
+msgstr "the id from the visitor's banner"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the row that triggered the flow."

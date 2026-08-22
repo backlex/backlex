@@ -58,6 +58,27 @@ you never told backlex what their columns mean.
 An address with **no account** is still a subject: it may appear in a collection,
 and "no user row" is not "nothing to erase".
 
+## A cookie-consent visitor is a subject you cannot look up
+
+Erasure takes three kinds of subject: `app_user`, `email` and `consent_id`. The
+third is different in a way that matters operationally.
+
+A consent record carries no email and no account. The only handle on it is the
+opaque id the banner minted **in the visitor's own browser**, and there is no
+table anywhere that maps a person to it. Two consequences, both deliberate:
+
+- **An `email` or `app_user` request will not reach consent records**, and will
+  honestly report `consent: 0`. That zero means "not reachable by this handle",
+  not "they had none". If you are answering a data-subject request and consent
+  is in scope, you have to ask them for the id.
+- **You cannot discover the id yourself.** A request that names one is acting on
+  a value the subject supplied. That is the same property that makes the id
+  privacy-preserving in the first place.
+
+The visitor's own way out does not involve you at all: the banner's "forget me"
+control deletes exactly the same rows, with no operator in the loop and no
+request to file.
+
 ## What a run reaches
 
 | Surface | Action |
@@ -68,10 +89,11 @@ and "no user row" is not "nothing to erase".
 | `comments` | Deleted |
 | `notifications` | Deleted |
 | `activity` | Deleted, not scrubbed — the row carries IP and user agent beside the id, so nulling the id alone leaves the person identifiable |
-| `analytics` | Deleted |
+| `analytics` | Deleted — **but keyed on the end-user id only.** A visitor who was never signed in is identified in `analytics_events` by `distinct_id`, which erasure does not match on, so their events are not reached. Stated here rather than left for someone to discover: this is a real limit of the current implementation, not a design choice |
 | `errors` | Deleted — a crash report carries a stack and a free-form context blob |
 | `devices` | Push tokens deleted |
 | `identity` | Sessions, accounts, roles, org memberships, external identities and phone numbers deleted; the user record deleted or tombstoned per mode |
+| `consent` | Every recorded cookie-consent decision for the subject, **deleted in both modes** — the `subject_id` *is* the identifier, so scrubbing it would leave a row carrying a user agent, an IP hash and a timestamp that identifies nobody and proves nothing. Reachable **only** with `subject.type = "consent_id"` — see [a cookie-consent visitor is a subject you cannot look up](#a-cookie-consent-visitor-is-a-subject-you-cannot-look-up) |
 
 ## What it cannot reach
 

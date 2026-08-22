@@ -31,8 +31,12 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
 
 const SubjectSchema = z
   .object({
-    type: z.enum(["app_user", "email"]).openapi({
-      description: "`app_user` resolves an end-user id; `email` matches an address across collections.",
+    type: z.enum(["app_user", "email", "consent_id"]).openapi({
+      description:
+        "`app_user` resolves an end-user id; `email` matches an address across collections; " +
+        "`consent_id` is the opaque token a cookie banner minted in the visitor's own browser, " +
+        "and reaches ONLY their consent records — a consent record carries no email and no " +
+        "account, so an `email` or `app_user` request will not find one.",
     }),
     value: z.string().min(1),
   })

@@ -4803,6 +4803,10 @@ msgstr "geleneksel sütun mevcut"
 msgid "Convert within"
 msgstr "Şu süre içinde dönüşsün"
 
+#: src/client/admin/pages/access/erasure-card.tsx
+msgid "Cookie consent ID"
+msgstr "Çerez izni kimliği"
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Cookieless"
 msgstr "Çerezsiz"
@@ -15130,6 +15134,10 @@ msgstr "Yeniden çalıştırılıyor…"
 msgid "Reachable — {0} tables found."
 msgstr "Erişilebilir — {0} tablo bulundu."
 
+#: src/client/admin/pages/access/erasure-card.tsx
+msgid "Reaches their cookie-consent records and nothing else. The visitor has to give you this — it lives in their browser and you cannot look it up."
+msgstr "Yalnızca çerez izni kayıtlarına ulaşır, başka hiçbir şeye. Bunu size ziyaretçinin kendisi vermek zorunda — kimlik onun tarayıcısında durur ve sizin sorgulama yolunuz yoktur."
+
 #: src/client/admin/pages/access/app-users.tsx
 msgid "Reactivate end-user"
 msgstr "Son kullanıcıyı yeniden etkinleştir"
@@ -19475,6 +19483,10 @@ msgstr "Tam gizli anahtar oluşturulduktan sonra yalnızca bir kez gösterilir �
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
 msgstr "Paneller ve AI araç çağrıları tanıtıcıya referans verir — görünen adı değiştirmek güvenlidir, tanıtıcıyı değiştirmek değildir."
+
+#: src/client/admin/pages/access/erasure-card.tsx
+msgid "the id from the visitor's banner"
+msgstr "ziyaretçinin bandındaki kimlik"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the row that triggered the flow."

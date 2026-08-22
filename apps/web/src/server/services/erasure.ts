@@ -54,6 +54,11 @@ export const ERASURE_SURFACES = [
   "errors",
   "devices",
   "identity",
+  /** Recorded cookie-consent decisions. Reachable ONLY by `consent_id` — a
+   *  consent record carries no email and no account, so an `email` or
+   *  `app_user` request will not find one. `docs/erasure.md` says so plainly
+   *  rather than letting the count read as "they had none". */
+  "consent",
   /** Stored objects the adapter could not remove. Non-zero means the row is
    *  gone but the bytes are not — an operator has to know that. */
   "filesUnreachable",
@@ -75,7 +80,13 @@ export const ERASURE_LIMITS = [
 export type ErasureMode = "anonymize" | "delete";
 export const ERASURE_MODES: readonly ErasureMode[] = ["anonymize", "delete"];
 
-export type SubjectType = "app_user" | "email";
+/**
+ * `consent_id` is the opaque token a cookie banner minted in the visitor's own
+ * browser. It is the only handle an anonymous visitor has, and it is one the
+ * OPERATOR cannot discover — a request naming one is acting on a value the
+ * subject supplied.
+ */
+export type SubjectType = "app_user" | "email" | "consent_id";
 
 export interface ErasureSubject {
   type: SubjectType;
@@ -168,8 +179,13 @@ export interface SubjectLocation {
   appUserId: string | null;
   /** Rows in user collections: slug → primary keys. */
   items: { slug: string; ids: string[] }[];
-  /** Distinct ids seen in analytics / crash reports, for the scrub pass. */
-  distinctIds: string[];
+  /** Consent-record subject ids this request names. Empty for every subject
+   *  type but `consent_id`, because nothing links a consent record to an
+   *  account or an address.
+   *
+   *  This replaces a `distinctIds` field that was declared, assigned
+   *  `[appUserId]`, and never read anywhere in the repo. */
+  consentIds: string[];
 }
 
 /**
@@ -193,6 +209,21 @@ export async function locateSubject(
   let appUserId: string | null = null;
   let email: string | null = subject.type === "email" ? value : null;
 
+  // A cookie-consent subject resolves to nothing else, and the early return is
+  // the point rather than an optimisation. The value is an opaque token from a
+  // visitor's browser: it is not an account id and not an address, so looking
+  // it up in `app_users` or matching it against collections' email fields can
+  // only ever waste work or produce a false positive on a row that happens to
+  // contain the same string.
+  //
+  // The `else if` below is load-bearing for the same reason. Left as a bare
+  // `else`, a consent id would fall into the EMAIL lookup, find no user, scan
+  // every collection for it, and report all-zero — a false "nothing to erase",
+  // which is the exact failure this module exists to prevent.
+  if (subject.type === "consent_id") {
+    return { appUserId: null, items: [], consentIds: [value] };
+  }
+
   if (subject.type === "app_user") {
     const [row] = (await db
       .select()
@@ -204,7 +235,7 @@ export async function locateSubject(
     if (!row) throw new AppError("NOT_FOUND", "No end user with that id in this workspace");
     appUserId = row.id;
     email = row.email ? row.email.toLowerCase() : null;
-  } else {
+  } else if (subject.type === "email") {
     const rows = (await db
       .select()
       .from(s.appUsers)
@@ -261,8 +292,7 @@ export async function locateSubject(
     if (rows.length > 0) items.push({ slug, ids: rows.map((r) => String(r.id)) });
   }
 
-  const distinctIds = appUserId ? [appUserId] : [];
-  return { appUserId, items, distinctIds };
+  return { appUserId, items, consentIds: [] };
 }
 
 // ── Counting, then doing ─────────────────────────────────────────────────────
@@ -307,6 +337,22 @@ async function countSurfaces(
       : await count(
           s.revisions,
           and(eq(s.revisions.tenantId, tenantId), inArray(s.revisions.itemId, itemIds)),
+        );
+
+  // ABOVE the account branch below, deliberately. That branch has an `else`
+  // that zeroes every remaining surface, so a consent count placed inside or
+  // after it would report zero for the one subject type that can actually have
+  // consent records — which is every consent subject, since none of them has an
+  // account.
+  counts.consent =
+    loc.consentIds.length === 0
+      ? 0
+      : await count(
+          s.consentRecords,
+          and(
+            eq(s.consentRecords.tenantId, tenantId),
+            inArray(s.consentRecords.subjectId, loc.consentIds),
+          ),
         );
 
   if (loc.appUserId) {
@@ -543,6 +589,29 @@ async function eraseEverywhere(
       .where(and(eq(s.revisions.tenantId, tenantId), inArray(s.revisions.itemId, itemIds)))
       .returning({ id: s.revisions.id });
     done.revisions = Array.isArray(del) ? del.length : 0;
+  }
+
+  // 2b. Recorded consent. ABOVE the early return below, which is what makes it
+  //     reachable at all: a consent subject never has an account, so every step
+  //     under `if (!uid) return` is dead code for exactly this subject.
+  //
+  //     DELETED IN BOTH MODES, never anonymized. `subject_id` IS the
+  //     identifier here — scrubbing it would leave a row carrying a user agent,
+  //     an ip hash and a timestamp, which identifies nobody and proves nothing,
+  //     so the row would be retained for no purpose. The same call `revisions`
+  //     makes above, and the same one the activity log makes below.
+  done.consent = 0;
+  if (loc.consentIds.length > 0) {
+    const del = await db
+      .delete(s.consentRecords)
+      .where(
+        and(
+          eq(s.consentRecords.tenantId, tenantId),
+          inArray(s.consentRecords.subjectId, loc.consentIds),
+        ),
+      )
+      .returning({ id: s.consentRecords.id });
+    done.consent = Array.isArray(del) ? del.length : 0;
   }
 
   const uid = loc.appUserId;

@@ -214,6 +214,18 @@ writeFileSync(
         { src: "^/health/?$", dest: "/api/index?__rawpath=health" },
         // OAuth discovery documents for the MCP OAuth flow (RFC 8414/9728).
         { src: "^/\\.well-known/(.*)$", dest: "/api/index?__rawpath=.well-known/$1" },
+        // The form embed loader. It is a Hono-served JavaScript file at a
+        // non-`/api` path, so without this it falls into the SPA fallback
+        // below and answers `index.html` as `text/html` — a `<script src>`
+        // that silently does nothing on the customer's page. The admin hands
+        // this exact URL out (client/admin/pages/data/forms/share-tab.tsx).
+        //
+        // ONLY this one path, not `/embed/*`: the other `/embed/*` routes are
+        // inside `if (env.ASSETS)` and exist solely so Cloudflare's worker can
+        // stamp a framable CSP on the SPA shell. There is no ASSETS binding
+        // here, so routing them in would turn a working SPA fallback into a
+        // 404.
+        { src: "^/embed/form\\.js$", dest: "/api/index?__rawpath=embed/form.js" },
         // Let static assets + the function resolve directly.
         { handle: "filesystem" },
         // SPA fallback — the React client-side router takes over.

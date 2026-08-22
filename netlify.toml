@@ -59,6 +59,20 @@
   to = "/.netlify/functions/api/.well-known/:splat"
   status = 200
 
+# The form embed loader — a Hono-served JavaScript file at a non-/api path.
+# Without this it falls into the SPA fallback below and answers index.html as
+# text/html, so the <script src> the admin hands out silently does nothing on
+# the customer's page.
+#
+# ONLY this exact path, not /embed/*: the other /embed/* routes are inside
+# `if (env.ASSETS)` and exist solely so Cloudflare's worker can stamp a
+# framable CSP on the SPA shell. There is no ASSETS binding here, so routing
+# them in would turn a working SPA fallback into a 404.
+[[redirects]]
+  from = "/embed/form.js"
+  to = "/.netlify/functions/api/embed/form.js"
+  status = 200
+
 # Single-page-app fallback so client-side routes (/collections, /settings,
 # /functions, …) all serve admin's index.html.
 [[redirects]]

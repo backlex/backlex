@@ -1151,7 +1151,16 @@ export const createApp = (env: Env) => {
   //   <script src="https://…/embed/form.js" async></script>
   // It mounts a sandboxed iframe per marker and auto-sizes it from the form
   // page's height postMessages, so embeds never need a fixed height. Served
-  // from the worker (before the /embed/* shell route) so every runtime has it.
+  // from the worker, before the /embed/* shell route below.
+  //
+  // Being registered here is NOT enough to reach a browser: this is a
+  // non-`/api` path, and every target routes non-`/api` paths to the app by an
+  // explicit allow-list. It was in Cloudflare's `run_worker_first` and in
+  // NEITHER Vercel's nor Netlify's, so on those two it fell into the SPA
+  // fallback and answered `index.html` as `text/html` — a `<script src>` that
+  // does nothing, on a URL the admin hands customers verbatim. Adding a route
+  // here means adding it to all three configs; `runtime-routing.test.ts` is
+  // what now says so out loud.
   app.get("/embed/form.js", (c) => {
     const js = `(function(){
 var S=document.currentScript,O=new URL(S.src).origin;

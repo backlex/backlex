@@ -1,3 +1,25 @@
+# Isolated installs (already the default here: workspaces + lockfile
+# configVersion 1) copied every package into `node_modules/.bun/<pkg>@<ver>`.
+# `globalStore` materialises each one once into `<cache>/links/` instead and
+# symlinks it in, which is opt-in — selecting the isolated linker does not turn
+# it on by itself.
+#
+# Two reasons it is worth having. CI runs `bun install --frozen-lockfile` TEN
+# times per push (the test job, the build job, and eight runtime-smoke matrix
+# legs), every one of them on the warm-cache / no-node_modules path this makes
+# ~7x faster. And each agent worktree under .claude/worktrees/ was carrying its
+# own 2.5 GB copy — the reason that directory once reached 62 GB and needed
+# scripts/cleanup-worktrees.ts to exist.
+#
+# The seam that could plausibly break is anything walking node_modules by path
+# rather than by resolution, and there is exactly one: build-vercel-output.ts
+# copies sharp's whole dependency closure with cpSync. It already passes
+# `dereference: true`, so it follows the symlinks and writes real files —
+# verified after the switch, including the @img native .node binary. All eight
+# `build:targets` legs stay green, and `node_modules` went 2.5 GB -> 466 MB.
+[install]
+globalStore = true
+
 # Root test config — mirrors apps/web/bunfig.toml so `bun test` behaves the
 # same from the repo root as from apps/web. The lefthook pre-push hook runs
 # `bun test` from the root; without these preloads the React render tests

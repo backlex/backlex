@@ -343,12 +343,33 @@ jobs:
             echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
           done
 
+      # Output goes to THREE places on purpose. The first version of this step
+      # wrote only to $GITHUB_STEP_SUMMARY, which turns out to be the one place
+      # you cannot read from anywhere else: it is absent from the job log, from
+      # `gh run view --log`, and from the jobs API. A visibility job whose
+      # output is visible in exactly one web page is half a job.
+      #   - stdout, so `gh run view --job <id> --log` and any grep can see it
+      #   - a `::notice::` annotation, so the count shows on the run page
+      #     without opening the job at all
+      #   - the step summary, which is still the nicest place to read it
       - name: Audit
         run: |
+          bun audit 2>&1 | tail -40 | tee /tmp/audit.txt || true
+          # `bun audit` prints its totals as the last non-empty line before the
+          # `bun audit fix` hint, e.g. "63 vulnerabilities (22 high, ...)".
+          total="$(grep -oE '[0-9]+ vulnerabilities \([^)]*\)' /tmp/audit.txt | tail -1)"
+          # Falls through to "unparsed" rather than to "clean" — a summary that
+          # says nothing found because it could not read the output is the
+          # exact failure this step exists to prevent.
+          [ -n "$total" ] || total="$(grep -qiE 'no vulnerabilities' /tmp/audit.txt && echo 'no vulnerabilities' || echo 'unparsed — see the log')"
+          echo "::notice title=bun audit::${total}"
           {
             echo "## bun audit"
+            echo ""
+            echo "**${total}**"
+            echo ""
             echo '```'
-            bun audit 2>&1 | tail -40 || true
+            cat /tmp/audit.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -359,14 +380,24 @@ jobs:
       - name: Third-party licences
         run: |
           bun scripts/gen-third-party-licenses.ts
+          if git diff --quiet -- THIRD-PARTY-LICENSES.md; then
+            state="up to date"
+            echo "THIRD-PARTY-LICENSES.md is up to date."
+          else
+            state="OUT OF DATE"
+            echo "THIRD-PARTY-LICENSES.md differs on this runner:"
+            git diff -- THIRD-PARTY-LICENSES.md | head -60 | tee /tmp/lic.diff
+          fi
+          echo "::notice title=third-party licences::${state}"
           {
             echo "## THIRD-PARTY-LICENSES.md"
-            if git diff --quiet -- THIRD-PARTY-LICENSES.md; then
+            echo ""
+            if [ "$state" = "up to date" ]; then
               echo "Up to date."
             else
               echo "Out of date on this runner — regenerate with \`bun scripts/gen-third-party-licenses.ts\` and commit, or ignore if the only diff is host-specific optional packages."
               echo '```diff'
-              git diff -- THIRD-PARTY-LICENSES.md | head -60
+              cat /tmp/lic.diff
               echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"

@@ -122,6 +122,71 @@ there is no geo header at all.
 
 **One site, one policy, one posture.** If you need two, run two sites.
 
+## If you already run another consent manager
+
+You may not need any of the above. **If the consent manager you already run
+emits Google Consent Mode v2, backlex already obeys it.** Nothing to paste, no
+setting to turn on, no policy to create.
+
+Check that first rather than assuming it: every major CMP supports Consent Mode
+v2 and most enable it by default, because Google has required it since March
+2024 of anyone serving EEA or UK traffic through its ad products — but it is a
+setting in your CMP, and a setting can be off. Open your site with a console and
+confirm `dataLayer` contains a `consent` entry before you rely on any of this.
+
+That is not a feature that was built for this; it falls out of how the grant map
+works. backlex seeds a grant map only when it is delivering its *own* banner. On
+a site with no backlex policy the map starts empty, so the tag falls through to
+reading the `dataLayer` your CMP already writes.
+
+**What it covers:** backlex's own analytics tag, and every tag the tag manager
+compiles — the whole vendor list, on the same signal.
+
+| Your CMP sets | backlex reads it for |
+|---|---|
+| `ad_storage` | tags filed as **marketing** |
+| `analytics_storage` | tags filed as **analytics**, and backlex's own tag |
+| `functionality_storage` | tags filed as **functional** (falling back to `analytics_storage` when your CMP does not set it) |
+
+**Only an explicit `denied` blocks.** A key your CMP never sets is not a refusal,
+so prior blocking in this mode is delivered by *your* CMP's `default` call — the
+inline `gtag('consent', 'default', {…: 'denied'})` that a conforming Consent Mode
+install runs in the head before anything else. backlex honours that call; it
+cannot substitute for one that is missing.
+
+### Leave the backlex banner off, and this is the reason
+
+Do not run both. A backlex policy with `enabled: true` compiles a **total** grant
+map into the page — every category, always — and that map is consulted *before*
+the `dataLayer`. So on a site running the backlex banner, your consent manager's
+verdict is not read **in either direction**: it cannot grant a category backlex
+has not been told about, and it cannot deny one backlex was told to allow.
+
+That precedence is deliberate — a visitor's own recorded answer must outrank an
+inference about them — but it means two managers on one page is not "belt and
+braces". It is one manager, silently chosen for you.
+
+### Two limits worth knowing before you rely on it
+
+**A tag refused before the visitor accepted does not fire retroactively.** Tags
+are gated at the instant their trigger raises. If a pageview tag was refused and
+the visitor then presses Accept, that tag does not run for the page they are
+standing on — the next navigation picks it up. This is the ordinary behaviour of
+every tag manager, and it is stated here rather than discovered.
+
+**backlex writes no consent record in this mode, and that is correct.** The
+evidence half of this feature — the immutable artifact, the hash, the
+`consent_records` row — describes a decision made through backlex's own banner
+against a document backlex can produce. Your CMP's decision is yours to
+evidence; backlex records nothing about it, sets no `blx_consent` cookie, and
+sends `c: null` on the wire rather than claiming a consent it did not obtain.
+
+All of the above is pinned by `apps/web/tests/consent-external-cmp.test.ts`,
+which boots the real tag and the real container in a DOM and watches what
+leaves. It exists because this behaviour was an accident of two unrelated
+decisions before it was a promise, and an accident is one refactor away from
+being gone.
+
 ## Global Privacy Control and Do Not Track
 
 A third setting, `signalHandling`, decides how far those two browser signals
@@ -567,6 +632,25 @@ mode is an operator believing they are covered because a setting exists:
   One site, one policy, one posture; if you need two, run two sites.
 - **No automatic cookie scanning.** Enumerating the cookies a site actually sets
   needs a headless-browser crawler; you declare yours.
-- **No IAB TCF.** The technical surface is plannable; the certification half —
-  registering with IAB Europe, a CMP ID, passing their validator — is not
-  something code can do for you.
+- **backlex issues no IAB TCF consent string, and this is a prohibition rather
+  than a gap.** The TCF specification states that a TC string *"may only be
+  created by an IAB Europe TCF registered CMP using its assigned CMP ID"*, and
+  that *"vendors or any other third-party service providers must neither create
+  nor alter TC Strings"*. backlex is not a registered CMP, so writing one would
+  not be an incomplete implementation — it would be a document backlex is not
+  permitted to author. Vendors check: the Global CMP List exists so a receiving
+  vendor can confirm a CMP ID is real, and strings from a de-registered CMP must
+  be discarded outright. Letting you paste your own CMP ID into backlex would
+  not fix that, because the string would still not have been produced by the
+  software that ID belongs to.
+- **backlex is also not a registered IAB *vendor*.** These are two different
+  roles and only naming one of them would leave the other unstated: a CMP
+  collects consent, a vendor is who consent is collected *for*. backlex does not
+  appear in the Global Vendor List, so your CMP cannot disclose it and cannot
+  record a per-vendor consent for it. If your compliance position depends on
+  every party being enumerated in a TC string, backlex is not enumerated.
+- **What does work is the other direction:** backlex reads the consent your own
+  registered CMP has already obtained. See [If you already run another consent
+  manager](#if-you-already-run-another-consent-manager). That path gates
+  backlex's tag and every tag the tag manager compiles, and it makes no
+  framework claim on your behalf.

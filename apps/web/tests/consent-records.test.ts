@@ -164,6 +164,46 @@ describe("the hash is graded, never enforced", () => {
     expect((await write({ policyHash: "not-a-hash" })).hashGrade).toBe("unresolved");
   });
 
+  test("the grade is frozen at ingest — a later policy edit does not re-grade it", async () => {
+    // The docblock on `HASH_GRADES` used to read "whether the artifact the
+    // visitor named STILL resolves", which a reader takes for a live check. It
+    // is not one: `resolveHash` runs in exactly one place, inside
+    // `recordConsent`, and every read path projects the stored column.
+    //
+    // This matters to the only person the column exists for. An operator
+    // handing a regulator a consent log sees `current` beside a row and reads
+    // "this decision is against the policy that is live today". What it
+    // actually says is "it was live when they answered". Both are defensible
+    // answers to keep; only one of them was written down.
+    const subject = freshSubject();
+    const before = await write({ subjectId: subject, policyHash: HASH, currentHash: HASH });
+    expect(before.hashGrade).toBe("current");
+
+    // Move the live artifact underneath it. `policyUrl` is enough — any field
+    // in the artifact re-hashes it, which is the whole reason Phase 6 kept
+    // `signalHandling` out.
+    await savePolicy(db, TENANT, SITE, { policyUrl: "https://records.example/v3" });
+    const live = (await listConsentVersions(db, TENANT, SITE))[0]!.hash;
+    expect(live).not.toBe(HASH);
+
+    // The row written BEFORE the edit is untouched, and still names the
+    // artifact it named.
+    const rows = await listConsentRecords(db, TENANT, { siteId: SITE, subjectId: subject });
+    expect(rows.length).toBe(1);
+    expect(rows[0]!.hashGrade).toBe("current");
+    expect(rows[0]!.policyHash).toBe(HASH);
+
+    // …while a row written AFTER it, by a browser still holding the cached
+    // file, grades `archived`. That band — bounded by the per-site file's
+    // fifteen-minute max-age — is the only thing an artifact change actually
+    // produces in the log.
+    const late = await write({ subjectId: freshSubject(), policyHash: HASH, currentHash: live });
+    expect(late.hashGrade).toBe("archived");
+
+    // Put the fixture back: HASH is module state that later tests write with.
+    HASH = live;
+  });
+
   test("another site's real hash does not resolve here", async () => {
     // Resolution is scoped to the site. Without that, a hash lifted from one
     // public config endpoint would grade as genuine evidence on someone else's.

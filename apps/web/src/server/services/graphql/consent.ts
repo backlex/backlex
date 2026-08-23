@@ -267,7 +267,7 @@ const ConsentRecordType = new GraphQLObjectType({
     hashGrade: {
       type: new GraphQLNonNull(GraphQLString),
       description:
-        "`current`, `archived` or `unresolved` — whether the artifact the visitor named still resolves. An unresolved hash was never a reason to refuse the record.",
+        "`current`, `archived` or `unresolved` — whether the artifact the visitor named was the live one WHEN THE DECISION WAS RECORDED. Graded once at ingest and never recomputed, so `current` does not mean the policy is unedited today. An unresolved hash was never a reason to refuse the record.",
     },
     decision: { type: new GraphQLNonNull(GraphQLString) },
     grants: { type: JSONScalar },

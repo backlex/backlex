@@ -83,6 +83,16 @@ There is no auto-blocking of foreign `<script>` tags — backlex does not rewrit
 your markup, and a CMP that claims to do so is rewriting it. Anything you want
 gated goes through the container.
 
+> **Already running a different consent manager?** Then you do not need a
+> backlex policy at all: every tag in the table's first row is gated by your
+> CMP's Google Consent Mode signals as things stand, with nothing pasted. The
+> categories map to `ad_storage` / `analytics_storage` /
+> `functionality_storage`, and the one rule is to leave the backlex banner off —
+> a backlex policy writes a total grant map that stops your manager from being
+> consulted at all. Full detail, including two limits, in
+> [Cookie consent → If you already run another consent
+> manager](/cookie-consent/#if-you-already-run-another-consent-manager).
+
 It also carries only what you use. With no published container the file has no
 tag runtime in it at all — so `window.__backlexTM` is genuinely absent until
 your first publish, which is expected rather than a bug.

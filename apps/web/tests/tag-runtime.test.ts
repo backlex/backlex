@@ -10,6 +10,7 @@
 import { describe, expect, test } from "bun:test";
 import { TAG_RUNTIME_JS } from "../src/server/services/tag-runtime";
 import { TRACKER_JS } from "../src/server/services/analytics-tracker";
+import { CONSENT_BANNER_JS } from "../src/server/services/consent-banner-bundle";
 import { TAG_TEMPLATE_IDS } from "../src/server/services/tag-templates";
 
 describe("it is real JavaScript", () => {
@@ -127,7 +128,49 @@ describe("size", () => {
     // Every visitor downloads this. The budget is deliberately a hard number in
     // a test rather than a note in a doc, because the vendor table is the part
     // that grows and nothing else would notice.
-    const bytes = TAG_RUNTIME_JS.length + TRACKER_JS.length;
-    expect(bytes).toBeLessThan(48_000);
+    //
+    // ── This assertion used to be worth less than its own title ────────────
+    // It summed TAG_RUNTIME_JS + TRACKER_JS and called the result "the whole
+    // per-site file". It was not: `/api/site/<id>.js` also carries
+    // CONSENT_BANNER_JS on every site running a banner, so the largest body
+    // actually served was 60,241 bytes while this measured 47,468 of it — 21%
+    // of the file invisible to the only size gate in the suite. A budget that
+    // does not see the part that is growing is a budget in name.
+    //
+    // ── Bytes, not `.length` ───────────────────────────────────────────────
+    // CONSENT_BANNER_JS is 12,713 CHARS but 12,773 BYTES: its default wording
+    // ships Turkish, and `Çerezler` costs more on the wire than it does in a
+    // string. `.length` is what a visitor's connection pays only while every
+    // constant stays ASCII, and one of them stopped being ASCII.
+    //
+    // ── The max over REACHABLE compositions, not a sum ─────────────────────
+    // The parts are chosen per site by the same two booleans `bodyFingerprint`
+    // keys its four constants on (routes/analytics-collect.ts). Summing every
+    // constant would bound a body no visitor is ever served, which is the same
+    // class of error as the one above — a number that is not a measurement of
+    // anything.
+    const size = (s: string) => new TextEncoder().encode(s).byteLength;
+    const compositions: [string, string[]][] = [
+      ["tracker only", [TRACKER_JS]],
+      ["tracker + banner", [TRACKER_JS, CONSENT_BANNER_JS]],
+      ["tracker + container", [TRACKER_JS, TAG_RUNTIME_JS]],
+      ["tracker + banner + container", [TRACKER_JS, CONSENT_BANNER_JS, TAG_RUNTIME_JS]],
+    ];
+
+    // Named in the failure rather than asserted as a bare number, so a red run
+    // says WHICH body blew the budget instead of only that one did.
+    const measured = compositions.map(
+      ([name, parts]) => [name, parts.reduce((n, p) => n + size(p), 0)] as const,
+    );
+    const worst = measured.reduce((a, b) => (b[1] > a[1] ? b : a));
+
+    // 1,259 bytes of headroom against today's 60,241. Sized so it BITES: the
+    // vendor table grows at roughly 600 bytes per template, so two more
+    // templates trip this and the raise becomes a decision somebody makes on
+    // purpose. That is the whole point of the number being here.
+    const CAP = 61_500;
+    expect(`${worst[0]} is ${worst[1]} bytes, under ${CAP}: ${worst[1] < CAP}`).toBe(
+      `${worst[0]} is ${worst[1]} bytes, under ${CAP}: true`,
+    );
   });
 });

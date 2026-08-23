@@ -47,9 +47,22 @@ const versionsTable = (dialect: "pg" | "sqlite") =>
 export const CONSENT_RECORD_SOURCES = ["banner", "preferences", "api", "signal"] as const;
 export type ConsentRecordSource = (typeof CONSENT_RECORD_SOURCES)[number];
 
-/** Whether the artifact the visitor named still resolves. Three answers, not
- *  two — an operator handing a regulator a consent log has to know which rows
- *  point at something. */
+/** Whether the artifact the visitor named was the live one AT THE MOMENT OF THE
+ *  WRITE. Three answers, not two — an operator handing a regulator a consent
+ *  log has to know which rows point at something.
+ *
+ *  Read that tense literally. The grade is computed once, by `resolveHash`
+ *  inside `recordConsent`, and NOTHING recomputes it: every read path projects
+ *  the stored column. So a later policy edit moves the live artifact hash and
+ *  leaves every existing row still saying `current`, still naming the version
+ *  it named before.
+ *
+ *  That is deliberate rather than a gap — only the ingest can tell an archived
+ *  artifact from an unresolvable one, and only at the moment of the write — but
+ *  it means `current` answers "was live when they answered", never "is live
+ *  now". This docblock used to say "still resolves", which a reader would
+ *  reasonably take for a live check; `consent-records.test.ts` now pins the
+ *  behaviour so the two cannot drift apart again. */
 export const HASH_GRADES = ["current", "archived", "unresolved"] as const;
 export type HashGrade = (typeof HASH_GRADES)[number];
 

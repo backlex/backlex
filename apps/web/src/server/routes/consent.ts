@@ -91,7 +91,8 @@ const Record_ = z
     subjectId: z.string(),
     policyHash: z.string().nullable(),
     versionId: z.string().nullable(),
-    /** Whether the artifact they named still resolves. */
+    /** Whether the artifact they named was the live one when they answered.
+     *  Graded once at ingest and never recomputed — see `HASH_GRADES`. */
     hashGrade: z.enum(["current", "archived", "unresolved"]),
     decision: z.enum(["granted", "denied", "partial"]),
     grants: z.record(z.string(), z.boolean()),

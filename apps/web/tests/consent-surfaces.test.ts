@@ -1015,9 +1015,16 @@ describe("posture presets", () => {
     expect((await listConsentVersions(db, tenant, site)).length).toBe(before.length);
   });
 
-  test("the presets reach all five surfaces", () => {
+  test("the presets reach all six surfaces", () => {
     // `suggestedWording`'s footprint is the template; a preset endpoint the SDK
     // or the CLI cannot reach is one an operator cannot use from where they work.
+    //
+    // SIX, and the count is not pedantry. The house phrase is "all five
+    // surfaces" (REST + SDK + GraphQL + MCP + CLI) and this title said so while
+    // the list below already carried the admin — the surface a preset exists
+    // FOR, since nothing else fills a form. A title that undercounts its own
+    // array is how the admin gets dropped from the next feature's parity list
+    // by someone reading the title and copying the phrase.
     const pairs: [string, string, string][] = [
       ["REST", "apps/web/src/server/routes/consent.ts", "/postures/suggested"],
       ["SDK", "packages/client/src/clients/consent.ts", "suggestedPostures"],

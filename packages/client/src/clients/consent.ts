@@ -163,7 +163,9 @@ export interface ConsentRecord {
   /** The artifact hash the visitor was shown, as they reported it. */
   policyHash: string | null;
   versionId: string | null;
-  /** Whether that hash still resolves: `current`, `archived` or `unresolved`. */
+  /** Whether that hash was the live artifact when the decision was recorded:
+   *  `current`, `archived` or `unresolved`. Graded once at ingest and never
+   *  recomputed, so `current` means "was current then", not "is current now". */
   hashGrade: "current" | "archived" | "unresolved";
   decision: "granted" | "denied" | "partial";
   grants: Record<string, boolean>;

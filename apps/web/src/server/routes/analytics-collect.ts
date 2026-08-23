@@ -379,11 +379,28 @@ export const perSiteScriptHandler = async (c: Context<AppBindings>) => {
       // keeps asking. Unbounded staleness, on the setting an operator turns
       // on precisely because they want it to take effect.
       //
-      // Empty parts are DROPPED, not joined as blanks. A site with a
-      // container and no consent policy has to keep the validator it already
-      // had — otherwise this deploy alone re-downloads every container in
-      // production for a change that affects none of them.
+      // `siteId` FIRST, and it is not decoration. Serving a bare site left
+      // every one of them with all three hash parts null, so the validator
+      // collapsed to the composition alone and two different sites — whose
+      // bodies differ, because each embeds its own id in the tracker init —
+      // were handed the SAME ETag. Measured on eighteen local sites: thirteen
+      // shared `W/"1jwgk42"`, and a conditional request for one carrying
+      // another's validator answered 304.
+      //
+      // Legal under RFC 9110, which scopes an entity-tag to its resource, and
+      // no browser sends a validator it received for a different URL. Included
+      // anyway because "correct only as long as every cache in the path is
+      // well-behaved" is not the property this file wants from a document it
+      // asks the whole internet to store for fifteen minutes.
+      //
+      // Empty parts are still DROPPED rather than joined as blanks, so the
+      // shape stays stable as parts appear. The comment this replaces argued
+      // that a container-only site must keep the validator it already had —
+      // true when written, moot now: gating the runtime already moves every
+      // one of them exactly once on this deploy, so `siteId` rides along for
+      // free rather than costing a second re-download later.
       hash: [
+        siteId,
         published?.hash,
         consent?.hash,
         tagConsent ? `${tagConsent.tracker}/${tagConsent.signals}` : null,

@@ -21,6 +21,7 @@ let h: TestHarness;
 let db: any;
 let SITE = "";
 let EMPTY_SITE = "";
+let EMPTY_SITE2 = "";
 let TENANT: string | null = null;
 
 const makeSite = async (name: string, domain: string): Promise<string> => {
@@ -44,6 +45,9 @@ beforeAll(async () => {
   SITE = await makeSite("Shop", "shop.example");
   TENANT = (await getSiteById(db, SITE))!.tenantId;
   EMPTY_SITE = await makeSite("Quiet", "quiet.example");
+  // A SECOND bare site. One is enough to prove a bare site is served; two
+  // are what prove their validators differ, which one cannot show.
+  EMPTY_SITE2 = await makeSite("Quieter", "quieter.example");
 
   const trigger = await createTrigger(db, TENANT, SITE, { name: "All pages", type: "pageview" });
   await createTag(
@@ -260,7 +264,12 @@ describe("repeat visits are cheap", () => {
     // a consent-only site's validator unmoved while its body changed — and a
     // 304 refreshes freshness, so that browser would keep the old composition
     // indefinitely.
-    expect(etag).toBe(weakETag([published!.hash, weakHash(TRACKER_JS + TAG_RUNTIME_JS)]));
+    // `SITE` leads the hash: the validator identifies the site as well as its
+    // content, so two bare sites — whose hash parts are otherwise all null —
+    // cannot collapse onto one ETag.
+    expect(etag).toBe(
+      weakETag([`${SITE}:${published!.hash}`, weakHash(TRACKER_JS + TAG_RUNTIME_JS)]),
+    );
     // The banner is genuinely absent from this body, which is what makes the
     // assertion above about composition rather than about a renamed constant.
     expect(body).not.toContain(CONSENT_BANNER_JS);
@@ -407,6 +416,37 @@ describe("the per-site script has two paths and one handler", () => {
         `${f} rebuilds the snippet: false`,
       );
     }
+  });
+
+  test("two sites never share a validator, even with nothing configured", async () => {
+    // Serving a bare site is what created this: with no container, no policy
+    // and no tag settings, all three hash parts are null, so the ETag would
+    // collapse to the composition — identical for every bare site on the
+    // instance, while the bodies differ by the id each embeds.
+    const a = await h.fetch(`/api/site/${EMPTY_SITE}.js`);
+    const b = await h.fetch(`/api/site/${EMPTY_SITE2}.js`);
+    const [ta, tb] = [a.headers.get("etag"), b.headers.get("etag")];
+    expect(ta).toBeTruthy();
+    expect(`same etag: ${ta === tb}`).toBe("same etag: false");
+
+    // The bodies really do differ, or the assertion above proves nothing.
+    const [ba, bb] = [await a.text(), await b.text()];
+    expect(`same body: ${ba === bb}`).toBe("same body: false");
+    expect(ba).toContain(EMPTY_SITE);
+    expect(bb).toContain(EMPTY_SITE2);
+
+    // And the consequence that made it visible: one site's validator must not
+    // satisfy a conditional request for the other.
+    const cross = await h.fetch(`/api/site/${EMPTY_SITE2}.js`, {
+      headers: { "if-none-match": ta ?? "" },
+    });
+    expect(cross.status).toBe(200);
+
+    // Its own validator still does, or we broke revalidation to fix aliasing.
+    const own = await h.fetch(`/api/site/${EMPTY_SITE2}.js`, {
+      headers: { "if-none-match": tb ?? "" },
+    });
+    expect(own.status).toBe(304);
   });
 
   test("the snippet cannot carry markup out of the host or the id", async () => {

@@ -75,12 +75,26 @@ const anchorsIn = (f: string) =>
   );
 
 describe("cross-document links", () => {
-  test("a link to another docs page carries the /docs prefix", () => {
+  test("no absolute link escapes the /docs base", () => {
     // The whole defect, in one assertion. `](/querying/)` is not a typo a
     // reviewer catches — it is what the link looks like when you forget the
     // site serves these under a base path.
+    //
+    // ── Why this is "no bare links" and not "no bare links to docs pages" ──
+    // The narrow version was the first draft and it MISSED a live 404. Two
+    // links read `](/analytics/)`, and there is no `docs/analytics.md` — so a
+    // slug-membership check skipped them as "probably a marketing route" while
+    // `/analytics/` 404s exactly as hard as `/querying/` did. A guard whose
+    // blind spot is "targets I could not identify" is blind to the worst case,
+    // because an unrecognisable target is more likely wrong, not less.
+    //
+    // So the rule is absolute: every absolute link in `docs/` lives under
+    // `/docs/`. If a genuine link to the marketing site is ever needed, add its
+    // route here deliberately — an empty allowlist is the honest starting
+    // state, since there are currently none.
+    const MARKETING_ROUTES: string[] = [];
     const bare = all
-      .filter((l) => l.head !== "docs" && slugs.has(l.head))
+      .filter((l) => l.head !== "docs" && !MARKETING_ROUTES.includes(l.head))
       .map((l) => `${l.file} -> /${l.head}${l.tail}`);
     expect(bare).toEqual([]);
   });

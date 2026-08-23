@@ -3,7 +3,7 @@ title: Cookie consent
 description: The policy a site publishes to its visitors — which categories it asks about, what happens before they answer, and how backlex's own tag is classified.
 ---
 
-A site registered for [web analytics](/analytics/) can also publish a **consent
+A site registered for [web analytics](/docs/product-analytics/#measuring-a-website-the-drop-in-tag) can also publish a **consent
 policy**: what its visitors are asked, and what is withheld until they answer.
 
 This page covers the policy, the artifact a decision points at, and
@@ -56,7 +56,7 @@ build-time one.
 
 ### `trackerCategory` — backlex's own tag
 
-backlex's [web analytics tag](/analytics/) is unusual among measurement scripts:
+backlex's [web analytics tag](/docs/product-analytics/#measuring-a-website-the-drop-in-tag) is unusual among measurement scripts:
 it stores **nothing** on the visitor's device — no cookie, no `localStorage`, no
 `sessionStorage` — and its visitor id is derived on the server and rotates every
 UTC midnight.

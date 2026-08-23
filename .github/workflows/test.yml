@@ -373,39 +373,46 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The inventory is committed and the generator now reads `bun.lock`
-      # rather than `node_modules`, so the output should be identical on every
-      # host — that was the whole point of rewriting it. This step is still
-      # advisory for one more round: the claim has not yet been observed on a
-      # Linux runner, and asserting it here before seeing it would be the same
-      # mistake in the other direction.
+      # A REAL gate, not advisory. The generator reads `bun.lock` rather than
+      # `node_modules`, so the output is a pure function of the lockfile and is
+      # identical on every host. That claim was earned rather than assumed:
       #
-      # PROMOTE TO A GATE once this reports "up to date" on Linux: swap the
-      # body for `bun scripts/gen-third-party-licenses.ts --check`.
+      #   - the first version delegated to `bun pm licenses`, which reports what
+      #     is INSTALLED, so the committed file described a Mac (it listed
+      #     `fsevents`, which never ships) and CI reported drift on every run
+      #   - the rewrite matched 1170 packages on both macOS and Linux with zero
+      #     differing content lines, and the only remaining diff was a sentence
+      #     printing how many packages the GENERATING host had not installed —
+      #     210 here, 200 there. That number is gone; nothing in the file may
+      #     depend on the machine that wrote it
+      #   - the two licence sources have to agree wherever a package swaps
+      #     between them across platforms. Checked for all 26 host-conditional
+      #     installed packages: every string matches what the registry returns
+      #
+      # So a failure here now means a real dependency change that nobody
+      # regenerated, which is exactly what it should mean. It does not block the
+      # deploy (`supply-chain` is not in `deploy.needs`) — it makes the run red.
       - name: Third-party licences
         run: |
           bun scripts/gen-third-party-licenses.ts
           if git diff --quiet -- THIRD-PARTY-LICENSES.md; then
-            state="up to date"
             echo "THIRD-PARTY-LICENSES.md is up to date."
-          else
-            state="OUT OF DATE"
-            echo "THIRD-PARTY-LICENSES.md differs on this runner:"
-            git diff -- THIRD-PARTY-LICENSES.md | head -60 | tee /tmp/lic.diff
+            echo "::notice title=third-party licences::up to date"
+            { echo "## THIRD-PARTY-LICENSES.md"; echo ""; echo "Up to date."; } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
-          echo "::notice title=third-party licences::${state}"
+          echo "THIRD-PARTY-LICENSES.md is out of date — regenerate with \`bun scripts/gen-third-party-licenses.ts\` and commit:"
+          git diff -- THIRD-PARTY-LICENSES.md | head -80 | tee /tmp/lic.diff
+          echo "::error title=third-party licences::out of date — regenerate and commit"
           {
             echo "## THIRD-PARTY-LICENSES.md"
             echo ""
-            if [ "$state" = "up to date" ]; then
-              echo "Up to date."
-            else
-              echo "Out of date on this runner — regenerate with \`bun scripts/gen-third-party-licenses.ts\` and commit, or ignore if the only diff is host-specific optional packages."
-              echo '```diff'
-              cat /tmp/lic.diff
-              echo '```'
-            fi
+            echo "**Out of date.** Regenerate with \`bun scripts/gen-third-party-licenses.ts\` and commit."
+            echo '```diff'
+            cat /tmp/lic.diff
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   # ── The pre-deploy gate ────────────────────────────────────────────────
   #

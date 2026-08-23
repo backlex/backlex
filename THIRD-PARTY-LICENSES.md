@@ -10,8 +10,13 @@ distributed.
 It is deliberately read from the lockfile rather than from `node_modules`:
 optional dependencies install only for the current host, so an installed-only
 inventory lists a Mac's `@img/sharp-libvips-darwin-arm64` and `fsevents`
-while omitting the `linux-x64` variants that actually ship. 210 of the
-entries below are not installed on any single machine at once.
+while omitting the `linux-x64` variants that actually ship. Many of the
+entries below are therefore not installed on any single machine at once.
+
+Nothing in this file may depend on the machine that generated it — that is the
+property `--check` asserts. An earlier version printed how many packages the
+generating host had not installed, which is exactly such a dependency, and it
+made CI report drift on every Linux run over a single digit.
 
 Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 

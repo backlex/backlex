@@ -249,7 +249,7 @@ const assertAnchors = (closure: Map<string, { name: string; version: string }>) 
   }
 };
 
-const render = (byLicence: Map<string, string[]>, hostOnly: number): string => {
+const render = (byLicence: Map<string, string[]>): string => {
   const licences = [...byLicence.keys()].sort((a, b) => a.localeCompare(b));
   let total = 0;
   const body: string[] = [];
@@ -280,8 +280,13 @@ distributed.
 It is deliberately read from the lockfile rather than from \`node_modules\`:
 optional dependencies install only for the current host, so an installed-only
 inventory lists a Mac's \`@img/sharp-libvips-darwin-arm64\` and \`fsevents\`
-while omitting the \`linux-x64\` variants that actually ship. ${hostOnly} of the
-entries below are not installed on any single machine at once.
+while omitting the \`linux-x64\` variants that actually ship. Many of the
+entries below are therefore not installed on any single machine at once.
+
+Nothing in this file may depend on the machine that generated it — that is the
+property \`--check\` asserts. An earlier version printed how many packages the
+generating host had not installed, which is exactly such a dependency, and it
+made CI report drift on every Linux run over a single digit.
 
 Regenerate with \`bun scripts/gen-third-party-licenses.ts\`.
 
@@ -308,7 +313,7 @@ const main = async () => {
     byLicence.set(licence, list);
   }
 
-  const next = render(byLicence, missing.length);
+  const next = render(byLicence);
 
   if (process.argv.includes("--check")) {
     const current = (() => {

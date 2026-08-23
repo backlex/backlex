@@ -373,10 +373,15 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The inventory is committed; this reports drift without gating on it,
-      # because `bun pm licenses` lists what is INSTALLED and a Linux runner
-      # resolves a different set of optional platform packages than the Mac it
-      # was generated on. See the script header.
+      # The inventory is committed and the generator now reads `bun.lock`
+      # rather than `node_modules`, so the output should be identical on every
+      # host — that was the whole point of rewriting it. This step is still
+      # advisory for one more round: the claim has not yet been observed on a
+      # Linux runner, and asserting it here before seeing it would be the same
+      # mistake in the other direction.
+      #
+      # PROMOTE TO A GATE once this reports "up to date" on Linux: swap the
+      # body for `bun scripts/gen-third-party-licenses.ts --check`.
       - name: Third-party licences
         run: |
           bun scripts/gen-third-party-licenses.ts

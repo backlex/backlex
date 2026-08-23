@@ -97,4 +97,12 @@ const main = async (): Promise<void> => {
   console.log(`[gen-openapi-static] wrote ${pathCount} static paths → ${OUT}`);
 };
 
-await main();
+// Only when RUN, never when imported.
+//
+// `openapi-subapp-coverage.test.ts` imports `buildStable`/`emit` to compare the
+// committed file against a fresh build. With a bare top-level `await main()`
+// that import WROTE the file it was about to read, so the comparison could not
+// fail — the guard added to catch a stale spec was itself vacuous from the
+// first commit. Measured, not reasoned: hand-editing the JSON left the test
+// green.
+if (import.meta.main) await main();

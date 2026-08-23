@@ -398,6 +398,10 @@ export interface ApiAnalyticsSite {
   ignoredIps: string[];
   filterBots: boolean;
   requireKnownOrigin: boolean;
+  /** The one script tag this website needs, built server-side. Never changes
+   *  for a site: enabling consent or publishing tags changes what the FILE
+   *  contains, not the tag you pasted. */
+  snippet: string;
   createdAt: number;
   updatedAt: number;
 }

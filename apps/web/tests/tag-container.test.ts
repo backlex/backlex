@@ -64,23 +64,50 @@ beforeAll(async () => {
 
 afterAll(() => h.cleanup());
 
-describe("it is not an enumeration oracle", () => {
-  test("an unknown site id answers exactly like an unpublished one", async () => {
-    // The collect route answers 202 for an unknown id for this reason, and the
-    // reasoning carries: a status that differs by whether an id exists lets
-    // anyone walk the space and learn which workspaces have sites.
-    const unknown = await container("00000000-0000-0000-0000-000000000000");
-    const unpublished = await container(EMPTY_SITE);
-    expect(unknown.status).toBe(unpublished.status);
-    expect(await unknown.text()).toBe(await unpublished.text());
-    expect(unknown.status).toBe(200);
-  });
-
-  test("a site with no published version serves an empty file, not a 404", async () => {
-    const res = await container(EMPTY_SITE);
+describe("what an unknown id learns, and what it does not", () => {
+  /**
+   * This USED to assert that an unknown id and a registered-but-unconfigured
+   * one were byte-identical, so nobody could tell a real site from a guess.
+   * That property is deliberately gone, and the trade is written down where it
+   * is made (`analytics-collect.ts`, the "registered site is ALWAYS served"
+   * comment): a registered site whose script file was empty had no analytics
+   * and no error to read, which cost more than the oracle did.
+   *
+   * What survives is the part that matters. Site ids are v4 UUIDs, so nobody
+   * can WALK the space; the oracle only confirms an id you already hold, and
+   * anyone holding one read it out of the `<script>` tag on the page.
+   */
+  test("an unknown id still answers 200 with an empty body, never a 404", async () => {
+    const res = await container("00000000-0000-0000-0000-000000000000");
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("");
     expect(res.headers.get("content-type")).toContain("javascript");
+  });
+
+  test("…and a registered site is served even with nothing configured", async () => {
+    // The whole point of the change: one website, one script tag, pasted once
+    // on a fresh site and never revisited.
+    const res = await container(EMPTY_SITE);
+    expect(res.status).toBe(200);
+    const js = await res.text();
+    expect(js).toContain("window.__backlexTrackerInit = function");
+    expect(js).toContain("__backlexTrackerInit({");
+    // …but nothing it has no use for. No container means no runtime — measured
+    // at ~7.8 KB gzipped of code with nothing to interpret.
+    expect(js).not.toContain("window.__backlexTM = function");
+    expect(js).not.toContain("__backlexConsentBanner(");
+  });
+
+  test("the two are still distinguishable ONLY by body, not by status or headers", async () => {
+    // If the oracle has to widen, it widens by exactly one bit and no more: a
+    // different status or a different CORS/CORP profile would leak the same
+    // fact to a caller that never reads the body.
+    const unknown = await container("00000000-0000-0000-0000-000000000000");
+    const known = await container(EMPTY_SITE);
+    expect(unknown.status).toBe(known.status);
+    for (const h of ["content-type", "cache-control", "access-control-allow-origin"]) {
+      expect(`${h}: ${unknown.headers.get(h)}`).toBe(`${h}: ${known.headers.get(h)}`);
+    }
   });
 });
 
@@ -227,9 +254,16 @@ describe("repeat visits are cheap", () => {
     expect(body).toContain(TRACKER_JS);
     expect(body).toContain(TAG_RUNTIME_JS);
 
-    expect(etag).toBe(
-      weakETag([published!.hash, weakHash(TRACKER_JS + TAG_RUNTIME_JS + CONSENT_BANNER_JS)]),
-    );
+    // COMPOSITIONAL, not one constant over all three. `SITE` has a published
+    // container and no consent policy, so its body is tracker + runtime and its
+    // fingerprint must be exactly that. A whole-constant fingerprint would leave
+    // a consent-only site's validator unmoved while its body changed — and a
+    // 304 refreshes freshness, so that browser would keep the old composition
+    // indefinitely.
+    expect(etag).toBe(weakETag([published!.hash, weakHash(TRACKER_JS + TAG_RUNTIME_JS)]));
+    // The banner is genuinely absent from this body, which is what makes the
+    // assertion above about composition rather than about a renamed constant.
+    expect(body).not.toContain(CONSENT_BANNER_JS);
     // ...and the artifact hash alone is NOT the validator any more, which is the
     // whole point: this is the assertion that fails if someone reverts to it.
     expect(etag).not.toBe(weakETag([published!.hash]));
@@ -286,5 +320,130 @@ describe("the per-site file is geo-blind", () => {
     // …and nothing on the response invites a cache to split on a header it
     // will never see.
     expect(de.vary).toBeNull();
+  });
+});
+
+/**
+ * The canonical path, and the one that can never be removed.
+ *
+ * `/api/analytics/tm/<id>.js` named two products (analytics, tag manager) while
+ * serving three — the same category error the admin nav carried, and the repo
+ * had already argued against it in `routes/consent-public.ts` for the consent
+ * config route. `/api/site/<id>.js` is the canonical home.
+ *
+ * The old path is PERMANENT, not deprecated: it is inside a `<script>` tag on
+ * every already-deployed customer page and there is no version negotiation. A
+ * removed path stops collection everywhere, silently.
+ */
+describe("the per-site script has two paths and one handler", () => {
+  const at = (path: string) =>
+    h.app.fetch(
+      new Request(`${h.env.APP_URL}${path}`, {
+        headers: { Origin: "https://customer.example" },
+      }),
+    );
+
+  test("both paths return the same body and the same ETag", async () => {
+    const { invalidateContainer } = await import(
+      "../src/server/services/tag-container-cache"
+    );
+    // Cleared between the two, or the second is served the first's memo entry
+    // and agrees with itself no matter what the handler does.
+    invalidateContainer(SITE);
+    const oldPath = await at(`/api/analytics/tm/${SITE}.js`);
+    const oldBody = await oldPath.text();
+    invalidateContainer(SITE);
+    const newPath = await at(`/api/site/${SITE}.js`);
+    const newBody = await newPath.text();
+
+    expect(oldBody.length).toBeGreaterThan(1000);
+    expect(newBody).toBe(oldBody);
+    expect(newPath.headers.get("etag")).toBe(oldPath.headers.get("etag"));
+  });
+
+  test("the new path inherits the whole public-subresource profile", async () => {
+    // Measured, not assumed: a route mounted under a fresh prefix inherits the
+    // app DEFAULTS, and every one of them is wrong for a file a browser loads
+    // from somebody else's domain. Before the exemption lists were updated this
+    // path answered CORP `same-origin` (every browser discards the script), a
+    // single-origin ACAO, `Access-Control-Allow-Credentials: true` on an
+    // anonymous document, `Vary: Origin` on a `public, max-age=900` asset, and
+    // a `Set-Cookie`.
+    const res = await at(`/api/site/${SITE}.js`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cross-origin-resource-policy")).toBe("cross-origin");
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(res.headers.get("vary")).toBeNull();
+    expect(res.headers.get("set-cookie") ?? "").not.toContain("backlex-tenant");
+  });
+
+  test("mounting the canonical prefix publishes exactly ONE route", async () => {
+    // The alternative shape — mounting the whole collect sub-app twice — would
+    // also expose `/api/site/collect`, a WRITE endpoint, at an unadvertised URL
+    // that is on no exemption list.
+    for (const path of ["/api/site/collect", "/api/site/script.js"]) {
+      const res = await h.app.fetch(
+        new Request(`${h.env.APP_URL}${path}`, { method: "POST" }),
+      );
+      expect(`${path} is not a route: ${res.status !== 200 && res.status !== 202}`).toBe(
+        `${path} is not a route: true`,
+      );
+    }
+  });
+
+  test("the snippet every surface hands out names the canonical path", async () => {
+    const { installSnippet } = await import("../src/server/services/install-snippet");
+    const snippet = installSnippet("https://admin.example", SITE);
+    expect(snippet).toContain(`/api/site/${SITE}.js`);
+    expect(snippet).not.toContain("/api/analytics/");
+    // And it is the ONE emitter — nothing else may rebuild the literal.
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const root = join(import.meta.dir, "..", "src", "server");
+    for (const f of ["routes/tag-manager.ts", "routes/analytics.ts"]) {
+      const src = readFileSync(join(root, f), "utf8");
+      expect(`${f} rebuilds the snippet: ${/script defer src=/.test(src)}`).toBe(
+        `${f} rebuilds the snippet: false`,
+      );
+    }
+  });
+
+  test("the snippet cannot carry markup out of the host or the id", async () => {
+    const { installSnippet } = await import("../src/server/services/install-snippet");
+
+    // The premise, asserted rather than assumed: `new URL` does NOT sanitise a
+    // quote out of the authority. It throws on a space and on `<`, so the only
+    // character that can actually arrive is `"` — and the percent-encoded form
+    // DECODES to it, which is the shape that survives a naive Host check.
+    expect(new URL('http://a"x.com/api/x').origin).toBe('http://a"x.com');
+    expect(new URL("http://a%22x.com/api/x").origin).toBe('http://a"x.com');
+
+    // So the emitter has to close the attribute itself. This string is HTML by
+    // contract — an operator pastes it into their own page — and neither
+    // interpolated value is a uuid by construction: the tag manager's install
+    // route validates `siteId` as `z.string().min(1)`.
+    const poisoned = installSnippet('https://a"><script>alert(1)</script>.com', SITE);
+    expect(poisoned).not.toContain("<script>alert(1)</script>");
+    expect(poisoned).toContain("&quot;&gt;&lt;script&gt;");
+    // Exactly one tag, still, and it is ours. Note the assertion is a COUNT and
+    // not `not.toContain('"><')` — the snippet's own `.js"></script>` contains
+    // that sequence legitimately, so the obvious spelling fails on a correct
+    // emitter and would have been "fixed" by weakening the escape.
+    expect(poisoned.match(/<script/g)).toHaveLength(1);
+    expect(poisoned.match(/<\/script>/g)).toHaveLength(1);
+
+    const badId = installSnippet("https://admin.example", 'abc"></script><img src=x onerror=y>');
+    expect(badId).not.toContain("<img");
+    expect(badId).toContain("&quot;&gt;&lt;/script&gt;");
+    expect(badId.match(/<script/g)).toHaveLength(1);
+    expect(badId.match(/<\/script>/g)).toHaveLength(1);
+
+    // And the escaping is not so eager that a normal snippet changes: an
+    // origin and a uuid contain none of the four characters, so this is the
+    // identity function on every real input.
+    expect(installSnippet("https://admin.example", SITE)).toBe(
+      `<script defer src="https://admin.example/api/site/${SITE}.js"></script>`,
+    );
   });
 });

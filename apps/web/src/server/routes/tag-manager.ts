@@ -15,6 +15,7 @@
  * requests keyed on nothing but a public site id.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { installSnippet } from "../services/install-snippet";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
@@ -540,7 +541,10 @@ export const tagManagerRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const origin = new URL(c.req.url).origin;
       return c.json({
         data: {
-          snippet: `<script defer src="${origin}/api/analytics/tm/${siteId}.js"></script>`,
+          // One emitter — see `services/install-snippet.ts`. This used to rebuild
+          // the literal by hand, which is how two surfaces came to hand out two
+          // different snippets.
+          snippet: installSnippet(origin, siteId),
           csp: cspAdditionsForTemplates(templateIds),
           // Google publishes its origins against `script-src-elem` rather than
           // `script-src`. Ours covers script elements UNLESS the site sets

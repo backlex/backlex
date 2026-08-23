@@ -342,6 +342,12 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/scim/v2": INTERNAL,
   "/api/shared": MCP_SURFACES["shared-links"]!,
   "/api/shared-links": MCP_SURFACES["shared-links"]!,
+  // The canonical per-site script. Same sub-app as the `/api/analytics/tm`
+  // alias below it, mounted twice on purpose, so it needs its own sentence.
+  "/api/site": {
+    serverOnly:
+      "One `<script>` a site owner pastes once. The server composes what it answers with — tracker, consent banner, tag container — from that site's own settings, so the page never chooses and never has to be re-pasted when a setting changes. It authenticates with nothing but a public site id and is cached at the edge for every anonymous visitor; an SDK method would need credentials this tag must not carry. What an application would automate — registering the site, editing and publishing its container — is `analytics.sites` and the tag-manager admin surface.",
+  },
   "/api/storage": MCP_SURFACES.storage!,
   // The app plane, three routers deep. Each answers for itself now — the single
   // `core: "request"` these used to share is the blanket that hid the agent

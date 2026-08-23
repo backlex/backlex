@@ -371,7 +371,7 @@ rule the feature is built on.
 ## The banner
 
 A site with an **enabled** policy gets a banner, and it arrives inside the file
-the page already loads — `/api/analytics/tm/<site-id>.js`, the same one that
+the page already loads — `/api/site/<site-id>.js`, the same one that
 carries the tracker and your tag container. There is nothing extra to install.
 
 ### Prior blocking is why it is not a separate file

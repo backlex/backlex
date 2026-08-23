@@ -159,7 +159,12 @@ describe("the loop an operator walks", () => {
 
   test("install gives the snippet and the CSP the customer's own site needs", async () => {
     const data = (await json(await api(`/sites/${SITE}/install`))).data;
-    expect(data.snippet).toContain(`/api/analytics/tm/${SITE}.js`);
+    // The CANONICAL path. What an operator is told to paste is the one path
+    // whose name matches what it serves — a site's whole script, not the tag
+    // manager's alone. `/api/analytics/tm/` keeps answering forever for pages
+    // that already pasted it, but nothing is handed it fresh.
+    expect(data.snippet).toContain(`/api/site/${SITE}.js`);
+    expect(data.snippet).not.toContain("/api/analytics/tm/");
     expect(data.snippet).toContain("defer");
     // Generated from the templates THIS container holds — a site running one
     // pixel should not be told to allow four origins.

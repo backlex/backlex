@@ -38,16 +38,34 @@ up front saves an afternoon:
 
 ## Installing
 
-One line, and it replaces the analytics snippet rather than joining it:
+One line, once, and never again:
 
 ```html
-<script defer src="https://your-workspace.example.com/api/analytics/tm/<site-id>.js"></script>
+<script defer src="https://your-workspace.example.com/api/site/<site-id>.js"></script>
 ```
 
-That file carries the analytics tag *and* the tag runtime, so a site that
-installs it gets both from one request. The older
-`script.js` + `data-site` snippet keeps working exactly as before — if you are
-only measuring and not managing tags, there is nothing to change.
+This is **the** script tag for a website — the same one **Website → Websites**
+hands you, and the same one the cookie banner rides on. You paste it on a fresh
+site and you do not come back: what the file CONTAINS grows as you turn things
+on. Register the site and it carries the analytics tag; switch a cookie banner
+on and the banner appears inside it; publish a container and the tag runtime
+joins them. Nothing to re-paste, ever.
+
+It also carries only what you use. With no published container the file has no
+tag runtime in it at all — so `window.__backlexTM` is genuinely absent until
+your first publish, which is expected rather than a bug.
+
+> **The old URL still works, and always will.** `/api/analytics/tm/<site-id>.js`
+> answers exactly the same file, byte for byte. It is inside a `<script>` tag on
+> every page already deployed and there is no version negotiation, so it is
+> permanent — not deprecated, not sunset. New installs get the shorter path
+> because the old one named two products (`analytics`, `tm`) while serving
+> three.
+
+The older `script.js` + `data-site` snippet also keeps working, but it is
+**analytics only**: it cannot carry a cookie banner or your tags, and
+`trackerCategory` / `signalHandling` do not reach it. If you are measuring and
+nothing else it is fine; if you might ever want a banner, use the line above.
 
 **Do not run both at once.** A page carrying the old snippet and the new one is
 still measured only once — the tag refuses to boot twice on purpose — but there

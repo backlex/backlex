@@ -35,8 +35,8 @@ import { analyticsRoutes } from "./routes/analytics";
 import { tagManagerRoutes } from "./routes/tag-manager";
 import { consentRoutes } from "./routes/consent";
 import { consentPublicRoutes } from "./routes/consent-public";
-import { isPublicSubresource } from "./lib/public-paths";
-import { analyticsCollectRoutes } from "./routes/analytics-collect";
+import { isPerSiteScript, isPublicSubresource } from "./lib/public-paths";
+import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics-collect";
 import { analyticsIngestRoutes } from "./routes/analytics-ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
 import { agentsRoutes } from "./routes/agents";
@@ -804,20 +804,21 @@ export const createApp = (env: Env) => {
     "/api/consent/config",
     "/api/consent/record",
   ];
-  // The tag manager's per-site container joins them, and it is a path
-  // PARAMETER, so it needs a prefix rather than another exact entry. The exact
-  // entries above stay — none of those paths is under this prefix.
+  // The per-site script file joins them, at BOTH its paths — it is a path
+  // PARAMETER, so it needs a prefix rather than another exact entry, and
+  // `isPerSiteScript` is that prefix test. The exact entries above stay; none
+  // of those paths is under either prefix.
   //
   // Worth naming what this exemption actually does, because "CORS" sends the
   // next person to the wrong layer: a `<script src>` without `crossorigin` is
   // not CORS-governed at all. What it prevents is hono's `cors()` stamping
   // `Vary: Origin` and an `ACAO` of one specific origin onto a response we want
   // cached identically for every origin on the internet.
-  const CORS_EXEMPT_PREFIX = "/api/analytics/tm/";
+
   app.use("*", async (c, next) =>
     c.req.path.startsWith("/.well-known/") ||
     CORS_EXEMPT.includes(c.req.path) ||
-    c.req.path.startsWith(CORS_EXEMPT_PREFIX)
+    isPerSiteScript(c.req.path)
       ? next()
       : corsMw(c, next),
   );
@@ -1037,6 +1038,10 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/tag-manager", tagManagerRoutes);
   app.route("/api/admin/consent", consentRoutes);
   app.route("/api/consent", consentPublicRoutes);
+  // The canonical home of the per-site script. `/api/analytics/tm/<id>.js`
+  // still answers the same handler and always will — it is inside a `<script>`
+  // tag on every already-deployed customer page.
+  app.route("/api/site", siteScriptRoutes);
   // Public ingest — authenticated by a publishable key or a normal session,
   // never anonymous. Kept off `/api/admin/*` because client bundles call it.
   app.route("/api/analytics", analyticsCollectRoutes);

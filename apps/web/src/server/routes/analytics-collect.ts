@@ -34,6 +34,7 @@
  * table", not data disclosure.
  */
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { AppError } from "@backlex/core";
 import { rateLimitOk } from "../lib/rate-limit";
@@ -110,7 +111,27 @@ const CONTAINER_MAX_AGE = 900;
  * describing the code. Computed once per isolate over ~36 KB, which is FNV-1a
  * over a string already resident in memory.
  */
-const RUNTIME_FINGERPRINT = weakHash(TRACKER_JS + TAG_RUNTIME_JS + CONSENT_BANNER_JS);
+// One constant per composition this route can actually serve.
+//
+// Compositional because the BODY is. With `TAG_RUNTIME_JS` gated on a published
+// container, a whole-constant fingerprint would leave a consent-only site's
+// validator UNMOVED while its body changed — the browser revalidates, is told
+// 304, and a 304 REFRESHES the freshness window, so it keeps running the old
+// composition indefinitely. That is exactly the unbounded staleness this
+// fingerprint exists one level up to prevent.
+//
+// Order matches the body: tracker, banner, runtime.
+//
+// Known one-time cost, stated rather than discovered later: every
+// container-only site's ETag moves once on the deploy that ships this, because
+// `weakHash(T+R) !== weakHash(T+R+B)`. Bounded by `CONTAINER_MAX_AGE`. Paid
+// once, so it is not paid again on every future runtime edit.
+const FP_T = weakHash(TRACKER_JS);
+const FP_TB = weakHash(TRACKER_JS + CONSENT_BANNER_JS);
+const FP_TR = weakHash(TRACKER_JS + TAG_RUNTIME_JS);
+const FP_TBR = weakHash(TRACKER_JS + CONSENT_BANNER_JS + TAG_RUNTIME_JS);
+const bodyFingerprint = (published: boolean, consent: boolean): string =>
+  published ? (consent ? FP_TBR : FP_TR) : consent ? FP_TB : FP_T;
 
 /** CORS for an uncredentialed, append-only, cross-origin endpoint. */
 const corsHeaders = {
@@ -174,6 +195,229 @@ const asStr = (v: unknown, max: number): string | null => {
   if (typeof v !== "string") return null;
   const t = v.trim();
   return t ? t.slice(0, max) : null;
+};
+
+/**
+ * The per-site script file, served at two paths.
+ *
+ * Extracted so `/api/analytics/tm/:file` and `/api/site/:file` are the SAME
+ * function rather than two copies. Two copies would drift on exactly the things
+ * that fail silently here: the ETag composition, the metering attribution, and
+ * the 304 branch.
+ */
+export const perSiteScriptHandler = async (c: Context<AppBindings>) => {
+  // `string | undefined` here rather than `string`: extracting the handler
+  // out of `.get("/tm/:file", …)` costs the path-literal inference Hono does
+  // in place. The guard is not defensive padding — it is the type.
+  const file = c.req.param("file") ?? "";
+  if (!file.endsWith(".js")) return c.notFound();
+  const siteId = file.slice(0, -3);
+
+  const ctx = c.get("ctx");
+  const now = Date.now();
+
+  const origin = new URL(c.req.url).origin;
+  let hit = getContainerEntry(siteId, origin, now);
+
+  if (!hit) {
+    // The discriminator AND the tenant source, in one query, before anything
+    // else. A known site is served; an unknown id gets a byte-empty 200 — one
+    // query instead of the three the old ordering paid before returning
+    // nothing.
+    //
+    // Deliberately NOT memoised: `tag-container-cache.ts` evicts with a
+    // wholesale `memo.clear()` at 200 entries rather than LRU, so admitting
+    // caller-chosen keys would let 200 random ids flush every hot site on the
+    // isolate.
+    //
+    // `getSiteById` is a `SELECT *`. That row carries operator settings —
+    // excluded paths, ignored ips, the origin check — and none of them may
+    // reach this body. Only `.tenantId` is read.
+    const site = await getSiteById({ db: ctx.db, dialect: ctx.dialect }, siteId);
+    if (!site) {
+      return c.body("", 200, {
+        "Content-Type": "application/javascript; charset=utf-8",
+        "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
+        "Access-Control-Allow-Origin": "*",
+      });
+    }
+
+    const published = await getPublishedArtifact({ db: ctx.db, dialect: ctx.dialect }, siteId);
+    const endpoint = origin + "/api/analytics/collect";
+
+    // The consent policy travels WITH the container, and the order below is
+    // the entire reason prior blocking works.
+    //
+    // `__backlexTM` arms its triggers synchronously and a pageview trigger
+    // fires immediately, so whatever decides which tags may run has to have
+    // decided before that call. A banner that fetched `/api/consent/config`
+    // could not: a round trip cannot finish first, and every pageview tag
+    // would fire while it was in flight. So the artifact is compiled in, the
+    // banner boots between the tracker and the container, and by the time
+    // the container starts the grant map already says no.
+    //
+    // Read through the same per-isolate memo the public config route uses,
+    // so this costs one query a minute per site rather than one per visitor.
+    let consent = getConsentEntry(siteId, now);
+    if (!consent) {
+      const pub = await getPublishedConsentConfig({ db: ctx.db, dialect: ctx.dialect }, siteId);
+      if (pub) {
+        consent = { at: now, body: pub.body, hash: pub.hash, tenantId: pub.tenantId };
+        setConsentEntry(siteId, consent);
+      }
+    }
+
+    // An unknown site gets an empty 200 rather than a 404, for the same
+    // reason the collect route answers 202: a status code that differs by
+    // whether an id exists is an oracle for enumerating ids.
+    //
+    // This check USED to sit above the consent lookup and test `published`
+    // alone — so a site that switched the cookie banner on and never touched
+    // the tag manager was served an empty file, and got no banner at all.
+    // The one operator who most needs the banner to appear is the one who
+    // is not using the tag manager, and they were the one it never reached.
+    //
+    // It discloses nothing new: `GET /api/consent/config?s=<id>` already
+    // answers a real artifact for an enabled policy and a byte-identical
+    // "off" document for everything else, because the banner cannot work
+    // otherwise.
+    // Read from the policy ROW rather than from `consent` above, because
+    // `consent` is null whenever the BANNER is switched off — and neither of
+    // these two settings is about the banner. A site that shows no banner can
+    // still have filed backlex's own tag as strictly necessary, or still want
+    // GPC to stop every tag. One extra query per container-cache miss, which
+    // is once per site per origin per MINUTE — `tag-container-cache.ts`
+    // memoises for `TTL_MS = 60_000`. The fifteen minutes elsewhere in this
+    // file is `CONTAINER_MAX_AGE`, the BROWSER's cache, which is a different
+    // number about a different cache.
+    const tagConsent = await getTagConsentSettings(
+      { db: ctx.db, dialect: ctx.dialect },
+      siteId,
+    );
+
+    // A registered site is ALWAYS served now, even with nothing configured.
+    //
+    // It used to answer byte-empty here unless something was published, and
+    // that made the one snippet an operator pastes unsafe on a fresh site:
+    // measured at 0 bytes, so analytics simply did not run and there was no
+    // error to read. One website now means one script tag, pasted once, whose
+    // CONTENTS grow as the operator turns things on.
+    //
+    // The oracle this widens, stated rather than hidden: a body now means the
+    // id resolves to a site, an empty body means it does not. That is the
+    // argument the consent config route already makes, one notch looser —
+    // site ids are v4 UUIDs, so it only helps someone who already holds one,
+    // and anyone holding one read it out of the `<script>` tag on the page.
+    // A registered site whose file is empty costs more.
+
+    const body = [
+      TRACKER_JS,
+      // Only when there is a policy to show. A site with none — or one that
+      // is disabled — pays nothing for the banner, and `CONSENT_CONFIG_OFF`
+      // is byte-identical across four different situations anyway, so
+      // shipping it would embed a document that says nothing.
+      consent ? CONSENT_BANNER_JS : "",
+      // Only when there is a container to interpret. Its single top-level
+      // statement installs exactly one global, `__backlexTM`, whose only call
+      // site below is already gated the same way — and the banner never
+      // references it. `window.backlex` degrades correctly too: the runtime
+      // WRAPS the tracker's own rather than replacing it, so with no runtime
+      // the customer-callable global is simply the tracker's. Worth ~7.8 KB
+      // gzipped on every site without a container.
+      published ? TAG_RUNTIME_JS : "",
+      // Two fields the tracker cannot read any other way on this install.
+      //
+      // `t` — the site's `trackerCategory`. The tracker filed itself under
+      // "analytics" and said so in a comment: "the per-site posture that
+      // could file it under 'none' instead already ships in the consent
+      // artifact, but nothing delivers that artifact to a browser yet". It
+      // does now, so the assumption goes.
+      //
+      // `g` — what GPC and Do Not Track govern. It is NOT in the artifact and
+      // must not be: that document is recompiled and re-hashed on every read,
+      // so a field there would archive every recorded decision on deploy.
+      // Nothing hashes this file, which is why the switch rides here.
+      //
+      // A script ATTRIBUTE could carry neither: `document.currentScript` is
+      // null for an injected script, which is the shape of the snippet
+      // operators paste, so the tracker's `self` is null on this whole path.
+      `;__backlexTrackerInit(${safeJson({
+        s: siteId,
+        e: endpoint,
+        t: tagConsent?.tracker,
+        g: tagConsent?.signals,
+      })});`,
+      consent
+        ? `;__backlexConsentBanner(${safeJson({
+            cfg: JSON.parse(consent.body),
+            // Bare hex. The public route serves this hash inside an ETag,
+            // where it is QUOTED — and `SHA256_HEX_RE` rejects the quotes,
+            // which would silently downgrade every record this banner
+            // writes to `hashGrade: "unresolved"`.
+            hash: consent.hash,
+            endpoint: origin + "/api/consent/record",
+          })});`
+        : "",
+      // No container is a legitimate state now, not an impossible one: a
+      // consent-only site is served the tracker and the banner and nothing
+      // to interpret.
+      published ? `;__backlexTM(${safeJson(published.artifact)});` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    hit = {
+      at: now,
+      body,
+      // Everything the BODY depends on, because this string IS the ETag.
+      // A policy edit therefore changes the validator even though the
+      // container itself did not move.
+      //
+      // The tag settings have to be in it too: they are not in the artifact
+      // by design, so `consent.hash` cannot move when they change — a browser
+      // holding the old file would revalidate, be told 304, and that 304
+      // refreshes its freshness, so it keeps the old switch for as long as it
+      // keeps asking. Unbounded staleness, on the setting an operator turns
+      // on precisely because they want it to take effect.
+      //
+      // Empty parts are DROPPED, not joined as blanks. A site with a
+      // container and no consent policy has to keep the validator it already
+      // had — otherwise this deploy alone re-downloads every container in
+      // production for a change that affects none of them.
+      hash: [
+        published?.hash,
+        consent?.hash,
+        tagConsent ? `${tagConsent.tracker}/${tagConsent.signals}` : null,
+      ]
+        .filter(Boolean)
+        .join(":"),
+      // `site.tenantId` last, and it is what makes a BARE site meter — the
+      // state every fresh install is in, and now the state a real snippet is
+      // pasted for. Without it those fetches bill the DEFAULT workspace.
+      tenantId:
+        published?.tenantId ?? consent?.tenantId ?? tagConsent?.tenantId ?? site.tenantId,
+      fingerprint: bodyFingerprint(Boolean(published), Boolean(consent)),
+    };
+    setContainerEntry(siteId, origin, hit);
+  }
+
+  // The site resolves the workspace — the tag carries no other credential —
+  // so metering is attributed from here. Without this an anonymous fetch
+  // bills whichever workspace the tenant middleware happened to resolve,
+  // which is the DEFAULT one. That exact defect is pinned as a regression.
+  if (hit.tenantId) setMeterTenant(c, hit.tenantId);
+
+  const etag = weakETag([hit.hash, hit.fingerprint]);
+  const headers = {
+    "Content-Type": "application/javascript; charset=utf-8",
+    "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
+    ETag: etag,
+    "Access-Control-Allow-Origin": "*",
+};
+// `c.body` does no conditional handling of its own, so the 304 is explicit.
+if (ifNoneMatch(c.req.header("if-none-match"), etag)) {
+  return c.body(null, 304, headers);
+}
+return c.body(hit.body, 200, headers);
 };
 
 export const analyticsCollectRoutes = new Hono<AppBindings>()
@@ -347,188 +591,7 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
    * The only operator string that becomes executable is a custom-code tag, and
    * that rides the per-site gate which the compiler re-checks on every publish.
    */
-  .get("/tm/:file", async (c) => {
-    const file = c.req.param("file");
-    if (!file.endsWith(".js")) return c.notFound();
-    const siteId = file.slice(0, -3);
-
-    const ctx = c.get("ctx");
-    const now = Date.now();
-
-    const origin = new URL(c.req.url).origin;
-    let hit = getContainerEntry(siteId, origin, now);
-
-    if (!hit) {
-      const published = await getPublishedArtifact({ db: ctx.db, dialect: ctx.dialect }, siteId);
-      const endpoint = origin + "/api/analytics/collect";
-
-      // The consent policy travels WITH the container, and the order below is
-      // the entire reason prior blocking works.
-      //
-      // `__backlexTM` arms its triggers synchronously and a pageview trigger
-      // fires immediately, so whatever decides which tags may run has to have
-      // decided before that call. A banner that fetched `/api/consent/config`
-      // could not: a round trip cannot finish first, and every pageview tag
-      // would fire while it was in flight. So the artifact is compiled in, the
-      // banner boots between the tracker and the container, and by the time
-      // the container starts the grant map already says no.
-      //
-      // Read through the same per-isolate memo the public config route uses,
-      // so this costs one query a minute per site rather than one per visitor.
-      let consent = getConsentEntry(siteId, now);
-      if (!consent) {
-        const pub = await getPublishedConsentConfig({ db: ctx.db, dialect: ctx.dialect }, siteId);
-        if (pub) {
-          consent = { at: now, body: pub.body, hash: pub.hash, tenantId: pub.tenantId };
-          setConsentEntry(siteId, consent);
-        }
-      }
-
-      // An unknown site gets an empty 200 rather than a 404, for the same
-      // reason the collect route answers 202: a status code that differs by
-      // whether an id exists is an oracle for enumerating ids.
-      //
-      // This check USED to sit above the consent lookup and test `published`
-      // alone — so a site that switched the cookie banner on and never touched
-      // the tag manager was served an empty file, and got no banner at all.
-      // The one operator who most needs the banner to appear is the one who
-      // is not using the tag manager, and they were the one it never reached.
-      //
-      // It discloses nothing new: `GET /api/consent/config?s=<id>` already
-      // answers a real artifact for an enabled policy and a byte-identical
-      // "off" document for everything else, because the banner cannot work
-      // otherwise.
-      // Read from the policy ROW rather than from `consent` above, because
-      // `consent` is null whenever the BANNER is switched off — and neither of
-      // these two settings is about the banner. A site that shows no banner can
-      // still have filed backlex's own tag as strictly necessary, or still want
-      // GPC to stop every tag. One extra query per container-cache miss, which
-      // is once per site per origin per MINUTE — `tag-container-cache.ts`
-      // memoises for `TTL_MS = 60_000`. The fifteen minutes elsewhere in this
-      // file is `CONTAINER_MAX_AGE`, the BROWSER's cache, which is a different
-      // number about a different cache.
-      const tagConsent = await getTagConsentSettings(
-        { db: ctx.db, dialect: ctx.dialect },
-        siteId,
-      );
-
-      // `tagConsent` counts too, and it is the reason a site with neither a
-      // container nor a banner can still be served: the tag-manager snippet is
-      // a legitimate analytics-only install, and on it `trackerCategory` is the
-      // only thing that can say backlex's own tag is strictly necessary.
-      //
-      // The cost, stated rather than hidden: this distinguishes "site id with a
-      // consent policy row, banner disabled" from "unknown site id", which
-      // `/api/consent/config` deliberately does not — it answers the same "off"
-      // document for both. Site ids are v4 UUIDs, so the oracle only helps
-      // someone who already holds an id, and anyone holding one read it out of
-      // the snippet on the page. A setting that saves, reads back and silently
-      // does nothing is the worse failure.
-      if (!published && !consent && !tagConsent) {
-        return c.body("", 200, {
-          "Content-Type": "application/javascript; charset=utf-8",
-          "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
-          "Access-Control-Allow-Origin": "*",
-        });
-      }
-
-      const body = [
-        TRACKER_JS,
-        // Only when there is a policy to show. A site with none — or one that
-        // is disabled — pays nothing for the banner, and `CONSENT_CONFIG_OFF`
-        // is byte-identical across four different situations anyway, so
-        // shipping it would embed a document that says nothing.
-        consent ? CONSENT_BANNER_JS : "",
-        TAG_RUNTIME_JS,
-        // Two fields the tracker cannot read any other way on this install.
-        //
-        // `t` — the site's `trackerCategory`. The tracker filed itself under
-        // "analytics" and said so in a comment: "the per-site posture that
-        // could file it under 'none' instead already ships in the consent
-        // artifact, but nothing delivers that artifact to a browser yet". It
-        // does now, so the assumption goes.
-        //
-        // `g` — what GPC and Do Not Track govern. It is NOT in the artifact and
-        // must not be: that document is recompiled and re-hashed on every read,
-        // so a field there would archive every recorded decision on deploy.
-        // Nothing hashes this file, which is why the switch rides here.
-        //
-        // A script ATTRIBUTE could carry neither: `document.currentScript` is
-        // null for an injected script, which is the shape of the snippet
-        // operators paste, so the tracker's `self` is null on this whole path.
-        `;__backlexTrackerInit(${safeJson({
-          s: siteId,
-          e: endpoint,
-          t: tagConsent?.tracker,
-          g: tagConsent?.signals,
-        })});`,
-        consent
-          ? `;__backlexConsentBanner(${safeJson({
-              cfg: JSON.parse(consent.body),
-              // Bare hex. The public route serves this hash inside an ETag,
-              // where it is QUOTED — and `SHA256_HEX_RE` rejects the quotes,
-              // which would silently downgrade every record this banner
-              // writes to `hashGrade: "unresolved"`.
-              hash: consent.hash,
-              endpoint: origin + "/api/consent/record",
-            })});`
-          : "",
-        // No container is a legitimate state now, not an impossible one: a
-        // consent-only site is served the tracker and the banner and nothing
-        // to interpret.
-        published ? `;__backlexTM(${safeJson(published.artifact)});` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-      hit = {
-        at: now,
-        body,
-        // Everything the BODY depends on, because this string IS the ETag.
-        // A policy edit therefore changes the validator even though the
-        // container itself did not move.
-        //
-        // The tag settings have to be in it too: they are not in the artifact
-        // by design, so `consent.hash` cannot move when they change — a browser
-        // holding the old file would revalidate, be told 304, and that 304
-        // refreshes its freshness, so it keeps the old switch for as long as it
-        // keeps asking. Unbounded staleness, on the setting an operator turns
-        // on precisely because they want it to take effect.
-        //
-        // Empty parts are DROPPED, not joined as blanks. A site with a
-        // container and no consent policy has to keep the validator it already
-        // had — otherwise this deploy alone re-downloads every container in
-        // production for a change that affects none of them.
-        hash: [
-          published?.hash,
-          consent?.hash,
-          tagConsent ? `${tagConsent.tracker}/${tagConsent.signals}` : null,
-        ]
-          .filter(Boolean)
-          .join(":"),
-        tenantId: published?.tenantId ?? consent?.tenantId ?? tagConsent?.tenantId ?? null,
-      };
-      setContainerEntry(siteId, origin, hit);
-    }
-
-    // The site resolves the workspace — the tag carries no other credential —
-    // so metering is attributed from here. Without this an anonymous fetch
-    // bills whichever workspace the tenant middleware happened to resolve,
-    // which is the DEFAULT one. That exact defect is pinned as a regression.
-    if (hit.tenantId) setMeterTenant(c, hit.tenantId);
-
-    const etag = weakETag([hit.hash, RUNTIME_FINGERPRINT]);
-    const headers = {
-      "Content-Type": "application/javascript; charset=utf-8",
-      "Cache-Control": `public, max-age=${CONTAINER_MAX_AGE}`,
-      ETag: etag,
-      "Access-Control-Allow-Origin": "*",
-    };
-    // `c.body` does no conditional handling of its own, so the 304 is explicit.
-    if (ifNoneMatch(c.req.header("if-none-match"), etag)) {
-      return c.body(null, 304, headers);
-    }
-    return c.body(hit.body, 200, headers);
-  })
+  .get("/tm/:file", perSiteScriptHandler)
 
   .get("/script.js", (c) =>
     c.body(TRACKER_BOOT_JS, 200, {
@@ -540,3 +603,17 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
       "Access-Control-Allow-Origin": "*",
     }),
   );
+
+/**
+ * The canonical mount for the per-site script.
+ *
+ * Its own sub-app rather than mounting `analyticsCollectRoutes` twice, and that
+ * is not tidiness: a second mount would also publish `/api/site/collect` — a
+ * WRITE endpoint — plus `/api/site/script.js` and `/api/site/tm/<id>.js`, none
+ * of them on the CORS exemption list. Exactly one route lives here.
+ *
+ * It shares the memo with the old path by construction: `tag-container-cache`
+ * keys on `(siteId, origin)` with no path component, and both routes read the
+ * same `siteId` param and the same request origin.
+ */
+export const siteScriptRoutes = new Hono<AppBindings>().get("/:file", perSiteScriptHandler);

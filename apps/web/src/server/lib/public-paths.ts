@@ -56,11 +56,27 @@
  * those iframes, where the document's own origin is ours — same-origin, so CORP
  * never applies. Relaxing either would widen the hole without fixing anything.
  */
+/**
+ * The per-site script file, at BOTH of its paths.
+ *
+ * `/api/site/` is canonical. `/api/analytics/tm/` is permanent — not
+ * deprecated, not sunset — because it is inside a `<script>` tag on every
+ * already-deployed customer page and there is no version negotiation: a
+ * removed path stops collection everywhere, silently.
+ *
+ * One predicate because THREE middlewares match on it — the CORS bypass, the
+ * CORP relaxation and the workspace-cookie skip — and three copies of a prefix
+ * drift. Adding a second route under `/api/site/` would make that route public
+ * by accident; there is exactly one, and it is this file.
+ */
+export const isPerSiteScript = (path: string): boolean =>
+  path.startsWith("/api/site/") || path.startsWith("/api/analytics/tm/");
+
 export const isPublicSubresource = (path: string): boolean =>
   // The drop-in analytics tag and the per-site tag-manager container, both
   // `<script src>` on a customer's own domain.
   path === "/api/analytics/script.js" ||
-  path.startsWith("/api/analytics/tm/") ||
+  isPerSiteScript(path) ||
   // The form embed loader — a `<script src>` that injects the iframe.
   path === "/embed/form.js" ||
   // `sendBeacon` is a no-cors request, so CORP is in scope for its response

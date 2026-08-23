@@ -609,9 +609,11 @@ describe("the banner reaches a site with no tag container", () => {
     // Deliberately no tag container: this is the whole case.
     const off = await h.app.fetch(new Request(`${h.env.APP_URL}/api/analytics/tm/${site}.js`));
     expect(off.status).toBe(200);
-    // Nothing published and no policy — still silent, because a body that
-    // appears only for real site ids is an oracle for enumerating them.
-    expect((await off.text()).length).toBe(0);
+    // A registered site is served the tracker even with nothing configured —
+    // one script tag, pasted once. What it must NOT yet contain is the banner.
+    const before = await off.text();
+    expect(before).toContain("__backlexTrackerInit({");
+    expect(before).not.toContain("__backlexConsentBanner(");
 
     const put = await h.fetch(`/api/admin/consent/policies/${site}`, {
       method: "PUT",
@@ -752,13 +754,19 @@ describe("what GPC and Do Not Track govern", () => {
     expect(JSON.stringify(JSON.parse(banner![1]!).cfg)).not.toContain("signalHandling");
   });
 
-  test("a site with no consent policy sends neither, so /script.js keeps its assumptions", async () => {
+  test("a site with no consent policy sends neither, so the tag keeps its defaults", async () => {
     // The tracker falls back to `analytics` + `tracker` when these are absent,
-    // which is what every install without a policy has always done. Sending an
-    // undefined would be the same thing; sending a WRONG value would not.
+    // which is what every install without a policy has always done. Omitting
+    // them is the same thing; sending a WRONG value would not be.
     const site = await makeSite(h, "no-policy.example");
     const res = await h.app.fetch(new Request(`${h.env.APP_URL}/api/analytics/tm/${site}.js`));
-    expect((await res.text()).length).toBe(0);
+    const body = await res.text();
+    const init = body.match(/__backlexTrackerInit\((\{.*?\})\);/);
+    expect(init).toBeTruthy();
+    const cfg = JSON.parse(init![1]!);
+    expect(cfg.t).toBeUndefined();
+    expect(cfg.g).toBeUndefined();
+    expect(cfg.s).toBe(site);
   });
 });
 

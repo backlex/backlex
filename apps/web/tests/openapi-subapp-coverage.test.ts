@@ -164,6 +164,10 @@ describe("OpenAPI sub-app coverage", () => {
  * glob watches the ROUTE sources, so editing the generator or the generated
  * file by hand never fires it, and `--no-verify` skips it. This runs inside
  * `bun test`, and therefore inside CI, with none of those holes.
+ *
+ * It only became a real guard once `gen-openapi-static.ts` put its `main()`
+ * behind `import.meta.main`. Before that, importing the module WROTE the file
+ * this test then read, so it agreed with itself no matter what was committed.
  */
 describe("the generated spec is in sync with the routes", () => {
   test("regenerating produces byte-identical output", async () => {

@@ -792,6 +792,11 @@ export function useCreateAnalyticsSite() {
         ignoredIps: input.ignoredIps ?? [],
         filterBots: input.filterBots ?? true,
         requireKnownOrigin: input.requireKnownOrigin ?? true,
+        // Empty until the server answers. The snippet embeds the site's real
+        // id, and the placeholder above is not one — rendering a snippet for
+        // `pending-1234` would hand the operator a script tag that collects
+        // nothing, and they might paste it before the row reconciles.
+        snippet: "",
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };

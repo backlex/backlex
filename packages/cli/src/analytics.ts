@@ -568,11 +568,12 @@ export const runAnalytics = async (args: string[]): Promise<void> => {
           printKeyValues({ id: data.id, name: data.name, domain: data.domain });
           // The snippet is the only reason an operator runs this command, so
           // print it rather than making them assemble it from the id.
-          const base = resolveContext(args).url.replace(/\/$/, "");
-          process.stderr.write(
-            `\nAdd this to ${data.domain}:\n\n` +
-              `  <script defer src="${base}/api/analytics/script.js" data-site="${data.id}"></script>\n`,
-          );
+          //
+          // Taken from the SERVER's `snippet` field, not rebuilt here. This used
+          // to print the analytics-only drop-in, which cannot carry a consent
+          // banner — so a CLI user who later switched one on got no banner and
+          // no error. One emitter now: `services/install-snippet.ts`.
+          process.stderr.write(`\nAdd this to ${data.domain}:\n\n  ${data.snippet}\n`);
           return;
         }
         if (action === "rm") {

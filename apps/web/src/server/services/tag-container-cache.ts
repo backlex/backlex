@@ -25,6 +25,11 @@ export interface ContainerEntry {
   body: string;
   hash: string;
   tenantId: string | null;
+  /** Which composition of tracker / banner / runtime this body actually is.
+   *  Part of the ETag, because the composition varies per site now: a
+   *  whole-constant fingerprint would leave a consent-only site's validator
+   *  unmoved while its body changed, and a 304 refreshes freshness. */
+  fingerprint: string;
 }
 
 const TTL_MS = 60_000;

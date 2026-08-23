@@ -90,6 +90,11 @@ export interface AnalyticsSite {
   requireKnownOrigin: boolean;
   createdAt: number;
   updatedAt: number;
+  /** The one script tag this website needs, built by the server. Never changes
+   *  for a site: enabling consent or publishing tags changes what that FILE
+   *  contains, not the tag you pasted. Do not assemble it yourself — the
+   *  analytics-only drop-in cannot carry a consent banner. */
+  snippet: string;
 }
 
 export interface AnalyticsSiteInput {

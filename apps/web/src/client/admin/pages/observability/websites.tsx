@@ -20,6 +20,7 @@ import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { WebsitesSkeleton } from "../../page-skeletons";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Badge, Button, EmptyState, PageHeader } from "../../ui";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
@@ -42,11 +43,6 @@ import {
 } from "../../queries";
 import { queryKeys } from "../../queries";
 import { useQueryClient } from "@tanstack/react-query";
-
-/** The snippet an operator pastes. Built from the browser's own origin so a
- *  workspace on a custom domain needs no configuration to get it right. */
-const snippetFor = (siteId: string): string =>
-  `<script defer src="${typeof window === "undefined" ? "" : window.location.origin}/api/analytics/script.js" data-site="${siteId}"></script>`;
 
 export function WebsitesPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
@@ -113,7 +109,11 @@ export function WebsitesPage({ pushToast }: { pushToast: PushToast }) {
                   <Button
                     variant="outline"
                     icon={I.Copy}
-                    onClick={() => copy(snippetFor(s.id))}
+                    // Disabled during the optimistic window: the snippet embeds
+                    // the site's real id and the placeholder row has none yet,
+                    // so copying would hand over a tag that collects nothing.
+                    disabled={!s.snippet}
+                    onClick={() => copy(s.snippet)}
                   >
                     <Trans>Copy snippet</Trans>
                   </Button>
@@ -144,9 +144,16 @@ export function WebsitesPage({ pushToast }: { pushToast: PushToast }) {
                   the page from ever scrolling sideways. */}
               <ScrollArea className="w-full rounded-control border bg-muted/40">
                 <div className="p-2">
-                  <code className="block whitespace-pre text-[11.5px] leading-relaxed">
-                    {snippetFor(s.id)}
-                  </code>
+                  {s.snippet ? (
+                    <code className="block whitespace-pre text-[11.5px] leading-relaxed">
+                      {s.snippet}
+                    </code>
+                  ) : (
+                    // The optimistic row, before the server answers with the
+                    // real id. A skeleton rather than an empty box, which reads
+                    // as "this site has no snippet".
+                    <Skeleton className="h-[18px] w-full" />
+                  )}
                 </div>
               </ScrollArea>
 

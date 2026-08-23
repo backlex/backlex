@@ -12,6 +12,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
+import { installSnippet } from "../services/install-snippet";
 import {
   ERROR_STATUSES,
   MAX_FUNNEL_STEPS,
@@ -265,10 +266,39 @@ const Site = z
     ignoredIps: z.array(z.string()),
     filterBots: z.boolean(),
     requireKnownOrigin: z.boolean(),
+    /** The one script tag this website needs. Server-built so the four
+     *  surfaces that hand it to an operator cannot disagree, and so the path
+     *  can move without touching any of them. Never changes for a site. */
+    snippet: z.string(),
     createdAt: z.number().int(),
     updatedAt: z.number().int(),
   })
   .openapi("AnalyticsSite");
+
+/**
+ * Decorate site rows with the snippet each one currently needs.
+ *
+ * Every route that returns a site goes through this, so the field can never be
+ * present on one shape and missing on another — a `snippet` that is sometimes
+ * undefined would render as an empty code block, which reads as "there is no
+ * snippet" rather than as a bug.
+ */
+const withSnippet = <T extends { id: string }>(
+  c: { req: { url: string } },
+  row: T,
+): T & { snippet: string } => ({
+  ...row,
+  snippet: installSnippet(new URL(c.req.url).origin, row.id),
+});
+
+/** The list form. Separate rather than `rows[0]` on the singular one, because
+ *  `noUncheckedIndexedAccess` makes that `T | undefined` and the route schema
+ *  is not nullable — the assertion that would silence it is exactly the kind
+ *  this repo does not want. */
+const withSnippets = <T extends { id: string }>(
+  c: { req: { url: string } },
+  rows: T[],
+): (T & { snippet: string })[] => rows.map((r) => withSnippet(c, r));
 
 const SiteInputSchema = z.object({
   name: z.string().min(1).max(120),
@@ -1069,10 +1099,11 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       requireAdmin(auth.roles);
-      const data = await listSites(
+      const rows = await listSites(
         { db: ctx.db, dialect: ctx.dialect },
         auth.tenantId ?? null,
       );
+      const data = withSnippets(c, rows);
       return c.json({ data });
     },
   )
@@ -1102,11 +1133,12 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       requireAdmin(auth.roles);
-      const data = await createSite(
+      const row = await createSite(
         { db: ctx.db, dialect: ctx.dialect },
         auth.tenantId ?? null,
         c.req.valid("json"),
       );
+      const data = withSnippet(c, row);
       return c.json({ data }, 201);
     },
   )
@@ -1138,12 +1170,13 @@ export const analyticsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const auth = c.get("auth");
       requireAdmin(auth.roles);
       const { id } = c.req.valid("param");
-      const data = await updateSite(
+      const row = await updateSite(
         { db: ctx.db, dialect: ctx.dialect },
         auth.tenantId ?? null,
         id,
         c.req.valid("json"),
       );
+      const data = withSnippet(c, row);
       return c.json({ data });
     },
   )

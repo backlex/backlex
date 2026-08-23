@@ -19,6 +19,46 @@
  * `analytics-collect.test.ts` fails if any of the three ever appears. (That
  * pointer used to name a file that does not exist.)
  *
+ * ── PRIOR_BLOCKING: why the first pageview may wait ───────────────────────
+ * The server orders the per-site file tracker -> banner -> container, and that
+ * ordering gates the CONTAINER because the container starts after the banner.
+ * It never gated this tag, because this tag FINISHES before the banner — the
+ * last line of `__backlexTrackerInit` is a pageview. Measured on production:
+ * one `POST /api/analytics/collect` before the visitor had chosen anything,
+ * with `__backlexConsentGranted("analytics")` answering false a moment later,
+ * about the request that had already left.
+ *
+ * Two config fields fix it, and both are needed:
+ *
+ *   `d` — the undecided posture the operator configured, so the grant map is
+ *         their answer rather than the pre-policy default from the very first
+ *         synchronous call. Alone it is not enough: a RETURNING visitor's
+ *         decision lives in a cookie this tag does not read, so an `allow`
+ *         site would overrun a recorded refusal and a `block` site would drop
+ *         the first pageview of everyone who had already accepted.
+ *   `w` — hold the first pageview until the banner speaks. The banner reads
+ *         that cookie and calls `backlex.consent()` as its first act, so this
+ *         is an ordering fix, not a delay: the release is synchronous, inside
+ *         the same file. The timeout is a net, not the plan — a banner that is
+ *         switched off, boots twice, or throws would otherwise take the site's
+ *         analytics with it, and silent data loss is the worse failure.
+ *
+ * The hold is not spent on a denied attempt. With the common `block` posture
+ * the banner releases it into a denial, and the visitor who then presses
+ * Accept must still be counted on the page they LANDED on — the one page a
+ * consenting visit is certain to have. A visitor who never answers is never
+ * counted, which is the point.
+ *
+ * One knock-on, decided rather than overlooked: the `backlex.q` pre-init queue
+ * drains against the SEEDED map, so a custom event queued before this tag
+ * loaded is now gated by the operator's posture instead of firing
+ * unconditionally. The queue is deliberately NOT held the way the pageview is
+ * — a pageview describes the page the visitor is still on, so replaying it
+ * after consent is honest, while replaying a `backlex("view_product")` from
+ * thirty seconds ago is reporting a moment that has passed.
+ *
+ * Neither field is set on a plain `/script.js` install, which is unchanged.
+ *
  * ── Why this is a function rather than an IIFE ────────────────────────────
  * The tag manager serves ONE per-site file carrying both this tracker and the
  * container runtime, so the tracker has to be startable with configuration
@@ -93,6 +133,15 @@ window.__backlexTrackerInit = function (cfg) {
   var OPTIONAL = ["functional", "analytics", "marketing"];
   var grants = {};
 
+  // ...unless the server compiled in the operator's undecided posture, which
+  // it does on every site with a policy. Applied with backlex.consent's TOTAL
+  // rule, because the banner passes its own map through it moments later.
+  if (cfg && cfg.d) {
+    for (var gi = 0; gi < OPTIONAL.length; gi++) {
+      grants[OPTIONAL[gi]] = cfg.d[OPTIONAL[gi]] === true;
+    }
+  }
+
   // Two per-site answers the server compiles into the file, alongside the
   // consent seam rather than below it, because consentGranted() reads one of
   // them and is exported before the boot guards run.
@@ -103,6 +152,10 @@ window.__backlexTrackerInit = function (cfg) {
   // fallbacks are what a plain /script.js install has always assumed.
   var trackerCategory = cfg && cfg.t ? cfg.t : "analytics";
   var signals = cfg && cfg.g ? cfg.g : "tracker";
+
+  // Whether the first pageview waits for the banner to speak -- set only when
+  // the server concatenated one into this same file. See PRIOR_BLOCKING above.
+  var waiting = !!(cfg && cfg.w);
 
   // Do Not Track and Global Privacy Control, in ONE place.
   //
@@ -355,6 +408,16 @@ window.__backlexTrackerInit = function (cfg) {
     if (now !== lastUrl) pageview();
   }
 
+  // The pageview that may have been held. NOT marked done until it actually
+  // leaves: a block posture releases it into a denial, and a visitor who then
+  // accepts must still be counted on the page they landed on.
+  var firstDone = 0;
+  function firstPageview() {
+    if (firstDone || optedOut()) return;
+    firstDone = 1;
+    pageview();
+  }
+
   // -- SPA route changes ----------------------------------------------------
   // pushState and replaceState fire no event, so a single-page app would
   // otherwise report exactly one pageview per full load. Wrapping them is the
@@ -412,6 +475,9 @@ window.__backlexTrackerInit = function (cfg) {
     // did not recognise. typeof null is "object", so the guard above is what
     // keeps backlex.consent() from throwing on a customer's page.
     grants = next;
+    // The banner's first act is applyGrants(), and this is where a held
+    // pageview is released: the map is now an answer rather than a guess.
+    if (waiting) firstPageview();
   };
   if (queued && queued.length) {
     for (var i = 0; i < queued.length; i++) {
@@ -425,7 +491,11 @@ window.__backlexTrackerInit = function (cfg) {
 
   // The container runtime raises custom events through the same public handle,
   // so a backlex_event tag needs no second transport.
-  pageview();
+  //
+  // Held when a banner is coming; the timeout is the net for one that is
+  // switched off, boots twice, or throws. See PRIOR_BLOCKING above.
+  if (waiting) setTimeout(firstPageview, 0);
+  else firstPageview();
 };
 `;
 

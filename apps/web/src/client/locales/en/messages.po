@@ -9549,8 +9549,8 @@ msgid "it calls us"
 msgstr "it calls us"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
-msgstr "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+#~ msgid "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+#~ msgstr "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
 
 #: src/client/pages/sign-document.tsx
 msgid "It has already been completed."
@@ -9733,6 +9733,10 @@ msgstr "Kanban"
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "keep counting up forever"
 msgstr "keep counting up forever"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+msgstr "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
@@ -13904,6 +13908,10 @@ msgstr "Paste a real token from this issuer. Nothing is provisioned and no sessi
 msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
 msgstr "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
 
+#: src/client/admin/pages/observability/websites.tsx
+msgid "Paste as the first script in your head tag, and keep defer."
+msgstr "Paste as the first script in your head tag, and keep defer."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "paste from the provider"
@@ -13918,8 +13926,12 @@ msgid "Paste the endpoint above"
 msgstr "Paste the endpoint above"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Paste this once, before the closing head tag"
-msgstr "Paste this once, before the closing head tag"
+msgid "Paste this once, as the first script in your head tag"
+msgstr "Paste this once, as the first script in your head tag"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+#~ msgid "Paste this once, before the closing head tag"
+#~ msgstr "Paste this once, before the closing head tag"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"

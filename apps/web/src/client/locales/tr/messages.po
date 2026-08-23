@@ -9549,8 +9549,8 @@ msgid "it calls us"
 msgstr "bizi arar"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
-msgstr "Analytics etiketini de taşır; yani analytics snippet'ine eklenmez, onun yerine geçer."
+#~ msgid "It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+#~ msgstr "Analytics etiketini de taşır; yani analytics snippet'ine eklenmez, onun yerine geçer."
 
 #: src/client/pages/sign-document.tsx
 msgid "It has already been completed."
@@ -9733,6 +9733,10 @@ msgstr "Kanban"
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "keep counting up forever"
 msgstr "sürekli artmaya devam eder"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+msgstr "defer'i koruyun, async yapmayın. defer'li betikler belge sırasıyla çalışır; ilk sırada olmak, onay kararını sayfadaki diğer tüm defer'li etiketlerin önüne koyan şeydir. Analytics etiketini de taşır, bu yüzden analytics kod parçacığına eklenmez, onun yerine geçer."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
@@ -13904,6 +13908,10 @@ msgstr "Bu sağlayıcıdan gerçek bir token yapıştırın. Hiçbir hesap oluş
 msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
 msgstr "Fark alıp uygulayabileceğiniz bir anlık görüntü olarak saklamak için hazırlanmış bir şemayı (koleksiyonların JSON dizisi, örn. <0>backlex collections export-schema</0> çıktısı) yapıştırın."
 
+#: src/client/admin/pages/observability/websites.tsx
+msgid "Paste as the first script in your head tag, and keep defer."
+msgstr "head etiketinizdeki ilk betik olarak yapıştırın ve defer'i koruyun."
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "paste from the provider"
@@ -13918,8 +13926,12 @@ msgid "Paste the endpoint above"
 msgstr "Yukarıdaki uç noktayı yapıştırın"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Paste this once, before the closing head tag"
-msgstr "Bunu bir kez, kapanış head etiketinden önce yapıştırın"
+msgid "Paste this once, as the first script in your head tag"
+msgstr "Bunu bir kez, head etiketinizdeki ilk betik olarak yapıştırın"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+#~ msgid "Paste this once, before the closing head tag"
+#~ msgstr "Bunu bir kez, kapanış head etiketinden önce yapıştırın"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"

@@ -22,6 +22,7 @@ let db: any;
 let SITE = "";
 let EMPTY_SITE = "";
 let EMPTY_SITE2 = "";
+let CONSENT_SITE = "";
 let TENANT: string | null = null;
 
 const makeSite = async (name: string, domain: string): Promise<string> => {
@@ -48,6 +49,17 @@ beforeAll(async () => {
   // A SECOND bare site. One is enough to prove a bare site is served; two
   // are what prove their validators differ, which one cannot show.
   EMPTY_SITE2 = await makeSite("Quieter", "quieter.example");
+
+  // A site with a BANNER and no container — the shape that proves the tracker's
+  // prior-blocking fields ride on the policy rather than on the container.
+  CONSENT_SITE = await makeSite("Asking", "asking.example");
+  const { savePolicy } = await import("../src/server/services/consent");
+  await savePolicy(db, TENANT, CONSENT_SITE, {
+    enabled: true,
+    categoriesOffered: ["analytics", "marketing"],
+    undecidedBehaviour: "block",
+    trackerCategory: "analytics",
+  });
 
   const trigger = await createTrigger(db, TENANT, SITE, { name: "All pages", type: "pageview" });
   await createTag(
@@ -406,6 +418,15 @@ describe("the per-site script has two paths and one handler", () => {
     const snippet = installSnippet("https://admin.example", SITE);
     expect(snippet).toContain(`/api/site/${SITE}.js`);
     expect(snippet).not.toContain("/api/analytics/");
+    // `defer`, and never `async`. Deferred scripts execute in DOCUMENT ORDER,
+    // which is the whole reason "first script in head" is guidance worth
+    // giving: it puts the consent decision ahead of every other deferred tag
+    // on the page. Async scripts execute in COMPLETION ORDER — whichever
+    // finishes downloading first — so an async snippet would sometimes decide
+    // after the tags it exists to gate, and would do it intermittently, which
+    // is the shape of bug nobody reports. Not a style preference; a guarantee.
+    expect(snippet).toContain(" defer ");
+    expect(snippet).not.toContain("async");
     // And it is the ONE emitter — nothing else may rebuild the literal.
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
@@ -416,6 +437,54 @@ describe("the per-site script has two paths and one handler", () => {
         `${f} rebuilds the snippet: false`,
       );
     }
+  });
+
+  test("a policy holds the tracker's first pageview and seeds its grant map", async () => {
+    // The half the file ORDER never covered. tracker -> banner -> container
+    // gates the container because the container starts after the banner; it
+    // never gated the tracker, because the tracker FINISHES before it and its
+    // last line is a pageview. Measured on production: one collect POST before
+    // the visitor had chosen anything.
+    //
+    // Asserted on the SERVED body, because these two fields are the entire
+    // contract between the route and the tag — a tracker that grew the
+    // behaviour while the route stopped sending them would be silently back to
+    // the bug, with `consent-banner.test.ts` still green on hand-written cfg.
+    const js = await (await container(CONSENT_SITE)).text();
+    const init = js.slice(js.indexOf("__backlexTrackerInit("));
+    const cfg = JSON.parse(init.slice(init.indexOf("(") + 1, init.indexOf(");")));
+
+    expect(cfg.w).toBe(1);
+    // `block`, so every category the policy OFFERS starts denied. The tracker
+    // applies backlex.consent's total rule to whatever arrives, so a category
+    // the policy does not offer ends up denied too — which is exactly what the
+    // banner's own map does to it a moment later.
+    expect(cfg.d).toEqual({ analytics: false, marketing: false });
+
+    // And the banner really is in the same file to release it. Without this the
+    // two assertions above would pass on a file that holds forever.
+    expect(js).toContain("__backlexConsentBanner(");
+    expect(js.indexOf("__backlexTrackerInit(")).toBeLessThan(
+      js.indexOf("__backlexConsentBanner("),
+    );
+  });
+
+  test("a site with no policy is not held — nothing is coming to release it", async () => {
+    // The failure mode this fix could have introduced on every /script.js and
+    // every analytics-only site: a held pageview with no banner to release it
+    // is not prior blocking, it is silent data loss.
+    for (const id of [SITE, EMPTY_SITE]) {
+      const js = await (await container(id)).text();
+      const init = js.slice(js.indexOf("__backlexTrackerInit("));
+      const cfg = JSON.parse(init.slice(init.indexOf("(") + 1, init.indexOf(");")));
+      expect(`${id} holds: ${cfg.w !== undefined || cfg.d !== undefined}`).toBe(
+        `${id} holds: false`,
+      );
+    }
+
+    // Including the legacy snippet, which starts the tracker with `null`.
+    const legacy = await (await h.fetch("/api/analytics/script.js")).text();
+    expect(legacy).toContain("__backlexTrackerInit(null)");
   });
 
   test("two sites never share a validator, even with nothing configured", async () => {

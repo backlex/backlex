@@ -51,6 +51,38 @@ on. Register the site and it carries the analytics tag; switch a cookie banner
 on and the banner appears inside it; publish a container and the tag runtime
 joins them. Nothing to re-paste, ever.
 
+### Where it goes, and why the attribute matters
+
+**First script in `<head>`. Keep `defer`. Never `async`.**
+
+Those three are one rule, not three preferences, and the reason is how the
+browser orders execution:
+
+- **`defer` scripts run in DOCUMENT ORDER**, after the HTML is parsed and
+  before `DOMContentLoaded`. So being first in `<head>` means this file
+  executes before every other deferred script on the page — which is what lets
+  a consent decision exist before anything else deferred gets to run.
+- **`async` scripts run in COMPLETION ORDER** — whichever finishes downloading
+  first. There is no ordering to rely on at all, so a banner shipped `async`
+  would sometimes decide after the tags it is supposed to gate. That is the
+  failure mode where an operator believes they are compliant because a banner
+  appeared.
+- Inside the file, the server fixes the order: tracker, then banner, then
+  container. That is why it is ONE file rather than three — three separate tags
+  could not guarantee it.
+
+What this does and does not reach:
+
+| | |
+|---|---|
+| Tags fired by **your container** | Gated. The consent map is written before the container arms its triggers. |
+| **backlex's own analytics tag** | Gated. Its first pageview waits for the banner on any site running a policy. |
+| A vendor tag you pasted **directly into your HTML** | **Not gated.** It is not ours to hold. Move it into the tag manager, or gate it yourself on `window.__backlexConsentGranted("marketing")`. |
+
+There is no auto-blocking of foreign `<script>` tags — backlex does not rewrite
+your markup, and a CMP that claims to do so is rewriting it. Anything you want
+gated goes through the container.
+
 It also carries only what you use. With no published container the file has no
 tag runtime in it at all — so `window.__backlexTM` is genuinely absent until
 your first publish, which is expected rather than a bug.

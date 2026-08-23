@@ -408,12 +408,14 @@ export function TagManagerPage({
         <Card className="w-full space-y-4 p-4">
           <div>
             <div className="mb-1 text-sm font-medium">
-              <Trans>Paste this once, before the closing head tag</Trans>
+              <Trans>Paste this once, as the first script in your head tag</Trans>
             </div>
             <p className="mb-2 text-xs text-muted-foreground">
               <Trans>
-                It carries the analytics tag as well, so it replaces the analytics snippet rather
-                than joining it.
+                Keep defer, and do not change it to async. Deferred scripts run in document
+                order, so being first is what puts the consent decision ahead of every other
+                deferred tag on the page. It carries the analytics tag as well, so it replaces
+                the analytics snippet rather than joining it.
               </Trans>
             </p>
             <ScrollArea className="w-full rounded border" viewportClassName="max-h-32">

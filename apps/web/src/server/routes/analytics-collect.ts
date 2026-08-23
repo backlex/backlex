@@ -130,6 +130,38 @@ const FP_T = weakHash(TRACKER_JS);
 const FP_TB = weakHash(TRACKER_JS + CONSENT_BANNER_JS);
 const FP_TR = weakHash(TRACKER_JS + TAG_RUNTIME_JS);
 const FP_TBR = weakHash(TRACKER_JS + CONSENT_BANNER_JS + TAG_RUNTIME_JS);
+/**
+ * The grant map a visitor who has not answered starts the page with.
+ *
+ * The banner computes the same thing in the browser and overrides this a
+ * moment later. This copy exists because of the window BEFORE it does: the
+ * tracker runs to its last line — its first pageview — while the banner is
+ * still further down the same file, so without a seed it answered its own
+ * consent question from the pre-policy default and sent.
+ *
+ * Deliberately NOT signal-aware. `__backlexSignalsRefuseAll` reads GPC and Do
+ * Not Track off the visitor's own browser, which a server composing a file
+ * cached for fifteen minutes cannot see and must not try to. It costs nothing:
+ * the tracker applies the signals itself in `optedOut()`, and every
+ * third-party tag is gated by the banner's map, which is signal-aware.
+ *
+ * Only the categories the policy OFFERS are named. The tracker applies
+ * `backlex.consent()`'s total rule to whatever arrives, so a category the
+ * policy does not offer ends up denied — which is precisely what the banner's
+ * own map does to it a moment later.
+ */
+const undecidedGrants = (cfg: {
+  categories?: unknown;
+  undecided?: unknown;
+}): Record<string, boolean> => {
+  const allow = cfg.undecided === "allow";
+  const out: Record<string, boolean> = {};
+  for (const cat of Array.isArray(cfg.categories) ? cfg.categories : []) {
+    if (typeof cat === "string") out[cat] = allow;
+  }
+  return out;
+};
+
 const bodyFingerprint = (published: boolean, consent: boolean): string =>
   published ? (consent ? FP_TBR : FP_TR) : consent ? FP_TB : FP_T;
 
@@ -310,6 +342,14 @@ export const perSiteScriptHandler = async (c: Context<AppBindings>) => {
     // and anyone holding one read it out of the `<script>` tag on the page.
     // A registered site whose file is empty costs more.
 
+    // Parsed once, because two things now read it: the banner takes the whole
+    // document, and the tracker takes the undecided posture out of it. Keeping
+    // them textually apart at the cost of parsing the same string twice per
+    // cache miss is not a trade worth making.
+    const consentCfg = consent
+      ? (JSON.parse(consent.body) as { categories?: unknown; undecided?: unknown })
+      : null;
+
     const body = [
       TRACKER_JS,
       // Only when there is a policy to show. A site with none — or one that
@@ -341,15 +381,27 @@ export const perSiteScriptHandler = async (c: Context<AppBindings>) => {
       // A script ATTRIBUTE could carry neither: `document.currentScript` is
       // null for an injected script, which is the shape of the snippet
       // operators paste, so the tracker's `self` is null on this whole path.
+      //
+      // `w` and `d` — prior blocking for backlex's OWN tag, which the ordering
+      // above never covered. The container is gated because it starts after
+      // the banner; the tracker is not, because it FINISHES before it, and its
+      // last line is a pageview. `d` seeds the grant map with the operator's
+      // undecided posture so the answer is theirs rather than the pre-policy
+      // default, and `w` holds that first pageview until the banner speaks —
+      // needed because a returning visitor's decision lives in a cookie the
+      // tracker does not read, so seeding alone would lose their first
+      // pageview rather than send an unwanted one. Both are set only when a
+      // banner is in this file; a plain /script.js install sees neither.
       `;__backlexTrackerInit(${safeJson({
         s: siteId,
         e: endpoint,
         t: tagConsent?.tracker,
         g: tagConsent?.signals,
+        ...(consentCfg ? { w: 1, d: undecidedGrants(consentCfg) } : {}),
       })});`,
       consent
         ? `;__backlexConsentBanner(${safeJson({
-            cfg: JSON.parse(consent.body),
+            cfg: consentCfg,
             // Bare hex. The public route serves this hash inside an ETag,
             // where it is QUOTED — and `SHA256_HEX_RE` rejects the quotes,
             // which would silently downgrade every record this banner

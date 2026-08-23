@@ -126,6 +126,28 @@ const bootBanner = (cfg: Record<string, unknown> = CFG) => {
   });
 };
 
+/** Let one macrotask run, which is where the tracker's timeout net lives. */
+const await0 = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+/**
+ * Event names the TRACKER put on the wire, split from the record the BANNER
+ * posts through the same `sendBeacon`.
+ *
+ * Splitting by URL rather than by body shape is the whole point: a stub that
+ * counted both would report a HELD pageview as sent the instant the visitor
+ * pressed a button, which is the one thing these specs exist to distinguish.
+ */
+const captureCollect = (): string[] => {
+  const sent: string[] = [];
+  w.navigator.sendBeacon = (u: string, b: any) => {
+    const body = JSON.parse(String(b?.__text ?? b));
+    if (String(u).endsWith("/collect")) sent.push(String(body.n));
+    else posted.push(body);
+    return true;
+  };
+  return sent;
+};
+
 const shadow = (): ShadowRoot | null =>
   (document.querySelector("[data-backlex-consent]") as any)?.shadowRoot ?? null;
 
@@ -271,6 +293,153 @@ describe("prior blocking", () => {
       ],
     });
     expect(fired).toEqual([]);
+  });
+
+  test("backlex's OWN tag does not send before a decision either", () => {
+    // The half the ordering never covered, found by watching production on the
+    // wire rather than by reading this file: the container is gated because it
+    // STARTS after the banner, but the tracker FINISHES before it, and its last
+    // line is a pageview. So on every site running a banner, one collect POST
+    // went out before the visitor had chosen anything — and
+    // `__backlexConsentGranted("analytics")` answered false a moment later,
+    // about the very request that had already left.
+    //
+    // `w` holds that pageview and `d` seeds the map; the server sets both only
+    // when it concatenates a banner into the same file.
+    const sent = captureCollect();
+
+    new Function(TRACKER_JS)();
+    w.__backlexTrackerInit({
+      s: "site-1",
+      e: "https://api.example/collect",
+      w: 1,
+      d: { functional: false, analytics: false, marketing: false },
+    });
+    expect(sent).toEqual([]);
+
+    // The banner releases it — and with `undecided: "block"` the answer is
+    // still no, so nothing is sent at all until the visitor says otherwise.
+    bootBanner();
+    expect(sent).toEqual([]);
+
+    // Released by the decision, not spent on the denial before it: the page
+    // they LANDED on is the one page a consenting visit is certain to have.
+    buttonNamed("Accept all")?.click();
+    expect(sent).toEqual(["page_view"]);
+    expect(posted.length).toBe(1);
+
+    // And exactly once. Every later consent call reaches the same release.
+    w.backlex.consent("granted");
+    w.backlex.consent("denied");
+    w.backlex.consent("granted");
+    expect(sent).toEqual(["page_view"]);
+  });
+
+  test("a returning visitor's first pageview is not the price of the fix", () => {
+    // Seeding the map alone would have been the cheaper change and the wrong
+    // one. A visitor who accepted last week carries that answer in a cookie
+    // this tracker does not read, so a seeded "block" would silently drop the
+    // first pageview of every returning visitor — one wrong silence traded for
+    // one wrong send. The hold is what makes the banner's cookie read the thing
+    // that decides.
+    const sent = captureCollect();
+
+    // Their answer, as the cookie the previous visit wrote.
+    bootBanner();
+    buttonNamed("Accept all")?.click();
+    reset(true);
+    posted = [];
+
+    new Function(TRACKER_JS)();
+    w.__backlexTrackerInit({
+      s: "site-1",
+      e: "https://api.example/collect",
+      w: 1,
+      d: { functional: false, analytics: false, marketing: false },
+    });
+    expect(sent).toEqual([]);
+
+    bootBanner();
+    expect(sent).toEqual(["page_view"]);
+    // And it claims the consent they actually gave, which is the field an
+    // operator points at in an audit.
+    expect(w.__backlexConsentGranted("analytics")).toBe(true);
+  });
+
+  test("an allow posture does not overrun a returning visitor's refusal", () => {
+    // The case that makes the HOLD load-bearing rather than decorative.
+    //
+    // With `undecided: "allow"` the seeded map grants everything, so a tracker
+    // that sent immediately would send for a visitor whose cookie says they
+    // refused analytics last week — the seed being a guess about someone who
+    // has already answered. Only the banner reads that cookie, so only the
+    // banner can be the thing that decides, and the pageview has to wait for
+    // it. Seeding without holding would have fixed the undecided case and left
+    // this one, which is the worse of the two: overriding a recorded refusal.
+    const sent = captureCollect();
+
+    const ALLOW = { ...CFG, undecided: "allow" };
+
+    // Last week: they opened the banner and turned everything off.
+    bootBanner(ALLOW);
+    buttonNamed("Reject all")?.click();
+    reset(true);
+
+    new Function(TRACKER_JS)();
+    w.__backlexTrackerInit({
+      s: "site-1",
+      e: "https://api.example/collect",
+      w: 1,
+      d: { functional: true, analytics: true, marketing: true },
+    });
+    expect(sent).toEqual([]);
+
+    bootBanner(ALLOW);
+    expect(sent).toEqual([]);
+    expect(w.__backlexConsentGranted("analytics")).toBe(false);
+  });
+
+  test("nothing holds a pageview that no banner is coming to release", async () => {
+    // Two ways this fix could have broken every site that does not run a
+    // banner: holding unconditionally, or holding on a banner that is switched
+    // off, boots twice, or throws. The first is what `w` guards; the second is
+    // what the timeout net catches, and a held pageview that is never released
+    // is silent data loss — a worse failure than the one being fixed.
+    const sent = captureCollect();
+
+    // The plain /script.js install: no policy in the file, nothing to wait for.
+    new Function(TRACKER_JS)();
+    w.__backlexTrackerInit({ s: "site-1", e: "https://api.example/collect" });
+    expect(sent).toEqual(["page_view"]);
+
+    // A banner promised and never delivered.
+    reset();
+    sent.length = 0;
+    new Function(TRACKER_JS)();
+    w.__backlexTrackerInit({
+      s: "site-1",
+      e: "https://api.example/collect",
+      w: 1,
+      d: { functional: false, analytics: false, marketing: false },
+    });
+    expect(sent).toEqual([]);
+    // `d` says block, so the net releases it into a denial rather than into a
+    // send — the operator's own posture, applied without anyone to ask.
+    await await0();
+    expect(sent).toEqual([]);
+
+    reset();
+    sent.length = 0;
+    new Function(TRACKER_JS)();
+    w.__backlexTrackerInit({
+      s: "site-1",
+      e: "https://api.example/collect",
+      w: 1,
+      d: { functional: true, analytics: true, marketing: true },
+    });
+    expect(sent).toEqual([]);
+    await await0();
+    expect(sent).toEqual(["page_view"]);
   });
 });
 

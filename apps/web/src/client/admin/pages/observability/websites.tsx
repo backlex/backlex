@@ -139,6 +139,18 @@ export function WebsitesPage({ pushToast }: { pushToast: PushToast }) {
                 </div>
               </div>
 
+              {/* Placement is not a nicety here. Deferred scripts execute in
+                  DOCUMENT ORDER, so first-in-head is what puts the consent
+                  decision ahead of every other deferred tag on the page — and
+                  `async` would forfeit it outright, because async scripts
+                  execute in completion order. This card is where a fresh site
+                  copies from, and it used to say nothing at all. */}
+              <p className="text-xs text-muted-foreground">
+                <Trans>
+                  Paste as the first script in your head tag, and keep defer.
+                </Trans>
+              </p>
+
               {/* The snippet is long and full of punctuation — the classic
                   mobile overflow. Its own scroll container keeps the card and
                   the page from ever scrolling sideways. */}

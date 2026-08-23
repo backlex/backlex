@@ -390,6 +390,49 @@ already says no.
 The cost is that a policy edit reaches visitors on the same fifteen-minute
 cache window as a container publish, rather than instantly.
 
+### backlex's own tag is held too
+
+The file order gates the CONTAINER because the container *starts* after the
+banner. It did not, for a long time, gate the analytics tracker — because the
+tracker *finishes* before the banner: the last thing it does on boot is send a
+pageview. Measured on production, that was one `POST /api/analytics/collect`
+before the visitor had chosen anything, on every site running a policy.
+
+Two things fix it, and both are needed:
+
+- **The undecided posture is compiled in.** The tracker starts with the grant
+  map your policy configured instead of the pre-policy default, so its answer
+  is yours from its first synchronous call.
+- **The first pageview waits for the banner.** The posture alone is a guess
+  about someone who may have already answered: a returning visitor's decision
+  lives in the `blx_consent` cookie, and only the banner reads it. Waiting is
+  what stops an `allow` posture from overrunning a recorded refusal, and what
+  stops a `block` posture from silently dropping the first pageview of everyone
+  who had already accepted.
+
+The wait is an ordering fix, not a delay — the banner is in the same file and
+calls `backlex.consent()` before it renders anything, so the release is
+synchronous. It is also not *spent* on a refusal: with the usual `block`
+posture the banner releases the held pageview into a denial, and a visitor who
+then presses **Accept** is still counted on the page they landed on. A visitor
+who never answers is never counted, which is the point.
+
+Sites with no policy are untouched: the plain `/api/analytics/script.js`
+install receives neither field and behaves exactly as before.
+
+### Where the script tag goes
+
+**First script in `<head>`, and keep `defer`.** `defer` scripts execute in
+document order, so first-in-head is what puts the consent decision ahead of
+every other deferred script on the page. `async` would forfeit that — async
+scripts execute in completion order, so there is no ordering to rely on.
+
+What it reaches, and what it does not, is in
+[the tag manager guide](/tag-manager/#where-it-goes-and-why-the-attribute-matters):
+tags fired by your container are gated, backlex's own tag is gated, and a
+vendor script you pasted directly into your own HTML is **not** — backlex does
+not rewrite your markup. Move those into the container.
+
 ### What it stores
 
 One first-party cookie on **your** domain, `blx_consent`, holding a random

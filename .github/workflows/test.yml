@@ -267,6 +267,110 @@ jobs:
           PORT: 8787
         run: bun apps/web/tests/smoke/orchestrate.ts
 
+  # ── Supply chain ───────────────────────────────────────────────────────
+  #
+  # Advisory on purpose, and it will stay advisory until the backlog is at
+  # zero. `bun audit` currently reports 63 advisories (22 high) — mostly `ws`
+  # (memory-exhaustion DoS, reached via @cloudflare/vite-plugin, ably,
+  # happy-dom, wrangler>miniflare and @libsql/client) and `yaml` (stack
+  # overflow on deeply nested collections, reached from eight places). Failing
+  # the build on a backlog nobody can clear in one PR just teaches people to
+  # ignore a red X. What this buys today is that the number is VISIBLE on every
+  # run, so a regression shows up as a jump rather than as nothing at all.
+  #
+  # To make it a gate: get the count to zero, then drop the `|| true` from the
+  # audit step. Note that `bun audit fix` cannot do that part for us right now —
+  # see below.
+  #
+  # `bun dedupe --check` is NOT here, and neither is `bun audit fix`. Both refuse
+  # to run against this workspace on Bun 1.4:
+  #
+  #   error: bun.lock does not match package.json, nothing to fix
+  #   note: run 'bun install' first
+  #
+  # It is not our drift, and the message is misleading. `bun install
+  # --frozen-lockfile` succeeds, `bun install` reports "no changes", and a
+  # field-by-field diff of every workspace entry in bun.lock against its
+  # package.json finds nothing but key ORDER. The decisive test: copy the 20
+  # manifests into an empty directory, let Bun 1.4 resolve a completely fresh
+  # lockfile with `bun install --lockfile-only`, and it rejects the lockfile it
+  # just wrote. It still rejects it with the workspace list cut down to
+  # `packages/*` alone.
+  #
+  # Ruled out along the way, so nobody re-walks it: the all-zero
+  # `bun pm hash-print` (that is normal for a text lockfile — a scratch project
+  # shows zeros too and dedupe works there), the root `version` field,
+  # `resolutions` vs `overrides`, dependency key ordering, workspace count,
+  # `lockfileVersion` 1 vs 2 (a hand-downgraded v1 works fine in a small
+  # project), and non-registry specifiers (there are none).
+  #
+  # So the 63 advisories cannot be cleared with `bun audit fix` today; they need
+  # either a fixed Bun or manual `overrides`. Re-test after a Bun upgrade with:
+  #   bun audit fix --dry-run
+  supply-chain:
+    runs-on: ubuntu-latest
+    # Least privilege, scoped to this job only. This job installs third-party
+    # packages and runs their lifecycle scripts, and it needs nothing but the
+    # checkout — so it should not inherit whatever the repo default token can
+    # do. (`test.yml` has no workflow-level `permissions:` block, unlike every
+    # publish workflow here. Adding one is the right fix but it would change
+    # what `dorny/paths-filter` and the artifact steps can do on a PR, so it
+    # wants its own change and its own CI run.)
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+
+      - name: Cache bun install cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      # Same 3-attempt loop as the other jobs — installs flake, and an
+      # advisory job that goes red for an unrelated network blip is an
+      # advisory job people learn to ignore.
+      - name: Install dependencies
+        run: |
+          n=0
+          until bun install --frozen-lockfile; do
+            n=$((n+1)); [ "$n" -ge 3 ] && { echo "bun install failed after $n attempts"; exit 1; }
+            echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
+          done
+
+      - name: Audit
+        run: |
+          {
+            echo "## bun audit"
+            echo '```'
+            bun audit 2>&1 | tail -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The inventory is committed; this reports drift without gating on it,
+      # because `bun pm licenses` lists what is INSTALLED and a Linux runner
+      # resolves a different set of optional platform packages than the Mac it
+      # was generated on. See the script header.
+      - name: Third-party licences
+        run: |
+          bun scripts/gen-third-party-licenses.ts
+          {
+            echo "## THIRD-PARTY-LICENSES.md"
+            if git diff --quiet -- THIRD-PARTY-LICENSES.md; then
+              echo "Up to date."
+            else
+              echo "Out of date on this runner — regenerate with \`bun scripts/gen-third-party-licenses.ts\` and commit, or ignore if the only diff is host-specific optional packages."
+              echo '```diff'
+              git diff -- THIRD-PARTY-LICENSES.md | head -60
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # ── The pre-deploy gate ────────────────────────────────────────────────
   #
   # Cloudflare Workers Builds deploys on push to `main`, and this workflow runs

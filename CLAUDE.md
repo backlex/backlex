@@ -150,12 +150,17 @@ Bun workspaces — every package is source-consumed (no build step between them)
 
 The admin's API client (`client/lib/api.ts`) defaults to relative `/api/...` paths, so same-origin deploys work without `VITE_API_URL`. Set `VITE_API_URL` only for cross-origin setups.
 
-**Vite runs on Bun, not Node.** `dev`, `build`, `preview` and `deploy` all invoke it as `bunx --bun vite …` (the same form `apps/site` / `apps/docs` use for Astro), so Vite + miniflare/workerd + HMR run under the Bun runtime. The dev server needs Bun's `ws` client `'upgrade'` event, which only became usable in the 1.4.0 canary line — on an older Bun it hangs forever at `⎔ Establishing remote connection...`, so check `bun --revision` first if you see that. The production Worker bundle is **byte-identical** under either runtime (all 279 files); only one client chunk (`preload-helper`) differs, and only in minifier variable naming, which cascades content hashes across the SPA chunks. Note that **`ps` reports the process as `node`** because Bun spoofs `argv[0]`; the honest check is `lsof -p <pid> | awk '$4=="txt"'`, which shows the real `bun` binary.
+**`build` and `deploy` run Vite on Bun (`bunx --bun vite …`); `dev` and `preview` run it on Node (`bunx vite`), and that split is deliberate.** The build side is the same form `apps/site` / `apps/docs` use for Astro. The dev side cannot be, because the dev server boots miniflare in-process and miniflare's transport into workerd is an undici `Pool` — and Bun answers the bare `undici` specifier with a **built-in shim that implements only `request()`**, so `#assembleAndUpdateConfig` dies on `this.#runtimeDispatcher?.close is not a function` before the server ever listens.
+
+This used to be worked around by a `--preload` plugin (`apps/web/scripts/real-undici.ts`) that re-pointed the specifier at miniflare's own copy. **Bun 1.4 closed that door**: `undici` is now resolved as a builtin *before* plugins get a say, so the `onResolve` hook never fires at all — verified directly, the callback does not run and `Pool.prototype.close` stays `undefined` with the preload active. The preload was deleted rather than left in place looking load-bearing. If a future Bun either ships a complete `undici` or restores plugin precedence over builtins, `dev` can move back; the check is one line: `bun -e 'const u=await import("undici");console.log(typeof u.Pool?.prototype?.close)'` should print `function`.
+
+The production Worker bundle is **byte-identical** under either runtime (all 279 files); only one client chunk (`preload-helper`) differs, and only in minifier variable naming, which cascades content hashes across the SPA chunks. Note that **`ps` reports the process as `node`** because Bun spoofs `argv[0]`; the honest check is `lsof -p <pid> | awk '$4=="txt"'`, which shows the real `bun` binary.
 
 **What deliberately stays on Node**, so nobody "finishes the job" and breaks it:
 
 | Script | Why |
 |---|---|
+| `dev` / `preview` (`vite`) | Bun's built-in `undici` shim has no `Pool.prototype.close`/`dispatch`, which is exactly what miniflare's workerd transport calls — the dev server dies at startup. See the paragraph above. |
 | `i18n:extract` (`lingui`) | Hangs indefinitely under `--bun` (no output at all). |
 | `astro check` | Imports the TypeScript compiler API, which 7.0 shipped without — so `apps/docs` / `apps/site` stay on `typescript` 5.9.3. |
 | `wrangler deploy` | Works under `--bun` for `--version`, but a real deploy was never exercised; no upside, since CF Builds runs it on its own runner. |

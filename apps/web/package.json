@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --preload ./scripts/real-undici.ts ./node_modules/.bin/vite",
+    "dev": "bunx vite",
     "dev:bun": "bun run --hot src/server/entries/bun.ts",
     "build": "bun scripts/gen-openapi-static.ts && bunx --bun vite build",
     "gen:openapi-static": "bun scripts/gen-openapi-static.ts",
     "i18n:extract": "lingui extract",
-    "preview": "bun --preload ./scripts/real-undici.ts ./node_modules/.bin/vite preview",
+    "preview": "bunx vite preview",
     "deploy": "bun scripts/gen-openapi-static.ts && bunx --bun vite build && wrangler deploy",
     "typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.server.json --checkers 2",
     "test": "bun test --timeout 30000 --parallel=4 --no-isolate --timings=../../.github/test-timings.json tests/"

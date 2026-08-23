@@ -6,7 +6,7 @@ description: Semantic (vector) search over your collections — pgvector on Post
 Backlex can embed your records and run semantic (vector) search over them. Mark
 a collection vectorizable, and every write auto-embeds the chosen fields and
 stores the vector; queries embed the search text and run approximate
-nearest-neighbour (ANN) search. The same vectors back the [Ask AI](/ask-ai)
+nearest-neighbour (ANN) search. The same vectors back the [Ask AI](/docs/ask-ai)
 page's `vector.search` tool.
 
 Two things have to be in place: a **vector store** (where vectors live) and an
@@ -65,7 +65,7 @@ the same database as your rows.
 > On **backlex.cloud** this is automatic: every project is D1, and provisioning
 > creates and binds a per-project Vectorize index for you. Managed AI is
 > metered + capped per plan; Free projects bring their own model over
-> [MCP](/mcp) instead. Self-hosters configure the pieces below.
+> [MCP](/docs/mcp) instead. Self-hosters configure the pieces below.
 
 ## Enable vectors on a self-hosted D1 / SQLite deploy
 
@@ -214,7 +214,7 @@ text/longtext field in the Add/Edit field dialog.
 
 Rows written before the toggle are **not** embedded automatically (each row is
 one embedding-provider call, so backfill is a deliberate action — unlike the
-[full-text index](/full-text-search), which auto-backfills). Run it once from
+[full-text index](/docs/full-text-search), which auto-backfills). Run it once from
 the Settings card's **Embed all rows** button, or:
 
 ```bash
@@ -299,12 +299,12 @@ the processed/skipped counts.
 
 ## Hybrid search
 
-Vector (semantic) search and [full-text](/full-text-search) (keyword) search are
+Vector (semantic) search and [full-text](/docs/full-text-search) (keyword) search are
 complementary — embeddings capture meaning, the keyword index captures exact
 terms. `POST /api/items/{slug}/search` with `mode: "hybrid"` runs both and fuses
 them with Reciprocal Rank Fusion, returning whole rows with the caller's read
 permission and tenant scope enforced. See
-[Full-text & hybrid search](/full-text-search) for the endpoint, RRF details,
+[Full-text & hybrid search](/docs/full-text-search) for the endpoint, RRF details,
 and the `fts` / `searchable` collection flags.
 
 ## Bring your own vector database

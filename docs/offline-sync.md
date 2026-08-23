@@ -141,7 +141,7 @@ tasks.stop();               // stop live updates
   (`$user.id`, a relation hop), the client doesn't guess — it triggers a pull.
 - **Offline writes** apply to the local store immediately and enqueue. `create`
   uses a temporary `tmp_…` id; on flush, the server-assigned row replaces it.
-- **Flush** sends the queue through the [batch endpoint](/querying/) in one
+- **Flush** sends the queue through the [batch endpoint](/docs/querying/) in one
   request and reconciles results; unconfirmed ops stay queued to retry. It runs
   automatically on `create`/`update`/`delete` when online and on the browser
   `online` event.

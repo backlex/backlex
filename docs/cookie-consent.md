@@ -40,7 +40,7 @@ is saved. Not "recommended" — the column is `NOT NULL` with no `DEFAULT`, the
 service rejects a first save that omits either, and every surface (REST, SDK,
 GraphQL, MCP, CLI) refuses in the same terms.
 
-That is deliberate, and it is the same reasoning [captcha](/api-keys-and-email/)
+That is deliberate, and it is the same reasoning [captcha](/docs/api-keys-and-email/)
 uses for its `onError` setting: when both answers are correct somewhere and
 wrong somewhere else, a default is a position nobody chose, applied silently.
 
@@ -266,7 +266,7 @@ fails loudly instead of producing a category nothing gates on.
 `wording` is stored on the policy and served from it. The page never supplies
 it.
 
-This is the principle [e-signature](/e-signature/) states for signature consent,
+This is the principle [e-signature](/docs/e-signature/) states for signature consent,
 applied here: if the browser supplies the text, the person being held to the
 record is the one choosing what the evidence says they agreed to.
 
@@ -406,7 +406,7 @@ naming a document nobody can produce. The policy row is configuration; the
 archive and the records are evidence. Deleting the **site** takes all three,
 because that removes the subject the evidence is about.
 
-Recorded consent is removed through [erasure](/erasure/) with
+Recorded consent is removed through [erasure](/docs/erasure/) with
 `subject.type = "consent_id"`, or by the visitor themselves through the banner's
 "forget me" control. An `email` or `app_user` erasure request will **not** reach
 it: a consent record carries no address and no account, and the only handle is
@@ -493,7 +493,7 @@ every other deferred script on the page. `async` would forfeit that — async
 scripts execute in completion order, so there is no ordering to rely on.
 
 What it reaches, and what it does not, is in
-[the tag manager guide](/tag-manager/#where-it-goes-and-why-the-attribute-matters):
+[the tag manager guide](/docs/tag-manager/#where-it-goes-and-why-the-attribute-matters):
 tags fired by your container are gated, backlex's own tag is gated, and a
 vendor script you pasted directly into your own HTML is **not** — backlex does
 not rewrite your markup. Move those into the container.

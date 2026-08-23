@@ -101,7 +101,7 @@ Each row in `permissions` binds a role to a (collection, action) pair:
 
 - `collection: "*"` matches every collection.
 - `action`: one of `read | create | update | delete | publish`. `publish` gates
-  the publish/unpublish/schedule endpoint on [versioned collections](/draft-publish/)
+  the publish/unpublish/schedule endpoint on [versioned collections](/docs/draft-publish/)
   and lets a caller see drafts; it's separate from `update` so editors can draft
   without going live.
 - `condition: null` → no row-level filter (full access).

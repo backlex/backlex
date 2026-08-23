@@ -4,8 +4,8 @@ description: SMS (Twilio / Amazon SNS / NetGSM / İleti Merkezi) with per-worksp
 ---
 
 Send SMS text messages to your users' phones. SMS uses the **same adapter +
-per-workspace config model as [push](/push-messaging/) and
-[email](/api-keys-and-email/)** — pick a provider, store its credentials
+per-workspace config model as [push](/docs/push-messaging/) and
+[email](/docs/api-keys-and-email/)** — pick a provider, store its credentials
 (encrypted at rest), and send.
 
 ## Providers
@@ -126,11 +126,11 @@ POST /api/messaging/sms   { "userId": "u_123", "body": "Your code is 4821" }
 ### From the MCP server
 
 The `messaging.send_sms` tool sends to one user's registered numbers — see the
-[MCP tool reference](/mcp/).
+[MCP tool reference](/docs/mcp/).
 
 ### From a flow
 
-The [`sms` flow operation](/flows/#who-an-sms-op-texts) turns any trigger into a
+The [`sms` flow operation](/docs/flows/#who-an-sms-op-texts) turns any trigger into a
 text message — the reason it exists is the reminder pattern, where a row landing
 in a collection should text the person named on it:
 

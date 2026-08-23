@@ -9,14 +9,14 @@ underlying data changes. You get the initial page, then a fresh array on every
 relevant change. No manual event wiring, no stale data, no hand-written
 "on created insert, on deleted splice" reducer.
 
-It builds on [realtime](/realtime): Backlex already streams permission-filtered
+It builds on [realtime](/docs/realtime): Backlex already streams permission-filtered
 per-row events over `items:<slug>` SSE. A reactive query layers query-level
 maintenance on top of that stream — entirely in the client, so the server stays
 a stateless event publisher and live queries ride on **whatever realtime
 transport the deployment provides** (in-process SSE on Bun / Node / Deno,
 Durable Objects on Cloudflare, or Redis Streams on stateless serverless), with
 no per-subscription server state — so they work on any of Backlex's supported
-[deploy targets](/deployment).
+[deploy targets](/docs/deployment).
 
 ## SDK
 
@@ -36,7 +36,7 @@ stop();
 ```
 
 `liveQuery(slug, opts, onResult, onError?)` takes the same `opts` as
-[`list()`](/querying) (`filter`, `sort`, `fields`, `limit`, `expand`, `q`,
+[`list()`](/docs/querying) (`filter`, `sort`, `fields`, `limit`, `expand`, `q`,
 `locale`, `status`). `onResult` receives a **new array** each time (safe to set
 straight into state). It returns an unsubscribe function.
 
@@ -71,7 +71,7 @@ the engine maintains the array **incrementally** in JS:
 - **deleted** → removed.
 
 Most changes need **zero extra round-trips**. The client-side matcher mirrors the
-[permission DSL](/permissions) operators, so "matches the filter" means the same
+[permission DSL](/docs/permissions) operators, so "matches the filter" means the same
 thing it does server-side.
 
 ### Server-side narrowing + transitions
@@ -115,7 +115,7 @@ signals over Ably**, which the SDK hydrates back into ordinary events by reading
 the changed rows through REST — with your filter applied, so the `enter` /
 `update` / `leave` answers come out the same. `liveQuery` is unchanged: it
 probes the transport once and adapts. See
-[Signal-only data plane](/realtime#signal-only-data-plane-signalitemsslug) for
+[Signal-only data plane](/docs/realtime#signal-only-data-plane-signalitemsslug) for
 the mechanics, the cost argument, and the one thing it trades away (subscribers
 observe change *timing*, so the plane is gated to unconditional readers).
 
@@ -133,7 +133,7 @@ removal rather than a row.
 
 The admin's collection item list is itself a reactive query: a **Live** badge
 appears while the realtime channel is connected, and the table refreshes as rows
-change — from another tab, another admin, the SDK, or a [flow](/flows).
+change — from another tab, another admin, the SDK, or a [flow](/docs/flows).
 
 ## Not covered
 

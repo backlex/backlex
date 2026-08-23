@@ -14,7 +14,7 @@ backs the GraphQL resolver.
 | Param    | Type                              | Default                                 | What it does                                                                 |
 |----------|-----------------------------------|-----------------------------------------|------------------------------------------------------------------------------|
 | `filter` | JSON-encoded DSL condition        | `null`                                  | Row predicate; AND'd with the role's permission `whereSql`                   |
-| `q`      | string                            | none                                    | Free-text search: `_contains` across every readable text/longtext field — or, on a [full-text-search](/full-text-search) collection, a token-precise keyword-index filter |
+| `q`      | string                            | none                                    | Free-text search: `_contains` across every readable text/longtext field — or, on a [full-text-search](/docs/full-text-search) collection, a token-precise keyword-index filter |
 | `sort`   | comma-separated field list        | collection `default_sort`, else `-created_at` | `-` prefix = `DESC`; multi-column                                            |
 | `fields` | comma-separated field list        | all readable                            | SQL-level projection; system columns always re-added                         |
 | `expand` | comma-separated relation field list | none                                  | Inline-expand each named relation: a `relation` FK → the target row, a `relation_many` array → an array of target rows |
@@ -820,6 +820,6 @@ sent.
 ## Bulk export / import
 
 To pull a whole collection out (JSON or CSV) or bulk-load rows back in, see
-[Backup, restore & export](/backup-restore#per-collection-export--import). Export
+[Backup, restore & export](/docs/backup-restore#per-collection-export--import). Export
 applies the same read filters as `list`; import runs each row through the normal
 create path.

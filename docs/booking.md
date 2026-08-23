@@ -241,7 +241,7 @@ take the host site's colour always looks borrowed.
 backlex booking update clinic --theme light --accent "#34C79A" --font lexend
 ```
 
-Three knobs, and deliberately the same three a [form](/forms/) has — `theme`,
+Three knobs, and deliberately the same three a [form](/docs/forms/) has — `theme`,
 `accent`, `font` — because they are the same three decisions. Both public pages
 are painted by one module, so "light" means one thing across everything you
 publish.
@@ -291,7 +291,7 @@ are in `run_worker_first` for that reason alone.
 
 ## What stops a script booking your whole calendar
 
-The same three layers a [public form](/forms/) gets, minus the one that needs
+The same three layers a [public form](/docs/forms/) gets, minus the one that needs
 configuring:
 
 - **Honeypot** — a field humans never see. Filled, and the response is exactly
@@ -381,10 +381,10 @@ A booking announces itself on the `booking` channel, so a flow can trigger on
 
 | You want | Reach for |
 |---|---|
-| A reminder the morning before | a `cron` flow + [`sms`](/flows/) or `email` |
-| The appointment in your own Google Calendar | the [Calendar destination](/integrations/) |
-| A deposit before you confirm it | `hold: true` + [`payment.checkout`](/payments/), then `confirm` |
-| A waiver signed before they arrive | [`document.sign`](/e-signature/) |
+| A reminder the morning before | a `cron` flow + [`sms`](/docs/flows/) or `email` |
+| The appointment in your own Google Calendar | the [Calendar destination](/docs/integrations/) |
+| A deposit before you confirm it | `hold: true` + [`payment.checkout`](/docs/payments/), then `confirm` |
+| A waiver signed before they arrive | [`document.sign`](/docs/e-signature/) |
 | Intake questions | the resource's own [questions](#intake-questions) |
 | Bookings in a report, a dashboard or an export | the `booking_records` [collection](#where-the-bookings-themselves-live) |
 

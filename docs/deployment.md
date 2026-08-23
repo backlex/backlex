@@ -96,7 +96,7 @@ combination up front with a message naming the alternatives.
 (+ `LIBSQL_AUTH_TOKEN`) for Turso/libSQL — it is fetch-based, edge-safe and not
 shimmed. For D1, bind `D1` as usual. If you specifically need Postgres, deploy
 the Bun, Node, Vercel or Netlify target, all of which support it. See
-[Database providers](/database-providers/).
+[Database providers](/docs/database-providers/).
 
 ## Bun (self-host)
 

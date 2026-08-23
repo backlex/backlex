@@ -103,7 +103,7 @@ await backlex.from("articles").scheduleUnpublish(id, null); // cancel
 
 A future `publishAt` keeps the item a **draft** (so it stays hidden) and records
 `_publish_at`. The cross-runtime cron tick (`publishDueItems`, the same tick that
-drains the [job queue](/jobs/) and sweeps [resumable uploads](/resumable-uploads/))
+drains the [job queue](/docs/jobs/) and sweeps [resumable uploads](/docs/resumable-uploads/))
 flips every versioned-collection draft whose `_publish_at` has passed to
 `published`, stamps `_published_at`, clears `_publish_at`, and emits a realtime
 `published` event. No extra infrastructure — latency is up to ~1 minute on
@@ -153,7 +153,7 @@ staged preview, and offers **Publish changes** / **Discard changes**.
 
 ## Permissions
 
-`publish` is a first-class action in the [permission DSL](/permissions/)
+`publish` is a first-class action in the [permission DSL](/docs/permissions/)
 alongside `read` / `create` / `update` / `delete`. Grant it to a role to let its
 members publish/unpublish/schedule. Admins hold it implicitly. It is **not**
 seeded by default — a fresh collection's `authenticated` role gets owner-scoped
@@ -165,7 +165,7 @@ CRUD but not `publish`.
   published row changes what's live immediately; the admin item editor flags
   this with an **Edited since publish** badge (`updated_at` is later than
   `_published_at`). Turn on [staged edits](#staged-edits-draft--live) for the
-  separated workflow. See [revisions](/audit-logs/) for change history.
+  separated workflow. See [revisions](/docs/audit-logs/) for change history.
 - A staged patch stores the *patch*, not a full row snapshot. If the schema
   changes incompatibly between staging and publishing, the publish surfaces the
   validation error (fix or discard the patch).

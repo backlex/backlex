@@ -50,7 +50,7 @@ no minimum.
 Abandoned sessions are swept automatically: a session that sits unfinished past
 its TTL (default 24 h) is aborted — the staged multipart upload is discarded and
 the row removed — inside the same cross-runtime tick that drains the
-[job queue](/jobs/) and cron functions. No extra infrastructure.
+[job queue](/docs/jobs/) and cron functions. No extra infrastructure.
 
 ## Protocol surface
 
@@ -137,4 +137,4 @@ In-progress and finished sessions are listable for ops/automation:
 - Object backends require ≥ 5 MiB non-final chunks; sub-5 MiB chunk buffering is
   a planned follow-up. The fs backend accepts any chunk size.
 - Storage backend selection is per-deployment (not per-tenant), same as
-  non-resumable uploads — see [Storage](/storage/).
+  non-resumable uploads — see [Storage](/docs/storage/).

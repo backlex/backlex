@@ -5,7 +5,7 @@ description: Native push (FCM / APNs / Web Push) with per-workspace providers, d
 
 Native push notifications to mobile and browser devices, alongside the in-app
 [notifications feed](#in-app-vs-push). Push uses the **same adapter +
-per-workspace config model as [email](/api-keys-and-email/)** — pick a provider,
+per-workspace config model as [email](/docs/api-keys-and-email/)** — pick a provider,
 store its credentials (encrypted at rest), and send.
 
 ## Providers
@@ -146,7 +146,7 @@ surface with a different store, not this one.
 
 ## In-app vs push
 
-The [notifications feed](/service-map/) (`/api/notifications`) is the in-app
+The [notifications feed](/docs/service-map/) (`/api/notifications`) is the in-app
 bell; push reaches the OS/browser. They compose — set `push: true` on a
 notification (or on a flow `notification` op) to also fan out to the target
 user's registered devices:

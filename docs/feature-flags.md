@@ -33,7 +33,7 @@ A flag is **on for a caller** when `enabled` **and** its targeting passes.
 - **`rollout`** — `0–100`. The caller is bucketed by a stable hash of
   `userId|key`, so a user stays in or out of the rollout across calls. `0` = off,
   `100` (or omitted) = everyone.
-- **`condition`** — a [permission-DSL](/permissions/) condition matched against
+- **`condition`** — a [permission-DSL](/docs/permissions/) condition matched against
   the **caller-context row** `{ user_id, email, roles, tenant_id }`. Examples:
 
   ```json

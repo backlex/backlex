@@ -121,7 +121,7 @@ configure can't override them.
 
 - **Retry** is automatic: a non-2xx (or a network failure) requeues the
   `webhook.deliver` job with exponential backoff until `maxAttempts`, then
-  dead-letters. See [Job queue](/jobs).
+  dead-letters. See [Job queue](/docs/jobs).
 - **Replay** a past delivery from the admin (or `POST
   /api/webhooks/_deliveries/{id}/retry`) — re-sends with the original headers +
   signature.

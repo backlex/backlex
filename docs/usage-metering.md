@@ -135,10 +135,10 @@ neuron one unenforceable on self-host. `aiCalls` is the one figure both paths
 produce — `callClaude` counts the call even when the provider reported nothing.
 
 It is checked on every path that can generate: the `ai.generate` /
-`ai.classify` [flow operations](/flows/), `ctx.ai.generate` in the
-[sandbox](/sandbox/), **every step** of an [agent](/agents/) turn (each step is
+`ai.classify` [flow operations](/docs/flows/), `ctx.ai.generate` in the
+[sandbox](/docs/sandbox/), **every step** of an [agent](/docs/agents/) turn (each step is
 another generation, so a turn that starts inside budget cannot run the rest of
-the month out), the `ai.*` MCP tools, [Ask AI](/ask-ai/), auto-translate, and
+the month out), the `ai.*` MCP tools, [Ask AI](/docs/ask-ai/), auto-translate, and
 the mention router.
 
 Like the request cap, it is read through the 60-second monthly-sum cache, so a

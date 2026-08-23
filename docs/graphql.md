@@ -69,7 +69,7 @@ type BulkUpdateResult {
 `batch<Slug>` mirrors the REST `…/batch` endpoint: each operation is a JSON
 `{ op: "create"|"update"|"delete", id?, data? }`. Pass operations **as a
 variable** (the `JSON` scalar rejects inline literals). `atomic: true` runs the
-whole set all-or-nothing — see the [Batch & transactional writes](/querying/#batch--transactional-writes)
+whole set all-or-nothing — see the [Batch & transactional writes](/docs/querying/#batch--transactional-writes)
 runtime matrix; an atomic failure surfaces as a GraphQL error and commits
 nothing.
 
@@ -84,7 +84,7 @@ mutation Bulk($ops: [JSON!]!) {
 `bulkUpdate<Slug>` mirrors the REST `…/bulk-update` endpoint: one shared `data`
 patch applied to every id in `keys` (only the named fields change). It is
 partial-success — a key the caller can't write is reported `NOT_FOUND` in
-`failed`. See [Bulk-update a selection](/querying/#bulk-update-a-selection).
+`failed`. See [Bulk-update a selection](/docs/querying/#bulk-update-a-selection).
 
 ```graphql
 mutation BulkSet($keys: [String!]!, $data: JSON!) {
@@ -98,7 +98,7 @@ is a hash of all collection definitions).
 
 ## Flows
 
-Visual workflows ([flows](/flows/)) are exposed as **static** query/mutation
+Visual workflows ([flows](/docs/flows/)) are exposed as **static** query/mutation
 fields — they don't vary with collection schema, so they're present on every
 workspace's schema (even one with zero collections). The surface mirrors REST
 `/api/flows` and the MCP `flows.*` tools one-to-one, and is **admin-only**: a
@@ -189,7 +189,7 @@ type Mutation {
 
 ## Draft / published
 
-For [versioned collections](/draft-publish/) GraphQL applies the same
+For [versioned collections](/docs/draft-publish/) GraphQL applies the same
 published-only default as REST: callers without `publish`/`update` permission
 see only published rows on both `<slug>(...)` and `<slug>ById(...)`. Privileged
 callers see all and can still narrow with a `_status` filter.

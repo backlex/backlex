@@ -67,7 +67,7 @@ is a request that was **not approved**, and making `expired` a third state would
 force every consumer to handle a case that means exactly what `rejected` already
 means.
 
-Note the contrast with [e-signature](/e-signature/), where expiry is *derived*
+Note the contrast with [e-signature](/docs/e-signature/), where expiry is *derived*
 from the timestamp and nothing has to run. Here expiring has a **consequence** —
 a parked flow has to be resumed — so it is written, by the scheduler tick.
 

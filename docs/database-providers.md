@@ -25,7 +25,7 @@ Turso/libSQL, LiteFS).
 
 On **Cloudflare Workers**, step 3 is refused: that bundle ships no Postgres
 driver, so a `DATABASE_URL` with no D1 and no `LIBSQL_URL` fails fast with a
-message naming the alternatives. See [Deployment](/deployment/) footnote 6.
+message naming the alternatives. See [Deployment](/docs/deployment/) footnote 6.
 
 The Postgres driver is chosen with `DATABASE_DRIVER`:
 

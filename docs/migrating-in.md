@@ -4,7 +4,7 @@ description: Copy an existing database into Backlex — Postgres, MySQL, SQLite,
 ---
 
 `backlex import-db` moves data **into** Backlex from a database you already
-have. It's the complement of [adoption](/adopting-tables/): adoption wraps a
+have. It's the complement of [adoption](/docs/adopting-tables/): adoption wraps a
 table that lives in the *same* database Backlex runs on; import-db **copies**
 rows from an *external* source — a legacy Postgres or MySQL, a Supabase
 project, a Heroku add-on, a MongoDB/Firestore/DynamoDB app — into managed

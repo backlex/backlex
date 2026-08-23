@@ -10,7 +10,7 @@ return `null`; the only way to test a value is the verify endpoint.
 
 > **Not the same as end-user login.** If you want real account authentication
 > (sign-in, sessions, OAuth, password reset), use the
-> [workspace end-user auth plane](/auth-planes/) — it already manages
+> [workspace end-user auth plane](/docs/auth-planes/) — it already manages
 > `app_users` password storage for you. A `hash` field is for the *other*
 > secrets your app owns: device codes, redeemable coupons, second PINs, shared
 > webhook secrets a customer sets, and so on.

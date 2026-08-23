@@ -10,7 +10,7 @@ permission/role wiring; they apply to every writer, admins included.
 
 Validation is enforced in the shared item-write path (`validateValue` +
 `enforceValidationRules`), the same place the older `required` / `unique` flags
-and [field conditions](/field-conditions/) run. It is an application-layer check
+and [field conditions](/docs/field-conditions/) run. It is an application-layer check
 — it does not add a DB `CHECK` constraint, so it fires through the API, not on
 raw DB writes.
 
@@ -49,7 +49,7 @@ Notes:
   caller typed, before it's hashed — so you can enforce a password policy.)
 - **`minDate` / `maxDate`** accept an epoch-ms number, an ISO-8601 string, the
   literal `"$now"`, or a relative-now object using the same dynamic-date
-  vocabulary as the [filter DSL](/querying/):
+  vocabulary as the [filter DSL](/docs/querying/):
   `{ "$now": { "sub": { "days": 1 } } }`. The incoming value is parsed to
   epoch-ms before comparison. (Timestamp values are written as epoch-ms — an ISO
   string is not stored correctly on SQLite.)
@@ -58,7 +58,7 @@ Notes:
 - **`message`** overrides the generated error text for **any** failure on that
   field (per-value or the cross-field `rule`).
 - Empty values (`null` / `undefined` / `""`) skip per-value validation — use the
-  `required` flag (or a [conditional required](/field-conditions/)) to force a
+  `required` flag (or a [conditional required](/docs/field-conditions/)) to force a
   value.
 
 ## Cross-field rules (`rule`)
@@ -118,8 +118,8 @@ autocomplete offers each sibling field as `$field.<name>`.
 
 ## Related
 
-- [Field conditions](/field-conditions/) — conditional `required` / `readonly` /
+- [Field conditions](/docs/field-conditions/) — conditional `required` / `readonly` /
   `hidden` from other fields.
-- [Hashed fields](/hashed-fields/) — write-only secrets; validation applies to
+- [Hashed fields](/docs/hashed-fields/) — write-only secrets; validation applies to
   the plaintext.
-- [Permissions](/permissions/) — the filter DSL the `rule` escape hatch reuses.
+- [Permissions](/docs/permissions/) — the filter DSL the `rule` escape hatch reuses.

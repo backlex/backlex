@@ -159,13 +159,13 @@ Two limits, and both are enforcement rather than convention:
   mail out another's contract given its key — and a key can travel in through
   the row a flow reads. The check is scoped to the running workspace.
 
-Five files per message. See [Flows](/flows/) for the calendar-invite sibling,
+Five files per message. See [Flows](/docs/flows/) for the calendar-invite sibling,
 `ics`.
 
 ## Getting it signed
 
 A document somebody has to sign goes out through
-[E-signature](/e-signature/) instead — `document.sign` freezes this same
+[E-signature](/docs/e-signature/) instead — `document.sign` freezes this same
 interpolated HTML, mints a public link per signer, and re-renders the whole
 thing with the signatures and a certificate once they are all in.
 

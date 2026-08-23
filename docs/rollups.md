@@ -69,7 +69,7 @@ first child already reads correctly with no refresh having run. `avg` / `min` /
 }
 ```
 
-Same condition DSL as [permissions](/permissions/); field references resolve
+Same condition DSL as [permissions](/docs/permissions/); field references resolve
 against the **child** row.
 
 Two rules:

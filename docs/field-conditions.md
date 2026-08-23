@@ -15,7 +15,7 @@ writer, admins included.
 ## Shape
 
 Each field may carry a `conditions` array. A condition is a `rule` (the same
-filter DSL as [permissions](/permissions/) — `_eq`, `_in`, `_gt`, `_contains`,
+filter DSL as [permissions](/docs/permissions/) — `_eq`, `_in`, `_gt`, `_contains`,
 `$and`/`$or`/`$not`, `$user.id`, …) plus the effects it toggles:
 
 ```json

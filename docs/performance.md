@@ -24,7 +24,7 @@ before the page window, so deep pages slow linearly and a concurrent insert can
 skip/duplicate rows across page boundaries. List endpoints accept an opt-in
 `?cursor` that seeks straight past the previous page's boundary tuple via a
 composite index, so each page is O(page size) at any depth and stable under
-writes. Full reference: [Pagination](/querying/#pagination). Both dialects;
+writes. Full reference: [Pagination](/docs/querying/#pagination). Both dialects;
 biggest win on D1 (no intra-query parallelism to mask a deep scan).
 
 ### Free `has_more` (no COUNT tax)
@@ -58,7 +58,7 @@ To-one `relation` fields resolve through a per-request batch loader: a query
 returning N parents fires one `WHERE id IN (…)` per target collection, not N
 single-row lookups. Same permission/tenant/row-level/soft-delete/draft gates as
 a direct fetch; repeated FKs dedupe within the request. See
-[GraphQL → Relations](/graphql/#relations).
+[GraphQL → Relations](/docs/graphql/#relations).
 
 ### Conditional GET (ETag → 304)
 
@@ -87,7 +87,7 @@ back on the following request (`client/lib/api.ts`). Mutations route to primary
 whatever the constraint is.
 
 The SDK deliberately does **not** carry the bookmark — see
-[Architecture → Why the admin keeps its own client](/architecture/).
+[Architecture → Why the admin keeps its own client](/docs/architecture/).
 
 ### Read-set-tracked reactive SSE invalidation
 
@@ -116,7 +116,7 @@ apply identical rules.
   when set, on the runtimes that run Postgres (Bun / Node / Vercel / Netlify).
   Not Workers: the Workers bundle ships no Postgres driver, so Hyperdrive is
   refused there rather than half-working — see
-  [Deployment](/deployment/) footnote 6.
+  [Deployment](/docs/deployment/) footnote 6.
 - **`postgres-js` runs `prepare:false`** — required behind a transaction pooler
   (PgBouncer, Supabase's pooler, Neon's pooled endpoint).
 - **Aggressive code-splitting** — GraphQL, SAML, libSQL, CodeMirror, xyflow,

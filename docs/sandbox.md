@@ -134,7 +134,7 @@ return { id: post.id, summary: text };
 in the product: no key lives in your function. The workspace's **Settings · AI**
 credential is resolved server-side and, on managed cloud, generation runs on the
 platform gateway with no key to configure at all. Every call is
-[metered](/usage-metering/) against the workspace as an AI call.
+[metered](/docs/usage-metering/) against the workspace as an AI call.
 
 - `model` is optional — omitted, the workspace default applies. On managed cloud
   the gateway forwards only Workers AI (`@cf/…`) ids and uses its own default
@@ -151,8 +151,8 @@ platform gateway with no key to configure at all. Every call is
   [Three providers](#three-providers).
 
 For a reasoning loop with tools and memory rather than one call, the feature is
-[agents](/agents/); for one step inside an automation, it is the `ai.generate` /
-`ai.classify` [flow operations](/flows/).
+[agents](/docs/agents/); for one step inside an automation, it is the `ai.generate` /
+`ai.classify` [flow operations](/docs/flows/).
 
 ## Example: nightly digest (cron)
 

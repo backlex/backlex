@@ -30,7 +30,7 @@ A flow row is `{ id, name, trigger, operations, layout, active }`:
 | Trigger string | Fires when |
 |---|---|
 | `event:<channel>:<event>` | A matching realtime event publishes. Item events use the channel `items:<slug>`, so `event:items:posts:created` fires on a new `posts` row. `*` is a wildcard segment: `event:items:posts:*` catches create/update/delete, `event:items:*` catches every collection. |
-| `cron:<pattern>` | The cron pattern is due. Standard 5-field crontab (`cron:*/5 * * * *` = every 5 min). Dispatched by the same cross-runtime [scheduler tick](/sandbox/) that runs cron functions — no extra infrastructure. |
+| `cron:<pattern>` | The cron pattern is due. Standard 5-field crontab (`cron:*/5 * * * *` = every 5 min). Dispatched by the same cross-runtime [scheduler tick](/docs/sandbox/) that runs cron functions — no extra infrastructure. |
 | `schedule:<spec>` | A row's date field comes due — "three days before `due_date`". Fires **once per matching row**, with that row as `data`. See below. |
 | `manual:` | Only on an explicit run (REST `…/run`, SDK `flows.run`, GraphQL `runFlow`, MCP `flows.invoke`, CLI `flows run`). |
 | `webhook` | An inbound `POST /api/webhook/<flowId>` arrives. The request body becomes the flow's `data` payload. Public endpoint — guard it with a check op or a shared secret in the path. |
@@ -92,7 +92,7 @@ Two consequences worth knowing:
 
 ### The `booking` channel
 
-[Bookings](/booking/) fire on `booking` — `event:booking:created`,
+[Bookings](/docs/booking/) fire on `booking` — `event:booking:created`,
 `booking:confirmed`, `booking:cancelled`, `booking:rescheduled`,
 `booking:no_show` — with the booking, plus `resourceKey` and `resourceName`, as
 `data`. That is how a reminder, a calendar write-back or a deposit gets attached
@@ -102,7 +102,7 @@ Unlike an item event, this one is **not** on the realtime bus: it reaches flows,
 webhooks, event functions and extension hooks, and nothing can subscribe to it.
 A booking carries a customer's name, address and telephone number, and the
 realtime plane's per-subscriber permission filter only applies to row-shaped
-payloads. Use the [mirror collection](/booking/) if you want bookings on a
+payloads. Use the [mirror collection](/docs/booking/) if you want bookings on a
 realtime channel — a mirrored row is a row, and gets the filter.
 
 The channel is singular for a reason worth knowing before you name your own:
@@ -138,22 +138,22 @@ are nested operation arrays run after the op succeeds / throws.
 | `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`). `attach` carries generated documents, `ics` a calendar invite — see below | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?`, `attach?`, `ics?` |
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
-| `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
-| `ai.generate` | Generates text with the workspace's [AI provider](/ask-ai/) and returns `{ text, usage? }` into `{{ $last }}`. See below | `prompt`, `system?`, `model?`, `maxTokens?` (≤8192), `effort?`, `timeoutMs?` (≤120s) |
+| `sms` | Sends an SMS through the workspace [SMS transport](/docs/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
+| `ai.generate` | Generates text with the workspace's [AI provider](/docs/ask-ai/) and returns `{ text, usage? }` into `{{ $last }}`. See below | `prompt`, `system?`, `model?`, `maxTokens?` (≤8192), `effort?`, `timeoutMs?` (≤120s) |
 | `ai.classify` | Picks one of `labels` for `input` and returns `{ label, matched }` into `{{ $last }}` — the value a following `condition` branches on. An answer outside the set fails the step unless `fallback` says otherwise. See below | `input`, `labels` (≥2, distinct), `instructions?`, `model?`, `fallback?`, `timeoutMs?` (≤120s) |
-| `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
-| `payment.refund` | Gives back some or all of a payment through the [provider](/payments/) that took it. Returns `{ amount, currency, status, … }` into `{{ $last }}` | one of `paymentRowId` \| `externalId` \| `reference`, `amount?` (minor units; omitted = the whole balance), `provider?` \| `providerId?`, `reason?`, `description?` |
-| `document.render` | Renders a [document template](/documents/) against the row and stores the PDF. Returns `{ key, filename, size }` into `{{ $last }}` | `templateKey?` \| `html?`, `vars?`, `filename?`, `writeBack?` |
-| `document.sign` | Freezes a [document](/documents/) and sends it out [for signature](/e-signature/) — one public link per signer, emailed by the op. Returns `{ id, status, signers }` (and deliberately no links) into `{{ $last }}` | `templateKey?` \| `html?`, `signers`, `title?`, `message?`, `ordered?`, `expiresInDays?`, `writeBack?` |
+| `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/docs/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
+| `payment.refund` | Gives back some or all of a payment through the [provider](/docs/payments/) that took it. Returns `{ amount, currency, status, … }` into `{{ $last }}` | one of `paymentRowId` \| `externalId` \| `reference`, `amount?` (minor units; omitted = the whole balance), `provider?` \| `providerId?`, `reason?`, `description?` |
+| `document.render` | Renders a [document template](/docs/documents/) against the row and stores the PDF. Returns `{ key, filename, size }` into `{{ $last }}` | `templateKey?` \| `html?`, `vars?`, `filename?`, `writeBack?` |
+| `document.sign` | Freezes a [document](/docs/documents/) and sends it out [for signature](/docs/e-signature/) — one public link per signer, emailed by the op. Returns `{ id, status, signers }` (and deliberately no links) into `{{ $last }}` | `templateKey?` \| `html?`, `signers`, `title?`, `message?`, `ordered?`, `expiresInDays?`, `writeBack?` |
 | `webhook` | Fires an outbound HTTP request, body JSON-encoded | `url`, `method?`, `headers?`, `body?` |
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
-| `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |
+| `function` | Invokes a saved [sandbox function](/docs/sandbox/) by name | `name`, `input?` (defaults to `data`) |
 | `run-script` | Runs inline code in the same sandbox | `code`, `timeoutMs?` (≤30s) |
-| `integration` | Sends a message through a connected [provider](/integrations/#calling-an-integration-from-a-flow), addressed by kind. A provider nobody connected is skipped, not failed | `kind`, `text`, `event?`, `payload?` |
-| `integration.task` | Asks a connected provider to [act on ONE row](/integrations/#asking-a-provider-to-act-on-a-row) and writes the answer back — books a shipment, notifies a marketplace. Runs at most once per row; a missing connection **fails** the run | `kind`, `task`, `collection`, `itemId`, `settings?`, `outputMapping?`, `force?` |
+| `integration` | Sends a message through a connected [provider](/docs/integrations/#calling-an-integration-from-a-flow), addressed by kind. A provider nobody connected is skipped, not failed | `kind`, `text`, `event?`, `payload?` |
+| `integration.task` | Asks a connected provider to [act on ONE row](/docs/integrations/#asking-a-provider-to-act-on-a-row) and writes the answer back — books a shipment, notifies a marketplace. Runs at most once per row; a missing connection **fails** the run | `kind`, `task`, `collection`, `itemId`, `settings?`, `outputMapping?`, `force?` |
 | `item.create` | Inserts a row into a collection (permissions bypassed) | `collection`, `data` (object or a template string parsed at run time) |
 | `item.update` | Patches a row by id (permissions bypassed) | `collection`, `id`, `data` |
-| `condition` | Branches: runs `then` / `else` based on a [permissions-DSL condition](/permissions/) over `data` | `filter`, `then?`, `else?` |
+| `condition` | Branches: runs `then` / `else` based on a [permissions-DSL condition](/docs/permissions/) over `data` | `filter`, `then?`, `else?` |
 | `foreach` | Runs `do` once per row of a collection, with the row as `{{ $item.* }}`. See below | `collection`, `do`, `filter?`, `sort?`, `limit?` (≤500) |
 | `transform` | Evaluates `value` (templated) and exposes it as `{{ $last }}` | `value` |
 | `delay` | Pauses. ≤30s sleeps inline; longer is persisted to `scheduled_tasks` and resumed by the scheduler (cap 30 days) | `durationMs` |
@@ -213,7 +213,7 @@ write-back that needs **nothing connected**: no OAuth, no account, and it reache
 Google Calendar, Outlook, Apple Calendar and everything else, from the
 confirmation email the booking was already going to send. (The other direction —
 backlex creating the event in a specific Google calendar — is a
-[Calendar destination sync](/integrations/#bookings-out-to-a-calendar).)
+[Calendar destination sync](/docs/integrations/#bookings-out-to-a-calendar).)
 
 ```json
 {
@@ -304,7 +304,7 @@ a `condition` can branch on:
 ```
 
 `{{ $last.text }}` is the answer, and `{{ $last.usage }}` is what it cost —
-tokens on a direct provider key, [neurons](/usage-metering/) on managed cloud,
+tokens on a direct provider key, [neurons](/docs/usage-metering/) on managed cloud,
 and **absent** when the provider reported nothing (a zero there would read as
 free).
 
@@ -343,7 +343,7 @@ Worth knowing before you build on these:
   own default for anything else — so a Claude id picked here is honoured on
   self-host and quietly ignored on cloud.
 - **Every generation is metered** against the workspace under
-  [Usage](/usage-metering/) as an AI call, separately from requests — a flow
+  [Usage](/docs/usage-metering/) as an AI call, separately from requests — a flow
   step generates with no request of its own. It is metered but **not capped**:
   an AI step inside a `foreach` generates once per row, up to the loop's 500-row
   ceiling, and nothing counts across the loop.
@@ -357,7 +357,7 @@ Worth knowing before you build on these:
   reports the label set, not the answer.
 
 For a conversation rather than a single call — tools, memory, a transcript —
-the feature is [agents](/agents/), not a flow op.
+the feature is [agents](/docs/agents/), not a flow op.
 
 ### Billing the row that just landed
 
@@ -383,7 +383,7 @@ offending template and never the rendered value, which would put a customer's
 invoice total on the persisted `flow.run` activity row.
 
 The link also lands in `{{ $last.url }}`, so the next step can email or text it.
-Full provider matrix in [Payments](/payments/#asking-for-money).
+Full provider matrix in [Payments](/docs/payments/#asking-for-money).
 
 ### Refunding when the row says so
 
@@ -414,7 +414,7 @@ The refundable remainder is checked against the ledger before the provider is
 called, so a refund can never take the total past what was charged. The outcome
 lands in `{{ $last.status }}` — Adyen and Paddle both decide asynchronously and
 answer `pending`, so a following `condition` can branch on it. Provider
-specifics in [Payments](/payments/#giving-money-back).
+specifics in [Payments](/docs/payments/#giving-money-back).
 ### Getting the agreement signed
 
 `document.sign` is the step after `document.render` for anything somebody has
@@ -440,7 +440,7 @@ Unlike `payment.checkout`, `{{ $last }}` carries **no link**. Everything on
 `$last` is readable by every op after it, and a signing link is a bearer
 credential for somebody else's signature — the op sends the invitation itself,
 and the `signature_request` email template is where its wording lives. Details
-in [E-signature](/e-signature/).
+in [E-signature](/docs/e-signature/).
 
 ## Surfaces
 
@@ -474,7 +474,7 @@ curl -X POST http://localhost:5173/api/flows \
   }'
 ```
 
-### SDK ([`backlex`](/sdk-and-cli/))
+### SDK ([`backlex`](/docs/sdk-and-cli/))
 
 `client.flows.*` mirrors the REST surface. Use an **admin** API key or session —
 end-user (workspace) clients get `FORBIDDEN`.
@@ -492,7 +492,7 @@ const run = await client.flows.run(flow.data.id, { who: "world" }); // { ok, err
 await client.flows.delete(flow.data.id);
 ```
 
-### GraphQL ([reference](/graphql/#flows))
+### GraphQL ([reference](/docs/graphql/#flows))
 
 Static `flows` / `flow(id)` queries and `createFlow` / `updateFlow` /
 `deleteFlow` / `runFlow` mutations, present on every workspace's schema.
@@ -503,12 +503,12 @@ mutation Run($id: ID!, $input: JSON) {
 }
 ```
 
-### MCP ([reference](/mcp/))
+### MCP ([reference](/docs/mcp/))
 
 Three tools for AI agents: `flows.list`, `flows.get`, and `flows.invoke`
 (run a flow by id with an `input` payload).
 
-### CLI ([reference](/sdk-and-cli/))
+### CLI ([reference](/docs/sdk-and-cli/))
 
 ```bash
 bun backlex flows list

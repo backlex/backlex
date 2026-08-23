@@ -22,7 +22,7 @@ workspace's **roles** (with their grants), **feature flags**, **document
 templates** and **broadcast channels** — so `capture` → edit in git → `import` →
 `diff` → `apply` reconciles config the same way it reconciles schema.
 
-This is the half [schema templates](/templates/) cannot do. `templates
+This is the half [schema templates](/docs/templates/) cannot do. `templates
 extract`/`apply` MOVES config between workspaces, but it is a seeder: additive,
 skip-by-natural-key, and it never says what would change or removes what should
 not be there. A reconciler does both — which is why applying a snapshot that

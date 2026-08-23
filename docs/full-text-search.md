@@ -8,7 +8,7 @@ Backlex can rank a collection's rows against a query string three ways:
 - **`fts`** — keyword/full-text search over an inverted index (Postgres
   `tsvector` + GIN; SQLite FTS5). Token-precise, no embedding cost.
 - **`vector`** — semantic search over embeddings (see
-  [Vector search](/vector-search)).
+  [Vector search](/docs/vector-search)).
 - **`hybrid`** — both of the above run independently, then fused with
   **Reciprocal Rank Fusion (RRF)** so a row ranked highly by *either* backend
   floats up and a row ranked by *both* wins.
@@ -157,5 +157,5 @@ backlex collections fts-reindex articles
 
 ## See also
 
-- [Vector search & AI](/vector-search) — the semantic half of hybrid search.
-- [Querying the items API](/querying) — `filter` / `sort` / `?q=` on the list endpoint.
+- [Vector search & AI](/docs/vector-search) — the semantic half of hybrid search.
+- [Querying the items API](/docs/querying) — `filter` / `sort` / `?q=` on the list endpoint.

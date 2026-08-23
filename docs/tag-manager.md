@@ -91,7 +91,7 @@ gated goes through the container.
 > a backlex policy writes a total grant map that stops your manager from being
 > consulted at all. Full detail, including two limits, in
 > [Cookie consent → If you already run another consent
-> manager](/cookie-consent/#if-you-already-run-another-consent-manager).
+> manager](/docs/cookie-consent/#if-you-already-run-another-consent-manager).
 
 It also carries only what you use. With no published container the file has no
 tag runtime in it at all — so `window.__backlexTM` is genuinely absent until

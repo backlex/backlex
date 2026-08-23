@@ -3,7 +3,7 @@ title: E-signature
 description: Send a generated document out to be signed — a public link per signer, a drawn or typed signature, and a re-rendered PDF carrying the signatures and a certificate.
 ---
 
-[Document generation](/documents/) turns a row into a PDF. For five of the
+[Document generation](/docs/documents/) turns a row into a PDF. For five of the
 schema templates that PDF is only halfway: rental `agreements`, field-service
 and fleet `contracts`, real-estate `offers` and legal `documents` all end in
 somebody signing. **E-signature** is the rest of it — and it is native, so
@@ -50,12 +50,12 @@ on the signing page, on the certificate and on the API.
 A renderer is required to **create** a request, not just to complete one. An
 unconfigured deployment refuses at the point the operator is still looking at
 the form, rather than after a signer has read the contract and drawn their name.
-See [Document generation](/documents/) for `PDF_PROVIDER` and friends.
+See [Document generation](/docs/documents/) for `PDF_PROVIDER` and friends.
 
 ## The link is the whole grant
 
 There are no accounts on the signer's side. `/sign/<token>` is public and the
-token is the entire authorisation, exactly like a [form](/forms/) token or a
+token is the entire authorisation, exactly like a [form](/docs/forms/) token or a
 share link — so only its SHA-256 is stored. The plaintext appears in the
 invitation email and on the create response, once. Nothing can reproduce it.
 
@@ -157,7 +157,7 @@ link is spent by then.
 ## Attaching, and where the file goes
 
 The completed copy is emailed to everyone who signed plus any `notifyEmails`,
-using the [`attachments` contract](/documents/) added for calendar invites. The
+using the [`attachments` contract](/docs/documents/) added for calendar invites. The
 storage key is random rather than derived from the filename, for the same
 reason it is in document generation: a filename comes from row data.
 

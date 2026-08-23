@@ -50,7 +50,7 @@ on a non-Table view. Setting a display template is the fix.
 ## Table
 
 The default. Everything specific to it — the column picker, [spreadsheet grid
-editing](/querying/), bulk select and the bulk bar — is Table-only and hidden
+editing](/docs/querying/), bulk select and the bulk bar — is Table-only and hidden
 on the other three views. The **Live tail** toggle is not: it works in every
 view.
 
@@ -84,7 +84,7 @@ so the card lands immediately and rolls back with a toast if the server refuses.
 
 Two things happen **before** the write:
 
-- **[Status transitions](/status-transitions/) are checked client-side.** If the
+- **[Status transitions](/docs/status-transitions/) are checked client-side.** If the
   field declares transitions and the move isn't allowed (by value or by your
   role), the card does not move and you get a toast. The server would refuse it
   anyway — but a card that visibly jumps and springs back reads as a bug, where
@@ -93,7 +93,7 @@ Two things happen **before** the write:
 
 ### The lifecycle board
 
-On a [versioned collection](/draft-publish/) you can set the Kanban group-by to
+On a [versioned collection](/docs/draft-publish/) you can set the Kanban group-by to
 **`_status`**. That board is different in kind: its columns are **draft /
 published / archived**, and dragging a card fires the **real lifecycle action**
 — publish, unpublish or archive — not a column write. So the move is
@@ -161,14 +161,14 @@ Two things to know:
   per-user preference, an API concept, or something the SDK exposes — `?view=`
   is the whole of their state. What *is* stored on the collection is the
   group-by choice and the action map (`kanbanGroupBy`, `kanbanActionMap`), which
-  travel with a [schema template](/templates/) and a
-  [schema version](/schema-versions/).
+  travel with a [schema template](/docs/templates/) and a
+  [schema version](/docs/schema-versions/).
 - Table-only affordances (column picker, grid edit, bulk bar) do not appear on
   the other three.
 
 ## See also
 
-- [Draft / publish](/draft-publish/) — the `_status` lifecycle the Kanban board
+- [Draft / publish](/docs/draft-publish/) — the `_status` lifecycle the Kanban board
   can drive
-- [Status transitions](/status-transitions/) — which value a status may move to
-- [Querying](/querying/) — the filters and sort every view shares
+- [Status transitions](/docs/status-transitions/) — which value a status may move to
+- [Querying](/docs/querying/) — the filters and sort every view shares

@@ -8,7 +8,7 @@ drains it off the request path, retrying with exponential backoff and moving it
 to a **dead-letter** state after it exhausts its attempts. Jobs can be
 **delayed/scheduled** (`runAt`) for later execution.
 
-It rides the same cross-runtime tick that powers [cron functions](/sandbox/) —
+It rides the same cross-runtime tick that powers [cron functions](/docs/sandbox/) —
 there is **no extra infrastructure** (no CF Queues binding, no Redis): the
 `jobs` table lives in your instance DB and is drained by the scheduled tick
 (`scheduled` handler on Cloudflare Workers, a 30 s interval on Bun, the cron
@@ -67,7 +67,7 @@ log + auto-disable, and re-publishing could loop while the endpoint is down).
 
 ## Handlers
 
-- **`function`** — runs a named [function](/sandbox/) in the sandbox.
+- **`function`** — runs a named [function](/docs/sandbox/) in the sandbox.
   `payload` is `{ name, input }`; `input` is passed as the function's data.
 - **`webhook.deliver`** — delivers one outbound webhook. This is how all
   [webhook](/) dispatch now works: a matching event **enqueues** a

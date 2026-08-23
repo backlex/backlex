@@ -1,3 +1,4 @@
+import { AppError, MAX_SOURCE_PIXELS } from "@backlex/core";
 import type { ImageAdapter, ImageTransform } from "@backlex/core";
 
 /**
@@ -18,6 +19,18 @@ import type { ImageAdapter, ImageTransform } from "@backlex/core";
  *
  * Unlike `Bun.Image`'s two-value `fit`, sharp's `fit` enum is exactly our
  * `ImageTransform["fit"]` (cover/contain/fill/inside/outside) — no mapping.
+ *
+ * Kept in lockstep with `image.bun.ts` on the two things that are about the
+ * INPUT rather than the transform, because a guard that only covers the
+ * self-host runtime is not a guard:
+ *
+ * - `limitInputPixels: MAX_SOURCE_PIXELS`. sharp's own default is 268 MP,
+ *   which is a formality; ours is a limit. sharp signals the breach with a
+ *   plain `Error` carrying no `code`, so the message is the only handle —
+ *   matched narrowly and re-thrown as VALIDATION (422).
+ * - `.rotate()` with no argument, which is sharp's spelling of EXIF
+ *   auto-orient (`Bun.Image` spells it `autoOrient: true`). It has to come
+ *   before `.resize()` or the requested width lands on the unrotated axis.
  */
 
 interface SharpInstance {
@@ -26,13 +39,17 @@ interface SharpInstance {
     height?: number,
     opts?: { fit?: ImageTransform["fit"]; withoutEnlargement?: boolean },
   ) => SharpInstance;
+  rotate: (angle?: number) => SharpInstance;
   jpeg: (opts?: { quality?: number }) => SharpInstance;
   png: (opts?: { quality?: number }) => SharpInstance;
   webp: (opts?: { quality?: number }) => SharpInstance;
   avif: (opts?: { quality?: number }) => SharpInstance;
   toBuffer: () => Promise<Uint8Array>;
 }
-type SharpCtor = (input: Uint8Array | ArrayBuffer) => SharpInstance;
+type SharpCtor = (
+  input: Uint8Array | ArrayBuffer,
+  options?: { limitInputPixels?: number },
+) => SharpInstance;
 
 const guessFormat = (
   contentType: string | undefined,
@@ -88,7 +105,9 @@ export const makeSharpAdapter = (sharp: SharpCtor): ImageAdapter => {
             ? body
             : new Uint8Array(body as ArrayBuffer);
 
-      let img = sharp(input);
+      // `.rotate()` first: EXIF auto-orient has to happen before the resize
+      // or a portrait phone photo gets its width applied to the long side.
+      let img = sharp(input, { limitInputPixels: MAX_SOURCE_PIXELS }).rotate();
       if (opts.width !== undefined || opts.height !== undefined) {
         img = img.resize(opts.width, opts.height, {
           ...(opts.fit ? { fit: opts.fit } : {}),
@@ -114,7 +133,17 @@ export const makeSharpAdapter = (sharp: SharpCtor): ImageAdapter => {
           break;
       }
 
-      return { body: await img.toBuffer(), contentType: `image/${format}` };
+      const encoded = await img.toBuffer().catch((err: unknown) => {
+        // sharp attaches no `code` here, so the message is the only signal.
+        if (/exceeds pixel limit/i.test((err as Error)?.message ?? "")) {
+          throw new AppError(
+            "VALIDATION",
+            `Source image exceeds the ${MAX_SOURCE_PIXELS.toLocaleString("en-US")}-pixel transform limit`,
+          );
+        }
+        throw err;
+      });
+      return { body: encoded, contentType: `image/${format}` };
     },
   };
 };

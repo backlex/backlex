@@ -1,3 +1,4 @@
+import { AppError, MAX_SOURCE_PIXELS } from "@backlex/core";
 import type { ImageAdapter, ImageTransform } from "@backlex/core";
 
 /**
@@ -10,6 +11,29 @@ import type { ImageAdapter, ImageTransform } from "@backlex/core";
  *
  * `Bun.Image` lands in a recent Bun release; older runtimes return `null`
  * here and the storage layer falls back to passthrough.
+ *
+ * Two constructor options are always passed, and both matter:
+ *
+ * - `maxPixels` — this adapter decodes bytes a tenant uploaded, reached through
+ *   `?width=` on a stored object, which needs no credentials at all when that
+ *   object's ACL is public. Bun already defaults to
+ *   268.44 MP (16384^2, measured), so this LOWERS an existing ceiling rather
+ *   than adding a missing one; see `MAX_SOURCE_PIXELS` for why 268 MP is too
+ *   generous to be useful here. Bun raises `ERR_IMAGE_TOO_MANY_PIXELS`, which
+ *   we translate to VALIDATION (422) so a hostile image is a bad request
+ *   rather than a server error.
+ * - `autoOrient` — a PIN, not a fix: Bun 1.4 already defaults it to true, and
+ *   it is spelled out here so a future default flip cannot silently start
+ *   serving every phone photo's thumbnail sideways. (sharp is the backend
+ *   where this was genuinely missing — see the `.rotate()` call in
+ *   `image.sharp.ts`, which is what brought the two into agreement.)
+ *
+ * Available on the instance and deliberately unused for now, so nobody has to
+ * re-read the docs to find them: `metadata()` probes {width,height,format}
+ * without a full decode, `placeholder()` returns a ~400-700 byte ThumbHash
+ * data: URL for LQIP, and `png({palette:true})` quantises to <=256 colours
+ * (3-5x smaller for screenshot-shaped images). Each needs a caller before it
+ * earns its place here.
  */
 
 interface BunImageInstance {
@@ -29,6 +53,7 @@ interface BunImageInstance {
   avif: (opts?: { quality?: number }) => BunImageInstance;
   heic: (opts?: { quality?: number }) => BunImageInstance;
   bytes: () => Promise<Uint8Array>;
+  metadata: () => Promise<{ width: number; height: number; format: string }>;
 }
 
 interface BunImageCtor {
@@ -73,7 +98,10 @@ export const bunImage = (): ImageAdapter | null => {
             ? body
             : new Uint8Array(body as ArrayBuffer);
 
-      let img: BunImageInstance = new Image(input);
+      let img: BunImageInstance = new Image(input, {
+        maxPixels: MAX_SOURCE_PIXELS,
+        autoOrient: true,
+      });
 
       if (opts.width !== undefined || opts.height !== undefined) {
         const fit = mapFit(opts.fit);
@@ -101,7 +129,17 @@ export const bunImage = (): ImageAdapter | null => {
           break;
       }
 
-      const bytes = await img.bytes();
+      const bytes = await img.bytes().catch((err: unknown) => {
+        // The decode is where `maxPixels` fires, not the constructor — a
+        // pipeline does no work until a terminal is awaited.
+        if ((err as { code?: string })?.code === "ERR_IMAGE_TOO_MANY_PIXELS") {
+          throw new AppError(
+            "VALIDATION",
+            `Source image exceeds the ${MAX_SOURCE_PIXELS.toLocaleString("en-US")}-pixel transform limit`,
+          );
+        }
+        throw err;
+      });
       return {
         body: bytes,
         contentType: `image/${format}`,

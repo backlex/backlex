@@ -6,7 +6,7 @@
   publish = "apps/web/dist/client"
 
 [build.environment]
-  BUN_VERSION = "1.3.14"
+  BUN_VERSION = "1.4.0"
 
 # Allow R2 public-bucket origins as remote sources for the Netlify Image CDN,
 # so the storage route's `/.netlify/images?url=<R2 public URL>` redirect (see

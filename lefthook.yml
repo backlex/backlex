@@ -98,6 +98,17 @@ pre-commit:
 #
 # CI is unaffected either way — test.yml runs these as separate jobs on separate
 # runners with more RAM than this.
+#
+# (The `test` row above is now the pre-Bun-1.4 figure. The job itself runs
+# `--parallel=4 --no-isolate` since 2026-08-23 and lands around 154s — see the
+# comment on that job. The parallel-vs-serial *job* conclusion is unchanged:
+# what it buys is paging headroom, not wall clock.)
+#
+# `--no-orphans` on every job: bun exits when lefthook dies and SIGKILLs every
+# descendant. Without it, an agent shell hitting its command timeout mid-hook
+# leaves the checker running — that is how an orphaned `tsc` once turned a
+# 10-minute job into 82, because the next run paged against it instead of
+# getting the machine to itself.
 pre-push:
   parallel: false
   jobs:
@@ -105,23 +116,50 @@ pre-push:
     # failure costs seconds instead of the full ~12 minutes. Under `parallel:
     # true` the order was meaningless. None of these depend on another's output.
     - name: lint
-      run: bun run lint
+      run: bun run --no-orphans lint
     # Per-target build verification. Catches edge-only regressions the
     # in-process SQLite test suite can't see: a missing shim, a fresh
     # node:net import, or a Bun-specific API leaking into the worker
     # bundle. Runs vite build once + three platform builds in parallel
     # (~6s total when caches are warm; cold first run ~15s).
     - name: build:targets
-      run: bun run build:targets
+      run: bun run --no-orphans build:targets
     - name: typecheck
-      run: bun run typecheck
-    # `--timeout` stays at 30s even though the suite no longer runs beside a
-    # typecheck. It was raised from Bun's 5s default because contention made
-    # different specs lose the race each run; serialising removes most of that,
-    # but the suite still shares the machine with whatever else is open, and 30s
-    # still fails a genuinely hung test. Nothing is gained by tightening it.
+      run: bun run --no-orphans typecheck
+    # `--timeout` stays at 30s. It was raised from Bun's 5s default because
+    # contention made different specs lose the race each run, and `--parallel`
+    # (below) puts some of that contention back deliberately. 30s still fails a
+    # genuinely hung test. Nothing is gained by tightening it.
+    #
+    # `--parallel=4 --no-isolate` — measured on the 8 GB dev box, 515 files /
+    # 6329 tests:
+    #
+    #                                    wall      result
+    #   serial                           472.2s    6329 pass / 0 fail
+    #   --parallel=4 --no-isolate        178.5s    6329 pass / 0 fail
+    #   --parallel (default 8)            39.2s    358 fail, 346 errors
+    #   --parallel=4 (implies --isolate)  >12min   killed
+    #
+    # Both flags are load-bearing and neither may be dropped:
+    #
+    # `--no-isolate`: bare `--parallel` implies `--isolate`, which gives every
+    # file a fresh global and module registry. At 515 files that overhead
+    # dominates — one spec (migrate-ingest) alone went to 301s — while worker
+    # RSS stayed at 128-617 MB, so it is not memory. `--no-isolate` is also the
+    # honest setting: the suite already runs every file in one shared registry.
+    #
+    # `=4`, pinned: the ceiling here is the SYSTEM file table, not cores or RAM.
+    # This box has kern.maxfiles=30720 with ~7.5k already open, so 8 workers
+    # overflow it and the run dies on `ENFILE` -> `unable to open database
+    # file` -> cascading `h.cleanup is undefined`. Bun's default is the CPU
+    # count, which is 8 here. Do not let it default.
+    #
+    # This does NOT contradict `parallel: false` above. That is about not
+    # running the typecheck BESIDE the suite; this parallelises inside the test
+    # job, which runs alone. sys time only went 42s -> 93s, nowhere near the
+    # 241s that motivated serialising the hook.
     - name: test
-      run: bun test --timeout 30000
+      run: bun test --no-orphans --timeout 30000 --parallel=4 --no-isolate --timings=.github/test-timings.json
 
 # Post-merge: reclaim agent worktrees. Parallel agent sessions each get a
 # worktree under `.claude/worktrees/` and nothing removes them when the session

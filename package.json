@@ -51,6 +51,10 @@
     "bun": ">=1.4.0"
   },
   "resolutions": {
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "express-rate-limit": "^8.6.2",
+    "yaml-language-server/yaml": "2.8.3",
+    "@vercel/routing-utils/path-to-regexp": "6.3.0",
+    "uuid": "11.1.1"
   }
 }

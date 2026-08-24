@@ -23,6 +23,14 @@ export default defineConfig({
             "Open-source (Apache-2.0), edge-native backend platform and self-hostable alternative to Supabase, Firebase, and Directus. Dynamic schema over PostgreSQL or SQLite/D1, a permissions DSL, REST + GraphQL, realtime, edge functions, vector search, and a built-in MCP server for AI agents — running on Cloudflare Workers, Vercel, Netlify, or your own server.",
         }),
       ],
+      // The docs collection loads from the repo root (`../../docs`), which is
+      // outside `src/content/docs/`. Starlight only runs its Markdown transforms
+      // — asides, heading anchor links, RTL code support — on paths it knows
+      // about, so without this every `:::note` / `:::caution` fell through to
+      // Astro's directive-restoration pass and rendered as a bare, unstyled
+      // `<div>`. Resolved against the Astro project root (`apps/docs`), so this
+      // must stay in step with `src/content.config.ts`'s glob `base`.
+      markdown: { processedDirs: ["../../docs"] },
       favicon: "/favicon.svg",
       logo: {
         light: "./src/assets/logo-light.svg",

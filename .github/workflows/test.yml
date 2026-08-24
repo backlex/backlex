@@ -374,11 +374,28 @@ jobs:
           # before missed "1 vulnerability (1 moderate)" — which is precisely
           # the state a regression away from zero lands in FIRST, so the one
           # summary that mattered most was the one it could not read.
-          total="$(grep -oE '[0-9]+ vulnerabilit(y|ies) \([^)]*\)' /tmp/audit.txt | tail -1)"
+          #
+          # `|| true` is load-bearing, and leaving it off shipped a broken gate.
+          # GitHub runs every `run:` block as `bash -e`, `grep` exits 1 when it
+          # matches nothing, and under `set -e` a command substitution that
+          # fails inside an assignment kills the step. So on a CLEAN audit this
+          # died right here — before the notice, before the summary, exit 1 with
+          # no diagnostic at all. The gate was stuck red in both directions and
+          # said nothing about why. Parsing decides what the summary SAYS; only
+          # bun's own `$rc` decides whether the job passes.
+          total="$(grep -oE '[0-9]+ vulnerabilit(y|ies) \([^)]*\)' /tmp/audit.txt | tail -1 || true)"
           # Falls through to "unparsed" rather than to "clean" — a summary that
           # says nothing found because it could not read the output is the
-          # exact failure this step exists to prevent.
-          [ -n "$total" ] || total="$(grep -qiE 'no vulnerabilities' /tmp/audit.txt && echo 'no vulnerabilities' || echo 'unparsed — see the log')"
+          # exact failure this step exists to prevent. Written as `if` rather
+          # than `a || b=$(c && d || e)` because that chain is what hid the
+          # `set -e` interaction above in the first place.
+          if [ -z "$total" ]; then
+            if grep -qiE 'no vulnerabilities' /tmp/audit.txt; then
+              total='no vulnerabilities'
+            else
+              total='unparsed — see the log'
+            fi
+          fi
           echo "::notice title=bun audit::${total}"
           {
             echo "## bun audit"

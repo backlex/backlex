@@ -71,7 +71,7 @@
   },
   "devDependencies": {
     "@azure/functions": "^4.16.2",
-    "@babel/core": "7.29.0",
+    "@babel/core": "7.29.6",
     "@cloudflare/vite-plugin": "1.52.1",
     "@cloudflare/workers-types": "^4.20241127.0",
     "@electric-sql/pglite": "0.4.5",

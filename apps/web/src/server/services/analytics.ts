@@ -1426,6 +1426,133 @@ export const normalizeDomain = (raw: string): string => {
   }
 };
 
+/**
+ * Is this the host a browser would resolve, unchanged?
+ *
+ * `normalizeDomain` already punycodes and strips scheme/port/path, so what is
+ * left is whether the result is a host at all. The CHARACTER test is what
+ * decides, not the `new URL()` round-trip below it, because the round-trip does
+ * not mean the same thing everywhere: Node, Bun and workerd all throw on
+ * `https://my site.com`, while a browser percent-encodes it into
+ * `my%20site.com` and hands it back as a valid hostname. This repo ships four
+ * runtimes and mirrors this rule into the admin form, so the check cannot rest
+ * on which parser happens to be underneath.
+ *
+ * `localhost`, a bare IP and a bracketed IPv6 literal are hosts and pass on
+ * purpose; `_` is tolerated because it turns up in real internal names.
+ */
+const HOST_CHARS = /^[a-z0-9._-]+$/;
+const IPV6_LITERAL = /^\[[0-9a-f:.]+\]$/;
+
+const isResolvableHost = (host: string): boolean => {
+  if (!host) return false;
+  if (IPV6_LITERAL.test(host)) return true;
+  if (!HOST_CHARS.test(host)) return false;
+  // Every label has to be a label: `..`, `a..b` and a bare `-` clear the
+  // character test and are still not names anything resolves.
+  if (!host.split(".").every((label) => label.length > 0 && /[a-z0-9]/.test(label))) {
+    return false;
+  }
+  try {
+    return new URL(`https://${host}`).hostname === host;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * The domain is the field that decides whether anything is collected at all.
+ *
+ * `require_known_origin` defaults to true and compares this value against the
+ * real request origin, so a domain the browser can never send — `my site`,
+ * `admin`, a pasted sentence — silently drops every event with a 202 and no
+ * error anywhere. It was only ever checked for "not empty", which is the one
+ * bad value an operator would notice.
+ */
+const assertDomain = (raw: string): string => {
+  const domain = normalizeDomain(raw);
+  if (!domain) throw new AppError("VALIDATION", "A site needs a domain.");
+  if (!isResolvableHost(domain)) {
+    throw new AppError(
+      "VALIDATION",
+      `"${raw.trim()}" is not a domain. Use a host like example.com — a full URL is fine, but a space or a path is not.`,
+    );
+  }
+  return domain;
+};
+
+/**
+ * Exclusion patterns that can actually match.
+ *
+ * `pathExcluded` compares against `location.pathname` with the query string
+ * already stripped, and an entry with no `*` is an EXACT comparison. So
+ * `admin` (no leading slash) and `/search?q=x` (a query) are not narrow rules —
+ * they are rules that can never fire, stored under a toast reading "saved".
+ * A bare `*` is refused for the opposite reason: it matches every path, which
+ * turns measurement off for the whole site in one keystroke.
+ */
+const assertPaths = (list: string[]): string[] => {
+  for (const entry of list) {
+    if (entry === "*" || entry === "**") {
+      throw new AppError(
+        "VALIDATION",
+        `"${entry}" would exclude every page. Name a path, or use a prefix like /admin/*.`,
+      );
+    }
+    if (/[\s?#]/.test(entry)) {
+      throw new AppError(
+        "VALIDATION",
+        `"${entry}" cannot match: paths are compared without the query string, and may not contain a space.`,
+      );
+    }
+    if (!entry.startsWith("/") && !entry.startsWith("*")) {
+      throw new AppError(
+        "VALIDATION",
+        `"${entry}" cannot match: a path starts with / — try "/${entry}" or "*${entry}".`,
+      );
+    }
+  }
+  return list;
+};
+
+/** IPv4, or something the URL parser accepts as an IPv6 literal. */
+const isIpAddress = (value: string): boolean => {
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(value)) {
+    return value.split(".").every((o) => Number(o) <= 255);
+  }
+  try {
+    return new URL(`https://[${value}]`).hostname === `[${value.toLowerCase()}]`;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Addresses that can actually match.
+ *
+ * The collect route compares `ignoredIps` to the request IP with an exact
+ * `includes`, so a label ("office"), a range ("203.0.113.0/24") or a host name
+ * is not a loose filter — it is one that never fires. Ranges are called out by
+ * name because they are the plausible mistake.
+ */
+const assertIps = (list: string[]): string[] => {
+  for (const entry of list) {
+    if (entry.includes("/")) {
+      throw new AppError(
+        "VALIDATION",
+        `"${entry}" looks like a range. Ranges are not matched — list the addresses themselves.`,
+      );
+    }
+    if (!isIpAddress(entry)) {
+      throw new AppError(
+        "VALIDATION",
+        `"${entry}" is not an IP address. The request IP is compared exactly, so only a literal address can match.`,
+      );
+    }
+  }
+  return list;
+};
+
 const strList = (v: unknown, max: number): string[] => {
   if (!Array.isArray(v)) return [];
   return v
@@ -1494,9 +1621,8 @@ export const createSite = async (
   now = Date.now(),
 ): Promise<AnalyticsSiteRow> => {
   const name = str(input.name, 120);
-  const domain = normalizeDomain(String(input.domain ?? ""));
   if (!name) throw new AppError("VALIDATION", "A site needs a name.");
-  if (!domain) throw new AppError("VALIDATION", "A site needs a domain.");
+  const domain = assertDomain(String(input.domain ?? ""));
 
   const t = sitesTable(ctx.dialect);
   const row = {
@@ -1505,8 +1631,8 @@ export const createSite = async (
     name,
     domain,
     tz: str(input.tz, 60) ?? "UTC",
-    excludedPaths: strList(input.excludedPaths, 50),
-    ignoredIps: strList(input.ignoredIps, 50),
+    excludedPaths: assertPaths(strList(input.excludedPaths, 50)),
+    ignoredIps: assertIps(strList(input.ignoredIps, 50)),
     filterBots: input.filterBots !== false,
     requireKnownOrigin: input.requireKnownOrigin !== false,
     createdAt: new Date(now),
@@ -1530,15 +1656,12 @@ export const updateSite = async (
     if (!name) throw new AppError("VALIDATION", "A site needs a name.");
     patch.name = name;
   }
-  if (input.domain !== undefined) {
-    const domain = normalizeDomain(String(input.domain ?? ""));
-    if (!domain) throw new AppError("VALIDATION", "A site needs a domain.");
-    patch.domain = domain;
-  }
+  if (input.domain !== undefined) patch.domain = assertDomain(String(input.domain ?? ""));
   if (input.tz !== undefined) patch.tz = str(input.tz, 60) ?? "UTC";
   if (input.excludedPaths !== undefined)
-    patch.excludedPaths = strList(input.excludedPaths, 50);
-  if (input.ignoredIps !== undefined) patch.ignoredIps = strList(input.ignoredIps, 50);
+    patch.excludedPaths = assertPaths(strList(input.excludedPaths, 50));
+  if (input.ignoredIps !== undefined)
+    patch.ignoredIps = assertIps(strList(input.ignoredIps, 50));
   if (input.filterBots !== undefined) patch.filterBots = input.filterBots !== false;
   if (input.requireKnownOrigin !== undefined)
     patch.requireKnownOrigin = input.requireKnownOrigin !== false;

@@ -51,6 +51,13 @@ import {
 } from "../../queries";
 import { queryKeys } from "../../queries";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  domainProblem,
+  ipProblem,
+  normalizeDomain,
+  pathProblem,
+  splitList,
+} from "../../lib/site-input";
 
 /** The server caps both list settings at 50 entries (`SiteInputSchema`). The
  *  form counts against the same number rather than silently slicing, so a 51st
@@ -389,6 +396,7 @@ export function WebsitesPage({
 
       <AddSiteDialog
         open={addOpen}
+        existingDomains={sites.map((s: ApiAnalyticsSite) => s.domain)}
         onClose={() => setAddOpen(false)}
         onSubmit={(input) => {
           // Optimistic: the row is in the list before the request resolves, and
@@ -430,15 +438,24 @@ function AddSiteDialog({
   open,
   onClose,
   onSubmit,
+  existingDomains,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (input: { name: string; domain: string }) => void;
+  /** Already-registered hosts, normalized. Not a refusal — two sites on one
+   *  domain is legal and occasionally deliberate — but it is nearly always the
+   *  operator not realising the site is already here, and only one of the two
+   *  snippets would be the one installed. */
+  existingDomains: string[];
 }) {
   const { t } = useLingui();
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
-  const valid = name.trim().length > 0 && domain.trim().length > 0;
+  const badDomain = domainProblem(domain);
+  const duplicate =
+    !badDomain && domain.trim() !== "" && existingDomains.includes(normalizeDomain(domain));
+  const valid = name.trim().length > 0 && domain.trim().length > 0 && !badDomain;
 
   // Cancel and Esc used to leave the fields filled, so reopening the dialog
   // offered a site the operator had already decided against, one Enter from
@@ -490,15 +507,36 @@ function AddSiteDialog({
               <Input
                 value={domain}
                 placeholder="example.com"
+                aria-invalid={badDomain ? true : undefined}
                 onChange={(e) => setDomain(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
               />
-              <span className="text-[11.5px] text-muted-foreground">
-                <Trans>
-                  A full URL is fine — it is reduced to the host. Subdomains
-                  count as the same site.
-                </Trans>
-              </span>
+              {badDomain ? (
+                // Checked here because this value decides whether the tag
+                // collects at all: the origin check compares it to the real
+                // request host, so a domain a browser cannot send drops every
+                // event silently.
+                <span className="text-[11.5px] text-destructive">
+                  <Trans>
+                    That is not a host. Use something like example.com — a full URL
+                    is fine, a space or a path is not.
+                  </Trans>
+                </span>
+              ) : duplicate ? (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>
+                    This domain is already registered. Adding it twice is allowed, but
+                    only the snippet you install will report.
+                  </Trans>
+                </span>
+              ) : (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>
+                    A full URL is fine — it is reduced to the host. Subdomains
+                    count as the same site.
+                  </Trans>
+                </span>
+              )}
             </label>
           </div>
         </DialogBody>
@@ -575,16 +613,24 @@ function SiteSettingsDialog({
     setIps(site.ignoredIps.join(", "));
   }
 
-  const lines = (v: string) =>
-    v
-      .split(/[\n,]/)
-      .map((x) => x.trim())
-      .filter(Boolean);
-
-  const pathCount = lines(paths).length;
-  const ipCount = lines(ips).length;
+  const pathEntries = splitList(paths);
+  const ipEntries = splitList(ips);
+  const pathCount = pathEntries.length;
+  const ipCount = ipEntries.length;
   const overCap = pathCount > MAX_LIST_ENTRIES || ipCount > MAX_LIST_ENTRIES;
-  const valid = name.trim().length > 0 && domain.trim().length > 0 && !overCap;
+  // Every one of these is a rule that cannot fire rather than a rule that is
+  // wrong, so nothing downstream would ever complain — which is exactly why the
+  // form has to.
+  const badDomain = domainProblem(domain);
+  const badPath = pathProblem(pathEntries);
+  const badIp = ipProblem(ipEntries);
+  const valid =
+    name.trim().length > 0 &&
+    domain.trim().length > 0 &&
+    !badDomain &&
+    !badPath &&
+    !badIp &&
+    !overCap;
 
   return (
     <Dialog open={!!site} onOpenChange={(v) => !v && onClose()}>
@@ -609,13 +655,26 @@ function SiteSettingsDialog({
               <span className="text-[12.5px] text-muted-foreground">
                 <Trans>Domain</Trans>
               </span>
-              <Input value={domain} onChange={(e) => setDomain(e.target.value)} />
-              <span className="text-[11.5px] text-muted-foreground">
-                <Trans>
-                  What the origin check matches against. Change it and the tag stops
-                  accepting traffic from the old host.
-                </Trans>
-              </span>
+              <Input
+                value={domain}
+                aria-invalid={badDomain ? true : undefined}
+                onChange={(e) => setDomain(e.target.value)}
+              />
+              {badDomain ? (
+                <span className="text-[11.5px] text-destructive">
+                  <Trans>
+                    That is not a host. Use something like example.com — a full URL
+                    is fine, a space or a path is not.
+                  </Trans>
+                </span>
+              ) : (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>
+                    What the origin check matches against. Change it and the tag stops
+                    accepting traffic from the old host.
+                  </Trans>
+                </span>
+              )}
             </label>
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-[12.5px] text-muted-foreground">
@@ -624,14 +683,25 @@ function SiteSettingsDialog({
               <Input
                 value={paths}
                 placeholder="/admin/*, /health"
+                aria-invalid={badPath ? true : undefined}
                 onChange={(e) => setPaths(e.target.value)}
               />
-              <span className="text-[11.5px] text-muted-foreground">
-                <Trans>
-                  Comma separated. A leading or trailing * is supported. Never
-                  recorded, and enforced on the server.
-                </Trans>
-              </span>
+              {badPath ? (
+                <span className="text-[11.5px] text-destructive">
+                  {badPath.reason === "everything"
+                    ? t`"${badPath.entry}" would exclude every page. Name a path, or use a prefix like /admin/*.`
+                    : badPath.reason === "query"
+                      ? t`"${badPath.entry}" can never match: paths are compared without the query string, and cannot contain a space.`
+                      : t`"${badPath.entry}" can never match: a path starts with / — try "/${badPath.entry}".`}
+                </span>
+              ) : (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>
+                    Comma separated. A leading or trailing * is supported. Never
+                    recorded, and enforced on the server.
+                  </Trans>
+                </span>
+              )}
               {/* Only once there is something to count. On an empty field
                   "0 of 50" is a number with nothing to say. */}
               {pathCount > 0 && (
@@ -653,14 +723,23 @@ function SiteSettingsDialog({
               <Input
                 value={ips}
                 placeholder="203.0.113.4, 198.51.100.9"
+                aria-invalid={badIp ? true : undefined}
                 onChange={(e) => setIps(e.target.value)}
               />
-              <span className="text-[11.5px] text-muted-foreground">
-                <Trans>
-                  Your office, a monitoring probe. The address is compared and
-                  discarded — it is never stored on an event.
-                </Trans>
-              </span>
+              {badIp ? (
+                <span className="text-[11.5px] text-destructive">
+                  {badIp.reason === "range"
+                    ? t`"${badIp.entry}" looks like a range. Ranges are not matched — list the addresses themselves.`
+                    : t`"${badIp.entry}" is not an IP address. The request IP is compared exactly, so only a literal address can match.`}
+                </span>
+              ) : (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>
+                    Your office, a monitoring probe. The address is compared and
+                    discarded — it is never stored on an event.
+                  </Trans>
+                </span>
+              )}
               {ipCount > 0 && (
                 <span
                   className={
@@ -682,12 +761,21 @@ function SiteSettingsDialog({
           <Button
             variant="primary"
             disabled={!valid}
+            // Names the reason it is disabled. "A site needs a name and a
+            // domain" while the actual problem is an unmatched path is the same
+            // dead end as no tooltip at all.
             title={
               overCap
                 ? t`Remove a few entries — the cap is ${MAX_LIST_ENTRIES} each.`
-                : !valid
-                  ? t`A site needs a name and a domain.`
-                  : undefined
+                : badDomain
+                  ? t`The domain is not a host.`
+                  : badPath
+                    ? t`One of the excluded paths can never match.`
+                    : badIp
+                      ? t`One of the ignored addresses is not an IP.`
+                      : !valid
+                        ? t`A site needs a name and a domain.`
+                        : undefined
             }
             onClick={() => {
               // The cap used to be applied by a silent `.slice(0, 50)`, so entry
@@ -702,8 +790,8 @@ function SiteSettingsDialog({
               onSave({
                 name: name.trim(),
                 domain: domain.trim(),
-                excludedPaths: lines(paths),
-                ignoredIps: lines(ips),
+                excludedPaths: pathEntries,
+                ignoredIps: ipEntries,
               });
             }}
           >

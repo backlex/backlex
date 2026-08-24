@@ -134,6 +134,17 @@ msgstr "· optional"
 #~ msgid "· the field stays in the collection"
 #~ msgstr "· the field stays in the collection"
 
+#. placeholder {0}: badPath.entry
+#. placeholder {1}: badPath.entry
+#: src/client/admin/pages/observability/websites.tsx
+msgid "\"{0}\" can never match: a path starts with / — try \"/{1}\"."
+msgstr "\"{0}\" can never match: a path starts with / — try \"/{1}\"."
+
+#. placeholder {0}: badPath.entry
+#: src/client/admin/pages/observability/websites.tsx
+msgid "\"{0}\" can never match: paths are compared without the query string, and cannot contain a space."
+msgstr "\"{0}\" can never match: paths are compared without the query string, and cannot contain a space."
+
 #. placeholder {0}: p.label
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "\"{0}\" is a choice with nothing to choose from."
@@ -144,10 +155,25 @@ msgstr "\"{0}\" is a choice with nothing to choose from."
 msgid "\"{0}\" is not a column on this collection."
 msgstr "\"{0}\" is not a column on this collection."
 
+#. placeholder {0}: badIp.entry
+#: src/client/admin/pages/observability/websites.tsx
+msgid "\"{0}\" is not an IP address. The request IP is compared exactly, so only a literal address can match."
+msgstr "\"{0}\" is not an IP address. The request IP is compared exactly, so only a literal address can match."
+
+#. placeholder {0}: badIp.entry
+#: src/client/admin/pages/observability/websites.tsx
+msgid "\"{0}\" looks like a range. Ranges are not matched — list the addresses themselves."
+msgstr "\"{0}\" looks like a range. Ranges are not matched — list the addresses themselves."
+
 #. placeholder {0}: p.label
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "\"{0}\" needs a letter or a digit in it — that is what the answer is stored under."
 msgstr "\"{0}\" needs a letter or a digit in it — that is what the answer is stored under."
+
+#. placeholder {0}: badPath.entry
+#: src/client/admin/pages/observability/websites.tsx
+msgid "\"{0}\" would exclude every page. Name a path, or use a prefix like /admin/*."
+msgstr "\"{0}\" would exclude every page. Name a path, or use a prefix like /admin/*."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "\"{bad}\" isn't a valid URL — use e.g. https://app.example.com/auth/callback."
@@ -13502,6 +13528,14 @@ msgstr "One moment while we get things ready."
 msgid "One moment."
 msgstr "One moment."
 
+#: src/client/admin/pages/observability/websites.tsx
+msgid "One of the excluded paths can never match."
+msgstr "One of the excluded paths can never match."
+
+#: src/client/admin/pages/observability/websites.tsx
+msgid "One of the ignored addresses is not an IP."
+msgstr "One of the ignored addresses is not an IP."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "one of the labels above"
 msgstr "one of the labels above"
@@ -19915,6 +19949,10 @@ msgstr "Thanks — we got it!"
 msgid "That account exists — enter its current password to accept."
 msgstr "That account exists — enter its current password to accept."
 
+#: src/client/admin/pages/observability/websites.tsx
+msgid "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
+msgstr "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
+
 #. placeholder {0}: chosen.provider
 #. placeholder {1}: chosen.key
 #: src/client/admin/collections/collection-settings.tsx
@@ -20019,6 +20057,10 @@ msgstr "The default collection"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "The document is rendered and frozen now. A later edit to the template will not change it."
 msgstr "The document is rendered and frozen now. A later edit to the template will not change it."
+
+#: src/client/admin/pages/observability/websites.tsx
+msgid "The domain is not a host."
+msgstr "The domain is not a host."
 
 #: src/client/pages/embed-dashboard.tsx
 msgid "The embed link may have been revoked, or the dashboard was removed."
@@ -20509,6 +20551,10 @@ msgstr "This document is no longer open for signature"
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "This does not reach"
 msgstr "This does not reach"
+
+#: src/client/admin/pages/observability/websites.tsx
+msgid "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
+msgstr "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "This form is closed."

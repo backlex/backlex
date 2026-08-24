@@ -165,7 +165,17 @@ an operator with an IP and a user-agent could recompute an id: this is
 | **Ignored IPs** | Never recorded — your office, a monitoring probe. |
 
 All four are enforced **server-side** and are editable from **Websites →
-Settings**. The tag's own opt-outs (`DNT`, `globalPrivacyControl`,
+Settings**.
+
+Three of them are also **validated** there, because each fails silently when it
+holds something unusable rather than something wrong:
+
+| Refused | Why it would never fire |
+|---|---|
+| A domain that is not a host (`my site`, a sentence) | It is compared against the request's real origin host, so with **Origin checked** on — the default — every event is dropped with a 202 and no error anywhere. A full URL, a port, an IDN and `localhost` are all fine; they are reduced to the host. |
+| A path with no leading `/`, or one carrying a query | `pathExcluded` compares against `location.pathname` with the query already stripped, and an entry without a `*` is an exact match. `admin` and `/search?q=x` exclude nothing. |
+| A bare `*` | It matches every page — measurement off for the whole site in one keystroke. |
+| An ignored IP that is not an address, or a CIDR range | The request IP is compared exactly. `203.0.113.0/24` and `office` never match. Both address families are accepted. | The tag's own opt-outs (`DNT`, `globalPrivacyControl`,
 consent state, and skipping `localhost` unless `data-allow-localhost="true"`)
 are advice a client can decline to follow; these are not.
 

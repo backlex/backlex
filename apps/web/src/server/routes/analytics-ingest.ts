@@ -12,11 +12,16 @@
  * A request with none of those is rejected — anonymous ingest into an
  * arbitrary workspace would let anyone poison another tenant's numbers.
  *
- * **Why cross-origin ingest still needs the workspace's origin allow-list.**
- * The global CORS layer only echoes an origin that `APP_URL` or the
- * workspace's configured origins cover. That is deliberate: the publishable
- * key is by definition public, so the origin check is what stops a scraped key
- * from being used to flood a workspace from someone else's site.
+ * **What the origin allow-list does and does not do here.** The global CORS
+ * layer only echoes an origin that `APP_URL` or the workspace's configured
+ * origins cover, so a BROWSER caller on an unlisted origin cannot read the
+ * response — and because the SDK sends `credentials: "include"`, it cannot
+ * preflight either. It is not, however, what protects a leaked key: CORS never
+ * refuses the write itself, and a non-browser caller sends no `Origin` at all,
+ * which this app treats as same-origin. A scraped publishable key is replayed
+ * from curl, a mobile build or a server — none of which the allow-list sees.
+ * What bounds one is this route being append-only, reading nothing back, and
+ * the per-(workspace, IP) budget below.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError } from "@backlex/core";

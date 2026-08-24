@@ -164,8 +164,8 @@ an operator with an IP and a user-agent could recompute an id: this is
 | **Excluded paths** | Never recorded. A leading or trailing `*` is supported (`/admin/*`). |
 | **Ignored IPs** | Never recorded — your office, a monitoring probe. |
 
-All four are enforced **server-side** and are editable from **Analytics →
-Sites → Settings**. The tag's own opt-outs (`DNT`, `globalPrivacyControl`,
+All four are enforced **server-side** and are editable from **Websites →
+Settings**. The tag's own opt-outs (`DNT`, `globalPrivacyControl`,
 consent state, and skipping `localhost` unless `data-allow-localhost="true"`)
 are advice a client can decline to follow; these are not.
 
@@ -197,8 +197,13 @@ mobile client its whole offline queue.
 
 ### The publishable ingest key
 
+> A website registered under **Websites** needs none of this. Its script tag
+> authenticates by the site id baked into it and reads no key at all — the key
+> below is only for events sent from an app, a server job or your own SDK
+> calls. See *Why the tag does not use the ingest endpoint* above.
+
 Browser and mobile bundles authenticate with a **publishable** key
-(`alk_…`), minted per workspace from **Analytics → Ingest key** (or
+(`alk_…`), created per workspace from **Analytics → App SDK key** (or
 `backlex analytics ingest-key mint`). It grants append-only ingest and cannot
 read a single row back, so it is safe to ship in client code.
 
@@ -218,10 +223,14 @@ Server-side callers don't need one — a normal API key or session authenticates
 ingest too. A request with none of the three is rejected: anonymous ingest into
 an arbitrary workspace would let anyone poison another tenant's numbers.
 
-> **Cross-origin callers still need their origin on the workspace's
-> allowed-origins list.** The key is public by definition, so the CORS origin
-> check is what stops a scraped key being used to flood you from someone
-> else's site. Add your app's origin under **Settings → Auth → Redirect URLs**.
+> **Do not treat the origin allow-list as what protects a leaked key.** A
+> *browser* caller does need its origin under **Settings → Auth → Redirect
+> URLs**, because the SDK sends `credentials: "include"` and that forces a
+> credentialed preflight. But `curl`, a mobile build and a server send no
+> `Origin` at all and are let through — and those are exactly where a scraped
+> publishable key would be replayed from. What actually bounds a leaked key is
+> that it is append-only, reads nothing back, and is capped at 120
+> requests/minute per workspace+IP. Rotate it if it leaks.
 
 Ingest is rate-limited to 120 requests/minute per workspace+IP. Batch, and
 you'll never come near it.

@@ -15,12 +15,11 @@
  *
  *   - `apps/site/package.json` named `vite: 8.0.13` for weeks while astro
  *     quietly resolved its OWN nested `vite@8.2.1` right past it.
- *   - The obvious repair does not work: Bun answers a scoped `resolutions` entry
- *     with `warn: Bun currently does not support nested "resolutions"` and
- *     ignores it — and that warning appears only in the CI install log, so
- *     locally the entry looks like it worked.
- *   - A blanket `"vite"` resolution is not available either, because `apps/docs`
- *     runs astro 6 and requires `vite ^7.3.2`.
+ *   - Neither repair that looks obvious is needed here any more, and both were
+ *     described wrongly. A scoped `resolutions` entry DOES work in Bun 1.4 when
+ *     written with a slash (`"parent/child": "1.2.3"`); the repo ships two. And
+ *     a blanket `"vite"` entry is no longer blocked by `apps/docs`, which moved
+ *     from astro 6 to astro 7 — there is no 7.x vite left in the tree at all.
  *
  * So the assertions read what `bun.lock` RESOLVED and compare it against what
  * package.json DECLARES, because those two disagreeing silently is the entire
@@ -62,8 +61,18 @@ describe("vite lockfile resolution", () => {
 
   test("every resolved vite 8.x is the version apps/web declares", () => {
     const eights = resolvedVersions("vite").filter((v) => v.startsWith("8."));
-    // 7.x is legitimate — apps/docs runs astro 6, which requires vite ^7.3.2.
+    // Filtered to 8.x because a legitimate 7.x used to coexist (astro 6 in
+    // `apps/docs` required `vite ^7.3.2`). That is over — both Astro workspaces
+    // run astro 7 now — so the filter is belt-and-braces, and the next test
+    // asserts the stronger property: the tree holds exactly one vite, full stop.
     expect(eights).toEqual([declaredVite()]);
+  });
+
+  test("the whole tree resolves exactly one vite", () => {
+    // Stronger than the 8.x check above, and the assertion that would have
+    // caught `apps/site` sitting on its own astro (and so its own Astro-internal
+    // toolchain) while `apps/docs` had moved on.
+    expect(resolvedVersions("vite")).toEqual([declaredVite()]);
   });
 
   test("rolldown resolves to a single version", () => {

@@ -4,7 +4,10 @@
 // Five tabs on one page because they read the same event stream and share the
 // time-window control: Overview (counters + daily series + top-N), Realtime,
 // Funnel (an ordered conversion builder), Retention (a cohort grid), and Errors
-// (crash groups + triage). The window select in the header applies to them all.
+// (crash groups + triage). The window select applies to Overview, Funnel and
+// Retention — Realtime is fixed at the last 30 minutes and the Errors list is
+// filtered by status and level, so the header hides it on those two rather than
+// offering a control that does nothing.
 //
 // The site REGISTRY and the consent policy used to be tabs here and are now
 // their own pages under the Website group. They never belonged: neither reads
@@ -21,8 +24,10 @@ import { useUrlTab } from "../../use-url-tab";
 import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Input } from "@backlex/ui/components/input";
 import { Timeseries } from "./timeseries";
+import { ConfirmDialog } from "../../sheet";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { currencyExponent, formatMoney, fromMinorUnits } from "@backlex/db/money";
 import {
@@ -54,6 +59,7 @@ import {
   useAnalyticsFunnel,
   useAnalyticsIngestKey,
   useAnalyticsOverview,
+  useAnalyticsSites,
   useAnalyticsChannels,
   useAnalyticsSegments,
   useCreateAnalyticsSegment,
@@ -135,8 +141,9 @@ function BreakdownCard({
   /**
    * Which figure the row leads with. A website report answers "how many
    * people" for a page or a country, and "how many times" for an event — so
-   * the caller says which. The other figure rides in the row's tooltip rather
-   * than a second column, which would not survive a 390px viewport.
+   * the caller says which. The other figure rides in the row's tooltip on a
+   * pointer device, and inline in a lighter weight below `sm:` — a tooltip is
+   * unreachable on the viewport this admin is checked at.
    */
   metric?: "count" | "users";
   unit: string;
@@ -178,6 +185,15 @@ function BreakdownCard({
               <span className="shrink-0 tabular-nums text-[12.5px] text-muted-foreground">
                 {fmtCount(figure(r))}
               </span>
+              {/* The second figure lives in a `title` tooltip, which a touch
+                  device never shows — so on a phone half the data in six to
+                  eleven of these cards was unreachable. It trails the headline
+                  figure in a lighter weight, never in front of it. */}
+              {r.users !== undefined && (
+                <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground/60 sm:hidden">
+                  {`· ${fmtCount(metric === "users" ? r.count : r.users)}`}
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -188,8 +204,13 @@ function BreakdownCard({
 
 export function AnalyticsPage({
   pushToast,
+  setActiveNav,
 }: {
   pushToast: PushToast;
+  /** Prop-drilled rather than `useNavigate`, matching the sibling pages: the
+   *  shell's `vNav` saves pane scroll, warms the target's lazy chunk and
+   *  commits inside a view transition. */
+  setActiveNav?: (id: string) => void;
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();
@@ -203,6 +224,9 @@ export function AnalyticsPage({
 
   const overviewQ = useAnalyticsOverview(days, segmentId || null);
   const overview = overviewQ.data?.data;
+  // Read only to tell two empty states apart: a workspace with a website
+  // registered is not missing an SDK key, it is missing traffic.
+  const sitesQ = useAnalyticsSites();
 
   const tabLabels: Record<Tab, string> = {
     overview: t`Overview`,
@@ -212,40 +236,62 @@ export function AnalyticsPage({
     errors: t`Errors`,
   };
 
-  if (overviewQ.isLoading && !overview) return <AnalyticsSkeleton />;
+  // Which header controls this tab actually obeys. They used to sit above every
+  // tab as if they applied to all five, and on two of them they were inert:
+  // `RealtimeTab` is hard-coded to the last 30 minutes and takes no props, and
+  // `useErrorGroups(status, level)` takes neither the window nor the segment.
+  const usesWindow = tab === "overview" || tab === "funnel" || tab === "retention";
+  const usesSegment = tab === "overview";
 
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
         title={t`Analytics`}
         description={t`Product events and crash reports from your apps. Visitors are counted by an anonymous id, so pre-signup traffic is measured too.`}
+        descriptionClassName="hidden sm:block"
+        // A bare fragment: PageHeader already wraps `actions` in its own
+        // `ml-auto flex flex-wrap items-center justify-end gap-2`, so the inner
+        // div this used to pass made the row wrap against the wrong width.
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Select
-              size="sm"
-              value={String(days)}
-              onChange={(v) => setDays(Number(v))}
-              options={WINDOWS.map((d) => ({ value: d, label: t`${d} days` }))}
-              className="w-[110px]"
-            />
+          <>
+            {usesWindow && (
+              <Select
+                size="sm"
+                value={String(days)}
+                onChange={(v) => setDays(Number(v))}
+                options={WINDOWS.map((d) => ({ value: d, label: t`Last ${d} days` }))}
+                className="w-[130px]"
+              />
+            )}
+            {usesSegment && (
+              <>
+                <Select
+                  size="sm"
+                  value={segmentId}
+                  onValueChange={(v) => setSegmentId(v)}
+                  className="w-[150px] min-w-0 [&>*]:min-w-0"
+                  options={[
+                    { value: "", label: t`All traffic` },
+                    ...segments
+                      // The optimistic row's placeholder id is not one the
+                      // server knows; selecting it would filter by nothing.
+                      .filter((sg: ApiAnalyticsSegment) => !sg.id.startsWith("pending-"))
+                      .map((sg: ApiAnalyticsSegment) => ({
+                        value: sg.id,
+                        label: sg.name,
+                      })),
+                  ]}
+                />
+                <Button variant="outline" icon={I.Filter} onClick={() => setSegOpen(true)}>
+                  <Trans>Segments</Trans>
+                </Button>
+              </>
+            )}
+            {/* Named for what it is. As "Ingest key" in the header of the page
+                an operator opens after installing a website tag, it read as a
+                required setup step — and the web tag reads no key at all. */}
             <Button variant="outline" icon={I.Key} onClick={() => setKeyOpen(true)}>
-              <Trans>Ingest key</Trans>
-            </Button>
-            <Select
-              size="sm"
-              value={segmentId}
-              onValueChange={(v) => setSegmentId(v)}
-              className="w-[150px] min-w-0 [&>*]:min-w-0"
-              options={[
-                { value: "", label: t`All traffic` },
-                ...segments.map((sg: ApiAnalyticsSegment) => ({
-                  value: sg.id,
-                  label: sg.name,
-                })),
-              ]}
-            />
-            <Button variant="outline" icon={I.Filter} onClick={() => setSegOpen(true)}>
-              <Trans>Segments</Trans>
+              <Trans>App SDK key</Trans>
             </Button>
             <Button
               variant="outline"
@@ -260,54 +306,68 @@ export function AnalyticsPage({
             >
               <Trans>Refresh</Trans>
             </Button>
-          </div>
+          </>
         }
       />
 
-      {/* Tab strip. Scrolls horizontally on a phone rather than wrapping into
-          a second row that pushes the content down. */}
-      <ScrollArea className="w-full" viewportClassName="max-w-full">
-        <div className="flex items-center gap-1.5 pb-1">
+      {/* The real Tabs primitive rather than five plain Buttons: it carries
+          role/aria-selected and roving focus, and its list scrolls itself on a
+          phone. logs.tsx already switches views this way. */}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+        <TabsList>
           {TABS.map((id) => (
-            <Button
-              key={id}
-              variant={tab === id ? "primary" : "outline"}
-              onClick={() => setTab(id)}
-            >
+            <TabsTrigger key={id} value={id}>
               {tabLabels[id]}
-            </Button>
+            </TabsTrigger>
           ))}
-        </div>
-      </ScrollArea>
+        </TabsList>
+      </Tabs>
 
-      {overviewQ.isError ? (
-        <Card className="items-center gap-3 px-6 py-12 text-center">
-          <div className="grid size-10 place-items-center rounded-control bg-muted text-primary">
-            <I.AlertTriangle size={18} />
-          </div>
-          <h4 className="m-0 text-[15px] font-semibold">
-            <Trans>Couldn't load analytics</Trans>
-          </h4>
-          <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">
-            <Trans>The analytics endpoint returned an error. Refresh to try again.</Trans>
-          </p>
-        </Card>
-      ) : (
-        <>
-          {tab === "overview" && (
-            <OverviewTab overview={overview} days={days} segmentId={segmentId || null} />
-          )}
-          {tab === "funnel" && <FunnelTab days={days} />}
-          {tab === "retention" && <RetentionTab days={days} />}
-          {tab === "errors" && <ErrorsTab pushToast={pushToast} />}
-          {tab === "realtime" && <RealtimeTab />}
-        </>
-      )}
+      {/* Both gates belong to Overview alone. Page-wide, a failing overview
+          query took down crash triage with it, and deep-linking `?tab=errors`
+          rendered an Overview-shaped skeleton for a tab that draws a table. */}
+      {tab === "overview" &&
+        (overviewQ.isError ? (
+          <EmptyState
+            icon={I.AlertTriangle}
+            title={t`Couldn't load analytics`}
+            description={
+              (overviewQ.error as Error)?.message ||
+              t`This is usually temporary — try again.`
+            }
+            action={
+              <Button
+                variant="primary"
+                icon={I.Refresh}
+                onClick={() => void overviewQ.refetch()}
+              >
+                <Trans>Try again</Trans>
+              </Button>
+            }
+          />
+        ) : overviewQ.isLoading && !overview ? (
+          <AnalyticsSkeleton />
+        ) : (
+          <OverviewTab
+            overview={overview}
+            days={days}
+            segmentId={segmentId || null}
+            hasSites={(sitesQ.data?.data.length ?? 0) > 0}
+            onOpenIngestKey={() => setKeyOpen(true)}
+            onGoToWebsites={setActiveNav ? () => setActiveNav("websites") : undefined}
+          />
+        ))}
+      {tab === "funnel" && <FunnelTab days={days} />}
+      {tab === "retention" && <RetentionTab days={days} />}
+      {tab === "errors" && <ErrorsTab pushToast={pushToast} />}
+      {tab === "realtime" && <RealtimeTab />}
 
       <SegmentsDialog
         open={segOpen}
         onClose={() => setSegOpen(false)}
         pushToast={pushToast}
+        selectedSegmentId={segmentId}
+        onSegmentCleared={() => setSegmentId("")}
       />
 
       <IngestKeyDialog
@@ -325,10 +385,18 @@ function OverviewTab({
   overview,
   days,
   segmentId,
+  hasSites,
+  onOpenIngestKey,
+  onGoToWebsites,
 }: {
   overview: ApiAnalyticsOverview | undefined;
   days: number;
   segmentId: string | null;
+  /** Whether this workspace has a website registered. It decides which of two
+   *  very different "nothing here" stories is true. */
+  hasSites: boolean;
+  onOpenIngestKey: () => void;
+  onGoToWebsites?: () => void;
 }) {
   const { t } = useLingui();
   if (!overview) return null;
@@ -340,12 +408,42 @@ function OverviewTab({
   // keeps the original label.
   const cookieless = overview.totals.cookielessShare > 0;
 
+  // The two stories are not the same, and telling the wrong one was the single
+  // most misleading thing on this page. A website's tag authenticates by its
+  // site id — it reads no key, and never has — so telling an operator who has
+  // just installed one to "mint an ingest key" sends them to fix a credential
+  // that plays no part in why their page views are missing.
   if (overview.totals.events === 0) {
-    return (
+    return hasSites ? (
+      <EmptyState
+        icon={I.Globe}
+        title={t`No events from your websites yet`}
+        description={t`The website tag needs no key — it reports against the site it was issued for. Check its snippet is the first script in your head tag, and that the page you loaded is not on the excluded list.`}
+        action={
+          onGoToWebsites ? (
+            <Button variant="primary" icon={I.Globe} onClick={onGoToWebsites}>
+              <Trans>Check the snippet</Trans>
+            </Button>
+          ) : undefined
+        }
+      />
+    ) : (
       <EmptyState
         icon={I.BarChart}
         title={t`No events tracked yet`}
-        description={t`Mint an ingest key, then call client.analytics.track("page_view") from your app. Events show up here within seconds.`}
+        description={t`Register a website for pageviews with no key at all, or — for a mobile app, a server job or your own SDK calls — create an app SDK key and call client.analytics.track("page_view").`}
+        action={
+          <span className="flex flex-wrap items-center justify-center gap-1.5">
+            {onGoToWebsites ? (
+              <Button variant="primary" icon={I.Globe} onClick={onGoToWebsites}>
+                <Trans>Add a website</Trans>
+              </Button>
+            ) : null}
+            <Button variant="outline" icon={I.Key} onClick={onOpenIngestKey}>
+              <Trans>Create an app SDK key</Trans>
+            </Button>
+          </span>
+        }
       />
     );
   }
@@ -370,14 +468,25 @@ function OverviewTab({
         <StatTile
           label={t`Sessions`}
           value={fmtCount(overview.totals.sessions)}
-          sub={t`with a session id`}
+          sub={t`events carrying a session id`}
         />
+        {/* The denominator has to be the figure printed next to it. With
+            rotating ids the Visitors tile deliberately stops showing `users`,
+            so dividing by `users` produced a ratio the reader could not
+            reproduce from the two tiles either side of it. */}
         <StatTile
-          label={t`Events / visitor`}
+          label={cookieless ? t`Events / visitor-day` : t`Events / visitor`}
           value={
-            overview.totals.users > 0
-              ? (overview.totals.events / overview.totals.users).toFixed(1)
-              : "—"
+            cookieless
+              ? (overview.totals.visitorsPerDay ?? 0) > 0
+                ? (
+                    overview.totals.events /
+                    ((overview.totals.visitorsPerDay ?? 0) * days)
+                  ).toFixed(1)
+                : "—"
+              : overview.totals.users > 0
+                ? (overview.totals.events / overview.totals.users).toFixed(1)
+                : "—"
           }
           sub={t`engagement depth`}
         />
@@ -508,10 +617,14 @@ function SessionsBlock({ days, segmentId }: { days: number; segmentId: string | 
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {/* Named apart from the top grid's "Sessions". Two tiles carrying one
+            word for two different measurements — events that carried a session
+            id, against visits cut on 30 minutes of inactivity — invited the
+            reader to treat a disagreement between them as a bug. */}
         <StatTile
-          label={t`Sessions`}
+          label={t`Website visits`}
           value={fmtCount(s.sessions)}
-          sub={t`30-minute inactivity`}
+          sub={t`cut on 30-minute inactivity`}
         />
         <StatTile
           label={t`Bounce rate`}
@@ -584,6 +697,10 @@ function FunnelTab({ days }: { days: number }) {
   const setStep = (i: number, v: string) =>
     setSteps((prev) => prev.map((s, j) => (j === i ? v : s)));
 
+  // Asserted before anything had loaded, so every visit to this tab briefly
+  // told a workspace with plenty of events that it had none.
+  if (namesQ.isLoading) return <Skeleton className="h-[168px] w-full rounded-control" />;
+
   if (names.length === 0) {
     return (
       <EmptyState
@@ -633,10 +750,15 @@ function FunnelTab({ days }: { days: number }) {
             <span className="text-[12.5px] text-muted-foreground">
               <Trans>Convert within</Trans>
             </span>
+            {/* Bounded by the report window above it: on 7 days of data, a
+                30-day conversion window is a range the query cannot answer. */}
             <Select
-              value={String(windowDays)}
+              value={String(Math.min(windowDays, days))}
               onChange={(v) => setWindowDays(Number(v))}
-              options={FUNNEL_WINDOWS.map((d) => ({ value: d, label: t`${d} days` }))}
+              options={FUNNEL_WINDOWS.filter((d) => Number(d) <= days).map((d) => ({
+                value: d,
+                label: t`${d} days`,
+              }))}
               className="w-[110px]"
             />
           </div>
@@ -675,6 +797,14 @@ function FunnelTab({ days }: { days: number }) {
             </div>
           ))}
         </Card>
+      ) : funnelQ.isFetching ? (
+        // Changing a step or the window used to make the results card vanish
+        // and reappear with no sign that anything was happening.
+        <Card className="gap-3 px-4 py-3.5">
+          {chosen.map((name) => (
+            <Skeleton key={name} className="h-10 w-full" />
+          ))}
+        </Card>
       ) : null}
     </>
   );
@@ -706,9 +836,11 @@ function RetentionTab({ days }: { days: number }) {
   const retentionQ = useAnalyticsRetention(event || null, days);
   const data = retentionQ.data?.data;
 
-  // Long windows produce a very wide grid; cap the visible columns so the
-  // table stays readable and let the ScrollArea handle the rest.
-  const cols = Math.min(data?.maxOffset ?? 0, 14);
+  // Long windows produce a very wide grid, and the ScrollArea scrolls it. The
+  // cap that used to sit here scrolled only the 15 columns it built, so on a
+  // 90-day window D15 onward were not "handled by the ScrollArea" — they were
+  // dropped, and the comment said otherwise.
+  const cols = data?.maxOffset ?? 0;
   const today = utcToday();
 
   return (
@@ -728,7 +860,11 @@ function RetentionTab({ days }: { days: number }) {
         />
       </Card>
 
-      {!data || data.cohorts.length === 0 ? (
+      {retentionQ.isLoading ? (
+        // "Not enough history yet" is a claim about the workspace's data, and
+        // it was being made before any of that data had arrived.
+        <Skeleton className="h-[280px] w-full rounded-control" />
+      ) : !data || data.cohorts.length === 0 ? (
         <EmptyState
           icon={I.History}
           title={t`Not enough history yet`}
@@ -818,6 +954,7 @@ function ErrorsTab({
   const groupsQ = useErrorGroups(status, level);
   const groups = groupsQ.data?.data ?? [];
   const update = useUpdateErrorGroup();
+  const filtered = status !== "open" || level !== "all";
 
   return (
     <>
@@ -846,12 +983,44 @@ function ErrorsTab({
         />
       </div>
 
-      {!groupsQ.isLoading && groups.length === 0 ? (
-        <EmptyState
-          icon={I.AlertTriangle}
-          title={t`No crashes here`}
-          description={t`Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically.`}
-        />
+      {groupsQ.isLoading ? (
+        // The loading case used to fall through to the table branch with an
+        // empty list: a bordered box of column headers on desktop, and nothing
+        // at all on a phone, on every filter change.
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-control" />
+          ))}
+        </div>
+      ) : groups.length === 0 ? (
+        // Filtered and unfiltered are different answers. Set status to
+        // "Resolved" on a workspace that reports crashes daily and this used to
+        // tell the operator to go and install the SDK.
+        filtered ? (
+          <EmptyState
+            icon={I.AlertTriangle}
+            title={t`No crashes match these filters`}
+            description={t`Nothing here at this status and level. Widen the filters to see the rest.`}
+            action={
+              <Button
+                variant="outline"
+                icon={I.X}
+                onClick={() => {
+                  setStatus("open");
+                  setLevel("all");
+                }}
+              >
+                <Trans>Clear filters</Trans>
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={I.AlertTriangle}
+            title={t`No crashes here`}
+            description={t`Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically.`}
+          />
+        )
       ) : (
         <>
           {/* Phone: stacked cards. A horizontally scrolling table would park
@@ -861,7 +1030,15 @@ function ErrorsTab({
               <Card
                 key={g.id}
                 className="cursor-pointer gap-2 px-3.5 py-3"
+                role="button"
+                tabIndex={0}
                 onClick={() => setOpenId(g.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setOpenId(g.id);
+                  }
+                }}
               >
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-[13px] font-medium">
@@ -931,7 +1108,15 @@ function ErrorsTab({
                     <TableRow
                       key={g.id}
                       className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setOpenId(g.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setOpenId(g.id);
+                        }
+                      }}
                     >
                       <TableCell className="min-w-0">
                         <div className="flex min-w-0 flex-col">
@@ -1009,9 +1194,10 @@ function ErrorDetailDialog({
   pushToast: PushToast;
 }) {
   const { t } = useLingui();
-  const { data } = useErrorGroup(id);
+  const { data, isLoading } = useErrorGroup(id);
   const update = useUpdateErrorGroup();
   const remove = useDeleteErrorGroup();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const detail = data?.data;
   const group: ApiErrorGroup | undefined = detail?.group;
   const latest = detail?.occurrences[0];
@@ -1025,6 +1211,7 @@ function ErrorDetailDialog({
   };
 
   return (
+    <>
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader className="shrink-0">
@@ -1041,6 +1228,18 @@ function ErrorDetailDialog({
 
         <DialogBody>
           <div className="flex flex-col gap-3 px-1">
+            {isLoading && !group && (
+              // Clicking a row used to open a dialog titled "Error" with an
+              // entirely empty body and a live footer.
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-[68px] w-full rounded-control" />
+                  ))}
+                </div>
+                <Skeleton className="h-[160px] w-full rounded-control" />
+              </div>
+            )}
             {group && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <StatTile
@@ -1066,12 +1265,14 @@ function ErrorDetailDialog({
               </div>
             )}
 
-            {group?.culprit && (
+            {group && (
               <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
-                <Badge variant="outline">{group.level}</Badge>
+                <Badge variant={levelVariant(group.level)}>{group.level}</Badge>
                 {group.platform && <Badge variant="outline">{group.platform}</Badge>}
                 {group.release && <Badge variant="outline">{group.release}</Badge>}
-                <span className="font-mono text-muted-foreground">{group.culprit}</span>
+                {group.culprit && (
+                  <span className="font-mono text-muted-foreground">{group.culprit}</span>
+                )}
               </div>
             )}
 
@@ -1093,7 +1294,7 @@ function ErrorDetailDialog({
 
             {latest?.url && (
               <div className="text-[12.5px] text-muted-foreground">
-                <Trans>Last seen at</Trans>{" "}
+                <Trans>Page URL</Trans>{" "}
                 <span className="font-mono break-all">{latest.url}</span>
               </div>
             )}
@@ -1123,35 +1324,61 @@ function ErrorDetailDialog({
 
         <DialogFooter className="shrink-0">
           <Button
-            variant="outline"
+            variant="destructive"
             icon={I.Trash}
-            onClick={() => {
-              if (!id) return;
-              remove.mutate(id, {
-                onError: () => pushToast(t`Couldn't delete the group.`, "error"),
-              });
-              onClose();
-            }}
+            disabled={!group}
+            onClick={() => setConfirmDelete(true)}
           >
             <Trans>Delete</Trans>
           </Button>
           {group?.status !== "ignored" && (
-            <Button variant="outline" icon={I.Eye} onClick={() => setStatus("ignored")}>
+            <Button
+              variant="outline"
+              icon={I.EyeOff}
+              disabled={!group}
+              onClick={() => setStatus("ignored")}
+            >
               <Trans>Ignore</Trans>
             </Button>
           )}
-          {group?.status === "resolved" ? (
+          {/* An ignored group could only be un-ignored by resolving it first
+              and then reopening — `open` was reachable from `resolved` alone. */}
+          {group?.status === "resolved" || group?.status === "ignored" ? (
             <Button variant="outline" icon={I.RotateCcw} onClick={() => setStatus("open")}>
               <Trans>Reopen</Trans>
             </Button>
-          ) : (
-            <Button variant="primary" icon={I.Check} onClick={() => setStatus("resolved")}>
+          ) : null}
+          {group?.status !== "resolved" && (
+            <Button
+              variant="primary"
+              icon={I.Check}
+              disabled={!group}
+              onClick={() => setStatus("resolved")}
+            >
               <Trans>Resolve</Trans>
             </Button>
           )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      <ConfirmDialog
+        open={confirmDelete}
+        destructive
+        title={t`Delete this crash group?`}
+        description={t`Every occurrence recorded for it goes too, and a crash that happens again arrives as a brand-new group with no history.`}
+        actionLabel={t`Delete group`}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          if (!id) return;
+          remove.mutate(id, {
+            onSuccess: () => pushToast(t`Crash group deleted.`),
+            onError: () => pushToast(t`Couldn't delete the group.`, "error"),
+          });
+          onClose();
+        }}
+      />
+    </>
   );
 }
 
@@ -1168,14 +1395,16 @@ function IngestKeyDialog({
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();
-  const { data } = useAnalyticsIngestKey();
+  const { data, isLoading } = useAnalyticsIngestKey();
   const exists = data?.data.exists ?? false;
   // Shown once, right after minting — the server only ever stores its hash.
   const [minted, setMinted] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState<"rotate" | "revoke" | null>(null);
 
   const close = () => {
     setMinted(null);
+    setConfirm(null);
     onClose();
   };
 
@@ -1186,50 +1415,76 @@ function IngestKeyDialog({
       setMinted(res.data.key);
       await qc.invalidateQueries({ queryKey: queryKeysIngest });
     } catch {
-      pushToast(t`Couldn't mint an ingest key.`, "error");
+      pushToast(t`Couldn't create the key.`, "error");
     } finally {
       setBusy(false);
     }
   };
 
+  // Optimistic, like every other mutation in this admin: the badge used to sit
+  // on "Key set" for the whole round trip plus a refetch.
   const revoke = async () => {
     setBusy(true);
+    const prev = qc.getQueryData(queryKeysIngest);
+    qc.setQueryData(queryKeysIngest, (old: { data: { exists: boolean } } | undefined) =>
+      old ? { ...old, data: { ...old.data, exists: false } } : old,
+    );
     try {
       await analyticsApi.revokeIngestKey();
       setMinted(null);
-      await qc.invalidateQueries({ queryKey: queryKeysIngest });
-      pushToast(t`Ingest key revoked.`);
+      pushToast(t`App SDK key revoked.`);
     } catch {
-      pushToast(t`Couldn't revoke the ingest key.`, "error");
+      if (prev) qc.setQueryData(queryKeysIngest, prev);
+      pushToast(t`Couldn't revoke the key.`, "error");
     } finally {
       setBusy(false);
+      await qc.invalidateQueries({ queryKey: queryKeysIngest });
     }
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>
-            <Trans>Analytics ingest key</Trans>
+            <Trans>App SDK key</Trans>
           </DialogTitle>
           <DialogDescription>
-            <Trans>The publishable key your client apps send when tracking.</Trans>
+            <Trans>
+              For events sent from an app — a mobile build, a server job, your own
+              SDK calls. Websites do not use it.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
 
         <DialogBody>
           <div className="flex flex-col gap-3 px-1">
+            {/* The distinction this dialog exists to make. A website's script
+                tag authenticates by the site id baked into it and reads no key
+                at all, so an operator who has just installed one and sees no
+                data is not missing a credential. */}
             <p className="m-0 text-[13px] text-muted-foreground">
               <Trans>
-                A publishable key you can ship inside browser and mobile bundles. It
-                only allows appending events and crash reports — it can't read any
-                data back. Cross-origin callers still need their origin on the
-                workspace's allowed-origins list.
+                A publishable key you can ship inside app bundles. It only appends
+                events and crash reports — it cannot read a single row back, and it
+                grants nothing else.
+              </Trans>
+            </p>
+            <p className="m-0 rounded-control border bg-muted/40 p-2.5 text-[12.5px] text-muted-foreground">
+              <Trans>
+                A website registered under Websites needs none of this: its script tag
+                reports against the site it was issued for. Only reach for a key when
+                the sender is not one of those sites.
               </Trans>
             </p>
 
-            {minted ? (
+            {isLoading && !minted ? (
+              // While the status was in flight this asserted "No key" and the
+              // button read "Mint key", so a fast click silently rotated a key
+              // that was live in shipped bundles.
+              <Skeleton className="h-6 w-56" />
+            ) : minted ? (
               <div className="flex flex-col gap-2">
                 <div className="rounded-control border border-primary/40 bg-primary/5 p-3">
                   <code className="block break-all font-mono text-[12.5px]">{minted}</code>
@@ -1258,9 +1513,9 @@ function IngestKeyDialog({
                 </Badge>
                 <span className="text-muted-foreground">
                   {exists ? (
-                    <Trans>Minting a new key immediately invalidates the old one.</Trans>
+                    <Trans>Creating a new key immediately invalidates the old one.</Trans>
                   ) : (
-                    <Trans>No key has been minted for this workspace yet.</Trans>
+                    <Trans>No key has been created for this workspace yet.</Trans>
                   )}
                 </span>
               </div>
@@ -1270,23 +1525,56 @@ function IngestKeyDialog({
 
         <DialogFooter className="shrink-0">
           {exists && (
-            <Button variant="outline" icon={I.Trash} disabled={busy} onClick={revoke}>
+            <Button
+              variant="destructive"
+              icon={I.Trash}
+              disabled={busy || isLoading}
+              onClick={() => setConfirm("revoke")}
+            >
               <Trans>Revoke</Trans>
             </Button>
           )}
-          <Button variant="primary" icon={I.Key} disabled={busy} onClick={mint}>
-            {exists ? <Trans>Rotate key</Trans> : <Trans>Mint key</Trans>}
+          <Button
+            variant="primary"
+            icon={I.Key}
+            disabled={busy || isLoading}
+            onClick={() => (exists ? setConfirm("rotate") : void mint())}
+          >
+            {exists ? <Trans>Rotate key</Trans> : <Trans>Create key</Trans>}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      {/* Both actions break every app already shipping the current key, and
+          both used to fire on a single click. */}
+      <ConfirmDialog
+        open={confirm !== null}
+        destructive
+        title={
+          confirm === "revoke" ? t`Revoke this key?` : t`Rotate this key?`
+        }
+        description={
+          confirm === "revoke"
+            ? t`Apps sending with it stop being accepted immediately, and events they emit are lost rather than queued.`
+            : t`The current key stops working the moment the new one is issued, so every app still shipping it stops reporting until you ship the replacement.`
+        }
+        actionLabel={confirm === "revoke" ? t`Revoke key` : t`Rotate key`}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          const action = confirm;
+          setConfirm(null);
+          if (action === "revoke") void revoke();
+          else void mint();
+        }}
+      />
+    </>
   );
 }
 
 /** Local alias so the dialog doesn't need the whole queryKeys import surface. */
 const queryKeysIngest = ["analytics", "ingest-key"] as const;
 
-/* ── Sites ────────────────────────────────────────────────────────────── */
+/* ── Realtime ─────────────────────────────────────────────────────────── */
 
 function RealtimeTab() {
   const { t } = useLingui();
@@ -1303,20 +1591,38 @@ function RealtimeTab() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-end">
+        {/* The label names the action, not the state: reading "Live" it was
+            taken for a status chip, so nobody discovered it pauses polling. */}
         <Button
           variant={live ? "primary" : "outline"}
-          icon={I.Zap}
+          icon={live ? I.Pause : I.Zap}
+          aria-pressed={live}
           onClick={() => setLive((v) => !v)}
         >
-          {live ? <Trans>Live</Trans> : <Trans>Go live</Trans>}
+          {live ? <Trans>Pause</Trans> : <Trans>Go live</Trans>}
         </Button>
       </div>
 
       {!rt ? (
-        <Card className="gap-2 px-4 py-3.5">
-          <Skeleton className="h-3 w-32" />
-          <Skeleton className="h-[120px] w-full" />
-        </Card>
+        // Shaped like what replaces it — two tiles, a chart card and three
+        // breakdowns. One short card meant the page jumped several hundred
+        // pixels when the first poll landed.
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Skeleton key={i} className="h-[68px] w-full rounded-control" />
+            ))}
+          </div>
+          <Card className="gap-2 px-4 py-3.5">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-[120px] w-full" />
+          </Card>
+          <div className="grid gap-3 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-[168px] w-full rounded-control" />
+            ))}
+          </div>
+        </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
@@ -1541,44 +1847,66 @@ function RevenueBlock({ days, segmentId }: { days: number; segmentId: string | n
  * this dropdown offers. Keeping it a dropdown is the point: a free-text field
  * name would invite exactly the input the server has to reject.
  */
-const SEGMENT_FIELD_OPTIONS = [
-  { value: "path", label: "Page path" },
-  { value: "referrer", label: "Referrer" },
-  { value: "country", label: "Country" },
-  { value: "deviceType", label: "Device" },
-  { value: "browser", label: "Browser" },
-  { value: "os", label: "OS" },
-  { value: "utmSource", label: "Campaign source" },
-  { value: "utmMedium", label: "Campaign medium" },
-  { value: "utmCampaign", label: "Campaign" },
-  { value: "name", label: "Event name" },
-  { value: "currency", label: "Currency" },
-] as const;
+function useSegmentFieldOptions() {
+  const { t } = useLingui();
+  return [
+    { value: "path", label: t`Page path` },
+    { value: "referrer", label: t`Referrer` },
+    { value: "country", label: t`Country` },
+    { value: "deviceType", label: t`Device` },
+    { value: "browser", label: t`Browser` },
+    { value: "os", label: t`OS` },
+    { value: "utmSource", label: t`Campaign source` },
+    { value: "utmMedium", label: t`Campaign medium` },
+    { value: "utmCampaign", label: t`Campaign` },
+    { value: "name", label: t`Event name` },
+    { value: "currency", label: t`Currency` },
+  ];
+}
 
-const SEGMENT_OP_OPTIONS = [
-  { value: "eq", label: "is" },
-  { value: "neq", label: "is not" },
-  { value: "contains", label: "contains" },
-  { value: "startsWith", label: "starts with" },
-  { value: "endsWith", label: "ends with" },
-  { value: "isSet", label: "is set" },
-  { value: "isNotSet", label: "is not set" },
-] as const;
+function useSegmentOpOptions() {
+  const { t } = useLingui();
+  return [
+    { value: "eq", label: t`is` },
+    { value: "neq", label: t`is not` },
+    { value: "contains", label: t`contains` },
+    { value: "startsWith", label: t`starts with` },
+    { value: "endsWith", label: t`ends with` },
+    { value: "isSet", label: t`is set` },
+    { value: "isNotSet", label: t`is not set` },
+  ];
+}
 
 interface DraftRow {
+  /** Stable across a field change. Keyed on `field` the row remounted whenever
+   *  the dropdown moved, which recreated the value Input and dropped focus. */
+  id: string;
   field: string;
   op: string;
   value: string;
 }
 
+const emptyRow = (): DraftRow => ({
+  id: crypto.randomUUID(),
+  field: "path",
+  op: "eq",
+  value: "",
+});
+
 function SegmentsDialog({
   open,
   onClose,
   pushToast,
+  selectedSegmentId,
+  onSegmentCleared,
 }: {
   open: boolean;
   onClose: () => void;
   pushToast: PushToast;
+  /** Which segment the header is filtering by, so removing that one can clear
+   *  it rather than leaving every query bound to a deleted id. */
+  selectedSegmentId?: string;
+  onSegmentCleared?: () => void;
 }) {
   const { t } = useLingui();
   const segmentsQ = useAnalyticsSegments();
@@ -1588,14 +1916,20 @@ function SegmentsDialog({
 
   const [name, setName] = useState("");
   const [combine, setCombine] = useState<"all" | "any">("all");
-  const [rows, setRows] = useState<DraftRow[]>([{ field: "path", op: "eq", value: "" }]);
+  const [rows, setRows] = useState<DraftRow[]>([emptyRow()]);
+  const fieldOptions = useSegmentFieldOptions();
+  const opOptions = useSegmentOpOptions();
 
   const patch = (i: number, next: Partial<DraftRow>) =>
     setRows((r) => r.map((row, j) => (j === i ? { ...row, ...next } : row)));
 
   const needsValue = (op: string) => op !== "isSet" && op !== "isNotSet";
   const complete = rows.filter((r) => (needsValue(r.op) ? r.value.trim() !== "" : true));
-  const valid = name.trim() !== "" && complete.length > 0;
+  // Every row has to be complete, not just one: a half-filled second condition
+  // used to be dropped silently, so the saved segment filtered by less than
+  // what was on screen.
+  const incomplete = rows.length - complete.length;
+  const valid = name.trim() !== "" && incomplete === 0 && complete.length > 0;
 
   const save = () => {
     if (!valid) return;
@@ -1609,11 +1943,14 @@ function SegmentsDialog({
     const definition = leaves.length === 1 ? leaves[0] : { [combine]: leaves };
     createSegment.mutate(
       { name: name.trim(), definition },
-      { onError: () => pushToast(t`Could not save the segment.`) },
+      {
+        onSuccess: () => pushToast(t`Segment saved.`),
+        onError: () =>
+          pushToast(t`Couldn't save the segment. Check the name isn't already used.`, "error"),
+      },
     );
-    pushToast(t`Segment saved.`);
     setName("");
-    setRows([{ field: "path", op: "eq", value: "" }]);
+    setRows([emptyRow()]);
   };
 
   return (
@@ -1644,10 +1981,14 @@ function SegmentsDialog({
                       icon={I.Trash}
                       className="shrink-0"
                       onClick={() => {
+                        // Applied elsewhere, the header Select would keep
+                        // filtering by an id that no longer exists.
+                        if (sg.id === selectedSegmentId) onSegmentCleared?.();
                         deleteSegment.mutate(sg.id, {
-                          onError: () => pushToast(t`Could not remove the segment.`),
+                          onSuccess: () => pushToast(t`Segment removed.`),
+                          onError: () =>
+                            pushToast(t`Couldn't remove the segment.`, "error"),
                         });
-                        pushToast(t`Segment removed.`);
                       }}
                     >
                       <Trans>Remove</Trans>
@@ -1664,25 +2005,29 @@ function SegmentsDialog({
                 onChange={(e) => setName(e.target.value)}
               />
 
-              <div className="flex items-center gap-2">
-                <span className="text-[12.5px] text-muted-foreground">
-                  <Trans>Match</Trans>
-                </span>
-                <Select
-                  size="sm"
-                  value={combine}
-                  onValueChange={(v) => setCombine(v as "all" | "any")}
-                  className="w-[110px] min-w-0 [&>*]:min-w-0"
-                  options={[
-                    { value: "all", label: t`all of` },
-                    { value: "any", label: t`any of` },
-                  ]}
-                />
-              </div>
+              {/* Only offered once there is something to combine — with one
+                  condition the choice is discarded on save. */}
+              {rows.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[12.5px] text-muted-foreground">
+                    <Trans>Match</Trans>
+                  </span>
+                  <Select
+                    size="sm"
+                    value={combine}
+                    onValueChange={(v) => setCombine(v as "all" | "any")}
+                    className="w-[110px] min-w-0 [&>*]:min-w-0"
+                    options={[
+                      { value: "all", label: t`all of` },
+                      { value: "any", label: t`any of` },
+                    ]}
+                  />
+                </div>
+              )}
 
               {rows.map((row, i) => (
                 <div
-                  key={`${row.field}-${i}`}
+                  key={row.id}
                   className="grid min-w-0 grid-cols-1 gap-1.5 [&>*]:min-w-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
                 >
                   {/* Every one of these is a dropdown rather than free text:
@@ -1693,14 +2038,14 @@ function SegmentsDialog({
                     value={row.field}
                     onValueChange={(v) => patch(i, { field: v })}
                     className="min-w-0 [&>*]:min-w-0"
-                    options={SEGMENT_FIELD_OPTIONS.map((o) => ({ ...o }))}
+                    options={fieldOptions}
                   />
                   <Select
                     size="sm"
                     value={row.op}
                     onValueChange={(v) => patch(i, { op: v })}
                     className="min-w-0 [&>*]:min-w-0"
-                    options={SEGMENT_OP_OPTIONS.map((o) => ({ ...o }))}
+                    options={opOptions}
                   />
                   {needsValue(row.op) ? (
                     <Input
@@ -1711,13 +2056,19 @@ function SegmentsDialog({
                   ) : (
                     <span />
                   )}
+                  {/* Icon-only on a phone: as a full-width labelled button it
+                      turned each condition into four stacked rows. */}
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     icon={I.Trash}
+                    aria-label={t`Remove condition`}
+                    className="justify-self-end"
                     disabled={rows.length === 1}
                     onClick={() => setRows((r) => r.filter((_, j) => j !== i))}
                   >
-                    <Trans>Remove</Trans>
+                    <span className="hidden sm:inline">
+                      <Trans>Remove</Trans>
+                    </span>
                   </Button>
                 </div>
               ))}
@@ -1727,12 +2078,15 @@ function SegmentsDialog({
                   variant="outline"
                   icon={I.Plus}
                   disabled={rows.length >= 10}
-                  onClick={() =>
-                    setRows((r) => [...r, { field: "path", op: "eq", value: "" }])
-                  }
+                  onClick={() => setRows((r) => [...r, emptyRow()])}
                 >
                   <Trans>Add condition</Trans>
                 </Button>
+                {incomplete > 0 && (
+                  <p className="m-0 mt-1.5 text-[11.5px] text-muted-foreground">
+                    <Trans>Every condition needs a value before this can be saved.</Trans>
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -1248,11 +1248,15 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "logs" && <LogsPage pushToast={pushToast} />}
             {activeNav === "traces" && <TracesPage pushToast={pushToast} />}
             {activeNav === "usage" && <UsagePage pushToast={pushToast} />}
-            {activeNav === "analytics" && <AnalyticsPage pushToast={pushToast} />}
+            {activeNav === "analytics" && (
+              <AnalyticsPage pushToast={pushToast} setActiveNav={setActiveNav} />
+            )}
             {activeNav === "tag-manager" && (
               <TagManagerPage pushToast={pushToast} setActiveNav={setActiveNav} />
             )}
-            {activeNav === "websites" && <WebsitesPage pushToast={pushToast} />}
+            {activeNav === "websites" && (
+              <WebsitesPage pushToast={pushToast} setActiveNav={setActiveNav} />
+            )}
             {activeNav === "consent" && (
               <ConsentPage pushToast={pushToast} setActiveNav={setActiveNav} />
             )}

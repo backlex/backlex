@@ -76,7 +76,9 @@ function HeaderSkeleton({
       {actions > 0 && (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {Array.from({ length: actions }).map((_, i) => (
-            <Skeleton key={i} className="h-9 w-28" />
+            // h-8, not h-9: the admin Button defaults to size="sm", so a 36px
+            // placeholder made every header in the app shrink on load.
+            <Skeleton key={i} className="h-8 w-28" />
           ))}
         </div>
       )}
@@ -297,7 +299,11 @@ function UsageSkeletonImpl() {
 function AnalyticsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
-      <HeaderSkeleton actions={4} />
+      {/* Five: the window Select, the segment Select, Segments, App SDK key
+          and Refresh. Two of them are tab-scoped, so this is the widest case —
+          reserving fewer made the row re-flow, and on mobile that shifts the
+          whole page by a line height. */}
+      <HeaderSkeleton actions={5} />
       {/* Five tab pills: overview, realtime, funnel, retention, errors. It said
           SIX and listed `sites`, and had been wrong since consent landed and
           made it seven — a strip that changes width on load is a visible jump,
@@ -306,9 +312,9 @@ function AnalyticsSkeletonImpl() {
           The sessions block below the breakdowns is NOT reserved here: it only
           renders when tag traffic exists, and a skeleton for something that
           may never appear is its own layout jump. */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 rounded-control bg-muted p-1">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-9 w-[92px]" />
+          <Skeleton key={i} className="h-7 w-[86px]" />
         ))}
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -1208,7 +1214,9 @@ const GenericSkeleton = withSkeletonDelay(GenericSkeletonImpl);
  */
 const TagManagerSkeletonImpl = () => (
   <div className="space-y-6">
-    <HeaderSkeleton />
+    {/* The page renders no description, so reserving one painted a shimmer that
+        vanished and pulled the tab strip up. */}
+    <HeaderSkeleton description={false} actions={2} />
     <div className="flex gap-1">
       {[0, 1, 2, 3].map((i) => (
         <Skeleton key={i} className="h-8 w-20" />
@@ -1228,10 +1236,33 @@ export const TagManagerSkeleton = withSkeletonDelay(TagManagerSkeletonImpl);
  * never the other way round.
  */
 const WebsitesSkeletonImpl = () => (
-  <div className="space-y-6">
-    <HeaderSkeleton />
+  // `gap-3`, matching the page's own wrapper. `space-y-6` reserved 24px where
+  // the page uses 12, so every block below the header stepped up on load.
+  <div className="flex flex-col gap-3">
+    <HeaderSkeleton actions={2} />
     {[0, 1, 2].map((i) => (
-      <CardSkeleton key={i} />
+      // Shaped like the real card — identity row with a button trio, the
+      // install hint, the snippet block, the two switches — rather than three
+      // short lines less than half its height.
+      <Card key={i} className="gap-3 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-[34px] w-full rounded-control" />
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      </Card>
     ))}
   </div>
 );
@@ -1239,10 +1270,27 @@ export const WebsitesSkeleton = withSkeletonDelay(WebsitesSkeletonImpl);
 
 /** Cookie consent — a header, then a card per website carrying its policy. */
 const ConsentSkeletonImpl = () => (
-  <div className="space-y-6">
-    <HeaderSkeleton />
+  <div className="flex flex-col gap-3">
+    <HeaderSkeleton actions={1} />
     {[0, 1].map((i) => (
-      <CardSkeleton key={i} />
+      <Card key={i} className="gap-3 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+        {/* The posture chip row. */}
+        <div className="flex flex-wrap gap-1.5">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-5 w-32 rounded-full" />
+          <Skeleton className="h-5 w-24 rounded-full" />
+        </div>
+      </Card>
     ))}
   </div>
 );

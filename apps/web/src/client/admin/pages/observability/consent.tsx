@@ -9,10 +9,13 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { PushToast } from "../../types";
 import { I } from "../../icons";
 import { ConsentSkeleton } from "../../page-skeletons";
-import { Badge, Button, EmptyState, PageHeader } from "../../ui";
+import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
 import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../../queries";
 import {
   Dialog,
   DialogBody,
@@ -36,6 +39,39 @@ import {
 } from "../../queries";
 import { consentApi } from "../../api/observability";
 import { BUILTIN_STRINGS } from "../../../consent-banner/strings";
+
+/**
+ * The three categories, named the way the banner names them.
+ *
+ * They used to render as the raw column values — lowercase `functional`,
+ * `analytics`, `marketing` — as chips on the card AND as the labels of the
+ * operator's primary compliance choice, in a row that otherwise read "Banner
+ * live" / "Blocks before consent". One concept, two vocabularies, and a chip
+ * reading `analytics` three nav rows from the Analytics page it has nothing to
+ * do with.
+ */
+const CATEGORIES = ["functional", "analytics", "marketing"] as const;
+
+function useCategoryLabels(): Record<string, string> {
+  const { t } = useLingui();
+  return {
+    functional: t`Functional`,
+    analytics: t`Analytics`,
+    marketing: t`Marketing`,
+  };
+}
+
+/** The two locales the banner ships built-in text for. Named once so the
+ *  language Select and the wording tabs stop disagreeing about whether they
+ *  are called "English"/"Turkish" or `en`/`tr`. */
+const BUILTIN_LOCALES = ["en", "tr"] as const;
+
+/** What `parseTheme` (server/services/consent.ts:312) will keep: the same
+ *  character set, the same `url(` refusal and the same 60-character cap. Kept
+ *  in step with it deliberately — the server is still the check; this only lets
+ *  the field say so before the save, because a rejected value is dropped there
+ *  SILENTLY and the response is still a 200. */
+const SAFE_THEME_VALUE = /^[#a-zA-Z0-9 ,.%()/-]+$/;
 
 
 
@@ -64,24 +100,80 @@ export function ConsentPage({
   setActiveNav?: (id: string) => void;
 }) {
   const { t } = useLingui();
+  const qc = useQueryClient();
   const sitesQ = useAnalyticsSites();
   const policiesQ = useConsentPolicies();
   const savePolicy = useSaveConsentPolicy();
   const removePolicy = useDeleteConsentPolicy();
+  const catLabels = useCategoryLabels();
   const [editing, setEditing] = useState<ApiAnalyticsSite | null>(null);
 
   const sites = sitesQ.data?.data ?? [];
   const policies = policiesQ.data?.data ?? [];
   const policyFor = (siteId: string) => policies.find((p) => p.siteId === siteId) ?? null;
 
+  const header = (
+    <PageHeader
+      title={t`Cookie consent`}
+      description={t`What each website asks its visitors, and what runs before they answer. One policy per website.`}
+      descriptionClassName="hidden sm:block"
+      actions={
+        // This page reads the same `analyticsSites` query as Websites, which
+        // has a Refresh; this one had none, so the page whose staleness has
+        // legal consequence was the one that could not re-read itself.
+        <Button
+          icon={I.Refresh}
+          disabled={sitesQ.isFetching || policiesQ.isFetching}
+          onClick={() => {
+            void qc.invalidateQueries({ queryKey: queryKeys.analyticsSites() });
+            void qc.invalidateQueries({ queryKey: queryKeys.consentPolicies() });
+          }}
+        >
+          <Trans>Refresh</Trans>
+        </Button>
+      }
+    />
+  );
+
   if (sitesQ.isLoading || policiesQ.isLoading) return <ConsentSkeleton />;
+
+  // Neither failure used to be handled, and both fell through to copy that
+  // asserts a fact. A failed sites read rendered "No websites registered"; a
+  // failed POLICIES read rendered every site as "No policy yet. Nothing is
+  // asked and nothing is blocked" — a false statement about a live legal
+  // posture, produced by a dropped fetch.
+  if (sitesQ.isError || policiesQ.isError) {
+    return (
+      <div className="flex flex-col gap-3">
+        {header}
+        <EmptyState
+          icon={I.AlertTriangle}
+          title={t`Couldn't load consent policies`}
+          description={
+            (sitesQ.error as Error)?.message ||
+            (policiesQ.error as Error)?.message ||
+            t`The request failed, so nothing here can be trusted to describe your sites. Try again.`
+          }
+          action={
+            <Button
+              variant="primary"
+              icon={I.Refresh}
+              onClick={() => {
+                void sitesQ.refetch();
+                void policiesQ.refetch();
+              }}
+            >
+              <Trans>Try again</Trans>
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
-      <PageHeader
-        title={t`Cookie consent`}
-        description={t`What each website asks its visitors, and what runs before they answer. One policy per website.`}
-      />
+      {header}
       {sites.length === 0 ? (
         <EmptyState
           icon={I.Cookie}
@@ -100,16 +192,20 @@ export function ConsentPage({
           const p = policyFor(s.id);
           return (
             <Card key={s.id} className="gap-3 px-4 py-3.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Stacks on a phone. As one `justify-between` row the two
+                  full-label buttons held their width against a `min-w-0` name,
+                  squeezing the site down to about twelve characters — and a
+                  wrap put the actions on the LEFT, against the house rule. */}
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <div className="truncate text-[14px] font-medium">{s.name}</div>
                   <div className="truncate text-[12.5px] text-muted-foreground">
                     {s.domain}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
                   <Button
-                    variant="outline"
+                    variant={p ? "outline" : "primary"}
                     icon={I.Settings}
                     onClick={() => setEditing(s)}
                   >
@@ -119,12 +215,16 @@ export function ConsentPage({
                     <Button
                       variant="outline"
                       icon={I.Trash}
-                      onClick={() => {
+                      onClick={() =>
                         removePolicy.mutate(s.id, {
-                          onError: () => pushToast(t`Could not remove the policy.`),
-                        });
-                        pushToast(t`Consent policy removed.`);
-                      }}
+                          // The confirmation waits for the answer. Fired
+                          // alongside the mutation it produced both "Consent
+                          // policy removed." and the failure toast at once.
+                          onSuccess: () => pushToast(t`Consent policy removed.`),
+                          onError: () =>
+                            pushToast(t`Couldn't remove the policy.`, "error"),
+                        })
+                      }
                     >
                       <Trans>Remove</Trans>
                     </Button>
@@ -132,10 +232,10 @@ export function ConsentPage({
                 </div>
               </div>
 
-              {p ? (
+              {p && p.enabled ? (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant={p.enabled ? "default" : "secondary"}>
-                    {p.enabled ? <Trans>Banner live</Trans> : <Trans>Not shown</Trans>}
+                  <Badge variant="default">
+                    <Trans>Banner live</Trans>
                   </Badge>
                   <Badge variant="secondary">
                     {p.undecidedBehaviour === "block" ? (
@@ -153,9 +253,27 @@ export function ConsentPage({
                   </Badge>
                   {p.categoriesOffered.map((c) => (
                     <Badge key={c} variant="outline">
-                      {c}
+                      {catLabels[c] ?? c}
                     </Badge>
                   ))}
+                </div>
+              ) : p ? (
+                // A disabled policy is wholly inert server-side — no banner AND
+                // no blocking. Showing "Blocks before consent" beside "Not
+                // shown" described a state that cannot exist, and on this page
+                // that mislabel is what an operator quotes in a privacy review.
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="secondary">
+                      <Trans>Not shown</Trans>
+                    </Badge>
+                  </div>
+                  <p className="m-0 text-[12.5px] text-muted-foreground">
+                    <Trans>
+                      Saved but not in effect — nothing is asked and nothing is blocked
+                      until you set it live.
+                    </Trans>
+                  </p>
                 </div>
               ) : (
                 <p className="m-0 text-[12.5px] text-muted-foreground">
@@ -170,7 +288,13 @@ export function ConsentPage({
         })
       )}
 
+      {/* Keyed on the site so the form re-seeds from what is STORED every time
+          it opens. Without it `loadedFor` matched on reopen, so Cancel was not
+          a discard — and after Remove, "Set up consent" opened with the deleted
+          policy's compliance answers already selected, which is exactly what
+          the dialog's own doc comment says must never happen. */}
       <ConsentPolicyDialog
+        key={editing?.id ?? "none"}
         site={editing}
         policy={editing ? policyFor(editing.id) : null}
         pushToast={pushToast}
@@ -182,13 +306,13 @@ export function ConsentPage({
           savePolicy.mutate(
             { siteId, patch },
             {
+              onSuccess: () => pushToast(t`Consent policy saved.`),
               onError: (e) =>
                 // The server's refusal explains WHY there is no default, so it
                 // is surfaced verbatim rather than replaced with "Save failed".
-                pushToast((e as Error)?.message || t`Could not save the policy.`),
+                pushToast((e as Error)?.message || t`Couldn't save the policy.`, "error"),
             },
           );
-          pushToast(t`Consent policy saved.`);
         }}
       />
     </div>
@@ -218,9 +342,10 @@ export function ConsentPolicyDialog({
   pushToast: PushToast;
 }) {
   const { t } = useLingui();
+  const catLabels = useCategoryLabels();
 
   /**
-   * The fifteen strings the banner renders, in the order it renders them.
+   * The eighteen strings the banner renders, in the order it renders them.
    *
    * Mirrors `WORDING_KEYS` in `services/consent.ts`, which is a CLOSED list
    * precisely so this form can be generated from it rather than drifting from it.
@@ -236,25 +361,28 @@ export function ConsentPolicyDialog({
   // follows `editLocale`, and a copy here would drift the moment either side
   // was reworded. `strings.ts` is a plain object with no imports, so this
   // costs the admin bundle nothing but the strings themselves.
+  // `multiline` is what the string IS, not a styling choice: a category
+  // description is a sentence or two and was being edited through a single-line
+  // input whose overflow scrolls sideways one character at a time.
   const WORDING_FIELDS = [
     { key: "title", label: t`Title` },
-    { key: "body", label: t`Body` },
+    { key: "body", label: t`Body`, multiline: true },
     { key: "acceptAll", label: t`Accept button` },
     { key: "rejectAll", label: t`Reject button` },
     { key: "manage", label: t`Manage button` },
     { key: "save", label: t`Save button` },
     { key: "policyLink", label: t`Policy link text` },
     { key: "functionalLabel", label: t`Functional — name` },
-    { key: "functionalBody", label: t`Functional — description` },
+    { key: "functionalBody", label: t`Functional — description`, multiline: true },
     { key: "analyticsLabel", label: t`Analytics — name` },
-    { key: "analyticsBody", label: t`Analytics — description` },
+    { key: "analyticsBody", label: t`Analytics — description`, multiline: true },
     { key: "marketingLabel", label: t`Marketing — name` },
-    { key: "marketingBody", label: t`Marketing — description` },
+    { key: "marketingBody", label: t`Marketing — description`, multiline: true },
     {
       key: "necessaryLabel",
       label: t`Strictly necessary — name`,
     },
-    { key: "necessaryBody", label: t`Strictly necessary — description` },
+    { key: "necessaryBody", label: t`Strictly necessary — description`, multiline: true },
     { key: "close", label: t`Close button` },
     { key: "withdraw", label: t`Withdraw link` },
     { key: "idLabel", label: t`Consent id — label` },
@@ -376,10 +504,57 @@ export function ConsentPolicyDialog({
     }
   };
 
-  const toggleCat = (c: string) =>
-    setCats((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  /**
+   * Wrap a setter so touching a preset-owned control drops the preset label.
+   *
+   * `applied` drives the trigger text and the caveat underneath it. Editing one
+   * of the five controls a preset writes used to leave both in place, so the
+   * form claimed to be "GDPR / ePrivacy" while no longer matching it — and
+   * because Radix only fires `onValueChange` on a CHANGE, re-picking the same
+   * preset to get back was a no-op.
+   */
+  const manual =
+    <T,>(set: (v: T) => void) =>
+    (v: T) => {
+      setApplied(undefined);
+      set(v);
+    };
 
-  const ready = Boolean(undecided && tracker);
+  const toggleCat = (c: string) => {
+    setApplied(undefined);
+    setCats((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+  };
+
+  /** The server accepts any http(s) URL and refuses everything else — after the
+   *  dialog has already closed optimistically, which is the worst moment to
+   *  learn it. Checked here so the field can say so while it is on screen. */
+  const urlOk = !policyUrl.trim() || /^https?:\/\//i.test(policyUrl.trim());
+  const ready = Boolean(undecided && tracker) && urlOk;
+
+  /** Every locale this policy actually has text for, plus the two the banner
+   *  ships built in. A policy written through the SDK with `defaultLocale: "de"`
+   *  used to highlight no tab at all, and one click on `en` made the German
+   *  block uneditable while it was still being served. */
+  const locales = Array.from(
+    new Set<string>([...BUILTIN_LOCALES, defaultLocale, ...Object.keys(wording)]),
+  ).filter(Boolean);
+
+  const localeOptions = locales.map((l) => ({
+    value: l,
+    label: l === "en" ? t`English` : l === "tr" ? t`Turkish` : l,
+  }));
+
+  /** The four presets, plus whatever is stored if it is not one of them — a
+   *  policy set to 30 days through the API rendered as an unset Select. */
+  const MAX_AGE_OPTIONS = [
+    { value: "90", label: t`90 days` },
+    { value: "180", label: t`180 days`, hint: t`Matches the CNIL's six-month guidance.` },
+    { value: "365", label: t`365 days` },
+    { value: "730", label: t`730 days` },
+  ];
+  const maxAgeOptions = MAX_AGE_OPTIONS.some((o) => o.value === maxAge)
+    ? MAX_AGE_OPTIONS
+    : [...MAX_AGE_OPTIONS, { value: maxAge, label: t`${maxAge} days` }];
 
   return (
     <Dialog open={!!site} onOpenChange={(v) => !v && onClose()}>
@@ -429,7 +604,7 @@ export function ConsentPolicyDialog({
               <Select
                 className="min-w-0"
                 value={undecided}
-                onChange={setUndecided}
+                onChange={manual(setUndecided)}
                 placeholder={t`Choose — there is no default`}
                 options={[
                   {
@@ -459,7 +634,7 @@ export function ConsentPolicyDialog({
               <Select
                 className="min-w-0"
                 value={tracker}
-                onChange={setTracker}
+                onChange={manual(setTracker)}
                 placeholder={t`Choose — there is no default`}
                 options={[
                   {
@@ -483,7 +658,7 @@ export function ConsentPolicyDialog({
               <Select
                 className="min-w-0"
                 value={signals}
-                onChange={(v) => setSignals(v || "tracker")}
+                onChange={manual((v: string) => setSignals(v || "tracker"))}
                 options={[
                   {
                     value: "tracker",
@@ -508,14 +683,18 @@ export function ConsentPolicyDialog({
               <span className="text-[12.5px] text-muted-foreground">
                 <Trans>Categories the banner offers</Trans>
               </span>
+              {/* `aria-pressed` because the only other signal that a category
+                  is offered is the fill colour, so a screen reader heard three
+                  identically-named buttons and no state. */}
               <div className="flex flex-wrap items-center gap-1.5">
-                {(["functional", "analytics", "marketing"] as const).map((c) => (
+                {CATEGORIES.map((c) => (
                   <Button
                     key={c}
                     variant={cats.includes(c) ? "primary" : "outline"}
+                    aria-pressed={cats.includes(c)}
                     onClick={() => toggleCat(c)}
                   >
-                    {c}
+                    {catLabels[c] ?? c}
                   </Button>
                 ))}
               </div>
@@ -552,30 +731,39 @@ export function ConsentPolicyDialog({
                 placeholder="https://example.com/privacy"
                 onChange={(e) => setPolicyUrl(e.target.value)}
               />
-              <span className="text-[11.5px] text-muted-foreground">
-                <Trans>Must be an http(s) URL. It is linked from the banner.</Trans>
-              </span>
+              {urlOk ? (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>Linked from the banner. Leave it blank for no link.</Trans>
+                </span>
+              ) : (
+                // Caught here rather than by the server: `setEditing(null)` has
+                // already closed this dialog by the time a refusal comes back,
+                // so the message lands over a page the operator has left.
+                <span className="text-[11.5px] text-destructive">
+                  <Trans>Start it with http:// or https:// — the banner needs a full URL.</Trans>
+                </span>
+              )}
             </label>
 
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-[12.5px] text-muted-foreground">
                 <Trans>How long a decision stands</Trans>
               </span>
+              {/* One unit for all four. It used to read 90 days / 180 days /
+                  1 year / 2 years, so two of the options could not be compared
+                  against the other two without arithmetic. */}
               <Select
                 className="min-w-0"
                 value={maxAge}
                 onChange={setMaxAge}
-                options={[
-                  { value: "90", label: t`90 days` },
-                  {
-                    value: "180",
-                    label: t`180 days`,
-                    hint: t`Matches the CNIL's six-month guidance.`,
-                  },
-                  { value: "365", label: t`1 year` },
-                  { value: "730", label: t`2 years` },
-                ]}
+                options={maxAgeOptions}
               />
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>
+                  How long before the banner asks again. A visitor can change their
+                  answer at any time from the withdraw link.
+                </Trans>
+              </span>
             </label>
 
 
@@ -590,10 +778,7 @@ export function ConsentPolicyDialog({
                   setDefaultLocale(v);
                   setEditLocale(v);
                 }}
-                options={[
-                  { value: "en", label: t`English` },
-                  { value: "tr", label: t`Turkish` },
-                ]}
+                options={localeOptions}
               />
               <span className="text-[11.5px] text-muted-foreground">
                 <Trans>
@@ -607,12 +792,16 @@ export function ConsentPolicyDialog({
               <div className="flex flex-wrap items-center gap-1.5">
                 <Button
                   variant={openSection === "wording" ? "primary" : "outline"}
+                  aria-pressed={openSection === "wording"}
+                  icon={I.Type}
                   onClick={() => setOpenSection(openSection === "wording" ? "none" : "wording")}
                 >
                   <Trans>Wording</Trans>
                 </Button>
                 <Button
                   variant={openSection === "theme" ? "primary" : "outline"}
+                  aria-pressed={openSection === "theme"}
+                  icon={I.Palette}
                   onClick={() => setOpenSection(openSection === "theme" ? "none" : "theme")}
                 >
                   <Trans>Appearance</Trans>
@@ -622,13 +811,14 @@ export function ConsentPolicyDialog({
               {openSection === "wording" && (
                 <div className="flex min-w-0 flex-col gap-3 rounded-md border p-3">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {(["en", "tr"] as const).map((l) => (
+                    {localeOptions.map((l) => (
                       <Button
-                        key={l}
-                        variant={editLocale === l ? "primary" : "outline"}
-                        onClick={() => setEditLocale(l)}
+                        key={l.value}
+                        variant={editLocale === l.value ? "primary" : "outline"}
+                        aria-pressed={editLocale === l.value}
+                        onClick={() => setEditLocale(l.value)}
                       >
-                        {l}
+                        {l.label}
                       </Button>
                     ))}
                     <Button variant="outline" onClick={useSuggested}>
@@ -638,11 +828,21 @@ export function ConsentPolicyDialog({
                   {WORDING_FIELDS.map((f) => (
                     <label key={f.key} className="flex min-w-0 flex-col gap-1">
                       <span className="text-[12.5px] text-muted-foreground">{f.label}</span>
-                      <Input
-                        value={wording[editLocale]?.[f.key] ?? ""}
-                        placeholder={BUILTIN_STRINGS[editLocale]?.[f.key] ?? ""}
-                        onChange={(e) => setWord(f.key, e.target.value)}
-                      />
+                      {f.multiline ? (
+                        <Textarea
+                          rows={2}
+                          className="min-h-0"
+                          value={wording[editLocale]?.[f.key] ?? ""}
+                          placeholder={BUILTIN_STRINGS[editLocale]?.[f.key] ?? ""}
+                          onChange={(e) => setWord(f.key, e.target.value)}
+                        />
+                      ) : (
+                        <Input
+                          value={wording[editLocale]?.[f.key] ?? ""}
+                          placeholder={BUILTIN_STRINGS[editLocale]?.[f.key] ?? ""}
+                          onChange={(e) => setWord(f.key, e.target.value)}
+                        />
+                      )}
                     </label>
                   ))}
                   <span className="text-[11.5px] text-muted-foreground">
@@ -657,18 +857,51 @@ export function ConsentPolicyDialog({
 
               {openSection === "theme" && (
                 <div className="grid min-w-0 gap-3 rounded-md border p-3 sm:grid-cols-2">
-                  {THEME_FIELDS.map((f) => (
-                    <label key={f.key} className="flex min-w-0 flex-col gap-1">
-                      <span className="text-[12.5px] text-muted-foreground">{f.label}</span>
-                      <Input
-                        value={theme[f.key] ?? ""}
-                        placeholder={f.placeholder}
-                        onChange={(e) =>
-                          setTheme((prev) => ({ ...prev, [f.key]: e.target.value }))
-                        }
-                      />
-                    </label>
-                  ))}
+                  {THEME_FIELDS.map((f) => {
+                    const value = theme[f.key] ?? "";
+                    // `parseTheme` drops a value it does not like SILENTLY and
+                    // still answers 200, so a rejected accent colour looked
+                    // saved until a full reload. Mirrored here so the field can
+                    // say so while it is still on screen.
+                    const trimmed = value.trim();
+                    const ignored =
+                      trimmed !== "" &&
+                      (!SAFE_THEME_VALUE.test(trimmed) ||
+                        trimmed.toLowerCase().includes("url(") ||
+                        trimmed.length > 60);
+                    return (
+                      <label key={f.key} className="flex min-w-0 flex-col gap-1">
+                        <span className="text-[12.5px] text-muted-foreground">{f.label}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          {/* A swatch, not a colour picker: `radius` is a
+                              length, and the server accepts any CSS colour
+                              notation — a picker would narrow both. */}
+                          <span
+                            aria-hidden
+                            className="size-5 shrink-0 rounded-control border"
+                            style={
+                              f.key === "radius"
+                                ? undefined
+                                : { background: ignored ? "transparent" : value || f.placeholder }
+                            }
+                          />
+                          <Input
+                            className="min-w-0 flex-1"
+                            value={value}
+                            placeholder={f.placeholder}
+                            onChange={(e) =>
+                              setTheme((prev) => ({ ...prev, [f.key]: e.target.value }))
+                            }
+                          />
+                        </span>
+                        {ignored && (
+                          <span className="text-[11.5px] text-destructive">
+                            <Trans>Not a CSS colour or length — this value is ignored.</Trans>
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
                   <span className="text-[11.5px] text-muted-foreground sm:col-span-2">
                     <Trans>
                       Anything left blank uses the banner's default. Values are CSS
@@ -679,25 +912,27 @@ export function ConsentPolicyDialog({
               )}
             </div>
 
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-[12.5px] text-muted-foreground">
-                <Trans>Show the banner</Trans>
+            {/* One boolean, one control — and the same two words the card uses
+                for it. Two buttons reading "Live"/"Off" set a state the card
+                then read back as "Banner live"/"Not shown". */}
+            <label className="flex min-w-0 items-start justify-between gap-3 border-t pt-4">
+              <span className="min-w-0">
+                <span className="block text-[12.5px] font-medium">
+                  <Trans>Show the banner</Trans>
+                </span>
+                <span className="block text-[11.5px] text-muted-foreground">
+                  {enabled ? (
+                    <Trans>Live — visitors are asked, and your choices above apply.</Trans>
+                  ) : (
+                    <Trans>
+                      Not shown — nothing is asked and nothing is blocked, whatever is
+                      set above.
+                    </Trans>
+                  )}
+                </span>
               </span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Button
-                  variant={enabled ? "primary" : "outline"}
-                  onClick={() => setEnabled(true)}
-                >
-                  <Trans>Live</Trans>
-                </Button>
-                <Button
-                  variant={!enabled ? "primary" : "outline"}
-                  onClick={() => setEnabled(false)}
-                >
-                  <Trans>Off</Trans>
-                </Button>
-              </div>
-            </div>
+              <Switch checked={enabled} onChange={setEnabled} />
+            </label>
           </div>
         </DialogBody>
         <DialogFooter>

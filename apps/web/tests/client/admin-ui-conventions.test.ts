@@ -670,7 +670,9 @@ describe("the admin nav is wired end to end", () => {
     const app = src("admin/app.tsx");
     const prefetch = src("admin/lib/page-prefetch.ts");
     const skeletons = src("admin/page-skeletons.tsx");
-    for (const id of ["websites", "consent", "tag-manager"]) {
+    // `analytics` joined the list once it turned out to be lazy in app.tsx and
+    // absent from LOADERS — the defect this rule describes, shipped.
+    for (const id of ["websites", "consent", "tag-manager", "analytics"]) {
       expect(`${id} is lazy: ${app.includes(`pages/observability/${id}`)}`).toBe(
         `${id} is lazy: true`,
       );

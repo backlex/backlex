@@ -800,8 +800,18 @@ export function useCreateAnalyticsSite() {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
+      // Inserted in the server's order (`listSites` sorts by domain), not
+      // appended: appending put the new row at the bottom and then moved it
+      // when the reconcile landed — on a long list, out of the viewport.
       qc.setQueryData<Envelope<ApiAnalyticsSite[]>>(sitesKey(), (old) =>
-        old ? { ...old, data: [...old.data, optimistic] } : old,
+        old
+          ? {
+              ...old,
+              data: [...old.data, optimistic].sort((a, b) =>
+                a.domain.localeCompare(b.domain),
+              ),
+            }
+          : old,
       );
       return { prev };
     },

@@ -23,6 +23,12 @@ const LOADERS: Record<string, () => Promise<unknown>> = {
   "tag-manager": () => import("../pages/observability/tag-manager"),
   websites: () => import("../pages/observability/websites"),
   consent: () => import("../pages/observability/consent"),
+  // Lazy in app.tsx and missing from here, so hovering these three warmed
+  // nothing and clicking them flashed the Suspense fallback — the exact cost
+  // this module exists to avoid.
+  analytics: () => import("../pages/observability/analytics"),
+  traces: () => import("../pages/observability/traces"),
+  usage: () => import("../pages/observability/usage"),
   "schema-graph": () => import("../pages/data/schema-graph"),
   users: () => import("../pages/access/users"),
   settings: () => import("../pages/settings"),

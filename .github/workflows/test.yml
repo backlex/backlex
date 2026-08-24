@@ -269,44 +269,53 @@ jobs:
 
   # ── Supply chain ───────────────────────────────────────────────────────
   #
-  # Advisory on purpose, and it will stay advisory until the backlog is at
-  # zero. `bun audit` currently reports 63 advisories (22 high) — mostly `ws`
-  # (memory-exhaustion DoS, reached via @cloudflare/vite-plugin, ably,
-  # happy-dom, wrangler>miniflare and @libsql/client) and `yaml` (stack
-  # overflow on deeply nested collections, reached from eight places). Failing
-  # the build on a backlog nobody can clear in one PR just teaches people to
-  # ignore a red X. What this buys today is that the number is VISIBLE on every
-  # run, so a regression shows up as a jump rather than as nothing at all.
+  # A REAL gate since 2026-08-24: `bun audit` reports ZERO advisories, so this
+  # step now fails the job on any finding instead of only printing a number.
+  # It went 63 -> 0, and the first of the three things that took is not what
+  # anyone expected.
   #
-  # To make it a gate: get the count to zero, then drop the `|| true` from the
-  # audit step. Note that `bun audit fix` cannot do that part for us right now —
-  # see below.
+  # 1. `bun audit fix` and `bun dedupe` used to refuse to run at all:
   #
-  # `bun dedupe --check` is NOT here, and neither is `bun audit fix`. Both refuse
-  # to run against this workspace on Bun 1.4:
+  #      error: bun.lock does not match package.json, nothing to fix
+  #      note: run 'bun install' first
   #
-  #   error: bun.lock does not match package.json, nothing to fix
-  #   note: run 'bun install' first
+  #    The message is misleading and the lockfile was never stale: `bun install
+  #    --frozen-lockfile` reported "no changes", and Bun 1.4.0 rejects a
+  #    lockfile it has just written itself with `--lockfile-only`. But the
+  #    TRIGGER, bisected from 19 workspaces down to one line, was OURS —
+  #    `packages/auth-ui` named the workspace sibling `@backlex/ui` in BOTH
+  #    `devDependencies` (`workspace:*`) and `peerDependencies` (`>=0.1.0`).
+  #    Either entry alone is fine; both together trip it. Registry packages in
+  #    two blocks do NOT — `packages/client` names `ably` and `react` that way
+  #    and is clean — so it has to be a workspace sibling.
   #
-  # It is not our drift, and the message is misleading. `bun install
-  # --frozen-lockfile` succeeds, `bun install` reports "no changes", and a
-  # field-by-field diff of every workspace entry in bun.lock against its
-  # package.json finds nothing but key ORDER. The decisive test: copy the 20
-  # manifests into an empty directory, let Bun 1.4 resolve a completely fresh
-  # lockfile with `bun install --lockfile-only`, and it rejects the lockfile it
-  # just wrote. It still rejects it with the workspace list cut down to
-  # `packages/*` alone.
+  #    Upstream, `exit_unless_lockfile_matches_package_json` diffs a re-parsed
+  #    manifest against the loaded lockfile, and a `seen_deps` short-circuit
+  #    leaves the second entry tagged Npm where the first is Workspace, so the
+  #    diff never converges. `--frozen-lockfile` gates on a different
+  #    comparison, which is why it always passed and hid this for so long.
   #
-  # Ruled out along the way, so nobody re-walks it: the all-zero
-  # `bun pm hash-print` (that is normal for a text lockfile — a scratch project
-  # shows zeros too and dedupe works there), the root `version` field,
-  # `resolutions` vs `overrides`, dependency key ordering, workspace count,
-  # `lockfileVersion` 1 vs 2 (a hand-downgraded v1 works fine in a small
-  # project), and non-registry specifiers (there are none).
+  #    DO NOT put a workspace sibling in two dependency blocks — that re-arms
+  #    it, silently. No released Bun fixes it: there is no Bun after 1.4.0 and
+  #    the two upstream PRs (#38869, #33632) are still open. The minimal repro
+  #    is two manifests, and `bun dedupe --check --verbose` names the offending
+  #    workspace outright — the one command that would have found this in
+  #    seconds rather than in a 19-workspace bisect.
   #
-  # So the 63 advisories cannot be cleared with `bun audit fix` today; they need
-  # either a fixed Bun or manual `overrides`. Re-test after a Bun upgrade with:
-  #   bun audit fix --dry-run
+  # 2. With the tool unblocked, `bun audit fix` cleared 43 of the 63 in one run.
+  #
+  # 3. The remaining 20 needed direct bumps (nodemailer 6 -> 9, astro 6 -> 7
+  #    with starlight 0.41, sharp -> 0.35) plus four `resolutions` entries.
+  #    Every entry in the root package.json is there for a reason; check what
+  #    it clears before touching one.
+  #
+  # NOTE for whoever adds the next resolution: Bun 1.4.0 DOES support ONE level
+  # of SCOPED resolutions, written with a slash — "parent/child": "1.2.3" — and
+  # it applies correctly and silently. The npm object form ({"parent": {...}})
+  # and two levels ("a/b/c") are IGNORED, with a warning that appears only in
+  # the install log, so locally they look like they worked. Prefer the scoped
+  # form: a blanket override hits every path across all 20 workspaces, the
+  # examples included.
   supply-chain:
     runs-on: ubuntu-latest
     # Least privilege, scoped to this job only. This job installs third-party
@@ -354,10 +363,18 @@ jobs:
       #   - the step summary, which is still the nicest place to read it
       - name: Audit
         run: |
-          bun audit 2>&1 | tail -40 | tee /tmp/audit.txt || true
-          # `bun audit` prints its totals as the last non-empty line before the
-          # `bun audit fix` hint, e.g. "63 vulnerabilities (22 high, ...)".
-          total="$(grep -oE '[0-9]+ vulnerabilities \([^)]*\)' /tmp/audit.txt | tail -1)"
+          # `bun audit` exits 0 when clean and 1 when it finds anything, so the
+          # exit code IS the gate. Capture it BEFORE the pipe: `cmd | tee`
+          # reports tee's status, not bun's, which is exactly how a red audit
+          # would read as green.
+          set -o pipefail
+          rc=0
+          bun audit 2>&1 | tee /tmp/audit.txt || rc=$?
+          # Match all three shapes bun emits. The plural-only pattern this had
+          # before missed "1 vulnerability (1 moderate)" — which is precisely
+          # the state a regression away from zero lands in FIRST, so the one
+          # summary that mattered most was the one it could not read.
+          total="$(grep -oE '[0-9]+ vulnerabilit(y|ies) \([^)]*\)' /tmp/audit.txt | tail -1)"
           # Falls through to "unparsed" rather than to "clean" — a summary that
           # says nothing found because it could not read the output is the
           # exact failure this step exists to prevent.
@@ -372,6 +389,9 @@ jobs:
             cat /tmp/audit.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # Summary is written first and the job fails after, so a red run
+          # still shows WHAT was found without opening the log.
+          exit "$rc"
 
       # A REAL gate, not advisory. The generator reads `bun.lock` rather than
       # `node_modules`, so the output is a pure function of the lockfile and is

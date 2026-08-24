@@ -187,6 +187,16 @@ export function TagManagerPage({
     }
   };
 
+  /** The directives this container's published tags actually need. Empty until
+   *  something third-party is published — see the Install tab. */
+  const cspLines = (["script", "img", "connect", "frame"] as const)
+    .map((k) => {
+      const list = install.data?.data.csp[k] ?? [];
+      return list.length ? `${k}-src ${list.join(" ")};` : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -247,14 +257,20 @@ export function TagManagerPage({
 
       {tab === "tags" && (
         <Card className="w-full">
-          <div className="flex items-center justify-between p-4">
-            <div className="text-sm text-muted-foreground">
-              <Trans>Tags fire on the triggers you attach to them.</Trans>
+          {/* The header row only exists when there is a list under it. On an
+              empty tab it was a floating sentence and an outline button above
+              an empty state that says the same thing again — two invitations to
+              the same act, neither of them the filled one. */}
+          {(tags.data?.data.length ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+              <div className="text-sm text-muted-foreground">
+                <Trans>Tags fire on the triggers you attach to them.</Trans>
+              </div>
+              <Button variant="primary" size="sm" icon={I.Plus} onClick={() => setTagOpen(true)}>
+                <Trans>New tag</Trans>
+              </Button>
             </div>
-            <Button size="sm" onClick={() => setTagOpen(true)}>
-              <Trans>New tag</Trans>
-            </Button>
-          </div>
+          )}
           {tags.isLoading ? (
             <div className="space-y-2 p-4">
               <Skeleton className="h-10 w-full" />
@@ -265,7 +281,12 @@ export function TagManagerPage({
               size="sm"
               icon={I.Tag}
               title={t`No tags yet`}
-              description={t`Add a vendor pixel, an image pixel, or your own code.`}
+              description={t`A tag is a vendor pixel, an image pixel, or your own code. It fires on the triggers you attach to it.`}
+              action={
+                <Button variant="primary" size="sm" icon={I.Plus} onClick={() => setTagOpen(true)}>
+                  <Trans>New tag</Trans>
+                </Button>
+              }
             />
           ) : (
             <ScrollArea className="w-full border-t" viewportClassName="max-h-[60vh]">
@@ -323,14 +344,21 @@ export function TagManagerPage({
 
       {tab === "triggers" && (
         <Card className="w-full">
-          <div className="flex items-center justify-between p-4">
-            <div className="text-sm text-muted-foreground">
-              <Trans>A trigger decides when a tag fires.</Trans>
+          {(triggers.data?.data.length ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+              <div className="text-sm text-muted-foreground">
+                <Trans>A trigger decides when a tag fires.</Trans>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={I.Plus}
+                onClick={() => setTriggerOpen(true)}
+              >
+                <Trans>New trigger</Trans>
+              </Button>
             </div>
-            <Button size="sm" onClick={() => setTriggerOpen(true)}>
-              <Trans>New trigger</Trans>
-            </Button>
-          </div>
+          )}
           {triggers.isLoading ? (
             <div className="space-y-2 p-4">
               <Skeleton className="h-10 w-full" />
@@ -340,7 +368,17 @@ export function TagManagerPage({
               size="sm"
               icon={I.Bolt}
               title={t`No triggers yet`}
-              description={t`Start with a page view; a tag needs at least one trigger to fire.`}
+              description={t`A trigger decides when a tag fires. Start with a page view — a tag needs at least one to run at all.`}
+              action={
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={I.Plus}
+                  onClick={() => setTriggerOpen(true)}
+                >
+                  <Trans>New trigger</Trans>
+                </Button>
+              }
             />
           ) : (
             <ScrollArea className="w-full border-t" viewportClassName="max-h-[60vh]">
@@ -384,9 +422,21 @@ export function TagManagerPage({
                 {(versions.data?.data ?? []).map((v) => (
                   <div key={v.id} className="flex items-center gap-3 p-4">
                     <Badge>v{v.version}</Badge>
+                    {/* A version usually has no note, and `?? "—"` rendered a
+                        lone dash where a title should be — a row that reads as
+                        broken rather than as "untitled". With nothing to say,
+                        the timestamp IS the row. */}
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm">{v.note ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{fmtWhen(v.createdAt)}</div>
+                      {v.note ? (
+                        <>
+                          <div className="truncate text-sm">{v.note}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {fmtWhen(v.createdAt)}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="truncate text-sm">{fmtWhen(v.createdAt)}</div>
+                      )}
                     </div>
                     <Button
                       size="sm"
@@ -449,17 +499,22 @@ export function TagManagerPage({
                 </Trans>
               </p>
             )}
-            <ScrollArea className="w-full rounded border" viewportClassName="max-h-48">
-              <pre className="p-3 text-xs">
-                {(["script", "img", "connect", "frame"] as const)
-                  .map((k) => {
-                    const list = install.data?.data.csp[k] ?? [];
-                    return list.length ? `${k}-src ${list.join(" ")};` : "";
-                  })
-                  .filter(Boolean)
-                  .join("\n")}
-              </pre>
-            </ScrollArea>
+            {/* With no published tags there are no origins to add, and the
+                block rendered as an empty bordered box — a control that looks
+                like it failed to load. Say the true thing instead. */}
+            {cspLines ? (
+              <ScrollArea className="w-full rounded border" viewportClassName="max-h-48">
+                <pre className="p-3 text-xs">{cspLines}</pre>
+              </ScrollArea>
+            ) : (
+              <p className="m-0 text-xs text-muted-foreground">
+                <Trans>
+                  Nothing to add yet — the tracker and the consent banner are served
+                  from this origin. Publish a tag that loads a third party and the
+                  directives appear here.
+                </Trans>
+              </p>
+            )}
           </div>
         </Card>
       )}

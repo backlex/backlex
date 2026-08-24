@@ -1225,6 +1225,10 @@ msgstr "1:1 square"
 msgid "1. Add this key to your authenticator app"
 msgstr "1. Add this key to your authenticator app"
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "10px"
+msgstr "10px"
+
 #: src/client/admin/pages/account-page.tsx
 #: src/client/pages/sign-in.tsx
 msgid "123456"
@@ -1233,6 +1237,10 @@ msgstr "123456"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "16:9 widescreen"
 msgstr "16:9 widescreen"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "16px"
+msgstr "16px"
 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "180 days"
@@ -1306,6 +1314,10 @@ msgstr "5xx {0}"
 #: src/client/admin/pages/observability/usage.tsx
 msgid "5xx responses"
 msgstr "5xx responses"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "6px"
+msgstr "6px"
 
 #: src/client/admin/collections/collection-kpis.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -1527,6 +1539,10 @@ msgstr "A single value — counter fits best; sparkline / bars need multiple row
 msgid "A site needs a name and a domain."
 msgstr "A site needs a name and a domain."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A tag is a vendor pixel, an image pixel, or your own code. It fires on the triggers you attach to it."
+msgstr "A tag is a vendor pixel, an image pixel, or your own code. It fires on the triggers you attach to it."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A teammate is asking…"
 #~ msgstr "A teammate is asking…"
@@ -1550,6 +1566,10 @@ msgstr "A text column holding this row's two-letter country code, for a list of 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "A trigger decides when a tag fires."
 msgstr "A trigger decides when a tag fires."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A trigger decides when a tag fires. Start with a page view — a tag needs at least one to run at all."
+msgstr "A trigger decides when a tag fires. Start with a page view — a tag needs at least one to run at all."
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
@@ -1941,8 +1961,8 @@ msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Add a vendor pixel, an image pixel, or your own code."
-msgstr "Add a vendor pixel, an image pixel, or your own code."
+#~ msgid "Add a vendor pixel, an image pixel, or your own code."
+#~ msgstr "Add a vendor pixel, an image pixel, or your own code."
 
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/websites.tsx
@@ -2650,6 +2670,10 @@ msgstr "Anonymize is usually the lawful option — an invoice generally cannot b
 #: src/client/pages/sign-document.tsx
 msgid "Another signer declined it."
 msgstr "Another signer declined it."
+
+#: src/client/admin/pages/observability/websites.tsx
+msgid "Another site in this workspace already has this domain."
+msgstr "Another site in this workspace already has this domain."
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Answer style"
@@ -5992,6 +6016,10 @@ msgstr "default"
 msgid "Default"
 msgstr "Default"
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Default (10px)"
+msgstr "Default (10px)"
+
 #: src/client/admin/fields/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Default (auto)"
@@ -8663,6 +8691,10 @@ msgstr "Full-text"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Full-text search"
 msgstr "Full-text search"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Fully rounded"
+msgstr "Fully rounded"
 
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "function"
@@ -13269,6 +13301,10 @@ msgstr "Nothing selected"
 msgid "Nothing selected yet"
 msgstr "Nothing selected yet"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Nothing to add yet — the tracker and the consent banner are served from this origin. Publish a tag that loads a third party and the directives appear here."
+msgstr "Nothing to add yet — the tracker and the consent banner are served from this origin. Publish a tag that loads a third party and the directives appear here."
+
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Nothing to export — the current view is empty."
@@ -16292,6 +16328,10 @@ msgstr "Remove line column"
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
 msgstr "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Remove policy"
+msgstr "Remove policy"
+
 #: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Remove question"
 msgstr "Remove question"
@@ -16323,6 +16363,10 @@ msgstr "Remove tag"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Remove tag {tag}"
 msgstr "Remove tag {tag}"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Remove this site's consent policy?"
+msgstr "Remove this site's consent policy?"
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "Remove this website?"
@@ -19132,6 +19176,10 @@ msgstr "SQL"
 msgid "SQL editor"
 msgstr "SQL editor"
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Square"
+msgstr "Square"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "SSO"
 msgstr "SSO"
@@ -19215,8 +19263,8 @@ msgid "Start the connection again from your MCP client (for example claude.ai �
 msgstr "Start the connection again from your MCP client (for example claude.ai → Connectors)."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Start with a page view; a tag needs at least one trigger to fire."
-msgstr "Start with a page view; a tag needs at least one trigger to fire."
+#~ msgid "Start with a page view; a tag needs at least one trigger to fire."
+#~ msgstr "Start with a page view; a tag needs at least one trigger to fire."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Start with a template"
@@ -19950,6 +19998,10 @@ msgid "That account exists — enter its current password to accept."
 msgstr "That account exists — enter its current password to accept."
 
 #: src/client/admin/pages/observability/websites.tsx
+msgid "That domain already has a site in this workspace."
+msgstr "That domain already has a site in this workspace."
+
+#: src/client/admin/pages/observability/websites.tsx
 msgid "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
 msgstr "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
 
@@ -19998,6 +20050,14 @@ msgstr "The backup did not finish."
 #: src/client/admin/pages/observability/consent.tsx
 msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
 msgstr "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "The banner stops being served, nothing is asked and nothing is blocked, and the wording and appearance saved for it are deleted. The site itself and its traffic stay."
+msgstr "The banner stops being served, nothing is asked and nothing is blocked, and the wording and appearance saved for it are deleted. The site itself and its traffic stay."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "The banner's default"
+msgstr "The banner's default"
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
@@ -20553,8 +20613,12 @@ msgid "This does not reach"
 msgstr "This does not reach"
 
 #: src/client/admin/pages/observability/websites.tsx
-msgid "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
-msgstr "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
+msgid "This domain is already registered in this workspace. Open that site instead — a second one on the same domain never reports."
+msgstr "This domain is already registered in this workspace. Open that site instead — a second one on the same domain never reports."
+
+#: src/client/admin/pages/observability/websites.tsx
+#~ msgid "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
+#~ msgstr "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "This form is closed."

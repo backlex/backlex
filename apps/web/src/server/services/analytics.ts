@@ -1614,6 +1614,37 @@ export interface SiteInput {
   requireKnownOrigin?: boolean | null;
 }
 
+/**
+ * One host, one site — per workspace.
+ *
+ * Two sites on the same domain is not a smaller version of a working setup, it
+ * is a setup where only one of the two ever reports: the tag carries the site
+ * id it was issued for, so whichever snippet was pasted wins and the other site
+ * sits at zero forever. It also gives the domain two consent policies and two
+ * tag containers, of which the visitor sees one — decided by which snippet is
+ * installed, not by anything visible here.
+ *
+ * 409 rather than 422: the input is well-formed, the workspace already has it.
+ */
+const assertDomainUnused = async (
+  ctx: AnalyticsDbCtx,
+  tenantId: string | null,
+  domain: string,
+  exceptId?: string,
+): Promise<void> => {
+  const t = sitesTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ id: t.id })
+    .from(t)
+    .where(and(eq(t.domain, domain), tenantEq(t.tenantId, tenantId)))) as { id: string }[];
+  if (rows.some((r) => r.id !== exceptId)) {
+    throw new AppError(
+      "CONFLICT",
+      `${domain} is already registered in this workspace. Open that site instead — a second one on the same domain would never report.`,
+    );
+  }
+};
+
 export const createSite = async (
   ctx: AnalyticsDbCtx,
   tenantId: string | null,
@@ -1623,6 +1654,7 @@ export const createSite = async (
   const name = str(input.name, 120);
   if (!name) throw new AppError("VALIDATION", "A site needs a name.");
   const domain = assertDomain(String(input.domain ?? ""));
+  await assertDomainUnused(ctx, tenantId, domain);
 
   const t = sitesTable(ctx.dialect);
   const row = {
@@ -1656,7 +1688,12 @@ export const updateSite = async (
     if (!name) throw new AppError("VALIDATION", "A site needs a name.");
     patch.name = name;
   }
-  if (input.domain !== undefined) patch.domain = assertDomain(String(input.domain ?? ""));
+  if (input.domain !== undefined) {
+    const domain = assertDomain(String(input.domain ?? ""));
+    // `exceptId` so re-saving a site's own domain is not a conflict with itself.
+    await assertDomainUnused(ctx, tenantId, domain, id);
+    patch.domain = domain;
+  }
   if (input.tz !== undefined) patch.tz = str(input.tz, 60) ?? "UTC";
   if (input.excludedPaths !== undefined)
     patch.excludedPaths = assertPaths(strList(input.excludedPaths, 50));

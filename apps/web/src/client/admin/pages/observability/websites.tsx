@@ -376,6 +376,9 @@ export function WebsitesPage({
       <SiteSettingsDialog
         key={editing?.id ?? "none"}
         site={editing}
+        otherDomains={sites
+          .filter((s: ApiAnalyticsSite) => s.id !== editing?.id)
+          .map((s: ApiAnalyticsSite) => s.domain)}
         pushToast={pushToast}
         onClose={() => setEditing(null)}
         onSave={(patch) => {
@@ -443,10 +446,9 @@ function AddSiteDialog({
   open: boolean;
   onClose: () => void;
   onSubmit: (input: { name: string; domain: string }) => void;
-  /** Already-registered hosts, normalized. Not a refusal — two sites on one
-   *  domain is legal and occasionally deliberate — but it is nearly always the
-   *  operator not realising the site is already here, and only one of the two
-   *  snippets would be the one installed. */
+  /** Already-registered hosts, normalized. The server refuses a duplicate with
+   *  a 409; this is here so the form says so before the request rather than
+   *  after the dialog has closed. */
   existingDomains: string[];
 }) {
   const { t } = useLingui();
@@ -455,7 +457,8 @@ function AddSiteDialog({
   const badDomain = domainProblem(domain);
   const duplicate =
     !badDomain && domain.trim() !== "" && existingDomains.includes(normalizeDomain(domain));
-  const valid = name.trim().length > 0 && domain.trim().length > 0 && !badDomain;
+  const valid =
+    name.trim().length > 0 && domain.trim().length > 0 && !badDomain && !duplicate;
 
   // Cancel and Esc used to leave the fields filled, so reopening the dialog
   // offered a site the operator had already decided against, one Enter from
@@ -523,10 +526,14 @@ function AddSiteDialog({
                   </Trans>
                 </span>
               ) : duplicate ? (
-                <span className="text-[11.5px] text-muted-foreground">
+                // Refused, not merely noted. A second site on one host never
+                // reports — the tag carries the site id it was issued for, so
+                // whichever snippet is installed wins and the other sits at
+                // zero — and it gives the domain two consent policies.
+                <span className="text-[11.5px] text-destructive">
                   <Trans>
-                    This domain is already registered. Adding it twice is allowed, but
-                    only the snippet you install will report.
+                    This domain is already registered in this workspace. Open that
+                    site instead — a second one on the same domain never reports.
                   </Trans>
                 </span>
               ) : (
@@ -547,7 +554,15 @@ function AddSiteDialog({
           <Button
             variant="primary"
             disabled={!valid}
-            title={!valid ? t`Enter a name and a domain.` : undefined}
+            title={
+              duplicate
+                ? t`That domain already has a site in this workspace.`
+                : badDomain
+                  ? t`The domain is not a host.`
+                  : !valid
+                    ? t`Enter a name and a domain.`
+                    : undefined
+            }
             onClick={submit}
           >
             <Trans>Add site</Trans>
@@ -576,11 +591,15 @@ function AddSiteDialog({
  */
 function SiteSettingsDialog({
   site,
+  otherDomains,
   pushToast,
   onClose,
   onSave,
 }: {
   site: ApiAnalyticsSite | null;
+  /** Every OTHER site's host in this workspace — the server refuses a move onto
+   *  one of them with a 409. */
+  otherDomains: string[];
   pushToast: PushToast;
   onClose: () => void;
   onSave: (patch: {
@@ -624,10 +643,16 @@ function SiteSettingsDialog({
   const badDomain = domainProblem(domain);
   const badPath = pathProblem(pathEntries);
   const badIp = ipProblem(ipEntries);
+  // Its own current domain is not a clash with itself.
+  const duplicate =
+    !badDomain &&
+    domain.trim() !== "" &&
+    otherDomains.includes(normalizeDomain(domain));
   const valid =
     name.trim().length > 0 &&
     domain.trim().length > 0 &&
     !badDomain &&
+    !duplicate &&
     !badPath &&
     !badIp &&
     !overCap;
@@ -665,6 +690,12 @@ function SiteSettingsDialog({
                   <Trans>
                     That is not a host. Use something like example.com — a full URL
                     is fine, a space or a path is not.
+                  </Trans>
+                </span>
+              ) : duplicate ? (
+                <span className="text-[11.5px] text-destructive">
+                  <Trans>
+                    Another site in this workspace already has this domain.
                   </Trans>
                 </span>
               ) : (
@@ -767,15 +798,17 @@ function SiteSettingsDialog({
             title={
               overCap
                 ? t`Remove a few entries — the cap is ${MAX_LIST_ENTRIES} each.`
-                : badDomain
-                  ? t`The domain is not a host.`
-                  : badPath
-                    ? t`One of the excluded paths can never match.`
-                    : badIp
-                      ? t`One of the ignored addresses is not an IP.`
-                      : !valid
-                        ? t`A site needs a name and a domain.`
-                        : undefined
+                : duplicate
+                  ? t`That domain already has a site in this workspace.`
+                  : badDomain
+                    ? t`The domain is not a host.`
+                    : badPath
+                      ? t`One of the excluded paths can never match.`
+                      : badIp
+                        ? t`One of the ignored addresses is not an IP.`
+                        : !valid
+                          ? t`A site needs a name and a domain.`
+                          : undefined
             }
             onClick={() => {
               // The cap used to be applied by a silent `.slice(0, 50)`, so entry

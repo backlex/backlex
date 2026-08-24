@@ -67,14 +67,15 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}
-        // `max-w-[calc(100vw-1.25rem)]`: the popover is portalled and
-        // intrinsically sized, so on a phone a long option (label + hint) makes
-        // it wider than the screen and the hint is simply cut off — there is no
-        // horizontal scroll to reach it. Capping to the viewport is what lets
-        // SelectItem's `truncate` on the hint actually do its job. Only binds
-        // when the popover would otherwise overflow, so wide screens are
-        // unchanged.
-        className={cn("relative z-50 max-h-(--radix-select-content-available-height) min-w-36 max-w-[calc(100vw-1.25rem)] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-surface bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", position ==="popper"&&"data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1", className )}
+        // `max-w-[min(calc(100vw-1.25rem),36rem)]`: the popover is portalled
+        // and INTRINSICALLY sized, so it grows to its widest option. Capping to
+        // the viewport alone only fixed the phone; on a desktop the same option
+        // produced a menu the full width of the monitor — an option list that
+        // spans 1800px is unreadable, and it happened the moment one `hint` was
+        // a sentence rather than a qualifier. 36rem is about as wide as a menu
+        // can be and still scan as a list. The cap is what lets SelectItem's
+        // `truncate` on the hint do its job at either size.
+        className={cn("relative z-50 max-h-(--radix-select-content-available-height) min-w-36 max-w-[min(calc(100vw-1.25rem),36rem)] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-surface bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/5 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", position ==="popper"&&"data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1", className )}
         position={position}
         align={align}
         {...props}

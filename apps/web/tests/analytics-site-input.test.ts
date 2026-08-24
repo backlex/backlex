@@ -47,11 +47,14 @@ beforeAll(async () => {
 afterAll(() => h.cleanup());
 
 test("the forms a domain legitimately arrives in are all accepted", async () => {
+  // One host per row: the three shapes below all reduce to the SAME host, and
+  // a workspace takes a host once (409, tested separately). Reducing correctly
+  // is what this test is about, so each row gets its own.
   const cases: [string, string][] = [
     ["example.com", "example.com"],
     // Operators paste all three of these.
-    ["https://example.com/pricing", "example.com"],
-    ["EXAMPLE.com:8080", "example.com"],
+    ["https://paste-url.example/pricing", "paste-url.example"],
+    ["PASTE-PORT.example:8080", "paste-port.example"],
     // A host, even without a dot — this is what a self-hosted admin measures.
     ["localhost", "localhost"],
     ["192.168.1.10", "192.168.1.10"],
@@ -171,12 +174,18 @@ test("the admin form's mirror answers the way this route does", async () => {
     "../src/client/admin/lib/site-input"
   );
 
+  // Each valid host is unique to this test: uniqueness is a SEPARATE rule
+  // (409, tested above) that the mirror does not own — it is handed the
+  // existing domains by the page, not derived from the value. Reusing a host
+  // here would compare the two on the wrong rule.
   const domains = [
-    "example.com",
-    "https://example.com/pricing",
-    "localhost",
-    "192.168.1.10",
-    "köşe.com",
+    "parity-a.example",
+    "https://parity-b.example/pricing",
+    // A single-label host, an IP and an IDN — the three shapes most likely to
+    // be refused by a naive check — each on a host this test owns.
+    "parity-host",
+    "198.51.100.7",
+    "parity-çğü.example",
     "my site.com",
     "not a domain",
     "..",
@@ -216,6 +225,40 @@ test("the admin form's mirror answers the way this route does", async () => {
       `${ignoredIps[0]}: ${serverTook}`,
     );
   }
+});
+
+test("one host, one site — a second on the same domain is refused", async () => {
+  const first = await create({ name: "Marketing", domain: "dupe.example" });
+  expect(first.status).toBe(201);
+
+  // Same host, and the same host arriving in a different shape.
+  for (const domain of ["dupe.example", "https://dupe.example/pricing", "DUPE.example:8080"]) {
+    const again = await create({ name: "Marketing again", domain });
+    expect(`${domain} → ${again.status}`).toBe(`${domain} → 409`);
+    expect(await message(again)).toContain("already registered");
+  }
+
+  // A different host is not a duplicate.
+  const other = await create({ name: "Other", domain: "not-dupe.example" });
+  expect(other.status).toBe(201);
+  const otherId = (await other.json()).data.id as string;
+
+  // Moving THAT site onto the taken host is refused too…
+  const move = await h.fetch(`/api/admin/analytics/sites/${otherId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: "dupe.example" }),
+  });
+  expect(move.status).toBe(409);
+
+  // …while re-saving a site's OWN domain is not a clash with itself.
+  const self = await h.fetch(`/api/admin/analytics/sites/${otherId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domain: "not-dupe.example", name: "Other renamed" }),
+  });
+  expect(self.status).toBe(200);
+  expect((await self.json()).data.name).toBe("Other renamed");
 });
 
 test("the same refusals apply on update, not only on create", async () => {

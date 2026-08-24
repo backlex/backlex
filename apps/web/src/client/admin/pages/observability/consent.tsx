@@ -10,10 +10,12 @@ import type { PushToast } from "../../types";
 import { I } from "../../icons";
 import { ConsentSkeleton } from "../../page-skeletons";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
+import { ConfirmDialog } from "../../sheet";
 import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
+import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../queries";
 import {
@@ -107,6 +109,7 @@ export function ConsentPage({
   const removePolicy = useDeleteConsentPolicy();
   const catLabels = useCategoryLabels();
   const [editing, setEditing] = useState<ApiAnalyticsSite | null>(null);
+  const [removing, setRemoving] = useState<ApiAnalyticsSite | null>(null);
 
   const sites = sitesQ.data?.data ?? [];
   const policies = policiesQ.data?.data ?? [];
@@ -211,20 +214,16 @@ export function ConsentPage({
                   >
                     {p ? <Trans>Edit policy</Trans> : <Trans>Set up consent</Trans>}
                   </Button>
+                  {/* Confirmed, like every other destructive action here.
+                      Removing a policy is not a display change: the banner stops
+                      being served, the site's legal posture reverts to "nothing
+                      is asked", and the wording an operator may have had
+                      reviewed goes with it. */}
                   {p ? (
                     <Button
                       variant="outline"
                       icon={I.Trash}
-                      onClick={() =>
-                        removePolicy.mutate(s.id, {
-                          // The confirmation waits for the answer. Fired
-                          // alongside the mutation it produced both "Consent
-                          // policy removed." and the failure toast at once.
-                          onSuccess: () => pushToast(t`Consent policy removed.`),
-                          onError: () =>
-                            pushToast(t`Couldn't remove the policy.`, "error"),
-                        })
-                      }
+                      onClick={() => setRemoving(s)}
                     >
                       <Trans>Remove</Trans>
                     </Button>
@@ -293,6 +292,27 @@ export function ConsentPage({
           a discard — and after Remove, "Set up consent" opened with the deleted
           policy's compliance answers already selected, which is exactly what
           the dialog's own doc comment says must never happen. */}
+      <ConfirmDialog
+        open={!!removing}
+        destructive
+        title={t`Remove this site's consent policy?`}
+        description={t`The banner stops being served, nothing is asked and nothing is blocked, and the wording and appearance saved for it are deleted. The site itself and its traffic stay.`}
+        actionLabel={t`Remove policy`}
+        onCancel={() => setRemoving(null)}
+        onConfirm={() => {
+          const target = removing;
+          if (!target) return;
+          setRemoving(null);
+          removePolicy.mutate(target.id, {
+            // The confirmation waits for the answer. Fired alongside the
+            // mutation it produced both "Consent policy removed." and the
+            // failure toast at once.
+            onSuccess: () => pushToast(t`Consent policy removed.`),
+            onError: () => pushToast(t`Couldn't remove the policy.`, "error"),
+          });
+        }}
+      />
+
       <ConsentPolicyDialog
         key={editing?.id ?? "none"}
         site={editing}
@@ -388,16 +408,69 @@ export function ConsentPolicyDialog({
     { key: "idLabel", label: t`Consent id — label` },
   ];
 
-  /** `THEME_KEYS` from the same module, with the banner's own defaults shown as
-   *  placeholders so a blank field reads as "the default" rather than "unset". */
+  /**
+   * `THEME_KEYS` from the same module, with the banner's own defaults shown as
+   * placeholders so a blank field reads as "the default" rather than "unset".
+   *
+   * `swatches` is what the shared `ColorSwatchPicker` offers for that key: the
+   * banner's default first (an empty value, i.e. "leave it alone"), then a few
+   * that suit the role, then the rainbow custom circle. Every other colour in
+   * this admin — workspace appearance, form design, collection settings — is
+   * picked this way; a bare hex box here was a second way to do one job.
+   */
   const THEME_FIELDS = [
-    { key: "background", label: t`Background`, placeholder: "#ffffff" },
-    { key: "foreground", label: t`Text`, placeholder: "#18181b" },
-    { key: "accent", label: t`Accent`, placeholder: "#4f46e5" },
-    { key: "accentForeground", label: t`Accent text`, placeholder: "#ffffff" },
-    { key: "border", label: t`Border`, placeholder: "#e4e4e7" },
-    { key: "radius", label: t`Corner radius`, placeholder: "10px" },
+    {
+      key: "background",
+      label: t`Background`,
+      placeholder: "#ffffff",
+      swatches: ["", "#ffffff", "#f8fafc", "#18181b", "#0b0b0f"],
+    },
+    {
+      key: "foreground",
+      label: t`Text`,
+      placeholder: "#18181b",
+      swatches: ["", "#18181b", "#334155", "#ffffff", "#e4e4e7"],
+    },
+    {
+      key: "accent",
+      label: t`Accent`,
+      placeholder: "#4f46e5",
+      swatches: ["", "#4f46e5", "#0ea5e9", "#16a34a", "#dc2626", "#18181b"],
+    },
+    {
+      key: "accentForeground",
+      label: t`Accent text`,
+      placeholder: "#ffffff",
+      swatches: ["", "#ffffff", "#18181b"],
+    },
+    {
+      key: "border",
+      label: t`Border`,
+      placeholder: "#e4e4e7",
+      // No `transparent` preset: it paints an invisible circle, which reads as
+      // a gap in the row rather than as a choice. Type it in the box if you
+      // want it.
+      swatches: ["", "#e4e4e7", "#cbd5e1", "#27272a"],
+    },
   ];
+
+  /** Not a colour, so not a swatch row — but it stays in the same list, because
+   *  `consent-surfaces.test.ts` reads this file to prove every `THEME_KEYS`
+   *  entry has a field an operator can reach. A key that moved out of the list
+   *  into its own control is exactly the drift that check exists to catch. */
+  const RADIUS_FIELD = {
+    key: "radius",
+    label: t`Corner radius`,
+    placeholder: "10px",
+    options: [
+      { value: "", label: t`Default (10px)` },
+      { value: "0px", label: t`Square` },
+      { value: "6px", label: t`6px` },
+      { value: "10px", label: t`10px` },
+      { value: "16px", label: t`16px` },
+      { value: "999px", label: t`Fully rounded` },
+    ],
+  };
 
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   // `undefined`, never "". The admin Select maps an empty string to a sentinel
@@ -572,20 +645,24 @@ export function ConsentPolicyDialog({
                 <span className="text-[12.5px] text-muted-foreground">
                   <Trans>Start from a preset</Trans>
                 </span>
+                {/* Label only. `appliesTo` is two sentences, and as a Select
+                    `hint` it is rendered inline in the row — which made the
+                    menu grow to the width of its longest sentence: a list
+                    1800px wide on a desktop. A hint is a qualifier; a paragraph
+                    goes under the field, where it can wrap. */}
                 <Select
                   className="min-w-0"
                   value={applied}
                   onChange={(v) => v && applyPreset(v)}
                   placeholder={t`Optional — fills the fields below`}
-                  options={presets.map((p) => ({
-                    value: p.id,
-                    label: p.label,
-                    hint: p.appliesTo,
-                  }))}
+                  options={presets.map((p) => ({ value: p.id, label: p.label }))}
                 />
                 <span className="text-[11.5px] text-muted-foreground">
                   {applied ? (
-                    presets.find((p) => p.id === applied)?.caveat
+                    <>
+                      {presets.find((p) => p.id === applied)?.appliesTo}{" "}
+                      {presets.find((p) => p.id === applied)?.caveat}
+                    </>
                   ) : (
                     <Trans>
                       Fills the fields below so you can check them. Nothing is saved until
@@ -855,54 +932,89 @@ export function ConsentPolicyDialog({
                 </div>
               )}
 
+              {/* One column, not two. `sm:` is a VIEWPORT breakpoint, so a
+                  two-column grid applies inside this 560px dialog on any
+                  desktop — and each column is then ~180px, too narrow for a
+                  swatch row, which wrapped onto a second line under every
+                  field. Full width fits the row and the hex box side by side. */}
               {openSection === "theme" && (
-                <div className="grid min-w-0 gap-3 rounded-md border p-3 sm:grid-cols-2">
+                <div className="flex min-w-0 flex-col gap-3 rounded-md border p-3">
                   {THEME_FIELDS.map((f) => {
                     const value = theme[f.key] ?? "";
+                    const trimmed = value.trim();
                     // `parseTheme` drops a value it does not like SILENTLY and
                     // still answers 200, so a rejected accent colour looked
                     // saved until a full reload. Mirrored here so the field can
-                    // say so while it is still on screen.
-                    const trimmed = value.trim();
+                    // say so before the save.
                     const ignored =
                       trimmed !== "" &&
                       (!SAFE_THEME_VALUE.test(trimmed) ||
                         trimmed.toLowerCase().includes("url(") ||
                         trimmed.length > 60);
+                    // Label on its own line, then swatches + the exact value on
+                    // one row. Laying the three out side by side made the hex
+                    // box wrap under some fields and not others, depending on
+                    // how many swatches that role offers.
                     return (
-                      <label key={f.key} className="flex min-w-0 flex-col gap-1">
+                      <div key={f.key} className="flex min-w-0 flex-col gap-1.5">
                         <span className="text-[12.5px] text-muted-foreground">{f.label}</span>
-                        <span className="flex min-w-0 items-center gap-2">
-                          {/* A swatch, not a colour picker: `radius` is a
-                              length, and the server accepts any CSS colour
-                              notation — a picker would narrow both. */}
-                          <span
-                            aria-hidden
-                            className="size-5 shrink-0 rounded-control border"
-                            style={
-                              f.key === "radius"
-                                ? undefined
-                                : { background: ignored ? "transparent" : value || f.placeholder }
-                            }
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <ColorSwatchPicker
+                            options={f.swatches.map((sw) => ({
+                              value: sw,
+                              swatch: sw || f.placeholder,
+                              label: sw === "" ? t`The banner's default` : sw,
+                            }))}
+                            value={value}
+                            onChange={(v) => setTheme((prev) => ({ ...prev, [f.key]: v }))}
                           />
                           <Input
-                            className="min-w-0 flex-1"
+                            className="min-w-[120px] flex-1 font-mono text-[12px]"
                             value={value}
                             placeholder={f.placeholder}
+                            aria-invalid={ignored ? true : undefined}
                             onChange={(e) =>
                               setTheme((prev) => ({ ...prev, [f.key]: e.target.value }))
                             }
                           />
-                        </span>
+                        </div>
                         {ignored && (
                           <span className="text-[11.5px] text-destructive">
                             <Trans>Not a CSS colour or length — this value is ignored.</Trans>
                           </span>
                         )}
-                      </label>
+                      </div>
                     );
                   })}
-                  <span className="text-[11.5px] text-muted-foreground sm:col-span-2">
+                  <label className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                    <span className="text-[12.5px] text-muted-foreground">
+                      {RADIUS_FIELD.label}
+                    </span>
+                    {/* A stored value outside the list keeps its own option, so
+                        a radius set through the API reads as set rather than as
+                        the placeholder. */}
+                    <Select
+                      className="w-[180px] shrink-0"
+                      value={theme[RADIUS_FIELD.key] ?? ""}
+                      onChange={(v) =>
+                        setTheme((prev) => ({ ...prev, [RADIUS_FIELD.key]: v }))
+                      }
+                      options={
+                        RADIUS_FIELD.options.some(
+                          (o) => o.value === (theme[RADIUS_FIELD.key] ?? ""),
+                        )
+                          ? RADIUS_FIELD.options
+                          : [
+                              ...RADIUS_FIELD.options,
+                              {
+                                value: theme[RADIUS_FIELD.key] ?? "",
+                                label: theme[RADIUS_FIELD.key] ?? "",
+                              },
+                            ]
+                      }
+                    />
+                  </label>
+                  <span className="text-[11.5px] text-muted-foreground">
                     <Trans>
                       Anything left blank uses the banner's default. Values are CSS
                       colours and lengths; the banner refuses anything that is not.
@@ -915,7 +1027,14 @@ export function ConsentPolicyDialog({
             {/* One boolean, one control — and the same two words the card uses
                 for it. Two buttons reading "Live"/"Off" set a state the card
                 then read back as "Banner live"/"Not shown". */}
-            <label className="flex min-w-0 items-start justify-between gap-3 border-t pt-4">
+            {/* `pr-3` is load-bearing, not spacing. The Switch paints an
+                invisible hit target 12px wider than itself on each side
+                (`after:-inset-x-3` in the design system, there so a 20px-tall
+                control still has a thumb-sized target). Flush against the right
+                edge of the dialog's scroll container that overflow becomes a
+                horizontal scrollbar across the whole form — 10px of sideways
+                scroll that clips every label on the left. */}
+            <label className="flex min-w-0 items-start justify-between gap-3 border-t pr-3 pt-4">
               <span className="min-w-0">
                 <span className="block text-[12.5px] font-medium">
                   <Trans>Show the banner</Trans>

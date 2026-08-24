@@ -1225,6 +1225,10 @@ msgstr "1:1 kare"
 msgid "1. Add this key to your authenticator app"
 msgstr "1. Bu anahtarı doğrulayıcı uygulamanıza ekleyin"
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "10px"
+msgstr "10px"
+
 #: src/client/admin/pages/account-page.tsx
 #: src/client/pages/sign-in.tsx
 msgid "123456"
@@ -1233,6 +1237,10 @@ msgstr "123456"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "16:9 widescreen"
 msgstr "16:9 geniş ekran"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "16px"
+msgstr "16px"
 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "180 days"
@@ -1306,6 +1314,10 @@ msgstr "5xx {0}"
 #: src/client/admin/pages/observability/usage.tsx
 msgid "5xx responses"
 msgstr "5xx yanıtlar"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "6px"
+msgstr "6px"
 
 #: src/client/admin/collections/collection-kpis.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -1527,6 +1539,10 @@ msgstr "Tek değer — sayaç en uygunudur; kıvılcım grafik / çubuklar birde
 msgid "A site needs a name and a domain."
 msgstr "Bir sitenin adı ve alan adı olmalı."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A tag is a vendor pixel, an image pixel, or your own code. It fires on the triggers you attach to it."
+msgstr "Etiket; bir sağlayıcı pikseli, bir görsel pikseli ya da kendi kodunuzdur. Kendisine bağladığınız tetikleyicilerde çalışır."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A teammate is asking…"
 #~ msgstr "Bir takım arkadaşı soruyor…"
@@ -1550,6 +1566,10 @@ msgstr "Bu satırın iki harfli ülke kodunu tutan metin sütunu — kişileri f
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "A trigger decides when a tag fires."
 msgstr "Bir tetikleyici, etiketin ne zaman çalışacağına karar verir."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A trigger decides when a tag fires. Start with a page view — a tag needs at least one to run at all."
+msgstr "Tetikleyici, bir etiketin ne zaman çalışacağına karar verir. Sayfa görüntülemeyle başlayın — bir etiketin çalışabilmesi için en az bir tanesi gerekir."
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
@@ -1941,8 +1961,8 @@ msgid "Add a tag and press Enter…"
 msgstr "Etiket ekleyip Enter'a basın…"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Add a vendor pixel, an image pixel, or your own code."
-msgstr "Bir sağlayıcı pikseli, görsel piksel veya kendi kodunuzu ekleyin."
+#~ msgid "Add a vendor pixel, an image pixel, or your own code."
+#~ msgstr "Bir sağlayıcı pikseli, görsel piksel veya kendi kodunuzu ekleyin."
 
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/websites.tsx
@@ -2650,6 +2670,10 @@ msgstr "Genelde hukuka uygun seçenek anonimleştirmedir — bir fatura çoğunl
 #: src/client/pages/sign-document.tsx
 msgid "Another signer declined it."
 msgstr "Başka bir imzalayan reddetti."
+
+#: src/client/admin/pages/observability/websites.tsx
+msgid "Another site in this workspace already has this domain."
+msgstr "Bu çalışma alanındaki başka bir sitede bu alan adı zaten var."
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Answer style"
@@ -5992,6 +6016,10 @@ msgstr "varsayılan"
 msgid "Default"
 msgstr "Varsayılan"
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Default (10px)"
+msgstr "Varsayılan (10px)"
+
 #: src/client/admin/fields/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Varsayılan (otomatik)"
@@ -8663,6 +8691,10 @@ msgstr "Tam metin"
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Full-text search"
 msgstr "Tam metin arama"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Fully rounded"
+msgstr "Tam yuvarlak"
 
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "function"
@@ -13269,6 +13301,10 @@ msgstr "Hiçbir şey seçilmedi"
 msgid "Nothing selected yet"
 msgstr "Henüz hiçbir şey seçilmedi"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Nothing to add yet — the tracker and the consent banner are served from this origin. Publish a tag that loads a third party and the directives appear here."
+msgstr "Henüz eklenecek bir şey yok — izleyici ve çerez bandı bu origin'den sunuluyor. Üçüncü taraf yükleyen bir etiket yayımlayın, direktifler burada belirir."
+
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/observability/logs.tsx
 msgid "Nothing to export — the current view is empty."
@@ -16292,6 +16328,10 @@ msgstr "Satır sütununu kaldır"
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
 msgstr "Bir kişiyi koleksiyonlardan, revizyon geçmişinden, etkinlik kaydından, yorumlardan, bildirimlerden, analitikten, hata raporlarından, cihazlardan ve dosyalardan kaldırır. Önce önizleyin — uygulama geri alınamaz."
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Remove policy"
+msgstr "Politikayı kaldır"
+
 #: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Remove question"
 msgstr "Soruyu kaldır"
@@ -16323,6 +16363,10 @@ msgstr "Etiketi kaldır"
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Remove tag {tag}"
 msgstr "{tag} etiketini kaldır"
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Remove this site's consent policy?"
+msgstr "Bu sitenin çerez onayı politikası kaldırılsın mı?"
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "Remove this website?"
@@ -19132,6 +19176,10 @@ msgstr "SQL"
 msgid "SQL editor"
 msgstr "SQL editörü"
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Square"
+msgstr "Köşeli"
+
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "SSO"
 msgstr "SSO"
@@ -19215,8 +19263,8 @@ msgid "Start the connection again from your MCP client (for example claude.ai �
 msgstr "Bağlantıyı MCP istemcinizden yeniden başlatın (örneğin claude.ai → Connectors)."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Start with a page view; a tag needs at least one trigger to fire."
-msgstr "Sayfa görüntüleme ile başlayın; bir etiketin çalışması için en az bir tetikleyici gerekir."
+#~ msgid "Start with a page view; a tag needs at least one trigger to fire."
+#~ msgstr "Sayfa görüntüleme ile başlayın; bir etiketin çalışması için en az bir tetikleyici gerekir."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Start with a template"
@@ -19950,6 +19998,10 @@ msgid "That account exists — enter its current password to accept."
 msgstr "Bu hesap zaten var — kabul etmek için mevcut parolasını gir."
 
 #: src/client/admin/pages/observability/websites.tsx
+msgid "That domain already has a site in this workspace."
+msgstr "Bu alan adının bu çalışma alanında zaten bir sitesi var."
+
+#: src/client/admin/pages/observability/websites.tsx
 msgid "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
 msgstr "Bu bir host değil. example.com gibi bir şey yazın — tam URL olur, boşluk veya yol olmaz."
 
@@ -19998,6 +20050,14 @@ msgstr "Yedekleme tamamlanmadı."
 #: src/client/admin/pages/observability/consent.tsx
 msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
 msgstr "Banner her iki dilde de yerleşik metinle gelir. Değiştirmek için aşağıya kendi metninizi yazın — alan alan, böylece kısmi bir çeviri de düzgün görünür."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "The banner stops being served, nothing is asked and nothing is blocked, and the wording and appearance saved for it are deleted. The site itself and its traffic stay."
+msgstr "Bant sunulmayı bırakır, hiçbir şey sorulmaz ve hiçbir şey engellenmez; bunun için kaydedilmiş metinler ve görünüm silinir. Sitenin kendisi ve trafiği kalır."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "The banner's default"
+msgstr "Bandın varsayılanı"
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
@@ -20553,8 +20613,12 @@ msgid "This does not reach"
 msgstr "Bunun ulaşamadıkları"
 
 #: src/client/admin/pages/observability/websites.tsx
-msgid "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
-msgstr "Bu alan adı zaten kayıtlı. İki kez eklemek serbest ama yalnızca kurduğunuz snippet rapor eder."
+msgid "This domain is already registered in this workspace. Open that site instead — a second one on the same domain never reports."
+msgstr "Bu alan adı bu çalışma alanında zaten kayıtlı. Onun yerine o siteyi açın — aynı alan adındaki ikinci bir site hiçbir zaman rapor etmez."
+
+#: src/client/admin/pages/observability/websites.tsx
+#~ msgid "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
+#~ msgstr "Bu alan adı zaten kayıtlı. İki kez eklemek serbest ama yalnızca kurduğunuz snippet rapor eder."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "This form is closed."

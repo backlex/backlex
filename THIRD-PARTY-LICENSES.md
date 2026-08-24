@@ -20,7 +20,9 @@ made CI report drift on every Linux run over a single digit.
 
 Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
-**1170 resolved package versions across 20 distinct licences.**
+**1124 resolved package versions across 21 distinct licences.**
+
+> **10 packages have no usable licence field.** They are listed under `Unknown` below. Treat that as "unreviewed", not "permissive" — someone has to read the actual repository before shipping against it.
 
 ### (AFL-2.1 OR BSD-3-Clause) (1)
 
@@ -31,7 +33,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `tslib@1.14.1`
 - `tslib@2.8.1`
 
-### Apache-2.0 (73)
+### Apache-2.0 (62)
 
 - `@ably/msgpack-js@0.4.1`
 - `@ai-sdk/anthropic@3.0.79`
@@ -43,26 +45,16 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@ai-sdk/provider@3.0.10`
 - `@ai-sdk/provider@3.0.14`
 - `@cf-wasm/photon@0.3.6`
-- `@img/sharp-darwin-arm64@0.34.5`
 - `@img/sharp-darwin-arm64@0.35.3`
-- `@img/sharp-darwin-x64@0.34.5`
 - `@img/sharp-darwin-x64@0.35.3`
 - `@img/sharp-freebsd-wasm32@0.35.3`
-- `@img/sharp-linux-arm@0.34.5`
 - `@img/sharp-linux-arm@0.35.3`
-- `@img/sharp-linux-arm64@0.34.5`
 - `@img/sharp-linux-arm64@0.35.3`
-- `@img/sharp-linux-ppc64@0.34.5`
 - `@img/sharp-linux-ppc64@0.35.3`
-- `@img/sharp-linux-riscv64@0.34.5`
 - `@img/sharp-linux-riscv64@0.35.3`
-- `@img/sharp-linux-s390x@0.34.5`
 - `@img/sharp-linux-s390x@0.35.3`
-- `@img/sharp-linux-x64@0.34.5`
 - `@img/sharp-linux-x64@0.35.3`
-- `@img/sharp-linuxmusl-arm64@0.34.5`
 - `@img/sharp-linuxmusl-arm64@0.35.3`
-- `@img/sharp-linuxmusl-x64@0.34.5`
 - `@img/sharp-linuxmusl-x64@0.35.3`
 - `@img/sharp-webcontainers-wasm32@0.35.3`
 - `@opentelemetry/api@1.9.1`
@@ -103,22 +95,17 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `mongodb-connection-string-url@3.0.2`
 - `mongodb@6.21.0`
 - `reflect-metadata@0.2.2`
-- `sharp@0.34.5`
 - `sharp@0.35.3`
 - `typescript@7.0.2`
 
-### Apache-2.0 AND LGPL-3.0-or-later (6)
+### Apache-2.0 AND LGPL-3.0-or-later (3)
 
-- `@img/sharp-win32-arm64@0.34.5`
 - `@img/sharp-win32-arm64@0.35.3`
-- `@img/sharp-win32-ia32@0.34.5`
 - `@img/sharp-win32-ia32@0.35.3`
-- `@img/sharp-win32-x64@0.34.5`
 - `@img/sharp-win32-x64@0.35.3`
 
-### Apache-2.0 AND LGPL-3.0-or-later AND MIT (2)
+### Apache-2.0 AND LGPL-3.0-or-later AND MIT (1)
 
-- `@img/sharp-wasm32@0.34.5`
 - `@img/sharp-wasm32@0.35.3`
 
 ### BlueOak-1.0.0 (3)
@@ -145,10 +132,10 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `asn1js@3.0.10`
 - `d3-ease@3.0.1`
 - `diff@8.0.4`
-- `fast-uri@3.1.0`
+- `fast-uri@3.1.5`
 - `js-base64@3.7.8`
 - `moo@0.5.3`
-- `qs@6.15.1`
+- `qs@6.15.2`
 - `smol-toml@1.6.1`
 - `source-map-js@1.2.1`
 - `source-map@0.6.1`
@@ -203,48 +190,50 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `strict-event-emitter-types@2.0.0`
 - `wrappy@1.0.2`
 - `y18n@5.0.8`
-- `yaml@2.7.1`
+- `yaml@2.8.3`
 - `yaml@2.9.0`
 - `yargs-parser@22.0.0`
 
-### LGPL-3.0-or-later (20)
+### LGPL-3.0-or-later (10)
 
-- `@img/sharp-libvips-darwin-arm64@1.2.4`
 - `@img/sharp-libvips-darwin-arm64@1.3.2`
-- `@img/sharp-libvips-darwin-x64@1.2.4`
 - `@img/sharp-libvips-darwin-x64@1.3.2`
-- `@img/sharp-libvips-linux-arm@1.2.4`
 - `@img/sharp-libvips-linux-arm@1.3.2`
-- `@img/sharp-libvips-linux-arm64@1.2.4`
 - `@img/sharp-libvips-linux-arm64@1.3.2`
-- `@img/sharp-libvips-linux-ppc64@1.2.4`
 - `@img/sharp-libvips-linux-ppc64@1.3.2`
-- `@img/sharp-libvips-linux-riscv64@1.2.4`
 - `@img/sharp-libvips-linux-riscv64@1.3.2`
-- `@img/sharp-libvips-linux-s390x@1.2.4`
 - `@img/sharp-libvips-linux-s390x@1.3.2`
-- `@img/sharp-libvips-linux-x64@1.2.4`
 - `@img/sharp-libvips-linux-x64@1.3.2`
-- `@img/sharp-libvips-linuxmusl-arm64@1.2.4`
 - `@img/sharp-libvips-linuxmusl-arm64@1.3.2`
-- `@img/sharp-libvips-linuxmusl-x64@1.2.4`
 - `@img/sharp-libvips-linuxmusl-x64@1.3.2`
 
-### MIT (967)
+### MIT (936)
 
 - `@asteasolutions/zod-to-openapi@8.5.0`
 - `@astrojs/check@0.9.10`
+- `@astrojs/compiler-binding-darwin-arm64@0.3.2`
+- `@astrojs/compiler-binding-darwin-x64@0.3.2`
+- `@astrojs/compiler-binding-linux-arm64-gnu@0.3.2`
+- `@astrojs/compiler-binding-linux-arm64-musl@0.3.2`
+- `@astrojs/compiler-binding-linux-x64-gnu@0.3.2`
+- `@astrojs/compiler-binding-linux-x64-musl@0.3.2`
+- `@astrojs/compiler-binding-wasm32-wasi@0.3.2`
+- `@astrojs/compiler-binding-win32-arm64-msvc@0.3.2`
+- `@astrojs/compiler-binding-win32-x64-msvc@0.3.2`
+- `@astrojs/compiler-binding@0.3.2`
+- `@astrojs/compiler-rs@0.3.2`
 - `@astrojs/compiler@2.13.1`
-- `@astrojs/compiler@4.0.0`
-- `@astrojs/internal-helpers@0.9.1`
+- `@astrojs/internal-helpers@0.10.2`
+- `@astrojs/internal-helpers@0.10.4`
 - `@astrojs/language-server@2.16.9`
-- `@astrojs/markdown-remark@7.1.2`
-- `@astrojs/mdx@5.0.6`
+- `@astrojs/markdown-remark@7.2.4`
+- `@astrojs/markdown-satteri@0.3.5`
+- `@astrojs/markdown-satteri@0.3.7`
+- `@astrojs/mdx@7.0.7`
 - `@astrojs/prism@4.0.2`
-- `@astrojs/sitemap@3.7.2`
 - `@astrojs/sitemap@3.7.3`
-- `@astrojs/starlight@0.39.2`
-- `@astrojs/telemetry@3.3.2`
+- `@astrojs/starlight@0.41.7`
+- `@astrojs/telemetry@3.3.3`
 - `@astrojs/yaml2ts@0.2.4`
 - `@authenio/xml-encryption@2.0.2`
 - `@babel/helper-string-parser@7.27.1`
@@ -263,6 +252,15 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@better-auth/utils@0.4.2`
 - `@better-auth/utils@0.5.0`
 - `@better-fetch/fetch@1.3.1`
+- `@bruits/satteri-darwin-arm64@0.10.5`
+- `@bruits/satteri-darwin-x64@0.10.5`
+- `@bruits/satteri-linux-arm64-gnu@0.10.5`
+- `@bruits/satteri-linux-arm64-musl@0.10.5`
+- `@bruits/satteri-linux-x64-gnu@0.10.5`
+- `@bruits/satteri-linux-x64-musl@0.10.5`
+- `@bruits/satteri-wasm32-wasi@0.10.5`
+- `@bruits/satteri-win32-arm64-msvc@0.10.5`
+- `@bruits/satteri-win32-x64-msvc@0.10.5`
 - `@capsizecss/unpack@4.0.0`
 - `@cf-wasm/internals@0.1.2`
 - `@cf-wasm/quickjs@0.2.5`
@@ -286,68 +284,41 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@emmetio/stream-reader-utils@0.1.0`
 - `@emmetio/stream-reader@2.2.0`
 - `@emnapi/core@1.11.1`
-- `@emnapi/runtime@1.10.0`
 - `@emnapi/runtime@1.11.1`
 - `@emnapi/wasi-threads@1.2.2`
 - `@envelop/core@5.5.1`
 - `@envelop/instrumentation@1.0.0`
 - `@envelop/types@5.2.1`
-- `@esbuild/aix-ppc64@0.27.3`
 - `@esbuild/aix-ppc64@0.28.1`
-- `@esbuild/android-arm@0.27.3`
 - `@esbuild/android-arm@0.28.1`
-- `@esbuild/android-arm64@0.27.3`
 - `@esbuild/android-arm64@0.28.1`
-- `@esbuild/android-x64@0.27.3`
 - `@esbuild/android-x64@0.28.1`
-- `@esbuild/darwin-arm64@0.27.3`
 - `@esbuild/darwin-arm64@0.28.1`
-- `@esbuild/darwin-x64@0.27.3`
 - `@esbuild/darwin-x64@0.28.1`
-- `@esbuild/freebsd-arm64@0.27.3`
 - `@esbuild/freebsd-arm64@0.28.1`
-- `@esbuild/freebsd-x64@0.27.3`
 - `@esbuild/freebsd-x64@0.28.1`
-- `@esbuild/linux-arm@0.27.3`
 - `@esbuild/linux-arm@0.28.1`
-- `@esbuild/linux-arm64@0.27.3`
 - `@esbuild/linux-arm64@0.28.1`
-- `@esbuild/linux-ia32@0.27.3`
 - `@esbuild/linux-ia32@0.28.1`
-- `@esbuild/linux-loong64@0.27.3`
 - `@esbuild/linux-loong64@0.28.1`
-- `@esbuild/linux-mips64el@0.27.3`
 - `@esbuild/linux-mips64el@0.28.1`
-- `@esbuild/linux-ppc64@0.27.3`
 - `@esbuild/linux-ppc64@0.28.1`
-- `@esbuild/linux-riscv64@0.27.3`
 - `@esbuild/linux-riscv64@0.28.1`
-- `@esbuild/linux-s390x@0.27.3`
 - `@esbuild/linux-s390x@0.28.1`
-- `@esbuild/linux-x64@0.27.3`
 - `@esbuild/linux-x64@0.28.1`
-- `@esbuild/netbsd-arm64@0.27.3`
 - `@esbuild/netbsd-arm64@0.28.1`
-- `@esbuild/netbsd-x64@0.27.3`
 - `@esbuild/netbsd-x64@0.28.1`
-- `@esbuild/openbsd-arm64@0.27.3`
 - `@esbuild/openbsd-arm64@0.28.1`
-- `@esbuild/openbsd-x64@0.27.3`
 - `@esbuild/openbsd-x64@0.28.1`
-- `@esbuild/openharmony-arm64@0.27.3`
 - `@esbuild/openharmony-arm64@0.28.1`
-- `@esbuild/sunos-x64@0.27.3`
 - `@esbuild/sunos-x64@0.28.1`
-- `@esbuild/win32-arm64@0.27.3`
 - `@esbuild/win32-arm64@0.28.1`
-- `@esbuild/win32-ia32@0.27.3`
 - `@esbuild/win32-ia32@0.28.1`
-- `@esbuild/win32-x64@0.27.3`
 - `@esbuild/win32-x64@0.28.1`
-- `@expressive-code/core@0.42.0`
-- `@expressive-code/plugin-frames@0.42.0`
-- `@expressive-code/plugin-shiki@0.42.0`
-- `@expressive-code/plugin-text-markers@0.42.0`
+- `@expressive-code/core@0.44.1`
+- `@expressive-code/plugin-frames@0.44.1`
+- `@expressive-code/plugin-shiki@0.44.1`
+- `@expressive-code/plugin-text-markers@0.44.1`
 - `@fastify/busboy@3.2.0`
 - `@floating-ui/core@1.7.5`
 - `@floating-ui/dom@1.7.6`
@@ -406,6 +377,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@messageformat/parser@5.1.1`
 - `@mongodb-js/saslprep@1.4.12`
 - `@napi-rs/wasm-runtime@1.1.6`
+- `@napi-rs/wasm-runtime@1.2.3`
 - `@neon-rs/load@0.0.4`
 - `@neondatabase/serverless@1.1.0`
 - `@netlify/functions@5.3.0`
@@ -544,32 +516,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@rolldown/binding-win32-arm64-msvc@1.2.4`
 - `@rolldown/binding-win32-x64-msvc@1.2.4`
 - `@rolldown/pluginutils@1.0.1`
-- `@rollup/pluginutils@5.3.0`
-- `@rollup/rollup-android-arm-eabi@4.60.4`
-- `@rollup/rollup-android-arm64@4.60.4`
-- `@rollup/rollup-darwin-arm64@4.60.4`
-- `@rollup/rollup-darwin-x64@4.60.4`
-- `@rollup/rollup-freebsd-arm64@4.60.4`
-- `@rollup/rollup-freebsd-x64@4.60.4`
-- `@rollup/rollup-linux-arm-gnueabihf@4.60.4`
-- `@rollup/rollup-linux-arm-musleabihf@4.60.4`
-- `@rollup/rollup-linux-arm64-gnu@4.60.4`
-- `@rollup/rollup-linux-arm64-musl@4.60.4`
-- `@rollup/rollup-linux-loong64-gnu@4.60.4`
-- `@rollup/rollup-linux-loong64-musl@4.60.4`
-- `@rollup/rollup-linux-ppc64-gnu@4.60.4`
-- `@rollup/rollup-linux-ppc64-musl@4.60.4`
-- `@rollup/rollup-linux-riscv64-gnu@4.60.4`
-- `@rollup/rollup-linux-riscv64-musl@4.60.4`
-- `@rollup/rollup-linux-s390x-gnu@4.60.4`
-- `@rollup/rollup-linux-x64-gnu@4.60.4`
-- `@rollup/rollup-linux-x64-musl@4.60.4`
-- `@rollup/rollup-openbsd-x64@4.60.4`
-- `@rollup/rollup-openharmony-arm64@4.60.4`
-- `@rollup/rollup-win32-arm64-msvc@4.60.4`
-- `@rollup/rollup-win32-ia32-msvc@4.60.4`
-- `@rollup/rollup-win32-x64-gnu@4.60.4`
-- `@rollup/rollup-win32-x64-msvc@4.60.4`
 - `@shikijs/core@4.1.0`
 - `@shikijs/engine-javascript@4.1.0`
 - `@shikijs/engine-oniguruma@4.1.0`
@@ -621,9 +567,9 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@types/d3-zoom@3.0.8`
 - `@types/debug@4.1.13`
 - `@types/estree-jsx@1.0.5`
-- `@types/estree@1.0.8`
 - `@types/estree@1.0.9`
 - `@types/hast@3.0.4`
+- `@types/hast@3.0.5`
 - `@types/http-cache-semantics@4.2.0`
 - `@types/istanbul-lib-coverage@2.0.6`
 - `@types/istanbul-lib-report@3.0.3`
@@ -672,6 +618,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `acorn@8.16.0`
 - `ajv-draft-04@1.0.0`
 - `ajv@8.20.0`
+- `am-i-vibing@0.4.0`
 - `ansi-regex@6.2.2`
 - `ansi-styles@4.3.0`
 - `ansi-styles@5.2.0`
@@ -681,8 +628,8 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `array-iterate@2.0.1`
 - `asn1@0.2.6`
 - `astring@1.9.0`
-- `astro-expressive-code@0.42.0`
-- `astro@6.3.7`
+- `astro-expressive-code@0.44.1`
+- `astro@7.2.4`
 - `aws-ssl-profiles@1.1.2`
 - `aws4fetch@1.0.20`
 - `bail@2.0.2`
@@ -692,7 +639,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `bcp-47@2.1.0`
 - `better-auth@1.6.29`
 - `better-call@1.4.0`
-- `body-parser@2.2.2`
+- `body-parser@2.3.0`
 - `bops@1.0.1`
 - `braces@3.0.3`
 - `buffer-from@1.1.2`
@@ -722,15 +669,17 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `color-name@1.1.4`
 - `comma-separated-tokens@2.0.3`
 - `commander@11.1.0`
+- `commander@14.0.3`
 - `compressible@2.0.18`
 - `compression@1.8.1`
 - `content-disposition@1.1.0`
 - `content-type@1.0.5`
+- `content-type@2.1.0`
 - `cookie-es@1.2.3`
 - `cookie-es@3.1.1`
 - `cookie-signature@1.2.2`
 - `cookie@0.7.2`
-- `cookie@1.1.1`
+- `cookie@2.0.1`
 - `crelt@1.0.6`
 - `cron-parser@4.9.0`
 - `cross-inspect@1.0.1`
@@ -773,7 +722,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `es-toolkit@1.49.0`
 - `esast-util-from-estree@2.0.0`
 - `esast-util-from-js@2.0.1`
-- `esbuild@0.27.3`
 - `esbuild@0.28.1`
 - `escalade@3.2.0`
 - `escape-html@1.0.3`
@@ -784,13 +732,12 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `estree-util-scope@1.0.0`
 - `estree-util-to-js@2.0.0`
 - `estree-util-visit@2.0.0`
-- `estree-walker@2.0.2`
 - `estree-walker@3.0.3`
 - `etag@1.8.1`
 - `eventemitter3@5.0.4`
 - `eventsource-parser@3.0.8`
 - `express@5.2.1`
-- `expressive-code@0.42.0`
+- `expressive-code@0.44.1`
 - `extend@3.0.2`
 - `fast-deep-equal@3.1.3`
 - `fast-string-truncated-width@3.0.3`
@@ -799,6 +746,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `fdir@6.5.0`
 - `fill-range@7.1.1`
 - `finalhandler@2.1.1`
+- `find-process@2.1.1`
 - `flattie@1.1.1`
 - `fontace@0.4.1`
 - `fontkitten@1.0.3`
@@ -858,22 +806,19 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `is-alphabetical@2.0.1`
 - `is-alphanumerical@2.0.1`
 - `is-decimal@2.0.1`
-- `is-docker@3.0.0`
 - `is-docker@4.0.0`
 - `is-hexadecimal@2.0.1`
-- `is-inside-container@1.0.0`
 - `is-number@7.0.0`
 - `is-plain-obj@4.1.0`
 - `is-promise@4.0.0`
 - `is-property@1.0.2`
-- `is-wsl@3.1.1`
 - `jest-get-type@29.6.3`
 - `jest-validate@29.7.0`
 - `jiti@2.6.1`
 - `jiti@2.7.0`
 - `jose@6.2.3`
 - `js-sha256@0.10.1`
-- `js-yaml@4.1.1`
+- `js-yaml@4.3.1`
 - `json-buffer@3.0.1`
 - `json-schema-traverse@1.0.0`
 - `jsonc-parser@2.3.1`
@@ -886,11 +831,13 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `leven@3.1.0`
 - `libsql@0.5.29`
 - `lilconfig@3.1.3`
+- `loglevel@1.9.2`
 - `longest-streak@3.1.0`
 - `lowercase-keys@2.0.0`
 - `lru.min@1.1.4`
 - `luxon@3.7.2`
 - `magic-string@0.30.21`
+- `magic-string@1.2.0`
 - `magicast@0.5.3`
 - `markdown-extensions@2.0.0`
 - `markdown-table@3.0.4`
@@ -964,12 +911,11 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `muggle-string@0.4.1`
 - `mysql2@3.23.3`
 - `named-placeholders@1.1.6`
-- `nanoid@3.3.12`
 - `nanoid@3.3.18`
 - `nanostores@1.3.0`
 - `negotiator@0.6.4`
 - `negotiator@1.0.0`
-- `neotraverse@0.6.18`
+- `neotraverse@1.0.1`
 - `next@16.3.1`
 - `nlcst-to-string@4.0.0`
 - `node-fetch-native@1.6.7`
@@ -1004,12 +950,12 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `picomatch@4.0.5`
 - `postcss-nested@6.2.0`
 - `postcss-selector-parser@6.1.2`
-- `postcss@8.5.15`
 - `postcss@8.5.23`
 - `postcss@8.5.26`
 - `prettier@3.8.3`
 - `pretty-format@29.7.0`
 - `prismjs@1.30.0`
+- `process-ancestry@0.1.0`
 - `property-information@7.1.0`
 - `proxy-addr@2.0.7`
 - `pump@3.0.4`
@@ -1043,7 +989,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `regex-recursion@6.0.2`
 - `regex-utilities@2.3.0`
 - `regex@6.1.0`
-- `rehype-expressive-code@0.42.0`
+- `rehype-expressive-code@0.44.1`
 - `rehype-format@5.0.1`
 - `rehype-minify-whitespace@6.0.2`
 - `rehype-parse@9.0.1`
@@ -1072,13 +1018,13 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `retext-stringify@4.0.0`
 - `retext@9.0.0`
 - `rolldown@1.2.4`
-- `rollup@4.60.4`
 - `rou3@0.9.2`
 - `router@2.2.0`
 - `safe-buffer@5.1.2`
 - `safe-buffer@5.2.1`
 - `safer-buffer@2.1.2`
 - `samlify@2.13.1`
+- `satteri@0.10.5`
 - `scheduler@0.27.0`
 - `send@1.2.1`
 - `serve-static@2.2.1`
@@ -1095,7 +1041,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `space-separated-tokens@2.0.2`
 - `sparse-bitfield@3.0.3`
 - `sql-escaper@1.5.1`
-- `starlight-llms-txt@0.10.0`
+- `starlight-llms-txt@0.11.0`
 - `statuses@2.0.2`
 - `stream-replace-string@2.0.0`
 - `string-width@7.2.0`
@@ -1107,7 +1053,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `style-to-object@1.0.14`
 - `styled-jsx@5.1.6`
 - `supports-color@7.2.0`
-- `svgo@4.0.1`
+- `svgo@4.0.2`
 - `tailwind-merge@3.6.0`
 - `tailwindcss@4.3.3`
 - `tapable@2.3.3`
@@ -1127,6 +1073,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `tsyringe@4.10.0`
 - `tw-animate-css@1.4.0`
 - `type-is@2.0.1`
+- `type-is@2.1.0`
 - `typesafe-path@0.2.2`
 - `typescript-auto-import-cache@0.3.6`
 - `ufo@1.6.4`
@@ -1135,8 +1082,9 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `uncrypto@0.1.3`
 - `undici-types@7.16.0`
 - `undici-types@7.19.2`
+- `undici@8.10.0`
 - `unified@11.0.5`
-- `unifont@0.7.4`
+- `unifont@0.7.5`
 - `unist-util-find-after@5.0.0`
 - `unist-util-is@6.0.1`
 - `unist-util-modify-children@4.0.0`
@@ -1150,6 +1098,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `unist-util-visit@5.1.0`
 - `unpipe@1.0.0`
 - `unstorage@1.17.5`
+- `url-extras@0.1.0`
 - `urlpattern-polyfill@10.1.0`
 - `use-callback-ref@1.3.3`
 - `use-sidecar@1.1.3`
@@ -1160,7 +1109,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `vfile-location@5.0.3`
 - `vfile-message@4.0.3`
 - `vfile@6.0.3`
-- `vite@7.3.6`
 - `vite@8.2.1`
 - `vitefu@1.1.3`
 - `volar-service-css@0.0.70`
@@ -1183,9 +1131,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `w3c-keyname@2.2.8`
 - `web-namespaces@2.0.1`
 - `whatwg-url@14.2.0`
-- `which-pm-runs@1.1.0`
 - `wrap-ansi@9.0.2`
-- `ws@8.18.0`
 - `ws@8.21.0`
 - `xml-crypto@6.1.2`
 - `xml@1.0.1`
@@ -1210,7 +1156,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
 ### MIT-0 (1)
 
-- `nodemailer@6.10.1`
+- `nodemailer@9.0.5`
 
 ### MPL-2.0 (24)
 
@@ -1246,6 +1192,19 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 ### Python-2.0 (1)
 
 - `argparse@2.0.1`
+
+### Unknown (10)
+
+- `@bruits/satteri-darwin-arm64@0.9.4`
+- `@bruits/satteri-darwin-x64@0.9.4`
+- `@bruits/satteri-linux-arm64-gnu@0.9.4`
+- `@bruits/satteri-linux-arm64-musl@0.9.4`
+- `@bruits/satteri-linux-x64-gnu@0.9.4`
+- `@bruits/satteri-linux-x64-musl@0.9.4`
+- `@bruits/satteri-wasm32-wasi@0.9.4`
+- `@bruits/satteri-win32-arm64-msvc@0.9.4`
+- `@bruits/satteri-win32-x64-msvc@0.9.4`
+- `satteri@0.9.4`
 
 ### Unlicense (2)
 

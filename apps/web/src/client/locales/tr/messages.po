@@ -1928,6 +1928,7 @@ msgstr "Koşullu görünürlük kurmak için forma bir açılır liste alanı ek
 msgid "Add a helpful note for editors…"
 msgstr "Editörler için yardımcı bir not ekleyin…"
 
+#: src/client/admin/pages/observability/consent.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Add a language"
 msgstr "Dil ekle"
@@ -3370,6 +3371,14 @@ msgstr "backlex bu değeri kayıt oluşturulurken verir — biçim <0>Numaraland
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "backlex issues this value when the row is created — it is read-only through the API and never changes afterwards. Numbers are unique and always go up; if a create fails, the number it took is skipped rather than reused."
 msgstr "backlex bu değeri satır oluşturulurken verir — API üzerinden salt okunurdur ve sonradan hiç değişmez. Numaralar benzersizdir ve her zaman artar; bir oluşturma başarısız olursa aldığı numara yeniden kullanılmaz, atlanır."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "backlex ships built-in text for this one. Write your own below to replace it — key by key, so a partial translation still renders."
+msgstr "backlex bu dil için hazır metinle geliyor. Aşağıda kendi metninizi yazarak değiştirin — anahtar anahtar, yani eksik bir çeviri de sorunsuz görüntülenir."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "backlex ships no built-in text for this language — until you write it below, the banner falls back to English."
+msgstr "backlex bu dil için hazır metinle gelmiyor — aşağıda yazana kadar bant İngilizce'ye düşer."
 
 #. placeholder {0}: schema.slug
 #: src/client/admin/collections/collection-settings.tsx
@@ -7128,6 +7137,16 @@ msgstr "{0} düzenleniyor — boş bırakılan {1} değerine düşer"
 msgid "editing {0} — empty strings fall back to {1}"
 msgstr "{0} düzenleniyor — boş metinler {1} değerine düşer"
 
+#. placeholder {0}: localeLabel(editLocale)
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Editing {0}, which backlex ships no built-in text for — every key you leave blank falls back to English rather than to a translation nobody reviewed."
+msgstr "{0} düzenleniyor; backlex bu dil için hazır metinle gelmiyor — boş bıraktığınız her anahtar, kimsenin gözden geçirmediği bir çeviri yerine İngilizce'ye düşer."
+
+#. placeholder {0}: localeLabel(editLocale)
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Editing {0}. Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+msgstr "{0} düzenleniyor. Boş bırakılırsa bant kendi metnini kullanır. Buraya yazdığınız şey, ziyaretçinin kabul ettiği sayılan metindir; bu yüzden yazdığınız gibi saklanır ve hiçbir zaman yeniden yazılmaz."
+
 #. placeholder {0}: panel?.id
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Editing <0>{0}</0>."
@@ -7467,8 +7486,8 @@ msgid "engagement depth"
 msgstr "etkileşim derinliği"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "English"
-msgstr "İngilizce"
+#~ msgid "English"
+#~ msgstr "İngilizce"
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Enough to create it — the opening hours, the questions and the rest are set on the resource itself."
@@ -9893,6 +9912,10 @@ msgstr "Geri çekilmiş, daha önce kullanılmış ya da yenisiyle değiştirilm
 msgid "It starts from the beginning of the collection and catches up one page per tick."
 msgstr "Koleksiyonun başından başlar ve her turda bir sayfa ilerler."
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "It stays on this policy once you write something in it, or make it the banner's language."
+msgstr "İçine bir şey yazdığınızda ya da bandın dili yaptığınızda bu politikada kalır."
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "Item archived."
 msgstr "Öğe arşivlendi."
@@ -10539,8 +10562,8 @@ msgid "Leave to user"
 msgstr "Kullanıcıya bırak"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
-msgstr "Boş bırakılırsa banner kendi metnini kullanır. Buraya yazdığınız şey, ziyaretçinin kabul etmiş sayıldığı metindir; bu yüzden yazdığınız gibi saklanır ve hiçbir zaman yeniden yazılmaz."
+#~ msgid "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+#~ msgstr "Boş bırakılırsa banner kendi metnini kullanır. Buraya yazdığınız şey, ziyaretçinin kabul etmiş sayıldığı metindir; bu yüzden yazdığınız gibi saklanır ve hiçbir zaman yeniden yazılmaz."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Left empty, an answer outside the list fails the step instead of guessing."
@@ -14665,6 +14688,7 @@ msgstr "Bir KPI seçin"
 msgid "Pick a KPI first."
 msgstr "Önce bir KPI seçin."
 
+#: src/client/admin/pages/observability/consent.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Pick a language…"
 msgstr "Dil seçin…"
@@ -20101,8 +20125,8 @@ msgid "The backup did not finish."
 msgstr "Yedekleme tamamlanmadı."
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
-msgstr "Banner her iki dilde de yerleşik metinle gelir. Değiştirmek için aşağıya kendi metninizi yazın — alan alan, böylece kısmi bir çeviri de düzgün görünür."
+#~ msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
+#~ msgstr "Banner her iki dilde de yerleşik metinle gelir. Değiştirmek için aşağıya kendi metninizi yazın — alan alan, böylece kısmi bir çeviri de düzgün görünür."
 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "The banner stops being served, nothing is asked and nothing is blocked, and the wording and appearance saved for it are deleted. The site itself and its traffic stay."
@@ -21300,8 +21324,8 @@ msgid "Tue"
 msgstr "Sal"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "Turkish"
-msgstr "Türkçe"
+#~ msgid "Turkish"
+#~ msgstr "Türkçe"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx

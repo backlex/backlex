@@ -9,13 +9,14 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { PushToast } from "../../types";
 import { I } from "../../icons";
 import { ConsentSkeleton } from "../../page-skeletons";
-import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
+import { Badge, Button, EmptyState, Field, PageHeader, Switch } from "../../ui";
 import { ConfirmDialog } from "../../sheet";
 import { Select } from "../../select";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
+import { languageOptions, localeLabel, usePreferences } from "../../preferences";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../queries";
 import {
@@ -370,6 +371,8 @@ export function ConsentPolicyDialog({
 }) {
   const { t } = useLingui();
   const catLabels = useCategoryLabels();
+  // `workspace.locales` is what every other language picker in the admin reads.
+  const { prefs } = usePreferences();
 
   /**
    * The eighteen strings the banner renders, in the order it renders them.
@@ -502,6 +505,10 @@ export function ConsentPolicyDialog({
   // default all the time.
   const [editLocale, setEditLocale] = useState("en");
   const [openSection, setOpenSection] = useState<"none" | "wording" | "theme">("none");
+  /** Languages added from the picker below in this session. A language only
+   *  persists once it holds wording (or becomes the banner's), so this keeps
+   *  its tab on screen until the operator has typed something into it. */
+  const [added, setAdded] = useState<string[]>([]);
   // The presets the server offers, and which one was last applied. `applied` is
   // presentational ONLY — it drives the caveat below and is never saved, because
   // a stored preset would be an applied preset and the operator's Save would
@@ -530,6 +537,7 @@ export function ConsentPolicyDialog({
     // previous one's fields.
     setApplied(undefined);
     setOpenSection("none");
+    setAdded([]);
   }
 
   const setWord = (key: string, value: string) =>
@@ -611,18 +619,41 @@ export function ConsentPolicyDialog({
   const urlOk = !policyUrl.trim() || /^https?:\/\//i.test(policyUrl.trim());
   const ready = Boolean(undecided && tracker) && urlOk;
 
-  /** Every locale this policy actually has text for, plus the two the banner
-   *  ships built in. A policy written through the SDK with `defaultLocale: "de"`
-   *  used to highlight no tab at all, and one click on `en` made the German
-   *  block uneditable while it was still being served. */
+  /**
+   * The languages this policy can be written in.
+   *
+   * It used to be the literal pair `["en", "tr"]` — the two the banner ships
+   * built-in text for — which made this the one place in the admin that did not
+   * know what languages the workspace works in. A workspace translated into
+   * German could not put its banner in German from here, even though the server
+   * stores any BCP-47-shaped tag and the Translations page, the account locale
+   * picker and the workspace settings all read the same list.
+   *
+   * So: what the workspace declares, plus the two with built-ins, plus whatever
+   * this policy already has text for, plus anything added below in this
+   * session. Labelled through `localeLabel`, the same helper those other
+   * pickers use, so "de" reads "Deutsch — German" here too.
+   */
+  const workspaceLocales = prefs?.workspace?.locales ?? [];
   const locales = Array.from(
-    new Set<string>([...BUILTIN_LOCALES, defaultLocale, ...Object.keys(wording)]),
+    new Set<string>([
+      ...BUILTIN_LOCALES,
+      ...workspaceLocales,
+      ...added,
+      defaultLocale,
+      ...Object.keys(wording),
+    ]),
   ).filter(Boolean);
 
   const localeOptions = locales.map((l) => ({
     value: l,
-    label: l === "en" ? t`English` : l === "tr" ? t`Turkish` : l,
+    label: localeLabel(l),
+    hint: l,
   }));
+
+  /** Everything else the server would accept, for the "add a language" picker —
+   *  the same list and the same shape the workspace settings card offers. */
+  const addLocaleOptions = languageOptions(locales);
 
   /** The four presets, plus whatever is stored if it is not one of them — a
    *  policy set to 30 days through the API rendered as an unset Select. */
@@ -851,25 +882,54 @@ export function ConsentPolicyDialog({
             </label>
 
 
-            <div className="flex min-w-0 flex-col gap-1.5 border-t pt-4">
-              <span className="text-[12.5px] text-muted-foreground">
-                <Trans>Banner language</Trans>
-              </span>
-              <Select
-                className="min-w-0"
-                value={defaultLocale}
-                onChange={(v) => {
-                  setDefaultLocale(v);
-                  setEditLocale(v);
-                }}
-                options={localeOptions}
-              />
-              <span className="text-[11.5px] text-muted-foreground">
-                <Trans>
-                  The banner ships built-in text in both. Write your own below to
-                  replace it — key by key, so a partial translation still renders.
-                </Trans>
-              </span>
+            <div className="flex min-w-0 flex-col gap-3 border-t pt-4">
+              <Field
+                label={t`Banner language`}
+                hint={
+                  BUILTIN_LOCALES.includes(
+                    defaultLocale as (typeof BUILTIN_LOCALES)[number],
+                  )
+                    ? t`backlex ships built-in text for this one. Write your own below to replace it — key by key, so a partial translation still renders.`
+                    : // Not a detail: `builtinFor()` falls back to ENGLISH for a
+                      // language with no built-ins, and the banner never
+                      // substitutes text the operator did not review. So an
+                      // unwritten German banner is an English banner.
+                      t`backlex ships no built-in text for this language — until you write it below, the banner falls back to English.`
+                }
+              >
+                <Select
+                  className="min-w-0"
+                  value={defaultLocale}
+                  onChange={(v) => {
+                    setDefaultLocale(v);
+                    setEditLocale(v);
+                  }}
+                  options={localeOptions}
+                />
+              </Field>
+
+              <Field
+                label={t`Add a language`}
+                hint={t`It stays on this policy once you write something in it, or make it the banner's language.`}
+              >
+                {/* Remounted per change so the picker returns to its
+                    placeholder after each add — it is an action, not a field
+                    that holds a value. Same shape as the workspace language
+                    card. */}
+                <Select
+                  key={`add-consent-lang-${locales.join("|")}`}
+                  className="min-w-0"
+                  value={undefined}
+                  placeholder={t`Pick a language…`}
+                  onChange={(v) => {
+                    if (!v) return;
+                    setAdded((prev) => (prev.includes(v) ? prev : [...prev, v]));
+                    setEditLocale(v);
+                    setOpenSection("wording");
+                  }}
+                  options={addLocaleOptions}
+                />
+              </Field>
             </div>
 
             <div className="flex min-w-0 flex-col gap-2">
@@ -894,15 +954,20 @@ export function ConsentPolicyDialog({
 
               {openSection === "wording" && (
                 <div className="flex min-w-0 flex-col gap-3 rounded-md border p-3">
+                  {/* One tab per language the policy can hold, with the code
+                      beside the name: `localeLabel` renders "Deutsch — German",
+                      which is right for a picker and long for a tab row. The
+                      code is what the visitor's browser actually sends. */}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {localeOptions.map((l) => (
+                    {locales.map((code) => (
                       <Button
-                        key={l.value}
-                        variant={editLocale === l.value ? "primary" : "outline"}
-                        aria-pressed={editLocale === l.value}
-                        onClick={() => setEditLocale(l.value)}
+                        key={code}
+                        variant={editLocale === code ? "primary" : "outline"}
+                        aria-pressed={editLocale === code}
+                        title={localeLabel(code)}
+                        onClick={() => setEditLocale(code)}
                       >
-                        {l.label}
+                        {code}
                       </Button>
                     ))}
                     <Button variant="outline" onClick={useSuggested}>
@@ -930,11 +995,11 @@ export function ConsentPolicyDialog({
                     </label>
                   ))}
                   <span className="text-[11.5px] text-muted-foreground">
-                    <Trans>
-                      Left blank, the banner uses its own text. What you write here is
-                      what a visitor is held to have agreed to, so it is stored exactly
-                      as typed and never rewritten.
-                    </Trans>
+                    {BUILTIN_LOCALES.includes(
+                      editLocale as (typeof BUILTIN_LOCALES)[number],
+                    )
+                      ? t`Editing ${localeLabel(editLocale)}. Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten.`
+                      : t`Editing ${localeLabel(editLocale)}, which backlex ships no built-in text for — every key you leave blank falls back to English rather than to a translation nobody reviewed.`}
                   </span>
                 </div>
               )}

@@ -1928,6 +1928,7 @@ msgstr "Add a dropdown field to the form to build show-conditions on it."
 msgid "Add a helpful note for editors…"
 msgstr "Add a helpful note for editors…"
 
+#: src/client/admin/pages/observability/consent.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Add a language"
 msgstr "Add a language"
@@ -3370,6 +3371,14 @@ msgstr "backlex issues this value on create — the shape lives in the <0>Number
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "backlex issues this value when the row is created — it is read-only through the API and never changes afterwards. Numbers are unique and always go up; if a create fails, the number it took is skipped rather than reused."
 msgstr "backlex issues this value when the row is created — it is read-only through the API and never changes afterwards. Numbers are unique and always go up; if a create fails, the number it took is skipped rather than reused."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "backlex ships built-in text for this one. Write your own below to replace it — key by key, so a partial translation still renders."
+msgstr "backlex ships built-in text for this one. Write your own below to replace it — key by key, so a partial translation still renders."
+
+#: src/client/admin/pages/observability/consent.tsx
+msgid "backlex ships no built-in text for this language — until you write it below, the banner falls back to English."
+msgstr "backlex ships no built-in text for this language — until you write it below, the banner falls back to English."
 
 #. placeholder {0}: schema.slug
 #: src/client/admin/collections/collection-settings.tsx
@@ -7128,6 +7137,16 @@ msgstr "editing {0} — empty falls back to {1}"
 msgid "editing {0} — empty strings fall back to {1}"
 msgstr "editing {0} — empty strings fall back to {1}"
 
+#. placeholder {0}: localeLabel(editLocale)
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Editing {0}, which backlex ships no built-in text for — every key you leave blank falls back to English rather than to a translation nobody reviewed."
+msgstr "Editing {0}, which backlex ships no built-in text for — every key you leave blank falls back to English rather than to a translation nobody reviewed."
+
+#. placeholder {0}: localeLabel(editLocale)
+#: src/client/admin/pages/observability/consent.tsx
+msgid "Editing {0}. Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+msgstr "Editing {0}. Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+
 #. placeholder {0}: panel?.id
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Editing <0>{0}</0>."
@@ -7467,8 +7486,8 @@ msgid "engagement depth"
 msgstr "engagement depth"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "English"
-msgstr "English"
+#~ msgid "English"
+#~ msgstr "English"
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Enough to create it — the opening hours, the questions and the rest are set on the resource itself."
@@ -9893,6 +9912,10 @@ msgstr "It may have been withdrawn, already used, or replaced by a newer one."
 msgid "It starts from the beginning of the collection and catches up one page per tick."
 msgstr "It starts from the beginning of the collection and catches up one page per tick."
 
+#: src/client/admin/pages/observability/consent.tsx
+msgid "It stays on this policy once you write something in it, or make it the banner's language."
+msgstr "It stays on this policy once you write something in it, or make it the banner's language."
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "Item archived."
 msgstr "Item archived."
@@ -10539,8 +10562,8 @@ msgid "Leave to user"
 msgstr "Leave to user"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
-msgstr "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+#~ msgid "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
+#~ msgstr "Left blank, the banner uses its own text. What you write here is what a visitor is held to have agreed to, so it is stored exactly as typed and never rewritten."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Left empty, an answer outside the list fails the step instead of guessing."
@@ -14665,6 +14688,7 @@ msgstr "Pick a KPI"
 msgid "Pick a KPI first."
 msgstr "Pick a KPI first."
 
+#: src/client/admin/pages/observability/consent.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Pick a language…"
 msgstr "Pick a language…"
@@ -20101,8 +20125,8 @@ msgid "The backup did not finish."
 msgstr "The backup did not finish."
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
-msgstr "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
+#~ msgid "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
+#~ msgstr "The banner ships built-in text in both. Write your own below to replace it — key by key, so a partial translation still renders."
 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "The banner stops being served, nothing is asked and nothing is blocked, and the wording and appearance saved for it are deleted. The site itself and its traffic stay."
@@ -21300,8 +21324,8 @@ msgid "Tue"
 msgstr "Tue"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "Turkish"
-msgstr "Turkish"
+#~ msgid "Turkish"
+#~ msgstr "Turkish"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx

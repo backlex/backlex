@@ -281,7 +281,6 @@
         "lucide-react": "^1.31.0",
       },
       "devDependencies": {
-        "@backlex/ui": "workspace:*",
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.4",
         "typescript": "7.0.2",

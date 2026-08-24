@@ -118,7 +118,7 @@ export function ConsentPage({
   const header = (
     <PageHeader
       title={t`Cookie consent`}
-      description={t`What each website asks its visitors, and what runs before they answer. One policy per website.`}
+      description={t`What each website asks its visitors, and what runs before they answer. One policy per website — the banner rides the site's existing script tag, so there is nothing extra to install.`}
       descriptionClassName="hidden sm:block"
       actions={
         // This page reads the same `analyticsSites` query as Websites, which
@@ -195,18 +195,77 @@ export function ConsentPage({
           const p = policyFor(s.id);
           return (
             <Card key={s.id} className="gap-3 px-4 py-3.5">
-              {/* Stacks on a phone. As one `justify-between` row the two
-                  full-label buttons held their width against a `min-w-0` name,
-                  squeezing the site down to about twelve characters — and a
-                  wrap put the actions on the LEFT, against the house rule. */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="truncate text-[14px] font-medium">{s.name}</div>
-                  <div className="truncate text-[12.5px] text-muted-foreground">
-                    {s.domain}
+              {/* Identity and status together on the left, actions on the
+                  right — and on a phone the actions come LAST, after the line
+                  that explains the state.
+
+                  Stacking them the other way (which is what `flex-col` on the
+                  header row gave) put a primary button in the middle of the
+                  card, alone in an empty row, above the sentence saying why it
+                  is there: the invitation before its own reason. Actions still
+                  hug the right edge, per the house rule; they are simply at the
+                  bottom of the card rather than in the middle of it. */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[14px] font-medium">{s.name}</div>
+                    <div className="truncate text-[12.5px] text-muted-foreground">
+                      {s.domain}
+                    </div>
                   </div>
+                {p && p.enabled ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="default">
+                      <Trans>Banner live</Trans>
+                    </Badge>
+                    <Badge variant="secondary">
+                      {p.undecidedBehaviour === "block" ? (
+                        <Trans>Blocks before consent</Trans>
+                      ) : (
+                        <Trans>Allows before consent</Trans>
+                      )}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {p.trackerCategory === "none" ? (
+                        <Trans>Tag: strictly necessary</Trans>
+                      ) : (
+                        <Trans>Tag: gated</Trans>
+                      )}
+                    </Badge>
+                    {p.categoriesOffered.map((c) => (
+                      <Badge key={c} variant="outline">
+                        {catLabels[c] ?? c}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : p ? (
+                  // A disabled policy is wholly inert server-side — no banner AND
+                  // no blocking. Showing "Blocks before consent" beside "Not
+                  // shown" described a state that cannot exist, and on this page
+                  // that mislabel is what an operator quotes in a privacy review.
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant="secondary">
+                        <Trans>Not shown</Trans>
+                      </Badge>
+                    </div>
+                    <p className="m-0 text-[12.5px] text-muted-foreground">
+                      <Trans>
+                        Saved but not in effect — nothing is asked and nothing is blocked
+                        until you set it live.
+                      </Trans>
+                    </p>
+                  </div>
+                ) : (
+                  <p className="m-0 text-[12.5px] text-muted-foreground">
+                    <Trans>
+                      No policy yet. Nothing is asked and nothing is blocked — the site
+                      behaves exactly as it does today.
+                    </Trans>
+                  </p>
+                )}
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                <div className="flex flex-wrap items-center justify-end gap-1.5 sm:shrink-0">
                   <Button
                     variant={p ? "outline" : "primary"}
                     icon={I.Settings}
@@ -230,58 +289,6 @@ export function ConsentPage({
                   ) : null}
                 </div>
               </div>
-
-              {p && p.enabled ? (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge variant="default">
-                    <Trans>Banner live</Trans>
-                  </Badge>
-                  <Badge variant="secondary">
-                    {p.undecidedBehaviour === "block" ? (
-                      <Trans>Blocks before consent</Trans>
-                    ) : (
-                      <Trans>Allows before consent</Trans>
-                    )}
-                  </Badge>
-                  <Badge variant="secondary">
-                    {p.trackerCategory === "none" ? (
-                      <Trans>Tag: strictly necessary</Trans>
-                    ) : (
-                      <Trans>Tag: gated</Trans>
-                    )}
-                  </Badge>
-                  {p.categoriesOffered.map((c) => (
-                    <Badge key={c} variant="outline">
-                      {catLabels[c] ?? c}
-                    </Badge>
-                  ))}
-                </div>
-              ) : p ? (
-                // A disabled policy is wholly inert server-side — no banner AND
-                // no blocking. Showing "Blocks before consent" beside "Not
-                // shown" described a state that cannot exist, and on this page
-                // that mislabel is what an operator quotes in a privacy review.
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="secondary">
-                      <Trans>Not shown</Trans>
-                    </Badge>
-                  </div>
-                  <p className="m-0 text-[12.5px] text-muted-foreground">
-                    <Trans>
-                      Saved but not in effect — nothing is asked and nothing is blocked
-                      until you set it live.
-                    </Trans>
-                  </p>
-                </div>
-              ) : (
-                <p className="m-0 text-[12.5px] text-muted-foreground">
-                  <Trans>
-                    No policy yet. Nothing is asked and nothing is blocked — the site
-                    behaves exactly as it does today.
-                  </Trans>
-                </p>
-              )}
             </Card>
           );
         })

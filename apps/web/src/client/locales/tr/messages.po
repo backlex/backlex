@@ -1543,6 +1543,10 @@ msgstr "Bir sitenin adı ve alan adı olmalı."
 msgid "A tag is a vendor pixel, an image pixel, or your own code. It fires on the triggers you attach to it."
 msgstr "Etiket; bir sağlayıcı pikseli, bir görsel pikseli ya da kendi kodunuzdur. Kendisine bağladığınız tetikleyicilerde çalışır."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A tag runs only when something triggers it — usually a page view."
+msgstr "Bir etiket ancak bir şey onu tetiklediğinde çalışır — genellikle bir sayfa görüntüleme."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A teammate is asking…"
 #~ msgstr "Bir takım arkadaşı soruyor…"
@@ -4173,9 +4177,17 @@ msgstr "Bir dosya seçin veya buraya sürükleyin"
 msgid "Choose a new password"
 msgstr "Yeni parola seçin"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Choose a trigger"
+msgstr "Bir tetikleyici seçin"
+
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Choose a value"
 msgstr "Bir değer seçin"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Choose a vendor"
+msgstr "Bir sağlayıcı seçin"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Choose folder…"
@@ -4186,7 +4198,12 @@ msgstr "Klasör seç…"
 msgid "Choose one"
 msgstr "Birini seçin"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Choose what makes this tag fire."
+msgstr "Bu etiketi neyin çalıştıracağını seçin."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/pages/book.tsx
@@ -4283,6 +4300,10 @@ msgstr "Seçimi temizle"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Clear this attribute"
 msgstr "Bu özelliği temizle"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Click"
+msgstr "Tıklama"
 
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Click <0>+ New flow</0> to create your first one."
@@ -5631,6 +5652,10 @@ msgstr "Senkronu oluştur"
 msgid "Create the first row in <0>{tableName}</0> via the API or use the New row button."
 msgstr "API aracılığıyla <0>{tableName}</0> tablosuna ilk satırı ekleyin veya Yeni satır düğmesini kullanın."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Create the first trigger"
+msgstr "İlk tetikleyiciyi oluştur"
+
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Create webhook"
 msgstr "Webhook oluştur"
@@ -5825,6 +5850,10 @@ msgstr "Özel tarih…"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Custom email claim"
 msgstr "Özel e-posta claim’i"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Custom event"
+msgstr "Özel olay"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Custom groups claim"
@@ -8578,6 +8607,10 @@ msgstr "Form tasarımı"
 #~ msgid "Form link ready"
 #~ msgstr "Form bağlantısı hazır"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Form submit"
+msgstr "Form gönderimi"
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Form title"
 msgstr "Form başlığı"
@@ -10023,8 +10056,8 @@ msgid "keep counting up forever"
 msgstr "sürekli artmaya devam eder"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
-msgstr "defer'i koruyun, async yapmayın. defer'li betikler belge sırasıyla çalışır; ilk sırada olmak, onay kararını sayfadaki diğer tüm defer'li etiketlerin önüne koyan şeydir. Analytics etiketini de taşır, bu yüzden analytics kod parçacığına eklenmez, onun yerine geçer."
+#~ msgid "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+#~ msgstr "defer'i koruyun, async yapmayın. defer'li betikler belge sırasıyla çalışır; ilk sırada olmak, onay kararını sayfadaki diğer tüm defer'li etiketlerin önüne koyan şeydir. Analytics etiketini de taşır, bu yüzden analytics kod parçacığına eklenmez, onun yerine geçer."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
@@ -10616,6 +10649,10 @@ msgstr "E-posta ile eşle"
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "Link by verified email"
 msgstr "Doğrulanmış e-postayla bağla"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Link click"
+msgstr "Bağlantı tıklaması"
 
 #: src/client/admin/pages/data/booking/parts.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -11694,6 +11731,10 @@ msgstr "ad zorunludur"
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Name is required."
 msgstr "İsim gerekli."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Name the event this listens for."
+msgstr "Bunun dinleyeceği olayı adlandırın."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Name this passkey (e.g. MacBook Touch ID)"
@@ -14133,6 +14174,10 @@ msgstr "Sayfa başlıkları, rozetler. Slug'a geri döner."
 msgid "Page URL"
 msgstr "Sayfa URL’si"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Page view"
+msgstr "Sayfa görüntüleme"
+
 #: src/client/admin/extras.tsx
 msgid "Pages"
 msgstr "Sayfalar"
@@ -14289,8 +14334,8 @@ msgid "Paste the endpoint above"
 msgstr "Yukarıdaki uç noktayı yapıştırın"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Paste this once, as the first script in your head tag"
-msgstr "Bunu bir kez, head etiketinizdeki ilk betik olarak yapıştırın"
+#~ msgid "Paste this once, as the first script in your head tag"
+#~ msgstr "Bunu bir kez, head etiketinizdeki ilk betik olarak yapıştırın"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 #~ msgid "Paste this once, before the closing head tag"
@@ -14707,6 +14752,10 @@ msgstr "Bir kullanıcı seçin"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Pick a value"
 msgstr "Bir değer seçin"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Pick a vendor first."
+msgstr "Önce bir sağlayıcı seçin."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Pick a vendor, fill in what it needs, and choose when it fires."
@@ -17750,6 +17799,10 @@ msgstr "kapsam ve yaşam döngüsü"
 msgid "Script"
 msgstr "Script"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Scroll depth"
+msgstr "Kaydırma derinliği"
+
 #: src/client/admin/pages/data/search-playground.tsx
 #: src/client/admin/ui.tsx
 msgid "Search"
@@ -20346,6 +20399,10 @@ msgstr "Her satır için aynı"
 msgid "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
 msgstr "Aynı bağlantı bir iframe içinde. Sayfa bilerek iframe’lenebilir — rezervasyon aracı sizin sitenize aittir — bu yüzden takip edilecek ikinci bir adres yok."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "The same tag you get under Websites — it carries your analytics, the tags published here and the cookie banner, so a site needs exactly one. Paste it as the first script in your head tag and keep defer: deferred scripts run in document order, and being first is what puts the consent decision ahead of every other deferred tag on the page."
+msgstr "Web siteleri altında aldığınız etiketin aynısı — analitiğinizi, burada yayımlanan etiketleri ve çerez bandını taşır, yani bir siteye tam olarak bir tane gerekir. head etiketinizdeki ilk script olarak yapıştırın ve defer'ı koruyun: defer'lı scriptler belge sırasına göre çalışır ve ilk olmak, onay kararını sayfadaki diğer tüm defer'lı etiketlerin önüne koyan şeydir."
+
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "The secret is shown once and cannot be read back. Unlike an API key it has to be stored rather than hashed, so scope it as narrowly as the tool allows."
 msgstr "Gizli anahtar bir kez gösterilir ve geri okunamaz. Bir API anahtarının aksine karma yerine saklanması gerekir, bu yüzden kapsamını aracın izin verdiği kadar dar tutun."
@@ -20386,6 +20443,10 @@ msgstr "İmza bağlantısının süresi doldu."
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "The signing-key endpoint is read from this once, at save time."
 msgstr "İmzalama anahtarı adresi buradan bir kez, kaydederken okunur."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "The site's one script tag"
+msgstr "Sitenin tek script etiketi"
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "The sites you measure, tag and ask for consent on. Everything on this page is per website."
@@ -20843,6 +20904,10 @@ msgstr "Zaman çizelgesi"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Timeout (ms)"
 msgstr "Zaman aşımı (ms)"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Timer"
+msgstr "Zamanlayıcı"
 
 #. placeholder {0}: current.timeZone
 #. placeholder {1}: current.capacity
@@ -22194,8 +22259,12 @@ msgid "What are you looking for?"
 msgstr "Ne arıyorsunuz?"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "What each website asks its visitors, and what runs before they answer. One policy per website."
-msgstr "Her web sitesinin ziyaretçilerine ne sorduğu ve onlar cevaplamadan önce nelerin çalıştığı. Web sitesi başına tek politika."
+msgid "What each website asks its visitors, and what runs before they answer. One policy per website — the banner rides the site's existing script tag, so there is nothing extra to install."
+msgstr "Her web sitesinin ziyaretçilerine ne sorduğu ve onlar cevaplamadan önce nelerin çalıştığı. Web sitesi başına tek politika — bant, sitenin mevcut script etiketiyle gelir, yani ayrıca kurulacak bir şey yok."
+
+#: src/client/admin/pages/observability/consent.tsx
+#~ msgid "What each website asks its visitors, and what runs before they answer. One policy per website."
+#~ msgstr "Her web sitesinin ziyaretçilerine ne sorduğu ve onlar cevaplamadan önce nelerin çalıştığı. Web sitesi başına tek politika."
 
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "What is waiting on a person — and what they decided."
@@ -22240,6 +22309,10 @@ msgstr "Origin kontrolünün karşılaştırdığı değer. Değiştirirseniz et
 #: src/client/admin/pages/automation/payments.tsx
 msgid "What the payment link travelled out with. Refused if it matches more than one payment."
 msgstr "Ödeme bağlantısıyla birlikte giden değer. Birden fazla ödemeyle eşleşirse reddedilir."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "What the visitor has to do for the tags on this trigger to run."
+msgstr "Bu tetikleyiciye bağlı etiketlerin çalışması için ziyaretçinin ne yapması gerektiği."
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "What this agent is for"
@@ -22878,3 +22951,7 @@ msgstr "Araç çağrılarınız burada görünür."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Yours only — the customer never sees these."
 msgstr "Yalnızca size ait — müşteri bunları görmez."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Yours to recognise it by — the trigger type is used if you leave it blank."
+msgstr "Tanımanız için sizin verdiğiniz ad — boş bırakırsanız tetikleyici türü kullanılır."

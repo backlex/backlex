@@ -284,6 +284,61 @@ export function Badge({ variant = "default", mono, children, className, style, t
   );
 }
 
+export interface FieldProps {
+  /** What the operator is setting. Always present — a control with no label is
+   *  a control whose meaning lives in someone's memory. */
+  label: ReactNode;
+  /** One line under the control saying what it does or what the value means.
+   *  Suppressed while `error` is showing: two lines of guidance where one of
+   *  them is a refusal is noise. */
+  hint?: ReactNode;
+  /** Why the current value cannot be used. Replaces `hint` and turns the label
+   *  row red — the control itself carries `aria-invalid` from its own caller. */
+  error?: ReactNode;
+  /** Rendered at the end of the label row: a counter, a badge, a reset link. */
+  aside?: ReactNode;
+  htmlFor?: string;
+  className?: string;
+  children: ReactNode;
+}
+
+/**
+ * One form field, laid out the one way.
+ *
+ * There was no such component, so every dialog wrote its own: `block space-y-1`
+ * with a `text-sm font-medium` label in one file, `flex flex-col gap-1.5` with a
+ * `text-[12.5px] text-muted-foreground` label in the next. Both look deliberate
+ * on their own screen and wrong beside each other — the tag-manager dialogs sat
+ * 2px tighter than every field on the pages that link to them, with the label a
+ * different size and colour. The spacing here is the majority spelling, not a
+ * new invention: 6px between label and control, 4px to the hint.
+ *
+ * `label` renders as a `<label>` only when `htmlFor` is given; otherwise it is a
+ * `<span>` inside one, because most callers wrap the control in the label
+ * element itself and a nested `<label>` would steal the click.
+ */
+export function Field({ label, hint, error, aside, htmlFor, className, children }: FieldProps) {
+  const head = (
+    <span className="flex min-w-0 items-center justify-between gap-2">
+      <span className={cn("text-[12.5px]", error ? "text-destructive" : "text-muted-foreground")}>
+        {label}
+      </span>
+      {aside}
+    </span>
+  );
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      {htmlFor ? <label htmlFor={htmlFor}>{head}</label> : head}
+      {children}
+      {error ? (
+        <span className="text-[11.5px] text-destructive">{error}</span>
+      ) : hint ? (
+        <span className="text-[11.5px] text-muted-foreground">{hint}</span>
+      ) : null}
+    </div>
+  );
+}
+
 export interface SwitchProps {
   checked: boolean;
   onChange: (next: boolean) => void;

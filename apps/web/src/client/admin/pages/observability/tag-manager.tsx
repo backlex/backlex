@@ -9,7 +9,7 @@ import type { PushToast } from "../../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
-import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "../../ui";
+import { Badge, Button, EmptyState, Field, IconButton, PageHeader, Switch } from "../../ui";
 import { Select } from "../../select";
 import { Input } from "@backlex/ui/components/input";
 import {
@@ -458,14 +458,20 @@ export function TagManagerPage({
         <Card className="w-full space-y-4 p-4">
           <div>
             <div className="mb-1 text-sm font-medium">
-              <Trans>Paste this once, as the first script in your head tag</Trans>
+              <Trans>The site's one script tag</Trans>
             </div>
+            {/* Named as the SAME tag rather than as a second thing to install.
+                `installSnippet()` builds one string per site and three surfaces
+                hand it out — this tab, the Websites card and the API — so a tab
+                called "Install" showing a snippet reads as a tag manager tag
+                next to an analytics tag. There is only ever one. */}
             <p className="mb-2 text-xs text-muted-foreground">
               <Trans>
-                Keep defer, and do not change it to async. Deferred scripts run in document
-                order, so being first is what puts the consent decision ahead of every other
-                deferred tag on the page. It carries the analytics tag as well, so it replaces
-                the analytics snippet rather than joining it.
+                The same tag you get under Websites — it carries your analytics, the tags
+                published here and the cookie banner, so a site needs exactly one. Paste it
+                as the first script in your head tag and keep defer: deferred scripts run in
+                document order, and being first is what puts the consent decision ahead of
+                every other deferred tag on the page.
               </Trans>
             </p>
             <ScrollArea className="w-full rounded border" viewportClassName="max-h-32">
@@ -525,6 +531,10 @@ export function TagManagerPage({
         templates={templates}
         consentOptions={consentOptions}
         triggers={(triggers.data?.data ?? []).map((tr) => ({ id: tr.id, name: tr.name }))}
+        onCreateTrigger={() => {
+          setTagOpen(false);
+          setTriggerOpen(true);
+        }}
         onCreate={(input) => {
           // Optimistic: the dialog closes and the row appears before the
           // round-trip finishes; a failure rolls the row back and toasts.
@@ -556,6 +566,7 @@ function NewTagDialog({
   templates,
   consentOptions,
   triggers,
+  onCreateTrigger,
   onCreate,
 }: {
   open: boolean;
@@ -563,6 +574,9 @@ function NewTagDialog({
   consentOptions: { value: string; label: string; hint: string }[];
   templates: { id: string; label: string; consentCategories?: string[]; params: { key: string; label: string; required: boolean; kind: string; options?: { value: string; label: string }[]; placeholder?: string; help?: string; formatDocumented: boolean }[] }[];
   triggers: { id: string; name: string }[];
+  /** Closes this dialog and opens the trigger one. A tag with no trigger can
+   *  never fire, so with an empty list this is the only way forward. */
+  onCreateTrigger: () => void;
   onCreate: (input: Record<string, unknown>) => void;
 }) {
   const [templateId, setTemplateId] = useState("");
@@ -599,13 +613,16 @@ function NewTagDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <div className="space-y-4">
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">
-                <Trans>Vendor</Trans>
-              </span>
+          <div className="flex flex-col gap-3.5">
+            <Field label={t`Vendor`}>
+              {/* `undefined`, never `""`. The admin Select maps an empty string
+                  to a sentinel meaning "this option IS selected", so `value=""`
+                  renders a blank trigger AND suppresses the placeholder — the
+                  first control in the dialog, with nothing in it and nothing
+                  telling you to choose. */}
               <Select
-                value={templateId}
+                value={templateId || undefined}
+                placeholder={t`Choose a vendor`}
                 onValueChange={(v) => {
                   setTemplateId(v);
                   setParams({});
@@ -614,21 +631,20 @@ function NewTagDialog({
                 className="w-full min-w-0"
                 options={templates.map((x) => ({ value: x.id, label: x.label }))}
               />
-            </label>
+            </Field>
 
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">
-                <Trans>Name</Trans>
-              </span>
+            <Field label={t`Name`}>
               <Input value={name} onChange={(e) => setName(e.target.value)} className="w-full" />
-            </label>
+            </Field>
 
             {(template?.params ?? []).map((p) => (
-              <label key={p.key} className="block space-y-1">
-                <span className="text-sm font-medium">{p.label}</span>
+              // Says plainly when the vendor publishes no format, rather than
+              // implying a rule that does not exist.
+              <Field key={p.key} label={p.label} hint={p.help}>
                 {p.kind === "select" ? (
                   <Select
-                    value={params[p.key] ?? ""}
+                    value={params[p.key] || undefined}
+                    placeholder={t`Choose…`}
                     onValueChange={(v) => setParams((s) => ({ ...s, [p.key]: v }))}
                     className="w-full min-w-0"
                     options={p.options ?? []}
@@ -641,16 +657,19 @@ function NewTagDialog({
                     className="w-full"
                   />
                 )}
-                {/* Says plainly when the vendor publishes no format, rather
-                    than implying a rule that does not exist. */}
-                {p.help && <span className="block text-xs text-muted-foreground">{p.help}</span>}
-              </label>
+              </Field>
             ))}
 
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">
-                <Trans>Consent category</Trans>
-              </span>
+            <Field
+              label={t`Consent category`}
+              hint={
+                template?.consentCategories?.length
+                  ? t`This vendor declares itself ${template.consentCategories
+                      .map((c) => consentOptions.find((o) => o.value === c)?.label ?? c)
+                      .join(" + ")}.`
+                  : t`What a visitor's refusal switches off.`
+              }
+            >
               <Select
                 value={consentCategory}
                 onValueChange={(v) => {
@@ -660,26 +679,40 @@ function NewTagDialog({
                 className="w-full min-w-0"
                 options={consentOptions}
               />
-              <span className="block text-xs text-muted-foreground">
-                {template?.consentCategories?.length
-                  ? t`This vendor declares itself ${template.consentCategories
-                      .map((c) => consentOptions.find((o) => o.value === c)?.label ?? c)
-                      .join(" + ")}.`
-                  : t`What a visitor's refusal switches off.`}
-              </span>
-            </label>
+            </Field>
 
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">
-                <Trans>Fires on</Trans>
-              </span>
-              <Select
-                value={triggerId}
-                onValueChange={setTriggerId}
-                className="w-full min-w-0"
-                options={triggers.map((tr) => ({ value: tr.id, label: tr.name }))}
-              />
-            </label>
+            {/* With no triggers this was an empty dropdown over a Create button
+                that could never enable — the first thing a new operator opens,
+                and a dead end with nothing on screen explaining it. A tag
+                cannot fire without a trigger, so say that and offer the way to
+                make one. */}
+            {triggers.length === 0 ? (
+              <Field
+                label={t`Fires on`}
+                hint={t`A tag runs only when something triggers it — usually a page view.`}
+              >
+                <Button
+                  variant="outline"
+                  icon={I.Bolt}
+                  className="w-full"
+                  onClick={onCreateTrigger}
+                >
+                  <Trans>Create the first trigger</Trans>
+                </Button>
+              </Field>
+            ) : (
+              <Field label={t`Fires on`}>
+                <Select
+                  // `|| undefined` for the same reason as Vendor above: `""` is
+                  // the sentinel for "selected", which eats the placeholder.
+                  value={triggerId || undefined}
+                  onValueChange={setTriggerId}
+                  placeholder={t`Choose a trigger`}
+                  className="w-full min-w-0"
+                  options={triggers.map((tr) => ({ value: tr.id, label: tr.name }))}
+                />
+              </Field>
+            )}
           </div>
         </DialogBody>
         <DialogFooter className="shrink-0">
@@ -687,7 +720,15 @@ function NewTagDialog({
             <Trans>Cancel</Trans>
           </Button>
           <Button
+            variant="primary"
             disabled={!templateId || !triggerId}
+            title={
+              !templateId
+                ? t`Pick a vendor first.`
+                : !triggerId
+                  ? t`Choose what makes this tag fire.`
+                  : undefined
+            }
             onClick={() =>
               onCreate({
                 name: name || template?.label,
@@ -707,6 +748,23 @@ function NewTagDialog({
   );
 }
 
+/** The trigger types in the words an operator would use for them. The server
+ *  stores the left-hand side; nothing but this map should render it — the
+ *  picker used to show `pageview`, `link_click`, `custom_event` verbatim.
+ *  A hook so the lingui macro can see `t` in the scope that calls useLingui. */
+function useTriggerTypeLabels(): Record<string, string> {
+  const { t } = useLingui();
+  return {
+    pageview: t`Page view`,
+    click: t`Click`,
+    link_click: t`Link click`,
+    form_submit: t`Form submit`,
+    scroll: t`Scroll depth`,
+    custom_event: t`Custom event`,
+    timer: t`Timer`,
+  };
+}
+
 function NewTriggerDialog({
   open,
   onOpenChange,
@@ -718,6 +776,8 @@ function NewTriggerDialog({
   types: string[];
   onCreate: (input: Record<string, unknown>) => void;
 }) {
+  const { t } = useLingui();
+  const typeLabels = useTriggerTypeLabels();
   const [type, setType] = useState("pageview");
   const [name, setName] = useState("");
   const [selector, setSelector] = useState("");
@@ -735,53 +795,46 @@ function NewTriggerDialog({
           </DialogTitle>
         </DialogHeader>
         <DialogBody>
-          <div className="space-y-4">
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">
-                <Trans>When</Trans>
-              </span>
+          <div className="flex flex-col gap-3.5">
+            <Field
+              label={t`When`}
+              hint={t`What the visitor has to do for the tags on this trigger to run.`}
+            >
               <Select
                 value={type}
                 onValueChange={setType}
                 className="w-full min-w-0"
-                options={types.map((x) => ({ value: x, label: x }))}
+                // Named, not spelled the way the column stores them: this list
+                // used to render `pageview`, `link_click`, `custom_event`.
+                options={types.map((x) => ({ value: x, label: typeLabels[x] ?? x }))}
               />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-sm font-medium">
-                <Trans>Name</Trans>
-              </span>
+            </Field>
+            <Field
+              label={t`Name`}
+              hint={t`Yours to recognise it by — the trigger type is used if you leave it blank.`}
+            >
               <Input value={name} onChange={(e) => setName(e.target.value)} className="w-full" />
-            </label>
+            </Field>
             {needsSelector && (
-              <label className="block space-y-1">
-                <span className="text-sm font-medium">
-                  <Trans>CSS selector</Trans>
-                </span>
+              <Field label={t`CSS selector`} hint={t`Leave empty to match every element.`}>
                 <Input
                   value={selector}
                   onChange={(e) => setSelector(e.target.value)}
                   className="w-full"
                 />
-                <span className="block text-xs text-muted-foreground">
-                  <Trans>Leave empty to match every element.</Trans>
-                </span>
-              </label>
+              </Field>
             )}
             {needsEvent && (
-              <label className="block space-y-1">
-                <span className="text-sm font-medium">
-                  <Trans>Event name</Trans>
-                </span>
+              <Field
+                label={t`Event name`}
+                hint={t`The name your site already passes to backlex().`}
+              >
                 <Input
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
                   className="w-full"
                 />
-                <span className="block text-xs text-muted-foreground">
-                  <Trans>The name your site already passes to backlex().</Trans>
-                </span>
-              </label>
+              </Field>
             )}
           </div>
         </DialogBody>
@@ -790,10 +843,15 @@ function NewTriggerDialog({
             <Trans>Cancel</Trans>
           </Button>
           <Button
+            variant="primary"
             disabled={needsEvent && !eventName}
+            title={needsEvent && !eventName ? t`Name the event this listens for.` : undefined}
             onClick={() =>
               onCreate({
-                name: name || type,
+                // The human name, not the stored value: falling back to `type`
+                // put `pageview` and `custom_event` in the trigger list and
+                // then in every tag's "Fires on" picker.
+                name: name.trim() || typeLabels[type] || type,
                 type,
                 config: needsSelector
                   ? { selector: selector || null }

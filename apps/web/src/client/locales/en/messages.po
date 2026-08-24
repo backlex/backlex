@@ -1543,6 +1543,10 @@ msgstr "A site needs a name and a domain."
 msgid "A tag is a vendor pixel, an image pixel, or your own code. It fires on the triggers you attach to it."
 msgstr "A tag is a vendor pixel, an image pixel, or your own code. It fires on the triggers you attach to it."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "A tag runs only when something triggers it — usually a page view."
+msgstr "A tag runs only when something triggers it — usually a page view."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A teammate is asking…"
 #~ msgstr "A teammate is asking…"
@@ -4173,9 +4177,17 @@ msgstr "Choose a file or drag it here"
 msgid "Choose a new password"
 msgstr "Choose a new password"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Choose a trigger"
+msgstr "Choose a trigger"
+
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Choose a value"
 msgstr "Choose a value"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Choose a vendor"
+msgstr "Choose a vendor"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Choose folder…"
@@ -4186,7 +4198,12 @@ msgstr "Choose folder…"
 msgid "Choose one"
 msgstr "Choose one"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Choose what makes this tag fire."
+msgstr "Choose what makes this tag fire."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
+#: src/client/admin/pages/observability/tag-manager.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/pages/book.tsx
@@ -4283,6 +4300,10 @@ msgstr "Clear selection"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Clear this attribute"
 msgstr "Clear this attribute"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Click"
+msgstr "Click"
 
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Click <0>+ New flow</0> to create your first one."
@@ -5631,6 +5652,10 @@ msgstr "Create sync"
 msgid "Create the first row in <0>{tableName}</0> via the API or use the New row button."
 msgstr "Create the first row in <0>{tableName}</0> via the API or use the New row button."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Create the first trigger"
+msgstr "Create the first trigger"
+
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Create webhook"
 msgstr "Create webhook"
@@ -5825,6 +5850,10 @@ msgstr "Custom date…"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Custom email claim"
 msgstr "Custom email claim"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Custom event"
+msgstr "Custom event"
 
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 msgid "Custom groups claim"
@@ -8578,6 +8607,10 @@ msgstr "Form design"
 #~ msgid "Form link ready"
 #~ msgstr "Form link ready"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Form submit"
+msgstr "Form submit"
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Form title"
 msgstr "Form title"
@@ -10023,8 +10056,8 @@ msgid "keep counting up forever"
 msgstr "keep counting up forever"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
-msgstr "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+#~ msgid "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
+#~ msgstr "Keep defer, and do not change it to async. Deferred scripts run in document order, so being first is what puts the consent decision ahead of every other deferred tag on the page. It carries the analytics tag as well, so it replaces the analytics snippet rather than joining it."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
@@ -10616,6 +10649,10 @@ msgstr "Link by email"
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "Link by verified email"
 msgstr "Link by verified email"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Link click"
+msgstr "Link click"
 
 #: src/client/admin/pages/data/booking/parts.tsx
 #: src/client/admin/pages/observability/insights.tsx
@@ -11694,6 +11731,10 @@ msgstr "name is required"
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "Name is required."
 msgstr "Name is required."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Name the event this listens for."
+msgstr "Name the event this listens for."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Name this passkey (e.g. MacBook Touch ID)"
@@ -14133,6 +14174,10 @@ msgstr "Page titles, badges. Falls back to the slug."
 msgid "Page URL"
 msgstr "Page URL"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Page view"
+msgstr "Page view"
+
 #: src/client/admin/extras.tsx
 msgid "Pages"
 msgstr "Pages"
@@ -14289,8 +14334,8 @@ msgid "Paste the endpoint above"
 msgstr "Paste the endpoint above"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
-msgid "Paste this once, as the first script in your head tag"
-msgstr "Paste this once, as the first script in your head tag"
+#~ msgid "Paste this once, as the first script in your head tag"
+#~ msgstr "Paste this once, as the first script in your head tag"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 #~ msgid "Paste this once, before the closing head tag"
@@ -14707,6 +14752,10 @@ msgstr "Pick a user"
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "Pick a value"
 msgstr "Pick a value"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Pick a vendor first."
+msgstr "Pick a vendor first."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Pick a vendor, fill in what it needs, and choose when it fires."
@@ -17750,6 +17799,10 @@ msgstr "scoping & lifecycle"
 msgid "Script"
 msgstr "Script"
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Scroll depth"
+msgstr "Scroll depth"
+
 #: src/client/admin/pages/data/search-playground.tsx
 #: src/client/admin/ui.tsx
 msgid "Search"
@@ -20346,6 +20399,10 @@ msgstr "The same for every row"
 msgid "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
 msgstr "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
 
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "The same tag you get under Websites — it carries your analytics, the tags published here and the cookie banner, so a site needs exactly one. Paste it as the first script in your head tag and keep defer: deferred scripts run in document order, and being first is what puts the consent decision ahead of every other deferred tag on the page."
+msgstr "The same tag you get under Websites — it carries your analytics, the tags published here and the cookie banner, so a site needs exactly one. Paste it as the first script in your head tag and keep defer: deferred scripts run in document order, and being first is what puts the consent decision ahead of every other deferred tag on the page."
+
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "The secret is shown once and cannot be read back. Unlike an API key it has to be stored rather than hashed, so scope it as narrowly as the tool allows."
 msgstr "The secret is shown once and cannot be read back. Unlike an API key it has to be stored rather than hashed, so scope it as narrowly as the tool allows."
@@ -20386,6 +20443,10 @@ msgstr "The signing link has expired."
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "The signing-key endpoint is read from this once, at save time."
 msgstr "The signing-key endpoint is read from this once, at save time."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "The site's one script tag"
+msgstr "The site's one script tag"
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "The sites you measure, tag and ask for consent on. Everything on this page is per website."
@@ -20843,6 +20904,10 @@ msgstr "Timeline"
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Timeout (ms)"
 msgstr "Timeout (ms)"
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Timer"
+msgstr "Timer"
 
 #. placeholder {0}: current.timeZone
 #. placeholder {1}: current.capacity
@@ -22194,8 +22259,12 @@ msgid "What are you looking for?"
 msgstr "What are you looking for?"
 
 #: src/client/admin/pages/observability/consent.tsx
-msgid "What each website asks its visitors, and what runs before they answer. One policy per website."
-msgstr "What each website asks its visitors, and what runs before they answer. One policy per website."
+msgid "What each website asks its visitors, and what runs before they answer. One policy per website — the banner rides the site's existing script tag, so there is nothing extra to install."
+msgstr "What each website asks its visitors, and what runs before they answer. One policy per website — the banner rides the site's existing script tag, so there is nothing extra to install."
+
+#: src/client/admin/pages/observability/consent.tsx
+#~ msgid "What each website asks its visitors, and what runs before they answer. One policy per website."
+#~ msgstr "What each website asks its visitors, and what runs before they answer. One policy per website."
 
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "What is waiting on a person — and what they decided."
@@ -22240,6 +22309,10 @@ msgstr "What the origin check matches against. Change it and the tag stops accep
 #: src/client/admin/pages/automation/payments.tsx
 msgid "What the payment link travelled out with. Refused if it matches more than one payment."
 msgstr "What the payment link travelled out with. Refused if it matches more than one payment."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "What the visitor has to do for the tags on this trigger to run."
+msgstr "What the visitor has to do for the tags on this trigger to run."
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "What this agent is for"
@@ -22878,3 +22951,7 @@ msgstr "Your tool calls show up here."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Yours only — the customer never sees these."
 msgstr "Yours only — the customer never sees these."
+
+#: src/client/admin/pages/observability/tag-manager.tsx
+msgid "Yours to recognise it by — the trigger type is used if you leave it blank."
+msgstr "Yours to recognise it by — the trigger type is used if you leave it blank."

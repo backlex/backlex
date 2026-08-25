@@ -51,6 +51,19 @@ export interface ClientOptions {
    * `client.orgs.use(...)`.
    */
   org?: string;
+  /**
+   * `Origin` sent on every request **from non-browser runtimes only**.
+   *
+   * better-auth refuses a request that arrives without an `Origin`
+   * (`403 MISSING_OR_NULL_ORIGIN`), which is every call made from a Server
+   * Action, an SSR loader, a script or CI — a browser supplies its own and
+   * forbids scripts from setting it, so this is skipped there entirely.
+   *
+   * Defaults to the origin of {@link ClientOptions.url}, which the server
+   * always trusts. Set this when the deployment's trusted-origin list names
+   * something else (an app domain in front of a separate API host).
+   */
+  origin?: string;
   /** Optional fetch override (testing / Node polyfill). */
   fetch?: typeof fetch;
   /**

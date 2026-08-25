@@ -380,17 +380,39 @@ export interface ApiError {
   details?: unknown;
 }
 
-/** Thrown by every client method on a non-2xx response — carries the HTTP
- *  `status`, the API error `code`, the `message`, and any `details`. */
+/**
+ * Thrown by every client method on a non-2xx response — carries the HTTP
+ * `status`, the API error `code`, the `message`, and any `details`.
+ *
+ * **Two error shapes reach here, and both must be read.** backlex's own routes
+ * answer with the envelope `{ error: { code, message, details } }`. The auth
+ * surfaces are better-auth, which answers **flat**:
+ * `{ message: "Invalid email or password", code: "INVALID_EMAIL_OR_PASSWORD" }`.
+ * Parsing only the envelope turned every auth failure a sign-in form has to
+ * render — wrong password, email already taken, weak password, rate limited —
+ * into an indistinguishable `code:"UNKNOWN"` / `message:"HTTP 401"`, with the
+ * real reason sitting unread in the body.
+ */
 export class BacklexError extends Error {
   readonly code: string;
   readonly status: number;
   readonly details?: unknown;
-  constructor(status: number, body: { error?: ApiError } | undefined) {
-    const e = body?.error;
+  constructor(
+    status: number,
+    body: { error?: ApiError; message?: string; code?: string } | undefined,
+  ) {
+    // The envelope wins when present: a route that sends both means the outer
+    // one. `error` is only trusted when it actually carries a message, so an
+    // unrelated truthy `error` key cannot mask a flat body.
+    const enveloped = body?.error;
+    const flat =
+      !enveloped?.message && typeof body?.message === "string"
+        ? { code: body.code, message: body.message }
+        : undefined;
+    const e = enveloped?.message ? enveloped : flat;
     super(e?.message ?? `HTTP ${status}`);
     this.code = e?.code ?? "UNKNOWN";
     this.status = status;
-    this.details = e?.details;
+    this.details = enveloped?.details;
   }
 }

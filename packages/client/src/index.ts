@@ -446,6 +446,35 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const orgHeader = (): Record<string, string> =>
     activeOrg ? { "x-backlex-org": activeOrg } : {};
 
+  // better-auth CSRF-rejects any request that arrives without an `Origin`
+  // (`403 MISSING_OR_NULL_ORIGIN`). A browser sets it itself and forbids
+  // scripts from touching it; a server runtime sets nothing — so every
+  // `auth.signIn` / `auth.signUp` from a Server Action, an SSR loader, a
+  // script or CI failed, which is exactly the server-rendered end-user plane
+  // the examples are built around.
+  //
+  // Only sent off-browser, so nothing here can look like an attempt to spoof a
+  // real Origin: where a browser exists, the browser stays the authority. The
+  // API's own origin is the default because a non-browser caller has no
+  // ambient credentials to be tricked out of — CSRF is a confused-deputy
+  // problem and there is no deputy here. `origin` overrides it for a
+  // deployment whose trusted list names something else.
+  const isBrowser = typeof window !== "undefined" && typeof window.document !== "undefined";
+  // `url` is allowed to be relative ("" for same-origin), which has no origin
+  // to derive — that case is a browser anyway, where the header is skipped.
+  const originOf = (url: string): string | undefined => {
+    try {
+      return new URL(url).origin;
+    } catch {
+      return undefined;
+    }
+  };
+  const originHeader = (): Record<string, string> => {
+    if (isBrowser) return {};
+    const value = opts.origin ?? originOf(opts.url);
+    return value ? { origin: value } : {};
+  };
+
   // W3C traceparent — on by default. `tracing: false` opts out; a function lets
   // the caller continue an existing trace (return a traceparent) or start a
   // fresh one (return undefined).
@@ -473,6 +502,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ...authHeader(),
       ...tenantHeader(),
       ...orgHeader(),
+      ...originHeader(),
       ...traceHeader(),
       ...(extraHeaders ?? {}),
     };
@@ -505,6 +535,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ...authHeader(),
       ...tenantHeader(),
       ...orgHeader(),
+      ...originHeader(),
       ...traceHeader(),
     };
     if (contentType) headers["content-type"] = contentType;
@@ -851,6 +882,23 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     }
   };
 
+  /**
+   * SSE over `fetch`, not `EventSource`.
+   *
+   * `EventSource` looked like the obvious choice and cost us two things at
+   * once. It **cannot set request headers**, so a client holding a `pak_` key
+   * or a workspace bearer token could never authenticate a subscription — it
+   * silently fell back to whatever same-origin cookie happened to be there,
+   * which is no cookie at all outside a browser. And the global simply does
+   * not exist in Bun, or in Node without a polyfill, so
+   * `client.subscribe(...)` threw `ReferenceError: EventSource is not defined`
+   * in every server-side dispatch board, reactive worker and test.
+   *
+   * The raw endpoint accepts `Authorization: Bearer` perfectly well, so
+   * reading the stream ourselves fixes both. We keep the two things
+   * `EventSource` gave us for free — reconnection, and resumption via
+   * `Last-Event-ID` — because the server already sends `retry:` and `id:`.
+   */
   const subscribeSse = <T>(
     channel: string,
     onEvent: (e: ItemEvent<T>) => void,
@@ -858,16 +906,91 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     query: string | undefined,
   ): (() => void) => {
     const url = `${opts.url}/api/realtime/${channel}/subscribe${query ? `?${query}` : ""}`;
-    const es = new EventSource(url, { withCredentials: true });
-    es.addEventListener("message", (ev: MessageEvent<string>) => {
+    const controller = new AbortController();
+    let closed = false;
+    let lastEventId: string | undefined;
+    // The server's own reconnection hint; overwritten by any `retry:` it sends.
+    let retryMs = 3000;
+
+    /** One `\n\n`-delimited SSE frame. Only `message` frames carry item events —
+     *  the stream opens with an `event: ready` frame, which the EventSource
+     *  path ignored by listening to `message` alone, so it stays ignored. */
+    const handleFrame = (frame: string) => {
+      let event = "message";
+      const dataLines: string[] = [];
+      for (const line of frame.split("\n")) {
+        if (!line || line.startsWith(":")) continue; // comment / keep-alive
+        const colon = line.indexOf(":");
+        const field = colon === -1 ? line : line.slice(0, colon);
+        // "Optional single space after the colon" — spec, and the server sends one.
+        const value = colon === -1 ? "" : line.slice(colon + 1).replace(/^ /, "");
+        if (field === "event") event = value;
+        else if (field === "data") dataLines.push(value);
+        else if (field === "id") lastEventId = value;
+        else if (field === "retry") {
+          const n = Number(value);
+          if (Number.isFinite(n) && n > 0) retryMs = n;
+        }
+      }
+      if (event !== "message" || dataLines.length === 0) return;
       try {
-        onEvent(JSON.parse(ev.data) as ItemEvent<T>);
+        onEvent(JSON.parse(dataLines.join("\n")) as ItemEvent<T>);
       } catch (e) {
         onError?.(e);
       }
-    });
-    es.addEventListener("error", (e) => onError?.(e));
-    return () => es.close();
+    };
+
+    const run = async () => {
+      while (!closed) {
+        try {
+          const res = await f(url, {
+            method: "GET",
+            credentials: "include",
+            signal: controller.signal,
+            headers: {
+              accept: "text/event-stream",
+              ...authHeader(),
+              ...tenantHeader(),
+              ...orgHeader(),
+              ...originHeader(),
+              // Resume where we left off rather than replaying from zero.
+              ...(lastEventId ? { "last-event-id": lastEventId } : {}),
+            },
+          });
+          if (!res.ok || !res.body) {
+            const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+            throw new BacklexError(res.status, body);
+          }
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (!closed) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            // Normalize CRLF so one split rule covers every framing the spec allows.
+            buffer = `${buffer}${decoder.decode(value, { stream: true })}`.replace(/\r\n/g, "\n");
+            let split = buffer.indexOf("\n\n");
+            while (split !== -1) {
+              handleFrame(buffer.slice(0, split));
+              buffer = buffer.slice(split + 2);
+              split = buffer.indexOf("\n\n");
+            }
+          }
+        } catch (e) {
+          // An abort is our own unsubscribe, not a failure to report.
+          if (closed || (e as { name?: string })?.name === "AbortError") return;
+          onError?.(e);
+        }
+        if (closed) return;
+        await new Promise((resolve) => setTimeout(resolve, retryMs));
+      }
+    };
+
+    void run();
+    return () => {
+      closed = true;
+      controller.abort();
+    };
   };
 
   /** Signal plane: listen for id-only signals on Ably, read the changed rows

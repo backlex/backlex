@@ -118,6 +118,12 @@ against three roots:
 
 - **`{{ data.* }}`** — the trigger payload (the changed row, the manual input,
   or the webhook body). E.g. `{{ data.id }}`, `{{ data.author.email }}`.
+  A **relation** column holds a foreign key, so `{{ data.author }}` renders the
+  id. Reading *through* it — `{{ data.author.email }}` — loads the related row
+  for you, and only the relations a flow actually reads through are fetched.
+  Both forms work in the same flow: the expanded value still renders as the id
+  when you write the bare form. `relation_many` is a list of ids and is not
+  expanded; use a `foreach` if you need the rows.
 - **`{{ $user.id | $user.email | $user.roles }}`** — the auth subject that ran
   the flow.
 - **`{{ $last.* }}`** — the result of the previous operation (e.g. a `request`

@@ -172,6 +172,104 @@ const resolveWhole = (value: unknown, ctx: RunCtx): unknown => {
   return cur;
 };
 
+/**
+ * Which relations does this flow's own text actually dereference?
+ *
+ * `{{ data.customer.name }}` counts. A bare `{{ data.customer }}` deliberately
+ * does NOT: it already renders the foreign key, flows in the wild rely on that,
+ * and expanding a relation nobody reads through would be a lookup per run for
+ * nothing. Requiring the trailing path segment is what makes this change safe
+ * to make at all.
+ */
+const dereferencedRelations = (operations: unknown): Set<string> => {
+  const out = new Set<string>();
+  const text = JSON.stringify(operations ?? null) ?? "";
+  for (const m of text.matchAll(/\{\{\s*data\.([A-Za-z_]\w*)\.[\w$.]+\s*\}\}/g)) {
+    if (m[1]) out.add(m[1]);
+  }
+  return out;
+};
+
+/**
+ * The expanded row, whose `String(...)` is still the foreign key.
+ *
+ * A flow that writes both `{{ data.customer }}` and `{{ data.customer.name }}`
+ * keeps getting the id from the first — `interpolate` ends in `String(cur)`, so
+ * a non-enumerable `toString` preserves the old meaning without touching the
+ * row's own shape (JSON.stringify and `in` checks still see just the columns).
+ */
+const relationValue = (row: Record<string, unknown>, id: string): Record<string, unknown> => {
+  Object.defineProperty(row, "toString", { value: () => id, enumerable: false });
+  return row;
+};
+
+/**
+ * Resolve the relation columns a flow reads through, so `{{ data.customer.name }}`
+ * has something to find.
+ *
+ * A flow's `data` is the raw row, where a relation is a bare foreign key — so
+ * every `data.<rel>.<field>` in every bundled template resolved to `undefined`
+ * and interpolated to an empty string, leaving sentences like
+ * "WO-00031 for , normal priority." Nothing failed; the punctuation was the
+ * only evidence. `docs/flows.md` documents this dereference as the way to write
+ * a flow, and the catalog uses it 267 times across 25 of the 27 templates, so
+ * the payload was the thing that was wrong.
+ *
+ * Only the relations the flow names are loaded, and only for `relation` (a
+ * `relation_many` holds a list of ids — there is no single row to stand in for
+ * it). A relation that cannot be read leaves its id in place rather than
+ * failing the run: a notification is not worth halting a flow over.
+ */
+const expandRelations = async (
+  ctx: Ctx,
+  tenantId: string | null,
+  collectionSlug: string | null | undefined,
+  data: Record<string, unknown>,
+  operations: unknown,
+): Promise<Record<string, unknown>> => {
+  if (!tenantId || !collectionSlug) return data;
+  const wanted = dereferencedRelations(operations);
+  if (wanted.size === 0) return data;
+
+  let collection: CollectionRow;
+  try {
+    collection = await loadCollection(ctx, tenantId, collectionSlug);
+  } catch {
+    return data;
+  }
+  const rels = (collection.fields as { name: string; type?: string; to?: string }[]).filter(
+    (f) => f.type === "relation" && typeof f.to === "string" && wanted.has(f.name),
+  );
+  if (rels.length === 0) return data;
+
+  const out = { ...data };
+  for (const f of rels) {
+    const id = data[f.name];
+    if (typeof id !== "string" || !id) continue;
+    try {
+      const target = await loadCollection(ctx, tenantId, f.to as string);
+      const rows = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT * FROM ${sql.identifier(target.physicalTable)} ${whereOf(
+          sql`${sql.identifier(target.pkColumn)} = ${id}`,
+          target.tenantScoped ? sql`${sql.identifier("tenant_id")} = ${tenantId}` : null,
+          deletedFilter(target),
+        )} LIMIT 1`,
+      );
+      const raw = rows[0];
+      if (!raw) continue;
+      out[f.name] = relationValue(
+        deserializeRow(raw, target.fields, ctx.dialect, target.ownerScoped, null, target),
+        id,
+      );
+    } catch {
+      // Leave the id. A flow that only wanted a name should not die because
+      // the target collection was archived or renamed under it.
+    }
+  }
+  return out;
+};
+
 const interpolate = (value: unknown, ctx: RunCtx): unknown => {
   if (typeof value === "string") {
     return value.replace(/\{\{\s*([\w$.]+)\s*\}\}/g, (_, path: string) => {
@@ -1795,8 +1893,18 @@ export const runFlows = async (
   if (matching.length === 0) return;
 
   for (const flow of matching) {
+    const subject = itemSubject(channel, payload.data);
+    // Per flow, not per event: which relations to resolve is a property of the
+    // flow's own text, and a flow that never dereferences one costs nothing.
+    const data = await expandRelations(
+      ctx,
+      flow.tenantId ?? tenantId,
+      subject?.collection,
+      payload.data,
+      flow.operations,
+    );
     const runCtx: RunCtx = {
-      data: payload.data,
+      data,
       // Pin the workspace on the subject so the per-op tenant resolution below
       // can never be steered by an attacker-visible `data.tenantId`.
       authSubject: {
@@ -1807,7 +1915,7 @@ export const runFlows = async (
       },
       ctx,
       last: undefined,
-      subject: itemSubject(channel, payload.data),
+      subject,
     };
     const startedAt = Date.now();
     const result = await runFlowOps(flow, runCtx);
@@ -1837,15 +1945,16 @@ export const runFlowById = async (
   const flow = rows[0];
   if (!flow) return { ok: false, error: "flow not found" };
   if (!flow.active) return { ok: false, error: "flow is paused" };
+  const tenantId = flow.tenantId ?? authSubject.tenantId ?? null;
+  // A date-relative (`schedule:`) run is ABOUT a row and names it in
+  // `opts.subject`, so it reads relations the same way an event run does. A
+  // manual or cron invoke has no subject and is left exactly as it was.
   const runCtx: RunCtx = {
-    data,
+    data: await expandRelations(ctx, tenantId, opts.subject?.collection, data, flow.operations),
     // The flow row's own workspace is authoritative — a caller that forgot to
     // thread `tenantId` through must not degrade into an unscoped run, and a
     // `tenantId` in the caller-supplied `data` must never win.
-    authSubject: {
-      ...authSubject,
-      tenantId: flow.tenantId ?? authSubject.tenantId ?? null,
-    },
+    authSubject: { ...authSubject, tenantId },
     ctx,
     last: undefined,
     subject: opts.subject ?? null,

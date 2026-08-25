@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "namespaces": [
+    "agents",
+    "auth",
+    "dashboards",
+    "flags",
+    "flows",
+    "from",
+    "jobs",
+    "liveQuery",
+    "messaging",
+    "migrate",
+    "permissions",
+    "request",
+    "schema",
+    "storage",
+    "subscribe",
+    "sync",
+    "templates"
+  ]
+}

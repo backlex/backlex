@@ -4612,6 +4612,11 @@ msgstr "Column \"{name}\" dropped from c_{slug}. {0} value(s) saved to a backup.
 msgid "Column \"{name}\" dropped."
 msgstr "Column \"{name}\" dropped."
 
+#. placeholder {0}: res.nonNull
+#: src/client/admin/app.tsx
+msgid "Column \"{name}\" dropped. {0} value(s) saved to a backup."
+msgstr "Column \"{name}\" dropped. {0} value(s) saved to a backup."
+
 #. placeholder {0}: c.column
 #. placeholder {1}: c.logical
 #: src/client/admin/collections/adopt-wizard.tsx
@@ -11838,6 +11843,10 @@ msgstr "New {0}"
 msgid "New {0} item"
 msgstr "New {0} item"
 
+#: src/client/admin/app.tsx
+msgid "New {rowLabel}"
+msgstr "New {rowLabel}"
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "New {slug}"
 msgstr "New {slug}"
@@ -11933,6 +11942,10 @@ msgstr "New group"
 msgid "New insight panel"
 msgstr "New insight panel"
 
+#: src/client/admin/extras.tsx
+msgid "New item"
+msgstr "New item"
+
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/pages/api-keys.tsx
 msgid "New key"
@@ -11987,8 +12000,8 @@ msgstr "New password must be at least 8 characters."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
-msgid "New post"
-msgstr "New post"
+#~ msgid "New post"
+#~ msgstr "New post"
 
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "New relation"
@@ -20170,6 +20183,11 @@ msgstr "The column always stores the encoded form a mail server resolves. This o
 msgid "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 msgstr "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 
+#. placeholder {0}: activeCollection || "posts"
+#: src/client/admin/app.tsx
+msgid "The column and its values are removed from <0>c_{0}</0>. Any values it holds are saved to a pre-drop backup first."
+msgstr "The column and its values are removed from <0>c_{0}</0>. Any values it holds are saved to a pre-drop backup first."
+
 #. placeholder {0}: hook?.matchLabel ?? t`provider's id`
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "The column holding the {0}. A delivery updates the row that matches, and only the fields it carries."
@@ -20586,8 +20604,8 @@ msgid "Third-party auth"
 msgstr "Third-party auth"
 
 #: src/client/admin/app.tsx
-msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
-msgstr "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
+#~ msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
+#~ msgstr "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data."

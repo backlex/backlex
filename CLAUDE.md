@@ -108,6 +108,19 @@ git branch -d <feat/branch-name>
 
 **`git push` runs the full pre-push suite (~5-6 min): lint + typecheck + `bun test` + `build:targets`.** Give the command a generous timeout — never `--no-verify`.
 
+**A merge to `main` publishes the docs and the worker template. It does NOT publish anything to npm.** That asymmetry is how `backlex` on npm ended up **eight weeks and 131 commits** behind the repo while fifteen doc pages described the newer client: a feature commit ships `docs/<feature>.md`, its sidebar entry and the SDK namespace together, so merging puts the documentation live the same day and leaves the package behind. It is not a broken pipeline — the tag machinery fired **51 times** in that window, all at `worker-v*`. `backlex-v*` and `cli-v*` both stopped on 2026-07-03, and nothing noticed because **no test, build or example consumes the published artifact** (the examples use `workspace:*`, i.e. source).
+
+So, when a change touches a publishable package:
+
+| Package | Tag | Publishes |
+|---|---|---|
+| `packages/client` | `backlex-v<semver>` | npm `backlex` + JSR |
+| `packages/cli` | `cli-v<semver>` | npm `@backlex/cli` |
+| `packages/ui` | `ui-v<semver>` | npm `@backlex/ui` |
+| `apps/web` (tenant runtime) | `worker-v<semver>` | the cloud template |
+
+`apps/web/tests/sdk-release-drift.test.ts` is the tripwire for the client: it fails when the SDK's public surface has moved without a version bump in `packages/client/package.json`. It deliberately checks **intent, not the registry** — CI cannot reach npm and should not try. Bump the version, run `bun run --cwd packages/client surface:record`, and the owed release is visible in the diff. Pushing the tag is still a separate, deliberate act.
+
 After pushing, report the test.yml run URL back to the user. Don't claim "deployed" until both are green — `gh run watch` confirms the gate, and `scripts/verify-deploy.ts` confirms the deploy.
 
 **Agent worktrees are collected on merge.** Parallel agent sessions each get a worktree under `.claude/worktrees/`, nothing removes them when the session ends, and each carries its own `node_modules` — left alone the directory reaches tens of GB. `lefthook.yml`'s `post-merge` job runs `scripts/cleanup-worktrees.ts`, which removes only worktrees that are orphaned, or merged into `main` + clean + idle for an hour; a dirty or unmerged tree is reported and kept. Note that a worktree's `.git` is an **absolute** path into `.git/worktrees/`, so moving or renaming the repo orphans every one of them at once — after such a move they are unreadable by git and only `rm` clears them.

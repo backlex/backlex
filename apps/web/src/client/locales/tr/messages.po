@@ -4612,6 +4612,11 @@ msgstr "\"{name}\" sütunu c_{slug} tablosundan silindi. {0} değer bir yedeğe 
 msgid "Column \"{name}\" dropped."
 msgstr "\"{name}\" sütunu silindi."
 
+#. placeholder {0}: res.nonNull
+#: src/client/admin/app.tsx
+msgid "Column \"{name}\" dropped. {0} value(s) saved to a backup."
+msgstr "\"{name}\" sütunu kaldırıldı. {0} değer yedeğe alındı."
+
 #. placeholder {0}: c.column
 #. placeholder {1}: c.logical
 #: src/client/admin/collections/adopt-wizard.tsx
@@ -11838,6 +11843,10 @@ msgstr "Yeni {0}"
 msgid "New {0} item"
 msgstr "Yeni {0} öğesi"
 
+#: src/client/admin/app.tsx
+msgid "New {rowLabel}"
+msgstr "Yeni {rowLabel}"
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "New {slug}"
 msgstr "Yeni {slug}"
@@ -11933,6 +11942,10 @@ msgstr "Yeni grup"
 msgid "New insight panel"
 msgstr "Yeni içgörü paneli"
 
+#: src/client/admin/extras.tsx
+msgid "New item"
+msgstr "Yeni kayıt"
+
 #: src/client/admin/pages/observability/translations.tsx
 #: src/client/pages/api-keys.tsx
 msgid "New key"
@@ -11987,8 +12000,8 @@ msgstr "Yeni parola en az 8 karakter olmalıdır."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
-msgid "New post"
-msgstr "Yeni gönderi"
+#~ msgid "New post"
+#~ msgstr "Yeni gönderi"
 
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "New relation"
@@ -20170,6 +20183,11 @@ msgstr "Sütun her zaman posta sunucusunun çözümlediği kodlanmış biçimi s
 msgid "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 msgstr "Kolon her zaman bir çözümleyicinin yanıt verdiği kodlanmış biçimi saklar. Bu yalnızca GÖRÜNÜMÜ değiştirir — https://xn--rnek-4qa.com/ yerine https://örnek.com/. Çalışma alanında gerçekten böyle host'lar yoksa kapalı bırakın."
 
+#. placeholder {0}: activeCollection || "posts"
+#: src/client/admin/app.tsx
+msgid "The column and its values are removed from <0>c_{0}</0>. Any values it holds are saved to a pre-drop backup first."
+msgstr "Sütun ve içindeki değerler <0>c_{0}</0> tablosundan kaldırılır. Sütunda değer varsa, silmeden önce bir yedeğe alınır."
+
 #. placeholder {0}: hook?.matchLabel ?? t`provider's id`
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "The column holding the {0}. A delivery updates the row that matches, and only the fields it carries."
@@ -20586,8 +20604,8 @@ msgid "Third-party auth"
 msgstr "Üçüncü taraf kimlik doğrulama"
 
 #: src/client/admin/app.tsx
-msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
-msgstr "Bu <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> işlemi geri alınamaz. Sütundaki mevcut veriler kaybolur."
+#~ msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
+#~ msgstr "Bu <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> işlemi geri alınamaz. Sütundaki mevcut veriler kaybolur."
 
 #: src/client/admin/pages/automation/agents.tsx
 msgid "This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data."

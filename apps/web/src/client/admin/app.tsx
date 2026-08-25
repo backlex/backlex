@@ -1188,6 +1188,13 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     }
   };
 
+  // What this collection calls one of its rows. The heading already used it;
+  // the create button said "New post" on every collection until now. Bound to a
+  // plain identifier because a complex expression inside <Trans> compiles to a
+  // positional {0} placeholder, and a stripped compiler has rendered one of
+  // those literally in production before.
+  const rowLabel = schemaState.singular?.trim() || activeCollection;
+
   return (
     // `TooltipProvider` is mounted HERE rather than around the whole app in
     // main.tsx, and the reason is measurable: it is the only Radix component in
@@ -1440,7 +1447,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h1 className="m-0 text-[26px] font-normal leading-none tracking-[-0.02em] text-foreground">
-                      {schemaState.singular?.trim() || activeCollection}
+                      {rowLabel}
                     </h1>
                     <span className="inline-flex flex-wrap gap-1.5">
                       <Badge variant="outline" mono>{ADAPTER_PROFILES[tweaks.adapter].db}</Badge>
@@ -1495,7 +1502,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         tab already tells operators this button uses — it said
                         "New post" on invoices, technicians and every other
                         collection, while the heading beside it read correctly. */}
-                    <Trans>New {schemaState.singular?.trim() || activeCollection}</Trans>
+                    <Trans>New {rowLabel}</Trans>
                   </Button>
                   {/* Mobile: collapse the secondary actions into an overflow menu on
                       the right; the create button stays primary. Hidden on desktop (inline above). */}

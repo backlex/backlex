@@ -74,10 +74,42 @@ const InviteInput = z
   })
   .openapi("AppUserInviteInput");
 
+/**
+ * Keys this route does not own, and where they actually live.
+ *
+ * `roleIds` is a real key on this resource — `PUT /{id}/roles` and the invite
+ * body both take it — so sending it here is a natural mistake, and it used to
+ * be answered `{ok:true}` with nothing assigned. Portal access then looked
+ * granted while every request 403'd, and the user's `roles` array stayed
+ * empty with no way to tell from the response.
+ */
+const ELSEWHERE: Record<string, string> = {
+  roleIds: "PUT /api/app-users/{id}/roles",
+  roles: "PUT /api/app-users/{id}/roles",
+  email: "not editable — invite a new user instead",
+};
+
+const PATCHABLE = new Set(["status", "name"]);
+
 const PatchInput = z
   .object({
     status: z.enum(["active", "suspended"]).optional(),
     name: z.string().trim().min(1).max(200).optional(),
+  })
+  // Ignoring an unrecognized key on a success response is how a caller ends up
+  // believing a write happened. Name it instead, and say where it belongs.
+  .loose()
+  .superRefine((val, ctx) => {
+    for (const key of Object.keys(val as Record<string, unknown>)) {
+      if (PATCHABLE.has(key)) continue;
+      ctx.addIssue({
+        code: "custom",
+        path: [key],
+        message: ELSEWHERE[key]
+          ? `"${key}" cannot be set here — use ${ELSEWHERE[key]}.`
+          : `Unknown field "${key}" — this endpoint updates ${[...PATCHABLE].join(" and ")}.`,
+      });
+    }
   })
   .openapi("AppUserPatchInput");
 

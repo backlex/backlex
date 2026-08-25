@@ -62,4 +62,36 @@ describe("/api/app-users auth surface", () => {
     const body = (await res.json()) as { data: unknown[] };
     expect(Array.isArray(body.data)).toBe(true);
   });
+
+  /**
+   * `roleIds` is a real key on this resource — `PUT /{id}/roles` and the invite
+   * body both take it — so sending it to the update endpoint is a natural
+   * mistake. It used to be swallowed and answered `{ok:true}`, leaving portal
+   * access looking granted while the user held no roles and every request
+   * 403'd. Unknown keys are now named, with the route that owns them.
+   */
+  test("an unrecognized key is refused instead of silently ignored", async () => {
+    expect((await signIn(adminEmail)).status).toBe(200);
+    const res = await h.fetch("/api/app-users/some-id", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roleIds: ["role-1"] }),
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("PUT /api/app-users/{id}/roles");
+  });
+
+  test("an unknown key that has no home still says what this endpoint takes", async () => {
+    expect((await signIn(adminEmail)).status).toBe(200);
+    const res = await h.fetch("/api/app-users/some-id", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ statuz: "suspended" }),
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("statuz");
+    expect(body.error.message).toContain("status");
+  });
 });

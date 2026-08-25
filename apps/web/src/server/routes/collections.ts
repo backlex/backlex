@@ -635,6 +635,31 @@ const CollectionPatch = CollectionInput.partial().extend({
    *  `active`). `archived` is NOT patchable — it goes through the dedicated
    *  archive/restore routes. */
   status: z.enum(["active", "inactive"]).optional(),
+  /**
+   * Acknowledge that this body's `fields` array drops fields the collection
+   * currently has.
+   *
+   * `fields` is a REPLACE, not a merge — which reads as a merge to anyone who
+   * has met any other PATCH, and quietly reduced a 6-field collection to the
+   * one field the caller meant to edit. Nothing warned: the response was
+   * `{ok:true}`, and the collection then 422'd every read because its own
+   * `defaultSort` named a field the metadata had just forgotten. Omitting a
+   * field is still a legitimate thing to want — it un-exposes a column without
+   * touching it — so it is gated rather than refused.
+   */
+  allowFieldRemoval: z.boolean().optional(),
+  /**
+   * Acknowledge that this body changes the `type` of a field that already has
+   * a column.
+   *
+   * `applyCollection` is additive — it never rewrites a column — so a type
+   * change alters only how the bytes already on disk are *read back*. The
+   * costly case is `number` ⇄ `money`: `money` stores integer minor units and
+   * `number` stores major, so flipping one to the other silently restates
+   * every historical amount by 100× (a ₺184 invoice read back as ₺1.84) and
+   * answered `{ok:true}`.
+   */
+  allowFieldTypeChange: z.boolean().optional(),
 });
 
 /** Body of `POST /:slug/clone` — just the new slug; everything else is
@@ -1326,6 +1351,54 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
       .limit(1);
     if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
+
+    // `fields` replaces the list wholesale. Refuse the shape that is almost
+    // always an accident — a body carrying only the field being edited — while
+    // still allowing a deliberate un-expose via `allowFieldRemoval`.
+    if (body.fields && !body.allowFieldRemoval) {
+      const incoming = new Set(body.fields.map((f) => f.name));
+      const dropped = ((existing[0].fields ?? []) as { name: string }[])
+        .map((f) => f.name)
+        .filter((name) => !incoming.has(name));
+      if (dropped.length > 0) {
+        throw new AppError(
+          "VALIDATION",
+          `"fields" replaces the whole field list, and this body omits ${dropped.length} field(s) "${slug}" currently has: ${dropped.join(", ")}. ` +
+            'Send the complete list (edit the one you mean and keep the rest), or pass "allowFieldRemoval": true to confirm. ' +
+            "Removing a field here only un-exposes it — the column and its data stay; DELETE /api/collections/:slug/fields/:name is what drops those.",
+          { dropped },
+        );
+      }
+    }
+
+    // A type change rewrites nothing on disk — it changes how what is already
+    // there gets read. `number` ⇄ `money` is the expensive one (major units vs
+    // integer minor units, so every stored amount shifts by 100×), but any
+    // reinterpretation deserves to be a decision rather than a side effect.
+    if (body.fields && !body.allowFieldTypeChange) {
+      const before = new Map(
+        ((existing[0].fields ?? []) as { name: string; type: string }[]).map((f) => [f.name, f.type]),
+      );
+      const changed = body.fields
+        .filter((f) => before.has(f.name) && before.get(f.name) !== f.type)
+        .map((f) => ({ field: f.name, from: before.get(f.name) as string, to: f.type }));
+      if (changed.length > 0) {
+        const moneyScale = changed.filter(
+          (ch) =>
+            (ch.from === "money" && ch.to === "number") ||
+            (ch.from === "number" && ch.to === "money"),
+        );
+        throw new AppError(
+          "VALIDATION",
+          `${changed.map((ch) => `"${ch.field}" ${ch.from} → ${ch.to}`).join(", ")}: the column is not rewritten, so existing rows are re-read under the new type. ` +
+            (moneyScale.length > 0
+              ? `${moneyScale.map((ch) => `"${ch.field}"`).join(", ")} crosses number ⇄ money, which changes the unit — money holds integer minor units, number holds major — so every stored amount shifts by 100×. Convert the values first, then change the type. `
+              : "") +
+            'Pass "allowFieldTypeChange": true once you have accounted for the existing rows.',
+          { changed },
+        );
+      }
+    }
 
     // Slug rename: only when the body explicitly sends a different slug.
     // Validate target uniqueness within the tenant before touching anything,

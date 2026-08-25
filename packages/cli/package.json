@@ -1,7 +1,7 @@
 {
   "name": "@backlex/cli",
-  "version": "0.3.0",
-  "description": "The backlex CLI — auth/profiles, collection + item CRUD, backups, users/roles, feature flags, functions/flows/webhooks/jobs, advisor, scaffolding, and type/OpenAPI generation against any backlex instance.",
+  "version": "0.4.0",
+  "description": "The backlex CLI \u2014 auth/profiles, collection + item CRUD, backups, users/roles, feature flags, functions/flows/webhooks/jobs, advisor, scaffolding, and type/OpenAPI generation against any backlex instance.",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://backlex.com",
@@ -34,7 +34,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsup"
+    "build": "tsup",
+    "surface:record": "bun run scripts/record-surface.ts"
   },
   "dependencies": {
     "drizzle-orm": "1.0.0-beta.22",

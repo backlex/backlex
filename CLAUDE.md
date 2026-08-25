@@ -119,7 +119,11 @@ So, when a change touches a publishable package:
 | `packages/ui` | `ui-v<semver>` | npm `@backlex/ui` |
 | `apps/web` (tenant runtime) | `worker-v<semver>` | the cloud template |
 
-`apps/web/tests/sdk-release-drift.test.ts` is the tripwire for the client: it fails when the SDK's public surface has moved without a version bump in `packages/client/package.json`. It deliberately checks **intent, not the registry** — CI cannot reach npm and should not try. Bump the version, run `bun run --cwd packages/client surface:record`, and the owed release is visible in the diff. Pushing the tag is still a separate, deliberate act.
+Two tripwires enforce that: `apps/web/tests/sdk-release-drift.test.ts` (public namespaces) and `apps/web/tests/cli-release-drift.test.ts` (the `backlex help` command list). Each fails when its surface has moved without a version bump in the package's own `package.json`, and each names exactly what moved. They deliberately check **intent, not the registry** — CI cannot reach npm and should not try. Bump the version, run `bun run --cwd packages/<pkg> surface:record`, and the owed release is visible in the diff. Pushing the tag is still a separate, deliberate act.
+
+`published-surface.json` in each package records what npm **actually holds**, measured against the installed package rather than assumed — so the baseline is honest even when the repo has drifted past it.
+
+**`@backlex/auth-ui` is deliberately unpublished.** It was extracted (`3aa73cad`) so the sibling `backlex-cloud` repo could consume the same auth screens over npm, and its own commit says to tag `auth-ui-v0.1.0` *once cloud needs it externally*. Cloud never adopted it — it hand-rolled its own sign-in/sign-up instead — so the trigger has not fired and the package has exactly one consumer, `apps/web`, by workspace path. It is a layer **on** `@backlex/ui` (declared as a peer), not a duplicate of it: `ui` is the design system, `auth-ui` is the screens, kept i18n-free and router-agnostic so a consumer wires its own Lingui, router and branding. Merging them would put better-auth-shaped auth screens in front of everyone who wanted a `<Button>`.
 
 After pushing, report the test.yml run URL back to the user. Don't claim "deployed" until both are green — `gh run watch` confirms the gate, and `scripts/verify-deploy.ts` confirms the deploy.
 

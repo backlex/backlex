@@ -346,6 +346,10 @@ describe("kpis: SDK + CLI reach the feature", () => {
     const bin = readFileSync(join(ROOT, "packages/cli/bin/backlex.ts"), "utf8");
     expect(bin).toContain('case "kpis":');
     expect(bin).toContain("runKpis");
-    expect(bin).toMatch(/backlex kpis </);
+    // The help text lives in `src/help.ts`, not the bin — it is read without
+    // running the CLI by the release-drift guard, and importing the bin would
+    // print it and dispatch a command.
+    const help = readFileSync(join(ROOT, "packages/cli/src/help.ts"), "utf8");
+    expect(help).toMatch(/backlex kpis </);
   });
 });

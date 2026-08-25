@@ -154,9 +154,17 @@ const relationFields = (
       required: Boolean(f.required),
     }));
 
+// Every row/registry shape is emitted as a `type` alias, NOT an `interface`.
+// TypeScript gives implicit index signatures to type aliases but not to
+// interfaces, and `--sdk` output feeds `Collections` to
+// `typedCollections<R extends CollectionsMap>` where
+// `CollectionsMap = Record<string, Record<string, unknown>>`. Emitting
+// interfaces makes the generated file fail its own consumer with
+// `TS2344: … Index signature for type 'string' is missing`, on the row types
+// as well as on the registry. Pinned by tests/gen-types-index-signature.test.ts.
 const renderCollection = (c: Collection): string => {
   const lines: string[] = [];
-  lines.push(`export interface ${pascal(c.slug)} {`);
+  lines.push(`export type ${pascal(c.slug)} = {`);
   lines.push(`  id: string;`);
   if (truthy(c.versioned)) {
     lines.push(`  _status: string;`);
@@ -172,7 +180,7 @@ const renderCollection = (c: Collection): string => {
     // REST API returns (system columns above are the only camelCased ones).
     lines.push(`  ${f.name}: ${nullable(fieldType(f), f.required)};`);
   }
-  lines.push(`}`);
+  lines.push(`};`);
   return lines.join("\n");
 };
 
@@ -182,12 +190,12 @@ const renderRelations = (c: Collection, known: Set<string>): string | null => {
   const rels = relationFields(c, known);
   if (!rels.length) return null;
   const name = pascal(c.slug);
-  const lines: string[] = [`export interface ${name}Relations {`];
+  const lines: string[] = [`export type ${name}Relations = {`];
   for (const r of rels) {
     const t = r.many ? `${r.target}[]` : r.target;
     lines.push(`  ${r.name}: ${nullable(t, r.required)};`);
   }
-  lines.push(`}`);
+  lines.push(`};`);
   lines.push(
     `export type ${name}Expanded = Expand<${name}, ${name}Relations>;`,
   );
@@ -198,7 +206,7 @@ const renderRegistry = (collections: Collection[]): string => {
   const entries = collections
     .map((c) => `  ${c.slug}: ${pascal(c.slug)};`)
     .join("\n");
-  return `export interface Collections {\n${entries}\n}`;
+  return `export type Collections = {\n${entries}\n};`;
 };
 
 // Inlined so plain (non-`--sdk`) output stays dependency-free. Swaps the

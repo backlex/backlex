@@ -23,13 +23,20 @@ git clone https://github.com/backlex/backlex && cd backlex
 bun install
 cp apps/web/.dev.vars.example apps/web/.dev.vars
 
-# Apply migrations to local SQLite
-bun run db:migrate:sqlite
+# Apply migrations to the local D1 that `bun run dev` serves from
+bun run db:migrate:d1
 
 # Start Vite + Cloudflare miniflare in one process on :5173
 # (admin SPA + Worker bundled — no separate API port, no proxy)
 bun run dev
 ```
+
+> **Migrate D1, not SQLite.** `bun run dev` runs the Worker on Cloudflare's
+> miniflare, so it reads the local **D1** database — not the `bun:sqlite` file
+> under `.data/`. Running `db:migrate:sqlite` instead leaves every route
+> answering `500` with `no such table: tenants` in the server log. Use
+> `db:migrate:sqlite` only for the Bun-native API (`bun run dev:bun`), and
+> `db:migrate:pg` when you point `DATABASE_URL` at Postgres.
 
 Open `http://localhost:5173/sign-up` and create the first user — they
 auto-receive the `admin` role. Subsequent sign-ups get `authenticated`.

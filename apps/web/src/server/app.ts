@@ -280,6 +280,37 @@ let rolesSeeded = false;
 /** Wrap a middleware to record its OWN time (excluding the downstream `next()`
  *  it triggers) into the per-request Server-Timing collector under `name`.
  *  Diagnostic — lets us split `premw` into cors/session/tenant. */
+/** Liveness + readiness. Polled constantly by uptime monitors and load
+ *  balancers, so they are logged at debug — and they run BEFORE session/tenant
+ *  resolution, so a probe can still answer when the database cannot. */
+const PROBE_PATHS = ["/health", "/health/ready"];
+
+/**
+ * Did the readiness probe fail because the database is unreachable, or because
+ * it is reachable and simply has no schema yet?
+ *
+ * The distinction is the whole point of the probe: a deployment whose
+ * migrations were never applied answers `SELECT 1` perfectly well and then
+ * 500s on every real request, so "reachable" alone reported it healthy.
+ *
+ * Drivers disagree about where the message lands — D1 puts it on `cause`,
+ * bun:sqlite on `message` — so both are read. Postgres says
+ * `relation "tenants" does not exist`; SQLite and D1 say `no such table`.
+ */
+export const classifyDbProbeError = (
+  e: unknown,
+): { reachable: boolean; text: string } => {
+  const err = e as { message?: string; cause?: unknown } | null;
+  const causeText =
+    (err?.cause as { message?: string } | undefined)?.message ??
+    (err?.cause == null ? "" : String(err.cause));
+  const text = `${err?.message ?? ""} ${causeText}`.trim();
+  return {
+    reachable: /no such table|does not exist|undefined_table/i.test(text),
+    text,
+  };
+};
+
 const timed =
   (name: string, mw: MiddlewareHandler<AppBindings>): MiddlewareHandler<AppBindings> =>
   async (c, next) => {
@@ -344,10 +375,9 @@ export const createApp = (env: Env) => {
     } catch {
       path = c.req.path;
     }
-    // Health/readiness probes are polled constantly by uptime monitors and load
-    // balancers — log them at debug so they don't drown the access log by
-    // default (visible only under LOG_LEVEL=debug).
-    const isProbe = path === "/health" || path === "/health/ready";
+    // Log probes at debug so they don't drown the access log by default
+    // (visible only under LOG_LEVEL=debug). See PROBE_PATHS.
+    const isProbe = PROBE_PATHS.includes(path);
     const status = c.res.status;
     const level = isProbe ? "debug" : levelForStatus(status);
     let auth: { tenantId?: string | null; userId?: string | null } | undefined;
@@ -823,8 +853,20 @@ export const createApp = (env: Env) => {
       : corsMw(c, next),
   );
 
-  app.use("*", timed("session", sessionMiddleware));
-  app.use("*", timed("tenant", tenantMiddleware));
+  // Liveness/readiness probes deliberately bypass session + tenant resolution.
+  // `tenantMiddleware` calls `ensureDefaultTenant`, which SELECTs from
+  // `tenants` — so on a deployment whose migrations have not been applied the
+  // probes were the first thing to 500, with an `INTERNAL` body that named
+  // nothing. A liveness check that cannot answer until the database is healthy
+  // is not a liveness check; `/health/ready` below is where the DB is probed,
+  // and it now reports an unmigrated database as its own state.
+  const skipOnProbe =
+    (mw: MiddlewareHandler<AppBindings>): MiddlewareHandler<AppBindings> =>
+    (c, next) =>
+      PROBE_PATHS.includes(c.req.path) ? next() : mw(c, next);
+
+  app.use("*", timed("session", skipOnProbe(sessionMiddleware)));
+  app.use("*", timed("tenant", skipOnProbe(tenantMiddleware)));
 
   // Mark when all pre-route middleware (ctx + CORS + session + tenant) is done,
   // so `premw` vs `route` (= total − premw) can be split in Server-Timing.
@@ -889,28 +931,46 @@ export const createApp = (env: Env) => {
   app.get("/health/ready", async (c) => {
     const ctx = c.get("ctx");
     const t0 = Date.now();
+    // Probe a SYSTEM TABLE, not `SELECT 1`. A bare `SELECT 1` succeeds against
+    // a database that is merely *reachable*, which is how a deployment whose
+    // migrations were never applied used to report itself ready and then 500
+    // on every request. `tenants` exists in the very first migration, so
+    // "reachable but unmigrated" is a distinct, nameable state.
     let dbUp = false;
+    let migrated = false;
+    let detail: string | null = null;
     try {
-      const raw = sql.raw("SELECT 1 AS ok");
+      const raw = sql.raw("SELECT 1 AS ok FROM tenants LIMIT 1");
       if (ctx.dialect === "pg") await (ctx.db as { execute: (q: unknown) => Promise<unknown> }).execute(raw);
       else await (ctx.db as { all: (q: unknown) => Promise<unknown> }).all(raw);
       dbUp = true;
+      migrated = true;
     } catch (e) {
+      const { reachable, text } = classifyDbProbeError(e);
+      dbUp = reachable;
+      detail = reachable
+        ? "Database is reachable but not migrated — run `bun run db:migrate:d1` (miniflare/Workers), `db:migrate:sqlite` (Bun), or `db:migrate:pg` (Postgres)."
+        : text || String(e);
       log.error("readiness.db_probe_failed", {
         requestId: c.get("requestId"),
-        err: (e as Error)?.message ?? String(e),
+        migrated: false,
+        reachable,
+        err: text,
       });
     }
+    const ok = dbUp && migrated;
     return c.json(
       {
-        ok: dbUp,
+        ok,
         db: dbUp ? "up" : "down",
+        migrated,
+        ...(detail ? { detail } : {}),
         dbMs: Date.now() - t0,
         dialect: ctx.dialect,
         version: templateVersion,
         ts: Date.now(),
       },
-      dbUp ? 200 : 503,
+      ok ? 200 : 503,
     );
   });
 

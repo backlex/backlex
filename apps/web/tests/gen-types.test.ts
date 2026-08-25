@@ -46,7 +46,7 @@ const COLLECTIONS = [
 describe("renderModule", () => {
   test("plain mode emits interfaces + registry, no SDK import", () => {
     const out = renderModule(COLLECTIONS, { apiUrl: "https://api.test" });
-    expect(out).toContain("export interface Posts {");
+    expect(out).toContain("export type Posts = {");
     expect(out).toContain("  id: string;");
     // ownerScoped → ownerId; required vs nullable; field-type mapping.
     expect(out).toContain("  ownerId: string | null;");
@@ -66,9 +66,9 @@ describe("renderModule", () => {
     expect(out).toContain("  _status: string;");
     expect(out).toContain("  _publishedAt: string | null;");
     // non-owner-scoped collection omits ownerId.
-    expect(out).toContain("export interface Products {");
+    expect(out).toContain("export type Products = {");
     expect(out).not.toContain("import {");
-    expect(out).toContain("export interface Collections {");
+    expect(out).toContain("export type Collections = {");
     expect(out).toContain("  posts: Posts;");
     expect(out).toContain("  products: Products;");
     expect(out).not.toContain("createTypedClient");
@@ -77,7 +77,7 @@ describe("renderModule", () => {
   test("relations emit a typed expand map + Expand helper", () => {
     const out = renderModule(COLLECTIONS, { apiUrl: "https://api.test" });
     expect(out).toContain("export type Expand<");
-    expect(out).toContain("export interface PostsRelations {");
+    expect(out).toContain("export type PostsRelations = {");
     // relation → single target; relation_many → target array; nullability kept.
     expect(out).toContain("  category: Categories;");
     expect(out).toContain("  tags: Categories[] | null;");
@@ -94,7 +94,7 @@ describe("renderModule", () => {
     expect(out).toContain("typedCollections<Collections>(createClient(opts))");
     expect(out).toContain("export const createTypedClient");
     // interfaces still present
-    expect(out).toContain("export interface Posts {");
+    expect(out).toContain("export type Posts = {");
   });
 
   test("output is deterministic", () => {
@@ -129,5 +129,62 @@ describe("typedCollections proxy", () => {
     // the raw client surface is still reachable on the same object.
     expect(typeof db.from).toBe("function");
     expect(typeof db.auth).toBe("object");
+  });
+});
+
+/**
+ * The generated module must satisfy its own consumer.
+ *
+ * `--sdk` output ends in `typedCollections<Collections>(…)`, and
+ * `typedCollections<R extends CollectionsMap>` constrains `R` to
+ * `Record<string, Record<string, unknown>>`. TypeScript grants implicit index
+ * signatures to `type` aliases but NOT to `interface` declarations — so an
+ * emitter that reaches for `interface` produces a file that fails to compile
+ * in every consumer's build with `TS2344`, while every unit test on the
+ * emitted *text* still passes. That is exactly what shipped: 23 interfaces,
+ * and `next build` red on the first try.
+ *
+ * So this asserts against the compiler, not against a substring. Fixing only
+ * the registry is not enough — the row types are the `Record<string, unknown>`
+ * on the right-hand side and need the index signature too — which is why the
+ * assertion below names both.
+ */
+describe("generated module compiles against CollectionsMap", () => {
+  test("Collections and its row types satisfy the typedCollections constraint", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+
+    const dir = mkdtempSync(join(tmpdir(), "backlex-gen-types-"));
+    try {
+      const file = join(dir, "generated.ts");
+      writeFileSync(
+        file,
+        `${renderModule(COLLECTIONS, { apiUrl: "https://api.test" })}
+type CollectionsMapProbe = Record<string, Record<string, unknown>>;
+// The registry as a whole…
+const _registry: CollectionsMapProbe = null as unknown as Collections;
+// …and a single row, which is the half a registry-only fix leaves broken.
+const _row: Record<string, unknown> = null as unknown as Posts;
+export { _registry, _row };
+`,
+      );
+
+      const proc = Bun.spawnSync([
+        join(import.meta.dir, "../../../node_modules/.bin/tsc"),
+        "--noEmit",
+        "--strict",
+        "--skipLibCheck",
+        // Without this, tsc refuses to run at all when a tsconfig.json is
+        // present anywhere above the file it was handed (TS5112).
+        "--ignoreConfig",
+        file,
+      ]);
+      const out = `${proc.stdout.toString()}${proc.stderr.toString()}`.trim();
+      expect(out).toBe("");
+      expect(proc.exitCode).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

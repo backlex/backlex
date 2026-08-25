@@ -895,6 +895,10 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       agg: "sum",
       field: "amount",
       dateField: "issued_at",
+      // Amounts are denominated by the row's own `currency`, so a single
+      // total would be adding lira to dollars. One figure per currency.
+      groupBy: "currency",
+      format: "money",
       direction: "up",
     },
   ],

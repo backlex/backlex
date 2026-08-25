@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, ch, computedNum, date, email, file, flag, geo, half, int, money, ms, notes, num, phone, position, rating, rel, rollup, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
+import { C, ch, computedNum, date, email, file, flag, geo, half, int, money, moneyIn, ms, notes, num, phone, position, rating, rel, rollup, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const fieldService: SchemaTemplate = {
   id: "field-service",
@@ -75,11 +75,12 @@ export const fieldService: SchemaTemplate = {
           date("next_visit_due", { indexed: true, label: "Next visit due" }),
         ),
         ...half(
-          money("monthly_fee", { label: "Monthly fee" }),
-          select("status", [ch("active", C.green), ch("paused", C.amber), ch("expired", C.red)], { default: "active" }),
+          moneyIn("monthly_fee", { label: "Monthly fee" }),
+          select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
         ),
+        select("status", [ch("active", C.green), ch("paused", C.amber), ch("expired", C.red)], { default: "active" }),
       ],
-      samples: [{ customer: { ref: "customers:0" }, name: "Riverside boiler care plan", frequency: "quarterly", next_visit_due: ms("2026-10-01"), monthly_fee: 95, status: "active" }],
+      samples: [{ customer: { ref: "customers:0" }, name: "Riverside boiler care plan", frequency: "quarterly", next_visit_due: ms("2026-10-01"), monthly_fee: 95, currency: "USD", status: "active" }],
     },
     {
       slug: "work_orders", group: "Work orders", singular: "Work order", plural: "Work orders", fts: true, defaultSort: "-scheduled_at",
@@ -90,6 +91,14 @@ export const fieldService: SchemaTemplate = {
           notes("description", { searchable: true }),
           ...half(rel("customer", "customers"), rel("contract", "service_contracts", { label: "Service contract" })),
           rel("checklist", "checklists"),
+          // A job raised from the public request form has no `customer` yet — a
+          // stranger cannot pick one — so without somewhere to put a name and a
+          // number the request lands on the board with no way to answer it.
+          // Dispatch fills `customer` in once it knows who this is.
+          ...half(
+            text("contact_name", { label: "Contact name", description: "Who to ask for on site." }),
+            phone("contact_phone", { label: "Contact phone" }),
+          ),
         ]),
         sec("Assignment", [
           ...half(
@@ -174,15 +183,13 @@ export const fieldService: SchemaTemplate = {
       kanbanGroupBy: "status",
       fields: [
         ...half(rel("customer", "customers"), seq("number", "EST-{#####}")),
-        ...half(
-          select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("approved", C.green), ch("declined", C.red)], { default: "draft", indexed: true }),
-          money("total"),
-        ),
+        ...half(moneyIn("total"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("approved", C.green), ch("declined", C.red)], { default: "draft", indexed: true }),
         notes("scope_notes", { label: "Scope notes" }),
       ],
       samples: [
-        { customer: { ref: "customers:0" }, status: "approved", total: 1240, scope_notes: "Replace rooftop condenser fan assembly, building B." },
-        { customer: { ref: "customers:0" }, status: "sent", total: 380 },
+        { customer: { ref: "customers:0" }, status: "approved", total: 1240, currency: "USD", scope_notes: "Replace rooftop condenser fan assembly, building B." },
+        { customer: { ref: "customers:0" }, status: "sent", total: 380, currency: "USD" },
       ],
     },
     {
@@ -202,13 +209,14 @@ export const fieldService: SchemaTemplate = {
       kanbanGroupBy: "status",
       fields: [
         ...half(rel("work_order", "work_orders"), rel("customer", "customers")),
-        ...half(seq("number", "INV-{#####}"), money("amount")),
+        ...half(seq("number", "INV-{#####}"), moneyIn("amount")),
+        select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
         ...half(
           select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("paid", C.green)], { default: "draft", indexed: true }),
           date("issued_at", { indexed: true, label: "Issued" }),
         ),
       ],
-      samples: [{ work_order: { ref: "work_orders:1" }, customer: { ref: "customers:0" }, amount: 184, status: "paid", issued_at: ms("2026-07-02") }],
+      samples: [{ work_order: { ref: "work_orders:1" }, customer: { ref: "customers:0" }, amount: 184, currency: "USD", status: "paid", issued_at: ms("2026-07-02") }],
     },
   ],
   roles: [
@@ -555,6 +563,9 @@ export const fieldService: SchemaTemplate = {
         { name: "title", label: "What needs looking at?" },
         { name: "description", label: "Tell us more" },
         { name: "priority", label: "How urgent is it?" },
+        // Without these the dispatcher gets a job and no way to call anybody.
+        { name: "contact_name", label: "Your name", required: true },
+        { name: "contact_phone", label: "Phone we can reach you on", required: true },
       ],
     },
     {

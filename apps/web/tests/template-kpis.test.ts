@@ -156,6 +156,34 @@ describe("template KPIs: every reference resolves", () => {
     expect(bad).toEqual([]);
   });
 
+
+  test("every money column's currencyField names a text column on the same collection", () => {
+    // `moneyIn(...)` hard-codes `currencyField: "currency"`, so a collection
+    // that gains a money amount must gain the `currency` column beside it. Miss
+    // that and the template still LOOKS right — the failure only surfaces when
+    // a workspace applies it and the field validator refuses the collection.
+    // The catalog apply smoke does catch it, several seconds later and with a
+    // message about a collection rather than about the column that is missing.
+    const bad: string[] = [];
+    // Every template, not just the ones with KPIs — the invariant is about the
+    // collection, and a money column can exist without anything measuring it.
+    for (const t of TEMPLATES) {
+      for (const c of t.collections) {
+        const fields = (c.fields ?? []) as Field[];
+        const names = new Map(fields.map((f) => [f.name, f]));
+        for (const f of fields) {
+          const ref = (f as Field & { money?: { currencyField?: string } }).money?.currencyField;
+          if (f.type !== "money" || !ref) continue;
+          const target = names.get(ref);
+          if (!target) bad.push(`${t.id}/${c.slug}.${f.name}: currencyField "${ref}" has no column`);
+          else if (target.type !== "text")
+            bad.push(`${t.id}/${c.slug}.${f.name}: currencyField "${ref}" is ${target.type}, must be text`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
   test("slugs are unique within a template and URL-safe", () => {
     const bad: string[] = [];
     for (const [templateId, kpis] of Object.entries(TEMPLATE_KPIS)) {

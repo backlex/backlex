@@ -22,6 +22,27 @@ money: `price`, `total`, `subtotal`, `amount_paid`, `salary`, `budget`,
 `balance_due`. Every one of them was a bare `number`, and thirty-seven `text`
 columns named `currency` sat next to them with nothing tying the two together.
 
+**Not all of them became `money` fields, and the ones that did not are a
+deliberate stop rather than a backlog.** A `money` field must say what it is
+denominated in, and a template cannot invent that. So a column became `money`
+where the collection *states* its own denomination — it ships a `currency`
+column beside the amount, which is what the invoice, deal and offer tables were
+already doing by hand. Everything else stayed a plain decimal: line-item tables
+whose currency belongs to the parent row, and catalogue prices that carry a
+number without ever naming a unit. Those are a modelling decision per template
+— give the table its own `currency`, or pin one — not a mechanical conversion.
+
+Two consequences worth knowing before you pick:
+
+- A plain decimal is a float. It has no currency, the admin prints `1234.5`
+  rather than `₺1.234,50`, and a rollup summing a thousand of them accumulates
+  the error described below.
+- A `money` field denominated by a per-row `currency` column **cannot be summed
+  without saying which currency** — `sum` over it is refused unless the query
+  passes `groupBy: "currency"`, because adding ₺ to $ is not an amount. That is
+  the trade the templates make, and why every bundled KPI over such a column
+  groups by it.
+
 That left three things broken at once:
 
 - **The arithmetic.** `number` is `double precision` on Postgres and `REAL` on

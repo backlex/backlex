@@ -120,6 +120,15 @@ then to `-created_at`. Sort fields are validated against both the
 column set and the role's `fields` allow-list, so a sort can't leak
 the existence of a hidden column.
 
+> **Sort and filter by the column name, not the name you read back.** The
+> system timestamps are serialized camelCased — a row comes back with
+> `createdAt` / `updatedAt` — but `sort` and `filter` address **columns**, so
+> both take `created_at` / `updated_at`. `sort=-createdAt` is a
+> `422 Cannot sort on field: createdAt`, and `filter={"createdAt":…}` is the
+> matching `Cannot filter on field`. Same for `owner_id` on an owner-scoped
+> collection, which reads back as `ownerId`. Your own fields keep their
+> snake_case name on both sides, so this only bites on the system columns.
+
 ## Projections (`fields`)
 
 `fields=a,b,c` becomes a SQL-level `SELECT a, b, c, …`. System columns

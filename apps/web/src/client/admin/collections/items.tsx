@@ -937,10 +937,24 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   const { columns: colNames, setColumns } = useListColumns(schema?.slug ?? "");
   const autoCols = useMemo(() => {
     if (identity || colNames.length) return [];
-    return (schema?.fields ?? [])
-      .filter((f) => !(f as { system?: boolean }).system)
-      .slice(0, 3)
-      .map((f) => (f as { name: string }).name);
+    // Taking the first three fields in schema order put
+    // `work_order, customer, number` on an invoices list and stopped exactly
+    // before `amount` and `status` — the two figures anybody opening that list
+    // came for. Rank instead, by what a row is actually scanned for: what
+    // names it, what it is worth, and where it has got to. Everything else
+    // fills in behind them, still in schema order.
+    type F = { name: string; type?: string; system?: boolean; sequence?: unknown; options?: { choices?: unknown[] } };
+    const fields = ((schema?.fields ?? []) as F[]).filter((f) => !f.system);
+    const isChoice = (f: F) => Boolean(f.options?.choices?.length);
+    const picked: string[] = [];
+    const take = (f?: F) => {
+      if (f && picked.length < 3 && !picked.includes(f.name)) picked.push(f.name);
+    };
+    take(fields.find((f) => f.sequence) ?? fields.find((f) => f.type === "text" && !isChoice(f)));
+    take(fields.find((f) => f.type === "money"));
+    take(fields.find(isChoice));
+    for (const f of fields) take(f);
+    return picked;
   }, [schema, identity, colNames.length]);
   const baseCols = colNames.length ? colNames : autoCols;
   // Drag state for reordering saved columns by dragging the table headers.

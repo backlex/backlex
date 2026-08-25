@@ -791,6 +791,9 @@ export interface PublicFormDefinition {
   /** True ⇒ the page should post what has been filled in as it is filled in,
    *  and this payload carries back whatever was saved before. */
   saveProgress: boolean;
+  /** The hidden anti-spam input a client must render and submit at the top
+   *  level of the body — see FORM_HONEYPOT_FIELD. */
+  honeypotField: string;
   /** Answers this visitor left behind last time, or null for a fresh start. */
   draft: { data: Record<string, unknown>; step: number; savedAt: number } | null;
 }
@@ -999,6 +1002,14 @@ export const resolveFormLocale = (form: FormRow, lang: string | null): string =>
  *  the definition builder agree without a circular import. */
 export const FORM_UPLOAD_DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 
+/**
+ * The hidden input every client must render, submitted at the TOP level of the
+ * body beside `data`. Named here so the public definition can hand it to any
+ * client, not just the page backlex serves — put it inside `data` and it is an
+ * ordinary field, which writes the row it was meant to stop.
+ */
+export const FORM_HONEYPOT_FIELD = "website";
+
 /** Build the public definition payload for the form page. */
 export const publicFormDefinition = (
   form: FormRow,
@@ -1117,6 +1128,7 @@ export const publicFormDefinition = (
         ? null
         : { reason: availability.reason, message: availability.message ?? "" },
     saveProgress: Boolean(settings.saveProgress),
+    honeypotField: FORM_HONEYPOT_FIELD,
     // Clamped against TODAY's blocks for the same reason the submit is: a
     // question dropped from the form must not come back through a draft
     // written while it was still on it.

@@ -1491,10 +1491,14 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     onClick={() => openCreate()}
                     className="btn-cta h-[34px] gap-1.5 px-3.5 text-[13px] font-semibold"
                   >
-                    <Trans>New post</Trans>
+                    {/* The collection's own singular, which is what the Settings
+                        tab already tells operators this button uses — it said
+                        "New post" on invoices, technicians and every other
+                        collection, while the heading beside it read correctly. */}
+                    <Trans>New {schemaState.singular?.trim() || activeCollection}</Trans>
                   </Button>
                   {/* Mobile: collapse the secondary actions into an overflow menu on
-                      the right; New post stays primary. Hidden on desktop (inline above). */}
+                      the right; the create button stays primary. Hidden on desktop (inline above). */}
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" icon={I.More} aria-label={t`More actions`} className="px-2 sm:hidden" />
@@ -1770,20 +1774,34 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     }}
                     onDropField={(name) => setConfirm({
                       title: t`Drop column "${name}"?`,
-                      description: <Trans>This <span className="font-mono">ALTER TABLE c_posts DROP COLUMN "{name}"</span> is irreversible. Existing data in the column is lost.</Trans>,
+                      description: <Trans>The column and its values are removed from <span className="font-mono">c_{activeCollection || "posts"}</span>. Any values it holds are saved to a pre-drop backup first.</Trans>,
                       actionLabel: t`Drop column`,
                       destructive: true,
                       onConfirm: async () => {
                         const slug = activeCollection || "posts";
+                        // The DEDICATED drop route, not a PATCH with the field
+                        // filtered out of `fields`. That PATCH only rewrites
+                        // metadata — `applyCollection` is additive and never
+                        // drops a column — so this dialog used to promise an
+                        // irreversible ALTER TABLE while the column and every
+                        // value in it quietly stayed on disk. The real route
+                        // drops it and snapshots the values first, which is
+                        // what the Schema graph page already called.
+                        const prev = schemaState.fields;
                         const next = schemaState.fields.filter((f) => f.name !== name);
-                        try {
-                          await collectionsApi.patch(slug, { fields: next as any });
-                          setSchemaState((s) => ({ ...s, fields: next }));
-                          pushToast(t`Column "${name}" dropped.`);
-                        } catch (e) {
-                          pushToast((e as Error).message);
-                        }
+                        setSchemaState((s) => ({ ...s, fields: next }));
                         setConfirm(null);
+                        try {
+                          const res = await collectionsApi.dropField(slug, name, { confirm: true });
+                          pushToast(
+                            res.snapshotId
+                              ? t`Column "${name}" dropped. ${res.nonNull} value(s) saved to a backup.`
+                              : t`Column "${name}" dropped.`,
+                          );
+                        } catch (e) {
+                          setSchemaState((s) => ({ ...s, fields: prev }));
+                          pushToast((e as Error).message, "error");
+                        }
                       },
                     })}
                   />

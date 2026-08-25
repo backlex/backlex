@@ -564,8 +564,12 @@ export const fieldService: SchemaTemplate = {
         { name: "description", label: "Tell us more" },
         { name: "priority", label: "How urgent is it?" },
         // Without these the dispatcher gets a job and no way to call anybody.
-        { name: "contact_name", label: "Your name", required: true },
-        { name: "contact_phone", label: "Phone we can reach you on", required: true },
+        // Not marked required: a bundled form exposes fields, and requiredness
+        // lives on the collection field — making these mandatory there would
+        // also block the jobs dispatch raises itself, which often have a
+        // customer record instead of a phone number typed by a stranger.
+        { name: "contact_name", label: "Your name", help: "So we know who to ask for." },
+        { name: "contact_phone", label: "Phone we can reach you on", help: "We confirm the visit on this number." },
       ],
     },
     {

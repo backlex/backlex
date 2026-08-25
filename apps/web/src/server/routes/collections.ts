@@ -14,6 +14,8 @@ import {
   dropCollection,
   dropField,
   type FieldDef,
+  type FieldType,
+  sqlTypeFor,
   tableExists,
   validateFields,
 } from "@backlex/db";
@@ -618,6 +620,31 @@ const CollectionInput = z.object({
 // "apply" it — e.g. a bare rename PATCH would silently turn `versioned` /
 // `softDelete` / `fts` back off (and `tenantScoped` back on). Re-declare the
 // defaulted flags as plain optionals.
+
+/**
+ * Would this type change leave the metadata and the physical column disagreeing?
+ *
+ * `applyCollection` is additive — it never rewrites a column — so a change that
+ * keeps the same SQL type only alters what is validated on the way in, and a
+ * change that does not leaves the column holding one thing while the schema
+ * claims another. `text` → `phone` is the first (both TEXT; the documented way
+ * to adopt a typed field over data you already have). `number` ⇄ `money` is the
+ * second, and the expensive one: REAL ⇄ INTEGER, major units ⇄ minor.
+ *
+ * Checked against BOTH dialects so the answer does not depend on which database
+ * happens to be behind this workspace — `text` → `longtext` is one column on
+ * SQLite and two on Postgres, and a guard that fired on only one of them would
+ * be a portability trap of its own. A type either dialect cannot map is treated
+ * as unchanged: there is nothing to reason about, and refusing on an unknown
+ * would block the repair path.
+ */
+const changesColumnType = (from: FieldType, to: FieldType): boolean =>
+  (["sqlite", "pg"] as const).some((dialect) => {
+    const a = sqlTypeFor(from, dialect);
+    const b = sqlTypeFor(to, dialect);
+    return Boolean(a) && Boolean(b) && a !== b;
+  });
+
 const CollectionPatch = CollectionInput.partial().extend({
   ownerScoped: z.boolean().optional(),
   tenantScoped: z.boolean().optional(),
@@ -1381,6 +1408,19 @@ export const collectionsRoutes = new Hono<AppBindings>()
       );
       const changed = body.fields
         .filter((f) => before.has(f.name) && before.get(f.name) !== f.type)
+        // Repairing a field whose stored type is not a field type at all is the
+        // one change that reinterprets nothing: there was no valid reading of
+        // the column to lose. Gating it would put a confirmation in front of
+        // the recovery path for exactly the workspaces least able to spare one.
+        .filter((f) => FIELD_TYPES.includes(before.get(f.name) as (typeof FIELD_TYPES)[number]))
+        // Only gate a change that lands the metadata and the column in
+        // disagreement. `text` → `phone` / `email` keeps the same column and
+        // changes only what is validated on the way in — it is the documented
+        // migration for adopting a typed field on data you already have, and
+        // asking an operator to confirm it would be noise. `number` ⇄ `money`
+        // is the opposite: REAL ⇄ INTEGER, major units ⇄ minor, and the
+        // applier never rewrites the column.
+        .filter((f) => changesColumnType(before.get(f.name) as FieldType, f.type as FieldType))
         .map((f) => ({ field: f.name, from: before.get(f.name) as string, to: f.type }));
       if (changed.length > 0) {
         const moneyScale = changed.filter(
@@ -1394,7 +1434,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
             (moneyScale.length > 0
               ? `${moneyScale.map((ch) => `"${ch.field}"`).join(", ")} crosses number ⇄ money, which changes the unit — money holds integer minor units, number holds major — so every stored amount shifts by 100×. Convert the values first, then change the type. `
               : "") +
-            'Pass "allowFieldTypeChange": true once you have accounted for the existing rows.',
+            "Schema versions do this properly — they realise a type change as drop + re-add behind confirmDestructive, with an automatic snapshot to roll back to (/docs/schema-versions/). " +
+            'To reinterpret the existing column in place instead, pass "allowFieldTypeChange": true.',
           { changed },
         );
       }

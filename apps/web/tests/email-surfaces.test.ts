@@ -429,9 +429,20 @@ describe("normalizing what was already there", () => {
     ]) {
       await hh.fetch(`/api/items/${nslug}`, json({ name, email }));
     }
+    // The whole list: `fields` is a replace, so naming only the column being
+    // retyped would drop `name` — which the route now refuses rather than
+    // doing silently.
     await hh.fetch(
       `/api/collections/${nslug}`,
-      json({ fields: [{ name: "email", type: "email" }] }, "PATCH"),
+      json(
+        {
+          fields: [
+            { name: "name", type: "text", required: true },
+            { name: "email", type: "email" },
+          ],
+        },
+        "PATCH",
+      ),
     );
   });
 
@@ -526,7 +537,15 @@ describe("folding can create a duplicate, and the pass refuses to resolve it", (
     await hh.fetch(`/api/items/${uslug}`, json({ name: "two", email: "Ada@Example.COM" }));
     await hh.fetch(
       `/api/collections/${uslug}`,
-      json({ fields: [{ name: "email", type: "email", unique: true }] }, "PATCH"),
+      json(
+        {
+          fields: [
+            { name: "name", type: "text", required: true },
+            { name: "email", type: "email", unique: true },
+          ],
+        },
+        "PATCH",
+      ),
     );
   });
 

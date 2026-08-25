@@ -19,7 +19,7 @@ import { useLiveQuery } from "../../../../packages/client/src/react";
 import { renderWithProviders } from "./render";
 // The stub lives next door so the hook tests that need it cannot drift into
 // three subtly different versions of "an EventSource that delivers events".
-import { FakeEventSource, emitItem } from "./fake-eventsource";
+import { FakeSse, emitItem, resetSse, sseResponse } from "./fake-sse";
 
 // ── fetch mock (client-scoped — never touches global fetch) ─────────────────
 
@@ -35,9 +35,13 @@ const makeClient = (
   createClient({
     url: "http://api.test",
     tracing: false,
-    fetch: (async (input: RequestInfo | URL) => {
+    fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      // The realtime subscription is a streaming GET now, not an EventSource —
+      // answer it from the stub before the test's own handler sees it.
+      const sse = sseResponse(url, init);
+      if (sse) return sse;
       // Before its first subscribe, the SDK probes which data-plane transport
       // the deployment offers (SSE vs the Ably signal plane) — once per client.
       // Answer it here so each test's handler only sees the requests it's
@@ -81,16 +85,8 @@ const ready = () =>
 // ── Suite ───────────────────────────────────────────────────────────────────
 
 describe("useLiveQuery", () => {
-  const realEventSource = (globalThis as { EventSource?: unknown }).EventSource;
-
-  beforeEach(() => {
-    FakeEventSource.instances.length = 0;
-    (globalThis as { EventSource: unknown }).EventSource = FakeEventSource;
-  });
-  afterEach(() => {
-    cleanup();
-    (globalThis as { EventSource: unknown }).EventSource = realEventSource;
-  });
+  beforeEach(resetSse);
+  afterEach(cleanup);
 
   test("starts loading with no rows, then renders the initial list()", async () => {
     let resolveList!: (r: Response) => void;
@@ -143,7 +139,7 @@ describe("useLiveQuery", () => {
     await ready();
     expect(screen.getByText("First")).toBeTruthy();
 
-    const es = FakeEventSource.instances[0];
+    const es = FakeSse.instances[0];
     expect(es).toBeDefined();
     expect(es!.url).toContain("/api/realtime/items:todos/subscribe");
 
@@ -173,7 +169,7 @@ describe("useLiveQuery", () => {
     const { unmount } = renderWithProviders(<Probe client={client} />);
     await ready();
 
-    const es = FakeEventSource.instances[0];
+    const es = FakeSse.instances[0];
     expect(es).toBeDefined();
     expect(es!.closed).toBe(false);
 
@@ -225,18 +221,18 @@ describe("useLiveQuery", () => {
       <Probe client={client} opts={{ limit: 10 }} />,
     );
     await ready();
-    expect(FakeEventSource.instances.length).toBe(1);
+    expect(FakeSse.instances.length).toBe(1);
 
     // Same content, new object reference → the JSON key is unchanged, so the
     // effect must NOT tear down and rebuild the subscription.
     rerender(<Probe client={client} opts={{ limit: 10 }} />);
-    expect(FakeEventSource.instances.length).toBe(1);
-    expect(FakeEventSource.instances[0]!.closed).toBe(false);
+    expect(FakeSse.instances.length).toBe(1);
+    expect(FakeSse.instances[0]!.closed).toBe(false);
 
     // Actually different opts → old subscription closed, new one opened.
     rerender(<Probe client={client} opts={{ limit: 20 }} />);
-    await waitFor(() => expect(FakeEventSource.instances.length).toBe(2));
-    expect(FakeEventSource.instances[0]!.closed).toBe(true);
-    expect(FakeEventSource.instances[1]!.closed).toBe(false);
+    await waitFor(() => expect(FakeSse.instances.length).toBe(2));
+    expect(FakeSse.instances[0]!.closed).toBe(true);
+    expect(FakeSse.instances[1]!.closed).toBe(false);
   });
 });

@@ -55,6 +55,38 @@ full key format is `pak_<8-hex prefix>_<32-hex secret>`. Only the
 SHA-256 of the secret is stored; the plaintext is returned **exactly
 once** on POST and is never retrievable.
 
+### Minting one
+
+In the admin, **Settings → API keys → New key**. Over the API — as an admin,
+with a session cookie, because a key cannot mint itself the first time:
+
+```bash
+curl -X POST http://localhost:5173/api/api-keys \
+  -H 'content-type: application/json' -H 'Origin: http://localhost:5173' \
+  --cookie "$(your admin session cookie)" \
+  -d '{"name":"ci"}'
+```
+
+```json
+{ "data": { "prefix": "pak_7d84242e", "name": "ci", "roleId": null,
+            "secret": "pak_7d84242e_613c…8ed7" },
+  "warning": "Store this secret now. It cannot be retrieved later — only revoked." }
+```
+
+`secret` is the whole key and appears only in this response. Use it as
+`Authorization: Bearer pak_…`, or hand it to the CLI once:
+
+```bash
+bunx @backlex/cli login --url http://localhost:5173 --key pak_…
+```
+
+| Route | Does |
+|---|---|
+| `POST /api/api-keys` | Create. Body: `name?`, `roleId?`, `expiresAt?`. Returns the secret once. |
+| `GET /api/api-keys` | List your keys — prefixes and metadata, never the secret. |
+| `DELETE /api/api-keys/{id}` | Revoke immediately. |
+| `GET /api/api-keys/available-roles` | Roles this caller may bind with `roleId`. |
+
 - `apps/web/src/server/services/api-keys.ts` handles create / list /
   revoke / lookup.
 - Auth middleware (`middleware/session.ts`) tries the better-auth

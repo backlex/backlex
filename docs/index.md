@@ -83,6 +83,20 @@ curl -X POST http://localhost:5173/api/graphql \
   -d '{"query":"{ posts(sort:\"-views\", limit:5) { id title views } }"}'
 ```
 
+## Every route, in one place
+
+`GET /api/openapi.json` (admin auth) is the generated OpenAPI document for the
+whole instance — every route, its body schema and its responses, with your
+workspace's own `/api/items/{slug}` paths filled in from your collections. Read
+it before guessing a path: the admin surface is not uniformly prefixed
+(`/api/admin/kpis` and `/api/webhooks` are both correct), and the spec is the
+authority on which is which.
+
+```bash
+curl -s http://localhost:5173/api/openapi.json -H "Authorization: Bearer pak_…" \
+  | jq -r '.paths | keys[]' | grep booking
+```
+
 ## Generate types for your client
 
 ```bash

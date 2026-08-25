@@ -20,7 +20,7 @@ import {
   useUpload,
 } from "../../../../packages/client/src/react";
 import { renderWithProviders } from "./render";
-import { installEventSource } from "./fake-eventsource";
+import { resetSse, sseResponse } from "./fake-sse";
 
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), {
@@ -43,6 +43,9 @@ const makeClient = (
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (url.includes("/api/realtime/items-config")) return json({ transport: "sse" });
+      // The realtime subscription is a streaming GET now, not an EventSource.
+      const sse = sseResponse(url, init);
+      if (sse) return sse;
       return handler(url, init);
     }) as typeof fetch,
   });
@@ -277,11 +280,7 @@ describe("useItemMutation", () => {
 // ── useLiveQuery additions ──────────────────────────────────────────────────
 
 describe("useLiveQuery — refetch and keepPreviousData", () => {
-  let restoreEventSource: () => void;
-  beforeEach(() => {
-    restoreEventSource = installEventSource();
-  });
-  afterEach(() => restoreEventSource());
+  beforeEach(resetSse);
 
   function Probe({
     client,

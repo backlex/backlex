@@ -61,7 +61,7 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
       ? items.filter((i) => i.title.toLowerCase().includes(ql) || i.slug.toLowerCase().includes(ql)).slice(0, 8).map((i): PaletteSelection => ({ kind: "item", id: i.id, label: i.title, sub: i.slug, icon: "Inbox", meta: i.status }))
       : [];
     const actions: PaletteSelection[] = ([
-      { kind: "action", id: "new-post", label: t`New post`, icon: "Plus", meta: "C" },
+      { kind: "action", id: "new-post", label: t`New item`, icon: "Plus", meta: "C" },
       { kind: "action", id: "refresh", label: t`Refresh`, icon: "Refresh", meta: "R" },
       { kind: "action", id: "toggle-theme", label: t`Toggle theme`, icon: "Moon", meta: "D" },
     ] satisfies PaletteSelection[]).filter((x) => !ql || x.label.toLowerCase().includes(ql));

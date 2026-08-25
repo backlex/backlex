@@ -210,6 +210,45 @@ you'd use a `condition` that references stable user metadata, or
 denormalize `member_team_ids` into the user record. The DSL is
 intentionally narrow; complex flows belong in functions.
 
+## Surfaces
+
+Roles and permissions are admin-scoped on every surface.
+
+### REST
+
+```
+GET    /api/roles                          list roles (built-ins + workspace roles)
+POST   /api/roles                          create        { name, description?, admin? }
+PATCH  /api/roles/{roleId}                 rename / edit
+DELETE /api/roles/{roleId}                 delete
+
+GET    /api/roles/{roleId}/permissions     the rules bound to one role
+POST   /api/roles/{roleId}/permissions     grant  { collection, action, condition?, fields? }
+DELETE /api/permissions/{permissionId}     revoke one rule
+
+POST   /api/permissions/simulate           dry-run the resolver (below)
+```
+
+A grant returns the created row, and its `id` is what `DELETE
+/api/permissions/{id}` takes — a rule is revoked by its own id, not by
+re-stating the `(role, collection, action)` triple.
+
+```bash
+# Let the portal role read invoices, but only its own customer's.
+curl -X POST http://localhost:5173/api/roles/$ROLE/permissions \
+  -H 'content-type: application/json' -H 'Origin: http://localhost:5173' \
+  --cookie "$(your admin session cookie)" \
+  -d '{"collection":"invoices","action":"read",
+       "condition":{"customer.app_user_id":{"_eq":"$user.id"}}}'
+```
+
+### SDK · GraphQL · MCP · CLI
+
+`client.permissions.*` mirrors the REST surface; GraphQL exposes the same
+mutations; the MCP tools are `permissions-grant` / `permissions-revoke` /
+`permissions-list_for_role` / `permissions-simulate`; the CLI is
+`backlex permissions`.
+
 ## Tester / simulator
 
 Granular rules are powerful but hard to debug — *why* can't user X read

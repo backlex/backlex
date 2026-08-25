@@ -464,6 +464,19 @@ POST   /api/flows/{id}/run   run synchronously with an arbitrary JSON body → {
 POST   /api/webhook/{id}     public webhook trigger (only for `trigger: "webhook"` flows)
 ```
 
+**Run history is in the activity log, not under `/api/flows`.** Every run
+writes one `flow.run` row — `itemId` is the flow's id, and `response` carries
+`{ ok, error }` — so "did it run, and did it work" is a filter away:
+
+```bash
+curl "$URL/api/activity?action=flow.run&limit=20" --cookie "$C"
+curl "$URL/api/activity?action=flow.run&itemId=$FLOW_ID" --cookie "$C"
+```
+
+The admin's per-flow cards (last run, success rate, failures) read the same
+rows. A flow that halted mid-way also leaves its error on that row — there is
+no separate failure store to check.
+
 ```bash
 curl -X POST http://localhost:5173/api/flows \
   -H 'Content-Type: application/json' -H 'Origin: http://localhost:5173' \

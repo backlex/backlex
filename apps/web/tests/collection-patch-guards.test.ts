@@ -12,6 +12,12 @@
  *    integer minor units, `number` holds major, so a ₺184 invoice read back as
  *    ₺1.84 and the write reported success.
  *
+ * One exemption is deliberate and lives in `unknown-field-type.test.ts`, which
+ * can write the broken metadata this route refuses to accept: a field whose
+ * stored type is not a field type at all reinterprets nothing when repaired, so
+ * writing a real type back is NOT gated. The first version of this guard
+ * blocked that, putting a confirmation in front of the recovery path.
+ *
  * Both are now refused by default and gated behind an explicit acknowledgement,
  * because both ARE legitimate things to want on purpose. The tests that matter
  * most here are the ones asserting the legitimate paths still pass — a guard
@@ -90,6 +96,8 @@ describe("PATCH /api/collections/:slug destructive-body guards", () => {
     expect(b.error.details.changed).toEqual([{ field: "amount", from: "money", to: "number" }]);
     expect(b.error.message).toContain("100×");
     expect(b.error.message).toContain("allowFieldTypeChange");
+    // The safe path exists and is documented; the error is where a caller meets it.
+    expect(b.error.message).toContain("/docs/schema-versions/");
   });
 
   test("a type change goes through with the acknowledgement", async () => {
@@ -97,6 +105,7 @@ describe("PATCH /api/collections/:slug destructive-body guards", () => {
     expect((await patch({ allowFieldTypeChange: true, fields: asNumber })).status).toBe(200);
     expect((await patch({ allowFieldTypeChange: true, fields: FULL_FIELDS })).status).toBe(200);
   });
+
 
   test("the ordinary edits this endpoint exists for are unaffected", async () => {
     // Same list, one field gains a property — no drop, no type change.

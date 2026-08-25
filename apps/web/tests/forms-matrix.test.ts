@@ -273,6 +273,10 @@ describe("form matrix blocks", () => {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        // Dropping the third column is the point of this test, so the removal
+        // is acknowledged — PATCH refuses a `fields` array that loses fields
+        // without it, because doing so by accident used to be silent.
+        allowFieldRemoval: true,
         fields: [
           { name: "recommends", type: "text", options: { choices: AGREEMENT } },
           {

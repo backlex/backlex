@@ -20,6 +20,7 @@ import {
   formAvailability,
   exposedBlocks,
   exposedFieldNames,
+  FORM_HONEYPOT_FIELD,
   publicFormDefinition,
   recordFormBlocked,
   recordFormSubmission,
@@ -132,6 +133,18 @@ const PublicFormSchema = z
     languages: z.array(z.string()),
     locale: z.string(),
     turnstileSiteKey: z.string().nullable(),
+    /**
+     * Name of the honeypot input a client must render (hidden) and submit at
+     * the TOP level of the body, beside `data`.
+     *
+     * The hosted page has always drawn it, but the field name lived only in
+     * that page's markup and in prose — so anyone building their own form
+     * against this endpoint had no way to know it existed, and a value placed
+     * inside `data` is treated as an ordinary field, which writes the spam row
+     * it was meant to stop. Naming it here makes the layer usable by the
+     * clients the endpoint exists for.
+     */
+    honeypotField: z.string(),
     /** True ⇒ the page saves what is filled in as it is filled in. */
     saveProgress: z.boolean(),
     /** What this visitor left behind last time, or null for a fresh start. */
@@ -698,7 +711,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // Honeypot: bots fill every input; humans never see this one. Answer
       // with the exact success shape (id kept null on the real path too) so
       // automated probes can't distinguish a dropped submission.
-      if (body.website) {
+      if (body[FORM_HONEYPOT_FIELD as "website"]) {
         await recordFormBlocked(ctx, form.id);
         return c.json({ data: { id: null, ...success } }, 201);
       }

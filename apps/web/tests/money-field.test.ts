@@ -455,10 +455,18 @@ describe("money fields", () => {
       });
     });
 
+    /** Genuinely additive: `fields` on a collection PATCH is a REPLACE, so a
+     *  helper that names only the field it is adding silently drops the ones a
+     *  previous test added — and now gets refused for it. Read the current list
+     *  and append, so each test here asserts the rollup rule it is about. */
     const addRollupField = async (field: Record<string, unknown>) => {
+      const current = (await (await h.fetch(`/api/collections/${orders}`)).json()) as {
+        data: { fields: Record<string, unknown>[] };
+      };
+      const kept = current.data.fields.filter((f) => f.name !== field.name);
       const r = await h.fetch(
         `/api/collections/${orders}`,
-        json({ fields: [{ name: "ref", type: "text" }, field] }, "PATCH"),
+        json({ fields: [...kept, field] }, "PATCH"),
       );
       return { status: r.status, body: (await r.json()) as any };
     };

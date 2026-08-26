@@ -1,0 +1,38 @@
+name: Publish backlex (pub.dev)
+
+# Publishes sdks/dart to pub.dev as `backlex`.
+#
+# Trigger: push a tag `dart-v<semver>` (e.g. dart-v0.1.0), matching the repo's
+# other release tags (backlex-v*, cli-v*, ui-v*, worker-v*).
+#
+# NO SECRET IS INVOLVED, and that is the point. pub.dev issues no copyable API
+# token — there is no page to get one from — so the `dart pub token add
+# --env-var PUB_TOKEN` shape the other SDKs use cannot work against it; that is
+# the third-party-pub-server flow, and it failed with "Credential token … is not
+# a valid" no matter what was in the secret. pub.dev authenticates CI with a
+# short-lived GitHub-signed OIDC token instead, which is what `id-token: write`
+# below requests.
+#
+# This only works once **Automated publishing** is enabled on the package:
+#   https://pub.dev/packages/backlex/admin
+#     Repository:   backlex/backlex
+#     Tag pattern:  dart-v{{version}}
+#     …with "publishing from push events" ticked.
+# The tag pattern there and `on.push.tags` here must agree, or pub.dev rejects
+# the token even though the workflow ran.
+
+on:
+  push:
+    tags:
+      - "dart-v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  publish:
+    permissions:
+      # Requests the JWT pub.dev verifies. Nothing else is granted.
+      id-token: write
+    # The package lives in a subdirectory, so the reusable workflow is told
+    # where — without it `dart pub publish` runs at the repo root and fails.
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
+    with:
+      working-directory: sdks/dart

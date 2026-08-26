@@ -90,6 +90,46 @@ describe("Scheduled unpublish (expiry)", () => {
     expect(row._published_at ?? null).toBeNull();
   });
 
+  test("publishAt and unpublishAt together schedule a WINDOW, not just a start", async () => {
+    // Regression: the scheduled-publish branch hardcoded `_unpublish_at = NULL`
+    // to avoid inheriting a stale expiry, which also discarded an `unpublishAt`
+    // sent in the same body — silently, under a 200. "Publish at 09:00, pull it
+    // at 17:00" is the one thing scheduled publishing exists for, and it left
+    // the row with no expiry at all.
+    const startAt = new Date(Date.now() + 60_000).toISOString();
+    const endAt = new Date(Date.now() + 120_000).toISOString();
+    const res = await h.fetch(`/api/items/${slug}/${id}/publish`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ publishAt: startAt, unpublishAt: endAt }),
+    });
+    expect(res.status).toBe(200);
+    const row = (await res.json()).data as Record<string, unknown>;
+
+    expect(row._status).toBe("draft"); // not live until the start is due
+    expect(row._publish_at).not.toBeNull();
+    expect(row._unpublish_at).not.toBeNull();
+  });
+
+  test("a scheduled publish with no unpublishAt still clears a stale expiry", async () => {
+    // The other half of the same rule: absent means "no window", and a previous
+    // request's expiry must not survive into it.
+    await h.fetch(`/api/items/${slug}/${id}/publish`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ unpublishAt: new Date(Date.now() + 90_000).toISOString() }),
+    });
+    const res = await h.fetch(`/api/items/${slug}/${id}/publish`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ publishAt: new Date(Date.now() + 60_000).toISOString() }),
+    });
+    const row = (await res.json()).data as Record<string, unknown>;
+
+    expect(row._publish_at).not.toBeNull();
+    expect(row._unpublish_at).toBeNull();
+  });
+
   test("unpublishAt: null cancels a pending expiry", async () => {
     // republish + schedule, then cancel.
     await h.fetch(`/api/items/${slug}/${id}/publish`, { method: "POST" });

@@ -332,10 +332,12 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tsOf = (d: Date): Date | number => (ctx.dialect === "pg" ? d : d.getTime());
 
       // Decide the operation: unpublish > archive > schedule (future publishAt) >
-      // set-expiry (`unpublishAt`, no state change) > publish-now. Every state
-      // change clears `_unpublish_at` so a fresh publish/draft carries no stale
-      // expiry. Archiving clears the timestamps (like unpublish) but lands in the
-      // distinct `archived` state; it leaves archived via publish/unpublish.
+      // set-expiry (`unpublishAt`, no state change) > publish-now. A state change
+      // clears `_unpublish_at` so a fresh publish/draft carries no stale expiry —
+      // except a scheduled publish carrying its OWN `unpublishAt`, which is the
+      // caller setting a window rather than a leftover. Archiving clears the
+      // timestamps (like unpublish) but lands in the distinct `archived` state;
+      // it leaves archived via publish/unpublish.
       const scheduleAt =
         body.publishAt && new Date(body.publishAt).getTime() > Date.now()
           ? new Date(body.publishAt)
@@ -355,7 +357,14 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         setSql = sql`${sql.identifier("_status")} = 'archived', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("_unpublish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
       } else if (scheduleAt) {
         event = "scheduled";
-        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = ${tsOf(scheduleAt)}, ${sql.identifier("_unpublish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
+        // A window, not just a start. `_unpublish_at` is cleared on every state
+        // change so a fresh publish cannot inherit a STALE expiry — but an
+        // `unpublishAt` sent in THIS body is not stale, it is the other half of
+        // the instruction. It used to be dropped here, silently and under a 200:
+        // "publish at 09:00, pull it at 17:00" scheduled the publish and left the
+        // row with no expiry at all, which is the one combination a scheduling
+        // feature exists for. Absent (or past, or explicitly null) still clears.
+        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = ${tsOf(scheduleAt)}, ${sql.identifier("_unpublish_at")} = ${expireAt ? tsOf(expireAt) : sql`NULL`}, ${sql.identifier("updated_at")} = ${now}`;
       } else if (hasUnpublishAt && body.publishAt == null) {
         // Set/clear the expiry (auto-unpublish) time. Preserves `_status` and does
         // NOT bump `updated_at` — scheduling an expiry isn't a content edit, so it

@@ -94,6 +94,11 @@ emitting an `unpublished` event. Setting an expiry never changes the current
 state or bumps `updated_at`; `{ unpublishAt: null }` cancels it. Publishing,
 unpublishing, or archiving also clears any pending expiry.
 
+**Send both to schedule a window.** `{ publishAt, unpublishAt }` in one request
+schedules the start *and* the expiry — the campaign page that goes live on
+Monday and comes down on Friday. Only a *stale* expiry is cleared by a state
+change; one you send in the same body is the other half of the instruction.
+
 ```ts
 await backlex.from("articles").scheduleUnpublish(id, "2026-09-01T00:00:00Z");
 await backlex.from("articles").scheduleUnpublish(id, null); // cancel

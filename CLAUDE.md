@@ -119,7 +119,7 @@ So, when a change touches a publishable package:
 | `packages/ui` | `ui-v<semver>` | npm `@backlex/ui` |
 | `apps/web` (tenant runtime) | `worker-v<semver>` | the cloud template |
 
-Two tripwires enforce that: `apps/web/tests/sdk-release-drift.test.ts` (public namespaces) and `apps/web/tests/cli-release-drift.test.ts` (the `backlex help` command list). Each fails when its surface has moved without a version bump in the package's own `package.json`, and each names exactly what moved. They deliberately check **intent, not the registry** — CI cannot reach npm and should not try. Bump the version, run `bun run --cwd packages/<pkg> surface:record`, and the owed release is visible in the diff. Pushing the tag is still a separate, deliberate act.
+Two tripwires enforce that: `apps/web/tests/sdk-release-drift.test.ts` (public namespaces) and `apps/web/tests/cli-release-drift.test.ts` (the `backlex help` command list). Each fails when its surface has moved without a version bump in the package's own `package.json`, and each names exactly what moved. They deliberately check **intent, not the registry** — CI cannot reach npm and should not try. Bump the version and the owed release is visible in the diff; pushing the tag is still a separate, deliberate act. **After the tag ships, run `bun run --cwd packages/<pkg> surface:record`** — that restates the baseline as what npm now holds, and without it the next surface change slips through (the version already differs from the stale baseline, so the guard has nothing to object to).
 
 `published-surface.json` in each package records what npm **actually holds**, measured against the installed package rather than assumed — so the baseline is honest even when the repo has drifted past it.
 

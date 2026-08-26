@@ -246,7 +246,15 @@ describe("approvals — surface parity", () => {
       "approvals.cancel",
     ]);
     const client = sdk().approvals as Record<string, unknown>;
-    expect(Object.keys(client).sort()).toEqual(["cancel", "create", "get", "list"]);
+    expect(Object.keys(client).sort()).toEqual(["cancel", "create", "get", "list", "request"]);
+    // `request` is an alias of `create` — the verb the CLI and MCP both use.
+    // What this test is really guarding is that NO surface grows a way to
+    // decide, so say that directly rather than leaning on a closed list that a
+    // harmless alias can trip.
+    for (const forbidden of ["approve", "reject", "decide", "resolve", "deny"]) {
+      expect(Object.keys(client)).not.toContain(forbidden);
+      expect(approvalsTools.map((t) => t.name)).not.toContain(`approvals.${forbidden}`);
+    }
   });
 
   test("the CLI exposes the same verbs and flags", () => {

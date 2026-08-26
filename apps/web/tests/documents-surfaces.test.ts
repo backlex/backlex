@@ -174,14 +174,14 @@ describe("MCP", () => {
   test("exposes the four tools", () => {
     expect(documentsTools.map((t) => t.name).sort()).toEqual([
       "documents.render",
+      "documents.save",
       "documents.templates_delete",
       "documents.templates_list",
-      "documents.templates_save",
     ]);
   });
 
   test("save then list then render", async () => {
-    await tool("documents.templates_save").handler(
+    await tool("documents.save").handler(
       { key: "contract", bodyHtml: "<html>{{ data.name }}</html>" },
       ctx(),
     );
@@ -236,7 +236,7 @@ describe("the override rule holds on every surface", () => {
       [
         "mcp",
         (key, body) => {
-          const t = documentsTools.find((x) => x.name === "documents.templates_save")!;
+          const t = documentsTools.find((x) => x.name === "documents.save")!;
           return t.handler({ key, bodyHtml: body }, { fetchInternal: (p: string, init?: RequestInit) => h.fetch(p, init) } as any);
         },
       ],

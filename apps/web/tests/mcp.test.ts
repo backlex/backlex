@@ -183,7 +183,7 @@ describe("MCP — initialize + tools/list", () => {
     expect(names).toContain("webhooks.test");
     expect(names).toContain("flows.list");
     expect(names).toContain("flows.get");
-    expect(names).toContain("flows.invoke");
+    expect(names).toContain("flows.run");
     expect(names).toContain("notifications.list");
     expect(names).toContain("notifications.send");
     expect(names).toContain("notifications.mark_read");
@@ -1515,12 +1515,12 @@ describe("MCP — webhooks + flows tools", () => {
     expect(Array.isArray(rows)).toBe(true);
   });
 
-  test("flows.invoke on unknown id returns isError", async () => {
+  test("flows.run on unknown id returns isError", async () => {
     const r = await mcp(h, {
       jsonrpc: "2.0",
       id: 500,
       method: "tools/call",
-      params: { name: "flows.invoke", arguments: { id: "no-such-flow", input: {} } },
+      params: { name: "flows.invoke", arguments: { id: "no-such-flow", input: {} } }, // retired id: still resolves
     });
     expect((r as RpcSuccess).result.isError).toBe(true);
   });

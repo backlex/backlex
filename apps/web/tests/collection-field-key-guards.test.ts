@@ -191,7 +191,7 @@ describe("collection field-definition guards", () => {
   });
 
   describe("relation targets", () => {
-    test("a relation to a collection that does not exist is refused", async () => {
+    test("a relation to a collection that does not exist is REPORTED, not refused", async () => {
       const r = await create({
         slug: `danglingrel_${stamp}`,
         fields: [
@@ -199,24 +199,73 @@ describe("collection field-definition guards", () => {
           { name: "ghost", type: "relation", to: "definitely_not_a_collection" },
         ],
       });
-      expect(r.status).toBe(422);
-      const b = (await r.json()) as { error: { message: string } };
-      expect(b.error.message).toContain("definitely_not_a_collection");
-      expect(b.error.message).toContain("does not exist");
-      // It has to say how to get out of the chicken-and-egg, because a parent
-      // rollup + child relation pair genuinely cannot be declared in one pass.
-      expect(b.error.message).toContain("PATCH");
+      // 201 with a warning, not a 422 — see the cycle test below for why.
+      expect(r.status).toBe(201);
+      const b = (await r.json()) as { warning?: string };
+      expect(b.warning).toContain("definitely_not_a_collection");
+      expect(b.warning).toContain("does not exist yet");
+      // Actionable both ways: it might be a forward reference, or a typo.
+      expect(b.warning).toContain("typo");
     });
 
-    test("relation_many is held to the same rule", async () => {
+    test("relation_many is reported the same way", async () => {
       const r = await create({
         slug: `danglingmany_${stamp}`,
         fields: [{ name: "ghosts", type: "relation_many", to: "still_not_a_collection" }],
       });
-      expect(r.status).toBe(422);
+      expect(r.status).toBe(201);
+      expect(((await r.json()) as { warning?: string }).warning).toContain("still_not_a_collection");
     });
 
-    test("a self-reference is allowed — a tree needs one", async () => {
+    test("a parent rollup + child relation pair can still be declared", async () => {
+      // The reason this is a warning and not a refusal. An invoice whose total
+      // rolls up its lines, and a line whose relation points back at the
+      // invoice, is an ordinary shape — and two strict checks make it
+      // unexpressible: the child cannot go first (its `to` has no parent yet),
+      // the parent cannot go first (its `rollup.from` has no child yet), and no
+      // ordering resolves a cycle. The first version of this guard refused, and
+      // twenty-one tests in the rollup suite said so.
+      const inv = `cyc_invoices_${stamp}`;
+      const lines = `cyc_lines_${stamp}`;
+
+      const childFirst = await create({
+        slug: lines,
+        fields: [
+          { name: "invoice", type: "relation", to: inv },
+          { name: "amount", type: "number" },
+        ],
+      });
+      expect(childFirst.status).toBe(201);
+      expect(((await childFirst.json()) as { warning?: string }).warning).toContain(inv);
+
+      const parent = await create({
+        slug: inv,
+        fields: [
+          { name: "number", type: "text" },
+          { name: "total", type: "number", rollup: { from: lines, via: "invoice", fn: "sum", field: "amount" } },
+        ],
+      });
+      expect(parent.status).toBe(201);
+      // No warning now — the forward reference resolved by being created.
+      expect(((await parent.json()) as { warning?: string }).warning).toBeUndefined();
+
+      // And the pair works: a row can be written through the relation.
+      const p = await h.fetch(`/api/items/${inv}`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ number: "INV-1" }),
+      });
+      expect(p.status).toBe(201);
+      const invoiceId = ((await p.json()) as { data: { id: string } }).data.id;
+      const line = await h.fetch(`/api/items/${lines}`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ invoice: invoiceId, amount: 10 }),
+      });
+      expect(line.status).toBe(201);
+    });
+
+    test("a self-reference is allowed and warns about nothing", async () => {
       const slug = `tree_${stamp}`;
       const r = await create({
         slug,
@@ -226,6 +275,8 @@ describe("collection field-definition guards", () => {
         ],
       });
       expect(r.status).toBe(201);
+      // Resolvable by construction, so it must not be reported as dangling.
+      expect(((await r.json()) as { warning?: string }).warning).toBeUndefined();
     });
 
     test("a relation to a real collection still passes, and rows can be written", async () => {
@@ -260,7 +311,7 @@ describe("collection field-definition guards", () => {
       expect(w.status).toBe(201);
     });
 
-    test("PATCH is held to the same rule as POST", async () => {
+    test("PATCH reports it the same way POST does", async () => {
       const slug = `patchrel_${stamp}`;
       expect((await create({ slug, fields: [{ name: "t", type: "text" }] })).status).toBe(201);
       const r = await h.fetch(`/api/collections/${slug}`, {
@@ -273,8 +324,24 @@ describe("collection field-definition guards", () => {
           ],
         }),
       });
-      expect(r.status).toBe(422);
-      expect(((await r.json()) as { error: { message: string } }).error.message).toContain("nope_not_here");
+      expect(r.status).toBe(200);
+      expect(((await r.json()) as { warning?: string }).warning).toContain("nope_not_here");
+    });
+
+    test("the write path is still what refuses — the warning does not replace it", async () => {
+      // The warning makes the typo visible at definition time; the precise
+      // error at first write is unchanged and is still the hard stop.
+      const slug = `danglingwrite_${stamp}`;
+      expect(
+        (await create({ slug, fields: [{ name: "ghost", type: "relation", to: "no_such_thing" }] })).status,
+      ).toBe(201);
+      const w = await h.fetch(`/api/items/${slug}`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ ghost: "x" }),
+      });
+      expect(w.status).toBe(422);
+      expect(((await w.json()) as { error: { message: string } }).error.message).toContain("no_such_thing");
     });
   });
 });

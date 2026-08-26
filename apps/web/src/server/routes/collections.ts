@@ -582,26 +582,44 @@ export const assertKnownFieldKeys = (fields: unknown): void => {
 };
 
 /**
- * Refuse a relation whose target collection does not exist.
+ * Report — but do not refuse — a relation whose target collection does not
+ * exist yet.
  *
- * `rollup.from` has always been checked here; `relation.to` was not, so the two
- * cross-collection references on the same endpoint disagreed — a typo in `to`
- * returned 201 and produced a collection that cannot accept a single row:
- * every write answers "Relation target collection … not found in this
- * workspace", every `expand` answers "Relation target not active", and a filter
- * through it silently returns nothing. The information needed to say so is
- * available at definition time, which is where the rollup check already says it.
+ * `rollup.from` has always been CHECKED here; `relation.to` was not checked at
+ * all, so the two cross-collection references on the same endpoint disagreed. A
+ * typo in `to` returned a bare 201 and produced a collection that cannot accept
+ * a single row: every write answers "Relation target collection … not found in
+ * this workspace", every `expand` answers "Relation target not active", and a
+ * filter through it silently returns nothing.
  *
- * Self-references are allowed (a tree needs one) and are resolvable by
- * construction, so they skip the lookup.
+ * The first attempt at this refused outright, symmetrically with rollup. That
+ * was wrong, and the repo's own rollup suite is what proved it: a parent whose
+ * total rolls up a child, and a child whose relation points back at that
+ * parent, is an ordinary shape — and the two strict checks together make it
+ * unexpressible. The child cannot be created first (its `to` has no parent
+ * yet), the parent cannot be created first (its `rollup.from` has no child
+ * yet), and no ordering resolves a cycle. Twenty-one tests said so.
+ *
+ * The asymmetry between the two checks is therefore deliberate, not an
+ * oversight: `rollup` inspects the child's SHAPE (that `via` is a relation
+ * field pointing back here, that `field` is numeric), which is impossible
+ * without the child, while `to` only needs a name that will resolve by the time
+ * a row is written. So a forward reference is allowed and reported, and the
+ * write path — which already produces a precise error — stays the thing that
+ * refuses.
+ *
+ * Self-references are resolvable by construction, so they skip the lookup.
+ *
+ * @returns human-readable warnings, one per dangling target, or `[]`.
  */
-export const validateRelationTargets = async (
+export const checkRelationTargets = async (
   ctx: Parameters<typeof loadCollection>[0],
   tenantId: string,
   selfSlug: string,
   fields: readonly { name: string; type: string; to?: string | null }[],
-): Promise<void> => {
+): Promise<string[]> => {
   const seen = new Map<string, boolean>();
+  const warnings: string[] = [];
   for (const f of fields) {
     if (f.type !== "relation" && f.type !== "relation_many") continue;
     const target = f.to;
@@ -617,12 +635,12 @@ export const validateRelationTargets = async (
       seen.set(target, exists);
     }
     if (!exists) {
-      throw new AppError(
-        "VALIDATION",
-        `Field "${f.name}": relation.to references collection "${target}", which does not exist. Create it first, or add this field afterwards with PATCH — the target has to resolve before a row can be written.`,
+      warnings.push(
+        `Field "${echo(f.name)}": relation.to names "${echo(target)}", which does not exist yet. Rows cannot be written to this collection until it does — create it, or fix the name if that is a typo.`,
       );
     }
   }
+  return warnings;
 };
 
 const FieldSchema = FieldObject.refine(
@@ -1350,8 +1368,14 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // stored. (Chicken-and-egg is real but one-directional: create the child
     // first, then the parent that rolls it up, or PATCH the rollup on after.)
     await validateRollupTargets(c.get("ctx"), tenantId, { slug: body.slug, pkType }, body.fields);
-    // Same class of check, the other cross-collection reference on this body.
-    await validateRelationTargets(c.get("ctx"), tenantId, body.slug, body.fields);
+    // The other cross-collection reference on this body. Reported, not
+    // refused — see `checkRelationTargets` for why the two are asymmetric.
+    const relationWarnings = await checkRelationTargets(
+      c.get("ctx"),
+      tenantId,
+      body.slug,
+      body.fields,
+    );
     // Same reason, one table over: a transition rule gated on a role name that
     // does not exist is a move nobody can ever make.
     await validateTransitionRoles(c.get("ctx"), tenantId, body.fields);
@@ -1458,7 +1482,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
       payload: { fields: body.fields.length, adopted: body.adopted },
       response: { data: created },
     });
-    return c.json({ data: created }, 201);
+    return c.json(
+      relationWarnings.length ? { data: created, warning: relationWarnings.join(" ") } : { data: created },
+      201,
+    );
   })
   .post("/layout", ...DDL_GATE, async (c) => {
     const body = LayoutInput.parse(await c.req.json());
@@ -1670,6 +1697,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
         : {}),
       updatedAt: new Date(),
     };
+    let patchRelationWarnings: string[] = [];
     if (body.fields) {
       await validateRollupTargets(
         c.get("ctx"),
@@ -1680,7 +1708,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
         },
         merged.fields as FieldDef[],
       );
-      await validateRelationTargets(
+      patchRelationWarnings = await checkRelationTargets(
         c.get("ctx"),
         tenantId,
         nextSlug,
@@ -1781,6 +1809,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       slug: nextSlug,
       renamed: renameCounts,
       ftsBackfill,
+      ...(patchRelationWarnings.length ? { warning: patchRelationWarnings.join(" ") } : {}),
       ...(rollupBackfill ? { rollupBackfill } : {}),
       ...(sequenceSync ? { sequenceSync } : {}),
     };

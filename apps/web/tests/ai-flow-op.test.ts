@@ -295,7 +295,11 @@ describe("AI flow ops", () => {
           ],
           { subject: "my deploy is failing" },
         );
-        expect(out).toEqual({ ok: true });
+        // The `log` op's rendered line now rides on the run, which turns the
+        // comment above into an assertion: the label really was readable by the
+        // step that followed, rather than only inferred from the run not
+        // failing.
+        expect(out).toEqual({ ok: true, log: ["routed to technical"] });
 
         const call = mock.calls[0] as AnthropicCall;
         expect(userText(call.body)).toBe("my deploy is failing");
@@ -317,7 +321,7 @@ describe("AI flow ops", () => {
             { type: "ai.classify", input: "where is my invoice", labels: LABELS },
             { type: "log", message: "{{ $last.label }}" },
           ]),
-        ).toEqual({ ok: true });
+        ).toEqual({ ok: true, log: ["billing"] });
       } finally {
         mock.restore();
       }

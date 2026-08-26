@@ -100,7 +100,10 @@ describe("document.render flow op", () => {
       { type: "document.render", html: "<html><body>{{ data.no }}</body></html>", filename: "inv-{{ data.no }}" },
       { type: "log", message: "stored {{ $last.key }} as {{ $last.filename }}" },
     ], { no: "114" });
-    expect(out).toEqual({ ok: true });
+    // The `log` op's rendered line rides on the run now, so this asserts the
+    // stored key reached `$last` rather than only that nothing threw.
+    expect(out.ok).toBe(true);
+    expect(out.log?.[0]).toMatch(/^stored documents\/.+ as inv-\d+\.pdf$/);
   });
 
   test("the storage key is random, not derived from the filename", async () => {

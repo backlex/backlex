@@ -298,7 +298,7 @@ describe("report.deliver flow op", () => {
       { type: "report.deliver", dashboardId: id, to: "{{ data.email }}", subject: "Monthly" },
       { type: "log", message: "sent to {{ $last.sentTo }}" },
     ], { email: "boss@example.com" });
-    expect(out).toEqual({ ok: true });
+    expect(out).toEqual({ ok: true, log: ["sent to boss@example.com"] });
     expect(logs.some((l) => l.includes("boss@example.com"))).toBe(true);
   });
 

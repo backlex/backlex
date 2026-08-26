@@ -12,30 +12,46 @@
  * has ~40 keys (see `routes/collections.ts`). Key properties are documented;
  * extra properties are accepted. Keep summaries in sync with the route file.
  */
+import { FIELD_TYPES } from "@backlex/db";
 import { apiRegistry, errorResponses, SECURITY, z } from "../lib/openapi";
 
 const CollectionField = z
   .object({
     name: z.string().openapi({ example: "title" }),
-    type: z.string().openapi({
+    // Emitted from the canonical list rather than described in prose. The prose
+    // it replaces named `datetime`, which is not a field type and is refused by
+    // the server (the real one is `timestamp`) — and because the property was a
+    // bare `string`, every generated client typed it as `string` instead of the
+    // 19-member union, so the wrong word could not be caught until runtime.
+    type: z.enum(FIELD_TYPES).openapi({
       description:
-        "Field storage type (`text`, `number`, `boolean`, `datetime`, `json`, `relation`, `file`, …).",
+        "Field storage type. `divider` and `notice` are presentational — no column, no value.",
       example: "text",
     }),
     required: z.boolean().optional(),
     unique: z.boolean().optional(),
+    indexed: z.boolean().optional().openapi({
+      description: "Plain B-tree index on the column — speeds up filter / sort.",
+    }),
     searchable: z.boolean().optional().openapi({
       description: "Include this field in the collection's full-text index (when `fts` is on).",
     }),
     vectorize: z.boolean().optional().openapi({
       description: "Auto-embed this field on write (when the collection's `vectorize` is on).",
     }),
-    hidden: z.boolean().optional(),
+    to: z.string().optional().openapi({
+      description:
+        "Target collection slug — required for `relation` / `relation_many`, and refused if no such collection exists.",
+      example: "customers",
+    }),
+    // `hidden` used to be listed here and the server has never accepted it:
+    // hiding a field is a `conditions` effect, not a flat property. It was
+    // silently dropped on every write until the unknown-key guard landed.
     default: z.unknown().optional(),
   })
   .openapi("CollectionField", {
     description:
-      "Representative field definition. Additional per-type options (relation targets, validation rules, field conditions, display hints) are accepted — see the admin schema editor for the full surface.",
+      "Field definition. `type` is closed; the other keys shown are the type-independent ones. Per-type options are NESTED under a key named after the concern — `money: { currency | currencyField }`, `phone: { region | regionField }`, `slug: { from: [...] }`, `rollup`, `range`, `sequence`, `geo`, `transitions`, `validation`, `conditions`, `format`. Writing one of those flat (e.g. `region` beside `type: \"phone\"`) is refused with the nested shape in the message, rather than being ignored.",
   });
 
 const Collection = z

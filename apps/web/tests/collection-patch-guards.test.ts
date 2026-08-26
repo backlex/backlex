@@ -109,10 +109,23 @@ describe("PATCH /api/collections/:slug destructive-body guards", () => {
 
   test("the ordinary edits this endpoint exists for are unaffected", async () => {
     // Same list, one field gains a property — no drop, no type change.
+    //
+    // This said `note:` until the unknown-field-key guard landed, and `note` is
+    // not a field key — the per-field help text is `description`. Zod stripped
+    // it, so the property this test claims to add was never stored and the
+    // assertion passed on the status code alone. Same shape as the guard it
+    // sits beside: the write reported success and did less than it said.
     const withHelp = FULL_FIELDS.map((f) =>
-      f.name === "status" ? { ...f, note: "draft → sent → paid" } : f,
+      f.name === "status" ? { ...f, description: "draft → sent → paid" } : f,
     );
     expect((await patch({ fields: withHelp })).status).toBe(200);
+    // …and now assert it actually landed, which is what the test meant to say.
+    const stored = (await (await h.fetch(`/api/collections/${slug}`)).json()) as {
+      data: { fields: { name: string; description?: string }[] };
+    };
+    expect(stored.data.fields.find((f) => f.name === "status")?.description).toBe(
+      "draft → sent → paid",
+    );
     // A body that never mentions `fields` must not be touched by either guard.
     expect((await patch({ note: "Amounts are TRY." })).status).toBe(200);
     // Adding a field is additive and needs no acknowledgement.

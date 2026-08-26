@@ -83,8 +83,7 @@ const DateBoundSchema = z.union([
   }),
 ]);
 
-const FieldSchema = z
-  .object({
+const FieldObject = z.object({
     name: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/, "snake_case"),
     // Derived from the canonical list in @backlex/db (which carries the
     // per-type notes and a compile-time exhaustiveness guard) — a hand-copied
@@ -477,11 +476,162 @@ const FieldSchema = z
         initial: z.array(z.string().max(120)).min(1).max(64).optional(),
       })
       .optional(),
-  })
-  .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
+});
+
+/**
+ * Every key a field definition may carry, derived from the schema above rather
+ * than listed again — so adding an option there cannot leave this behind.
+ *
+ * Zod strips unknown keys by default, which on this endpoint is the worst
+ * possible answer: `{"requried": true}` was accepted with `201`, stored as a
+ * plain nullable column, and the constraint the operator asked for simply did
+ * not exist. Nothing said so until a write that should have been rejected went
+ * through. Same for a per-type option written flat instead of nested —
+ * `{"type":"phone","region":"TR"}` parsed, dropped `region`, and only failed
+ * much later on the first national-format number, with a message telling the
+ * operator to "set a region on the field" they had just set.
+ */
+const KNOWN_FIELD_KEYS: ReadonlySet<string> = new Set(Object.keys(FieldObject.shape));
+
+/**
+ * This guard runs BEFORE Zod, which is the only place it can run — Zod is what
+ * removes the keys it exists to notice. That means it sees an unvalidated body,
+ * so every loop below is bounded rather than trusting the shape. Without these
+ * caps a body of many fields, each with many unknown keys, would run
+ * `editDistance` against every known key before anything had checked the body's
+ * size at all — unbounded work on a CPU-metered Worker.
+ */
+const MAX_FIELDS_SCANNED = 500;
+const MAX_UNKNOWN_REPORTED = 5;
+const MAX_ECHOED_LEN = 60;
+
+/**
+ * Only ever echo caller-supplied text back in a bounded, single-line form.
+ *
+ * `Zl`/`Zp` are in the class deliberately: U+2028 LINE SEPARATOR is neither
+ * `Cc` nor `Cf`, so a class of just those two let it through — it breaks a line
+ * anywhere the message is read as text, and it is a legal JS line terminator.
+ */
+const echo = (v: string): string =>
+  v.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, " ").slice(0, MAX_ECHOED_LEN);
+
+/** Levenshtein, capped — only used to suggest a near-miss key name. */
+const editDistance = (a: string, b: string): number => {
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0] as number;
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j] as number;
+      prev[j] = Math.min(
+        (prev[j] as number) + 1,
+        (prev[j - 1] as number) + 1,
+        diag + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+      diag = tmp;
+    }
+  }
+  return prev[b.length] as number;
+};
+
+/**
+ * Refuse a field definition carrying keys the schema does not know.
+ *
+ * Runs on the RAW body, before Zod parses, because by the time Zod is done the
+ * offending keys are already gone. A near-miss gets named explicitly — the
+ * whole point is that the operator's own JSON looks correct to them.
+ */
+export const assertKnownFieldKeys = (fields: unknown): void => {
+  if (!Array.isArray(fields)) return;
+  const scanned = fields.slice(0, MAX_FIELDS_SCANNED);
+  for (let i = 0; i < scanned.length; i++) {
+    const f = scanned[i];
+    if (!f || typeof f !== "object" || Array.isArray(f)) continue;
+    const unknown = Object.keys(f as Record<string, unknown>).filter(
+      (k) => !KNOWN_FIELD_KEYS.has(k),
+    );
+    if (!unknown.length) continue;
+    const named = (f as { name?: unknown }).name;
+    const where =
+      typeof named === "string" && named ? `Field "${echo(named)}"` : `fields.${i}`;
+    const shown = unknown.slice(0, MAX_UNKNOWN_REPORTED);
+    const detail = shown
+      .map((k) => {
+        // Only worth suggesting for something key-shaped; a long blob has no
+        // near miss and running the distance over it is the expensive case.
+        const near =
+          k.length <= 40
+            ? [...KNOWN_FIELD_KEYS]
+                .map(
+                  (valid) =>
+                    [valid, editDistance(k.toLowerCase(), valid.toLowerCase())] as const,
+                )
+                .filter(([, d]) => d > 0 && d <= 2)
+                .sort((a, b) => a[1] - b[1])[0]
+            : undefined;
+        return near ? `"${echo(k)}" (did you mean "${near[0]}"?)` : `"${echo(k)}"`;
+      })
+      .join(", ");
+    const more =
+      unknown.length > shown.length ? ` (+${unknown.length - shown.length} more)` : "";
+    throw new AppError(
+      "VALIDATION",
+      `${where}: unknown field option(s) ${detail}${more}. These are ignored rather than applied, so the field would be created without them. Per-type options are nested under their type — e.g. {"type":"phone","phone":{"region":"TR"}}, {"type":"money","money":{"currency":"TRY"}}.`,
+    );
+  }
+};
+
+/**
+ * Refuse a relation whose target collection does not exist.
+ *
+ * `rollup.from` has always been checked here; `relation.to` was not, so the two
+ * cross-collection references on the same endpoint disagreed — a typo in `to`
+ * returned 201 and produced a collection that cannot accept a single row:
+ * every write answers "Relation target collection … not found in this
+ * workspace", every `expand` answers "Relation target not active", and a filter
+ * through it silently returns nothing. The information needed to say so is
+ * available at definition time, which is where the rollup check already says it.
+ *
+ * Self-references are allowed (a tree needs one) and are resolvable by
+ * construction, so they skip the lookup.
+ */
+export const validateRelationTargets = async (
+  ctx: Parameters<typeof loadCollection>[0],
+  tenantId: string,
+  selfSlug: string,
+  fields: readonly { name: string; type: string; to?: string | null }[],
+): Promise<void> => {
+  const seen = new Map<string, boolean>();
+  for (const f of fields) {
+    if (f.type !== "relation" && f.type !== "relation_many") continue;
+    const target = f.to;
+    if (!target || target === selfSlug) continue;
+    let exists = seen.get(target);
+    if (exists === undefined) {
+      try {
+        await loadCollection(ctx, tenantId, target);
+        exists = true;
+      } catch {
+        exists = false;
+      }
+      seen.set(target, exists);
+    }
+    if (!exists) {
+      throw new AppError(
+        "VALIDATION",
+        `Field "${f.name}": relation.to references collection "${target}", which does not exist. Create it first, or add this field afterwards with PATCH — the target has to resolve before a row can be written.`,
+      );
+    }
+  }
+};
+
+const FieldSchema = FieldObject.refine(
+  (f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to,
+  {
     message: "relation / relation_many field must specify `to` (target collection slug)",
     path: ["to"],
-  });
+  },
+);
 
 const ModelEnum = z.enum(
   EMBEDDING_MODEL_NAMES as [EmbeddingModel, ...EmbeddingModel[]],
@@ -965,7 +1115,11 @@ export const collectionsRoutes = new Hono<AppBindings>()
    *     - applier short-circuits — never touches the user's table
    */
   .post("/", ...DDL_GATE, async (c) => {
-    const body = CollectionInput.parse(await c.req.json());
+    const raw = await c.req.json();
+    // Before Zod: it strips unknown keys, so an ignored option is invisible
+    // afterwards. See assertKnownFieldKeys.
+    assertKnownFieldKeys((raw as { fields?: unknown })?.fields);
+    const body = CollectionInput.parse(raw);
     try {
       validateFields(body.fields);
     } catch (e) {
@@ -1196,6 +1350,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // stored. (Chicken-and-egg is real but one-directional: create the child
     // first, then the parent that rolls it up, or PATCH the rollup on after.)
     await validateRollupTargets(c.get("ctx"), tenantId, { slug: body.slug, pkType }, body.fields);
+    // Same class of check, the other cross-collection reference on this body.
+    await validateRelationTargets(c.get("ctx"), tenantId, body.slug, body.fields);
     // Same reason, one table over: a transition rule gated on a role name that
     // does not exist is a move nobody can ever make.
     await validateTransitionRoles(c.get("ctx"), tenantId, body.fields);
@@ -1361,7 +1517,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
   })
   .patch("/:slug", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
-    const body = CollectionPatch.parse(await c.req.json());
+    const rawPatch = await c.req.json();
+    assertKnownFieldKeys((rawPatch as { fields?: unknown })?.fields);
+    const body = CollectionPatch.parse(rawPatch);
     if (body.fields) {
       try {
         validateFields(body.fields);
@@ -1520,6 +1678,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
           slug: nextSlug,
           pkType: (merged.pkType ?? merged.pk_type) as string | undefined,
         },
+        merged.fields as FieldDef[],
+      );
+      await validateRelationTargets(
+        c.get("ctx"),
+        tenantId,
+        nextSlug,
         merged.fields as FieldDef[],
       );
       await validateTransitionRoles(c.get("ctx"), tenantId, merged.fields as FieldDef[]);

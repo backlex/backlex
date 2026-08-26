@@ -51,9 +51,13 @@ switches organization after sign-in. Tracing is on by default; turn it off with
 
 :::note
 All clients are Apache-2.0 and verified with offline contract + HTTP-layer tests.
-The registries currently hold **`0.0.1`**; the repo is at `0.1.0`, which adds the
-`X-Backlex-Org` and `traceparent` headers above and is **not published yet** —
-`publish-sdks.yml` is a manual `workflow_dispatch`. The ten: Python (PyPI), .NET (NuGet), Ruby (RubyGems),
+**`0.1.0` is live** on PyPI, RubyGems, crates.io, NuGet and Maven Central (Java +
+Kotlin). Dart, Go, Swift and PHP are still at `0.0.1`, and for a reason worth
+knowing: none of the four is a plain registry push. Dart authenticates CI with a
+short-lived OIDC token rather than an API key — pub.dev issues no copyable token
+at all — and publishes from a `dart-v*` tag via `publish-dart.yml`. Go, Swift and
+PHP live in the `backlex-{go,swift,php}` mirror repos and release by having a tag
+pushed there (`sync-sdk-mirrors.yml`); Packagist reads those tags. The ten: Python (PyPI), .NET (NuGet), Ruby (RubyGems),
 Dart (pub.dev), Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`),
 PHP (Packagist), Java + Kotlin (Maven Central, `com.backlex:backlex` /
 `com.backlex:backlex-kotlin`). The release runbook lives in

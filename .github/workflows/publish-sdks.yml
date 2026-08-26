@@ -1,5 +1,10 @@
 name: Publish client SDKs
 
+# Dart is NOT here — see .github/workflows/publish-dart.yml. pub.dev issues no
+# copyable API token, so it cannot be published with a repo secret like the
+# rest; it authenticates CI with a short-lived OIDC token and is triggered by a
+# `dart-v*` tag instead of this workflow's dispatch.
+
 # Manual-only. Packs (and optionally publishes) the language SDKs under sdks/*.
 #
 # Trigger from the Actions tab:
@@ -7,11 +12,16 @@ name: Publish client SDKs
 #   - publish: false (default) packs / dry-runs only; true runs the real publish
 #              step — which needs the matching registry secret to be configured.
 #
-# Optional repo secrets (only needed when publish=true for that SDK):
-#   PYPI_API_TOKEN · NUGET_API_KEY · MAVEN_CENTRAL_TOKEN · RUBYGEMS_API_KEY
-#   PUB_TOKEN · CARGO_REGISTRY_TOKEN
-# Go and Swift have no registry — they release via a pushed git tag (see
-# sdks/PUBLISHING.md), so they are not handled here.
+# Repo secrets, needed only when publish=true for that SDK. A missing one does
+# not skip the job — it runs and fails at the registry, so check `gh secret list`
+# against this list first:
+#   PYPI_API_TOKEN · RUBYGEMS_API_KEY · CARGO_REGISTRY_TOKEN · NUGET_API_KEY
+#   MAVEN_CENTRAL_USERNAME · MAVEN_CENTRAL_PASSWORD
+#   MAVEN_GPG_PASSPHRASE · GPG_PRIVATE_KEY   (java + kotlin sign their artifacts)
+#
+# PHP is here but publishes nothing on its own: Packagist reads git tags from
+# the backlex-php mirror, so it needs sync-sdk-mirrors.yml (MIRROR_PUSH_TOKEN)
+# to push one. Go and Swift are the same shape and are not handled here at all.
 
 on:
   workflow_dispatch:
@@ -21,7 +31,7 @@ on:
         required: true
         type: choice
         default: all
-        options: [all, python, dotnet, java, kotlin, ruby, php, dart, rust]
+        options: [all, python, dotnet, java, kotlin, ruby, php, rust]
       publish:
         description: "Actually publish (needs the registry secret). Off = pack/dry-run only."
         required: false
@@ -165,26 +175,6 @@ jobs:
       - run: composer validate --strict
       # Packagist is webhook-driven: a pushed semver git tag updates the package.
       # There is no artifact to push here — see sdks/PUBLISHING.md.
-
-  dart:
-    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'dart' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: sdks/dart
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dart-lang/setup-dart@v1
-      - run: dart pub get
-      - run: dart pub publish --dry-run
-      - name: Publish to pub.dev
-        if: ${{ inputs.publish }}
-        env:
-          PUB_TOKEN: ${{ secrets.PUB_TOKEN }}
-        run: |
-          dart pub token add https://pub.dev --env-var PUB_TOKEN
-          dart pub publish --force
 
   rust:
     if: ${{ inputs.sdk == 'all' || inputs.sdk == 'rust' }}

@@ -14,6 +14,7 @@ the TS SDK:
 from __future__ import annotations
 
 import json
+import secrets
 from typing import Any, Dict, List, Optional, cast
 from urllib.parse import quote, urlencode
 
@@ -359,6 +360,15 @@ def _safe_json(resp: httpx.Response) -> Optional[dict[str, Any]]:
         return None
 
 
+def make_traceparent() -> str:
+    """A W3C ``traceparent``: ``00-<32-hex trace id>-<16-hex span id>-01``.
+
+    Mirrors ``packages/client/src/trace.ts`` — the value the API parses. Fresh
+    per request, because a span id reused across calls collapses them into one.
+    """
+    return f"00-{secrets.token_hex(16)}-{secrets.token_hex(8)}-01"
+
+
 class Client:
     """Top-level backlex client. Prefer the ``create_client`` factory."""
 
@@ -370,6 +380,8 @@ class Client:
         workspace: Optional[str] = None,
         token: Optional[str] = None,
         tenant: Optional[str] = None,
+        org: Optional[str] = None,
+        tracing: bool = True,
         http: Optional[httpx.Client] = None,
     ) -> None:
         self._url = url.rstrip("/")
@@ -377,6 +389,8 @@ class Client:
         self._workspace = workspace
         self._app_token: Optional[str] = token
         self._tenant = tenant
+        self._org = org
+        self._tracing = tracing
         # ``follow_redirects`` keeps cookie-session flows working; the client
         # owns a cookie jar so same-origin sessions persist across calls.
         self._http = http or httpx.Client(follow_redirects=True)
@@ -385,9 +399,18 @@ class Client:
 
     # -- internals -----------------------------------------------------------
 
+    def set_org(self, org: Optional[str]) -> None:
+        """Act inside a specific organization from here on (slug or id).
+
+        Mirrors the TS ``client.orgs.use(...)``. Only meaningful for app-plane
+        sessions, and only accepted for orgs the signed-in end-user belongs to.
+        """
+        self._org = org
+
     def _auth_header(self) -> Dict[str, str]:
-        # Auth + optional explicit tenant scoping (slug or id), used by every
-        # request path (data, storage, realtime).
+        # Auth + optional tenant/org scoping + tracing, used by every request
+        # path (data, storage, realtime). One chokepoint on purpose: a header
+        # added here reaches every call.
         headers: Dict[str, str] = {}
         if self._api_key:
             headers["authorization"] = f"Bearer {self._api_key}"
@@ -395,6 +418,14 @@ class Client:
             headers["authorization"] = f"Bearer {self._app_token}"
         if self._tenant:
             headers["x-backlex-tenant"] = self._tenant
+        # Active organization, so ``$org.id`` in permission rules resolves
+        # without the caller threading it through every call.
+        if self._org:
+            headers["x-backlex-org"] = self._org
+        # W3C trace context — a fresh span per request, so the call shows up in
+        # the admin Traces panel and stitches to the server spans it triggers.
+        if self._tracing:
+            headers["traceparent"] = make_traceparent()
         return headers
 
     def request(
@@ -455,9 +486,18 @@ def create_client(
     workspace: Optional[str] = None,
     token: Optional[str] = None,
     tenant: Optional[str] = None,
+    org: Optional[str] = None,
+    tracing: bool = True,
     http: Optional[httpx.Client] = None,
 ) -> Client:
     """Construct a :class:`Client`. Mirrors the TS ``createClient(opts)`` factory."""
     return Client(
-        url, api_key=api_key, workspace=workspace, token=token, tenant=tenant, http=http
+        url,
+        api_key=api_key,
+        workspace=workspace,
+        token=token,
+        tenant=tenant,
+        org=org,
+        tracing=tracing,
+        http=http,
     )

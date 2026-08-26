@@ -302,3 +302,59 @@ fn control_plane_auth_does_not_capture_token() {
     assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/sign-in/email");
     assert_eq!(client.token(), None);
 }
+
+/// Org and trace ride the same chokepoint the tenant header does, so they reach
+/// every request path rather than three of the four.
+#[test]
+fn org_header_is_sent_and_can_be_changed() {
+    let (client, last) = mk(|b| b.org("acme"));
+    client.from("posts").list().unwrap();
+    assert!(last
+        .lock()
+        .unwrap()
+        .headers
+        .contains(&("X-Backlex-Org".to_string(), "acme".to_string())));
+
+    client.set_org(Some("other".to_string()));
+    client.from("posts").list().unwrap();
+    assert!(last
+        .lock()
+        .unwrap()
+        .headers
+        .contains(&("X-Backlex-Org".to_string(), "other".to_string())));
+}
+
+#[test]
+fn traceparent_is_w3c_shaped_fresh_per_call_and_optional() {
+    let (client, last) = mk(|b| b);
+    client.from("posts").list().unwrap();
+    let first = last
+        .lock()
+        .unwrap()
+        .headers
+        .iter()
+        .find(|(k, _)| k == "traceparent")
+        .map(|(_, v)| v.clone())
+        .expect("traceparent is on by default");
+    assert_eq!(first.len(), 55, "00-<32>-<16>-01 is 55 chars: {first}");
+    assert!(first.starts_with("00-") && first.ends_with("-01"));
+    assert!(first[3..35].chars().all(|c| c.is_ascii_hexdigit()));
+
+    // A span id reused across calls would collapse them into one span.
+    client.from("posts").list().unwrap();
+    let second = last
+        .lock()
+        .unwrap()
+        .headers
+        .iter()
+        .find(|(k, _)| k == "traceparent")
+        .map(|(_, v)| v.clone())
+        .unwrap();
+    assert_ne!(first, second);
+
+    // Opting out sends nothing at all, not an empty value.
+    let (quiet, qlast) = mk(|b| b.tracing(false));
+    quiet.from("posts").list().unwrap();
+    assert!(!qlast.lock().unwrap().headers.iter().any(|(k, _)| k == "traceparent"));
+    assert!(!qlast.lock().unwrap().headers.iter().any(|(k, _)| k == "X-Backlex-Org"));
+}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -16,6 +17,8 @@ type capture struct {
 	query  map[string][]string
 	auth   string
 	tenant string
+	org    string
+	trace  string
 	body   []byte
 }
 
@@ -30,6 +33,8 @@ func newServer(cap *capture) *httptest.Server {
 			query:  r.URL.Query(),
 			auth:   r.Header.Get("Authorization"),
 			tenant: r.Header.Get("X-Backlex-Tenant"),
+			org:    r.Header.Get("X-Backlex-Org"),
+			trace:  r.Header.Get("traceparent"),
 			body:   body,
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -355,5 +360,55 @@ func TestControlPlaneAuthNoTokenCapture(t *testing.T) {
 	}
 	if c.Auth.Token() != "" {
 		t.Fatalf("token should not be captured in control-plane mode: %q", c.Auth.Token())
+	}
+}
+
+// The org and trace headers ride the same chokepoint the tenant header does, so
+// they reach every request path. Tracing is on by default — without it a call
+// never appears in the admin Traces panel.
+func TestOrgAndTraceHeaders(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+
+	c := New(srv.URL, WithAPIKey("pak_k"), WithOrg("acme"))
+	if _, err := From[map[string]any](c, "posts").List(nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.org != "acme" {
+		t.Fatalf("X-Backlex-Org = %q, want acme", cap.org)
+	}
+	if !regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-01$`).MatchString(cap.trace) {
+		t.Fatalf("traceparent = %q, want a W3C value", cap.trace)
+	}
+	first := cap.trace
+
+	// A span id reused across calls would collapse them into one span.
+	if _, err := From[map[string]any](c, "posts").List(nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.trace == first {
+		t.Fatal("traceparent was reused across requests")
+	}
+
+	// SetOrg switches it for everything after.
+	c.SetOrg("other")
+	if _, err := From[map[string]any](c, "posts").List(nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.org != "other" {
+		t.Fatalf("after SetOrg: X-Backlex-Org = %q, want other", cap.org)
+	}
+
+	// Opting out sends neither a value nor an empty header.
+	quiet := New(srv.URL, WithAPIKey("pak_k"), WithoutTracing())
+	if _, err := From[map[string]any](quiet, "posts").List(nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.trace != "" {
+		t.Fatalf("WithoutTracing still sent traceparent = %q", cap.trace)
+	}
+	if cap.org != "" {
+		t.Fatalf("no org configured but sent %q", cap.org)
 	}
 }

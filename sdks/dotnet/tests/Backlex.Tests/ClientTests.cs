@@ -165,6 +165,42 @@ public class ClientTests
         Assert.Equal("myapp", v!.First());
     }
 
+    // Org and trace ride the same chokepoint the tenant header does, so they
+    // reach every request path rather than three of the four.
+    [Fact]
+    public async Task OrgHeaderIsSentAndSettable()
+    {
+        var (client, h) = Make(new BacklexClientOptions { Org = "acme" });
+        await client.From<Dictionary<string, object?>>("posts").ListAsync();
+        Assert.True(h.Last!.Headers.TryGetValues("X-Backlex-Org", out var v));
+        Assert.Equal("acme", v!.First());
+
+        client.Org = "other";
+        await client.From<Dictionary<string, object?>>("posts").ListAsync();
+        Assert.True(h.Last!.Headers.TryGetValues("X-Backlex-Org", out var v2));
+        Assert.Equal("other", v2!.First());
+    }
+
+    [Fact]
+    public async Task TraceparentIsW3CShapedFreshPerCallAndOptional()
+    {
+        var (client, h) = Make();
+        await client.From<Dictionary<string, object?>>("posts").ListAsync();
+        Assert.True(h.Last!.Headers.TryGetValues("traceparent", out var tp));
+        var first = tp!.First();
+        Assert.Matches("^00-[0-9a-f]{32}-[0-9a-f]{16}-01$", first);
+
+        // A span id reused across calls would collapse them into one span.
+        await client.From<Dictionary<string, object?>>("posts").ListAsync();
+        h.Last!.Headers.TryGetValues("traceparent", out var tp2);
+        Assert.NotEqual(first, tp2!.First());
+
+        var (quiet, qh) = Make(new BacklexClientOptions { Tracing = false });
+        await quiet.From<Dictionary<string, object?>>("posts").ListAsync();
+        Assert.False(qh.Last!.Headers.TryGetValues("traceparent", out _));
+        Assert.False(qh.Last!.Headers.TryGetValues("X-Backlex-Org", out _));
+    }
+
     [Fact]
     public async Task QueryStringFilterIsNotDoubleEncoded()
     {

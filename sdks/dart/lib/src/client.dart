@@ -8,15 +8,35 @@ class Client {
   final String? apiKey;
   final String? workspace;
   final String? tenant;
+
+  /// Act inside a specific organization (slug or id), so `$org.id` in
+  /// permission rules resolves without threading it through every call. Only
+  /// meaningful for app-plane sessions. Mutable: an app switches org at runtime.
+  String? org;
+
+  /// Send a W3C `traceparent` on every request. On by default — without it a
+  /// call never appears in the admin Traces panel.
+  final bool tracing;
   String? appToken;
   final HttpClient _http = HttpClient();
 
   late final Auth auth = Auth(this);
   late final Storage storage = Storage(this);
 
-  Client(String baseUrl, {this.apiKey, this.workspace, String? token, this.tenant})
+  Client(String baseUrl,
+      {this.apiKey, this.workspace, String? token, this.tenant, this.org, this.tracing = true})
       : url = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
         appToken = token;
+
+  /// A W3C traceparent: `00-<32-hex trace id>-<16-hex span id>-01`. Mirrors
+  /// `packages/client/src/trace.ts`, which is what the API parses. Fresh per
+  /// request — a span id reused across calls collapses them into one span.
+  static String makeTraceparent() {
+    final rng = Random.secure();
+    String hex(int bytes) => List<String>.generate(
+        bytes, (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+    return '00-${hex(16)}-${hex(8)}-01';
+  }
 
   /// CRUD handle for a collection.
   Collection from(String slug) => Collection(this, slug);
@@ -29,6 +49,12 @@ class Client {
     }
     if (tenant != null && tenant!.isNotEmpty) {
       req.headers.set('X-Backlex-Tenant', tenant!);
+    }
+    if (org != null && org!.isNotEmpty) {
+      req.headers.set('X-Backlex-Org', org!);
+    }
+    if (tracing) {
+      req.headers.set('traceparent', makeTraceparent());
     }
   }
 

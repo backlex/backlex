@@ -6,7 +6,7 @@
 #   client = Backlex::Client.new("https://api.example.com", api_key: "pak_...")
 #   posts = client.from("posts").query.where(Backlex::Filter.eq("published", true)).list
 module Backlex
-  VERSION = "0.0.1"
+  VERSION = "0.1.0"
 end
 
 require_relative "backlex/error"

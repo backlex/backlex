@@ -2,6 +2,7 @@ package com.backlex;
 
 import static com.backlex.Filter.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,6 +31,8 @@ class ClientTest {
     volatile String lastQuery;
     volatile String lastAuth;
     volatile String lastTenant;
+    volatile String lastOrg;
+    volatile String lastTrace;
     volatile String lastBody;
 
     @BeforeEach
@@ -41,6 +44,8 @@ class ClientTest {
             lastQuery = ex.getRequestURI().getRawQuery();
             lastAuth = ex.getRequestHeaders().getFirst("Authorization");
             lastTenant = ex.getRequestHeaders().getFirst("X-Backlex-Tenant");
+            lastOrg = ex.getRequestHeaders().getFirst("X-Backlex-Org");
+            lastTrace = ex.getRequestHeaders().getFirst("traceparent");
             lastBody = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 
             int code = 200;
@@ -256,4 +261,28 @@ class ClientTest {
         assertEquals("/api/auth/sign-in/email", lastPath);
         assertNull(client.auth.token());
     }
+    // Org and trace ride the same chokepoint the tenant header does, so they
+    // reach every request path rather than three of the four.
+    @Test
+    void orgAndTraceparentHeaders() {
+        BacklexClient c = BacklexClient.builder(base).org("acme").build();
+        c.from("posts", Map.class).list(null);
+        assertEquals("acme", lastOrg);
+        String first = lastTrace;
+        assertTrue(first != null && first.matches("00-[0-9a-f]{32}-[0-9a-f]{16}-01"), "W3C traceparent, got " + first);
+
+        // A span id reused across calls would collapse them into one span.
+        c.from("posts", Map.class).list(null);
+        assertNotEquals(first, lastTrace);
+
+        c.setOrg("other");
+        c.from("posts", Map.class).list(null);
+        assertEquals("other", lastOrg);
+
+        BacklexClient quiet = BacklexClient.builder(base).tracing(false).build();
+        quiet.from("posts", Map.class).list(null);
+        assertNull(lastTrace);
+        assertNull(lastOrg);
+    }
+
 }

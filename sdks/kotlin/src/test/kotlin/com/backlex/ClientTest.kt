@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.sun.net.httpserver.HttpServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -25,6 +26,8 @@ class ClientTest {
     @Volatile private var lastQuery: String? = null
     @Volatile private var lastAuth: String? = null
     @Volatile private var lastTenant: String? = null
+    @Volatile private var lastOrg: String? = null
+    @Volatile private var lastTrace: String? = null
     @Volatile private var lastBody = ""
 
     @BeforeEach
@@ -36,6 +39,8 @@ class ClientTest {
             lastQuery = ex.requestURI.rawQuery
             lastAuth = ex.requestHeaders.getFirst("Authorization")
             lastTenant = ex.requestHeaders.getFirst("X-Backlex-Tenant")
+            lastOrg = ex.requestHeaders.getFirst("X-Backlex-Org")
+            lastTrace = ex.requestHeaders.getFirst("traceparent")
             lastBody = ex.requestBody.readBytes().toString(StandardCharsets.UTF_8)
 
             val (code, json) = route()
@@ -229,4 +234,31 @@ class ClientTest {
         assertEquals("/api/auth/sign-in/email", lastPath)
         assertNull(client.auth.token)
     }
+    // Org and trace ride the same chokepoint the tenant header does, so they
+    // reach every request path rather than three of the four.
+    @Test
+    fun `org and traceparent headers`() {
+        val c = BacklexClient.builder(base).org("acme").build()
+        c.from<Map<*, *>>("posts").list()
+        assertEquals("acme", lastOrg)
+        val first = lastTrace
+        assertTrue(
+            first != null && Regex("^00-[0-9a-f]{32}-[0-9a-f]{16}-01$").matches(first),
+            "W3C traceparent, got $first",
+        )
+
+        // A span id reused across calls would collapse them into one span.
+        c.from<Map<*, *>>("posts").list()
+        assertNotEquals(first, lastTrace)
+
+        c.org = "other"
+        c.from<Map<*, *>>("posts").list()
+        assertEquals("other", lastOrg)
+
+        val quiet = BacklexClient.builder(base).tracing(false).build()
+        quiet.from<Map<*, *>>("posts").list()
+        assertNull(lastTrace)
+        assertNull(lastOrg)
+    }
+
 }

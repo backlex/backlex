@@ -114,6 +114,8 @@ Future<void> main() async {
     last['queryParams'] = req.uri.queryParameters;
     last['auth'] = req.headers.value('Authorization');
     last['tenant'] = req.headers.value('X-Backlex-Tenant');
+    last['org'] = req.headers.value('X-Backlex-Org');
+    last['trace'] = req.headers.value('traceparent');
     last['body'] = await utf8.decoder.bind(req).join();
     final r = route(last);
     req.response.headers.contentType = ContentType.json;
@@ -139,6 +141,31 @@ Future<void> main() async {
   client = Client(base, tenant: 'myapp');
   await client.from('posts').list();
   check(last['tenant'] == 'myapp', 'tenant header is sent');
+
+  // Org and trace ride the same chokepoint the tenant header does, so they
+  // reach every request path rather than three of the four.
+  client = Client(base, org: 'acme');
+  await client.from('posts').list();
+  check(last['org'] == 'acme', 'org header is sent');
+  final firstTrace = last['trace'] as String?;
+  check(
+    firstTrace != null &&
+        RegExp(r'^00-[0-9a-f]{32}-[0-9a-f]{16}-01$').hasMatch(firstTrace),
+    'traceparent is a W3C value and on by default',
+  );
+
+  // A span id reused across calls would collapse them into one span.
+  await client.from('posts').list();
+  check(last['trace'] != firstTrace, 'traceparent is fresh per request');
+
+  client.org = 'other';
+  await client.from('posts').list();
+  check(last['org'] == 'other', 'org can be changed at runtime');
+
+  client = Client(base, tracing: false);
+  await client.from('posts').list();
+  check(last['trace'] == null, 'tracing:false sends no traceparent');
+  check(last['org'] == null, 'no org configured sends none');
 
   client = Client(base);
   await client.from('posts').query().expand(['author']).locale('tr').search('hi').list();

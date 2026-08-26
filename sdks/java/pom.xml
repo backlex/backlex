@@ -6,7 +6,7 @@
 
   <groupId>com.backlex</groupId>
   <artifactId>backlex</artifactId>
-  <version>0.0.1</version>
+  <version>0.1.0</version>
   <packaging>jar</packaging>
   <name>backlex</name>
   <description>Official Java client for the backlex API (CRUD, query builder, auth, realtime, storage).</description>

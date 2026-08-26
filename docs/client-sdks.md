@@ -12,6 +12,27 @@ builder, auth (server key / workspace app-mode token capture / cookie session),
 realtime (SSE), storage, and a uniform error type. Nothing language-specific ever
 hits the wire.
 
+That is the whole scope, deliberately. The admin namespaces the TypeScript
+client carries — `flows`, `templates`, `payments`, `booking`, `signatures` and
+the rest — are **not** ported: they are `requireAdmin` surfaces a server-side
+caller reaches over plain REST, and porting forty of them ten times would be
+forty times the drift. Reach them with an HTTP call and an API key.
+
+**Every client sends the same four request headers**, and each is checked
+against all ten by `apps/web/tests/sdk-header-parity.test.ts`:
+
+| Header | Why it has to be everywhere |
+|---|---|
+| `Authorization` | the key or session token |
+| `X-Backlex-Tenant` | explicit tenant scoping for anonymous or cross-tenant reads |
+| `X-Backlex-Org` | the active organization, so `$org.id` in permission rules resolves |
+| `traceparent` | W3C trace context, so the call appears in the admin Traces panel |
+
+`org` and tracing are constructor options in every client (`org` / `tracing`,
+spelled the language's way), and `org` is changeable at runtime because an app
+switches organization after sign-in. Tracing is on by default; turn it off with
+`tracing: false` (or the language's equivalent) and no `traceparent` is sent.
+
 ## Languages
 
 | Language | Package dir | Transport | Runtime deps |
@@ -29,8 +50,10 @@ hits the wire.
 | PHP | [`sdks/php`](https://github.com/backlex/backlex/tree/main/sdks/php) | curl | none (ext-curl) |
 
 :::note
-All clients are Apache-2.0, verified with offline contract + HTTP-layer tests, and
-**published** (`0.0.1`) — all ten: Python (PyPI), .NET (NuGet), Ruby (RubyGems),
+All clients are Apache-2.0 and verified with offline contract + HTTP-layer tests.
+The registries currently hold **`0.0.1`**; the repo is at `0.1.0`, which adds the
+`X-Backlex-Org` and `traceparent` headers above and is **not published yet** —
+`publish-sdks.yml` is a manual `workflow_dispatch`. The ten: Python (PyPI), .NET (NuGet), Ruby (RubyGems),
 Dart (pub.dev), Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`),
 PHP (Packagist), Java + Kotlin (Maven Central, `com.backlex:backlex` /
 `com.backlex:backlex-kotlin`). The release runbook lives in

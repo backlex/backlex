@@ -24,6 +24,8 @@ struct Inner {
     api_key: Option<String>,
     workspace: Option<String>,
     tenant: Option<String>,
+    org: Mutex<Option<String>>,
+    tracing: bool,
     app_token: Mutex<Option<String>>,
     transport: Box<dyn Transport>,
 }
@@ -37,6 +39,30 @@ pub struct Client {
     inner: Arc<Inner>,
 }
 
+/// A W3C `traceparent`: `00-<32-hex trace id>-<16-hex span id>-01`. Mirrors
+/// `packages/client/src/trace.ts`, which is what the API parses.
+///
+/// Seeded from `RandomState` (the std hash-map seed, which the OS randomises per
+/// process) mixed with the clock, so this needs no crate: a trace id has to be
+/// unique, not unguessable. Fresh per request — a span id reused across calls
+/// collapses them into one span.
+fn make_traceparent() -> String {
+    use std::collections::hash_map::RandomState;
+    use std::hash::{BuildHasher, Hasher};
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let word = || {
+        let mut h = RandomState::new().build_hasher();
+        h.write_u64(nanos);
+        h.write_usize(&h as *const _ as usize);
+        h.finish()
+    };
+    format!("00-{:016x}{:016x}-{:016x}-01", word(), word(), word())
+}
+
 /// Builder for [`Client`].
 pub struct ClientBuilder {
     url: String,
@@ -44,6 +70,8 @@ pub struct ClientBuilder {
     workspace: Option<String>,
     token: Option<String>,
     tenant: Option<String>,
+    org: Option<String>,
+    tracing: bool,
     transport: Option<Box<dyn Transport>>,
 }
 
@@ -67,6 +95,21 @@ impl ClientBuilder {
         self.tenant = Some(t.into());
         self
     }
+    /// Act inside a specific organization (slug or id) via the X-Backlex-Org
+    /// header, so `$org.id` in permission rules resolves without threading it
+    /// through every call. Only meaningful for app-plane sessions, and only
+    /// accepted for orgs the signed-in end-user belongs to.
+    pub fn org(mut self, o: impl Into<String>) -> Self {
+        self.org = Some(o.into());
+        self
+    }
+    /// Turn off the W3C `traceparent` header. On by default: without it a call
+    /// never appears in the admin Traces panel and cannot be stitched to the
+    /// server spans it triggers.
+    pub fn tracing(mut self, on: bool) -> Self {
+        self.tracing = on;
+        self
+    }
     pub fn transport(mut self, t: Box<dyn Transport>) -> Self {
         self.transport = Some(t);
         self
@@ -78,6 +121,8 @@ impl ClientBuilder {
                 api_key: self.api_key,
                 workspace: self.workspace,
                 tenant: self.tenant,
+                org: Mutex::new(self.org),
+                tracing: self.tracing,
                 app_token: Mutex::new(self.token),
                 transport: self.transport.unwrap_or_else(|| Box::new(UreqTransport)),
             }),
@@ -93,6 +138,10 @@ impl Client {
             workspace: None,
             token: None,
             tenant: None,
+            org: None,
+            // On by default, like the TS client — a call that never emits a
+            // traceparent is invisible in the Traces panel.
+            tracing: true,
             transport: None,
         }
     }
@@ -144,15 +193,38 @@ impl Client {
             .map(|t| format!("Bearer {}", t))
     }
 
-    /// Raw escape hatch — issues a JSON request with auth headers applied.
-    pub fn request(&self, method: &str, path: &str, body: Option<&Value>) -> Result<Value, BacklexError> {
-        let mut headers = vec![("Content-Type".to_string(), "application/json".to_string())];
+    /// Change the active organization for every subsequent request.
+    pub fn set_org(&self, org: Option<String>) {
+        *self.inner.org.lock().unwrap() = org;
+    }
+
+    pub(crate) fn org(&self) -> Option<String> {
+        self.inner.org.lock().unwrap().clone()
+    }
+
+    /// Auth + tenant + org + trace, in one place, so a header added here reaches
+    /// every request path rather than three of the four.
+    fn base_headers(&self) -> Vec<(String, String)> {
+        let mut headers = Vec::new();
         if let Some(a) = self.auth_header() {
             headers.push(("Authorization".to_string(), a));
         }
         if let Some(t) = self.tenant() {
             headers.push(("X-Backlex-Tenant".to_string(), t.to_string()));
         }
+        if let Some(o) = self.org() {
+            headers.push(("X-Backlex-Org".to_string(), o));
+        }
+        if self.inner.tracing {
+            headers.push(("traceparent".to_string(), make_traceparent()));
+        }
+        headers
+    }
+
+    /// Raw escape hatch — issues a JSON request with auth headers applied.
+    pub fn request(&self, method: &str, path: &str, body: Option<&Value>) -> Result<Value, BacklexError> {
+        let mut headers = vec![("Content-Type".to_string(), "application/json".to_string())];
+        headers.extend(self.base_headers());
         let body_bytes = body.map(|b| serde_json::to_vec(b).unwrap());
         let url = format!("{}{}", self.inner.url, path);
         let (status, bytes) = self
@@ -180,12 +252,7 @@ impl Client {
         if let Some(ct) = content_type {
             headers.push(("Content-Type".to_string(), ct.to_string()));
         }
-        if let Some(a) = self.auth_header() {
-            headers.push(("Authorization".to_string(), a));
-        }
-        if let Some(t) = self.tenant() {
-            headers.push(("X-Backlex-Tenant".to_string(), t.to_string()));
-        }
+        headers.extend(self.base_headers());
         let url = format!("{}{}", self.inner.url, path);
         let (status, bytes) = self.inner.transport.send(method, &url, &headers, body)?;
         if !(200..300).contains(&status) {

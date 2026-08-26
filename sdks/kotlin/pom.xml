@@ -6,7 +6,7 @@
 
   <groupId>com.backlex</groupId>
   <artifactId>backlex-kotlin</artifactId>
-  <version>0.0.1</version>
+  <version>0.1.0</version>
   <packaging>jar</packaging>
   <name>backlex-kotlin</name>
   <description>Official Kotlin client for the backlex API (CRUD, query builder, auth, realtime, storage).</description>
@@ -33,7 +33,7 @@
   </scm>
 
   <properties>
-    <kotlin.version>2.0.21</kotlin.version>
+    <kotlin.version>2.2.20</kotlin.version>
     <jackson.version>2.17.2</jackson.version>
     <junit.version>5.10.3</junit.version>
     <maven.compiler.release>17</maven.compiler.release>

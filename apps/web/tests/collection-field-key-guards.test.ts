@@ -71,6 +71,56 @@ describe("collection field-definition guards", () => {
       expect(b.error.message).toContain('"phone":{"region":"TR"}');
     });
 
+    test("a key nested INSIDE `options` is refused too, not silently dropped", async () => {
+      // The realistic mistake, and the reason the guard could not stop one level
+      // up: `docs/status-transitions.md` prints `options` and `transitions` as
+      // adjacent members of the same field object, so nesting the second inside
+      // the first reads as the obvious grouping. Before this, that returned 201
+      // and produced a status field with its choices, no lifecycle, and nothing
+      // anywhere saying the transitions had been thrown away.
+      const r = await create({
+        slug: `nestedtrans_${stamp}`,
+        fields: [
+          {
+            name: "status",
+            type: "text",
+            options: {
+              choices: [{ value: "draft" }, { value: "open" }],
+              transitions: { draft: ["open"] },
+            },
+          },
+        ],
+      });
+      expect(r.status).toBe(422);
+      const b = (await r.json()) as { error: { code: string; message: string } };
+      expect(b.error.code).toBe("VALIDATION");
+      expect(b.error.message).toContain('"transitions"');
+      expect(b.error.message).toContain('Field "status"');
+      // It has to say where the key DOES belong, or the operator just moves it
+      // somewhere else that is also wrong.
+      expect(b.error.message).toContain("siblings of it");
+    });
+
+    test("the legitimate contents of `options` still pass", async () => {
+      const r = await create({
+        slug: `goodoptions_${stamp}`,
+        fields: [
+          { name: "a", type: "text", options: { values: ["x", "y"] } },
+          {
+            name: "b",
+            type: "text",
+            options: { choices: [{ value: "one", label: "One", color: "#fff", icon: "star" }] },
+          },
+        ],
+      });
+      expect(r.status).toBe(201);
+    });
+
+    test("a field with no `options` at all is untouched", async () => {
+      const r = await create({ slug: `nooptions_${stamp}`, fields: [{ name: "a", type: "text" }] });
+      expect(r.status).toBe(201);
+    });
+
     test("an option with no near match is still named", async () => {
       const r = await create({
         slug: `nonsense_${stamp}`,

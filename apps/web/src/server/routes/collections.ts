@@ -494,6 +494,20 @@ const FieldObject = z.object({
 const KNOWN_FIELD_KEYS: ReadonlySet<string> = new Set(Object.keys(FieldObject.shape));
 
 /**
+ * The keys `options` itself knows, derived the same way rather than restated.
+ *
+ * `options` is scanned too because it is where the near-miss actually happens.
+ * `docs/status-transitions.md` prints `options` and `transitions` as adjacent
+ * members of one field object, and nesting the second inside the first reads as
+ * the obvious grouping — at which point the field is created with its choices,
+ * no lifecycle, and no complaint. Refusing an unknown key one level up while
+ * dropping one a level down is the inconsistency, not the check.
+ */
+const KNOWN_OPTION_KEYS: ReadonlySet<string> = new Set(
+  Object.keys((FieldObject.shape.options as { unwrap: () => { shape: object } }).unwrap().shape),
+);
+
+/**
  * This guard runs BEFORE Zod, which is the only place it can run — Zod is what
  * removes the keys it exists to notice. That means it sees an unvalidated body,
  * so every loop below is bounded rather than trusting the shape. Without these
@@ -535,6 +549,28 @@ const editDistance = (a: string, b: string): number => {
 };
 
 /**
+ * The same refusal, one level down, for `options`.
+ *
+ * Split out rather than inlined so the field-level loop stays readable, and
+ * bounded the same way — it runs on a body nothing has validated yet.
+ */
+const assertKnownOptionKeys = (options: unknown, where: string): void => {
+  if (!options || typeof options !== "object" || Array.isArray(options)) return;
+  const unknown = Object.keys(options as Record<string, unknown>).filter(
+    (k) => !KNOWN_OPTION_KEYS.has(k),
+  );
+  if (!unknown.length) return;
+  const shown = unknown.slice(0, MAX_UNKNOWN_REPORTED);
+  const more = unknown.length > shown.length ? ` (+${unknown.length - shown.length} more)` : "";
+  const detail = shown.map((k) => `"${echo(k)}"`).join(", ");
+  throw new AppError(
+    "VALIDATION",
+    `${where}: unknown key(s) ${detail}${more} inside "options", which holds only ${[...KNOWN_OPTION_KEYS].map((k) => `"${k}"`).join(" and ")}. ` +
+      `These are dropped rather than applied. Anything else belongs beside "options" on the field — \`transitions\`, \`validation\`, \`conditions\` and the per-type blocks are all siblings of it, not members.`,
+  );
+};
+
+/**
  * Refuse a field definition carrying keys the schema does not know.
  *
  * Runs on the RAW body, before Zod parses, because by the time Zod is done the
@@ -547,13 +583,16 @@ export const assertKnownFieldKeys = (fields: unknown): void => {
   for (let i = 0; i < scanned.length; i++) {
     const f = scanned[i];
     if (!f || typeof f !== "object" || Array.isArray(f)) continue;
-    const unknown = Object.keys(f as Record<string, unknown>).filter(
-      (k) => !KNOWN_FIELD_KEYS.has(k),
-    );
-    if (!unknown.length) continue;
     const named = (f as { name?: unknown }).name;
     const where =
       typeof named === "string" && named ? `Field "${echo(named)}"` : `fields.${i}`;
+    const unknown = Object.keys(f as Record<string, unknown>).filter(
+      (k) => !KNOWN_FIELD_KEYS.has(k),
+    );
+    if (!unknown.length) {
+      assertKnownOptionKeys((f as { options?: unknown }).options, where);
+      continue;
+    }
     const shown = unknown.slice(0, MAX_UNKNOWN_REPORTED);
     const detail = shown
       .map((k) => {

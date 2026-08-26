@@ -44,6 +44,7 @@ import { googleGeocode } from "./adapters/geocode.google";
 import { mapboxGeocode } from "./adapters/geocode.mapbox";
 import { nominatimGeocode } from "./adapters/geocode.nominatim";
 import { cfBrowserPdf } from "./adapters/pdf.cf-browser";
+import { cloudPdf } from "./adapters/pdf.cloud";
 import { gotenbergPdf } from "./adapters/pdf.gotenberg";
 import { sharpImage } from "./adapters/image.sharp";
 import { wasmImage } from "./adapters/image.photon";
@@ -213,7 +214,21 @@ export const selectPdfAdapter = (env: Env): PdfAdapter | undefined => {
   const pinned = env.PDF_PROVIDER?.trim().toLowerCase();
   if (pinned === "cf-browser" || pinned === "cloudflare") return cf;
   if (pinned === "gotenberg") return goten;
-  return cf ?? goten;
+  // Pinned-but-unavailable yields none, exactly as the other two do: an
+  // operator who named a provider wants that provider, and an adapter that is
+  // certain to fail at render time is a worse answer than a refusal at
+  // selection that says why.
+  if (pinned === "cloud") return cloudConfigured(env) ? cloudPdf(env) : undefined;
+  // Managed cloud last, and only when the operator configured nothing: a
+  // provisioned tenant has no environment to put credentials in, so without
+  // this both `/documents/render` AND `/signatures` (freezing a document for
+  // signing is a render) answered a paying customer with an instruction to set
+  // environment variables it cannot reach. A tenant that DOES bring its own
+  // renderer keeps it — the gateway never overrides an explicit choice.
+  // `cloudConfigured` rather than a raw CLOUD_REPORT_SECRET check: the channel
+  // has two transports (the WfP service binding and CLOUD_REPORT_URL), and only
+  // it knows which of them this instance actually has.
+  return cf ?? goten ?? (cloudConfigured(env) ? cloudPdf(env) : undefined);
 };
 
 /**

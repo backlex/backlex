@@ -237,6 +237,58 @@ describe("selectPdfAdapter", () => {
     ).toBe("gotenberg");
   });
 
+  test("a managed cloud tenant gets the gateway, without configuring anything", () => {
+    // A provisioned tenant has no environment to put credentials in — its
+    // Worker bindings are written by the provisioner — so "set
+    // PDF_CF_ACCOUNT_ID…" was advice it could not act on. Both document
+    // generation AND e-signature answered 422 with it, because freezing a
+    // document for signing is a render.
+    expect(selectPdfAdapter({ CLOUD_REPORT_SECRET: "s", CLOUD_PROJECT_ID: "p1", CLOUD_REPORT_URL: "https://c" } as any)?.name).toBe(
+      "cloud-gateway",
+    );
+  });
+
+  test("a tenant that brings its own renderer keeps it", () => {
+    // The gateway is a floor, not an override: an operator who configured
+    // Gotenberg gets Gotenberg even on managed cloud.
+    expect(
+      selectPdfAdapter({
+        CLOUD_REPORT_SECRET: "s",
+        CLOUD_PROJECT_ID: "p1",
+        CLOUD_REPORT_URL: "https://c",
+        PDF_GOTENBERG_URL: "http://gotenberg:3000",
+      } as any)?.name,
+    ).toBe("gotenberg");
+    expect(
+      selectPdfAdapter({
+        CLOUD_REPORT_SECRET: "s",
+        CLOUD_PROJECT_ID: "p1",
+        CLOUD_REPORT_URL: "https://c",
+        PDF_CF_ACCOUNT_ID: "acct",
+        PDF_CF_API_TOKEN: "tok",
+      } as any)?.name,
+    ).toBe("cf-browser");
+  });
+
+  test("PDF_PROVIDER=cloud off-cloud yields none, like every other pin", () => {
+    expect(selectPdfAdapter({ PDF_PROVIDER: "cloud" } as any)).toBeUndefined();
+    expect(
+      selectPdfAdapter({
+        PDF_PROVIDER: "cloud",
+        CLOUD_REPORT_SECRET: "s",
+        CLOUD_PROJECT_ID: "p1",
+        CLOUD_REPORT_URL: "https://c",
+      } as any)?.name,
+    ).toBe("cloud-gateway");
+  });
+
+  test("self-host with nothing configured still gets nothing", () => {
+    // The fallback must not fire off-cloud: there is no gateway to reach, and a
+    // renderer that always fails is worse than a refusal that says why.
+    expect(selectPdfAdapter({} as any)).toBeUndefined();
+    expect(selectPdfAdapter({ CLOUD_REPORT_SECRET: "" } as any)).toBeUndefined();
+  });
+
   test("a pinned provider with no credentials yields none, rather than the other one", () => {
     // An operator who named a provider wants that provider; substituting
     // silently is how a contract renders somewhere they did not intend.

@@ -25,8 +25,13 @@ The usual shape is two flow ops:
 
 ## Configuring a renderer
 
-**There is no renderer out of the box, on purpose.** An unconfigured deployment
-refuses to render and says which variables to set.
+**On managed cloud, one is already there.** A provisioned project renders
+through the platform's own browser, with no configuration and no credentials of
+yours — see [Managed cloud](#managed-cloud) below. The rest of this section is
+about self-hosting.
+
+**Self-hosted, there is no renderer out of the box, on purpose.** An
+unconfigured deployment refuses to render and says which variables to set.
 
 That is a deliberate choice against the obvious alternative — bundling a
 pure-JS PDF library. The PDF standard-14 fonts are WinAnsi, which has no `ş`,
@@ -47,6 +52,29 @@ credentials are missing yields **no renderer**, rather than quietly falling
 through to the other one — an operator who named a provider wants that provider,
 and a silent substitution is how a contract renders somewhere they did not
 intend.
+
+### Managed cloud
+
+A **provisioned cloud project needs no renderer configuration.** Its Worker
+bindings are written by the provisioner, so it has no environment to put
+`PDF_CF_API_TOKEN` in — an instruction to set one would be advice it cannot act
+on. Instead it renders through the control plane, on the same signed channel as
+[managed AI](/docs/ask-ai/) and managed email: the HTML goes to the platform,
+the platform's credentials never come to the tenant.
+
+That direction is the point. A Cloudflare token sitting in a tenant binding is
+one sandbox escape away from being someone else's, and it would be the
+*platform's* token.
+
+It is a floor, not an override — a cloud project that sets `PDF_GOTENBERG_URL`
+or its own `PDF_CF_*` keeps exactly that, and `PDF_PROVIDER=cloud` asks for the
+gateway explicitly. Renders are throttled per project, and a document larger
+than 2 MB of HTML is refused before a browser is spent on it.
+
+**This is what e-signature runs on too.** Freezing a document for signing is a
+render, so before the gateway existed `POST /api/admin/signatures` failed on a
+managed tenant with the same "No PDF renderer is configured" message as
+`/documents/render` — from an API that never mentions PDF.
 
 ## Row data is interpolated as HTML
 

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -25,6 +26,21 @@ public sealed class BacklexClientOptions
     /// </summary>
     public string? Tenant { get; set; }
 
+    /// <summary>
+    /// Act inside a specific organization (slug or id) via the X-Backlex-Org
+    /// header, so <c>$org.id</c> in permission rules resolves without threading
+    /// it through every call. Only meaningful for app-plane sessions, and only
+    /// accepted for orgs the signed-in end-user belongs to.
+    /// </summary>
+    public string? Org { get; set; }
+
+    /// <summary>
+    /// Send a W3C <c>traceparent</c> on every request. On by default — without
+    /// it a call never appears in the admin Traces panel and cannot be stitched
+    /// to the server spans it triggers.
+    /// </summary>
+    public bool Tracing { get; set; } = true;
+
     /// <summary>Custom HttpClient (timeouts, proxies, testing).</summary>
     public HttpClient? HttpClient { get; set; }
 }
@@ -45,6 +61,7 @@ public sealed class BacklexClient
 
     private readonly string? _apiKey;
     private readonly string? _tenant;
+    private readonly bool _tracing;
 
     internal string Url { get; }
     internal string? Workspace { get; }
@@ -60,6 +77,8 @@ public sealed class BacklexClient
         Url = baseUrl.TrimEnd('/');
         _apiKey = o.ApiKey;
         _tenant = o.Tenant;
+        _tracing = o.Tracing;
+        Org = o.Org;
         Workspace = o.Workspace;
         AppToken = o.Token;
         // A cookie container keeps same-origin cookie sessions working across calls.
@@ -72,6 +91,27 @@ public sealed class BacklexClient
         Storage = new Storage(this);
     }
 
+    /// <summary>
+    /// The active organization (slug or id). Settable: an app switches org at
+    /// runtime and every later request carries the new one.
+    /// </summary>
+    public string? Org { get; set; }
+
+    /// <summary>
+    /// A W3C traceparent: <c>00-&lt;32-hex trace id&gt;-&lt;16-hex span id&gt;-01</c>.
+    /// Mirrors packages/client/src/trace.ts, which is what the API parses. Fresh
+    /// per request — a span id reused across calls collapses them into one span.
+    /// </summary>
+    public static string MakeTraceparent()
+    {
+        static string Hex(int bytes) => Convert.ToHexString(RandomNumberGenerator.GetBytes(bytes)).ToLowerInvariant();
+        return $"00-{Hex(16)}-{Hex(8)}-01";
+    }
+
+    /// <summary>
+    /// The one chokepoint every request path goes through (data, storage,
+    /// realtime) — a header added here reaches every call.
+    /// </summary>
     internal void ApplyAuth(HttpRequestMessage req)
     {
         if (!string.IsNullOrEmpty(_apiKey))
@@ -80,6 +120,10 @@ public sealed class BacklexClient
             req.Headers.TryAddWithoutValidation("Authorization", $"Bearer {AppToken}");
         if (!string.IsNullOrEmpty(_tenant))
             req.Headers.TryAddWithoutValidation("X-Backlex-Tenant", _tenant);
+        if (!string.IsNullOrEmpty(Org))
+            req.Headers.TryAddWithoutValidation("X-Backlex-Org", Org);
+        if (_tracing)
+            req.Headers.TryAddWithoutValidation("traceparent", MakeTraceparent());
     }
 
     /// <summary>Typed CRUD handle for a collection.</summary>

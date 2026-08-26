@@ -10,6 +10,7 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.CookieManager
 import java.net.URI
+import java.security.SecureRandom
 import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -29,6 +30,8 @@ class BacklexClient internal constructor(
     internal val workspace: String?,
     token: String?,
     private val tenant: String?,
+    org: String?,
+    private val tracing: Boolean,
     private val http: HttpClient,
 ) {
     internal val mapper: ObjectMapper = ObjectMapper()
@@ -38,6 +41,15 @@ class BacklexClient internal constructor(
 
     @Volatile
     internal var appToken: String? = token
+
+    /**
+     * The active organization (slug or id), so `\$org.id` in permission rules
+     * resolves without threading it through every call. Only meaningful for
+     * app-plane sessions. Mutable: an app switches org at runtime and every
+     * later request carries the new one.
+     */
+    @Volatile
+    var org: String? = org
 
     val auth: Auth = Auth(this)
     val storage: Storage = Storage(this)
@@ -49,12 +61,17 @@ class BacklexClient internal constructor(
     fun <T> from(slug: String, type: Class<T>): Collection<T> =
         Collection(this, slug, mapper.typeFactory.constructType(type))
 
+    /** The one chokepoint every request path goes through (data, storage,
+     *  realtime) — a header added here reaches every call. */
     internal fun applyAuth(rb: HttpRequest.Builder) {
         when {
             !apiKey.isNullOrEmpty() -> rb.header("Authorization", "Bearer $apiKey")
             !appToken.isNullOrEmpty() -> rb.header("Authorization", "Bearer $appToken")
         }
         if (!tenant.isNullOrEmpty()) rb.header("X-Backlex-Tenant", tenant)
+        org?.takeIf { it.isNotEmpty() }?.let { rb.header("X-Backlex-Org", it) }
+        // Without this a call never appears in the admin Traces panel.
+        if (tracing) rb.header("traceparent", makeTraceparent())
     }
 
     /** Raw escape hatch — issues a request with auth headers applied. */
@@ -275,6 +292,8 @@ class BacklexClient internal constructor(
         private var workspace: String? = null
         private var token: String? = null
         private var tenant: String? = null
+        private var org: String? = null
+        private var tracing: Boolean = true
         private var http: HttpClient? = null
 
         /** Static server key (pak_...) sent as a bearer on every call. */
@@ -290,6 +309,14 @@ class BacklexClient internal constructor(
          *  X-Backlex-Tenant header. */
         fun tenant(tenant: String?) = apply { this.tenant = tenant }
 
+        /** Act inside a specific organization (slug or id) via the
+         *  X-Backlex-Org header. Change it later with [BacklexClient.org]. */
+        fun org(org: String?) = apply { this.org = org }
+
+        /** Send a W3C `traceparent` on every request. On by default — without
+         *  it a call never appears in the admin Traces panel. */
+        fun tracing(on: Boolean) = apply { this.tracing = on }
+
         /** Custom HttpClient (timeouts, proxies, testing). */
         fun httpClient(client: HttpClient) = apply { this.http = client }
 
@@ -299,6 +326,8 @@ class BacklexClient internal constructor(
             workspace,
             token,
             tenant,
+            org,
+            tracing,
             http ?: HttpClient.newBuilder()
                 .cookieHandler(CookieManager())
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -308,5 +337,16 @@ class BacklexClient internal constructor(
 
     companion object {
         fun builder(baseUrl: String): Builder = Builder(baseUrl)
+
+        /** A W3C traceparent: `00-<32-hex trace id>-<16-hex span id>-01`.
+         *  Mirrors packages/client/src/trace.ts, which is what the API parses.
+         *  Fresh per request — a span id reused across calls collapses them
+         *  into one span. */
+        fun makeTraceparent(): String {
+            val buf = ByteArray(24)
+            SecureRandom().nextBytes(buf)
+            val hex = buf.joinToString("") { "%02x".format(it) }
+            return "00-${hex.substring(0, 32)}-${hex.substring(32)}-01"
+        }
     }
 }

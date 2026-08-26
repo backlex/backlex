@@ -10,6 +10,7 @@ library backlex;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 part 'src/error.dart';
 part 'src/filter.dart';

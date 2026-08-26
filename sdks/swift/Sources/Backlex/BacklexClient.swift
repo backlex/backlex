@@ -12,10 +12,19 @@ public final class BacklexClient {
     let apiKey: String?
     let workspace: String?
     let tenant: String?
+    let tracing: Bool
     let session: URLSession
 
     private let lock = NSLock()
     private var _appToken: String?
+    private var _org: String?
+
+    /// The active organization (slug or id). Mutable: an app switches org at
+    /// runtime, and every later request carries the new one.
+    public var org: String? {
+        get { lock.lock(); defer { lock.unlock() }; return _org }
+        set { lock.lock(); _org = newValue; lock.unlock() }
+    }
 
     var appToken: String? {
         get { lock.lock(); defer { lock.unlock() }; return _appToken }
@@ -31,12 +40,16 @@ public final class BacklexClient {
         workspace: String? = nil,
         token: String? = nil,
         tenant: String? = nil,
+        org: String? = nil,
+        tracing: Bool = true,
         session: URLSession? = nil
     ) {
         self.url = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
         self.apiKey = apiKey
         self.workspace = workspace
         self.tenant = tenant
+        self.tracing = tracing
+        self._org = org
         self._appToken = token
         if let session {
             self.session = session
@@ -53,6 +66,18 @@ public final class BacklexClient {
         Collection(client: self, slug: slug)
     }
 
+    /// A W3C traceparent: `00-<32-hex trace id>-<16-hex span id>-01`. Mirrors
+    /// `packages/client/src/trace.ts`, which is what the API parses. Fresh per
+    /// request — a span id reused across calls collapses them into one span.
+    public static func makeTraceparent() -> String {
+        func hex(_ bytes: Int) -> String {
+            (0..<bytes).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
+        }
+        return "00-\(hex(16))-\(hex(8))-01"
+    }
+
+    /// The one chokepoint every request path goes through (data, storage,
+    /// realtime) — a header added here reaches every call.
     func applyAuth(_ req: inout URLRequest) {
         if let apiKey {
             req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -61,6 +86,14 @@ public final class BacklexClient {
         }
         if let tenant {
             req.setValue(tenant, forHTTPHeaderField: "X-Backlex-Tenant")
+        }
+        // `$org.id` in permission rules resolves from this.
+        if let org {
+            req.setValue(org, forHTTPHeaderField: "X-Backlex-Org")
+        }
+        // Without this a call never appears in the admin Traces panel.
+        if tracing {
+            req.setValue(Self.makeTraceparent(), forHTTPHeaderField: "traceparent")
         }
     }
 

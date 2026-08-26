@@ -129,6 +129,38 @@ $client = new Client('http://test', ['tenant' => 'myapp', 'transport' => $transp
 $client->from('posts')->list();
 check(in_array('X-Backlex-Tenant: myapp', $last['headers'], true), 'tenant header is sent');
 
+// Org and trace ride the same chokepoint the tenant header does, so they reach
+// every request path rather than three of the four.
+$client = new Client('http://test', ['org' => 'acme', 'transport' => $transport]);
+$client->from('posts')->list();
+check(in_array('X-Backlex-Org: acme', $last['headers'], true), 'org header is sent');
+
+$traceOf = static function (array $headers): ?string {
+    foreach ($headers as $h) {
+        if (str_starts_with($h, 'traceparent: ')) {
+            return substr($h, strlen('traceparent: '));
+        }
+    }
+    return null;
+};
+$first = $traceOf($last['headers']);
+check(
+    $first !== null && preg_match('/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/', $first) === 1,
+    'traceparent is a W3C value and on by default'
+);
+
+// A span id reused across calls would collapse them into one span.
+$client->from('posts')->list();
+check($traceOf($last['headers']) !== $first, 'traceparent is fresh per request');
+
+$client->setOrg('other');
+$client->from('posts')->list();
+check(in_array('X-Backlex-Org: other', $last['headers'], true), 'setOrg changes it for later calls');
+
+$quiet = new Client('http://test', ['tracing' => false, 'transport' => $transport]);
+$quiet->from('posts')->list();
+check($traceOf($last['headers']) === null, 'tracing:false sends no traceparent');
+
 $client = new Client('http://test', ['transport' => $transport]);
 $client->from('posts')->query()->expand('author')->locale('tr')->search('hi')->list();
 parse_str(parse_url($last['url'], PHP_URL_QUERY) ?? '', $qp);

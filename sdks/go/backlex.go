@@ -14,6 +14,8 @@ package backlex
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -30,6 +32,8 @@ type Client struct {
 	workspace string
 	appToken  string
 	tenant    string
+	org       string
+	noTracing bool
 	http      *http.Client
 
 	Auth    *Auth
@@ -53,6 +57,18 @@ func WithToken(token string) Option { return func(c *Client) { c.appToken = toke
 // tenant other than its home one. Ignored by the server for app-mode sessions.
 func WithTenant(tenant string) Option { return func(c *Client) { c.tenant = tenant } }
 
+// WithOrg acts inside a specific organization (slug or id) via the
+// X-Backlex-Org header, so $org.id in permission rules resolves without the
+// caller threading it through every call. Only meaningful for app-plane
+// sessions, and only accepted for orgs the signed-in end-user belongs to.
+// Change it later with (*Client).SetOrg.
+func WithOrg(org string) Option { return func(c *Client) { c.org = org } }
+
+// WithoutTracing stops the client sending a W3C traceparent. Tracing is on by
+// default: without it a call never appears in the admin Traces panel and cannot
+// be stitched to the server spans it triggers.
+func WithoutTracing() Option { return func(c *Client) { c.noTracing = true } }
+
 // WithHTTPClient supplies a custom *http.Client (timeouts, proxies, testing).
 func WithHTTPClient(h *http.Client) Option { return func(c *Client) { c.http = h } }
 
@@ -72,6 +88,23 @@ func New(baseURL string, opts ...Option) *Client {
 	return c
 }
 
+// SetOrg changes the active organization for every subsequent request.
+func (c *Client) SetOrg(org string) { c.org = org }
+
+// makeTraceparent builds a W3C trace context value:
+// 00-<32-hex trace id>-<16-hex span id>-01. Mirrors packages/client/src/trace.ts,
+// which is what the API parses. Fresh per request — a span id reused across
+// calls collapses them into one.
+func makeTraceparent() string {
+	var b [24]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return ""
+	}
+	return "00-" + hex.EncodeToString(b[:16]) + "-" + hex.EncodeToString(b[16:]) + "-01"
+}
+
+// authHeader is the one chokepoint every request path goes through (data,
+// storage, realtime) — a header added here reaches every call.
 func (c *Client) authHeader(req *http.Request) {
 	switch {
 	case c.apiKey != "":
@@ -81,6 +114,14 @@ func (c *Client) authHeader(req *http.Request) {
 	}
 	if c.tenant != "" {
 		req.Header.Set("X-Backlex-Tenant", c.tenant)
+	}
+	if c.org != "" {
+		req.Header.Set("X-Backlex-Org", c.org)
+	}
+	if !c.noTracing {
+		if tp := makeTraceparent(); tp != "" {
+			req.Header.Set("traceparent", tp)
+		}
 	}
 }
 

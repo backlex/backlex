@@ -1,6 +1,6 @@
 [package]
 name = "backlex"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 description = "Official Rust client for the backlex API (CRUD, query builder, auth, realtime, storage)."
 license = "Apache-2.0"

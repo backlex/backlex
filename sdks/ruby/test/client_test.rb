@@ -25,6 +25,8 @@ class ClientTest < Minitest::Test
       @last[:query] = req.query_string
       @last[:auth] = req["Authorization"]
       @last[:tenant] = req["X-Backlex-Tenant"]
+      @last[:org] = req["X-Backlex-Org"]
+      @last[:trace] = req["traceparent"]
       @last[:body] = req.body
       code, json = ClientTest.route(@last)
       res.status = code
@@ -210,4 +212,27 @@ class ClientTest < Minitest::Test
     assert_equal "/api/auth/sign-in/email", @last[:path]
     assert_nil client.auth.token
   end
+  # Org and trace ride the same chokepoint the tenant header does, so they reach
+  # every request path rather than three of the four.
+  def test_org_and_traceparent_headers
+    c = Backlex::Client.new(@base, api_key: "pak_k", org: "acme")
+    c.from("posts").list
+    assert_equal "acme", @last[:org]
+    first = @last[:trace]
+    assert_match(/\A00-[0-9a-f]{32}-[0-9a-f]{16}-01\z/, first)
+
+    # A span id reused across calls would collapse them into one span.
+    c.from("posts").list
+    refute_equal first, @last[:trace]
+
+    c.org = "other"
+    c.from("posts").list
+    assert_equal "other", @last[:org]
+
+    quiet = Backlex::Client.new(@base, api_key: "pak_k", tracing: false)
+    quiet.from("posts").list
+    assert_nil @last[:trace]
+    assert_nil @last[:org]
+  end
+
 end

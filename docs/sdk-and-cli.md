@@ -6,8 +6,11 @@ description: The Backlex typed fetch wrapper and the Backlex CLI for project sca
 Two packages ship for client-side and developer-side use.
 
 > Not on TypeScript? Backlex also ships native clients for Python, Go, Rust,
-> Java, Kotlin, Swift, Dart/Flutter, .NET, Ruby, and PHP — same API, idiomatic in
-> each language. See [Client SDKs](/docs/client-sdks/).
+> Java, Kotlin, Swift, Dart/Flutter, .NET, Ruby, and PHP. They wrap the **core**
+> surface — CRUD, the query builder, auth, realtime, storage, and a uniform
+> error type — not the admin namespaces this page's `client.flows.*` /
+> `client.templates.*` examples use, which stay TypeScript-only. See
+> [Client SDKs](/docs/client-sdks/) for the exact split.
 
 ## `backlex`
 

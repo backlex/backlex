@@ -20,6 +20,8 @@ final class Client
     private string $url;
     private ?string $apiKey;
     private ?string $tenant;
+    private ?string $org;
+    private bool $tracing;
     public ?string $workspace;
     public ?string $appToken;
     /** @var callable|null */
@@ -35,6 +37,8 @@ final class Client
         $this->tenant = $opts['tenant'] ?? null;
         $this->workspace = $opts['workspace'] ?? null;
         $this->appToken = $opts['token'] ?? null;
+        $this->org = $opts['org'] ?? null;
+        $this->tracing = $opts['tracing'] ?? true;
         $this->transport = $opts['transport'] ?? null;
         $this->auth = new Auth($this);
         $this->storage = new Storage($this);
@@ -56,6 +60,26 @@ final class Client
         return $this->url;
     }
 
+    /**
+     * Act inside a specific organization (slug or id) from here on, so
+     * `$org.id` in permission rules resolves without threading it through
+     * every call. Only meaningful for app-plane sessions.
+     */
+    public function setOrg(?string $org): void
+    {
+        $this->org = $org;
+    }
+
+    /**
+     * A W3C traceparent: 00-<32-hex trace id>-<16-hex span id>-01. Mirrors
+     * packages/client/src/trace.ts, which is what the API parses. Fresh per
+     * request — a span id reused across calls collapses them into one span.
+     */
+    public static function makeTraceparent(): string
+    {
+        return '00-' . bin2hex(random_bytes(16)) . '-' . bin2hex(random_bytes(8)) . '-01';
+    }
+
     /** @return list<string> */
     public function authHeaders(): array
     {
@@ -67,6 +91,14 @@ final class Client
         }
         if ($this->tenant !== null && $this->tenant !== '') {
             $headers[] = 'X-Backlex-Tenant: ' . $this->tenant;
+        }
+        if ($this->org !== null && $this->org !== '') {
+            $headers[] = 'X-Backlex-Org: ' . $this->org;
+        }
+        // Without this a call never appears in the admin Traces panel and
+        // cannot be stitched to the server spans it triggers.
+        if ($this->tracing) {
+            $headers[] = 'traceparent: ' . self::makeTraceparent();
         }
         return $headers;
     }

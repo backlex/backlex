@@ -1,6 +1,6 @@
 [project]
 name = "backlex"
-version = "0.0.1"
+version = "0.1.0"
 description = "Official Python client for the backlex API (CRUD, query builder, auth, realtime, storage)."
 readme = "README.md"
 requires-python = ">=3.9"

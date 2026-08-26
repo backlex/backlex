@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -40,6 +41,8 @@ public final class BacklexClient {
     final String apiKey;
     final String workspace;
     final String tenant;
+    final boolean tracing;
+    private volatile String org;
     volatile String appToken;
     final HttpClient http;
 
@@ -51,6 +54,8 @@ public final class BacklexClient {
         this.apiKey = b.apiKey;
         this.workspace = b.workspace;
         this.tenant = b.tenant;
+        this.tracing = b.tracing;
+        this.org = b.org;
         this.appToken = b.token;
         // A cookie manager keeps same-origin cookie sessions working across calls.
         this.http = b.http != null
@@ -74,6 +79,8 @@ public final class BacklexClient {
         private String workspace;
         private String token;
         private String tenant;
+        private String org;
+        private boolean tracing = true;
         private HttpClient http;
 
         private Builder(String url) {
@@ -94,6 +101,16 @@ public final class BacklexClient {
          *  addressing a tenant other than its home one. */
         public Builder tenant(String tenant) { this.tenant = tenant; return this; }
 
+        /** Act inside a specific organization (slug or id) via the
+         *  X-Backlex-Org header, so {@code $org.id} in permission rules
+         *  resolves without threading it through every call. Only meaningful
+         *  for app-plane sessions. Change it later with {@link #setOrg}. */
+        public Builder org(String org) { this.org = org; return this; }
+
+        /** Send a W3C {@code traceparent} on every request. On by default —
+         *  without it a call never appears in the admin Traces panel. */
+        public Builder tracing(boolean on) { this.tracing = on; return this; }
+
         /** Custom HttpClient (timeouts, proxies, testing). */
         public Builder httpClient(HttpClient http) { this.http = http; return this; }
 
@@ -102,6 +119,30 @@ public final class BacklexClient {
         }
     }
 
+    /** Change the active organization for every subsequent request. */
+    public void setOrg(String org) { this.org = org; }
+
+    /** The active organization, or null. */
+    public String getOrg() { return org; }
+
+    /** A W3C traceparent: {@code 00-<32-hex trace id>-<16-hex span id>-01}.
+     *  Mirrors packages/client/src/trace.ts, which is what the API parses.
+     *  Fresh per request — a span id reused across calls collapses them into
+     *  one span. */
+    public static String makeTraceparent() {
+        SecureRandom rng = new SecureRandom();
+        byte[] buf = new byte[24];
+        rng.nextBytes(buf);
+        StringBuilder sb = new StringBuilder(55).append("00-");
+        for (int i = 0; i < 24; i++) {
+            if (i == 16) sb.append('-');
+            sb.append(String.format("%02x", buf[i]));
+        }
+        return sb.append("-01").toString();
+    }
+
+    /** The one chokepoint every request path goes through (data, storage,
+     *  realtime) — a header added here reaches every call. */
     void applyAuth(HttpRequest.Builder rb) {
         if (apiKey != null && !apiKey.isEmpty()) {
             rb.header("Authorization", "Bearer " + apiKey);
@@ -110,6 +151,13 @@ public final class BacklexClient {
         }
         if (tenant != null && !tenant.isEmpty()) {
             rb.header("X-Backlex-Tenant", tenant);
+        }
+        String o = org;
+        if (o != null && !o.isEmpty()) {
+            rb.header("X-Backlex-Org", o);
+        }
+        if (tracing) {
+            rb.header("traceparent", makeTraceparent());
         }
     }
 

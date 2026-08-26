@@ -31,6 +31,11 @@ impl Client {
         let url = format!("{}/api/realtime/{}/subscribe", self.url(), channel);
         let auth = self.auth_header();
         let tenant = self.tenant().map(|s| s.to_string());
+        // Org rides the stream too, so a filtered subscription resolves
+        // `$org.id` the same way a read does. No traceparent here: the TS
+        // reference client does not trace a long-lived stream either, and one
+        // span for a connection that outlives every request is not a span.
+        let org = self.org();
 
         std::thread::spawn(move || {
             let mut last_id: Option<String> = None;
@@ -41,6 +46,9 @@ impl Client {
                 }
                 if let Some(t) = &tenant {
                     req = req.set("X-Backlex-Tenant", t);
+                }
+                if let Some(o) = &org {
+                    req = req.set("X-Backlex-Org", o);
                 }
                 if let Some(id) = &last_id {
                     req = req.set("Last-Event-ID", id);

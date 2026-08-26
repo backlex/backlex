@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "net/http"
+require "securerandom"
 require "uri"
 require "json"
 
@@ -12,12 +13,25 @@ module Backlex
     attr_reader :workspace
     attr_accessor :app_token
 
-    def initialize(url, api_key: nil, workspace: nil, token: nil, tenant: nil)
+    # Act inside a specific organization (slug or id) from here on, so `$org.id`
+    # in permission rules resolves without threading it through every call.
+    attr_accessor :org
+
+    def initialize(url, api_key: nil, workspace: nil, token: nil, tenant: nil, org: nil, tracing: true)
       @url = url.chomp("/")
       @api_key = api_key
       @workspace = workspace
       @app_token = token
       @tenant = tenant
+      @org = org
+      @tracing = tracing
+    end
+
+    # A W3C traceparent: 00-<32-hex trace id>-<16-hex span id>-01. Mirrors
+    # packages/client/src/trace.ts, which is what the API parses. Fresh per
+    # request — a span id reused across calls collapses them into one span.
+    def self.make_traceparent
+      "00-#{SecureRandom.hex(16)}-#{SecureRandom.hex(8)}-01"
     end
 
     # CRUD handle for a collection.
@@ -80,6 +94,8 @@ module Backlex
       res.body
     end
 
+    # The one chokepoint every request path goes through (data, storage,
+    # realtime) — a header added here reaches every call.
     def auth_header(req)
       if @api_key
         req["Authorization"] = "Bearer #{@api_key}"
@@ -87,6 +103,10 @@ module Backlex
         req["Authorization"] = "Bearer #{@app_token}"
       end
       req["X-Backlex-Tenant"] = @tenant if @tenant
+      req["X-Backlex-Org"] = @org if @org
+      # Without this a call never appears in the admin Traces panel and cannot
+      # be stitched to the server spans it triggers.
+      req["traceparent"] = self.class.make_traceparent if @tracing
     end
 
     # Serialize a ListQuery hash into a URL query string (mirrors buildSearch in

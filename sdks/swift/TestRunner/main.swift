@@ -146,6 +146,44 @@ do {
           "tenant header is sent")
 }
 
+// Org and trace ride the same chokepoint the tenant header does, so they reach
+// every request path rather than three of the four.
+do {
+    let cfg = URLSessionConfiguration.ephemeral
+    cfg.protocolClasses = [MockURLProtocol.self]
+    let client = BacklexClient("http://test", org: "acme", session: URLSession(configuration: cfg))
+    _ = try await client.from("posts", as: JSONValue.self).list()
+    check(MockURLProtocol.lastRequest!.value(forHTTPHeaderField: "X-Backlex-Org") == "acme",
+          "org header is sent")
+
+    let first = MockURLProtocol.lastRequest!.value(forHTTPHeaderField: "traceparent")
+    let shaped = first.map {
+        $0.range(of: "^00-[0-9a-f]{32}-[0-9a-f]{16}-01$", options: .regularExpression) != nil
+    } ?? false
+    check(shaped, "traceparent is a W3C value and on by default")
+
+    // A span id reused across calls would collapse them into one span.
+    _ = try await client.from("posts", as: JSONValue.self).list()
+    check(MockURLProtocol.lastRequest!.value(forHTTPHeaderField: "traceparent") != first,
+          "traceparent is fresh per request")
+
+    client.org = "other"
+    _ = try await client.from("posts", as: JSONValue.self).list()
+    check(MockURLProtocol.lastRequest!.value(forHTTPHeaderField: "X-Backlex-Org") == "other",
+          "org can be changed at runtime")
+}
+
+do {
+    let cfg = URLSessionConfiguration.ephemeral
+    cfg.protocolClasses = [MockURLProtocol.self]
+    let quiet = BacklexClient("http://test", tracing: false, session: URLSession(configuration: cfg))
+    _ = try await quiet.from("posts", as: JSONValue.self).list()
+    check(MockURLProtocol.lastRequest!.value(forHTTPHeaderField: "traceparent") == nil,
+          "tracing:false sends no traceparent")
+    check(MockURLProtocol.lastRequest!.value(forHTTPHeaderField: "X-Backlex-Org") == nil,
+          "no org configured sends none")
+}
+
 do {
     let client = mockClient()
     _ = try await client.auth.requestPasswordReset(email: "a@b.c")

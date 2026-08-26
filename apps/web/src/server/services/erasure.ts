@@ -160,16 +160,29 @@ export const subjectHashFor = async (
 /**
  * Does this field hold an email address?
  *
- * There is no `email` field type — it is `text` plus declared intent, in one of
- * three shapes. The last one (a text field literally named `email`) is a
- * heuristic, and a deliberate one: it is how most hand-built collections spell
- * it, and the match still requires the VALUE to equal the subject's address, so
- * a false positive means a row that genuinely contains their email. The preview
- * exists so the operator sees it before anything is destroyed.
+ * Two ways, and the first one used to be missing.
+ *
+ * **The `email` field type.** It normalizes and validates the address on write
+ * (see `docs/email.md`) — declaring it IS the declared intent, so it needs no
+ * heuristic. This clause was absent, and the docblock here asserted "there is
+ * no `email` field type", which was true when it was written and stopped being
+ * true when the type shipped. The effect was backwards from what anyone would
+ * want: a `text` field named `email` was erased and the same address in a
+ * properly-declared `email` field was not, so **modelling the schema correctly
+ * made a GDPR erasure quietly miss rows** — and it failed as a clean preview
+ * reporting zero, which reads exactly like "nothing to erase".
+ *
+ * **A text field with declared intent.** `interface`, a validation `format`, or
+ * — the heuristic — a text field literally named `email`, which is how most
+ * hand-built collections spell it. The match still requires the VALUE to equal
+ * the subject's address, so a false positive means a row that genuinely
+ * contains their email, and the preview exists so the operator sees it before
+ * anything is destroyed.
  */
 const isEmailField = (f: { name: string; type: string; interface?: string; validation?: { format?: string } }): boolean =>
-  (f.type === "text" || f.type === "longtext") &&
-  (f.interface === "email" || f.validation?.format === "email" || f.name.toLowerCase() === "email");
+  f.type === "email" ||
+  ((f.type === "text" || f.type === "longtext") &&
+    (f.interface === "email" || f.validation?.format === "email" || f.name.toLowerCase() === "email"));
 
 // ── Locating the subject ─────────────────────────────────────────────────────
 

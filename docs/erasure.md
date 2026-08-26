@@ -43,10 +43,12 @@ Two mechanisms, and the split is deliberate:
 
 - **Ownership is authoritative.** An owner-scoped collection says outright whose
   row it is.
-- **Email matching is a heuristic.** Any text field declared as an email
-  (`interface: "email"`, `validation.format: "email"`, or simply named `email`)
-  is matched against the subject's address. That finds the common case — a
-  `customers` table keyed by address — with no configuration.
+- **Email matching.** A field of the [`email` type](/docs/email/) is matched
+  outright — declaring it *is* the declared intent. So is any **text** field
+  declared as an email another way (`interface: "email"`,
+  `validation.format: "email"`, or simply named `email`), which is the
+  heuristic half. Together they find the common case — a `customers` table
+  keyed by address — with no configuration.
 
 The heuristic can only match when the **value** equals the subject's address, so
 a false positive is a row that genuinely contains their email. The preview exists

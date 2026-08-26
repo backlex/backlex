@@ -22,6 +22,7 @@ let h: TestHarness;
 let client: Database;
 let tenantId: string;
 let leadsTable: string;
+let typedLeadsTable: string;
 
 const req = async (method: string, path: string, body?: unknown) =>
   h.fetch(path, {
@@ -114,11 +115,25 @@ beforeAll(async () => {
       { name: "email", type: "text", interface: "email" },
     ],
   });
+  // The SAME address, in the dedicated `email` field type rather than a text
+  // field wearing an `interface`. Every case above this line used the text
+  // shape, which is exactly why the detector could stop seeing the typed one
+  // without a single test noticing.
+  await ok("POST", "/api/collections", {
+    slug: "typed_leads",
+    fields: [
+      { name: "name", type: "text" },
+      { name: "email", type: "email" },
+    ],
+  });
   const meta = client
     .query("select physical_table as t, tenant_id as tid from collections where slug = 'leads'")
     .get() as { t: string; tid: string };
   leadsTable = meta.t;
   tenantId = meta.tid;
+  typedLeadsTable = (client
+    .query("select physical_table as t from collections where slug = 'typed_leads'")
+    .get() as { t: string }).t;
 });
 afterAll(() => h.cleanup());
 
@@ -131,6 +146,7 @@ beforeEach(() => {
     client.query(`delete from ${t}`).run();
   }
   client.query(`delete from "${leadsTable}"`).run();
+  client.query(`delete from "${typedLeadsTable}"`).run();
 });
 
 describe("the request record must not re-create what it removes", () => {
@@ -194,6 +210,37 @@ describe("preview", () => {
     expect(countIn(leadsTable)).toBe(2);
     expect(countIn("revisions")).toBe(1);
     expect(made.data.status).toBe("previewed");
+  });
+
+  test("a field declared with the `email` TYPE is found, not only a text one", async () => {
+    // Regression: `isEmailField` required `type === "text" | "longtext"`, so the
+    // product's own `email` field type fell straight through it. The effect was
+    // backwards — modelling the schema correctly made the erasure miss rows —
+    // and it surfaced as a clean preview reporting zero, which reads exactly
+    // like "this person has nothing here".
+    const now = Date.now();
+    client
+      .query(`insert into "${typedLeadsTable}" (id, tenant_id, name, email, created_at, updated_at) values (?,?,?,?,?,?)`)
+      .run("typed-1", tenantId, "Typed Lead", SUBJECT_EMAIL, now, now);
+
+    const made = await ok("POST", `${BASE}/preview`, { subject: EMAIL_SUBJECT, mode: "delete" });
+    const found = (made.data.plan.collections as { slug: string; rows: number }[]).map((c) => c.slug);
+
+    expect(found).toContain("typed_leads");
+    expect(made.data.plan.counts.collections).toBe(1);
+  });
+
+  test("and the typed field is scanned by VALUE, not just by presence", async () => {
+    // Guards the fix from over-correcting into "every email-typed column
+    // matches every subject".
+    const now = Date.now();
+    client
+      .query(`insert into "${typedLeadsTable}" (id, tenant_id, name, email, created_at, updated_at) values (?,?,?,?,?,?)`)
+      .run("typed-other", tenantId, "Someone Else", "nobody@example.test", now, now);
+
+    const made = await ok("POST", `${BASE}/preview`, { subject: EMAIL_SUBJECT, mode: "delete" });
+
+    expect(made.data.plan.counts.collections).toBe(0);
   });
 
   test("somebody else's rows are not counted", async () => {

@@ -424,7 +424,7 @@ Sandboxed JS functions and the visual workflow builder (see `docs/sandbox.md`,
 to wire into a deploy step:
 
 ```bash
-backlex functions deploy resize-avatar --file ./fns/resize.js --trigger event --pattern 'items.avatars.created'
+backlex functions deploy resize-avatar --file ./fns/resize.js --trigger event --pattern 'items:avatars:created'
 backlex functions invoke welcome --data '{"userId":"u_1"}'
 backlex functions list
 
@@ -458,7 +458,7 @@ Outbound webhooks (`docs/webhooks.md`) and the durable job queue
 auto-disabled after repeated failures:
 
 ```bash
-backlex webhooks create --name orders --url https://hooks.acme.com/x --events 'items.orders.created'
+backlex webhooks create --name orders --url https://hooks.acme.com/x --events 'items:orders:created'
 backlex webhooks test <id>
 backlex webhooks deliveries --limit 20
 backlex webhooks retry <deliveryId>

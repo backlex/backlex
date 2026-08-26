@@ -80,7 +80,9 @@ export interface WebhookDeliveryRow {
   deliveredAt: string | number;
 }
 
-const matchesPattern = (pattern: string, channel: string, event: string): boolean => {
+/** Exported for `webhook-event-patterns.test.ts`, which checks the DOCUMENTED
+ *  patterns against this — the two disagreed for long enough to ship. */
+export const matchesPattern = (pattern: string, channel: string, event: string): boolean => {
   const target = `${channel}:${event}`;
   if (pattern === target) return true;
   if (pattern === channel) return true;

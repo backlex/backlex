@@ -18,17 +18,25 @@ POST /api/webhooks
 {
   "name": "Slack #content",
   "url": "https://api.example.com/webhooks/backlex",
-  "events": ["items.posts.created", "items.*.deleted"],
+  "events": ["items:posts:created", "items:*:deleted"],
   "secret": "whsec_…",
   "headers": { "Authorization": "Bearer …" }    // optional custom headers
 }
 ```
 
-Event patterns support `*` wildcards per segment (`items.*.created` matches every
-collection's create). The payload body is:
+Event patterns are **colon-separated** and match `<channel>:<event>` — the
+channel for a collection is `items:<slug>`, so a create on `posts` is
+`items:posts:created`. `*` stands in for one segment (`items:*:created` matches
+every collection's create), and a prefix matches everything under it (`items`
+alone matches every item event). A pattern spelled with dots is a single
+segment: it never matches, the hook is created without complaint, and **`Test`
+still passes** — the test send skips matching by design — so nothing tells you
+until the deliveries page stays empty.
+
+The payload body is:
 
 ```json
-{ "channel": "items", "event": "created", "data": { … }, "deliveredAt": "…" }
+{ "channel": "items:posts", "event": "created", "data": { … }, "deliveredAt": "…" }
 ```
 
 ## Choosing what `data` carries
@@ -46,13 +54,13 @@ POST /api/webhooks
 {
   "name": "Fulfilment",
   "url": "https://api.example.com/orders",
-  "events": ["items.orders.created"],
+  "events": ["items:orders:created"],
   "payloadFields": ["id", "status", "updated_at"]
 }
 ```
 
 ```json
-{ "channel": "items", "event": "created",
+{ "channel": "items:orders", "event": "created",
   "data": { "id": "…", "status": "paid", "updated_at": "…" },
   "deliveredAt": "…" }
 ```

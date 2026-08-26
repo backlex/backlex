@@ -315,7 +315,7 @@ export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags,
       summary: "Manually run flow",
       description:
-        "Admin-only. Synchronously executes the flow with an arbitrary input payload. Records a `flow.run` activity row.",
+        "Admin-only. Synchronously executes the flow with an arbitrary input payload — the body IS the flow's `data`, not a wrapper around it. Records a `flow.run` activity row carrying the same result, so a run stays readable after the fact.",
       security: SECURITY,
       middleware: adminGate,
       request: {
@@ -339,6 +339,14 @@ export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
               schema: z.object({
                 ok: z.boolean(),
                 error: z.string().optional(),
+                log: z
+                  .array(z.string())
+                  .optional()
+                  .openapi({
+                    description:
+                      "What the run's `log` operations rendered, in order. Absent when the flow has no `log` op. Capped at 50 lines (a 51st says the rest were truncated) and 500 characters each.",
+                    example: ["dealer=Ege Yapı tier=gold"],
+                  }),
               }),
             },
           },
@@ -376,6 +384,15 @@ export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         // workspace on the instance.
         tenantId,
       });
-      return c.json({ ok: result.ok, error: result.error ?? undefined });
+      // `log` rides along so the caller can read what the run's `log` ops
+      // rendered without going to the account's Worker observability — which a
+      // managed tenant's operator has no access to. Absent when the flow has
+      // no `log` op, so the response shape is unchanged for every existing
+      // caller.
+      return c.json({
+        ok: result.ok,
+        error: result.error ?? undefined,
+        ...(result.log?.length ? { log: result.log } : {}),
+      });
     },
   );

@@ -27,6 +27,15 @@ export interface FlowInput {
 export interface FlowRunResult {
   ok: boolean;
   error?: string;
+  /**
+   * What the run's `log` operations rendered, in order — the answer to "did my
+   * interpolation resolve?".
+   *
+   * Absent when the flow has no `log` op. Capped at 50 lines (a 51st says the
+   * rest were truncated) and 500 characters each, so a `log` inside a `foreach`
+   * over a large collection cannot turn one run into a write amplifier.
+   */
+  log?: string[];
 }
 
 /** Visual workflows (admin-scoped). Mirrors `/api/flows`. See `createClient`. */

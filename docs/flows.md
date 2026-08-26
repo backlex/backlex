@@ -32,7 +32,7 @@ A flow row is `{ id, name, trigger, operations, layout, active }`:
 | `event:<channel>:<event>` | A matching realtime event publishes. Item events use the channel `items:<slug>`, so `event:items:posts:created` fires on a new `posts` row. `*` is a wildcard segment: `event:items:posts:*` catches create/update/delete, `event:items:*` catches every collection. |
 | `cron:<pattern>` | The cron pattern is due. Standard 5-field crontab (`cron:*/5 * * * *` = every 5 min). Dispatched by the same cross-runtime [scheduler tick](/docs/sandbox/) that runs cron functions — no extra infrastructure. |
 | `schedule:<spec>` | A row's date field comes due — "three days before `due_date`". Fires **once per matching row**, with that row as `data`. See below. |
-| `manual:` | Only on an explicit run (REST `…/run`, SDK `flows.run`, GraphQL `runFlow`, MCP `flows.invoke`, CLI `flows run`). |
+| `manual:` | Only on an explicit run (REST `…/run`, SDK `flows.run`, GraphQL `runFlow`, MCP `flows.run`, CLI `flows run`). |
 | `webhook` | An inbound `POST /api/webhook/<flowId>` arrives. The request body becomes the flow's `data` payload. Public endpoint — guard it with a check op or a shared secret in the path. |
 
 The matched row that changed (for event triggers) or the run payload (for
@@ -140,7 +140,7 @@ are nested operation arrays run after the op succeeds / throws.
 
 | `type` | Does | Key fields |
 |---|---|---|
-| `log` | Writes a `[flow] …` line to the server log | `message` |
+| `log` | Records the rendered line on the run — readable in the response and on the `flow.run` activity row — and also writes `[flow] …` to the server log | `message` |
 | `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`). `attach` carries generated documents, `ics` a calendar invite — see below | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?`, `attach?`, `ics?` |
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
@@ -448,6 +448,35 @@ credential for somebody else's signature — the op sends the invitation itself,
 and the `signature_request` email template is where its wording lives. Details
 in [E-signature](/docs/e-signature/).
 
+## Watching a run
+
+A flow's `log` op is the shortest way to answer *did my interpolation resolve?*,
+so its output is kept on the run rather than only written to the server log —
+a managed tenant's operator cannot open the account's Worker observability, and
+that used to be the only place it went.
+
+```bash
+curl -s -X POST "$URL/api/flows/$ID/run" -H "$AUTH" -d '{"name":"Ege Yapı","tier":"gold"}'
+# { "ok": true, "log": ["dealer=Ege Yapı tier=gold"] }
+```
+
+The body **is** the flow's `data`, not a wrapper around it — `{"name":…}`, not
+`{"data":{"name":…}}`. Wrapping it is a quiet way to get an empty render, since
+every `{{ data.name }}` then resolves against the wrapper.
+
+The same result is written to the run record, so it stays readable afterwards:
+
+```bash
+curl -s "$URL/api/activity?action=flow.run&limit=1" -H "$AUTH"
+# { "data": [ { "response": { "ok": true, "error": null,
+#                             "log": ["dealer=Ege Yapı tier=gold"] }, … } ] }
+```
+
+`log` is absent when the flow has no `log` op. It is capped at 50 lines — a
+51st says the rest were truncated — and 500 characters per line, so a `log`
+inside a [`foreach`](#looping-over-rows) over a large collection cannot turn one
+run into a write amplifier.
+
 ## Surfaces
 
 Flows are reachable from every API surface; all are **admin-scoped**.
@@ -524,7 +553,7 @@ mutation Run($id: ID!, $input: JSON) {
 
 ### MCP ([reference](/docs/mcp/))
 
-Three tools for AI agents: `flows.list`, `flows.get`, and `flows.invoke`
+Three tools for AI agents: `flows.list`, `flows.get`, and `flows.run`
 (run a flow by id with an `input` payload).
 
 ### CLI ([reference](/docs/sdk-and-cli/))

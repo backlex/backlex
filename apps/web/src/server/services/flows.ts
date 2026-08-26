@@ -87,6 +87,17 @@ export type { Operation };
 export interface FlowRunResult {
   ok: boolean;
   error: string | null;
+  /**
+   * What the run's `log` operations rendered, in order.
+   *
+   * `log` is the first operation `docs/flows.md` teaches, and it is what a
+   * person reaches for to answer "did my interpolation resolve?" — it used to
+   * `console.log` and nothing else, so on a managed tenant (whose operator has
+   * no access to the account's Worker logs) the one operation designed for
+   * looking produced nothing to find. Recorded on the `flow.run` activity row,
+   * which is where runs were already observable.
+   */
+  log?: string[];
 }
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -141,7 +152,18 @@ interface RunCtx {
    *  and an author moving a flow from `event:` to `schedule:` rewrites
    *  nothing. */
   item?: Record<string, unknown> | null;
+  /**
+   * Rendered `log` lines, collected for the run record. Bounded on both axes:
+   * a `log` inside a `foreach` over ten thousand rows would otherwise write ten
+   * thousand lines into an activity row.
+   */
+  log?: string[];
 }
+
+/** Caps for {@link RunCtx.log} — enough to debug a flow, not enough to be a
+ *  write amplifier. The overflow is reported rather than dropped silently. */
+const MAX_LOG_LINES = 50;
+const MAX_LOG_LINE = 500;
 
 /**
  * Resolve a string that is EXACTLY one placeholder to the value itself rather
@@ -649,6 +671,13 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   if (op.type === "log") {
     const message = interpolate(op.message, ctx) as string;
     console.log(`[flow] ${message}`);
+    // Also kept on the run so it is readable through the API. `console.log`
+    // alone reaches only the account's Worker observability, which a managed
+    // tenant's operator cannot open.
+    if (ctx.log) {
+      if (ctx.log.length < MAX_LOG_LINES) ctx.log.push(String(message).slice(0, MAX_LOG_LINE));
+      else if (ctx.log.length === MAX_LOG_LINES) ctx.log.push(`… log truncated at ${MAX_LOG_LINES} lines`);
+    }
     return { message };
   }
 
@@ -1734,7 +1763,25 @@ const runOperation = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   return result;
 };
 
+/**
+ * Run a flow's operations, and hand back whatever its `log` ops rendered.
+ *
+ * The collector is installed here rather than at each entry point so every
+ * caller — event, cron, manual invoke, and a resumed continuation — records the
+ * same thing without having to remember to. `foreach` builds its per-iteration
+ * context by spreading this one, so the array reference is shared and lines
+ * from inside a loop land in the same place.
+ */
 const runFlowOps = async (
+  flow: Pick<FlowRow, "id" | "name" | "operations">,
+  runCtx: RunCtx,
+): Promise<FlowRunResult> => {
+  if (!runCtx.log) runCtx.log = [];
+  const result = await runFlowOpsInner(flow, runCtx);
+  return runCtx.log.length ? { ...result, log: runCtx.log } : result;
+};
+
+const runFlowOpsInner = async (
   flow: Pick<FlowRow, "id" | "name" | "operations">,
   runCtx: RunCtx,
 ): Promise<FlowRunResult> => {

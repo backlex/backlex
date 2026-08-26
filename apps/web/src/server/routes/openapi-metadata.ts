@@ -19,6 +19,8 @@ export const loadMetadata = async (): Promise<void> => {
     // openAPIRegistry (buildStaticDoc would otherwise skip them entirely).
     import("./collections.openapi"),
     import("./adopt.openapi"),
+    import("./uploads.openapi"),
+    import("./templates.openapi"),
   ]);
   loaded = true;
 };

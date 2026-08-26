@@ -71,7 +71,11 @@ const FlowInput = z
   .object({
     name: z.string().min(1),
     trigger: z.string().min(1).openapi({
-      description: "Trigger key (`event:items.created`, `cron`, `manual`, etc.).",
+      description:
+        "Trigger key. Event triggers are `event:<channel>:<event>` and a collection's "  +
+        "channel is `items:<slug>`, so a new `posts` row is `event:items:posts:created`. "  +
+        "`*` is one segment (`event:items:*:created`). Also `cron:<expr>` and `manual`. "  +
+        "The separator is a COLON — a dotted spelling is one segment and never matches.",
     }),
     operations: FlowOperations,
     layout: z.unknown().optional().openapi({

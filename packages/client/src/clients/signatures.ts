@@ -93,6 +93,15 @@ export interface SignaturesClient {
   get(id: string): Promise<{ data: SignatureRequest }>;
   /** Freeze a document and send it out. The links come back here and nowhere
    *  else. */
+  /** Alias of {@link SignaturesClient.create} — the verb the CLI
+   *  (`signatures send`) and MCP (`signatures.send`) use. */
+  send(input: CreateSignatureRequestInput): Promise<{
+    data: {
+      request: SignatureRequest;
+      links: Array<{ signerId: string; email: string; url: string }>;
+      sent: boolean;
+    };
+  }>;
   create(input: CreateSignatureRequestInput): Promise<{
     data: {
       request: SignatureRequest;
@@ -137,6 +146,11 @@ export const makeSignatures = (core: ClientCore): SignaturesClient => {
           sent: boolean;
         };
       }>("POST", "/api/admin/signatures", input),
+    /** Alias of {@link SignaturesClient.create}. The CLI (`signatures send`)
+     *  and MCP (`signatures.send`) both call it this, and it is what the act
+     *  actually is — you send a document out to be signed. Kept beside `create`
+     *  so the SDK stays internally consistent and either name works. */
+    send: (input: CreateSignatureRequestInput) => signatures.create(input),
     void: (id: string, reason?: string | null) =>
       core.request<{ data: SignatureRequest }>("POST", `${sig(id)}/void`, { reason: reason ?? null }),
     resend: (id: string, signerId: string) =>

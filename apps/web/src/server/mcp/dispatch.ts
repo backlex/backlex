@@ -22,6 +22,7 @@ import { resolveKind } from "./kind";
 import { listResources, listResourceTemplates, readResource } from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
 import { complete } from "./completions";
+import { resolveToolAlias } from "./tool-aliases";
 import { fromWireToolName, toWireToolName } from "./wire-names";
 
 /** The protocol version we prefer (latest we implement). Returned from
@@ -278,9 +279,8 @@ export const dispatch = async (
       // before anything downstream — findTool, the guard allowlist, and the
       // activity log all key on the dotted id. A client that sent the dotted
       // id directly resolves unchanged.
-      const canonicalName = fromWireToolName(
-        params.name,
-        new Set(wiring.tools.map((t) => t.name)),
+      const canonicalName = resolveToolAlias(
+        fromWireToolName(params.name, new Set(wiring.tools.map((t) => t.name))),
       );
       const tool = findTool(wiring.tools, canonicalName);
       if (!tool) {

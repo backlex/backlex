@@ -35,6 +35,7 @@
  */
 
 import type { ToolKind } from "./kind";
+import { RETIRED_TOOL_ALIASES } from "./tool-aliases";
 
 export interface KeyGuards {
   /** The API key's own allowlist; `null` = the key adds no restriction. */
@@ -98,6 +99,13 @@ export const mergeGuards = (key: KeyGuards, role: RoleGuards): KeyGuards => ({
 export const matchesPattern = (pattern: string, toolName: string): boolean => {
   if (pattern === toolName) return true;
   if (pattern === "*") return true;
+  // An allowlist stores the id it was GRANTED, so a tool that has since been
+  // renamed would silently narrow every key that named the old spelling — the
+  // key keeps working for everything else and loses exactly one capability,
+  // with nothing to say why. Retired ids therefore resolve here too: a key
+  // granted `flows.invoke` still authorises `flows.run`, because it is the
+  // same capability under a name we changed.
+  if (RETIRED_TOOL_ALIASES.get(pattern) === toolName) return true;
   // "collections.*" → every id starting with "collections." (the trailing dot
   // is what keeps the glob inside its own namespace).
   if (pattern.endsWith(".*")) return toolName.startsWith(pattern.slice(0, -1));

@@ -31,7 +31,7 @@ export const listDocumentTemplatesTool: McpTool = {
 };
 
 export const saveDocumentTemplateTool: McpTool = {
-  name: "documents.templates_save",
+  name: "documents.save",
   description:
     "Create or update a document template. `bodyHtml` is a COMPLETE html document, not a " +
     "fragment — a contract sets its own fonts, page size and print styles. Values are " +

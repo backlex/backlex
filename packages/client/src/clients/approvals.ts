@@ -99,6 +99,15 @@ export interface ApprovalsClient {
   get(id: string): Promise<{ data: ApprovalRequest }>;
   /** Ask people to approve something. The links come back here and nowhere
    *  else. */
+  /** Alias of {@link ApprovalsClient.create} — the verb the CLI
+   *  (`approvals request`) and MCP (`approvals.request`) use. */
+  request(input: CreateApprovalRequestInput): Promise<{
+    data: {
+      request: ApprovalRequest;
+      links: Array<{ approverId: string; email: string; url: string }>;
+      sent: boolean;
+    };
+  }>;
   create(input: CreateApprovalRequestInput): Promise<{
     data: {
       request: ApprovalRequest;
@@ -135,6 +144,13 @@ export const makeApprovals = (core: ClientCore): ApprovalsClient => {
           sent: boolean;
         };
       }>("POST", "/api/admin/approvals", input),
+    /** Alias of {@link ApprovalsClient.create}. The CLI (`approvals request`)
+     *  and MCP (`approvals.request`) both call it this, and it is the domain's
+     *  own verb — you request an approval, you do not create one. Kept beside
+     *  `create` rather than replacing it so the SDK stays internally consistent
+     *  with every other client, and so a caller who learned either surface
+     *  writes something that works. */
+    request: (input: CreateApprovalRequestInput) => approvals.create(input),
     cancel: (id: string, reason?: string | null) =>
       core.request<{ data: ApprovalRequest }>("POST", `${apv(id)}/cancel`, { reason: reason ?? null }),
   };

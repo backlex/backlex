@@ -10,7 +10,7 @@ export const listFlows: McpTool = {
   name: "flows.list",
   description:
     "List visual workflows in the active workspace. Each row shows id, " +
-    "name, trigger, and active state. Use `flows.invoke` to run one by id.",
+    "name, trigger, and active state. Use `flows.run` to run one by id.",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   handler: async (_args, ctx) => {
     const res = await ctx.fetchInternal(`/api/flows`);
@@ -38,7 +38,7 @@ export const getFlow: McpTool = {
 };
 
 export const invokeFlow: McpTool = {
-  name: "flows.invoke",
+  name: "flows.run",
   description:
     "Run a flow synchronously. The `input` object is passed as the flow's " +
     "trigger payload. Returns `{ ok, output?, error?, durationMs, steps }`.",
@@ -68,7 +68,7 @@ export const invokeFlow: McpTool = {
       | ({ ok?: boolean } & Record<string, unknown>)
       | null;
     if (!body) {
-      throw new Error(`flows.invoke: upstream returned non-JSON (status ${res.status})`);
+      throw new Error(`flows.run: upstream returned non-JSON (status ${res.status})`);
     }
     const isError = !res.ok || body.ok === false;
     return {

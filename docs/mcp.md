@@ -178,7 +178,7 @@ resource instead of composing a separate `resources/read`.
 | `webhooks.test` | Fire a synthetic test delivery against a webhook. |
 | `flows.list` | List visual workflows. |
 | `flows.get` | Fetch a single flow's full definition. |
-| `flows.invoke` | Run a flow synchronously with an input payload. |
+| `flows.run` | Run a flow synchronously with an input payload. |
 | `jobs.enqueue` | Enqueue a durable background job (`function` or `webhook.deliver`); retries with backoff + dead-letter, optional `runAt` scheduling. |
 | `jobs.list` | List jobs, filterable by queue + status. |
 | `jobs.get` | Fetch a single job (payload, result, lastError). |

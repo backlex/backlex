@@ -72,6 +72,32 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
 const tags = ["functions"];
 const adminGate = [requireUser, requireAdmin];
 
+/**
+ * Refuse an id that names no function in THIS workspace.
+ *
+ * `update` and `delete` both ran a tenant-scoped statement and then answered
+ * `{ok: true}` without asking whether it had touched anything — so a typo'd id,
+ * an already-deleted one, or another workspace's answered "done", and wrote an
+ * activity row saying so. A deploy script updating by id reported success and
+ * changed nothing.
+ *
+ * Scoped by tenant, so "not found" is the same answer for "does not exist" and
+ * "is not yours" — it confirms nothing about another workspace.
+ */
+const loadOwnFunction = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  tenantId: string,
+  id: string,
+): Promise<void> => {
+  const t = tableFor(ctx.dialect);
+  const rows = await (ctx.db as any)
+    .select({ id: t.id })
+    .from(t)
+    .where(and(eq(t.id, id), eq(t.tenantId, tenantId)))
+    .limit(1);
+  if (!rows.length) throw new AppError("NOT_FOUND", "Function not found");
+};
+
 export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
@@ -271,6 +297,7 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = requireTenant(c);
       const body = c.req.valid("json");
       const { id } = c.req.valid("param");
+      await loadOwnFunction(ctx, tenantId, id);
       const t = tableFor(ctx.dialect);
       await (ctx.db as any)
         .update(t)
@@ -315,8 +342,9 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
-      const t = tableFor(ctx.dialect);
       const { id } = c.req.valid("param");
+      await loadOwnFunction(ctx, tenantId, id);
+      const t = tableFor(ctx.dialect);
       await (ctx.db as any)
         .delete(t)
         .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));

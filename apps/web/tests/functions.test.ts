@@ -76,6 +76,43 @@ describe("functions CRUD", () => {
     expect(after.some((r) => r.name === "crud_fn")).toBe(false);
   });
 
+  test("an update or delete that matches nothing says so", async () => {
+    // Both statements were tenant-scoped and then answered `{ok: true}` without
+    // asking whether they had touched a row — so a typo'd id, an already-deleted
+    // one, or another workspace's came back "done", and an activity row recorded
+    // an update that never happened. A deploy script patching by id reported
+    // success and changed nothing; found by patching a function by NAME where
+    // the route takes an ID.
+    const missing = "00000000-0000-0000-0000-000000000000";
+
+    const patch = await h.fetch(`/api/functions/${missing}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "return 99" }),
+    });
+    expect(patch.status).toBe(404);
+    expect(((await patch.json()) as { error: { code: string } }).error.code).toBe("NOT_FOUND");
+
+    const del = await h.fetch(`/api/functions/${missing}`, { method: "DELETE" });
+    expect(del.status).toBe(404);
+  });
+
+  test("a real id still updates and still deletes", async () => {
+    // The other half: the refusal must not have cost the working path.
+    const { data } = await createFn({ name: "still_works_fn", code: "return 1" });
+    const patch = await h.fetch(`/api/functions/${data.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "return 2" }),
+    });
+    expect(patch.status).toBe(200);
+    const rows = ((await (await h.fetch("/api/functions")).json()) as {
+      data: { id: string; code: string }[];
+    }).data;
+    expect(rows.find((r) => r.id === data.id)?.code).toBe("return 2");
+    expect((await h.fetch(`/api/functions/${data.id}`, { method: "DELETE" })).status).toBe(200);
+  });
+
   test("rejects invalid names and out-of-range timeouts", async () => {
     expect((await createFn({ name: "Bad Name!", code: "return 1" })).status).toBe(422);
     expect(

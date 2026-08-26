@@ -77,6 +77,42 @@ If you find yourself on `main` with uncommitted changes when a task begins, stop
 
 **Branch naming:** `feat/<short-topic>` (e.g. `feat/admin-functions-page`).
 
+### Branch → PR → batched release
+
+The default for anything not urgent. Open the PR, let the checks run, and merge
+it into the next release rather than pushing straight to `main`:
+
+```bash
+git push -u origin feat/<topic>          # runs the local pre-push gate (~3 min)
+gh pr create --base main --head feat/<topic> --title … --body-file …
+gh pr checks <n>                          # branch protection does NOT exist here — read it yourself
+gh pr merge <n> --merge                   # only once every check is green
+```
+
+**What that costs, measured rather than guessed** (2026-08-26, this repo):
+
+| Stage | Wall clock | Money |
+|---|---|---|
+| Local pre-push gate (lint + typecheck + test + build:targets) | **~3 min** | your machine |
+| `test.yml` on the PR | **~8.5 min** | free — the repo is **public**, so Actions minutes are not billed |
+| `test.yml` again on the merge push | **~8.5 min** | free |
+| Cloudflare deploy of the merged commit | **~1.5 min** | included |
+| A publish workflow (npm / JSR / registry) | **~30 s each** | free |
+
+So a PR costs **one extra `test.yml` run**, and the run is free and asynchronous.
+Publishing itself is the cheapest step in the whole chain — the expense is the
+gate, and the gate runs on the merge whether or not a PR existed. There is no
+cost argument against reviewing something first.
+
+**One trap, now fixed but worth knowing:** `backlex-playground` has **two** build
+triggers — `main`, and `*` ("Deploy non-production branches"). Only the `main`
+one had `BUN_VERSION=1.4.0`, so every PR branch built with the runner's default
+bun 1.2.15, which cannot parse `bun.lock` v3 — **every PR showed a red
+Cloudflare check that had nothing to do with its contents**. A permanently-red
+check is worse than no check, because it teaches everyone to merge past red.
+Both triggers now carry the variable. `backlex-admin` and `backlex-website`
+build on `main` only and were never affected.
+
 **When the user says "publish"** (or "yayınla" / "deploy et"), follow these steps in order — do not skip or reorder:
 
 ```bash

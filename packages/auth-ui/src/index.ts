@@ -57,3 +57,11 @@ export type {
 
 export { MagicLinkPage } from "./pages/magic-link";
 export type { MagicLinkCopy, MagicLinkPageProps } from "./pages/magic-link";
+
+/** Bounding a WebAuthn ceremony — exported so a consumer wiring its own auth
+ *  screens gets the same deadline rather than reinventing (or omitting) it. */
+export {
+  WEBAUTHN_DEADLINE_MS,
+  WebAuthnTimeout,
+  withWebAuthnDeadline,
+} from "./webauthn-deadline";

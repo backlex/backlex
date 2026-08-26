@@ -25,6 +25,7 @@ import type {
   AuthSurfaceFlags,
   AuthWiring,
 } from "../types";
+import { withWebAuthnDeadline } from "../webauthn-deadline";
 
 const passkeysSupported = (): boolean =>
   typeof window !== "undefined" &&
@@ -255,7 +256,9 @@ export const SignInPage = ({
         setBusy(null);
         return;
       }
-      const res = await fn({ autoFill: false });
+      // Bounded: a prompt nobody answers must not leave the button stuck on
+      // "Signing in…" with no error and no way back. See `withWebAuthnDeadline`.
+      const res = await withWebAuthnDeadline(fn({ autoFill: false }));
       if (res?.error) {
         setError(res.error.message ?? copy.passkeyFailed);
         setBusy(null);

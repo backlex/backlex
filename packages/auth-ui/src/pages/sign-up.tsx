@@ -19,6 +19,7 @@ import type {
   AuthSurfaceFlags,
   AuthWiring,
 } from "../types";
+import { withWebAuthnDeadline } from "../webauthn-deadline";
 
 const computeStrength = (pw: string): number => {
   let s = 0;
@@ -273,10 +274,15 @@ export const SignUpPage = ({
       try {
         const fn = authClient.passkey?.addPasskey;
         if (fn) {
-          const pk = await fn({
-            name: name || email.split("@")[0] || "primary",
-            authenticatorAttachment: "platform",
-          });
+          // Bounded: the account is already durable at this point, so a
+          // ceremony that never settles must not be what decides whether the
+          // person ever reaches the app. See `withWebAuthnDeadline`.
+          const pk = await withWebAuthnDeadline(
+            fn({
+              name: name || email.split("@")[0] || "primary",
+              authenticatorAttachment: "platform",
+            }),
+          );
           if (pk?.error) {
             // Account is created; surface but don't block redirect.
             notify?.(
@@ -290,7 +296,7 @@ export const SignUpPage = ({
         notify?.(
           `Account created. Passkey enrolment skipped: ${
             err instanceof Error ? err.message : "cancelled"
-          }`,
+          }. Add one in Settings → Passkeys.`,
         );
       }
     }

@@ -45,6 +45,7 @@ import {
   bookingsConflict,
   buildIcs,
   civilDateIn,
+  icsAttachmentContent,
   slotIsOffered,
   type AvailabilityRule,
   type BusyInterval,
@@ -1066,7 +1067,10 @@ const sendBookingEmail = async (
     attachments: [
       {
         filename: "invite.ics",
-        content: ics,
+        // base64, per `EmailAttachment.content` — raw text is refused by the
+        // managed mail gateway and corrupts the file on the transports that
+        // accept it.
+        content: icsAttachmentContent(ics),
         contentType: "text/calendar; charset=utf-8; method=REQUEST",
       },
     ],

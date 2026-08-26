@@ -12,6 +12,7 @@ import {
   INLINE_DELAY_MS,
   buildIcs,
   foldLabel,
+  icsAttachmentContent,
   icsContentType,
 } from "@backlex/core";
 import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backlex/core";
@@ -464,7 +465,7 @@ const buildInvite = (
 
   return {
     filename: str(ics.filename) ?? "invite.ics",
-    content: btoa(String.fromCharCode(...new TextEncoder().encode(content))),
+    content: icsAttachmentContent(content),
     // The `method` parameter is what makes a mail client render accept/decline
     // rather than offer the file as a download.
     contentType: icsContentType(ics.method ?? (organizerEmail ? "REQUEST" : "PUBLISH")),

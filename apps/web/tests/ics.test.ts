@@ -13,7 +13,7 @@
  * append headers to a message the operator believes they wrote.
  */
 import { describe, expect, test } from "bun:test";
-import { buildIcs, icsContentType } from "@backlex/core";
+import { buildIcs, icsAttachmentContent, icsContentType } from "@backlex/core";
 import { buildRawMime } from "../src/server/lib/mime";
 
 const AT = new Date("2026-08-01T09:00:00.000Z");
@@ -218,5 +218,56 @@ describe("buildRawMime", () => {
     const boundary = raw.match(/boundary="([^"]+)"/)?.[1];
     expect(boundary).toBeTruthy();
     expect(raw.trimEnd().endsWith(`--${boundary}--`)).toBe(true);
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Packing the file for the wire.
+ *
+ * `EmailAttachment.content` is base64 and always was, but the rule lived only
+ * in a docblock: booking passed `buildIcs()` straight through, so the invite
+ * was raw text inside a field every transport decodes. Self-hosted transports
+ * produced an unopenable file; the managed cloud gateway refused it and turned
+ * every booking into a 500 — after the booking row was already committed.
+ *
+ * Every attachment case above this block builds its own `btoa(...)` in the
+ * test, which is exactly why none of them could see it.
+ * ───────────────────────────────────────────────────────────────────── */
+describe("icsAttachmentContent", () => {
+  const ics = buildIcs({ uid: "u1@example.com", dtstamp: AT, start: AT, summary: "Bayi görüşmesi" });
+
+  const unpack = (packed: string) =>
+    // `atob` yields a BINARY string — one char per byte — so a UTF-8 body has to
+    // go back through TextDecoder. Comparing its output to the original string
+    // directly is a test bug that reads as an encoding bug.
+    new TextDecoder().decode(Uint8Array.from(atob(packed), (c) => c.charCodeAt(0)));
+
+  test("it round-trips to the same bytes", () => {
+    expect(unpack(icsAttachmentContent(ics))).toBe(ics);
+  });
+
+  test("it survives non-ASCII", () => {
+    // `btoa` throws outright on a code point above 0xFF, so a Turkish summary is
+    // not a nicety here — it is the difference between an invite and an
+    // InvalidCharacterError on the send path.
+    const packed = icsAttachmentContent(buildIcs({
+      uid: "u2@example.com", dtstamp: AT, start: AT, summary: "Şubat görüşmesi — İzmir",
+    }));
+    expect(unpack(packed)).toContain("Şubat");
+  });
+
+  test("it emits no line breaks and no data: prefix", () => {
+    const packed = icsAttachmentContent(ics);
+    expect(packed).not.toContain("\n");
+    expect(packed).not.toContain("\r");
+    expect(packed.startsWith("data:")).toBe(false);
+    expect(packed).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
+  });
+
+  test("it does not choke on an invite larger than one spread call", () => {
+    // The obvious spelling — `btoa(String.fromCharCode(...bytes))` — passes one
+    // argument per byte and throws once the file is big enough.
+    const big = buildIcs({ uid: "u3@example.com", dtstamp: AT, start: AT, summary: "x".repeat(200_000) });
+    expect(atob(icsAttachmentContent(big)).length).toBe(big.length);
   });
 });

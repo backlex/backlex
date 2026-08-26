@@ -1,7 +1,7 @@
 import { and, eq, isNull, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { renderTemplate, htmlToText, type EmailAttachment } from "@backlex/core";
+import { AppError, renderTemplate, htmlToText, type EmailAttachment } from "@backlex/core";
 import type { Ctx } from "../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -75,6 +75,28 @@ export interface SendTemplatedResult {
   attachmentsDropped?: boolean;
 }
 
+/** Base64 with optional padding, and nothing else — no whitespace, no
+ *  `data:` prefix, no raw text that merely happens to be alphanumeric. */
+const BASE64_ONLY = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * Refuse an attachment whose `content` is not base64.
+ *
+ * Loud rather than lenient on purpose. A transport hands the DECODED bytes to
+ * its provider, so raw text is not "mostly fine" — it is a file the recipient
+ * cannot open, and the failure surfaces days later as "the calendar invite
+ * didn't work" with nothing in a log to point at.
+ */
+const assertBase64Attachment = (a: EmailAttachment): void => {
+  const packed = a.content.replace(/\s+/g, "");
+  if (!packed || !BASE64_ONLY.test(packed)) {
+    throw new AppError(
+      "INTERNAL",
+      `Attachment "${a.filename}" must be base64 (see EmailAttachment.content) — it looks like raw content.`,
+    );
+  }
+};
+
 /**
  * Send an email through a stored template (with optional fallback). Centralizes
  * tenant lookup + render so flows, send-test, and any future system mailers
@@ -93,6 +115,14 @@ export const sendTemplatedEmail = async (
   // says nothing is assumed to support them, which is true of every transport
   // in this repo bar the managed-cloud gateway.
   const wanted = opts.attachments ?? [];
+  // `EmailAttachment.content` is documented as base64, and until this check the
+  // only thing enforcing it was the managed-cloud mail gateway — which meant a
+  // caller that forgot got a corrupt file on every self-hosted transport and a
+  // 500 on cloud, *after* whatever it was confirming had already been written.
+  // Booking did exactly that. One check here, in front of every transport, so
+  // the mistake is named the same way everywhere instead of depending on where
+  // the deployment happens to send its mail from.
+  for (const a of wanted) assertBase64Attachment(a);
   const attachmentsDropped = wanted.length > 0 && transport.attachments === false;
   const attachments = attachmentsDropped ? undefined : wanted.length > 0 ? wanted : undefined;
 

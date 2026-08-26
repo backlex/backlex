@@ -191,3 +191,28 @@ export function buildIcs(event: IcsEvent): string {
  *  file as an unknown download. */
 export const icsContentType = (method: "REQUEST" | "PUBLISH" | "CANCEL" = "REQUEST"): string =>
   `text/calendar; charset=utf-8; method=${method}`;
+
+/**
+ * Pack an `.ics` body into the shape `EmailAttachment.content` requires.
+ *
+ * That field is documented as "base64, no line breaks, no `data:` prefix", and
+ * it is not advisory: a transport hands the DECODED bytes to its provider, so
+ * raw text either arrives as a corrupt attachment or is refused outright. The
+ * managed cloud mail gateway refuses it, which turned every booking on a
+ * managed tenant into a 500 — *after* the booking row was already written.
+ *
+ * It lives here rather than at either call site because there were two callers
+ * and only one of them encoded. One export is the difference between "a rule
+ * everyone must remember" and "a rule that is hard to get wrong".
+ *
+ * Chunked rather than `btoa(String.fromCharCode(...bytes))`: the spread form
+ * passes one argument per byte, which throws on a large enough invite.
+ */
+export const icsAttachmentContent = (ics: string): string => {
+  const bytes = new TextEncoder().encode(ics);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+};

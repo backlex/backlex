@@ -526,7 +526,24 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
       <SidebarMenuSubItem key={keyPrefix + c.slug}>
         <SidebarMenuSubButton
           isActive={c.slug === activeCollection}
-          onClick={() => onOpen(c.slug)}
+          href={`/collections/${c.slug}`}
+          // SidebarMenuSubButton renders an anchor, and this one carried only
+          // an onClick — so it was not in the tab order at all (an anchor with
+          // no href is not focusable and has no link role), could not be opened
+          // in a new tab, and showed no URL on hover. The destination is a real
+          // route; it just was not being declared. Modified clicks fall through
+          // to the browser so Cmd-click still opens a second collection beside
+          // the first, which is the whole reason to want a link here.
+          //
+          // Keep angle brackets out of this comment: the convention scan reads
+          // an element's props by finding the first `>` at brace depth zero, so
+          // a tag written here truncates the scan and the rule below silently
+          // stops seeing this element at all.
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+            e.preventDefault();
+            onOpen(c.slug);
+          }}
           onMouseEnter={() => prefetchPage("collections")}
           className={`group/pin cursor-pointer ${dimmed ? "opacity-60" : ""}`}
         >
@@ -599,13 +616,20 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
                 <Collapsible key={g} asChild open={open} onOpenChange={() => toggleGroup(g)}>
                   <SidebarMenuSubItem>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuSubButton className="cursor-pointer text-muted-foreground">
+                      {/* A disclosure control, not a link. It was an <a> with
+                          no href, so it was unfocusable and the groups could
+                          not be opened or closed from the keyboard at all —
+                          with 39 collections behind them. `asChild` keeps the
+                          styling and hands Radix a real <button>. */}
+                      <SidebarMenuSubButton asChild className="cursor-pointer text-muted-foreground">
+                        <button type="button">
                         <I.ChevronRight
                           size={11}
                           className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
                         />
                         <span className="truncate text-[11px] font-semibold uppercase tracking-[0.06em]">{g}</span>
                         <span className="ml-auto tabular-nums text-[10px]">{list.length}</span>
+                        </button>
                       </SidebarMenuSubButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>

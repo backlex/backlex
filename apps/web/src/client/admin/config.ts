@@ -343,3 +343,33 @@ export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {
   vercel: { db: "pg (neon)", storage: "s3", realtime: "upstash" },
   netlify: { db: "pg (neon)", storage: "s3", realtime: "upstash" },
 };
+
+/** First path segments the legacy-redirect effect rewrites — never "unknown". */
+export const LEGACY_NAV_REDIRECTS: ReadonlySet<string> = new Set(["activity"]);
+
+/**
+ * Does this URL point at nothing?
+ *
+ * The admin resolves its page from the first path segment and used to fall back
+ * to `initialNav` when that segment matched no nav id — so `/roles` (a natural
+ * guess, since the REST API has `/api/roles`) rendered Overview with the
+ * address bar still saying `/roles`, and a stale bookmark or a renamed route
+ * looked like it had loaded correctly. Same silent shape the `/analytics/sites`
+ * redirect was added to fix, one level up and for every URL nobody aliased.
+ *
+ * `extensionsPending` is load-bearing, not defensive: `navIds` gains the
+ * `ext:*` panel ids only once the enabled-extensions query resolves, so
+ * answering before then would flash "not found" over a good extension deep
+ * link on every cold load.
+ */
+export const isUnknownRoute = (opts: {
+  firstSegment: string | undefined;
+  navIds: ReadonlySet<string>;
+  extensionsPending: boolean;
+}): boolean => {
+  const seg = opts.firstSegment;
+  if (opts.extensionsPending) return false;
+  if (!seg) return false; // "/" is the root, not a miss
+  if (opts.navIds.has(seg)) return false;
+  return !LEGACY_NAV_REDIRECTS.has(seg);
+};

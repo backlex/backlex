@@ -54,6 +54,18 @@ const propsOf = (src: string, start: number): string => {
       if (ch === quote && src[i - 1] !== "\\") quote = null;
       continue;
     }
+    // A `//` comment between attributes is prose, and prose is where both of
+    // this scanner's terminators appear by accident: an apostrophe in
+    // "the element's props" opens a string that swallows the rest of the file,
+    // and a tag written as an example ends the props region early. Either way
+    // the element silently drops out of every rule below — a filter that
+    // matches nothing, which reads exactly like a pass. Skip the line instead.
+    if (ch === "/" && src[i + 1] === "/") {
+      const nl = src.indexOf("\n", i);
+      if (nl === -1) return src.slice(start);
+      i = nl;
+      continue;
+    }
     // Quotes are only delimiters in the element's own attribute list. Inside a
     // `{…}` they are ordinary text — `title={<Trans>Couldn't load logs</Trans>}`
     // has an apostrophe that would otherwise open a string and swallow the rest
@@ -156,6 +168,26 @@ describe("admin UI conventions", () => {
   // The admin `Button` is h-8 (size "sm" by default); a default-size `Select`
   // trigger is h-9. Side by side in a header that one pixel of overhang is the
   // whole defect.
+  // `SidebarMenuSubButton` renders an `<a>`. One that navigates on click and
+  // declares no `href` is not a link — an anchor without href is not in the tab
+  // order, carries no implicit link role, and offers no ⌘-click "open in new
+  // tab", no copy-link, and no URL on hover. The admin's 39 collection entries
+  // were exactly that: `.focus()` on one was a no-op, so a keyboard user could
+  // not reach the data section of the product at all, while `.click()` went to
+  // a perfectly real `/collections/:slug`. The destination existed; it just was
+  // not being declared. `asChild` is exempt — the caller supplies the element.
+  test("a SidebarMenuSubButton that navigates declares its href", () => {
+    const offenders: string[] = [];
+    for (const { rel, src } of FILES) {
+      for (const props of elementsIn(src, "SidebarMenuSubButton")) {
+        if (!/\bonClick=/.test(props)) continue; // a label, not a destination
+        if (/\basChild\b/.test(props)) continue; // renders the caller's element
+        if (!/\bhref=/.test(props)) offenders.push(rel);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   test("a Select in a page header's actions is size=\"sm\"", () => {
     const offenders: string[] = [];
     for (const { rel, src } of FILES) {

@@ -29,10 +29,12 @@ import {
   type MeNav,
   type Post,
   isNavVisible,
+  isUnknownRoute,
 } from "./config";
 import {
   Badge,
   Button,
+  EmptyState,
   IconButton,
   PageHeader,
   Sidebar,
@@ -263,6 +265,22 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       }
     });
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
+  /**
+   * A first segment that is not a nav id used to fall through to `initialNav`
+   * with the address bar untouched — so `/roles` (a natural guess, since the
+   * REST API has `/api/roles`) rendered Overview and looked like it had worked.
+   * Same silent shape the `/analytics/sites` redirect below was added to fix,
+   * one level up and for every URL nobody thought to alias.
+   *
+   * Gated on the extensions query: `NAV_IDS` gains the `ext:*` panel ids only
+   * once that resolves, so declaring a route unknown before then would flash
+   * "not found" over a perfectly good extension deep link.
+   */
+  const unknownRoute = isUnknownRoute({
+    firstSegment: segs[0],
+    navIds: NAV_IDS,
+    extensionsPending: extensionsQuery.isPending,
+  });
   // Navigate inside a view transition. Warms the target's lazy chunk first (so
   // the transition snapshots the page, not its skeleton), then commits through
   // `withViewTransition` which falls back to a plain navigate when the API is
@@ -1234,7 +1252,24 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         <div className="scrollarea" style={{ flex: 1 }}>
           <div className="page">
             <Suspense fallback={<PageSkeleton nav={activeNav} />}>
-            {activeNav === "overview" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
+            {unknownRoute && (
+              <EmptyState
+                icon={I.Search}
+                title={<Trans>This page does not exist</Trans>}
+                description={
+                  <Trans>
+                    Nothing is routed at <span className="font-mono">{location.pathname}</span>.
+                    It may have been renamed, or the link may be out of date.
+                  </Trans>
+                }
+                action={
+                  <Button variant="primary" size="sm" onClick={() => vNav("/" + initialNav)}>
+                    <Trans>Go to Overview</Trans>
+                  </Button>
+                }
+              />
+            )}
+            {!unknownRoute && activeNav === "overview" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "ask-ai" && <AskAiPage pushToast={pushToast} />}
             {activeNav === "database" && <DatabasePage pushToast={pushToast} adapter={tweaks.adapter} />}
             {activeNav === "storage" && <StoragePage pushToast={pushToast} />}

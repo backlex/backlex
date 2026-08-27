@@ -200,8 +200,10 @@ automatically.
 
 ## Pagination
 
-Two modes. `limit` is clamped to `[1, 200]` (default `50`) in both — the hard
-cap is server-side, so `limit=1000` silently becomes `200`.
+Two modes. `limit` is `[1, 200]` (default `50`) in both, and a value outside
+that range is **refused with `422`**, not clamped — `limit=500` comes back as
+`limit: Too big: expected number to be <=200`. Ask for 200 and page, rather than
+asking for more and assuming the server will trim it for you.
 
 **Offset (default).** `offset` is non-negative (default `0`). Simple and
 random-access (jump to any page), but O(offset): the engine walks and discards

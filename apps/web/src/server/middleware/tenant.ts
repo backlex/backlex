@@ -359,6 +359,10 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   const dialect = ctx.dialect;
 
   let tenantId: string | null = null;
+  /** The workspace the caller ASKED for by header, if they asked at all. */
+  let headerWanted: string | null = null;
+  /** Whether `tenantId` currently holds what that header resolved to. */
+  let tenantFromHeader = false;
 
   // Resolve the requested tenant id. UUIDs are accepted *as-is* — the membership
   // check below catches bogus ids cheaply, so we skip the dedicated lookup. Non-
@@ -387,6 +391,18 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     tenantId = auth.apiKeyTenantId;
   } else if (headerKey) {
     tenantId = await resolveTenantKey(headerKey);
+    // An explicit `X-Backlex-Tenant: typo` used to answer, with a 200, for
+    // whichever workspace the caller happened to default to — a slug matching
+    // nothing resolved to `null` and fell straight through the chain below.
+    // Reads returned another workspace's rows and writes landed in it.
+    //
+    // An empty or whitespace-only value is still treated as absent: that is
+    // indistinguishable from not sending the header, and some clients send one
+    // either way.
+    // Truncated: the value is echoed back in the refusal below, and a header
+    // is caller-supplied.
+    if (headerKey.trim() !== "") headerWanted = headerKey.trim().slice(0, 80);
+    tenantFromHeader = tenantId !== null;
   }
   // Global (un-pinned) API keys fall back to their owner's tenant resolution
   // below; a pinned key already set `tenantId` above.
@@ -399,6 +415,28 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   if (auth.plane === "app" && auth.appSessionTenantId) {
     tenantId = auth.appSessionTenantId;
   }
+  /**
+   * The single refusal for "you named a workspace and cannot have it".
+   *
+   * Deliberately ONE message for two causes — the slug matches nothing, or it
+   * matches one the caller is not a member of. Answering differently would
+   * turn the header into an existence oracle: any signed-in user could probe
+   * slugs and read off which workspaces exist from the status code alone.
+   * Before this whole change both cases fell through to the caller's own
+   * workspace, so they were indistinguishable; they stay that way.
+   */
+  const refuseHeaderWorkspace = (): never => {
+    throw new AppError(
+      "NOT_FOUND",
+      `No workspace matches X-Backlex-Tenant "${headerWanted}", or you do not have access to it. An unknown workspace is refused rather than falling back to your default one.`,
+    );
+  };
+
+  // Checked AFTER the pinning branches above, so the two callers whose header
+  // is ignored on purpose keep working: an app-plane session is bound to the
+  // workspace that issued it, and a pinned API key to its home one. Only a
+  // caller whose header was actually meant to choose the workspace is refused.
+  if (headerWanted && !tenantId) refuseHeaderWorkspace();
   if (!tenantId) {
     const cookieKey = getCookie(c, TENANT_COOKIE);
     if (cookieKey) tenantId = await resolveTenantKey(cookieKey);
@@ -437,6 +475,10 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
         // workspace (and clear any leaked cookie below).
         if (access.viaAdminShortcut) pinTenantCookie = false;
       } else {
+        // Not a member, and not an admin taking the cross-tenant shortcut.
+        // If the workspace was the caller's own explicit choice, say so rather
+        // than quietly running the request somewhere else.
+        if (tenantFromHeader && headerWanted) refuseHeaderWorkspace();
         tenantId = null;
       }
     }

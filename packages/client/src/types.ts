@@ -34,7 +34,11 @@ export interface ListQuery {
   fields?: string | string[];
   /** Inline single-hop relations (replaces the FK with the related object). */
   expand?: string | string[];
+  /** Rows per page, 1-200 (default 50). Outside that range the server answers
+   *  `422` rather than clamping — ask for 200 and page for the rest. */
   limit?: number;
+  /** Rows to skip, 0-100 000. Past that the server answers `422`: `OFFSET n`
+   *  costs O(n) on both dialects, so deep paging belongs on `cursor`. */
   offset?: number;
   /** Keyset (seek) pagination. Pass `""` to start, then echo back each
    *  response's `next_cursor`. O(1) per page at any depth and stable under

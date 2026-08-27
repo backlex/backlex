@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { isAppError } from "@backlex/core";
 import { keepAlive, recordActivity, requestMeta } from "../services/activity";
@@ -109,6 +110,41 @@ export const errorHandler = (err: Error, c: Context) => {
     return c.json(
       {
         error: { code: err.code, message: err.message, details: err.details },
+        requestId,
+      },
+      status,
+    );
+  }
+  // Hono raises its OWN 4xx as an `HTTPException` before any route code runs:
+  // a body that is not JSON, a FormData part it cannot parse, a payload past
+  // the size cap. Falling through to the generic branch below turned every one
+  // of those into a 500 — which is wrong three times over. The caller loses the
+  // status AND the message that said what to fix ("Malformed JSON in request
+  // body" became "Internal server error"); `logServerError` fires, so a caller's
+  // mistake writes a server-error activity row and burns a cloud error report;
+  // and a bodyless `POST` that carries `content-type: application/json` — which
+  // is what every generated client, `axios`, and `curl -H` send — pages someone
+  // for a 400. The SDK only escapes it by omitting the header on bodyless
+  // writes, which is a workaround for this, not a reason to keep it.
+  if (err instanceof HTTPException) {
+    const status = err.status;
+    // Some HTTPExceptions carry a whole Response rather than a message —
+    // hono's `basicAuth`/`bearerAuth` attach the `WWW-Authenticate` header that
+    // way, and `bodyLimit` its own 413. None of those are mounted here today,
+    // but rebuilding the envelope around one would silently drop the header
+    // that makes it work. Hand it back as hono built it.
+    if (err.res) {
+      markError(c, "HTTP_EXCEPTION");
+      logServerError(c, status, "HTTP_EXCEPTION", err.message);
+      return err.getResponse();
+    }
+    const code = status === 401 ? "UNAUTHORIZED" : status === 403 ? "FORBIDDEN" : status === 404 ? "NOT_FOUND" : status === 413 ? "PAYLOAD_TOO_LARGE" : status === 429 ? "RATE_LIMITED" : status >= 500 ? "INTERNAL" : "VALIDATION";
+    markError(c, code);
+    logServerError(c, status, code, err.message);
+    return c.json(
+      {
+        // A 5xx from Hono is still ours to hide; a 4xx is the caller's to read.
+        error: { code, message: status >= 500 ? "Internal server error" : err.message },
         requestId,
       },
       status,

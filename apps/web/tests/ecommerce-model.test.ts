@@ -235,8 +235,18 @@ describe("ecommerce model", () => {
     for (const l of lines.data) {
       expect(l).toHaveProperty("tax_rate");
       expect(l).toHaveProperty("tax_amount");
-      // The computed column still works alongside the new ones.
-      expect(l.line_total).toBe(Number(l.qty) * Number(l.unit_price));
+      // Every amount on a line is MONEY — the order it belongs to is
+      // denominated, so the lines that make up its total have to be too, or
+      // `sum` over them adds €85 to $100 and answers 185.5 of nothing.
+      const unit = l.unit_price as unknown as { amount: number; currency: string };
+      const total = l.line_total as unknown as { amount: number; currency: string };
+      const tax = l.tax_amount as unknown as { amount: number; currency: string } | null;
+      expect(typeof unit.currency).toBe("string");
+      // The computed column still works alongside the new ones, and keeps the
+      // unit rather than handing back a bare count of minor units.
+      expect(total.amount).toBe(Number(l.qty) * unit.amount);
+      expect(total.currency).toBe(unit.currency);
+      if (tax) expect(tax.currency).toBe(unit.currency);
     }
   });
 

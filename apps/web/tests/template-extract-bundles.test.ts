@@ -267,7 +267,10 @@ describe("templates extract — the bundle half", () => {
     /** Apply an extracted document into a SECOND workspace and read it back. */
     const applyInto = async (doc: Extracted) => {
       const created = await ok(
-        await h.fetch("/api/tenants", json({ name: "Target", slug: "target" })),
+                // No `slug` here: the workspace slug is folded from the name and the
+        // endpoint refuses one, so passing "target" only ever worked because
+        // it matched what slugify("Target") produces anyway.
+        await h.fetch("/api/tenants", json({ name: "Target" })),
       );
       const { data } = (await created.json()) as { data: { id: string } };
       const as = (path: string, init?: RequestInit): Promise<Response> =>

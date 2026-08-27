@@ -12,6 +12,7 @@ out of the monorepo? Swap the `workspace:*` dependency for the published package
 | [`todo-react`](./todo-react) | React 19 + Vite + `backlex` | Workspace auth, collection CRUD, realtime (SSE) |
 | [`blog-react`](./blog-react) | React 19 + Vite + `backlex` | Draft/publish + scheduled publish, full-text search, aggregates, fluent query builder, realtime, **multi-language (localized fields) + locale switcher** |
 | [`ecommerce-react`](./ecommerce-react) | React 19 + Vite + `backlex` | Filter/sort via query builder, storage image uploads + transforms, cart, batch order writes, aggregates |
+| [`ecommerce-admin-react`](./ecommerce-admin-react) | React 19 + Vite + `backlex` | The **merchant's back-office** for the same shop: options→variants→`variant_option_values`, multi-location inventory with a generated `available`, price lists and quantity breaks, orders across their three axes with fulfillment/refund ledgers, and named KPIs |
 | [`showcase-react`](./showcase-react) | React 19 + Vite + `backlex` | One tab per capability: query builder, aggregates, search, realtime, draft/publish, storage, offline sync, feature flags, messaging (real Web Push), **raw REST + GraphQL** |
 | [`react-router-app`](./react-router-app) | React Router 8 (framework mode, SSR) + `backlex` | The **admin/server plane**: loaders + actions drive jobs, flows, agents, permission simulation, and usage with an API key that never reaches the browser |
 | [`nextjs-app`](./nextjs-app) | Next.js 16 App Router + `backlex` | The end-user plane **server-rendered**: Server Components read, Server Actions write + `revalidatePath`, session token in an **httpOnly cookie** instead of `localStorage` |
@@ -22,9 +23,12 @@ jobs, sandbox, SSO, audit logs…) — to where you can see or configure it.
 
 Three axes to pick along:
 
-- **Which plane?** The first four and `nextjs-app` sign in as a **workspace
-  end-user** (the consumer half of the SDK). `react-router-app` covers the other
-  half — the `requireAdmin` namespaces a browser app can't reach.
+- **Which plane?** The four SPAs above `ecommerce-admin-react` and `nextjs-app`
+  sign in as a **workspace end-user** (the consumer half of the SDK).
+  `react-router-app` covers the other half — the `requireAdmin` namespaces a
+  browser app can't reach — and `ecommerce-admin-react` is the shape in between:
+  a browser app on the **control plane**, scoped with `tenant` rather than
+  `workspace`, which is what a customer's own admin panel actually is.
 - **Where does it render?** The four Vite apps are client-rendered SPAs;
   `nextjs-app` and `react-router-app` render on the server.
 - **Where does the session live?** SPAs use `localStorage` (readable by JS, so

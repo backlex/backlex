@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, flow, geo, half, hint, image, int, money, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, rollup, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
+import { C, bool, ch, computedMoneyIn, computedNum, date, email, flag, flow, geo, half, hint, image, int, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, rollup, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
 
 /**
  * The commerce model, read off the three platforms that publish theirs.
@@ -24,6 +24,15 @@ import { C, bool, ch, computedNum, date, email, flag, flow, geo, half, hint, ima
  * `state` and nowhere else: it used to be a value of the payment column, so
  * every KPI that meant to exclude cancelled orders excluded nothing and counted
  * them into revenue.
+ *
+ * **Every amount carries its denomination.** Not just the totals: a line, a
+ * discount allocation, a consignment's shipping and a customer's lifetime
+ * spend are all `moneyIn`, denominated by their own row's `currency`. A bare
+ * number here is not a smaller version of the same thing — it is an amount
+ * whose unit nothing knows, and `sum()` over a column of those adds €85 to
+ * $100 and answers 185.5. The totals were protected and the lines that make
+ * them up were not, which is the same defect one table over from where it was
+ * fixed.
  *
  * **Price is a table, not a column.** `product_variants.price` is the default
  * list price and a single-price shop never needs more. `prices` is what a
@@ -331,12 +340,13 @@ export const ecommerce: SchemaTemplate = {
       fields: stacked(
         sec("Rate", [
           ...half(text("name", { required: true }), rel("zone", "shipping_zones")),
-          ...half(text("carrier"), money("price")),
+          text("carrier"),
+          ...half(moneyIn("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
         ]),
         sec("Eligibility", [
           hint("shipping_rates_rules", "The two bounds below cover most rates. Anything else — a country list, a customer group, a product tag — is a shipping rate rule."),
           ...half(
-            money("min_order_subtotal", { label: "Minimum order subtotal" }),
+            moneyIn("min_order_subtotal", { label: "Minimum order subtotal" }),
             num("max_weight_kg", { validation: { min: 0 }, label: "Maximum weight (kg)" }),
           ),
           ...half(int("eta_days", { label: "Delivery estimate (days)" }), flag("active")),
@@ -704,8 +714,9 @@ export const ecommerce: SchemaTemplate = {
       slug: "modifier_values", group: "Catalog", singular: "Modifier value", plural: "Modifier values", defaultSort: "position",
       fields: [
         ...half(rel("modifier", "product_modifiers", { required: true }), text("label", { required: true })),
-        ...half(money("price_adjustment", { validation: {}, label: "Price adjustment" }), num("weight_adjustment", { label: "Weight adjustment" })),
-        ...half(position("modifier"), bool("is_default", { default: false, label: "Default" })),
+        ...half(moneyIn("price_adjustment", { validation: {}, label: "Price adjustment" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        ...half(num("weight_adjustment", { label: "Weight adjustment" }), position("modifier")),
+        bool("is_default", { default: false, label: "Default" }),
       ],
       samples: [
         { modifier: { ref: "product_modifiers:1" }, label: "Gold thread", price_adjustment: 5, position: 1, is_default: false },
@@ -775,7 +786,13 @@ export const ecommerce: SchemaTemplate = {
         ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
         ...half(
           int("min_quantity", { validation: { min: 1 }, label: "From quantity" }),
-          int("max_quantity", { validation: { min: 1 }, label: "To quantity" }),
+          // A tier whose ceiling is below its floor matches no basket at any
+          // quantity, so it is not a price anyone will ever be charged — it is
+          // a row that looks like one. Refused rather than stored.
+          int("max_quantity", {
+            validation: { min: 1, rule: { max_quantity: { _gte: "$field.min_quantity" } }, message: "A quantity tier cannot end below the quantity it starts at." },
+            label: "To quantity",
+          }),
         ),
       ],
       samples: [
@@ -862,13 +879,14 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Activity", [
           ...half(
-            money("total_spent", { default: 0, label: "Total spent" }),
+            select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", description: "The unit the two amounts below are kept in." }),
             int("orders_count", { default: 0, validation: { min: 0 }, label: "Orders count" }),
           ),
           ...half(
-            money("store_credit", { default: 0, label: "Store credit" }),
-            bool("tax_exempt", { default: false, label: "Tax exempt" }),
+            moneyIn("total_spent", { default: 0, label: "Total spent" }),
+            moneyIn("store_credit", { default: 0, label: "Store credit" }),
           ),
+          bool("tax_exempt", { default: false, label: "Tax exempt" }),
           notes("note", { label: "Internal note" }),
         ]),
       ),
@@ -1009,20 +1027,21 @@ export const ecommerce: SchemaTemplate = {
         sec("Limits", [
           ...half(
             select("target_selection", [ch("all", C.gray), ch("entitled", C.amber)], { default: "all", label: "Scope", description: "Entitled means only what the rules tab names." }),
-            money("minimum_amount", { label: "Minimum order amount" }),
+            select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", description: "The unit a fixed-amount value and the minimum below are in." }),
           ),
           ...half(
+            moneyIn("minimum_amount", { label: "Minimum order amount" }),
             int("min_item_qty", { validation: { min: 0 }, label: "Minimum items" }),
+          ),
+          ...half(
             int("usage_limit", { validation: { min: 0 }, label: "Usage limit" }),
-          ),
-          ...half(
             int("usage_count", { default: 0, validation: { min: 0 }, label: "Times used" }),
-            bool("once_per_customer", { default: false, label: "Once per customer" }),
           ),
           ...half(
+            bool("once_per_customer", { default: false, label: "Once per customer" }),
             bool("combinable", { default: false, label: "Stacks with others" }),
-            int("priority", { default: 0, label: "Priority", description: "Highest priority is applied first when two discounts both qualify." }),
           ),
+          int("priority", { default: 0, label: "Priority", description: "Highest priority is applied first when two discounts both qualify." }),
         ]),
         sec("Schedule", [
           ...half(ts("starts_at", { range: { end: "ends_at" }, indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
@@ -1089,14 +1108,21 @@ export const ecommerce: SchemaTemplate = {
       // basket as two scalars: a count and a total. A recovery email could not
       // name what was left behind, and nothing could be carried into an order.
       slug: "cart_items", group: "Orders", singular: "Cart item", plural: "Cart items",
-      fields: [
-        hint("cart_items_snapshot", "Title, SKU and unit price are snapshots taken when the line was added — a catalog price change must not silently reprice a basket somebody is looking at."),
-        ...half(rel("cart", "carts", { required: true }), rel("product", "products")),
-        ...half(rel("variant", "product_variants"), text("title", { label: "Title (snapshot)" })),
-        ...half(text("sku", { label: "SKU (snapshot)" }), int("qty", { default: 1, validation: { min: 1 } })),
-        ...half(money("unit_price"), bool("gift_wrap", { default: false, label: "Gift wrap" })),
-        tags("selected_options", { label: "Selected options", description: "The modifier choices on this line, as name/value pairs." }),
-      ],
+      // Sectioned like `order_items`, which is the row this one becomes at
+      // checkout — two shapes a person reads side by side should not be laid
+      // out differently.
+      fields: stacked(
+        sec("Line", [
+          hint("cart_items_snapshot", "Title, SKU and unit price are snapshots taken when the line was added — a catalog price change must not silently reprice a basket somebody is looking at."),
+          ...half(rel("cart", "carts", { required: true }), rel("product", "products")),
+          ...half(rel("variant", "product_variants"), text("title", { label: "Title (snapshot)" })),
+          ...half(text("sku", { label: "SKU (snapshot)" }), int("qty", { default: 1, validation: { min: 1 } })),
+        ]),
+        sec("Amounts", [
+          ...half(moneyIn("unit_price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+          ...half(bool("gift_wrap", { default: false, label: "Gift wrap" }), tags("selected_options", { label: "Selected options", description: "The modifier choices on this line, as name/value pairs." })),
+        ]),
+      ),
       samples: [
         { cart: { ref: "carts:0" }, product: { ref: "products:0" }, variant: { ref: "product_variants:1" }, title: "Classic Tee — M / Black", sku: "TEE-001-M-BLK", qty: 1, unit_price: 25 },
         { cart: { ref: "carts:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, title: "Canvas Tote", sku: "TOTE-001-NAT", qty: 2, unit_price: 18 },
@@ -1170,7 +1196,9 @@ export const ecommerce: SchemaTemplate = {
     },
     {
       slug: "order_items", group: "Orders", singular: "Order item", plural: "Order items",
-      fields: stacked(
+      // Fourteen storage columns since every amount gained its denomination —
+      // past the point a form fits one screen, so the sections become tabs.
+      fields: tabbed(
         sec("Line", [
           hint("order_items_total", "Line total is generated by the database as qty × unit price — it can't be typed in. Tax is per line because one order routinely mixes rates."),
           ...half(rel("order", "orders"), rel("product", "products")),
@@ -1179,12 +1207,13 @@ export const ecommerce: SchemaTemplate = {
           tags("selected_options", { label: "Selected options", description: "The modifier choices this line was bought with." }),
         ]),
         sec("Amounts", [
-          ...half(money("unit_price"), money("total_discount", { label: "Line discount" })),
+          ...half(moneyIn("unit_price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+          ...half(moneyIn("total_discount", { label: "Line discount" }), moneyIn("tax_amount", { label: "Tax" })),
           ...half(
             num("tax_rate", { validation: { min: 0, max: 100 }, label: "Tax rate (%)", format: { style: "percent100", precision: 2 } }),
-            money("tax_amount", { label: "Tax" }),
+            rel("tax_class", "tax_classes", { label: "Tax class" }),
           ),
-          ...half(computedNum("line_total", "qty * unit_price", { label: "Line total" }), rel("tax_class", "tax_classes", { label: "Tax class" })),
+          computedMoneyIn("line_total", "qty * unit_price", { label: "Line total" }),
         ]),
       ),
       samples: [
@@ -1201,7 +1230,8 @@ export const ecommerce: SchemaTemplate = {
         hint("order_discounts_scope", "Leave the line empty for a discount that came off the order as a whole; name a line for one allocated to a single item."),
         ...half(rel("order", "orders", { required: true }), rel("order_item", "order_items", { label: "On line" })),
         ...half(rel("discount", "discounts"), text("code", { label: "Code used" })),
-        ...half(money("amount", { required: true }), text("description")),
+        ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        text("description"),
       ],
       samples: [
         { order: { ref: "orders:0" }, discount: { ref: "discounts:1" }, amount: 6.5, description: "Free shipping over $75" },
@@ -1217,8 +1247,8 @@ export const ecommerce: SchemaTemplate = {
         hint("consignments_kinds", "One consignment per destination. A pickup consignment names a location instead of an address; a digital one needs neither."),
         ...half(rel("order", "orders", { required: true }), select("consignment_type", [ch("shipping", C.blue), ch("pickup", C.teal), ch("digital", C.purple)], { default: "shipping", label: "Kind" })),
         ...half(rel("shipping_address", "addresses", { label: "Ship to" }), rel("pickup_location", "locations", { label: "Collect from" })),
-        ...half(rel("shipping_rate", "shipping_rates", { label: "Shipping method" }), money("shipping_cost", { label: "Shipping cost" })),
-        select("status", [ch("pending", C.amber), ch("ready", C.blue), ch("shipped", C.teal), ch("delivered", C.green), ch("collected", C.green), ch("cancelled", C.red)], { default: "pending" }),
+        ...half(rel("shipping_rate", "shipping_rates", { label: "Shipping method" }), moneyIn("shipping_cost", { label: "Shipping cost" })),
+        ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), select("status", [ch("pending", C.amber), ch("ready", C.blue), ch("shipped", C.teal), ch("delivered", C.green), ch("collected", C.green), ch("cancelled", C.red)], { default: "pending" })),
       ],
       samples: [
         { order: { ref: "orders:0" }, consignment_type: "shipping", shipping_address: { ref: "addresses:0" }, shipping_rate: { ref: "shipping_rates:0" }, shipping_cost: 6.5, status: "delivered" },
@@ -1390,8 +1420,8 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Handling", [
           ...half(ts("requested_at", { indexed: true, label: "Requested at" }), ts("received_at", { label: "Received at" })),
-          ...half(text("tracking_number", { label: "Return tracking" }), money("restocking_fee", { label: "Restocking fee" })),
-          rel("location", "locations", { label: "Returned to" }),
+          ...half(text("tracking_number", { label: "Return tracking" }), moneyIn("restocking_fee", { label: "Restocking fee" })),
+          ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), rel("location", "locations", { label: "Returned to" })),
           notes("note"),
         ]),
       ),

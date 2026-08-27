@@ -232,7 +232,7 @@ describe("tenants: collections and items are isolated per workspace", () => {
   });
 });
 
-describe("tenants: nonexistent slug in X-Backlex-Tenant falls back gracefully", () => {
+describe("tenants: a nonexistent slug in X-Backlex-Tenant is refused", () => {
   let h: TestHarness;
 
   beforeAll(async () => {
@@ -245,19 +245,25 @@ describe("tenants: nonexistent slug in X-Backlex-Tenant falls back gracefully", 
   });
 
   test("unknown tenant header doesn't grant access to a stranger's workspace", async () => {
-    // Per tenantMiddleware: unknown header → tenantId stays null → falls
-    // through to firstUserTenant / ensureDefaultTenant. The admin still lands
-    // somewhere they're a member of, never in a workspace they don't own.
+    // This used to fall through to firstUserTenant / ensureDefaultTenant and
+    // answer 200 for a workspace the caller never named — safe in the sense
+    // this test checked (never a STRANGER's workspace) and wrong in the sense
+    // that matters: an explicit choice of workspace was silently replaced by a
+    // different one, for reads and for writes. It is refused now, which makes
+    // the original property hold more strongly — nothing is reached at all.
     const res = await h.fetch("/api/tenants", {
       headers: { "X-Backlex-Tenant": "no-such-workspace-here" },
     });
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(body.error.message).toContain("no-such-workspace-here");
+  });
+
+  test("with no header at all the caller still lands in their own workspace", async () => {
+    const res = await h.fetch("/api/tenants");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      data: { slug: string }[];
-      active: string | null;
-    };
-    // List only ever surfaces tenants the caller is a member of, so a bogus
-    // header can't enumerate strangers' workspaces — it just shows mine.
+    const body = (await res.json()) as { data: { slug: string }[]; active: string | null };
     expect(body.data.every((t) => ["default"].includes(t.slug))).toBe(true);
     expect(body.active).not.toBeNull();
   });

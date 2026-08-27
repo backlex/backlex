@@ -114,6 +114,48 @@ describe("template KPIs: every reference resolves", () => {
     expect(bad).toEqual([]);
   });
 
+  test("every filter VALUE on a dropdown column is a declared choice", () => {
+    // The column existing is not enough, and the gap between those two checks
+    // is where the worst kind of KPI bug lives. `ecommerce` filtered its
+    // revenue figures on `status != "cancelled"` while the orders dropdown
+    // offered `voided` and no `cancelled` at all: the column was real, the test
+    // above passed, and the filter excluded nothing — so every cancelled order
+    // was counted into net revenue, and the `cancelled-orders` tile read 0
+    // for ever. Nothing failed, which is why it survived.
+    //
+    // `_neq` / `_nin` are checked as hard as `_eq` / `_in`. An exclusion naming
+    // a value that cannot occur is exactly the silent no-op above; an inclusion
+    // naming one merely returns nothing, which somebody notices.
+    const OPS = new Set(["_eq", "_neq", "_in", "_nin"]);
+    const bad: string[] = [];
+    for (const [templateId, kpis] of Object.entries(TEMPLATE_KPIS)) {
+      for (const k of kpis) {
+        if (!k.filter) continue;
+        for (const [key, cond] of Object.entries(k.filter)) {
+          if (key.startsWith("$") || key.startsWith("_")) continue; // combinator
+          const f = fieldsOf(templateId, k.collection)?.find((x) => x.name === key) as
+            | (Field & { options?: { choices?: { value: string }[] } })
+            | undefined;
+          const choices = f?.options?.choices?.map((c) => c.value);
+          if (!choices?.length) continue; // not a closed set — nothing to check
+          if (!cond || typeof cond !== "object") continue;
+          for (const [op, raw] of Object.entries(cond as Record<string, unknown>)) {
+            if (!OPS.has(op)) continue;
+            for (const v of Array.isArray(raw) ? raw : [raw]) {
+              if (typeof v !== "string" || v.startsWith("$")) continue; // variable
+              if (!choices.includes(v)) {
+                bad.push(
+                  `${templateId}/${k.slug}: ${key} ${op} "${v}" — not a choice (have: ${choices.join(", ")})`,
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
   test("`money` format is only used on money columns", () => {
     // A `number` column formatted as money prints a plain float with a
     // currency symbol glued on; only `money` carries a currency the aggregate

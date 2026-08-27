@@ -49,9 +49,15 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
     {
       slug: "new-subscribers",
       name: "New subscribers",
+      // `_neq: "unsubscribed"` rather than `_eq: "subscribed"`, which is what
+      // this said and which counted nobody: the column's choices are the
+      // subscriber's TIER — free, comped, paid — plus `unsubscribed`, and
+      // "subscribed" was never one of them. Still a real column, so the
+      // reference check passed; the tile just read 0 on every blog workspace
+      // for ever. Anything that is not `unsubscribed` is a live subscriber.
       collection: "subscribers",
       agg: "count",
-      filter: { status: { _eq: "subscribed" } },
+      filter: { status: { _neq: "unsubscribed" } },
       dateField: "subscribed_at",
       direction: "up",
       unit: "subscribers",

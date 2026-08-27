@@ -8,6 +8,7 @@ import { rateLimitOk } from "../lib/rate-limit";
 import { assertWorkspaceRequestQuota, setMeterTenant } from "../lib/usage-meter";
 import { requestMeta } from "../services/activity";
 import { runFlowById } from "../services/flows";
+import { readJsonOr } from "../lib/body";
 
 /** Per-flow-and-IP burst budget, and a per-flow ceiling that bounds what a
  *  distributed caller can spend even from many addresses. A flow run can
@@ -80,7 +81,7 @@ export const webhookTriggerRoutes = new Hono<AppBindings>().post("/:flowId", asy
     await assertWorkspaceRequestQuota(ctx, flow.tenantId);
   }
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await readJsonOr(c.req, {});
   // Enrich the payload with HTTP metadata so flow operations can branch on
   // headers / query without parsing them again.
   const url = new URL(c.req.url);

@@ -15,6 +15,7 @@ import {
 } from "../services/functions";
 import { logActivity } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";
+import { readJsonOr } from "../lib/body";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -149,7 +150,7 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!fn.active) {
         throw new AppError("FORBIDDEN", "Function is inactive");
       }
-      const body = await c.req.json().catch(() => ({}));
+      const body = await readJsonOr(c.req, {});
       const selfOrigin = new URL(c.req.url).origin;
       const traceparent = formatTraceparent(c.get("trace"));
       let result;

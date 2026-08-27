@@ -58,6 +58,7 @@ import { cloneCollection } from "../services/collections";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 import { backfillFts, ftsIndexSignature, isSearchable } from "../services/fts";
 import { startLongJob } from "../services/jobs-long-running";
+import { readJson } from "../lib/body";
 
 const DurationPartsSchema = z
   .object({
@@ -1127,7 +1128,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    */
   .post("/:slug/clone", ...DDL_GATE, async (c) => {
     const sourceSlug = c.req.param("slug");
-    const body = CloneInput.parse(await c.req.json());
+    const body = CloneInput.parse(await readJson(c.req));
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     try {
@@ -1181,7 +1182,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    *     - applier short-circuits — never touches the user's table
    */
   .post("/", ...DDL_GATE, async (c) => {
-    const raw = await c.req.json();
+    const raw = await readJson(c.req);
     // Before Zod: it strips unknown keys, so an ignored option is invisible
     // afterwards. See assertKnownFieldKeys.
     assertKnownFieldKeys((raw as { fields?: unknown })?.fields);
@@ -1536,7 +1537,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     );
   })
   .post("/layout", ...DDL_GATE, async (c) => {
-    const body = LayoutInput.parse(await c.req.json());
+    const body = LayoutInput.parse(await readJson(c.req));
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
@@ -1592,7 +1593,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
   })
   .patch("/:slug", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
-    const rawPatch = await c.req.json();
+    const rawPatch = await readJson(c.req);
     assertKnownFieldKeys((rawPatch as { fields?: unknown })?.fields);
     const body = CollectionPatch.parse(rawPatch);
     if (body.fields) {

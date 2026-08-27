@@ -22,6 +22,7 @@ import {
 } from "../services/scim";
 import { logActivity } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";
+import { readJsonOr } from "../lib/body";
 
 const ConfigView = z
   .object({
@@ -124,7 +125,7 @@ export const scimAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
-      const body = (await c.req.json().catch(() => ({}))) as { defaultRoleId?: string | null };
+      const body = (await readJsonOr(c.req, {})) as { defaultRoleId?: string | null };
       const { config, token } = await issueScimToken(ctx, tenantId, {
         ...(body.defaultRoleId !== undefined ? { defaultRoleId: body.defaultRoleId } : {}),
       });

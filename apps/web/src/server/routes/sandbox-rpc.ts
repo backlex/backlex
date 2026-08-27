@@ -4,6 +4,7 @@ import { AppError, type AuthSubject } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { dispatchRpc } from "../services/sandbox/host-bridge";
 import type { RpcOp } from "../services/sandbox/types";
+import { readJson } from "../lib/body";
 
 const Body = z.object({
   // A copy of `RpcOp` (services/sandbox/types.ts), which is the canonical list.
@@ -53,7 +54,7 @@ export const sandboxRpcRoutes = new Hono<AppBindings>().post("/", async (c) => {
     throw new AppError("UNAUTHORIZED", "invalid sandbox RPC token");
   }
 
-  const body = Body.parse(await c.req.json());
+  const body = Body.parse(await readJson(c.req));
   const subject: AuthSubject = body.auth;
 
   try {

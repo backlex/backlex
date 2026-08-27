@@ -12,6 +12,7 @@ import {
   threadTitleFrom,
 } from "../services/agents/store";
 import { sendMessage } from "../services/agents/send";
+import { readJsonOr } from "../lib/body";
 
 /**
  * End-user-facing agent chat, mounted at `/api/t/:slug/agents`.
@@ -157,7 +158,7 @@ export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
   .post("/:slug/agents/threads", async (c) => {
     const { tenantId, appUserId } = await requireAppUser(c);
     const ctx = c.get("ctx");
-    const body = (await c.req.json().catch(() => ({}))) as {
+    const body = (await readJsonOr(c.req, {})) as {
       agentId?: unknown;
       title?: unknown;
     };
@@ -219,7 +220,7 @@ export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
       appUserId,
       c.req.param("threadId"),
     );
-    const body = (await c.req.json().catch(() => ({}))) as { message?: unknown };
+    const body = (await readJsonOr(c.req, {})) as { message?: unknown };
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message) throw new AppError("VALIDATION", "message is required");
 

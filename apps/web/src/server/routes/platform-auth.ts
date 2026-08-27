@@ -34,6 +34,7 @@ import {
 } from "../services/platform-saml-providers";
 import { resolvePlatformLdapAdapter } from "../services/platform-ldap-config";
 import { provisionPlatformUser } from "../services/platform-sso-provisioning";
+import { readJsonOr } from "../lib/body";
 
 type DbCtx = { db: unknown; dialect: "pg" | "sqlite" };
 
@@ -354,7 +355,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     ensureEnabled(ctx.env);
     assertAllowedOrigin(ctx.env, c.req.raw);
-    const body = (await c.req.json().catch(() => null)) as
+    const body = (await readJsonOr(c.req, null)) as
       | { username?: unknown; password?: unknown }
       | null;
     const username = typeof body?.username === "string" ? body.username.trim() : "";

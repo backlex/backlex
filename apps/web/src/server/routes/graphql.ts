@@ -9,6 +9,7 @@ import { budgetFromEnv, overBudget } from "../services/graphql/cost";
 import { loadCollection } from "../services/items/collection-loader";
 import { openRealtimeSubscribe } from "./realtime";
 import { keepAlive } from "../services/activity";
+import { readJsonOr } from "../lib/body";
 
 /** `{query}` / `[{query}, …]` → the query strings it carries. */
 const queriesOfPayload = (body: unknown): string[] => {
@@ -252,7 +253,7 @@ export const handleGraphqlStream = async (
   let query: string | undefined;
   let variables: Record<string, unknown> = {};
   if (c.req.method === "POST") {
-    const body = (await c.req.json().catch(() => ({}))) as {
+    const body = (await readJsonOr(c.req, {})) as {
       query?: string;
       variables?: Record<string, unknown>;
     };

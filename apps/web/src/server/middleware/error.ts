@@ -97,6 +97,38 @@ const logServerError = (
   );
 };
 
+/**
+ * The columns a UNIQUE violation names, or `null` if this is not one.
+ *
+ * Returns an empty array when the violation is real but the driver did not say
+ * which columns — the caller still gets a 409, just without the field name.
+ */
+const uniqueViolationColumns = (err: (Error & { cause?: unknown }) | null): string[] | null => {
+  for (let node: unknown = err, hops = 0; node instanceof Error && hops < 5; hops++) {
+    const text = node.message ?? "";
+    const code = (node as { code?: unknown }).code;
+
+    // bun:sqlite / D1 — "UNIQUE constraint failed: roles.tenant_id, roles.name"
+    const sqlite = /UNIQUE constraint failed:\s*([^\n]+)/i.exec(text);
+    if (sqlite?.[1]) {
+      return sqlite[1]
+        .split(",")
+        .map((part) => part.trim().split(".").pop() ?? "")
+        .filter((part) => part !== "");
+    }
+
+    // Postgres — SQLSTATE 23505, with the columns in `detail`, never the values.
+    if (code === "23505" || /duplicate key value violates unique constraint/i.test(text)) {
+      const detail = String((node as { detail?: unknown }).detail ?? "");
+      const key = /Key \(([^)]+)\)=/.exec(detail);
+      return key?.[1] ? key[1].split(",").map((part) => part.trim()) : [];
+    }
+
+    node = (node as { cause?: unknown }).cause;
+  }
+  return null;
+};
+
 export const errorHandler = (err: Error, c: Context) => {
   const requestId = reqIdOf(c);
   // A thrown error short-circuits past the access-log middleware's post-`next()`
@@ -164,6 +196,33 @@ export const errorHandler = (err: Error, c: Context) => {
       },
       422,
     );
+  }
+  // A UNIQUE violation the database raised is, by definition, a conflict with
+  // state that is already there — the caller's business, not a server failure.
+  // Nothing mapped it, so `POST /api/roles` with a name that exists answered
+  // `500 INTERNAL` while `POST /api/collections` with a slug that exists
+  // answered `409 CONFLICT`, purely because the second route happens to
+  // pre-check and the first does not. Pre-checking every route is both a lot of
+  // duplicated reads and a race (the check and the insert are not atomic), so
+  // the mapping lives here and the routes are free to keep their friendlier
+  // messages where they have one.
+  //
+  // Detection has to walk the cause chain: drizzle wraps driver failures as
+  // "Failed query: <sql>" and hides the real error on `.cause`, and the three
+  // drivers phrase it three ways — bun:sqlite on `.message`, D1 on `.cause`,
+  // Postgres with SQLSTATE 23505.
+  const conflictCols = uniqueViolationColumns(err);
+  if (conflictCols !== null) {
+    markError(c, "CONFLICT");
+    // Column names are echoed; VALUES never are. For a user collection the
+    // columns are the caller's own field names, but the row's contents may
+    // belong to somebody else's record in a shared table.
+    const named = conflictCols.filter((col) => col !== "tenant_id" && col !== "deleted_at");
+    const message =
+      named.length > 0
+        ? `Already exists: another row has this ${named.join(" + ")}`
+        : "Already exists: another row has these values";
+    return c.json({ error: { code: "CONFLICT", message }, requestId }, 409);
   }
   // Unhandled exception — log the full error (with stack) under the requestId
   // (the access log's single line carries status/code; this adds the stack),

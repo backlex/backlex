@@ -32,6 +32,7 @@ import {
   readOwnConfigRow,
   saveOwnConfigRow,
 } from "../services/provider-config";
+import { readJson } from "../lib/body";
 
 /** This table is an INSTANCE-wide singleton keyed on a fixed `id`, not one row
  *  per workspace — the one config in the family that is not tenant-scoped. It
@@ -174,7 +175,7 @@ export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      const body = PutInput.parse(await c.req.json());
+      const body = PutInput.parse(await readJson(c.req));
       const t = tableFor(ctx.dialect);
 
       const prior = await readOwnConfigRow<PlatformLdapConfigRow>(ctx, t, singletonKey(t));
@@ -256,7 +257,7 @@ export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      const body = TestInput.parse(await c.req.json());
+      const body = TestInput.parse(await readJson(c.req));
       const resolved = await resolvePlatformLdapAdapter({
         db: ctx.db,
         dialect: ctx.dialect,

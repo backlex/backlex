@@ -34,6 +34,7 @@ import {
   touchScimConfig,
   type ScimPatchOp,
 } from "../services/scim";
+import { readJsonOr } from "../lib/body";
 
 const SCIM_CONTENT_TYPE = "application/scim+json; charset=utf-8";
 
@@ -131,7 +132,7 @@ export const scimRoutes = new Hono<AppBindings>()
   .post(
     "/Users",
     withScim(async (c, auth) => {
-      const body = await c.req.json().catch(() => ({}));
+      const body = await readJsonOr(c.req, {});
       const created = await createScimUser(c.get("ctx"), auth.tenantId, auth.defaultRoleId, body);
       return scimJson(c, created, 201);
     }),
@@ -139,7 +140,7 @@ export const scimRoutes = new Hono<AppBindings>()
   .put(
     "/Users/:id",
     withScim(async (c, auth) => {
-      const body = await c.req.json().catch(() => ({}));
+      const body = await readJsonOr(c.req, {});
       const updated = await replaceScimUser(c.get("ctx"), auth.tenantId, c.req.param("id"), body);
       return updated ? scimJson(c, updated) : fail(c, 404, "User not found");
     }),
@@ -147,7 +148,7 @@ export const scimRoutes = new Hono<AppBindings>()
   .patch(
     "/Users/:id",
     withScim(async (c, auth) => {
-      const body = await c.req.json().catch(() => ({}));
+      const body = await readJsonOr(c.req, {});
       const updated = await patchScimUser(
         c.get("ctx"),
         auth.tenantId,
@@ -190,7 +191,7 @@ export const scimRoutes = new Hono<AppBindings>()
   .patch(
     "/Groups/:id",
     withScim(async (c, auth) => {
-      const body = await c.req.json().catch(() => ({}));
+      const body = await readJsonOr(c.req, {});
       const group = await patchScimGroup(
         c.get("ctx"),
         auth.tenantId,

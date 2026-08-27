@@ -19,6 +19,7 @@ import {
   updateMember,
   updateOrg,
 } from "../services/app-orgs";
+import { readJsonOr } from "../lib/body";
 
 /**
  * End-user-facing organization surface, mounted at `/api/t/:slug/orgs`.
@@ -65,14 +66,9 @@ const dbCtx = (c: Context<AppBindings>) => {
 };
 
 /** Parse a JSON body, tolerating a bodyless POST (which arrives with no
- *  content-type and would otherwise throw inside `c.req.json()`). */
-const body = async <T,>(c: Context<AppBindings>): Promise<Partial<T>> => {
-  try {
-    return ((await c.req.json()) ?? {}) as Partial<T>;
-  } catch {
-    return {};
-  }
-};
+ *  content-type and would otherwise throw while being read). */
+const body = async <T,>(c: Context<AppBindings>): Promise<Partial<T>> =>
+  (await readJsonOr(c.req, {})) as Partial<T>;
 
 const asRole = (v: unknown): "owner" | "admin" | "member" | undefined =>
   v === "owner" || v === "admin" || v === "member" ? v : undefined;

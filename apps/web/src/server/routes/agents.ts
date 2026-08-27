@@ -45,6 +45,7 @@ import {
   parseMemoryScope,
   rememberFact,
 } from "../services/agents/memory";
+import { readJsonOr } from "../lib/body";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -146,7 +147,7 @@ const parseRouting = (v: unknown): ThreadRouting => {
 const readBody = async (
   c: Parameters<MiddlewareHandler<AppBindings>>[0],
 ): Promise<Record<string, unknown>> => {
-  const b = await c.req.json().catch(() => ({}));
+  const b = await readJsonOr(c.req, {});
   return b && typeof b === "object" && !Array.isArray(b)
     ? (b as Record<string, unknown>)
     : {};

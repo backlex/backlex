@@ -16,6 +16,7 @@ import {
   parseCustomTemplate,
 } from "../services/templates";
 import { logActivity } from "../services/activity";
+import { readJson } from "../lib/body";
 
 const requireTenant = (c: { get: (k: string) => unknown }): string => {
   const tenantId = (c.get("auth") as { tenantId?: string } | undefined)?.tenantId;
@@ -52,7 +53,7 @@ export const templatesRoutes = new Hono<AppBindings>()
     });
   })
   .post("/apply", requireUser, requirePlatformMw, requireAdminMw, async (c) => {
-    const body = ApplyInput.parse(await c.req.json());
+    const body = ApplyInput.parse(await readJson(c.req));
     const tenantId = requireTenant(c);
     const result =
       "templateId" in body

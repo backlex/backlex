@@ -36,6 +36,7 @@ import {
 } from "../services/provider-config";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { defaultHook } from "../lib/openapi-router";
+import { readJson } from "../lib/body";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.ldapConfigs : sqlite.schema.ldapConfigs;
@@ -214,7 +215,7 @@ export const ldapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const body = PutInput.parse(await c.req.json());
+      const body = PutInput.parse(await readJson(c.req));
       const tenantId = auth.tenantId ?? GLOBAL_LDAP_CONFIG_ID;
       const t = tableFor(ctx.dialect);
 
@@ -316,7 +317,7 @@ export const ldapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const body = TestInput.parse(await c.req.json());
+      const body = TestInput.parse(await readJson(c.req));
       const resolved = await resolveLdapAdapter(
         { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
         auth.tenantId!,

@@ -17,6 +17,7 @@ import {
 } from "../services/extensions";
 import { logActivity } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";
+import { readJsonOr } from "../lib/body";
 
 const ExtensionRowSchema = z
   .object({
@@ -351,7 +352,7 @@ export const extensionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!(row.enabled === true || row.enabled === 1)) {
         throw new AppError("FORBIDDEN", "Extension is disabled");
       }
-      const body = await c.req.json().catch(() => ({}));
+      const body = await readJsonOr(c.req, {});
       let result;
       try {
         result = await invokeExtensionHook(ctx, row, hookId, auth, body);

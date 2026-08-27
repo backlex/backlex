@@ -27,6 +27,7 @@ import {
   type SchemaRef,
   updateBranchHead,
 } from "../services/schema-versions";
+import { readJson } from "../lib/body";
 
 const DDL_GATE = [requireUser, requirePlatformMw, requireAdminMw] as const;
 
@@ -80,7 +81,7 @@ export const schemaVersionsRoutes = new Hono<AppBindings>()
   .post("/snapshots", ...DDL_GATE, async (c) => {
     const body = z
       .object({ name: z.string().min(1).max(120), note: z.string().max(2000).nullable().optional() })
-      .parse(await c.req.json());
+      .parse(await readJson(c.req));
     const snap = await captureSnapshot(ctxOf(c), requireTenant(c), {
       name: body.name,
       note: body.note ?? null,
@@ -109,7 +110,7 @@ export const schemaVersionsRoutes = new Hono<AppBindings>()
           }),
         ]),
       })
-      .parse(await c.req.json());
+      .parse(await readJson(c.req));
     const snap = await importSnapshot(ctxOf(c), requireTenant(c), {
       name: body.name,
       note: body.note ?? null,
@@ -139,7 +140,7 @@ export const schemaVersionsRoutes = new Hono<AppBindings>()
         note: z.string().max(2000).nullable().optional(),
         fromSnapshotId: z.string().nullable().optional(),
       })
-      .parse(await c.req.json());
+      .parse(await readJson(c.req));
     const branch = await createBranch(ctxOf(c), requireTenant(c), {
       name: body.name,
       note: body.note ?? null,
@@ -159,7 +160,7 @@ export const schemaVersionsRoutes = new Hono<AppBindings>()
         fromSnapshotId: z.string().nullable().optional(),
         name: z.string().max(120).optional(),
       })
-      .parse(await c.req.json());
+      .parse(await readJson(c.req));
     const branch = await updateBranchHead(ctxOf(c), requireTenant(c), c.req.param("id"), {
       // Loosely-parsed above; the service normalizes + runs validateFields.
       data: body.data as never,
@@ -175,14 +176,14 @@ export const schemaVersionsRoutes = new Hono<AppBindings>()
   })
   // ── Diff + apply ─────────────────────────────────────────────────────────
   .post("/diff", ...DDL_GATE, async (c) => {
-    const body = z.object({ from: RefSchema, to: RefSchema }).parse(await c.req.json());
+    const body = z.object({ from: RefSchema, to: RefSchema }).parse(await readJson(c.req));
     const data = await diff(ctxOf(c), requireTenant(c), body.from, body.to);
     return c.json({ data });
   })
   .post("/apply", ...DDL_GATE, async (c) => {
     const body = z
       .object({ target: RefSchema, confirmDestructive: z.boolean().optional() })
-      .parse(await c.req.json());
+      .parse(await readJson(c.req));
     const tenantId = requireTenant(c);
     const result = await applySchema(ctxOf(c), tenantId, {
       target: body.target,

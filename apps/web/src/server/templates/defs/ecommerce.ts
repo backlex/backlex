@@ -463,11 +463,19 @@ export const ecommerce: SchemaTemplate = {
           ...half(rel("tax_class", "tax_classes", { label: "Tax class" }), rel("tax_rate", "tax_rates", { label: "Tax rate override" })),
         ]),
         sec("Inventory", [
-          hint("products_stock", "Total stock is a roll-up for reporting. The sellable number per warehouse lives on Inventory levels."),
+          // NOT a roll-up, and the hint used to say it was. It cannot be one:
+          // a variant's count is now summed from its levels, and a rollup of a
+          // rollup does not refresh — the write path restates a parent from its
+          // children with a direct UPDATE, which never re-enters the write path
+          // to restate the grandparent. Measured: a level moved 60 → 85, the
+          // variant followed, `products.stock` stayed at 60. So it is described
+          // as what it is — the figure for a product that does not track stock
+          // per variant at all.
+          hint("products_stock", "A hand-kept figure, for a product sold without variants. A product WITH variants is stocked per (variant, location) on Inventory levels, and its variants total it up for you."),
           ...half(text("sku", { unique: true, label: "SKU" }), text("barcode", { label: "Barcode" })),
           ...half(text("gtin", { label: "GTIN" }), text("mpn", { label: "MPN" })),
           ...half(
-            int("stock", { default: 0, validation: { min: 0 }, label: "Total stock" }),
+            int("stock", { default: 0, validation: { min: 0 }, label: "Total stock", description: "Only read for a product with no variants — nothing keeps it in step with the levels." }),
             bool("track_inventory", { default: true, label: "Track inventory" }),
           ),
           ...half(
@@ -599,7 +607,15 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Inventory", [
           ...half(
-            int("inventory_quantity", { default: 0, validation: { min: 0 }, label: "On hand" }),
+            // Summed from the levels rather than typed, because the comment
+            // above `inventory_levels` — "not a single int on the variant" —
+            // was true of this column too. It held 140 while the variant's one
+            // location held 40, and neither number knew about the other.
+            rollup(
+              "inventory_quantity",
+              { from: "inventory_levels", via: "variant", fn: "sum", field: "on_hand" },
+              { label: "On hand", description: "Summed across this variant's inventory levels. Stock is edited per location." },
+            ),
             select("inventory_policy", [ch("deny", C.red), ch("continue", C.green)], { default: "deny", label: "When out of stock" }),
           ),
         ]),
@@ -640,9 +656,9 @@ export const ecommerce: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { product: { ref: "products:0" }, title: "S / Black", sku: "TEE-001-S-BLK", price: 25, cost: 9, currency: "USD", is_default: true, inventory_quantity: 40, position: 1 },
-        { product: { ref: "products:0" }, title: "M / Black", sku: "TEE-001-M-BLK", price: 25, cost: 9, currency: "USD", inventory_quantity: 50, position: 2 },
-        { product: { ref: "products:1" }, title: "Natural", sku: "TOTE-001-NAT", price: 18, cost: 6, currency: "USD", is_default: true, inventory_quantity: 60, position: 1 },
+        { product: { ref: "products:0" }, title: "S / Black", sku: "TEE-001-S-BLK", price: 25, cost: 9, currency: "USD", is_default: true, position: 1 },
+        { product: { ref: "products:0" }, title: "M / Black", sku: "TEE-001-M-BLK", price: 25, cost: 9, currency: "USD", position: 2 },
+        { product: { ref: "products:1" }, title: "Natural", sku: "TOTE-001-NAT", price: 18, cost: 6, currency: "USD", is_default: true, position: 1 },
       ],
     },
     {
@@ -837,11 +853,15 @@ export const ecommerce: SchemaTemplate = {
         // `available` used to be a third number an operator was asked to keep
         // in step with the other two by hand. It is a definition, not a
         // judgement, so the database computes it and nobody can disagree with it.
-        hint("levels_available", "Available is generated as on hand minus committed — it cannot be typed in. Committed is the sum of the open reservations against this level."),
+        hint("levels_available", "On hand is the only number here anyone types. Committed is summed from the reservations still held against this level, and Available is generated as the difference — both are refused as input."),
         ...half(rel("variant", "product_variants"), rel("location", "locations")),
         ...half(
           int("on_hand", { default: 0, validation: { min: 0 }, label: "On hand" }),
-          int("committed", { default: 0, validation: { min: 0 }, label: "Committed" }),
+          rollup(
+            "committed",
+            { from: "inventory_reservations", via: "level", fn: "sum", field: "qty", filter: { status: { _eq: "held" } } },
+            { label: "Committed", description: "Summed from the reservations still held against this level — released and consumed ones drop out." },
+          ),
         ),
         ...half(
           computedNum("available", "on_hand - committed", { label: "Available" }),
@@ -853,9 +873,9 @@ export const ecommerce: SchemaTemplate = {
         ),
       ],
       samples: [
-        { variant: { ref: "product_variants:0" }, location: { ref: "locations:0" }, on_hand: 40, committed: 0, reorder_point: 10, safety_stock: 5 },
-        { variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, on_hand: 50, committed: 0, reorder_point: 10, safety_stock: 5 },
-        { variant: { ref: "product_variants:2" }, location: { ref: "locations:1" }, on_hand: 60, committed: 0, reorder_point: 15, safety_stock: 5 },
+        { variant: { ref: "product_variants:0" }, location: { ref: "locations:0" }, on_hand: 40, reorder_point: 10, safety_stock: 5 },
+        { variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, on_hand: 50, reorder_point: 10, safety_stock: 5 },
+        { variant: { ref: "product_variants:2" }, location: { ref: "locations:1" }, on_hand: 60, reorder_point: 15, safety_stock: 5 },
       ],
     },
     {
@@ -880,10 +900,18 @@ export const ecommerce: SchemaTemplate = {
         sec("Activity", [
           ...half(
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", description: "The unit the two amounts below are kept in." }),
-            int("orders_count", { default: 0, validation: { min: 0 }, label: "Orders count" }),
+            rollup(
+              "orders_count",
+              { from: "orders", via: "customer", fn: "count", filter: { state: { _neq: "cancelled" } } },
+              { label: "Orders count", description: "Counted from this customer's orders, cancelled ones excluded." },
+            ),
           ),
           ...half(
-            moneyIn("total_spent", { default: 0, label: "Total spent" }),
+            // NOT a rollup, and it cannot be one: a money rollup is refused
+            // when either side is denominated per row, which both of these are.
+            // Summing a customer's orders across currencies would need an
+            // exchange rate the sum does not have.
+            moneyIn("total_spent", { default: 0, label: "Total spent", description: "Kept by whatever records the payment — a money total cannot be summed across an order history in several currencies." }),
             moneyIn("store_credit", { default: 0, label: "Store credit" }),
           ),
           bool("tax_exempt", { default: false, label: "Tax exempt" }),
@@ -891,8 +919,8 @@ export const ecommerce: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { email: "jordan@example.com", first_name: "Jordan", last_name: "Reed", phone: "+15555550100", state: "enabled", customer_group: { ref: "customer_groups:0" }, total_spent: 43, orders_count: 1 },
-        { email: "sam@example.com", first_name: "Sam", last_name: "Taylor", phone: "+15555550142", state: "enabled", customer_group: { ref: "customer_groups:1" }, total_spent: 18, orders_count: 1 },
+        { email: "jordan@example.com", first_name: "Jordan", last_name: "Reed", phone: "+15555550100", state: "enabled", customer_group: { ref: "customer_groups:0" }, total_spent: 43 },
+        { email: "sam@example.com", first_name: "Sam", last_name: "Taylor", phone: "+15555550142", state: "enabled", customer_group: { ref: "customer_groups:1" }, total_spent: 18 },
       ],
     },
     {
@@ -1452,6 +1480,17 @@ export const ecommerce: SchemaTemplate = {
       slug: "inventory_reservations", group: "Inventory", singular: "Reservation", plural: "Reservations", defaultSort: "-created_at",
       fields: [
         hint("reservations_committed", "The open reservations against a level are what its Committed number means. Release one when the order is cancelled; consume it when the goods ship."),
+        // The link that makes the sentence above TRUE.
+        //
+        // A reservation named a variant and a location, and an inventory level
+        // names the same pair — but nothing joined the two, so `committed` could
+        // not be derived from anything and was a number an operator was asked to
+        // keep in step by hand. It never was: a held reservation left `committed`
+        // at zero, and `available` (generated as on hand minus committed) went on
+        // reporting the reserved units as sellable. Same shape as the missing
+        // `variant_option_values` link one release earlier — three collections
+        // that look related and are not.
+        rel("level", "inventory_levels", { required: true, label: "Against level" }),
         ...half(rel("variant", "product_variants", { required: true }), rel("location", "locations", { required: true })),
         ...half(rel("order", "orders"), rel("order_item", "order_items")),
         ...half(
@@ -1461,7 +1500,7 @@ export const ecommerce: SchemaTemplate = {
         ts("expires_at", { indexed: true, label: "Expires at", description: "When an unconverted basket's hold lapses." }),
       ],
       samples: [
-        { variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, order: { ref: "orders:1" }, qty: 1, status: "held", expires_at: ms("2026-01-16") },
+        { level: { ref: "inventory_levels:1" }, variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, order: { ref: "orders:1" }, qty: 1, status: "held", expires_at: ms("2026-01-16") },
       ],
     },
     {

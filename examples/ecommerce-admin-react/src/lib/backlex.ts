@@ -69,6 +69,7 @@ export type Variant = {
   cost?: Money | null;
   currency?: string;
   is_default?: boolean;
+  /** Summed from this variant's inventory levels — read-only. */
   inventory_quantity?: number;
   inventory_policy?: "deny" | "continue";
   weight?: number | null;

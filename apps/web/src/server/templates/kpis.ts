@@ -207,10 +207,13 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
     {
       slug: "stock-on-hand",
       name: "Stock on hand",
-      description: "No date column — a running total, not a period figure.",
-      collection: "products",
+      // Summed from the LEVELS, which is where stock actually is. It used to
+      // sum `products.stock` — a column an operator keeps by hand, and which
+      // shipped seeded at 120 for a product whose variants held 90.
+      description: "Summed across every location. No date column — a running total, not a period figure.",
+      collection: "inventory_levels",
       agg: "sum",
-      field: "stock",
+      field: "on_hand",
       direction: "up",
       unit: "units",
     },

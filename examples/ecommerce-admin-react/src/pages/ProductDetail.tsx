@@ -418,7 +418,8 @@ function VariantsTab({ productId }: { productId: string }) {
           price: { amount: moneyAmount(base?.price) || 0, currency: base?.currency ?? "USD" },
           currency: base?.currency ?? "USD",
           position: (data.data?.vars.length ?? 0) + i + 1,
-          inventory_quantity: 0,
+          // No `inventory_quantity`: it is summed from the variant's inventory
+          // levels, so the server owns it and a value here is refused.
         })),
       );
 

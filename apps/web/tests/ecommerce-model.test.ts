@@ -80,39 +80,56 @@ describe("ecommerce model", () => {
     expect(resolved?.sku).toBe("TEE-001-S-BLK");
   });
 
-  test("available is generated from on hand minus committed, and cannot be written", async () => {
+  test("available is generated from on hand minus committed, and NEITHER can be written", async () => {
     // The defect: `available` was a third integer with a hint telling the
     // operator to keep all three consistent by hand. It is a definition, not a
     // judgement — so the database owns it now.
+    //
+    // `committed` used to be typed in here, which was the second half of the
+    // same defect: its own hint said it was "the sum of the open reservations
+    // against this level" and nothing summed them, so a held reservation left
+    // `available` reporting reserved units as sellable. It is a rollup now, so
+    // the only way to move it is to reserve something.
     const variants = await get("product_variants?limit=10");
     const locations = await get("locations?limit=10");
 
     const made = await post("inventory_levels", {
       variant: variants.data[0]!.id,
-      location: locations.data[0]!.id,
+      location: locations.data[1]!.id,
       on_hand: 10,
-      committed: 4,
     });
     expect([200, 201]).toContain(made.status);
     const { data: level } = (await made.json()) as { data: { id: string } };
     // Read back rather than trusting the create body: a write returns the row
     // it was given, and a generated column is only known once the database has
     // it.
-    expect((await one("inventory_levels", level.id)).available).toBe(6);
+    expect((await one("inventory_levels", level.id)).available).toBe(10);
 
-    // Still generated after an edit, and still refused as an input.
-    const bumped = await patch("inventory_levels", level.id, { committed: 9 });
-    expect(bumped.status).toBe(200);
-    expect((await one("inventory_levels", level.id)).available).toBe(1);
-
-    const written = await post("inventory_levels", {
+    // Four held against it, and both derived numbers follow.
+    const held = await post("inventory_reservations", {
+      level: level.id,
       variant: variants.data[0]!.id,
-      location: locations.data[0]!.id,
-      on_hand: 5,
-      committed: 0,
-      available: 999,
+      location: locations.data[1]!.id,
+      qty: 4,
+      status: "held",
     });
-    expect(written.status).toBe(422);
+    expect([200, 201]).toContain(held.status);
+    const reserved = await one("inventory_levels", level.id);
+    expect(reserved.committed).toBe(4);
+    expect(reserved.available).toBe(6);
+
+    // Both are refused as inputs.
+    expect((await patch("inventory_levels", level.id, { committed: 9 })).status).toBe(422);
+    expect(
+      (
+        await post("inventory_levels", {
+          variant: variants.data[0]!.id,
+          location: locations.data[2]!.id,
+          on_hand: 5,
+          available: 999,
+        })
+      ).status,
+    ).toBe(422);
   });
 
   test("a variant's price carries its currency, like every other amount", async () => {

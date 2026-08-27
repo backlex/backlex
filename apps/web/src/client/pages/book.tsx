@@ -28,6 +28,7 @@
 //   snapport, `:hover`, `prefers-color-scheme`), not for a second look.
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useParams } from "react-router";
+import { useDocumentTitle } from "./use-document-title";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   bookPublicApi,
@@ -452,6 +453,7 @@ export function Book() {
     };
   }, [token]);
 
+  useDocumentTitle(data?.resource.name);
   const zone = data?.resource.timeZone ?? "UTC";
   const days = useMemo(() => groupByDay(data?.slots ?? [], zone), [data, zone]);
   const railRef = useRailFade(days.length);
@@ -924,6 +926,7 @@ export function ManageBooking() {
     }
   };
 
+  useDocumentTitle(view?.resource.name);
   const zone = view?.resource.timeZone ?? "UTC";
 
   const look = view?.resource.settings ?? null;

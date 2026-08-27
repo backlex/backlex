@@ -279,6 +279,9 @@ export interface ApiPublicForm {
   languages: string[];
   locale: string;
   turnstileSiteKey: string | null;
+  /** The challenge the submit enforces — the workspace captcha when its
+   *  `protect` list covers forms, else the legacy per-form Turnstile. */
+  captcha: { provider: "turnstile" | "hcaptcha" | "recaptcha"; siteKey: string } | null;
   /** Non-null ⇒ the form is not taking answers right now. */
   closed: {
     reason: "scheduled" | "ended" | "full" | "answered" | "invite" | "invite_used";

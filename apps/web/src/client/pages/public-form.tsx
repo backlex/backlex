@@ -15,6 +15,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useDocumentTitle } from "./use-document-title";
 import {
   formsPublicApi,
   type ApiFormBlockScale,
@@ -30,18 +31,84 @@ import {
   type Palette,
 } from "@/lib/public-theme";
 
+/** All three challenge providers expose the SAME explicit-render shape, which
+ *  is what lets one component drive them. */
+interface CaptchaApi {
+  render: (
+    el: HTMLElement,
+    opts: { sitekey: string; callback: (token: string) => void; "expired-callback"?: () => void },
+  ) => string;
+}
+
 declare global {
   interface Window {
-    turnstile?: {
-      render: (
-        el: HTMLElement,
-        opts: { sitekey: string; callback: (token: string) => void; "expired-callback"?: () => void },
-      ) => string;
-    };
+    turnstile?: CaptchaApi;
+    hcaptcha?: CaptchaApi;
+    grecaptcha?: CaptchaApi;
   }
 }
 
-const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+type CaptchaProviderId = "turnstile" | "hcaptcha" | "recaptcha";
+
+/**
+ * Script URL and window global per provider.
+ *
+ * The workspace picks one of the three in Settings → Captcha, and until
+ * 2026-08-27 this page could only ever render the first: the definition it
+ * reads carried a single `turnstileSiteKey`, sourced from a deployment env var
+ * rather than from the workspace config the SUBMIT enforces. A managed tenant
+ * sets no such var, so protecting forms made this page unsubmittable — no
+ * widget, therefore no token, therefore `Captcha verification failed` on every
+ * attempt, pointed at the visitor.
+ */
+const CAPTCHA_PROVIDERS: Record<CaptchaProviderId, { src: string; global: "turnstile" | "hcaptcha" | "grecaptcha" }> = {
+  turnstile: {
+    src: "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+    global: "turnstile",
+  },
+  hcaptcha: { src: "https://js.hcaptcha.com/1/api.js?render=explicit", global: "hcaptcha" },
+  recaptcha: { src: "https://www.google.com/recaptcha/api.js?render=explicit", global: "grecaptcha" },
+};
+/**
+ * The `autocomplete` token a block should carry, or undefined.
+ *
+ * A lead-capture form asks a stranger for the same six things every other form
+ * asks them for, and the browser already holds all six. Without this attribute
+ * it cannot offer them — so every visitor retypes their name, email and phone
+ * by hand, on a phone, and some of them stop. The hosted page shipped without
+ * a single `autocomplete` on any field.
+ *
+ * TYPE first, because it is the half that always holds: an `email` field is an
+ * email field in any language. The name table is a bonus for the common
+ * English keys and is deliberately conservative — a wrong token is worse than
+ * none, since it makes the browser offer the wrong saved value.
+ */
+const AUTOCOMPLETE_BY_TYPE: Record<string, string> = {
+  email: "email",
+  phone: "tel",
+  url: "url",
+};
+
+const AUTOCOMPLETE_BY_NAME: Array<[RegExp, string]> = [
+  [/^(company|organisation|organization)(_name)?$/i, "organization"],
+  [/^(full_?name|contact_?name|your_?name|name)$/i, "name"],
+  [/^(first_?name|given_?name)$/i, "given-name"],
+  [/^(last_?name|surname|family_?name)$/i, "family-name"],
+  [/^(city|town)$/i, "address-level2"],
+  [/^(postal_?code|post_?code|zip(_?code)?)$/i, "postal-code"],
+  [/^(address|street|street_?address)$/i, "street-address"],
+  [/^(job_?title|title|role|position)$/i, "organization-title"],
+];
+
+const autoCompleteFor = (block: ApiPublicFormBlock): string | undefined => {
+  const byType = AUTOCOMPLETE_BY_TYPE[block.type ?? ""];
+  if (byType) return byType;
+  if (block.validation?.format === "email") return "email";
+  if (block.validation?.format === "url") return "url";
+  const name = block.name ?? "";
+  return AUTOCOMPLETE_BY_NAME.find(([re]) => re.test(name))?.[1];
+};
+
 /** Humanize a raw field name (snake/camel → Title Case) — used when neither
  *  the form config nor the collection field defines a display label. */
 const humanizeLabel = (name: string): string =>
@@ -52,34 +119,60 @@ const humanizeLabel = (name: string): string =>
 
 /* ── turnstile ─────────────────────────────────────────────────────── */
 
-function TurnstileWidget({ siteKey, onToken }: { siteKey: string; onToken: (t: string | null) => void }) {
+function CaptchaWidget({
+  provider,
+  siteKey,
+  onToken,
+}: {
+  provider: CaptchaProviderId;
+  siteKey: string;
+  onToken: (t: string | null) => void;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const rendered = useRef(false);
 
   useEffect(() => {
+    const conf = CAPTCHA_PROVIDERS[provider];
+    if (!conf) return;
+    let cancelled = false;
+    const api = (): CaptchaApi | undefined => window[conf.global];
+
     const render = () => {
-      if (rendered.current || !ref.current || !window.turnstile) return;
+      const sdk = api();
+      if (cancelled || rendered.current || !ref.current || !sdk) return;
       rendered.current = true;
-      window.turnstile.render(ref.current, {
+      sdk.render(ref.current, {
         sitekey: siteKey,
         callback: (t) => onToken(t),
         "expired-callback": () => onToken(null),
       });
     };
-    if (window.turnstile) {
+
+    if (api()) {
       render();
       return;
     }
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${TURNSTILE_SRC}"]`);
+
+    // The `load` event alone is not enough for every provider — reCAPTCHA
+    // publishes its global a tick after the file finishes — and a script
+    // element that was already in the DOM may have loaded before we attached
+    // a listener at all. So poll for the global, with the listener as the
+    // fast path.
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${conf.src}"]`);
     const script = existing ?? document.createElement("script");
     if (!existing) {
-      script.src = TURNSTILE_SRC;
+      script.src = conf.src;
       script.async = true;
       document.head.appendChild(script);
     }
     script.addEventListener("load", render);
-    return () => script.removeEventListener("load", render);
-  }, [siteKey, onToken]);
+    const poll = window.setInterval(render, 120);
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+      script.removeEventListener("load", render);
+    };
+  }, [provider, siteKey, onToken]);
 
   return <div ref={ref} />;
 }
@@ -633,6 +726,7 @@ function BlockInput({
   onChange,
   accent,
   p,
+  id,
 }: {
   block: ApiPublicFormBlock;
   token: string;
@@ -640,8 +734,16 @@ function BlockInput({
   onChange: (v: unknown) => void;
   accent: string;
   p: Palette;
+  /** The id the visible `<label>` points at with `htmlFor`. Without it the
+   *  label and the control were siblings with nothing joining them: clicking
+   *  the label did not focus the field and a screen reader announced the
+   *  field with NO NAME at all. Measured on a live hosted form. */
+  id?: string;
 }) {
   const { t } = useLingui();
+  /** What every single-control branch needs. Spread rather than repeated so a
+   *  new field type cannot quietly ship without a name or autofill. */
+  const ctl = { id, autoComplete: autoCompleteFor(block) };
   const inputStyle: React.CSSProperties = {
     width: "100%",
     height: 40,
@@ -684,6 +786,7 @@ function BlockInput({
         value={typeof value === "string" ? value : ""}
         required={block.required}
         onChange={(e) => onChange(e.target.value)}
+        {...ctl}
         style={{ ...inputStyle, appearance: "auto" as never }}
       >
         <option value="" disabled>
@@ -733,6 +836,7 @@ function BlockInput({
           rows={4}
           required={block.required}
           placeholder={block.placeholder ?? ""}
+          {...ctl}
           style={{ ...inputStyle, height: "auto", padding: "10px 12px", resize: "vertical" }}
         />
       );
@@ -746,6 +850,7 @@ function BlockInput({
           onChange={(e) => onChange(e.target.value)}
           required={block.required}
           placeholder={block.placeholder ?? ""}
+          {...ctl}
           style={inputStyle}
         />
       );
@@ -768,6 +873,7 @@ function BlockInput({
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
           required={block.required}
+          {...ctl}
           style={inputStyle}
         />
       );
@@ -785,6 +891,7 @@ function BlockInput({
           onChange={(e) => onChange(e.target.value)}
           required={block.required}
           placeholder={block.placeholder ?? ""}
+          {...ctl}
           style={inputStyle}
         />
       );
@@ -797,6 +904,7 @@ function BlockInput({
           onChange={(e) => onChange(e.target.value)}
           required={block.required}
           placeholder={block.placeholder ?? ""}
+          {...ctl}
           style={inputStyle}
         />
       );
@@ -954,10 +1062,13 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
   });
 
   const def: ApiPublicForm | null = query.data?.data ?? null;
+  // The tab is named after the form, not after the SPA shell it happens to be
+  // served by — see `useDocumentTitle`.
+  useDocumentTitle(def?.name);
 
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [honeypot, setHoneypot] = useState("");
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1103,7 +1214,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
       setError(missing);
       return;
     }
-    if (def.turnstileSiteKey && turnstileToken === null) return;
+    if (def.captcha && captchaToken === null) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -1112,7 +1223,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
         token,
         {
           data: buildPayload(allVisible, values),
-          ...(turnstileToken ? { turnstileToken } : {}),
+          ...(captchaToken ? { captchaToken } : {}),
           ...(honeypot ? { website: honeypot } : {}),
           ...(invite ? { invite } : {}),
         },
@@ -1278,7 +1389,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
   }
 
   const totalSteps = pages.length;
-  const canSubmit = !submitting && (!def.turnstileSiteKey || turnstileToken !== null);
+  const canSubmit = !submitting && (!def.captcha || captchaToken !== null);
 
   return (
     <div style={shellStyle}>
@@ -1475,7 +1586,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
                 </div>
               ) : (
               <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-                <label style={{ fontSize: 13.5, fontWeight: 500 }}>
+                <label htmlFor={`blk-${b.name}`} style={{ fontSize: 13.5, fontWeight: 500 }}>
                   {b.label === b.name ? humanizeLabel(b.name ?? "") : b.label}
                   {b.required && <span style={{ color: accent }}> *</span>}
                 </label>
@@ -1486,6 +1597,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
                   onChange={(v) => b.name && setValue(b.name, v)}
                   accent={accent}
                   p={p}
+                  id={`blk-${b.name}`}
                 />
                 {b.help && <p style={{ fontSize: 11.5, color: p.faint, margin: 0 }}>{b.help}</p>}
               </div>
@@ -1505,8 +1617,12 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
               style={{ position: "absolute", left: -9999, top: "auto", width: 1, height: 1, overflow: "hidden" }}
             />
 
-            {isLast && def.turnstileSiteKey && (
-              <TurnstileWidget siteKey={def.turnstileSiteKey} onToken={setTurnstileToken} />
+            {isLast && def.captcha && (
+              <CaptchaWidget
+                provider={def.captcha.provider}
+                siteKey={def.captcha.siteKey}
+                onToken={setCaptchaToken}
+              />
             )}
 
             {error && (

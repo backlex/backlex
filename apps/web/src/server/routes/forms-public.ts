@@ -134,6 +134,19 @@ const PublicFormSchema = z
     locale: z.string(),
     turnstileSiteKey: z.string().nullable(),
     /**
+     * The challenge this form's submit enforces — `null` when there is none.
+     *
+     * `turnstileSiteKey` above cannot express the other two providers, and it
+     * reported a DEPLOYMENT env var while the submit below enforces the
+     * WORKSPACE config. See `publicFormDefinition` for what that cost.
+     */
+    captcha: z
+      .object({
+        provider: z.enum(["turnstile", "hcaptcha", "recaptcha"]),
+        siteKey: z.string(),
+      })
+      .nullable(),
+    /**
      * Name of the honeypot input a client must render (hidden) and submit at
      * the TOP level of the body, beside `data`.
      *
@@ -367,6 +380,16 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       c.header("cache-control", "private, no-store");
       c.header("vary", "cookie", { append: true });
 
+      // The same config the submit handler below enforces, read here so the
+      // page can render the widget it is about to be asked for. Before this
+      // the two read different sources and a protected form could never be
+      // submitted from its own page.
+      const wsCaptcha = form.tenantId ? await loadCaptchaConfig(ctx, form.tenantId) : null;
+      const formCaptcha =
+        wsCaptcha?.enabled && wsCaptcha.protect.includes("forms")
+          ? { provider: wsCaptcha.provider, siteKey: wsCaptcha.siteKey }
+          : null;
+
       return c.json({
         data: publicFormDefinition(
           form,
@@ -376,6 +399,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           formUploadPolicy(ctx.env).maxBytes,
           availability,
           draft,
+          formCaptcha,
         ),
       });
     },

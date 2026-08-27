@@ -772,6 +772,10 @@ export const createApp = (env: Env) => {
         // Publishable analytics ingest key — a custom header, so a browser SDK
         // on a customer origin preflights before it can post events.
         "X-Backlex-Ingest-Key",
+        // Stable per-visitor id for feature-flag rollout bucketing. A browser
+        // should prefer `?bucket=`, which needs no preflight; this is for
+        // server-side callers.
+        "X-Backlex-Bucket",
         "X-D1-Bookmark",
         "MCP-Protocol-Version",
         // TUS resumable-upload request headers (Uppy / tus-js-client).
@@ -844,6 +848,47 @@ export const createApp = (env: Env) => {
   // not CORS-governed at all. What it prevents is hono's `cors()` stamping
   // `Vary: Origin` and an `ACAO` of one specific origin onto a response we want
   // cached identically for every origin on the internet.
+
+  /**
+   * `/api/flags` is the one public-surface endpoint the credentialed policy
+   * locked out, and the lockout was invisible: a non-allowlisted origin got an
+   * `ACAO` of the WORKSPACE's own host, so a customer's marketing page could
+   * not read its own workspace's flags — which is the exact caller a rollout
+   * percentage exists for. `docs/feature-flags.md` presents this route as the
+   * read path for "your apps"; the analytics tag at `/api/site/<id>.js`
+   * already answers `*`. Flags simply never got the same treatment.
+   *
+   * A blanket exemption would have been wrong. An allowlisted origin (a
+   * workspace `redirectUrls` host) reads flags WITH credentials today and gets
+   * its own logged-in evaluation; `ACAO: *` is incompatible with credentials,
+   * so exempting the path outright would have broken the callers it already
+   * served in order to serve new ones.
+   *
+   * So the decision is deferred to `corsMw` and only its FALLBACK is rewritten:
+   * if it answered the caller's own origin, that origin is allowlisted and the
+   * credentialed answer stands. If it answered `APP_URL` to a caller that is
+   * not `APP_URL`, that is the "not allowed" fallback, and for this one
+   * read-only path the honest answer is `*` without credentials.
+   *
+   * `no-store` because the body is per-caller and `*` makes it cacheable by
+   * anything in between; `Vary: Origin` because the header now depends on it.
+   */
+  const FLAGS_PATH = "/api/flags";
+  const relaxFlagsCors: MiddlewareHandler<AppBindings> = async (c, next) => {
+    await next();
+    const origin = c.req.header("Origin");
+    if (!origin || origin === env.APP_URL) return;
+    if (c.res.headers.get("Access-Control-Allow-Origin") === origin) return;
+    c.res.headers.set("Access-Control-Allow-Origin", "*");
+    c.res.headers.delete("Access-Control-Allow-Credentials");
+    c.res.headers.set("Vary", "Origin");
+    c.res.headers.set("Cache-Control", "no-store");
+  };
+  app.use("*", async (c, next) =>
+    c.req.path === FLAGS_PATH || c.req.path === `${FLAGS_PATH}/`
+      ? relaxFlagsCors(c, next)
+      : next(),
+  );
 
   app.use("*", async (c, next) =>
     c.req.path.startsWith("/.well-known/") ||

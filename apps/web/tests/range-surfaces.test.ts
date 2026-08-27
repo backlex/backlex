@@ -174,7 +174,7 @@ describe("date ranges — multi-surface parity", () => {
 
 describe("the schema templates", () => {
   test("every start/end pair declares its period, with bounds that match the editor", async () => {
-    // Twenty-eight pairs across fifteen templates. The bounds are DERIVED rather
+    // Twenty-nine pairs across fifteen templates. The bounds are DERIVED rather
     // than chosen per pair: a `datetime` field is a range of instants and must be
     // half-open (09:00–10:00 and 10:00–11:00 do not clash), while a `date` field
     // is a range of days and must be closed (leave "through Friday" includes
@@ -219,7 +219,7 @@ describe("the schema templates", () => {
     }
     expect(problems).toEqual([]);
     // Proven non-vacuous: an empty corpus would pass the assertion above.
-    expect(declared).toBe(28);
+    expect(declared).toBe(29);
   });
 
   test("no sample row ships a period that ends before it begins", async () => {

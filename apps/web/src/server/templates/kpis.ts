@@ -84,7 +84,11 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       collection: "orders",
       agg: "sum",
       field: "total",
-      filter: { status: { _neq: "cancelled" } },
+      // `state`, NOT `status`. Cancellation is the order's own lifecycle;
+      // `status` is payment, and it has no `cancelled` value — which is why
+      // this filter used to name one and exclude nothing, quietly counting
+      // every cancelled order into revenue.
+      filter: { state: { _neq: "cancelled" } },
       dateField: "placed_at",
       // Amounts are denominated by the row's own `currency`, so a single
       // total would be adding lira to dollars. One figure per currency.
@@ -97,7 +101,7 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       name: "Orders placed",
       collection: "orders",
       agg: "count",
-      filter: { status: { _neq: "cancelled" } },
+      filter: { state: { _neq: "cancelled" } },
       dateField: "placed_at",
       direction: "up",
       unit: "orders",
@@ -108,7 +112,7 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       collection: "orders",
       agg: "avg",
       field: "total",
-      filter: { status: { _neq: "cancelled" } },
+      filter: { state: { _neq: "cancelled" } },
       dateField: "placed_at",
       // Amounts are denominated by the row's own `currency`, so a single
       // total would be adding lira to dollars. One figure per currency.
@@ -134,14 +138,14 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       name: "Cancelled orders",
       collection: "orders",
       agg: "count",
-      filter: { status: { _eq: "cancelled" } },
+      filter: { state: { _eq: "cancelled" } },
       dateField: "cancelled_at",
       direction: "down",
       unit: "orders",
     },
     {
       slug: "orders-by-status",
-      name: "Orders by status",
+      name: "Orders by payment status",
       // Counts, not totals: `total` is denominated per row, so a money sum
       // has to group by `currency` — and a KPI has one grouping dimension.
       // Splitting revenue by status as well is a job for a report, not a tile
@@ -152,6 +156,47 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       dateField: "placed_at",
       topN: 10,
       unit: "orders",
+    },
+    {
+      slug: "orders-by-channel",
+      name: "Orders by channel",
+      description: "Where the sales came from — web, POS, marketplace, B2B.",
+      collection: "orders",
+      agg: "count",
+      groupBy: "channel",
+      dateField: "placed_at",
+      topN: 10,
+      unit: "orders",
+    },
+    {
+      slug: "returns-requested",
+      name: "Returns requested",
+      description: "Returns, exchanges and claims opened in the period.",
+      collection: "returns",
+      agg: "count",
+      dateField: "requested_at",
+      direction: "down",
+      unit: "returns",
+    },
+    {
+      slug: "carts-abandoned",
+      name: "Carts abandoned",
+      collection: "carts",
+      agg: "count",
+      filter: { status: { _eq: "abandoned" } },
+      dateField: "abandoned_at",
+      direction: "down",
+      unit: "carts",
+    },
+    {
+      slug: "active-subscriptions",
+      name: "Active subscriptions",
+      description: "No date column — a running count of who is currently subscribed.",
+      collection: "subscriptions",
+      agg: "count",
+      filter: { status: { _eq: "active" } },
+      direction: "up",
+      unit: "subscriptions",
     },
     {
       slug: "stock-on-hand",

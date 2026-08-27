@@ -365,8 +365,8 @@ The shapes live in `templates/types.ts` (`TemplateFlow`, `TemplateDocument`,
 ### Data model
 
 Each vertical mirrors the entity model of the strongest platform in its space
-rather than being invented — ecommerce from Shopify / Vendure / Medusa /
-BigCommerce, saas from Stripe, crm from Salesforce / HubSpot / SuiteCRM,
+rather than being invented — ecommerce from Saleor / Medusa / BigCommerce /
+Shopify, saas from Stripe, crm from Salesforce / HubSpot / SuiteCRM,
 support from Zendesk / Chatwoot, hr from Workday / BambooHR / ERPNext HRMS,
 projects from Jira / Linear / OpenProject, ats from Greenhouse, lms from Canvas,
 inventory and manufacturing from NetSuite / ERPNext, invoicing from Invoice
@@ -375,12 +375,23 @@ CiviCRM, clinic from FHIR / OpenEMR. The point is that an operator who knows
 the category recognizes the model, including the status enums.
 
 Not every reference above was read from a published schema. The ones that were —
-and so the ones to trust and re-check first — are Vendure and Medusa entity /
-module listings, Shopify's Storefront `QueryRoot`, BigCommerce's GraphQL `site`,
-SuiteCRM modules, Zendesk's resource list, Chatwoot models, ERPNext stock +
-manufacturing doctypes, frappe/hrms doctypes, OpenProject and Canvas models,
-Greenhouse Harvest, Invoice Ninja models, Cal.com's Prisma schema, Ghost models
-and CiviCRM core DAOs. The rest are modelled from domain knowledge.
+and so the ones to trust and re-check first — are Saleor's `schema.graphql`,
+Medusa's store + admin OpenAPI documents, BigCommerce's Storefront GraphQL
+schema by introspection, Vendure entity listings, Shopify's Storefront
+`QueryRoot`, SuiteCRM modules, Zendesk's resource list, Chatwoot models, ERPNext
+stock + manufacturing doctypes, frappe/hrms doctypes, OpenProject and Canvas
+models, Greenhouse Harvest, Invoice Ninja models, Cal.com's Prisma schema, Ghost
+models and CiviCRM core DAOs. The rest are modelled from domain knowledge.
+
+**BigCommerce moved, and the old route is a dead end.** `bigcommerce/dev-docs`
+is ARCHIVED and `bigcommerce/api-specs` now holds only email templates and
+webhook payloads, so neither answers what the entities are. The guides in
+`dev-docs` still fetch from `raw.githubusercontent.com` and are the source for
+the things a storefront schema cannot show — price-list assignment, tax zones,
+consignments. For the actual type list, introspect: the explorer page at
+`gql-playground.bigcommerce.com/explorer` carries its own demo endpoint and a
+public storefront token in its HTML, and a standard introspection query against
+them returns the whole schema (503 object types).
 
 When you extend a vertical, go to the **open-source schema**, not the vendor
 doc portal: those are SPA-rendered and mostly return 404s or boilerplate to a

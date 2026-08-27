@@ -119,50 +119,139 @@ describe("sign-in: a rejected auth call must not freeze the button", () => {
   });
 });
 
+/** Build SignUpPage props with a given auth client and collect toasts. */
+const signUpProps = (
+  authClient: unknown,
+  notified: string[],
+  extra: Partial<Record<string, unknown>> = {},
+): SignUpPageProps =>
+  ({
+    authClient,
+    navigate: () => {},
+    searchParam: () => null,
+    Link: (({ children }: { children: ReactNode }) => children) as SignUpPageProps["Link"],
+    copy: {
+      ...COPY,
+      submit: "Create account",
+      submitBusy: "Creating…",
+      signUpFailed: "Sign-up failed",
+      signUpTimedOut: "Server took too long — try signing in",
+    },
+    shellCopy: {},
+    branding: { name: "test" },
+    // First-user claim, consent off: exercise the failure path, not the guard.
+    surface: { firstUserMode: true },
+    showConsent: false,
+    notify: (m: string) => notified.push(m),
+    ...extra,
+  }) as unknown as SignUpPageProps;
+
 describe("sign-up: a rejected claim must not freeze the button", () => {
   afterEach(() => cleanup());
 
-  test("a thrown sign-up re-enables the button and surfaces the reason", async () => {
-    // Sign-up reports failures through the `notify` toast callback rather than
-    // an inline error node, and its submit is gated on the consent checkbox —
-    // turn consent off so the test exercises the failure path, not the guard.
+  test("a non-abort rejection re-enables the button and surfaces the reason", async () => {
+    // The freeze was the button stuck disabled on "Claiming…" with nothing
+    // said. A genuine failure (not an abort) still surfaces its own message.
     const notified: string[] = [];
     const { container } = render(
       <SignUpPage
-        {...({
-          authClient: {
+        {...signUpProps(
+          {
             getSession: async () => ({ data: { session: null } }),
             signIn: { email: async () => ({}) },
             signUp: {
               email: async () => {
-                throw new Error("The operation was aborted due to timeout");
+                throw new Error("boom: sign-up rejected");
               },
             },
           },
-          navigate: () => {},
-          searchParam: () => null,
-          Link: (({ children }: { children: ReactNode }) => children) as SignUpPageProps["Link"],
-          copy: {
-            ...COPY,
-            submit: "Create account",
-            submitBusy: "Creating…",
-            signUpFailed: "Sign-up failed",
-          },
-          shellCopy: {},
-          branding: { name: "test" },
-          surface: { firstUserMode: true },
-          showConsent: false,
-          notify: (m: string) => notified.push(m),
-        } as unknown as SignUpPageProps)}
+          notified,
+        )}
       />,
     );
 
     await waitFor(() => expect(container.querySelector("#email")).not.toBeNull());
     submitEmailForm(container);
 
-    // The freeze was the button stuck disabled on "Claiming…" with nothing said.
     await waitFor(() => expect(notified.length).toBeGreaterThan(0));
-    expect(notified.join(" ")).toContain("timeout");
+    expect(notified.join(" ")).toContain("boom");
+    await waitFor(() => {
+      const btn = primary(container);
+      expect(btn).not.toBeNull();
+      expect(btn?.disabled).toBe(false);
+    });
+  });
+
+  test("an aborted sign-up whose account did land recovers via sign-in", async () => {
+    // The client-level fetch timeout aborts the create AFTER the server has
+    // committed the account. Instead of the cryptic "signal is aborted" +
+    // manual "retry → user exists → sign in" dance, a sign-in with the same
+    // credentials succeeds and we carry straight through — no error toast.
+    const notified: string[] = [];
+    let signedUp = false;
+    let recoveryAttempts = 0;
+    const { container } = render(
+      <SignUpPage
+        {...signUpProps(
+          {
+            getSession: async () => ({ data: { session: null } }),
+            signIn: {
+              email: async () => {
+                recoveryAttempts++;
+                return {}; // the aborted create landed → sign-in succeeds
+              },
+            },
+            signUp: {
+              email: async () => {
+                throw new DOMException("signal is aborted without reason", "AbortError");
+              },
+            },
+          },
+          notified,
+          { onSignedUp: () => { signedUp = true; } },
+        )}
+      />,
+    );
+
+    await waitFor(() => expect(container.querySelector("#email")).not.toBeNull());
+    submitEmailForm(container);
+
+    await waitFor(() => expect(signedUp).toBe(true));
+    expect(recoveryAttempts).toBe(1);
+    // The raw abort string must never reach the user, and no error is shown.
+    expect(notified.join(" ")).not.toContain("aborted");
+    expect(notified).toEqual([]);
+  });
+
+  test("an aborted sign-up whose account did NOT land shows a human message", async () => {
+    // Recovery sign-in also fails (the create truly never happened): the user
+    // gets a clean retry message, never the raw abort string, and can retry.
+    const notified: string[] = [];
+    const { container } = render(
+      <SignUpPage
+        {...signUpProps(
+          {
+            getSession: async () => ({ data: { session: null } }),
+            signIn: {
+              email: async () => ({ error: { message: "Invalid email or password" } }),
+            },
+            signUp: {
+              email: async () => {
+                throw new DOMException("signal is aborted without reason", "AbortError");
+              },
+            },
+          },
+          notified,
+        )}
+      />,
+    );
+
+    await waitFor(() => expect(container.querySelector("#email")).not.toBeNull());
+    submitEmailForm(container);
+
+    await waitFor(() => expect(notified.length).toBeGreaterThan(0));
+    expect(notified.join(" ")).toContain("Server took too long");
+    expect(notified.join(" ")).not.toContain("aborted");
     await waitFor(() => {
       const btn = primary(container);
       expect(btn).not.toBeNull();

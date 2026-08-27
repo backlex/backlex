@@ -138,6 +138,7 @@ export const SignUp = () => {
     footPrefix: t`Already have an account?`,
     footLabel: t`Sign in`,
     signUpFailed: t`Sign-up failed`,
+    signUpTimedOut: t`The server took too long to respond. If your account was created, try signing in — otherwise please try again.`,
   };
 
   return (

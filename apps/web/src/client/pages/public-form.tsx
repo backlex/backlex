@@ -15,7 +15,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useDocumentTitle } from "./use-document-title";
+import { useDocumentLang, useDocumentTitle } from "./use-document-title";
 import {
   formsPublicApi,
   type ApiFormBlockScale,
@@ -1065,6 +1065,9 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
   // The tab is named after the form, not after the SPA shell it happens to be
   // served by — see `useDocumentTitle`.
   useDocumentTitle(def?.name);
+  // The form carries its OWN resolved locale (forms are multi-language by
+  // definition), so that wins over the page chrome's.
+  useDocumentLang(def?.locale);
 
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [honeypot, setHoneypot] = useState("");

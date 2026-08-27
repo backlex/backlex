@@ -11,6 +11,7 @@ export {
   MAX_SERIES,
   MAX_SEGMENTS,
   detectSeries,
+  seriesLabel,
   type ChartViz,
   type SeriesShape,
 } from "@backlex/core";

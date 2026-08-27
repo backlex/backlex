@@ -116,7 +116,7 @@ export const ats: SchemaTemplate = {
     {
       slug: "talent_pool_members", group: "Candidates", singular: "Pool member", plural: "Pool members", defaultSort: "-added_at",
       fields: [
-        ...half(rel("pool", "talent_pools", { required: true }), rel("candidate", "candidates", { required: true })),
+        ...half(rel("pool", "talent_pools", { required: true }), rel("candidate", "candidates", { required: true, uniqueWith: ["pool"] })),
         ...half(date("added_at", { indexed: true, label: "Added at" }), notes("notes")),
       ],
       samples: [{ pool: { ref: "talent_pools:0" }, candidate: { ref: "candidates:0" }, added_at: ms("2026-06-16"), notes: "Keep warm even if REQ-001 closes." }],

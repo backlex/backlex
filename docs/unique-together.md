@@ -99,6 +99,45 @@ POST /api/items/<slug>/aggregate
 { "agg": "count", "groupBy": "location" }
 ```
 
+## A ledger is not a set
+
+Two required relations is a *shape*, not a rule. Whether the pair may repeat is
+a question about what the second row **means**, and no property of the schema
+answers it:
+
+- `inventory_levels` — a second row for the same (variant, location) means
+  nothing. It is a duplicate, and `sum(available)` starts lying. → `uniqueWith`.
+- `stock_movements` — a second row for the same (variant, location) is the
+  *point*. Every receipt, sale and count is its own row, and a transfer is
+  deliberately two of them. → no constraint, ever.
+
+So the question to ask a join-shaped collection is not "are these two columns
+unique?" but "if I saw this pair twice, would I have learned something, or
+would I reach for a reconciliation script?"
+
+The bundled templates are held to that: every collection with exactly two
+required relations either declares `uniqueWith` or is named in
+`apps/web/tests/template-join-tables.test.ts` as a deliberate exception **with
+the reason written out**. A new one that does neither fails the suite.
+
+## When the database is the one that refuses
+
+`uniqueWith` compiles to a real unique index, so the refusal can also come from
+the driver rather than from a pre-check — on a race, or on an endpoint that
+never pre-checks at all. Either way the caller sees the same thing:
+
+```json
+// 409
+{ "error": {
+  "code": "CONFLICT",
+  "message": "Already exists: another row has this location + variant"
+} }
+```
+
+The **columns** are named so the caller knows which field collided. The
+**values** never are: a unique index can span a shared table, and the row you
+collided with may not be yours to read.
+
 ## Related
 
 - [Querying](/docs/querying/) — `indexed` and the plain B-tree index.

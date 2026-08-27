@@ -138,7 +138,7 @@ export const hr: SchemaTemplate = {
       fields: [
         hint("leave_alloc_remaining", "Days remaining is generated as allocated − used; correct the two inputs rather than the balance."),
         ...half(rel("employee", "employees", { required: true }), rel("leave_type", "leave_types", { required: true, label: "Leave type" })),
-        ...half(int("year", { indexed: true, validation: { min: 2000 } }), num("days_allocated", { validation: { min: 0 }, label: "Days allocated" })),
+        ...half(int("year", { indexed: true, validation: { min: 2000 }, uniqueWith: ["employee", "leave_type"] }), num("days_allocated", { validation: { min: 0 }, label: "Days allocated" })),
         ...half(
           num("days_used", { default: 0, validation: { min: 0 }, label: "Days used" }),
           computedNum("days_remaining", "days_allocated - days_used", { label: "Days remaining" }),
@@ -364,7 +364,7 @@ export const hr: SchemaTemplate = {
       // past what fits on one screen, so the sections become tabs.
       fields: tabbed(
         sec("Payslip", [
-          ...half(rel("payroll_run", "payroll_runs", { required: true }), rel("employee", "employees", { required: true })),
+          ...half(rel("payroll_run", "payroll_runs", { required: true }), rel("employee", "employees", { required: true, uniqueWith: ["payroll_run"] })),
           ...half(
             select("status", [ch("draft", C.gray), ch("issued", C.blue), ch("paid", C.green)], { default: "draft" }),
             num("worked_days", { validation: { min: 0 }, label: "Worked days" }),
@@ -442,7 +442,7 @@ export const hr: SchemaTemplate = {
     {
       slug: "training_attendance", group: "Learning", singular: "Training attendance", plural: "Training attendance",
       fields: [
-        ...half(rel("training", "trainings", { required: true }), rel("employee", "employees", { required: true })),
+        ...half(rel("training", "trainings", { required: true }), rel("employee", "employees", { required: true, uniqueWith: ["training"] })),
         ...half(
           select("status", [ch("invited", C.gray), ch("registered", C.blue), ch("attended", C.green), ch("no_show", C.red, "No-show"), ch("completed", C.teal)], { default: "invited" }),
           date("completed_on", { label: "Completed on", conditions: [when("status", "_eq", "completed", "required")] }),

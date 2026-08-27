@@ -107,7 +107,7 @@ export const lms: SchemaTemplate = {
       // roll-up) — without it, `enrollments.progress` is a number nobody can derive.
       slug: "lesson_progress", group: "Progress", singular: "Lesson progress", plural: "Lesson progress",
       fields: [
-        ...half(rel("enrollment", "enrollments", { required: true }), rel("lesson", "lessons", { required: true })),
+        ...half(rel("enrollment", "enrollments", { required: true }), rel("lesson", "lessons", { required: true, uniqueWith: ["enrollment"] })),
         ...half(
           select("status", [ch("not_started", C.gray, "Not started"), ch("in_progress", C.blue, "In progress"), ch("completed", C.green)], { default: "not_started" }),
           int("seconds_watched", { default: 0, validation: { min: 0 }, label: "Seconds watched" }),

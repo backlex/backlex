@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, flow, half, hint, int, money, moneyIn, ms, notes, num, pct, position, rel, sec, select, seq, slugField, stacked, text, ts, url, when } from "../dsl";
+import { bool, C, ch, computedMoneyIn, date, email, flag, flow, half, hint, int, money, moneyIn, ms, notes, num, pct, position, rel, sec, select, seq, slugField, stacked, text, ts, url, when } from "../dsl";
 
 export const saas: SchemaTemplate = {
   id: "saas",
@@ -234,14 +234,23 @@ export const saas: SchemaTemplate = {
     },
     {
       slug: "invoice_lines", group: "Billing", singular: "Invoice line", plural: "Invoice lines",
-      fields: [
-        hint("invoice_lines_amount", "Amount is generated as quantity × unit amount — adjust the inputs, not the result."),
-        ...half(rel("invoice", "invoices"), rel("price", "prices")),
-        text("description"),
-        ...half(num("quantity", { default: 1, validation: { min: 0 } }), money("unit_amount", { label: "Unit amount" })),
-        ...half(computedNum("amount", "quantity * unit_amount"), rel("tax_rate", "tax_rates", { label: "Tax rate" })),
-        ...half(ts("period_start", { range: { end: "period_end" }, label: "Period start" }), ts("period_end", { label: "Period end" })),
-      ],
+      // Ten storage columns since the amounts gained their denomination — past
+      // the point a flat list reads as one glance.
+      fields: stacked(
+        sec("Line", [
+          hint("invoice_lines_amount", "Amount is generated as quantity × unit amount — adjust the inputs, not the result."),
+          ...half(rel("invoice", "invoices"), rel("price", "prices")),
+          text("description"),
+        ]),
+        sec("Amounts", [
+          ...half(num("quantity", { default: 1, validation: { min: 0 } }), moneyIn("unit_amount", { label: "Unit amount" })),
+          ...half(select("currency", ["USD", "EUR", "GBP"], { default: "USD" }), rel("tax_rate", "tax_rates", { label: "Tax rate" })),
+          computedMoneyIn("amount", "quantity * unit_amount"),
+        ]),
+        sec("Period", [
+          ...half(ts("period_start", { range: { end: "period_end" }, label: "Period start" }), ts("period_end", { label: "Period end" })),
+        ]),
+      ),
       samples: [{ invoice: { ref: "invoices:0" }, price: { ref: "prices:0" }, description: "Pro Plan — monthly", quantity: 1, unit_amount: 49, period_start: ms("2026-06-01"), period_end: ms("2026-07-01") }],
     },
     {
@@ -279,7 +288,8 @@ export const saas: SchemaTemplate = {
     {
       slug: "refunds", group: "Billing", singular: "Refund", plural: "Refunds", defaultSort: "-created_at",
       fields: [
-        ...half(rel("payment", "payments"), money("amount", { required: true })),
+        ...half(rel("payment", "payments"), moneyIn("amount", { required: true })),
+        select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
         ...half(
           select("status", [ch("pending", C.amber), ch("succeeded", C.green), ch("failed", C.red)], { default: "pending" }),
           select("reason", [ch("duplicate", C.gray), ch("fraudulent", C.red), ch("requested_by_customer", C.blue, "Requested by customer")], { default: "requested_by_customer" }),

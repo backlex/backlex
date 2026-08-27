@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
+import { bool, C, ch, computedNum, computedText, date, email, file, flag, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const hr: SchemaTemplate = {
   id: "hr",
@@ -360,7 +360,9 @@ export const hr: SchemaTemplate = {
     },
     {
       slug: "payslips", group: "Payroll", singular: "Payslip", plural: "Payslips", defaultSort: "-created_at",
-      fields: stacked(
+      // Fourteen storage columns once the eight amounts gained their currency —
+      // past what fits on one screen, so the sections become tabs.
+      fields: tabbed(
         sec("Payslip", [
           ...half(rel("payroll_run", "payroll_runs", { required: true }), rel("employee", "employees", { required: true })),
           ...half(
@@ -369,12 +371,13 @@ export const hr: SchemaTemplate = {
           ),
         ]),
         sec("Earnings", [
-          ...half(money("base_pay", { label: "Base pay" }), money("overtime_pay", { label: "Overtime" })),
-          ...half(money("bonus"), money("gross_pay", { label: "Gross pay" })),
+          select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
+          ...half(moneyIn("base_pay", { label: "Base pay" }), moneyIn("overtime_pay", { label: "Overtime" })),
+          ...half(moneyIn("bonus"), moneyIn("gross_pay", { label: "Gross pay" })),
         ]),
         sec("Deductions", [
-          ...half(money("tax"), money("social_security", { label: "Social security" })),
-          ...half(money("other_deductions", { label: "Other deductions" }), money("net_pay", { label: "Net pay" })),
+          ...half(moneyIn("tax"), moneyIn("social_security", { label: "Social security" })),
+          ...half(moneyIn("other_deductions", { label: "Other deductions" }), moneyIn("net_pay", { label: "Net pay" })),
           file("document", { label: "Payslip PDF" }),
         ]),
       ),

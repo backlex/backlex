@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, ch, computedNum, date, email, file, flag, geo, half, int, money, moneyIn, ms, notes, num, phone, position, rating, rel, rollup, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
+import { C, ch, computedMoneyIn, computedNum, date, email, file, flag, geo, half, int, money, moneyIn, ms, notes, num, phone, position, rating, rel, rollup, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const fieldService: SchemaTemplate = {
   id: "field-service",
@@ -196,8 +196,8 @@ export const fieldService: SchemaTemplate = {
       slug: "estimate_lines", group: "Billing", singular: "Estimate line", plural: "Estimate lines",
       fields: [
         ...half(rel("estimate", "estimates"), text("description", { required: true })),
-        ...half(num("qty", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Unit price" })),
-        computedNum("line_total", "qty * unit_price", { label: "Line total" }),
+        ...half(num("qty", { default: 1, validation: { min: 0 } }), moneyIn("unit_price", { label: "Unit price" })),
+        ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), computedMoneyIn("line_total", "qty * unit_price", { label: "Line total" })),
       ],
       samples: [
         { estimate: { ref: "estimates:0" }, description: "Condenser fan motor (part + install)", qty: 1, unit_price: 640 },

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, geo, half, hint, int, money, moneyIn, ms, notes, parent, phone, rel, sec, select, seq, stacked, tabbed, text, ts, when } from "../dsl";
+import { bool, C, ch, computedMoneyIn, computedNum, date, email, flag, geo, half, hint, int, money, moneyIn, ms, notes, parent, phone, rel, sec, select, seq, stacked, tabbed, text, ts, when } from "../dsl";
 
 export const inventory: SchemaTemplate = {
   id: "inventory",
@@ -132,7 +132,8 @@ export const inventory: SchemaTemplate = {
           int("qty_ordered", { default: 1, validation: { min: 0 }, label: "Qty ordered" }),
           int("qty_received", { default: 0, validation: { min: 0 }, label: "Qty received" }),
         ),
-        ...half(money("unit_cost", { label: "Unit cost" }), computedNum("line_total", "qty_ordered * unit_cost", { label: "Line total" })),
+        ...half(moneyIn("unit_cost", { label: "Unit cost" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        computedMoneyIn("line_total", "qty_ordered * unit_cost", { label: "Line total" }),
       ],
       samples: [{ purchase_order: { ref: "purchase_orders:0" }, item: { ref: "items:0" }, qty_ordered: 500, qty_received: 0, unit_cost: 4.5 }],
     },

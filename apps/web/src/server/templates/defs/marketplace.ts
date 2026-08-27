@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, half, hint, image, int, money, moneyIn, ms, notes, num, parent, phone, rating, rel, relMany, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, userLink, when } from "../dsl";
+import { bool, C, ch, computedMoneyIn, date, email, half, hint, image, int, money, moneyIn, ms, notes, num, parent, phone, rating, rel, relMany, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, userLink, when } from "../dsl";
 
 export const marketplace: SchemaTemplate = {
   id: "marketplace",
@@ -139,7 +139,8 @@ export const marketplace: SchemaTemplate = {
         hint("mkt_line_total", "Line total is generated as qty × unit price."),
         ...half(rel("order", "orders"), rel("listing", "listings")),
         ...half(rel("vendor", "vendors"), int("qty", { default: 1, validation: { min: 1 } })),
-        ...half(money("unit_price"), computedNum("line_total", "qty * unit_price", { label: "Line total" })),
+        ...half(moneyIn("unit_price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        computedMoneyIn("line_total", "qty * unit_price", { label: "Line total" }),
       ],
       samples: [{ order: { ref: "orders:0" }, listing: { ref: "listings:0" }, vendor: { ref: "vendors:0" }, qty: 1, unit_price: 45 }],
     },

@@ -94,6 +94,15 @@ const FieldObject = z.object({
     // Plain B-tree index on the column — speeds up filter/sort. Applied by
     // the schema applier; the admin UI already sends this flag.
     indexed: z.boolean().optional(),
+    // Sibling columns this one is unique TOGETHER with — the join-table rule
+    // (one inventory level per variant+location). `unique` is per column and
+    // cannot say that. `validateFields` checks the names resolve and the types
+    // can be indexed; the schema applier emits the UNIQUE INDEX.
+    uniqueWith: z
+      .array(z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case"))
+      .min(1)
+      .max(8)
+      .optional(),
     // Store this field's value per-locale in the `<table>__i18n` sidecar (any
     // type except computed/hash). validateFields enforces the
     // combinations; the schema applier maintains the sidecar column.

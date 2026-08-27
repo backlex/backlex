@@ -21,11 +21,13 @@
  * `moneyIn()`, exactly as `product_variants.price` was fixed one release
  * earlier for the same reason.
  *
- * `KNOWN_UNDENOMINATED` is the same defect elsewhere — 17 collections across 9
- * other verticals, measured on 2026-08-27 and left for their own pass. They are
- * listed rather than skipped: naming each one is what stops the list quietly
- * growing, and the second test below strikes an entry off the moment it is
- * fixed.
+ * `KNOWN_UNDENOMINATED` started as the same defect elsewhere — 17 collections
+ * across 9 other verticals — and is empty now that all of them are fixed. The
+ * set stays because the pair of tests around it is the mechanism: one refuses a
+ * NEW offender, the other refuses a stale entry, so the list can neither grow
+ * back nor keep an entry after it is fixed. Denominating `appointments/packages`
+ * is what made `appointments/package_purchases` an offender — a cascade nobody
+ * would have looked for, and the guard named it.
  */
 import { describe, expect, test } from "bun:test";
 import { TEMPLATES } from "../src/server/templates/catalog";
@@ -51,24 +53,11 @@ const isDenominated = (fields: Field[]): boolean => fields.some((f) => f.name ==
  * denominated parent. Measured, not guessed — regenerate by deleting an entry
  * and reading the failure.
  */
-const KNOWN_UNDENOMINATED = new Set([
-  "saas/invoice_lines",
-  "saas/refunds",
-  "crm/deal_products",
-  "crm/quote_lines",
-  "crm/contracts",
-  "hr/payslips",
-  "inventory/purchase_order_items",
-  "marketplace/order_items",
-  "nonprofit/pledge_payments",
-  "invoicing/quote_lines",
-  "invoicing/invoice_lines",
-  "invoicing/payments",
-  "invoicing/credit_notes",
-  "invoicing/bill_lines",
-  "appointments/bookings",
-  "appointments/packages",
-  "field-service/estimate_lines",
+const KNOWN_UNDENOMINATED = new Set<string>([
+  // Empty, and that is the point of keeping it: the seventeen collections
+  // across nine other verticals that were listed here on 2026-08-27 have all
+  // been denominated. A new entry appearing means a template regressed, and the
+  // first test below refuses it rather than letting the list grow back.
 ]);
 
 const offenders = (): string[] => {

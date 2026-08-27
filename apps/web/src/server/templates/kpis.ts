@@ -845,6 +845,11 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       collection: "payments",
       agg: "sum",
       field: "amount",
+      // `amount` is denominated per row now, so a single total would add
+      // currencies together. One figure per currency instead — the same shape
+      // the commerce model's revenue KPIs already use.
+      groupBy: "currency",
+      format: "money",
       dateField: "received_at",
       direction: "up",
     },
@@ -892,6 +897,8 @@ export const TEMPLATE_KPIS: Record<string, TemplateKpi[]> = {
       collection: "bookings",
       agg: "sum",
       field: "amount",
+      groupBy: "currency",
+      format: "money",
       filter: { status: { _neq: "cancelled" } },
       dateField: "starts_at",
       direction: "up",

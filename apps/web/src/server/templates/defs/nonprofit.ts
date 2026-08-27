@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, date, email, flag, half, int, money, moneyIn, ms, notes, num, phone, rel, sec, select, slugField, stacked, tabbed, text, ts, userLink, when } from "../dsl";
+import { bool, C, ch, date, email, flag, half, int, money, moneyIn, ms, notes, num, phone, rel, sec, select, slugField, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const nonprofit: SchemaTemplate = {
   id: "nonprofit",
@@ -109,7 +109,8 @@ export const nonprofit: SchemaTemplate = {
       note: "The installment schedule behind a pledge — what turns a promise into a forecast.",
       fields: [
         ...half(rel("pledge", "pledges", { required: true }), rel("donation", "donations", { label: "Fulfilled by" })),
-        ...half(money("amount"), date("due_on", { indexed: true, label: "Due on" })),
+        ...half(moneyIn("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+        date("due_on", { indexed: true, label: "Due on" }),
         ...half(
           select("status", [ch("scheduled", C.blue), ch("paid", C.green), ch("overdue", C.red), ch("written_off", C.gray, "Written off")], { default: "scheduled" }),
           date("paid_on", { label: "Paid on", conditions: [when("status", "_eq", "paid", "required"), when("status", "_neq", "paid", "hidden")] }),

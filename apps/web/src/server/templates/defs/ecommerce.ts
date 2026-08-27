@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedMoneyIn, computedNum, date, email, flag, flow, geo, half, hint, image, int, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, rollup, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
+import { bool, C, ch, computedMoneyIn, computedNum, date, email, flag, flow, geo, half, hint, image, int, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, rollup, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
 
 /**
  * The commerce model, read off the three platforms that publish theirs.
@@ -521,7 +521,10 @@ export const ecommerce: SchemaTemplate = {
       // primary one — the breadcrumb has to pick a single path.
       slug: "product_categories", group: "Catalog", singular: "Product category", plural: "Product categories",
       fields: [
-        ...half(rel("product", "products", { required: true }), rel("category", "categories", { required: true })),
+        ...half(
+          rel("product", "products", { required: true }),
+          rel("category", "categories", { required: true, uniqueWith: ["product"] }),
+        ),
         ...half(bool("is_primary", { default: false, label: "Primary" }), position("category")),
       ],
       samples: [
@@ -534,7 +537,10 @@ export const ecommerce: SchemaTemplate = {
       // leaves it empty and answers from `collections.rule` instead.
       slug: "product_collections", group: "Catalog", singular: "Collection member", plural: "Collection members", defaultSort: "position",
       fields: [
-        ...half(rel("product", "products", { required: true }), rel("collection", "collections", { required: true })),
+        ...half(
+          rel("product", "products", { required: true }),
+          rel("collection", "collections", { required: true, uniqueWith: ["product"] }),
+        ),
         position("collection"),
       ],
       samples: [
@@ -551,7 +557,9 @@ export const ecommerce: SchemaTemplate = {
       fields: [
         ...half(rel("product", "products", { required: true }), rel("related_product", "products", { required: true, label: "Related to" })),
         ...half(
-          select("relation_type", [ch("related", C.gray), ch("upsell", C.green), ch("cross_sell", C.blue, "Cross-sell"), ch("accessory", C.teal), ch("replacement", C.amber)], { default: "related", label: "Kind" }),
+          // A pair is linked once per KIND — the same two products may be both
+          // an accessory and a replacement, but not two accessories.
+          select("relation_type", [ch("related", C.gray), ch("upsell", C.green), ch("cross_sell", C.blue, "Cross-sell"), ch("accessory", C.teal), ch("replacement", C.amber)], { default: "related", label: "Kind", uniqueWith: ["product", "related_product"] }),
           position("product"),
         ),
       ],
@@ -673,7 +681,14 @@ export const ecommerce: SchemaTemplate = {
       slug: "variant_option_values", group: "Catalog", singular: "Variant option", plural: "Variant options",
       fields: [
         hint("variant_option_values_shape", "One row per option axis of a variant. Two options means two rows — together they are what the shopper selected."),
-        ...half(rel("variant", "product_variants", { required: true }), rel("option", "product_options", { required: true })),
+        // One row per (variant, option): a variant selects exactly one value on
+        // each axis. Without it a variant could claim Size = S AND Size = M at
+        // once, which is precisely the unresolvability this table was added to
+        // prevent — the swatch grid gets two answers and no rule for picking.
+        ...half(
+          rel("variant", "product_variants", { required: true }),
+          rel("option", "product_options", { required: true, uniqueWith: ["variant"] }),
+        ),
         rel("value", "product_option_values", { required: true, label: "Selected value" }),
       ],
       samples: [
@@ -746,7 +761,12 @@ export const ecommerce: SchemaTemplate = {
       slug: "product_channel_listings", group: "Channels & pricing", singular: "Channel listing", plural: "Channel listings",
       fields: [
         hint("listings_precedence", "A product that is draft or archived is off everywhere — this row only narrows a product that is otherwise active."),
-        ...half(rel("product", "products", { required: true }), rel("channel", "channels", { required: true })),
+        // One listing per (product, channel). Two rows — one saying published,
+        // one saying not — left the storefront with no rule for which to read.
+        ...half(
+          rel("product", "products", { required: true }),
+          rel("channel", "channels", { required: true, uniqueWith: ["product"] }),
+        ),
         ...half(bool("is_published", { default: true, label: "Published" }), bool("visible_in_listings", { default: true, label: "Show in listings" })),
         ...half(ts("published_at", { indexed: true, label: "Published at" }), ts("available_from", { label: "Buyable from" })),
         position("channel"),
@@ -854,7 +874,15 @@ export const ecommerce: SchemaTemplate = {
         // in step with the other two by hand. It is a definition, not a
         // judgement, so the database computes it and nobody can disagree with it.
         hint("levels_available", "On hand is the only number here anyone types. Committed is summed from the reservations still held against this level, and Available is generated as the difference — both are refused as input."),
-        ...half(rel("variant", "product_variants"), rel("location", "locations")),
+        // One row per (variant, location) — the pair is what an inventory level
+        // IS, and without the constraint three rows for one pair made
+        // `sum(available)` answer 146 for a number that should be one. Both ends
+        // are required for the same reason: a level naming neither is not a
+        // level, and a NULL would slip past the index (NULLs compare distinct).
+        ...half(
+          rel("variant", "product_variants", { required: true }),
+          rel("location", "locations", { required: true, uniqueWith: ["variant"] }),
+        ),
         ...half(
           int("on_hand", { default: 0, validation: { min: 0 }, label: "On hand" }),
           rollup(
@@ -996,7 +1024,10 @@ export const ecommerce: SchemaTemplate = {
       // handed every shopper everybody else's.
       slug: "wishlist_items", group: "Customers", singular: "Wishlist item", plural: "Wishlist items", ownerScoped: true, defaultSort: "position",
       fields: [
-        ...half(rel("wishlist", "wishlists", { required: true }), rel("product", "products", { required: true })),
+        ...half(
+          rel("wishlist", "wishlists", { required: true }),
+          rel("product", "products", { required: true, uniqueWith: ["wishlist"] }),
+        ),
         ...half(rel("variant", "product_variants"), position("wishlist")),
       ],
       samples: [{ wishlist: { ref: "wishlists:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, position: 1 },
@@ -1054,7 +1085,7 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Limits", [
           ...half(
-            select("target_selection", [ch("all", C.gray), ch("entitled", C.amber)], { default: "all", label: "Scope", description: "Entitled means only what the rules tab names." }),
+            select("target_selection", [ch("all", C.gray), ch("entitled", C.amber)], { default: "all", label: "Scope", description: "Entitled means only what the rules tab names — and with no target rule there, it names nothing and the discount comes off nothing." }),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", description: "The unit a fixed-amount value and the minimum below are in." }),
           ),
           ...half(
@@ -1351,7 +1382,12 @@ export const ecommerce: SchemaTemplate = {
       // substantiate — a two-parcel order could not say which parcel held what.
       slug: "fulfillment_items", group: "Orders", singular: "Fulfilled item", plural: "Fulfilled items",
       fields: [
-        ...half(rel("fulfillment", "fulfillments", { required: true }), rel("order_item", "order_items", { required: true })),
+        // One row per (fulfillment, order line): a parcel says how many of a
+        // line it holds once, not twice.
+        ...half(
+          rel("fulfillment", "fulfillments", { required: true }),
+          rel("order_item", "order_items", { required: true, uniqueWith: ["fulfillment"] }),
+        ),
         int("qty", { default: 1, validation: { min: 1 }, label: "Quantity shipped" }),
       ],
       samples: [
@@ -1509,12 +1545,24 @@ export const ecommerce: SchemaTemplate = {
       // stock discrepancy is ever explained.
       slug: "stock_movements", group: "Inventory", singular: "Stock movement", plural: "Stock movements", defaultSort: "-occurred_at",
       fields: [
+        // A movement is ONE location's ledger entry, and `transfer` is the kind
+        // that reads as if it should name two. It deliberately does not: the
+        // per-location question every stock report asks is `SUM(qty) WHERE
+        // location = X`, and a single row holding both ends would have to be
+        // special-cased out of that sum by every reader. So a transfer is the
+        // pair of signed rows, and the hint below says so — the gap was never a
+        // missing column, it was that nothing told two operators to record it
+        // the same way.
+        hint(
+          "movements_transfer",
+          "One row per location. A transfer is TWO rows sharing a reference — negative where the goods left, positive where they arrived — so every location's running total stays a plain sum of its own rows.",
+        ),
         ...half(rel("variant", "product_variants", { required: true }), rel("location", "locations", { required: true })),
         ...half(
           select("movement_type", [ch("receipt", C.green), ch("sale", C.blue), ch("return", C.teal), ch("adjustment", C.amber), ch("transfer", C.purple), ch("shrinkage", C.red)], { default: "adjustment", label: "Kind" }),
           int("qty", { label: "Quantity", description: "Signed: negative takes stock away." }),
         ),
-        ...half(text("reference", { indexed: true, description: "Order number, PO number or count sheet this movement came from." }), ts("occurred_at", { indexed: true, label: "Occurred at" })),
+        ...half(text("reference", { indexed: true, description: "Order number, PO number, count sheet or transfer number this movement came from — and what joins the two halves of a transfer." }), ts("occurred_at", { indexed: true, label: "Occurred at" })),
         notes("note"),
       ],
       samples: [

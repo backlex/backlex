@@ -1,9 +1,11 @@
 import { sql } from "drizzle-orm";
+import { AppError } from "@backlex/core";
 import type { PgDb } from "./pg";
 import type { SqliteDb } from "./sqlite";
 import {
   type FieldDef,
   columnDefSql,
+  compositeUniqueSets,
   ftsTableName,
   i18nTableName,
   isLocalized,
@@ -395,6 +397,82 @@ const ensureFieldIndexes = async (
 };
 
 /**
+ * Index name for a composite-unique set, kept under Postgres's 63-byte
+ * identifier ceiling.
+ *
+ * PG does not refuse a longer name — it TRUNCATES it, so two sets on a
+ * long-named table could silently become the same index and the second
+ * `IF NOT EXISTS` would quietly do nothing. A checksum of the full column list
+ * keeps distinct sets distinct once the readable form no longer fits.
+ */
+const compositeUniqueIndexName = (table: string, cols: string[]): string => {
+  const readable = `${table}_uq_${cols.join("_")}`;
+  if (readable.length <= 60) return readable;
+  let sum = 0;
+  for (const ch of cols.join(",")) sum = (sum * 31 + ch.charCodeAt(0)) >>> 0;
+  return `${table}_uq_${sum.toString(36)}`.slice(0, 60);
+};
+
+/**
+ * One row per (variant, location); one listing per (product, channel).
+ *
+ * `unique` is per column and a join table's identity is a PAIR, so nothing
+ * stopped a second row for the same one: three inventory levels for one
+ * (variant, location) made `sum(available)` answer 146 for a number that
+ * should be one, and a variant could claim Size = S and Size = M at once.
+ *
+ * Leads with `tenant_id` when the collection is tenant-scoped, exactly as the
+ * keyset index does — a managed table is per-tenant by name, but an adopted or
+ * legacy one need not be, and a workspace's pair must never block another's.
+ *
+ * If the table already holds duplicates the index cannot be created, and that
+ * is reported rather than swallowed: a uniqueness rule that silently failed to
+ * apply is worse than one that never existed, because the schema then claims a
+ * guarantee the data does not keep.
+ */
+const ensureCompositeUniqueIndexes = async (
+  db: AnyDb,
+  dialect: Dialect,
+  table: string,
+  fields: FieldDef[],
+  opts: { tenantScoped: boolean },
+): Promise<void> => {
+  for (const cols of compositeUniqueSets(fields)) {
+    const indexCols = [...(opts.tenantScoped ? ["tenant_id"] : []), ...cols];
+    const name = compositeUniqueIndexName(table, cols);
+    const sqlText = `CREATE UNIQUE INDEX IF NOT EXISTS ${quote(name)} ON ${quote(table)} (${indexCols
+      .map(quote)
+      .join(", ")})`;
+    try {
+      await exec(db, dialect, sqlText);
+    } catch (e) {
+      const grouped = indexCols.map(quote).join(", ");
+      let offenders = "";
+      try {
+        const rows = await all<{ n: number }>(
+          db,
+          dialect,
+          `SELECT COUNT(*) AS n FROM (SELECT 1 FROM ${quote(table)} GROUP BY ${grouped} HAVING COUNT(*) > 1) AS d`,
+        );
+        const n = Number(rows[0]?.n ?? 0);
+        if (n > 0) {
+          offenders = ` — ${n} value${n === 1 ? "" : "s"} of (${cols.join(", ")}) already appear on more than one row; remove the duplicates first`;
+        }
+      } catch {
+        /* the diagnostic is a nicety; the failure below is the point */
+      }
+      // A plain Error leaves as an opaque 500 and the caller loses the very
+      // sentence written to tell them what to fix — the same shape as Hono's
+      // own 4xx arriving as our 500. `permission.ts` makes the identical point.
+      throw new AppError(
+        "CONFLICT",
+        `Cannot make (${cols.join(", ")}) unique on "${table}"${offenders || `: ${(e as Error).message}`}`,
+      );
+    }
+  }
+};
+
+/**
  * Composite index that backs the default list ordering (`-created_at`) and
  * keyset pagination's `(…, created_at, id)` seek. Leading with `tenant_id`
  * (when tenant-scoped) lets the planner seek the tenant partition and then
@@ -509,6 +587,7 @@ export const applyCollection = async (
       );
     }
     await ensureFieldIndexes(db, dialect, table, def.fields);
+    await ensureCompositeUniqueIndexes(db, dialect, table, def.fields, { tenantScoped });
     await ensurePaginationIndex(db, dialect, table, { tenantScoped, hasCreatedAt });
     if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);
     await ensureSidecar(db, dialect, table, def.fields, def.pkType ?? "uuid");
@@ -562,6 +641,10 @@ export const applyCollection = async (
   // Run after column adds so a freshly-added indexed field gets its index, and
   // so a field that gained `indexed` on a later update is picked up too.
   await ensureFieldIndexes(db, dialect, table, def.fields);
+  // Additive too: a collection that gained a `uniqueWith` on a later PATCH
+  // picks the index up here — and is refused, loudly, if the rows it already
+  // holds break the rule it just declared.
+  await ensureCompositeUniqueIndexes(db, dialect, table, def.fields, { tenantScoped });
   // Backfills the keyset/default-sort composite onto collections created
   // before it existed (IF NOT EXISTS makes the create-branch call a no-op here).
   await ensurePaginationIndex(db, dialect, table, { tenantScoped, hasCreatedAt });

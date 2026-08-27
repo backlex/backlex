@@ -192,7 +192,9 @@ Add Field dialog's "Indexed" toggle) to get a plain B-tree index on its column �
 worth it for fields you frequently `filter`/`sort` by. The schema applier emits
 `CREATE INDEX IF NOT EXISTS` additively on both PG and SQLite. `unique` fields
 are already indexed by their UNIQUE constraint, so `indexed` is skipped for
-them; adopted tables get no DDL. Indexing trades a little write cost for read
+them; adopted tables get no DDL. For "one row per pair" — a join table's
+identity, which a per-column `unique` cannot express — see
+[Unique together](/docs/unique-together/). Indexing trades a little write cost for read
 speed — opt-in per field. Note that `_contains` (`LIKE %x%`) and the
 case-insensitive `_icontains` can't use a plain B-tree index — a substring
 search needs a trigram/`pg_trgm` (PG) or FTS index, which Backlex doesn't manage

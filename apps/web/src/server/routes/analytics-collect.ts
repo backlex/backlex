@@ -651,10 +651,12 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
    *
    * The snippet is `<script defer src=".../tm/<site-id>.js"></script>` — no
    * `data-site` attribute, because the id is in the URL. That matters for more
-   * than tidiness: `document.currentScript` is null for a dynamically injected
-   * script, which is exactly the shape of the async snippet operators paste out
-   * of habit, so a runtime that read its configuration off the element would
-   * simply never start.
+   * than tidiness: an operator who re-wraps this in the GA-style async loader
+   * builds the `<script>` element themselves and copies no attributes onto it,
+   * so a runtime that read its configuration off the element would simply never
+   * start for them. (`document.currentScript` itself is fine on both shapes —
+   * it is null only for a module script or a later callback. This comment used
+   * to claim otherwise; measured 2026-08-27.)
    *
    * The container is JSON handed to a fixed interpreter, never generated code.
    * The only operator string that becomes executable is a custom-code tag, and

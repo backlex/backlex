@@ -34,6 +34,23 @@ const passkeysSupported = (): boolean =>
   typeof window !== "undefined" &&
   typeof window.PublicKeyCredential !== "undefined";
 
+/**
+ * True when a rejected request was aborted rather than genuinely failed — the
+ * shape the auth client's own `fetchOptions.timeout` produces (better-fetch
+ * calls `controller.abort()` with no reason, so the browser rejects with a
+ * bare "signal is aborted without reason" `DOMException` / `AbortError`).
+ * That string must never reach a user; it also usually means the server
+ * committed the write before we stopped waiting, which is what makes the
+ * recovery sign-in worth attempting. */
+const isAbortError = (err: unknown): boolean => {
+  if (err instanceof DOMException) return err.name === "AbortError" || err.name === "TimeoutError";
+  if (err instanceof Error) {
+    if (err.name === "AbortError" || err.name === "TimeoutError") return true;
+    return /\baborted?\b|\btimed?\s*out\b|\btimeout\b/i.test(err.message);
+  }
+  return false;
+};
+
 /** Copy strings the SignUp page needs (besides the shared shell copy). */
 export interface SignUpCopy {
   // ── Blocked state ──
@@ -99,6 +116,11 @@ export interface SignUpCopy {
 
   /** Fallback when the auth client returns an error without a message. */
   signUpFailed: string;
+  /** Shown when the sign-up request was aborted (the client-level fetch
+   *  timeout firing on a slow instance) AND the recovery sign-in could not
+   *  confirm the account — a human message in place of the raw, cryptic
+   *  "signal is aborted". Optional: falls back to `signUpFailed`. */
+  signUpTimedOut?: string;
 }
 
 export interface SignUpPageProps extends AuthWiring {
@@ -241,6 +263,12 @@ export const SignUpPage = ({
 
   const strength = useMemo(() => computeStrength(password), [password]);
 
+  /** Leave the auth flow the same way a successful sign-up does. */
+  const redirectAfterAuth = () => {
+    if (onSignedUp) onSignedUp();
+    else if (typeof window !== "undefined") window.location.href = "/";
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email || !password || (showConsent && !agreed)) return;
@@ -251,13 +279,43 @@ export const SignUpPage = ({
     try {
       res = await authClient.signUp.email({ email, password, name });
     } catch (err) {
-      // A rejected sign-up (network failure, or the client-level fetch timeout
-      // aborting a stalled instance) must NOT leave the button spinning on
-      // "Claiming…" forever — re-enable the form and surface the error so the
-      // user can retry.
+      // The sign-up request was aborted before its response arrived — most
+      // often the auth client's own `fetchOptions.timeout` firing on a cold or
+      // freshly-provisioned instance whose first-admin create legitimately runs
+      // long (cold Worker + DB provisioning + template seed). Crucially the
+      // server may well have COMMITTED the account before we stopped waiting:
+      // the write is durable, only our confirmation was lost. So the raw
+      // "signal is aborted" is both cryptic AND usually wrong.
+      //
+      // Recover by signing in with the very credentials just submitted. If the
+      // aborted create did land, these are now valid and we carry straight
+      // through — collapsing the "error → retry → user already exists → sign
+      // in" dance the user otherwise does by hand into one seamless step. A
+      // sign-in with those exact credentials only succeeds when that same
+      // sign-up created the account, so it leaks nothing the user didn't type.
+      if (isAbortError(err)) {
+        try {
+          const recovery = await authClient.signIn.email({ email, password });
+          if (!recovery.error) {
+            onInvalidateSurface?.();
+            redirectAfterAuth();
+            return;
+          }
+        } catch {
+          // fall through to the human timeout message below
+        }
+      }
+      // Either not an abort, or the create truly never happened. Re-enable the
+      // form and surface a clean message — never the raw abort string.
       setBusy(false);
       setStage("form");
-      notify?.(err instanceof Error ? err.message : copy.signUpFailed);
+      notify?.(
+        isAbortError(err)
+          ? (copy.signUpTimedOut ?? copy.signUpFailed)
+          : err instanceof Error
+            ? err.message
+            : copy.signUpFailed,
+      );
       return;
     }
     if (res.error) {
@@ -307,11 +365,7 @@ export const SignUpPage = ({
       return;
     }
 
-    if (onSignedUp) {
-      onSignedUp();
-    } else if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
+    redirectAfterAuth();
   };
 
   // Claim mode: don't paint anything until we know there's no session — the

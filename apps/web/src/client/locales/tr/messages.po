@@ -22997,3 +22997,7 @@ msgstr "Yalnızca size ait — müşteri bunları görmez."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Yours to recognise it by — the trigger type is used if you leave it blank."
 msgstr "Tanımanız için sizin verdiğiniz ad — boş bırakırsanız tetikleyici türü kullanılır."
+
+#: src/client/pages/sign-up.tsx
+msgid "The server took too long to respond. If your account was created, try signing in — otherwise please try again."
+msgstr "Sunucu yanıt vermekte çok gecikti. Hesabınız oluşturulduysa giriş yapmayı deneyin — aksi halde lütfen tekrar deneyin."

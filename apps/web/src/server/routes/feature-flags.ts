@@ -9,6 +9,7 @@ import {
   deleteFlag,
   evaluateFlags,
   listFlags,
+  rolloutNeedsBucketKey,
   upsertFlag,
 } from "../services/feature-flags";
 
@@ -56,8 +57,23 @@ export const flagsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
     tags,
     summary: "Evaluate feature flags for the caller",
     description:
-      "Returns `{ data: { <key>: { enabled, value } } }` with each flag resolved against the caller's targeting rules (condition + rollout).",
+      "Returns `{ data: { <key>: { enabled, value } } }` with each flag resolved against the caller's targeting rules (condition + rollout).\n\n" +
+      "Readable cross-origin from any site: a marketing page is exactly the caller a rollout percentage exists for. Anonymous callers get the anonymous evaluation, so an ENABLED flag's `value` is world-readable to anyone who knows the workspace host — put nothing secret in a flag value.\n\n" +
+      "`bucket` is a stable id for THIS visitor (the analytics visitor id is the obvious one). A partial rollout can only split traffic that identifies itself; without it a logged-out caller is outside every partial rollout.",
     security: SECURITY,
+    request: {
+      query: z.object({
+        bucket: z
+          .string()
+          .min(1)
+          .max(200)
+          .optional()
+          .openapi({
+            description:
+              "Stable per-visitor id used to bucket partial rollouts. May also be sent as the `X-Backlex-Bucket` header.",
+          }),
+      }),
+    },
     responses: {
       200: {
         description: "Evaluated flags",
@@ -69,7 +85,16 @@ export const flagsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
   async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
-    const data = await evaluateFlags(ctx, auth);
+    // Query first: a plain cross-origin `fetch` can carry a query string with
+    // no preflight, and this endpoint's whole point is being callable from a
+    // page that is not the workspace's own. The header is for server callers
+    // that would rather not put an id in a URL.
+    // The VALIDATED query value, not `c.req.query("bucket")` — the raw read
+    // would accept any length while the spec above promises 200, and the value
+    // is hashed character by character. The header takes the same ceiling.
+    const bucketKey =
+      c.req.valid("query").bucket ?? c.req.header("X-Backlex-Bucket")?.slice(0, 200) ?? undefined;
+    const data = await evaluateFlags(ctx, auth, { bucketKey });
     return c.json({ data });
   },
 );
@@ -112,7 +137,20 @@ export const flagsAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         body: { required: true, content: { "application/json": { schema: FlagInput } } },
       },
       responses: {
-        200: { description: "Saved", content: { "application/json": { schema: z.object({ data: z.any() }) } } },
+        200: {
+          description: "Saved",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.any(),
+                warning: z.string().optional().openapi({
+                  description:
+                    "Present when the saved rules are satisfiable only for callers that identify themselves — today, a rollout strictly between 0 and 100.",
+                }),
+              }),
+            },
+          },
+        },
         ...errorResponses,
       },
     }),
@@ -129,7 +167,14 @@ export const flagsAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         rules: body.rules as { condition?: any; rollout?: number } | null | undefined,
         description: body.description,
       });
-      return c.json({ data });
+      // Saying it here is the difference between a rollout that works and one
+      // that looks like it does: a partial rollout can only split callers that
+      // identify themselves, and the case operators reach for it FIRST — an
+      // A/B test on a public page — has no logged-in caller at all.
+      const warning = rolloutNeedsBucketKey(data.rules)
+        ? "A partial rollout only splits callers with a stable identity. Anonymous callers are outside it unless /api/flags is called with ?bucket=<visitor-id>."
+        : undefined;
+      return c.json(warning ? { data, warning } : { data });
     },
   )
   .openapi(

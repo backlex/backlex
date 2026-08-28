@@ -18,6 +18,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
+import { isEdgeRuntime } from "../lib/runtime";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { defaultHook } from "../lib/openapi-router";
 import {
@@ -115,6 +116,27 @@ const TestInput = z
 const TAG = ["platform-ldap-admin"];
 const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, gate];
 
+/**
+ * Enabling LDAP on a runtime that cannot open a TCP socket.
+ *
+ * `PUT` accepted a full config with `enabled: true` on a Cloudflare Workers
+ * tenant and answered a bare `{ok:true}`; only the separate `/test` call ever
+ * said that the adapter cannot run here. An operator who configures LDAP and
+ * does not press Test believes SSO is on. Measured on a live tenant
+ * 2026-08-27.
+ *
+ * A warning rather than a refusal, deliberately: the row is PORTABLE. The same
+ * config is correct the moment this workspace is served by a Bun or Node
+ * self-host, and `providersFor` already hides the provider while the runtime
+ * cannot serve it — so the stored `true` is a statement of intent, not a lie.
+ * Refusing the write would make the config unauthorable from the very
+ * deployment most tenants are administered on.
+ */
+const edgeLdapWarning = (enabled: unknown): string | undefined =>
+  enabled === true && isEdgeRuntime()
+    ? "Stored, but LDAP cannot run on this runtime: it needs a raw TCP socket, which Cloudflare Workers, Vercel Edge, Netlify Edge and Deno Deploy all block. Sign-in will not offer LDAP here — use SAML SSO, or serve this workspace from a Bun/Node deployment. POST /test reports the same thing."
+    : undefined;
+
 export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
@@ -169,7 +191,20 @@ export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
         body: { required: true, content: { "application/json": { schema: z.unknown() } } },
       },
       responses: {
-        200: { description: "Saved", content: { "application/json": { schema: z.any() } } },
+        200: {
+          description: "Saved",
+          content: {
+            "application/json": {
+              schema: z.object({
+                ok: z.boolean(),
+                warning: z.string().optional().openapi({
+                  description:
+                    "Present when the config was stored but cannot take effect on this runtime — today, `enabled: true` on an edge runtime with no raw TCP.",
+                }),
+              }),
+            },
+          },
+        },
         ...errorResponses,
       },
     }),
@@ -236,7 +271,8 @@ export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
 
       await saveOwnConfigRow(ctx, t, singletonKey(t), { always, onCreate });
 
-      return c.json({ ok: true });
+      const warning = edgeLdapWarning(always.enabled);
+      return c.json(warning ? { ok: true, warning } : { ok: true });
     },
   )
   .openapi(

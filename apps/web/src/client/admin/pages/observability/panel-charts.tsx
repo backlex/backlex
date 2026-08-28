@@ -28,7 +28,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@backlex/ui/components/chart";
-import { detectSeries, MAX_SEGMENTS, MAX_SERIES, SEGMENT_VIZES, type ChartViz } from "./panel-series";
+import { detectSeries, MAX_SEGMENTS, MAX_SERIES, SEGMENT_VIZES, type ChartViz, seriesLabel } from "./panel-series";
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 /** 6th+ slice falls back to a muted tone instead of repeating chart-1. */
@@ -60,7 +60,7 @@ function SeriesChart({ viz, rows }: { viz: ChartViz; rows: Record<string, unknow
   const seriesCols = (numericCols.length > 0 ? numericCols : cols.slice(0, 1)).slice(0, MAX_SERIES);
   const series = seriesCols.map((col, i) => ({ key: `ser${i}`, col, color: seriesColor(i) }));
   const data = rows.map((r, i) => {
-    const d: Record<string, unknown> = { __label: labelCol ? String(r[labelCol]) : String(i + 1) };
+    const d: Record<string, unknown> = { __label: labelCol ? seriesLabel(r[labelCol]) : String(i + 1) };
     for (const s of series) d[s.key] = Number(r[s.col]) || 0;
     return d;
   });
@@ -173,7 +173,7 @@ function SegmentChart({ viz, rows }: { viz: ChartViz; rows: Record<string, unkno
   const nameCol = labelCol ?? cols[0];
   const segs = rows.slice(0, MAX_SEGMENTS).map((r, i) => ({
     key: `seg${i}`,
-    name: nameCol ? String(r[nameCol]) : String(i + 1),
+    name: nameCol ? seriesLabel(r[nameCol]) : String(i + 1),
     value: valueCol ? Number(r[valueCol]) || 0 : 0,
     fill: `var(--color-seg${i})`,
   }));

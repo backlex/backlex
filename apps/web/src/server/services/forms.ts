@@ -33,6 +33,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { getChoices, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
+import type { CaptchaProvider } from "./captcha";
 import type { CollectionRow } from "./items/collection-loader";
 import { loadCollection } from "./items/collection-loader";
 import { deleteFormDrafts } from "./form-drafts";
@@ -783,8 +784,32 @@ export interface PublicFormDefinition {
   /** Offered locales, base first; `locale` is the one this payload resolved. */
   languages: string[];
   locale: string;
-  /** Non-null ⇒ the page must render the Turnstile widget with this site key. */
+  /**
+   * Non-null ⇒ the page must render the Turnstile widget with this site key.
+   *
+   * Kept for clients written against it, and it now carries the WORKSPACE key
+   * too when that workspace's captcha is Turnstile — see `captcha` below for
+   * why, and for the two providers this field structurally cannot express.
+   */
   turnstileSiteKey: string | null;
+  /**
+   * The challenge this form's submit will actually enforce, or null.
+   *
+   * `turnstileSiteKey` could only ever describe ONE of the three providers,
+   * and it read a DEPLOYMENT env var (`TURNSTILE_SITE_KEY`) while the submit
+   * handler enforces the WORKSPACE captcha config. On any deployment that does
+   * not set that var — which is every managed cloud tenant — switching on
+   * `protect: ["forms"]` in the admin therefore made every hosted form page
+   * permanently unsubmittable: the page rendered no widget, so no token could
+   * exist, so every submit answered `Captcha verification failed` and blamed
+   * the visitor.
+   *
+   * The producer and the enforcer now read the same source. Nothing here is
+   * newly public: the same `{provider, siteKey}` is already served to any
+   * caller by `/api/t/<slug>/auth/providers`, because a sign-in screen has the
+   * identical problem and was already solved.
+   */
+  captcha: { provider: CaptchaProvider; siteKey: string } | null;
   /** Non-null ⇒ the form is not taking answers; render this in place of the
    *  questions. The blocks are still sent so the page keeps its shape. */
   closed: { reason: FormClosedReason; message: string } | null;
@@ -1019,6 +1044,10 @@ export const publicFormDefinition = (
   uploadMaxBytes: number = FORM_UPLOAD_DEFAULT_MAX_BYTES,
   availability: FormAvailability = { open: true, reason: null, message: null },
   draft: { data: Record<string, unknown>; step: number; savedAt: number } | null = null,
+  /** The workspace captcha, when its `protect` list covers forms. Passed in
+   *  rather than loaded here so this stays a pure builder — and LAST, so every
+   *  existing call keeps its meaning. */
+  workspaceCaptcha: { provider: CaptchaProvider; siteKey: string } | null = null,
 ): PublicFormDefinition => {
   const settings = form.settings ?? {};
   const languages = settings.languages?.length ? settings.languages : ["en"];
@@ -1122,7 +1151,25 @@ export const publicFormDefinition = (
         : "sans",
     languages,
     locale,
-    turnstileSiteKey: settings.turnstile ? turnstileSiteKey : null,
+    // The workspace captcha wins: it is the one the submit handler enforces.
+    // The legacy per-form Turnstile is the fallback, and still reads the
+    // deployment env key it always did.
+    captcha:
+      workspaceCaptcha ??
+      (settings.turnstile && turnstileSiteKey
+        ? { provider: "turnstile" as CaptchaProvider, siteKey: turnstileSiteKey }
+        : null),
+    // Back-compat projection of the same answer. Null for hcaptcha/recaptcha
+    // rather than a wrong key: a client that only knows this field must be
+    // told "no Turnstile here", not handed a site key its widget will reject.
+    turnstileSiteKey:
+      workspaceCaptcha?.provider === "turnstile"
+        ? workspaceCaptcha.siteKey
+        : workspaceCaptcha
+          ? null
+          : settings.turnstile
+            ? turnstileSiteKey
+            : null,
     closed:
       availability.open || !availability.reason
         ? null

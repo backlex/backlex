@@ -12,6 +12,7 @@ import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { dashboardsPublicApi } from "@/admin/api";
 import { PanelBody, panelSubtitle } from "@/admin/pages/observability/panel-render";
+import { useDocumentTitle } from "./use-document-title";
 
 export function EmbedDashboard() {
   const { token } = useParams<{ token: string }>();
@@ -22,6 +23,8 @@ export function EmbedDashboard() {
     enabled: !!token,
     retry: false,
   });
+
+  useDocumentTitle(query.data?.data?.name);
 
   if (query.isLoading) {
     return (

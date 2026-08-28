@@ -105,10 +105,11 @@ window.__backlexTrackerInit = function (cfg) {
   // simply look like growth.
   if (window.__backlexTagBooted) return;
 
-  // document.currentScript is only valid while this file is executing, so it
-  // is captured immediately rather than looked up later from a callback. It is
-  // also null for a dynamically injected script, which is why the configured
-  // path below never consults it.
+  // Captured immediately: currentScript is only valid while this file is
+  // executing. It is null for a module script and for a later callback -- NOT
+  // merely because a script was injected, and not on the parser-inserted
+  // defer snippet the install page emits. Measured 2026-08-27; the attr()
+  // guard below still stays, for the two cases that really are null.
   var self = doc.currentScript;
 
   // -- Consent --------------------------------------------------------------
@@ -146,10 +147,12 @@ window.__backlexTrackerInit = function (cfg) {
   // consent seam rather than below it, because consentGranted() reads one of
   // them and is exported before the boot guards run.
   //
-  // Neither can arrive as a script ATTRIBUTE: document.currentScript is null
-  // for a dynamically injected script, which is exactly the async snippet
-  // operators paste, so self is null on the whole tag-manager path. The
-  // fallbacks are what a plain /script.js install has always assumed.
+  // Neither arrives as a script ATTRIBUTE, but not for the reason this comment
+  // used to give (self is usually fine -- see the capture above). They are
+  // PER-SITE answers rather than per-page ones, they must survive somebody
+  // re-pasting the snippet, and consentGranted() is exported before the boot
+  // guards run, so it cannot wait on an element. The fallbacks are what a
+  // plain /script.js install has always assumed.
   var trackerCategory = cfg && cfg.t ? cfg.t : "analytics";
   var signals = cfg && cfg.g ? cfg.g : "tracker";
 
@@ -311,11 +314,9 @@ window.__backlexTrackerInit = function (cfg) {
 
   // Opt-outs a site owner can set without touching this file.
   //
-  // Read through a guard because self is legitimately null now: on the
-  // tag-manager path there is no script element to read attributes from, and
-  // on any dynamically injected script currentScript is null regardless. An
-  // unguarded read here would throw before the first pageview -- on the exact
-  // path the tag manager depends on.
+  // Guarded because self is legitimately null on two paths: a module script,
+  // and a call arriving from a later callback. These two attributes DO reach
+  // both snippets -- see the note beside the capture above.
   function attr(name) {
     return self ? self.getAttribute(name) : null;
   }

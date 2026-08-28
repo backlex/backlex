@@ -50,3 +50,28 @@ export function detectSeries(rows: Record<string, unknown>[]): SeriesShape {
   const labelCol = cols.find((c) => !numericCols.includes(c));
   return { cols, numericCols, labelCol };
 }
+
+/**
+ * A group key's printable form on an axis, slice or table row.
+ *
+ * A `GROUP BY` over a nullable column produces a bucket whose key is `null`,
+ * and that is the honest answer from the server — it means "these rows had no
+ * value", which is not the same as a row whose value is the four characters
+ * `null`. The browser renderer stringified it anyway: measured on a live
+ * public dashboard embed on 2026-08-27, where the LARGEST slice of a donut
+ * chart a customer shows their own stakeholders was labelled `null`.
+ *
+ * The PDF report renderer already did this correctly via `fmtCell`, so the
+ * same panel read `—` on paper and `null` on screen. This is the browser
+ * half's version of the same decision.
+ *
+ * An empty string gets the same treatment: it draws nothing at all, which
+ * reads as a broken chart rather than as an empty category. A REAL string
+ * `"null"` is left alone — it is a value, and pretending otherwise would hide
+ * data.
+ */
+export const seriesLabel = (v: unknown, fallback?: string): string => {
+  if (v === null || v === undefined) return fallback ?? "\u2014";
+  const s = String(v);
+  return s.trim() === "" ? (fallback ?? "\u2014") : s;
+};

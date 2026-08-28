@@ -2,7 +2,6 @@ import { OpenAPIRegistry, OpenApiGeneratorV31 } from "@asteasolutions/zod-to-ope
 import { z, OpenAPIHono } from "@hono/zod-openapi";
 import type { Ctx } from "../context";
 import { buildDynamicCollectionPaths } from "../services/openapi-dynamic";
-import staticGenerated from "./openapi-static.generated.json" with { type: "json" };
 
 /**
  * Re-export the extended `z` from `@hono/zod-openapi`. That package wraps
@@ -199,8 +198,25 @@ export const buildStaticDoc = (opts: BuildDocOptions) => {
 // Build-time precomputed static spec (see `scripts/gen-openapi-static.ts`).
 // On a fresh checkout / in dev this is the `{ "paths": {} }` placeholder; the
 // build script overwrites it with the full doc before bundling.
-const precomputedHasPaths =
-  Object.keys((staticGenerated as { paths?: Record<string, unknown> }).paths ?? {}).length > 0;
+//
+// Loaded through `import()` rather than a static import, and that is load-bearing
+// rather than stylistic. A static `import … with { type: "json" }` puts ~900 KB of
+// JSON into the bundle's EAGER graph: the bundler emits it as a top-level
+// `JSON.parse("…")`, so every cold isolate compiles and parses the whole document
+// before it can answer anything — for a route (`GET /api/openapi.json`) that most
+// deploys never receive a request for. Deferring it moves those bytes into a chunk
+// that is only fetched when the doc is actually asked for. The worker's startup
+// budget is measured, not assumed: see `apps/web/scripts/measure-startup.mjs`.
+//
+// Cached after the first load, so the parse happens at most once per isolate.
+let precomputedDoc: { paths?: Record<string, unknown> } | null = null;
+const loadPrecomputed = async () => {
+  if (!precomputedDoc) {
+    const mod = await import("./openapi-static.generated.json", { with: { type: "json" } });
+    precomputedDoc = (mod as { default: { paths?: Record<string, unknown> } }).default;
+  }
+  return precomputedDoc;
+};
 // Vite replaces `import.meta.env.DEV` at build (false in prod bundles); it's
 // undefined on the non-Vite Bun entry → treated as prod. In dev we always
 // regenerate so the spec tracks live route edits.
@@ -218,8 +234,9 @@ export const buildOpenApiDoc = async (
   // Prefer the build-time precomputed doc (zero runtime generation). Fall back
   // to generating once per instance in dev or if the precompute is missing.
   let baseDoc: ReturnType<OpenApiGeneratorV31["generateDocument"]>;
-  if (precomputedHasPaths && !isDev) {
-    baseDoc = staticGenerated as unknown as typeof baseDoc;
+  const precomputed = isDev ? null : await loadPrecomputed();
+  if (precomputed && Object.keys(precomputed.paths ?? {}).length > 0) {
+    baseDoc = precomputed as unknown as typeof baseDoc;
   } else {
     if (!staticDocCache) staticDocCache = buildStaticDoc(opts);
     baseDoc = staticDocCache;

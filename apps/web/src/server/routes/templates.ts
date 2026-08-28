@@ -4,7 +4,7 @@ import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { requireAdminMw, requirePlatformMw } from "../services/roles/guards";
-import { templateSummaries } from "../templates/catalog";
+import { templateSummariesLazy } from "../templates/lazy";
 import {
   applyTemplate,
   applyTemplateDefinition,
@@ -46,7 +46,7 @@ export const templatesRoutes = new Hono<AppBindings>()
     const empty = await hasNoManagedCollections({ db, dialect }, tenantId);
     const sampleSeeds = await countSeededSamples({ db, dialect }, tenantId);
     return c.json({
-      data: templateSummaries(),
+      data: await templateSummariesLazy(),
       defaultTemplateId: env.SEED_TEMPLATE ?? "blank",
       hasCollections: !empty,
       sampleSeeds,

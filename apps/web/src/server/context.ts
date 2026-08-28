@@ -1,4 +1,4 @@
-import { type Auth, createAuth } from "@backlex/auth";
+import type { Auth } from "@backlex/auth";
 import {
   AppError,
   EMBEDDING_MODELS,
@@ -87,7 +87,7 @@ import {
   userCount,
 } from "./services/seed";
 import { applyTemplate } from "./services/templates";
-import { getTemplate } from "./templates/catalog";
+import { getTemplateLazy } from "./templates/lazy";
 
 /**
  * What vector search can actually do on this deployment — computed once in
@@ -694,6 +694,14 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     }
   }
 
+  // `better-auth` (with kysely and its plugin set behind it) is the single
+  // largest thing in the worker's eager import graph, and all of it is built
+  // at module scope. Reached through `import()` it stops being part of the
+  // script's STARTUP cost — which is a hard Cloudflare limit that rejects a
+  // deploy outright (error 10021) — and becomes part of the first request's,
+  // which has room. `buildContext` was already async here, so this costs the
+  // call nothing. See `apps/web/scripts/measure-startup.mjs`.
+  const { createAuth } = await import("@backlex/auth");
   const auth = await createAuth(db, dialect, {
     baseURL: env.APP_URL,
     secret: env.AUTH_SECRET,
@@ -739,7 +747,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         // If the cloud passed a SEED_TEMPLATE, materialize its collections into
         // the default workspace now. Idempotent + best-effort — never blocks
         // sign-up.
-        if (total <= 1 && env.SEED_TEMPLATE && getTemplate(env.SEED_TEMPLATE)) {
+        if (total <= 1 && env.SEED_TEMPLATE && (await getTemplateLazy(env.SEED_TEMPLATE))) {
           try {
             await applyTemplate(dbCtx, tenantId, env.SEED_TEMPLATE);
           } catch (e) {

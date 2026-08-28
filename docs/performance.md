@@ -411,6 +411,58 @@ eager shell may not import admin-only UI. Both were verified to fire.
 | a public form's whole graph | 616 KB gz | **97 KB gz** |
 | whole build | 1286 KB gz | 1286 KB gz |
 
+### Worker startup: 11.3 MB of eager graph → 8.2 MB
+
+Cloudflare rejects a deploy whose script takes too long to start — error 10021,
+`Script startup exceeded CPU time limit`. That budget pays for V8 compiling the
+**eager** module graph and running every module's top-level code, and this
+worker was living on the line: the *same bundle* measured 635 ms, 803 ms and
+928 ms across three builds, one of which was rejected outright. A retry passed,
+which is what made it dangerous — nothing in the code differed between the
+failure and the success, so there was nothing to blame and nothing to fix.
+
+Measured rather than guessed, with `node apps/web/scripts/measure-startup.mjs`
+(node, not bun: workerd is V8 and so is node, so compile and top-level-eval
+costs transfer; JSC would rank the same graph differently). Its `--profile` flag
+splits the number into **compile** — proportional to eager bytes — and
+**top-level execution**, which is what a module *does* when loaded. The two have
+opposite fixes, and the profile said compile dominated.
+
+Three things were on the startup path that no request needs there:
+
+| moved | ~size | who actually needs it |
+|---|---|---|
+| the 26-vertical schema-template catalog | 900 KB | the picker, apply, first-user seeding |
+| `openapi-static.generated.json` | 900 KB | `GET /api/openapi.json` |
+| better-auth + kysely | 1.3 MB | the first request that resolves a session |
+
+All three call sites were already `async`, so each became an `import()` — plus
+one split in `packages/auth`, because the hot paths only wanted `hashSecret` and
+reaching it through the package index dragged better-auth in behind it. It now
+lives at `@backlex/auth/secret-hash`.
+
+**The `import()` alone bought nothing, and that is the part worth remembering.**
+`vite.config.ts::workerManualChunks` ends in `return "vendor"`, which pins every
+un-listed `node_modules` module into the eager chunk *regardless of how it was
+imported* — deferring better-auth moved 19 KiB until a branch was added naming
+its packages. A dynamic import is only half the change; the chunking rule is the
+other half.
+
+| | before | after |
+|---|---|---|
+| eager graph | 11,352 KiB | **8,179 KiB** |
+| compile + top-level (local V8) | ~330 ms | **~280 ms** |
+| a deploy's reported startup | 635-928 ms | expect ~0.85x |
+
+`apps/web/tests/worker-startup-budget.test.ts` holds it: it walks static imports
+from the worker entry in **source** (so it runs with nothing built) and fails if
+any of the three returns, or if the graph outgrows its recorded budget. Being
+source-level it is blind to the chunking half — that is what the script measures.
+
+What is left is genuinely shared: drizzle-orm, zod and hono account for most of
+the remaining 2.7 MB `vendor` chunk and its ~90 ms of top-level execution. There
+is no seam there without a deeper change.
+
 ## Deferred (scoped, with rationale)
 
 These were evaluated and intentionally left for a follow-up — each needs an

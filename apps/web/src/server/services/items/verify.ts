@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
-import { verifySecret } from "@backlex/auth";
+import { verifySecret } from "@backlex/auth/secret-hash";
 import type { Ctx } from "../../context";
 import { rateLimitOk } from "../../lib/rate-limit";
 import { recordActivity } from "../activity";

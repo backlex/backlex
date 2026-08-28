@@ -277,6 +277,24 @@ const workerManualChunks = (id: string): string | undefined => {
   if (id.includes("/node_modules/yaml/")) {
     return undefined;
   }
+  // better-auth and the kysely query builder under it — the single largest
+  // thing in the worker's eager graph, and it builds its plugin/schema objects
+  // at module scope. Both auth instances are constructed behind an `import()`
+  // (`context.ts::buildContext`, `services/tenant-auth.ts`), so without this
+  // branch the `return "vendor"` below would pin all of it back into the
+  // cold-start eval path and the dynamic imports would buy nothing. Only the
+  // packages that are better-auth's own graph are listed: `zod`, `jose` and
+  // `drizzle-orm` are shared with eager code, so naming them here would change
+  // nothing (Rollup keeps a module eager when anything eager imports it) while
+  // making this list read as though it did.
+  if (
+    id.includes("/node_modules/better-auth/") ||
+    id.includes("/node_modules/@better-auth/") ||
+    id.includes("/node_modules/better-call/") ||
+    id.includes("/node_modules/kysely/")
+  ) {
+    return undefined;
+  }
   return "vendor";
 };
 

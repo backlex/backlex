@@ -32,7 +32,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { sql, type SQL } from "drizzle-orm";
-import { ensureMigrations, type AutoMigrateDb } from "@backlex/db";
+import { ensureMigrations, type AutoMigrateDb } from "@backlex/db/auto-migrate";
 import { MIGRATIONS as PG_MIGRATIONS } from "@backlex/db/pg/migrations-bundle";
 import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 import { PG_TESTS_OPTIONAL } from "./setup-pg";

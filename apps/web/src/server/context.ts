@@ -20,7 +20,6 @@ import type {
   StorageAdapter,
   VectorAdapter,
 } from "@backlex/core/adapters";
-import { ensureMigrations } from "@backlex/db";
 import { createPgClient, type PgDb, type PgDriver } from "@backlex/db/pg";
 import { createD1Client, type SqliteDb } from "@backlex/db/sqlite";
 import { cloudEmailAdapter } from "./adapters/email.cloud";
@@ -514,6 +513,12 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // the operator sees the same warning in the deploy logs.
   if (!env.D1) {
     try {
+      // Reached through the leaf, not the package index: `auto-migrate` inlines
+      // both migration bundles (259 `.sql` files, 338 KiB) and the index is
+      // imported by ~80 modules, so a static edge here is 338 KiB of cold-start
+      // compile for a branch this deployment is already inside `!env.D1` to
+      // avoid. On Workers the import never happens.
+      const { ensureMigrations } = await import("@backlex/db/auto-migrate");
       const outcome = await ensureMigrations(
         db as Parameters<typeof ensureMigrations>[0],
         dialect,

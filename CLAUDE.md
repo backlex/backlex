@@ -62,16 +62,27 @@ Every working session runs on its own branch. Merging into `main` triggers two i
 
   **A build can also be blocked by the pre-deploy gate for a reason that has nothing to do with this repo.** `scripts/require-green-checks.ts` calls the GitHub API **unauthenticated** — 60 requests/hour, and that budget belongs to the *shared Cloudflare runner IP*, not to us. When another tenant exhausts it the gate gets a 403, cannot verify the commit, and fails CLOSED by design. Two builds 63 minutes apart hit it on 2026-08-22; re-triggering does not help. The fix is `PREDEPLOY_GATE_TOKEN` as a **build** secret on the trigger — and note the repo is public and the gate only reads `/repos/…/commits/{sha}` and `/repos/…/actions/runs`, so a token with **no scopes at all** is enough. See [[cf-build-vs-runtime-env-and-deploy-triage]] for where that variable goes, because the dashboard has two near-identical places and only one of them is visible to a build.
 
-  **That fix is applied to only TWO of the four triggers, and the one it misses is the one every PR runs on.** Read back from the Builds API on 2026-08-27, keyed by script TAG (see the BUN_VERSION note above for why the by-name call answers an empty list):
+  **All four triggers now carry it, as of 2026-08-28** — read back from the Builds API, keyed by script TAG (see the BUN_VERSION note above for why the by-name call answers an empty list):
 
   | worker | trigger | branches | `BUN_VERSION` | `PREDEPLOY_GATE_TOKEN` |
   |---|---|---|---|---|
-  | `backlex-admin` | Deploy default branch | `main` | 1.4.0 | ✅ |
-  | `backlex-playground` | **Deploy non-production branches** | `*` except `main` | 1.4.0 | ❌ |
-  | `backlex-playground` | Deploy default branch | `main` | 1.4.0 | ✅ |
-  | `backlex-website` | Deploy default branch | `main` | 1.4.0 | ❌ |
+  | `backlex-admin` | Deploy default branch | `main` | 1.4.0 | ✅ 2026-08-22 |
+  | `backlex-playground` | Deploy default branch | `main` | 1.4.0 | ✅ 2026-08-22 |
+  | `backlex-playground` | **Deploy non-production branches** | `*` except `main` | 1.4.0 | ✅ 2026-08-28 |
+  | `backlex-website` | Deploy default branch | `main` | 1.4.0 | ✅ 2026-08-28 |
 
-  This is the SAME shape as the `BUN_VERSION` trap one paragraph up — the `main` triggers were fixed on 2026-08-22 and the `*` trigger was missed — so **every PR branch build is one exhausted shared-IP budget away from a red check that has nothing to do with its contents**. PR #289 drew that straw: `rate-limit remaining 0`, build failed in 31 s, while PRs #286-#288 had passed the same check hours earlier. Re-triggering does not help; only the token does. Until it is set on trigger `54e7dca9-b812-46c0-8ab9-68b29bf59e65`, a red `Workers Builds: backlex-playground` on a PR is **not** evidence about the PR — check the build log for `[predeploy-gate]` before believing it, and never merge past a red check you have not read.
+  Two of them were missing for six days, and the shape of that gap is worth keeping because it has now bitten three times (`BUN_VERSION` twice, this once). **The dashboard's Settings → Build → "Variables and secrets" panel edits ONLY the production trigger.** `backlex-playground` has two triggers but one settings box, so a value saved there lands on `main` and the `*` trigger silently keeps what it had — you can look straight at `PREDEPLOY_GATE_TOKEN` in that panel, see it present, and every PR build still fails. The non-prod trigger has **no dashboard surface at all**; it is API-only:
+
+  ```
+  PATCH /accounts/{acct}/builds/triggers/{uuid}/environment_variables
+  {"PREDEPLOY_GATE_TOKEN":{"is_secret":true,"value":"…"}}
+  ```
+
+  PATCH is additive (verified — it left `BUN_VERSION` intact); do not PUT. Secrets read back as `value: null`, so one trigger's value cannot be copied to another through the API. **Diagnose by diffing the two triggers' variables, never by reading the dashboard**; mismatched `created_on` dates for the same setting are the tell.
+
+  **A manual build proves nothing about the gate.** `POST .../triggers/{uuid}/builds` with only `{"branch":"…"}` leaves `commit_hash` empty, so `WORKERS_CI_COMMIT_SHA` is unset and the gate prints `no CI commit SHA in the environment — skipping (local build)` — green, and untested. Pass `{"branch":"…","commit_hash":"<40-char sha>"}` to get a build that actually runs the gate, and that also posts a commit status so a PR check moves.
+
+  While a trigger is missing the token, **every PR branch build is one exhausted shared-IP budget away from a red check that has nothing to do with its contents**. PR #289 drew that straw (`rate-limit remaining 0`, build failed in 31 s) while PRs #286-#288 had passed the same check hours earlier. So a red `Workers Builds: backlex-playground` on a PR is **not** evidence about the PR — read the build log for `[predeploy-gate]` before believing it, and never merge past a red check you have not read.
 
   **It runs ALONGSIDE the CF deploy, not before it** — both start on the same push — so by itself it is a tripwire, not a gate. Two things narrow that, and the second needs you: `scripts/require-green-checks.ts` runs first inside `bun run build` and refuses a commit whose test run is already known red; and `test.yml`'s `deploy` job triggers the Cloudflare build *after* the suite passes, which is **inert until `CF_API_TOKEN` / `CF_ACCOUNT_ID` / `CF_BUILD_TRIGGER_UUID` exist as repo secrets and the automatic branch trigger is turned off in the CF dashboard**. Waiting inside the build is not an option: the `test` job takes ~16 minutes and CF kills a build at 20.
 

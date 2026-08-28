@@ -332,7 +332,6 @@ function ProductComposer({
 }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState(""); // dollars in the input
-  const [stock, setStock] = useState("");
   const [category, setCategory] = useState(""); // a category id (relation)
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -367,7 +366,9 @@ function ProductComposer({
         // currency at the point the amount is typed is what keeps the two from
         // ever drifting apart.
         price: { amount: Math.max(0, Math.round(dollars * 100) / 100), currency: STORE_CURRENCY },
-        stock: stock ? Math.max(0, Math.round(Number(stock))) : undefined,
+        // No `stock`: the template derives it from the product's inventory
+        // levels, so the column refuses a write. A new product is out of stock
+        // until a variant is stocked at a location.
         category: category || undefined,
         description: description.trim() || undefined,
         featured_image: imageKey,
@@ -378,7 +379,6 @@ function ProductComposer({
       await products.publish(created.id);
       setName("");
       setPrice("");
-      setStock("");
       setCategory("");
       setDescription("");
       setFile(null);
@@ -412,14 +412,6 @@ function ProductComposer({
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           placeholder="Price (USD)"
-        />
-        <input
-          className={inputCls}
-          type="number"
-          min={0}
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
-          placeholder="Stock (optional)"
         />
         <select
           className={inputCls}
@@ -465,6 +457,8 @@ function ProductCard({
   categoryName?: string;
   onAdd: () => void;
 }) {
+  // `stock` totals the product's inventory levels, kept by the server — so
+  // this reads the real figure rather than a number somebody last typed.
   const out = typeof product.stock === "number" && product.stock <= 0;
   // Compare the AMOUNTS, and only within one currency — a "was" price in a
   // different currency is not a higher price, it is a different question.

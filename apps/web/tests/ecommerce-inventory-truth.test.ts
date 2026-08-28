@@ -18,11 +18,19 @@
  * named the same pair, and nothing joined them — so no rollup could exist. The
  * same shape as the `variant_option_values` link one release earlier.
  *
- * The second cannot be a rollup at all: a variant's count is now summed from
- * its levels, and a rollup of a rollup does not refresh — the write path
- * restates a parent from its children with a direct UPDATE that never re-enters
- * the write path to restate the grandparent. So the claim was removed instead,
- * and the `stock-on-hand` KPI repointed at the levels.
+ * The second looked as though it could not be a rollup, and for one route it
+ * cannot: summing the VARIANT would be a rollup of a rollup, which does not
+ * refresh — the write path restates a parent from its children with a direct
+ * UPDATE that never re-enters the write path to restate the grandparent.
+ * Measured, a level moved 60 → 85, the variant followed and the product stayed
+ * at 60. The route that does work is reaching PAST the variant: with a
+ * denormalised `inventory_levels.product`, the product sums `on_hand` — a plain
+ * column — so the two are siblings over one child rather than a chain, and the
+ * write path refreshes every parent that rolls up from a collection, not the
+ * first one it finds.
+ *
+ * Which leaves the model with one number anyone types, `on_hand`, and every
+ * other figure derived from it.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
@@ -121,16 +129,63 @@ describe("commerce inventory: the numbers are what the model says they are", () 
     expect(res.status).toBe(422);
   });
 
-  test("a variant's on-hand is summed from its levels and follows a level write", async () => {
-    const [level] = await get<Level[]>("inventory_levels?limit=1");
-    const before = level as Level;
-    const variantBefore = await get<{ inventory_quantity: number; product: string }>(
+  test("every product's stock is the total of its own levels, straight after the seed", async () => {
+    // Seeding writes rows wholesale and bypasses the per-write refresh, so the
+    // template's own post-seed rollup pass is what has to have run. Computed
+    // from the levels rather than hardcoded, so it stays true whatever the
+    // sample quantities become.
+    const levels = await get<(Level & { product: string })[]>("inventory_levels?limit=200");
+    const products = await get<{ id: string; stock: number }[]>("products?limit=100");
+    expect(products.length).toBeGreaterThan(0);
+    for (const p of products) {
+      const expected = levels
+        .filter((l) => l.product === p.id)
+        .reduce((n, l) => n + l.on_hand, 0);
+      expect({ id: p.id, stock: p.stock }).toEqual({ id: p.id, stock: expected });
+    }
+  });
+
+  test("a level naming no product is refused", async () => {
+    // The link is what makes `products.stock` derivable at all; a level that
+    // skips it would be stock the product cannot see, which is the silent
+    // shape the whole file exists to stop.
+    const variants = await get<{ id: string }[]>("product_variants?limit=1");
+    const locations = await get<{ id: string }[]>("locations?limit=3");
+    const res = await write("inventory_levels", {
+      variant: (variants[0] as { id: string }).id,
+      location: (locations[2] as { id: string }).id,
+      on_hand: 5,
+    });
+    expect(res.status).toBe(422);
+  });
+
+  test("`stock` cannot be typed in", async () => {
+    const [product] = await get<{ id: string }[]>("products?limit=1");
+    const res = await write(`products/${(product as { id: string }).id}`, { stock: 999 }, "PATCH");
+    expect(res.status).toBe(422);
+  });
+
+  test("a level write carries all the way up — variant AND product follow", async () => {
+    // The regression this pins: `inventory_quantity` followed and `stock` did
+    // not, because the product summed the VARIANT (itself a rollup) and a
+    // rollup of a rollup never refreshes — the write path restates a parent
+    // with a direct UPDATE that does not re-enter it. Measured then: a level
+    // moved 60 → 85, the variant followed, the product stayed at 60. Reaching
+    // past the variant to `on_hand` makes the two siblings over one child, and
+    // the refresh restates every parent that rolls up from that collection.
+    const [level] = await get<(Level & { product: string })[]>("inventory_levels?limit=1");
+    const before = level as Level & { product: string };
+    const variantBefore = await get<{ inventory_quantity: number }>(
       `product_variants/${before.variant}`,
     );
+    const productBefore = await get<{ stock: number }>(`products/${before.product}`);
 
     expect((await write(`inventory_levels/${before.id}`, { on_hand: before.on_hand + 25 }, "PATCH")).status).toBe(200);
+
     const variantAfter = await get<{ inventory_quantity: number }>(`product_variants/${before.variant}`);
+    const productAfter = await get<{ stock: number }>(`products/${before.product}`);
     expect(variantAfter.inventory_quantity).toBe(variantBefore.inventory_quantity + 25);
+    expect(productAfter.stock).toBe(productBefore.stock + 25);
   });
 
   test("no field in the commerce model calls itself a roll-up without being one", () => {
@@ -196,8 +251,10 @@ describe("commerce inventory: the numbers are what the model says they are", () 
   test("the stock KPI sums where stock actually is", () => {
     const kpi = (TEMPLATE_KPIS.ecommerce ?? []).find((k) => k.slug === "stock-on-hand");
     expect(kpi).toBeDefined();
-    // `products.stock` is hand-kept and shipped seeded at 120 against variants
-    // holding 90, so a KPI summing it reports a number nothing maintains.
+    // It used to sum `products.stock`, which was hand-kept and shipped seeded
+    // at 120 against variants holding 90. That column is derived now, so both
+    // would agree — the levels stay the source anyway, because they are where
+    // the figure is entered and the only place a location can be filtered on.
     expect(kpi?.collection).toBe("inventory_levels");
     expect(kpi?.field).toBe("on_hand");
   });

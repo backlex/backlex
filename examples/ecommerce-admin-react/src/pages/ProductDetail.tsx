@@ -185,7 +185,6 @@ function Details({ p, onSaved }: { p: Product; onSaved: () => void }) {
     currency: p.currency ?? p.price?.currency ?? "USD",
     sku: p.sku ?? "",
     barcode: p.barcode ?? "",
-    stock: String(p.stock ?? 0),
     condition: p.condition ?? "new",
     featured: !!p.featured,
     category: p.category ?? "",
@@ -218,7 +217,8 @@ function Details({ p, onSaved }: { p: Product; onSaved: () => void }) {
         currency: form.currency,
         sku: form.sku || null,
         barcode: form.barcode || null,
-        stock: Number(form.stock),
+        // No `stock`: the server totals it from this product's inventory levels
+        // and refuses a write. Edit it on the Inventory tab, per location.
         condition: form.condition as Product["condition"],
         featured: form.featured,
         category: form.category || null,
@@ -280,8 +280,11 @@ function Details({ p, onSaved }: { p: Product; onSaved: () => void }) {
             onChange={(e) => set("compare_at_price", e.target.value)}
           />
         </Field>
-        <Field label="Total stock" hint="A reporting roll-up — the sellable number lives on inventory levels.">
-          <input className={inputCls} type="number" min="0" value={form.stock} onChange={(e) => set("stock", e.target.value)} />
+        <Field
+          label="Total on hand"
+          hint="Totalled from this product's inventory levels — edit it there, per location. On hand, not sellable: units already promised to an order are still counted."
+        >
+          <output className={`${inputCls} block tabular-nums text-neutral-500`}>{fmtNumber(p.stock)}</output>
         </Field>
         <Field label="SKU">
           <input className={inputCls} value={form.sku} onChange={(e) => set("sku", e.target.value)} />
@@ -732,7 +735,11 @@ function InventoryTab({ productId }: { productId: string }) {
                         if (level) {
                           await inventoryLevels.update(level.id, { on_hand: onHand });
                         } else {
-                          await inventoryLevels.create({ variant: v.id, location: loc.id, on_hand: onHand, committed: 0 });
+                          // `committed` is not passed: it is summed from the
+                          // reservations held against the level, and the server
+                          // refuses a write to it. `product` is, because that is
+                          // what lets the product total its own stock.
+                          await inventoryLevels.create({ product: productId, variant: v.id, location: loc.id, on_hand: onHand });
                         }
                         toast("Stock updated.");
                         data.reload();

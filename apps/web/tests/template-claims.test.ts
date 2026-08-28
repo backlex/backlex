@@ -109,13 +109,41 @@ const CLAIMS: Claim[] = [
  * not the sentence, is the unit: "it can't be typed in, it is summed from its
  * children" has to keep matching on the second half.
  */
-const asserts = (text: string, phrase: RegExp): boolean =>
+const assertingClauses = (text: string, phrase: RegExp): string[] =>
   text
     .split(/[.;,—]|\bbut\b|\brather than\b/)
-    .some((clause) => phrase.test(clause) && !/\b(cannot|can'?t|never|not|no|without)\b/i.test(clause));
+    .filter((clause) => phrase.test(clause) && !/\b(cannot|can'?t|never|not|no|without)\b/i.test(clause));
+
+const asserts = (text: string, phrase: RegExp): boolean =>
+  assertingClauses(text, phrase).length > 0;
+
+/** Column names a clause names outright, which is the only sort a test can check. */
+const backticked = (clause: string): string[] =>
+  [...clause.matchAll(/`([a-z][a-z0-9_]*)`/gi)].map((m) => m[1] as string);
 
 /** `hint()` emits `{ name: "hint_<key>", type: "notice", description }`. */
 const isNotice = (f: FieldLike) => f.type === "notice";
+
+/** Every real field of a template, indexed by name — one name can be several. */
+const fieldsByName = (t: (typeof TEMPLATES)[number]): Map<string, FieldLike[]> => {
+  const out = new Map<string, FieldLike[]>();
+  for (const c of t.collections ?? []) {
+    for (const f of (c.fields ?? []) as FieldLike[]) {
+      if (isNotice(f)) continue;
+      out.set(f.name, [...(out.get(f.name) ?? []), f]);
+    }
+  }
+  return out;
+};
+
+/** Every sentence a template's agents carry, addressed for a failure message. */
+const agentProse = (t: (typeof TEMPLATES)[number]): { where: string; text: string }[] =>
+  ((t.agents ?? []) as { handle?: string; systemPrompt?: string; description?: string }[]).flatMap(
+    (a) => [
+      { where: `${a.handle}.systemPrompt`, text: String(a.systemPrompt ?? "") },
+      { where: `${a.handle}.description`, text: String(a.description ?? "") },
+    ],
+  );
 
 describe("a template's prose may not claim a mechanism its schema lacks", () => {
   for (const claim of CLAIMS) {
@@ -159,7 +187,65 @@ describe("a template's prose may not claim a mechanism its schema lacks", () => 
       }
       expect(broken).toEqual([]);
     });
+
+    test(`no agent prompt promises ${claim.label} its columns do not have`, () => {
+      // The sweep above stops at the schema, and the commerce template proved
+      // that is not far enough: its "Store analyst" prompt told the model "a
+      // product's own stock number is a reporting roll-up" while the column was
+      // a plain writable int, and the field-level guard could not see it — the
+      // sentence is attached to no field.
+      //
+      // An agent's prose is worse than a hint, not better. A hint sits beside
+      // the column and an operator can look; a prompt is repeated to whoever
+      // asks, in confident natural language, with the schema out of sight.
+      //
+      // The rule that has teeth is NAMING, and it is the one thing the original
+      // sentence would not do. "A template-wide check" was tried first and is
+      // worthless here: the commerce model holds five rollups, so ANY claim
+      // about a roll-up is satisfied by one of them and the false sentence
+      // passes. Resolving the claim to the column it is about is the only way
+      // it fails, so a claim must name its column in backticks and every column
+      // it names has to hold up.
+      //
+      // Which is also a constraint on how a prompt is worded: do not name the
+      // SOURCE column inside the clause making the claim ("`stock` is summed
+      // from `on_hand`" fails, because `on_hand` is a plain int). Split the
+      // sentence. That is a low price for a claim a test can read.
+      const broken: string[] = [];
+      for (const t of TEMPLATES) {
+        const byName = fieldsByName(t);
+        for (const p of agentProse(t)) {
+          for (const clause of assertingClauses(p.text, claim.phrase)) {
+            const named = backticked(clause).filter((n) => byName.has(n));
+            if (named.length === 0) {
+              broken.push(
+                `${t.id}/${p.where}: names no column, so nothing can check it — "${clause.trim().slice(0, 90)}"`,
+              );
+              continue;
+            }
+            for (const n of named) {
+              if (!byName.get(n)!.every((f) => claim.satisfiedBy(f))) {
+                broken.push(`${t.id}/${p.where}: \`${n}\` is not ${claim.label} — "${clause.trim().slice(0, 90)}"`);
+              }
+            }
+          }
+        }
+      }
+      expect(broken).toEqual([]);
+    });
   }
+
+  test("the agent sweep reaches real prompts — it checked nothing otherwise", () => {
+    // The same deadness trap as the vocabulary check below, one layer out: if
+    // no agent prose asserts any claim at all, every prompt test above passes
+    // by finding nothing, and would keep passing once the prompts were
+    // rewritten into lies. Two do today — commerce's `stock` /
+    // `inventory_quantity` and manufacturing's `actual_minutes`.
+    const found = TEMPLATES.flatMap((t) =>
+      agentProse(t).flatMap((p) => CLAIMS.flatMap((claim) => assertingClauses(p.text, claim.phrase))),
+    );
+    expect(found.length).toBeGreaterThan(0);
+  });
 
   test("the vocabulary still matches something — a guard that fires on nothing is not a guard", () => {
     // A regex that has stopped matching the catalog reports success forever.

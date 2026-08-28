@@ -56,6 +56,8 @@ export type Product = {
   /** Optional "was" price, struck through in the UI when higher than `price`. */
   compare_at_price?: Money | null;
   status?: "draft" | "active" | "archived";
+  /** Server-derived: the total on hand across this product's inventory levels.
+   *  Read-only — the template refuses a write to it. */
   stock?: number;
   sku?: string;
   /** Relation: the id of a `categories` row (resolve via the `categories` map). */

@@ -40,6 +40,7 @@ export type Product = {
   currency?: string;
   sku?: string | null;
   barcode?: string | null;
+  /** Totalled from this product's inventory levels — read-only. */
   stock?: number;
   track_inventory?: boolean;
   featured?: boolean;
@@ -101,9 +102,12 @@ export type Location = { id: string; name: string; code?: string; active?: boole
 
 export type InventoryLevel = {
   id: string;
+  /** The variant's product, carried here so a product can total its stock. */
+  product?: string | null;
   variant?: string | null;
   location?: string | null;
   on_hand?: number;
+  /** Summed from the reservations still held against this level — read-only. */
   committed?: number;
   /** Generated as `on_hand - committed` — the server owns it, never write it. */
   available?: number;

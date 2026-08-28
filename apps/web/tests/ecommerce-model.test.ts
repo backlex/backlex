@@ -94,6 +94,7 @@ describe("ecommerce model", () => {
     const locations = await get("locations?limit=10");
 
     const made = await post("inventory_levels", {
+      product: variants.data[0]!.product,
       variant: variants.data[0]!.id,
       location: locations.data[1]!.id,
       on_hand: 10,

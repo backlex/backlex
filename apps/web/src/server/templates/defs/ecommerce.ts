@@ -463,19 +463,30 @@ export const ecommerce: SchemaTemplate = {
           ...half(rel("tax_class", "tax_classes", { label: "Tax class" }), rel("tax_rate", "tax_rates", { label: "Tax rate override" })),
         ]),
         sec("Inventory", [
-          // NOT a roll-up, and the hint used to say it was. It cannot be one:
-          // a variant's count is now summed from its levels, and a rollup of a
-          // rollup does not refresh — the write path restates a parent from its
-          // children with a direct UPDATE, which never re-enters the write path
-          // to restate the grandparent. Measured: a level moved 60 → 85, the
-          // variant followed, `products.stock` stayed at 60. So it is described
-          // as what it is — the figure for a product that does not track stock
-          // per variant at all.
-          hint("products_stock", "A hand-kept figure, for a product sold without variants. A product WITH variants is stocked per (variant, location) on Inventory levels, and its variants total it up for you."),
+          // Summed straight from the LEVELS, not from the variants — and that
+          // distinction is the whole reason it can exist.
+          //
+          // A rollup of a rollup does not refresh: the write path restates a
+          // parent from its children with a direct UPDATE, which never re-enters
+          // the write path to restate the grandparent. So summing
+          // `product_variants.inventory_quantity` (itself a rollup) would leave
+          // this stale — measured, a level moved 60 → 85, the variant followed
+          // and the product stayed at 60. Reaching past the variant to `on_hand`
+          // — a plain column — makes the two SIBLING rollups over one child, and
+          // the write path refreshes every parent that rolls up from a
+          // collection, not just the first.
+          //
+          // The price is the denormalised `inventory_levels.product`; see the
+          // note on that field.
+          hint("products_stock", "Totalled across every location this product is stocked in, and refused as input. Stock is entered per (variant, location) on Inventory levels — a product with no variants has nowhere to hold any, and reads zero."),
           ...half(text("sku", { unique: true, label: "SKU" }), text("barcode", { label: "Barcode" })),
           ...half(text("gtin", { label: "GTIN" }), text("mpn", { label: "MPN" })),
           ...half(
-            int("stock", { default: 0, validation: { min: 0 }, label: "Total stock", description: "Only read for a product with no variants — nothing keeps it in step with the levels." }),
+            rollup(
+              "stock",
+              { from: "inventory_levels", via: "product", fn: "sum", field: "on_hand" },
+              { label: "Total on hand", description: "Summed across every inventory level of this product. Stock is edited per location." },
+            ),
             bool("track_inventory", { default: true, label: "Track inventory" }),
           ),
           ...half(
@@ -511,8 +522,8 @@ export const ecommerce: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { name: "Classic Tee", slug: "classic-tee", description: "A soft cotton t-shirt.", status: "active", product_type: { ref: "product_types:0" }, brand: { ref: "brands:0" }, category: { ref: "categories:0" }, condition: "new", price: 25, compare_at_price: 30, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TEE-001", stock: 120 },
-        { name: "Canvas Tote", slug: "canvas-tote", description: "Sturdy everyday tote bag.", status: "active", product_type: { ref: "product_types:1" }, brand: { ref: "brands:1" }, category: { ref: "categories:1" }, condition: "new", price: 18, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TOTE-001", stock: 60 },
+        { name: "Classic Tee", slug: "classic-tee", description: "A soft cotton t-shirt.", status: "active", product_type: { ref: "product_types:0" }, brand: { ref: "brands:0" }, category: { ref: "categories:0" }, condition: "new", price: 25, compare_at_price: 30, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TEE-001" },
+        { name: "Canvas Tote", slug: "canvas-tote", description: "Sturdy everyday tote bag.", status: "active", product_type: { ref: "product_types:1" }, brand: { ref: "brands:1" }, category: { ref: "categories:1" }, condition: "new", price: 18, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TOTE-001" },
       ],
     },
     {
@@ -883,6 +894,18 @@ export const ecommerce: SchemaTemplate = {
           rel("variant", "product_variants", { required: true }),
           rel("location", "locations", { required: true, uniqueWith: ["variant"] }),
         ),
+        // Denormalised, and deliberately so: it is what lets `products.stock` be
+        // a real rollup instead of a number nobody maintains. The product is
+        // reachable through `variant`, but a rollup needs a relation ON THE
+        // CHILD pointing at the parent it restates, and a chain of two rollups
+        // does not refresh.
+        //
+        // It is NOT part of the (variant, location) key — the variant already
+        // determines it, so adding it would only widen the index. The cost is
+        // that nothing forces this to agree with `variant.product`; the same
+        // trade `inventory_reservations` already makes by carrying `level`,
+        // `variant` and `location` at once.
+        rel("product", "products", { required: true, label: "Product", description: "The variant's product. Kept here so a product can total its stock; it must match the variant." }),
         ...half(
           int("on_hand", { default: 0, validation: { min: 0 }, label: "On hand" }),
           rollup(
@@ -901,9 +924,9 @@ export const ecommerce: SchemaTemplate = {
         ),
       ],
       samples: [
-        { variant: { ref: "product_variants:0" }, location: { ref: "locations:0" }, on_hand: 40, reorder_point: 10, safety_stock: 5 },
-        { variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, on_hand: 50, reorder_point: 10, safety_stock: 5 },
-        { variant: { ref: "product_variants:2" }, location: { ref: "locations:1" }, on_hand: 60, reorder_point: 15, safety_stock: 5 },
+        { product: { ref: "products:0" }, variant: { ref: "product_variants:0" }, location: { ref: "locations:0" }, on_hand: 40, reorder_point: 10, safety_stock: 5 },
+        { product: { ref: "products:0" }, variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, on_hand: 50, reorder_point: 10, safety_stock: 5 },
+        { product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, location: { ref: "locations:1" }, on_hand: 60, reorder_point: 15, safety_stock: 5 },
       ],
     },
     {
@@ -2059,9 +2082,11 @@ export const ecommerce: SchemaTemplate = {
         "currencies are never added together. Refunds are their own rows, so " +
         "revenue net of refunds is the orders total minus the refunds total, " +
         "not a single column. What a shopper can actually buy is `available` " +
-        "on an inventory level, per location — it is on hand minus committed, " +
-        "and a product's own stock number is a reporting roll-up that may " +
-        "lag. A variant's price may be overridden by a price list for a " +
+        "on an inventory level, per location — it is on hand minus committed. " +
+        "A product's `stock` and a variant's `inventory_quantity` are each " +
+        "summed from the inventory levels below them, so they count units " +
+        "already promised to an order and are never the sellable figure. " +
+        "A variant's price may be overridden by a price list for a " +
         "customer group, a channel or a quantity break, so the number on the " +
         "variant is the default and not necessarily what was charged. A " +
         "return, an exchange and a claim are all rows in `returns`, told " +

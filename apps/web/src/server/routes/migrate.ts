@@ -38,6 +38,7 @@ import {
   startRun,
   testSource,
 } from "../services/migrate";
+import { readJson, readJsonOr } from "../lib/body";
 
 const IngestInput = z.object({
   rows: z
@@ -77,7 +78,7 @@ export const migrateRoutes = new Hono<AppBindings>()
     return c.json({ data });
   })
   .post("/sources", async (c) => {
-    const body = SourceInput.parse(await c.req.json());
+    const body = SourceInput.parse(await readJson(c.req));
     const auth = c.get("auth");
     const data = await createSource(c.get("ctx"), auth.tenantId!, {
       ...body,
@@ -113,7 +114,7 @@ export const migrateRoutes = new Hono<AppBindings>()
     return c.json({ data });
   })
   .post("/sources/:id/plan", async (c) => {
-    const body = PlanInput.parse(await c.req.json().catch(() => ({})));
+    const body = PlanInput.parse(await readJsonOr(c.req, {}));
     const data = await buildSourcePlan(
       c.get("ctx"),
       c.get("auth").tenantId!,
@@ -128,7 +129,7 @@ export const migrateRoutes = new Hono<AppBindings>()
     return c.json({ data });
   })
   .post("/runs", async (c) => {
-    const body = RunInput.parse(await c.req.json());
+    const body = RunInput.parse(await readJson(c.req));
     const auth = c.get("auth");
     const data = await startRun(c.get("ctx"), auth.tenantId!, {
       sourceId: body.sourceId,
@@ -170,7 +171,7 @@ export const migrateRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const slug = c.req.param("slug");
-    const body = IngestInput.parse(await c.req.json());
+    const body = IngestInput.parse(await readJson(c.req));
     const collection = await loadCollection(ctx, auth.tenantId, slug);
     const result = await ingestRows(ctx, collection, auth.tenantId!, body.rows, {
       mode: body.mode,

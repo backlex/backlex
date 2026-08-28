@@ -192,7 +192,9 @@ Add Field dialog's "Indexed" toggle) to get a plain B-tree index on its column �
 worth it for fields you frequently `filter`/`sort` by. The schema applier emits
 `CREATE INDEX IF NOT EXISTS` additively on both PG and SQLite. `unique` fields
 are already indexed by their UNIQUE constraint, so `indexed` is skipped for
-them; adopted tables get no DDL. Indexing trades a little write cost for read
+them; adopted tables get no DDL. For "one row per pair" — a join table's
+identity, which a per-column `unique` cannot express — see
+[Unique together](/docs/unique-together/). Indexing trades a little write cost for read
 speed — opt-in per field. Note that `_contains` (`LIKE %x%`) and the
 case-insensitive `_icontains` can't use a plain B-tree index — a substring
 search needs a trigram/`pg_trgm` (PG) or FTS index, which Backlex doesn't manage
@@ -200,8 +202,10 @@ automatically.
 
 ## Pagination
 
-Two modes. `limit` is clamped to `[1, 200]` (default `50`) in both — the hard
-cap is server-side, so `limit=1000` silently becomes `200`.
+Two modes. `limit` is `[1, 200]` (default `50`) in both, and a value outside
+that range is **refused with `422`**, not clamped — `limit=500` comes back as
+`limit: Too big: expected number to be <=200`. Ask for 200 and page, rather than
+asking for more and assuming the server will trim it for you.
 
 **Offset (default).** `offset` is non-negative (default `0`). Simple and
 random-access (jump to any page), but O(offset): the engine walks and discards

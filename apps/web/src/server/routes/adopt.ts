@@ -18,6 +18,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { inspectTable, listAdoptableTables } from "../services/adopt";
+import { readJson } from "../lib/body";
 
 const requireAdmin = (auth: { roles: string[] }) => {
   if (!auth.roles.includes(SYSTEM_ROLES.admin))
@@ -74,7 +75,7 @@ export const adoptRoutes = new Hono<AppBindings>()
     const auth = c.get("auth");
     const body = z
       .object({ table: z.string().min(1).max(120) })
-      .parse(await c.req.json());
+      .parse(await readJson(c.req));
     try {
       const data = await inspectTable(
         { db: ctx.db, dialect: ctx.dialect },

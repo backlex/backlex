@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, half, hint, host, int, money, moneyIn, ms, notes, num, pct, phone, position, rel, sec, select, seq, stacked, text, ts, when } from "../dsl";
+import { bool, C, ch, computedMoneyIn, computedText, date, email, file, flag, flow, half, hint, host, int, money, moneyIn, ms, notes, num, pct, phone, position, rel, sec, select, seq, stacked, text, ts, when } from "../dsl";
 
 export const crm: SchemaTemplate = {
   id: "crm",
@@ -173,8 +173,9 @@ export const crm: SchemaTemplate = {
       fields: [
         hint("deal_products_total", "Line total is generated as quantity × unit price."),
         ...half(rel("deal", "deals"), rel("product", "products")),
-        ...half(num("quantity", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Unit price" })),
-        ...half(computedNum("line_total", "quantity * unit_price", { label: "Line total" }), notes("note")),
+        ...half(num("quantity", { default: 1, validation: { min: 0 } }), moneyIn("unit_price", { label: "Unit price" })),
+        ...half(select("currency", ["USD", "EUR", "GBP"], { default: "USD" }), computedMoneyIn("line_total", "quantity * unit_price", { label: "Line total" })),
+        notes("note"),
       ],
       samples: [{ deal: { ref: "deals:0" }, product: { ref: "products:0" }, quantity: 2, unit_price: 12000 }],
     },
@@ -203,8 +204,9 @@ export const crm: SchemaTemplate = {
       fields: [
         hint("quote_lines_total", "Line total is generated as quantity × unit price — the discount is recorded for reporting, not applied here."),
         ...half(rel("quote", "quotes"), rel("product", "products")),
-        ...half(num("quantity", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Unit price" })),
-        ...half(pct("discount_pct", { default: 0, label: "Discount (%)" }), computedNum("line_total", "quantity * unit_price", { label: "Line total" })),
+        ...half(num("quantity", { default: 1, validation: { min: 0 } }), moneyIn("unit_price", { label: "Unit price" })),
+        ...half(select("currency", ["USD", "EUR", "GBP"], { default: "USD" }), pct("discount_pct", { default: 0, label: "Discount (%)" })),
+        computedMoneyIn("line_total", "quantity * unit_price", { label: "Line total" }),
       ],
       samples: [
         { quote: { ref: "quotes:0" }, product: { ref: "products:0" }, quantity: 1, unit_price: 21000, discount_pct: 0 },
@@ -222,8 +224,9 @@ export const crm: SchemaTemplate = {
           ...half(rel("company", "companies"), rel("deal", "deals")),
           ...half(
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("signed", C.green), ch("active", C.green), ch("expired", C.slate), ch("terminated", C.red)], { default: "draft" }),
-            money("value", { label: "Contract value" }),
+            moneyIn("value", { label: "Contract value" }),
           ),
+          select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
         ]),
         sec("Term", [
           ...half(date("start_date", { range: { end: "end_date", bounds: "[]" }, label: "Start date" }), date("end_date", { indexed: true, label: "End date" })),

@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, flow, geo, half, hint, image, int, money, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, rollup, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
+import { bool, C, ch, computedMoneyIn, computedNum, date, email, flag, flow, geo, half, hint, image, int, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, rollup, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
 
 /**
  * The commerce model, read off the three platforms that publish theirs.
@@ -24,6 +24,15 @@ import { C, bool, ch, computedNum, date, email, flag, flow, geo, half, hint, ima
  * `state` and nowhere else: it used to be a value of the payment column, so
  * every KPI that meant to exclude cancelled orders excluded nothing and counted
  * them into revenue.
+ *
+ * **Every amount carries its denomination.** Not just the totals: a line, a
+ * discount allocation, a consignment's shipping and a customer's lifetime
+ * spend are all `moneyIn`, denominated by their own row's `currency`. A bare
+ * number here is not a smaller version of the same thing — it is an amount
+ * whose unit nothing knows, and `sum()` over a column of those adds €85 to
+ * $100 and answers 185.5. The totals were protected and the lines that make
+ * them up were not, which is the same defect one table over from where it was
+ * fixed.
  *
  * **Price is a table, not a column.** `product_variants.price` is the default
  * list price and a single-price shop never needs more. `prices` is what a
@@ -331,12 +340,13 @@ export const ecommerce: SchemaTemplate = {
       fields: stacked(
         sec("Rate", [
           ...half(text("name", { required: true }), rel("zone", "shipping_zones")),
-          ...half(text("carrier"), money("price")),
+          text("carrier"),
+          ...half(moneyIn("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
         ]),
         sec("Eligibility", [
           hint("shipping_rates_rules", "The two bounds below cover most rates. Anything else — a country list, a customer group, a product tag — is a shipping rate rule."),
           ...half(
-            money("min_order_subtotal", { label: "Minimum order subtotal" }),
+            moneyIn("min_order_subtotal", { label: "Minimum order subtotal" }),
             num("max_weight_kg", { validation: { min: 0 }, label: "Maximum weight (kg)" }),
           ),
           ...half(int("eta_days", { label: "Delivery estimate (days)" }), flag("active")),
@@ -453,11 +463,30 @@ export const ecommerce: SchemaTemplate = {
           ...half(rel("tax_class", "tax_classes", { label: "Tax class" }), rel("tax_rate", "tax_rates", { label: "Tax rate override" })),
         ]),
         sec("Inventory", [
-          hint("products_stock", "Total stock is a roll-up for reporting. The sellable number per warehouse lives on Inventory levels."),
+          // Summed straight from the LEVELS, not from the variants — and that
+          // distinction is the whole reason it can exist.
+          //
+          // A rollup of a rollup does not refresh: the write path restates a
+          // parent from its children with a direct UPDATE, which never re-enters
+          // the write path to restate the grandparent. So summing
+          // `product_variants.inventory_quantity` (itself a rollup) would leave
+          // this stale — measured, a level moved 60 → 85, the variant followed
+          // and the product stayed at 60. Reaching past the variant to `on_hand`
+          // — a plain column — makes the two SIBLING rollups over one child, and
+          // the write path refreshes every parent that rolls up from a
+          // collection, not just the first.
+          //
+          // The price is the denormalised `inventory_levels.product`; see the
+          // note on that field.
+          hint("products_stock", "Totalled across every location this product is stocked in, and refused as input. Stock is entered per (variant, location) on Inventory levels — a product with no variants has nowhere to hold any, and reads zero."),
           ...half(text("sku", { unique: true, label: "SKU" }), text("barcode", { label: "Barcode" })),
           ...half(text("gtin", { label: "GTIN" }), text("mpn", { label: "MPN" })),
           ...half(
-            int("stock", { default: 0, validation: { min: 0 }, label: "Total stock" }),
+            rollup(
+              "stock",
+              { from: "inventory_levels", via: "product", fn: "sum", field: "on_hand" },
+              { label: "Total on hand", description: "Summed across every inventory level of this product. Stock is edited per location." },
+            ),
             bool("track_inventory", { default: true, label: "Track inventory" }),
           ),
           ...half(
@@ -493,8 +522,8 @@ export const ecommerce: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { name: "Classic Tee", slug: "classic-tee", description: "A soft cotton t-shirt.", status: "active", product_type: { ref: "product_types:0" }, brand: { ref: "brands:0" }, category: { ref: "categories:0" }, condition: "new", price: 25, compare_at_price: 30, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TEE-001", stock: 120 },
-        { name: "Canvas Tote", slug: "canvas-tote", description: "Sturdy everyday tote bag.", status: "active", product_type: { ref: "product_types:1" }, brand: { ref: "brands:1" }, category: { ref: "categories:1" }, condition: "new", price: 18, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TOTE-001", stock: 60 },
+        { name: "Classic Tee", slug: "classic-tee", description: "A soft cotton t-shirt.", status: "active", product_type: { ref: "product_types:0" }, brand: { ref: "brands:0" }, category: { ref: "categories:0" }, condition: "new", price: 25, compare_at_price: 30, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TEE-001" },
+        { name: "Canvas Tote", slug: "canvas-tote", description: "Sturdy everyday tote bag.", status: "active", product_type: { ref: "product_types:1" }, brand: { ref: "brands:1" }, category: { ref: "categories:1" }, condition: "new", price: 18, currency: "USD", tax_class: { ref: "tax_classes:0" }, sku: "TOTE-001" },
       ],
     },
     {
@@ -503,7 +532,10 @@ export const ecommerce: SchemaTemplate = {
       // primary one — the breadcrumb has to pick a single path.
       slug: "product_categories", group: "Catalog", singular: "Product category", plural: "Product categories",
       fields: [
-        ...half(rel("product", "products", { required: true }), rel("category", "categories", { required: true })),
+        ...half(
+          rel("product", "products", { required: true }),
+          rel("category", "categories", { required: true, uniqueWith: ["product"] }),
+        ),
         ...half(bool("is_primary", { default: false, label: "Primary" }), position("category")),
       ],
       samples: [
@@ -516,7 +548,10 @@ export const ecommerce: SchemaTemplate = {
       // leaves it empty and answers from `collections.rule` instead.
       slug: "product_collections", group: "Catalog", singular: "Collection member", plural: "Collection members", defaultSort: "position",
       fields: [
-        ...half(rel("product", "products", { required: true }), rel("collection", "collections", { required: true })),
+        ...half(
+          rel("product", "products", { required: true }),
+          rel("collection", "collections", { required: true, uniqueWith: ["product"] }),
+        ),
         position("collection"),
       ],
       samples: [
@@ -533,7 +568,9 @@ export const ecommerce: SchemaTemplate = {
       fields: [
         ...half(rel("product", "products", { required: true }), rel("related_product", "products", { required: true, label: "Related to" })),
         ...half(
-          select("relation_type", [ch("related", C.gray), ch("upsell", C.green), ch("cross_sell", C.blue, "Cross-sell"), ch("accessory", C.teal), ch("replacement", C.amber)], { default: "related", label: "Kind" }),
+          // A pair is linked once per KIND — the same two products may be both
+          // an accessory and a replacement, but not two accessories.
+          select("relation_type", [ch("related", C.gray), ch("upsell", C.green), ch("cross_sell", C.blue, "Cross-sell"), ch("accessory", C.teal), ch("replacement", C.amber)], { default: "related", label: "Kind", uniqueWith: ["product", "related_product"] }),
           position("product"),
         ),
       ],
@@ -589,7 +626,15 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Inventory", [
           ...half(
-            int("inventory_quantity", { default: 0, validation: { min: 0 }, label: "On hand" }),
+            // Summed from the levels rather than typed, because the comment
+            // above `inventory_levels` — "not a single int on the variant" —
+            // was true of this column too. It held 140 while the variant's one
+            // location held 40, and neither number knew about the other.
+            rollup(
+              "inventory_quantity",
+              { from: "inventory_levels", via: "variant", fn: "sum", field: "on_hand" },
+              { label: "On hand", description: "Summed across this variant's inventory levels. Stock is edited per location." },
+            ),
             select("inventory_policy", [ch("deny", C.red), ch("continue", C.green)], { default: "deny", label: "When out of stock" }),
           ),
         ]),
@@ -630,9 +675,9 @@ export const ecommerce: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { product: { ref: "products:0" }, title: "S / Black", sku: "TEE-001-S-BLK", price: 25, cost: 9, currency: "USD", is_default: true, inventory_quantity: 40, position: 1 },
-        { product: { ref: "products:0" }, title: "M / Black", sku: "TEE-001-M-BLK", price: 25, cost: 9, currency: "USD", inventory_quantity: 50, position: 2 },
-        { product: { ref: "products:1" }, title: "Natural", sku: "TOTE-001-NAT", price: 18, cost: 6, currency: "USD", is_default: true, inventory_quantity: 60, position: 1 },
+        { product: { ref: "products:0" }, title: "S / Black", sku: "TEE-001-S-BLK", price: 25, cost: 9, currency: "USD", is_default: true, position: 1 },
+        { product: { ref: "products:0" }, title: "M / Black", sku: "TEE-001-M-BLK", price: 25, cost: 9, currency: "USD", position: 2 },
+        { product: { ref: "products:1" }, title: "Natural", sku: "TOTE-001-NAT", price: 18, cost: 6, currency: "USD", is_default: true, position: 1 },
       ],
     },
     {
@@ -647,7 +692,14 @@ export const ecommerce: SchemaTemplate = {
       slug: "variant_option_values", group: "Catalog", singular: "Variant option", plural: "Variant options",
       fields: [
         hint("variant_option_values_shape", "One row per option axis of a variant. Two options means two rows — together they are what the shopper selected."),
-        ...half(rel("variant", "product_variants", { required: true }), rel("option", "product_options", { required: true })),
+        // One row per (variant, option): a variant selects exactly one value on
+        // each axis. Without it a variant could claim Size = S AND Size = M at
+        // once, which is precisely the unresolvability this table was added to
+        // prevent — the swatch grid gets two answers and no rule for picking.
+        ...half(
+          rel("variant", "product_variants", { required: true }),
+          rel("option", "product_options", { required: true, uniqueWith: ["variant"] }),
+        ),
         rel("value", "product_option_values", { required: true, label: "Selected value" }),
       ],
       samples: [
@@ -704,8 +756,9 @@ export const ecommerce: SchemaTemplate = {
       slug: "modifier_values", group: "Catalog", singular: "Modifier value", plural: "Modifier values", defaultSort: "position",
       fields: [
         ...half(rel("modifier", "product_modifiers", { required: true }), text("label", { required: true })),
-        ...half(money("price_adjustment", { validation: {}, label: "Price adjustment" }), num("weight_adjustment", { label: "Weight adjustment" })),
-        ...half(position("modifier"), bool("is_default", { default: false, label: "Default" })),
+        ...half(moneyIn("price_adjustment", { validation: {}, label: "Price adjustment" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        ...half(num("weight_adjustment", { label: "Weight adjustment" }), position("modifier")),
+        bool("is_default", { default: false, label: "Default" }),
       ],
       samples: [
         { modifier: { ref: "product_modifiers:1" }, label: "Gold thread", price_adjustment: 5, position: 1, is_default: false },
@@ -719,7 +772,12 @@ export const ecommerce: SchemaTemplate = {
       slug: "product_channel_listings", group: "Channels & pricing", singular: "Channel listing", plural: "Channel listings",
       fields: [
         hint("listings_precedence", "A product that is draft or archived is off everywhere — this row only narrows a product that is otherwise active."),
-        ...half(rel("product", "products", { required: true }), rel("channel", "channels", { required: true })),
+        // One listing per (product, channel). Two rows — one saying published,
+        // one saying not — left the storefront with no rule for which to read.
+        ...half(
+          rel("product", "products", { required: true }),
+          rel("channel", "channels", { required: true, uniqueWith: ["product"] }),
+        ),
         ...half(bool("is_published", { default: true, label: "Published" }), bool("visible_in_listings", { default: true, label: "Show in listings" })),
         ...half(ts("published_at", { indexed: true, label: "Published at" }), ts("available_from", { label: "Buyable from" })),
         position("channel"),
@@ -775,7 +833,13 @@ export const ecommerce: SchemaTemplate = {
         ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
         ...half(
           int("min_quantity", { validation: { min: 1 }, label: "From quantity" }),
-          int("max_quantity", { validation: { min: 1 }, label: "To quantity" }),
+          // A tier whose ceiling is below its floor matches no basket at any
+          // quantity, so it is not a price anyone will ever be charged — it is
+          // a row that looks like one. Refused rather than stored.
+          int("max_quantity", {
+            validation: { min: 1, rule: { max_quantity: { _gte: "$field.min_quantity" } }, message: "A quantity tier cannot end below the quantity it starts at." },
+            label: "To quantity",
+          }),
         ),
       ],
       samples: [
@@ -820,11 +884,35 @@ export const ecommerce: SchemaTemplate = {
         // `available` used to be a third number an operator was asked to keep
         // in step with the other two by hand. It is a definition, not a
         // judgement, so the database computes it and nobody can disagree with it.
-        hint("levels_available", "Available is generated as on hand minus committed — it cannot be typed in. Committed is the sum of the open reservations against this level."),
-        ...half(rel("variant", "product_variants"), rel("location", "locations")),
+        hint("levels_available", "On hand is the only number here anyone types. Committed is summed from the reservations still held against this level, and Available is generated as the difference — both are refused as input."),
+        // One row per (variant, location) — the pair is what an inventory level
+        // IS, and without the constraint three rows for one pair made
+        // `sum(available)` answer 146 for a number that should be one. Both ends
+        // are required for the same reason: a level naming neither is not a
+        // level, and a NULL would slip past the index (NULLs compare distinct).
+        ...half(
+          rel("variant", "product_variants", { required: true }),
+          rel("location", "locations", { required: true, uniqueWith: ["variant"] }),
+        ),
+        // Denormalised, and deliberately so: it is what lets `products.stock` be
+        // a real rollup instead of a number nobody maintains. The product is
+        // reachable through `variant`, but a rollup needs a relation ON THE
+        // CHILD pointing at the parent it restates, and a chain of two rollups
+        // does not refresh.
+        //
+        // It is NOT part of the (variant, location) key — the variant already
+        // determines it, so adding it would only widen the index. The cost is
+        // that nothing forces this to agree with `variant.product`; the same
+        // trade `inventory_reservations` already makes by carrying `level`,
+        // `variant` and `location` at once.
+        rel("product", "products", { required: true, label: "Product", description: "The variant's product. Kept here so a product can total its stock; it must match the variant." }),
         ...half(
           int("on_hand", { default: 0, validation: { min: 0 }, label: "On hand" }),
-          int("committed", { default: 0, validation: { min: 0 }, label: "Committed" }),
+          rollup(
+            "committed",
+            { from: "inventory_reservations", via: "level", fn: "sum", field: "qty", filter: { status: { _eq: "held" } } },
+            { label: "Committed", description: "Summed from the reservations still held against this level — released and consumed ones drop out." },
+          ),
         ),
         ...half(
           computedNum("available", "on_hand - committed", { label: "Available" }),
@@ -836,9 +924,9 @@ export const ecommerce: SchemaTemplate = {
         ),
       ],
       samples: [
-        { variant: { ref: "product_variants:0" }, location: { ref: "locations:0" }, on_hand: 40, committed: 0, reorder_point: 10, safety_stock: 5 },
-        { variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, on_hand: 50, committed: 0, reorder_point: 10, safety_stock: 5 },
-        { variant: { ref: "product_variants:2" }, location: { ref: "locations:1" }, on_hand: 60, committed: 0, reorder_point: 15, safety_stock: 5 },
+        { product: { ref: "products:0" }, variant: { ref: "product_variants:0" }, location: { ref: "locations:0" }, on_hand: 40, reorder_point: 10, safety_stock: 5 },
+        { product: { ref: "products:0" }, variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, on_hand: 50, reorder_point: 10, safety_stock: 5 },
+        { product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, location: { ref: "locations:1" }, on_hand: 60, reorder_point: 15, safety_stock: 5 },
       ],
     },
     {
@@ -862,19 +950,28 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Activity", [
           ...half(
-            money("total_spent", { default: 0, label: "Total spent" }),
-            int("orders_count", { default: 0, validation: { min: 0 }, label: "Orders count" }),
+            select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", description: "The unit the two amounts below are kept in." }),
+            rollup(
+              "orders_count",
+              { from: "orders", via: "customer", fn: "count", filter: { state: { _neq: "cancelled" } } },
+              { label: "Orders count", description: "Counted from this customer's orders, cancelled ones excluded." },
+            ),
           ),
           ...half(
-            money("store_credit", { default: 0, label: "Store credit" }),
-            bool("tax_exempt", { default: false, label: "Tax exempt" }),
+            // NOT a rollup, and it cannot be one: a money rollup is refused
+            // when either side is denominated per row, which both of these are.
+            // Summing a customer's orders across currencies would need an
+            // exchange rate the sum does not have.
+            moneyIn("total_spent", { default: 0, label: "Total spent", description: "Kept by whatever records the payment — a money total cannot be summed across an order history in several currencies." }),
+            moneyIn("store_credit", { default: 0, label: "Store credit" }),
           ),
+          bool("tax_exempt", { default: false, label: "Tax exempt" }),
           notes("note", { label: "Internal note" }),
         ]),
       ),
       samples: [
-        { email: "jordan@example.com", first_name: "Jordan", last_name: "Reed", phone: "+15555550100", state: "enabled", customer_group: { ref: "customer_groups:0" }, total_spent: 43, orders_count: 1 },
-        { email: "sam@example.com", first_name: "Sam", last_name: "Taylor", phone: "+15555550142", state: "enabled", customer_group: { ref: "customer_groups:1" }, total_spent: 18, orders_count: 1 },
+        { email: "jordan@example.com", first_name: "Jordan", last_name: "Reed", phone: "+15555550100", state: "enabled", customer_group: { ref: "customer_groups:0" }, total_spent: 43 },
+        { email: "sam@example.com", first_name: "Sam", last_name: "Taylor", phone: "+15555550142", state: "enabled", customer_group: { ref: "customer_groups:1" }, total_spent: 18 },
       ],
     },
     {
@@ -950,7 +1047,10 @@ export const ecommerce: SchemaTemplate = {
       // handed every shopper everybody else's.
       slug: "wishlist_items", group: "Customers", singular: "Wishlist item", plural: "Wishlist items", ownerScoped: true, defaultSort: "position",
       fields: [
-        ...half(rel("wishlist", "wishlists", { required: true }), rel("product", "products", { required: true })),
+        ...half(
+          rel("wishlist", "wishlists", { required: true }),
+          rel("product", "products", { required: true, uniqueWith: ["wishlist"] }),
+        ),
         ...half(rel("variant", "product_variants"), position("wishlist")),
       ],
       samples: [{ wishlist: { ref: "wishlists:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, position: 1 },
@@ -1008,21 +1108,22 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Limits", [
           ...half(
-            select("target_selection", [ch("all", C.gray), ch("entitled", C.amber)], { default: "all", label: "Scope", description: "Entitled means only what the rules tab names." }),
-            money("minimum_amount", { label: "Minimum order amount" }),
+            select("target_selection", [ch("all", C.gray), ch("entitled", C.amber)], { default: "all", label: "Scope", description: "Entitled means only what the rules tab names — and with no target rule there, it names nothing and the discount comes off nothing." }),
+            select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", description: "The unit a fixed-amount value and the minimum below are in." }),
           ),
           ...half(
+            moneyIn("minimum_amount", { label: "Minimum order amount" }),
             int("min_item_qty", { validation: { min: 0 }, label: "Minimum items" }),
+          ),
+          ...half(
             int("usage_limit", { validation: { min: 0 }, label: "Usage limit" }),
-          ),
-          ...half(
             int("usage_count", { default: 0, validation: { min: 0 }, label: "Times used" }),
-            bool("once_per_customer", { default: false, label: "Once per customer" }),
           ),
           ...half(
+            bool("once_per_customer", { default: false, label: "Once per customer" }),
             bool("combinable", { default: false, label: "Stacks with others" }),
-            int("priority", { default: 0, label: "Priority", description: "Highest priority is applied first when two discounts both qualify." }),
           ),
+          int("priority", { default: 0, label: "Priority", description: "Highest priority is applied first when two discounts both qualify." }),
         ]),
         sec("Schedule", [
           ...half(ts("starts_at", { range: { end: "ends_at" }, indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
@@ -1089,14 +1190,21 @@ export const ecommerce: SchemaTemplate = {
       // basket as two scalars: a count and a total. A recovery email could not
       // name what was left behind, and nothing could be carried into an order.
       slug: "cart_items", group: "Orders", singular: "Cart item", plural: "Cart items",
-      fields: [
-        hint("cart_items_snapshot", "Title, SKU and unit price are snapshots taken when the line was added — a catalog price change must not silently reprice a basket somebody is looking at."),
-        ...half(rel("cart", "carts", { required: true }), rel("product", "products")),
-        ...half(rel("variant", "product_variants"), text("title", { label: "Title (snapshot)" })),
-        ...half(text("sku", { label: "SKU (snapshot)" }), int("qty", { default: 1, validation: { min: 1 } })),
-        ...half(money("unit_price"), bool("gift_wrap", { default: false, label: "Gift wrap" })),
-        tags("selected_options", { label: "Selected options", description: "The modifier choices on this line, as name/value pairs." }),
-      ],
+      // Sectioned like `order_items`, which is the row this one becomes at
+      // checkout — two shapes a person reads side by side should not be laid
+      // out differently.
+      fields: stacked(
+        sec("Line", [
+          hint("cart_items_snapshot", "Title, SKU and unit price are snapshots taken when the line was added — a catalog price change must not silently reprice a basket somebody is looking at."),
+          ...half(rel("cart", "carts", { required: true }), rel("product", "products")),
+          ...half(rel("variant", "product_variants"), text("title", { label: "Title (snapshot)" })),
+          ...half(text("sku", { label: "SKU (snapshot)" }), int("qty", { default: 1, validation: { min: 1 } })),
+        ]),
+        sec("Amounts", [
+          ...half(moneyIn("unit_price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+          ...half(bool("gift_wrap", { default: false, label: "Gift wrap" }), tags("selected_options", { label: "Selected options", description: "The modifier choices on this line, as name/value pairs." })),
+        ]),
+      ),
       samples: [
         { cart: { ref: "carts:0" }, product: { ref: "products:0" }, variant: { ref: "product_variants:1" }, title: "Classic Tee — M / Black", sku: "TEE-001-M-BLK", qty: 1, unit_price: 25 },
         { cart: { ref: "carts:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, title: "Canvas Tote", sku: "TOTE-001-NAT", qty: 2, unit_price: 18 },
@@ -1170,7 +1278,9 @@ export const ecommerce: SchemaTemplate = {
     },
     {
       slug: "order_items", group: "Orders", singular: "Order item", plural: "Order items",
-      fields: stacked(
+      // Fourteen storage columns since every amount gained its denomination —
+      // past the point a form fits one screen, so the sections become tabs.
+      fields: tabbed(
         sec("Line", [
           hint("order_items_total", "Line total is generated by the database as qty × unit price — it can't be typed in. Tax is per line because one order routinely mixes rates."),
           ...half(rel("order", "orders"), rel("product", "products")),
@@ -1179,12 +1289,13 @@ export const ecommerce: SchemaTemplate = {
           tags("selected_options", { label: "Selected options", description: "The modifier choices this line was bought with." }),
         ]),
         sec("Amounts", [
-          ...half(money("unit_price"), money("total_discount", { label: "Line discount" })),
+          ...half(moneyIn("unit_price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+          ...half(moneyIn("total_discount", { label: "Line discount" }), moneyIn("tax_amount", { label: "Tax" })),
           ...half(
             num("tax_rate", { validation: { min: 0, max: 100 }, label: "Tax rate (%)", format: { style: "percent100", precision: 2 } }),
-            money("tax_amount", { label: "Tax" }),
+            rel("tax_class", "tax_classes", { label: "Tax class" }),
           ),
-          ...half(computedNum("line_total", "qty * unit_price", { label: "Line total" }), rel("tax_class", "tax_classes", { label: "Tax class" })),
+          computedMoneyIn("line_total", "qty * unit_price", { label: "Line total" }),
         ]),
       ),
       samples: [
@@ -1201,7 +1312,8 @@ export const ecommerce: SchemaTemplate = {
         hint("order_discounts_scope", "Leave the line empty for a discount that came off the order as a whole; name a line for one allocated to a single item."),
         ...half(rel("order", "orders", { required: true }), rel("order_item", "order_items", { label: "On line" })),
         ...half(rel("discount", "discounts"), text("code", { label: "Code used" })),
-        ...half(money("amount", { required: true }), text("description")),
+        ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        text("description"),
       ],
       samples: [
         { order: { ref: "orders:0" }, discount: { ref: "discounts:1" }, amount: 6.5, description: "Free shipping over $75" },
@@ -1217,8 +1329,8 @@ export const ecommerce: SchemaTemplate = {
         hint("consignments_kinds", "One consignment per destination. A pickup consignment names a location instead of an address; a digital one needs neither."),
         ...half(rel("order", "orders", { required: true }), select("consignment_type", [ch("shipping", C.blue), ch("pickup", C.teal), ch("digital", C.purple)], { default: "shipping", label: "Kind" })),
         ...half(rel("shipping_address", "addresses", { label: "Ship to" }), rel("pickup_location", "locations", { label: "Collect from" })),
-        ...half(rel("shipping_rate", "shipping_rates", { label: "Shipping method" }), money("shipping_cost", { label: "Shipping cost" })),
-        select("status", [ch("pending", C.amber), ch("ready", C.blue), ch("shipped", C.teal), ch("delivered", C.green), ch("collected", C.green), ch("cancelled", C.red)], { default: "pending" }),
+        ...half(rel("shipping_rate", "shipping_rates", { label: "Shipping method" }), moneyIn("shipping_cost", { label: "Shipping cost" })),
+        ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), select("status", [ch("pending", C.amber), ch("ready", C.blue), ch("shipped", C.teal), ch("delivered", C.green), ch("collected", C.green), ch("cancelled", C.red)], { default: "pending" })),
       ],
       samples: [
         { order: { ref: "orders:0" }, consignment_type: "shipping", shipping_address: { ref: "addresses:0" }, shipping_rate: { ref: "shipping_rates:0" }, shipping_cost: 6.5, status: "delivered" },
@@ -1293,7 +1405,12 @@ export const ecommerce: SchemaTemplate = {
       // substantiate — a two-parcel order could not say which parcel held what.
       slug: "fulfillment_items", group: "Orders", singular: "Fulfilled item", plural: "Fulfilled items",
       fields: [
-        ...half(rel("fulfillment", "fulfillments", { required: true }), rel("order_item", "order_items", { required: true })),
+        // One row per (fulfillment, order line): a parcel says how many of a
+        // line it holds once, not twice.
+        ...half(
+          rel("fulfillment", "fulfillments", { required: true }),
+          rel("order_item", "order_items", { required: true, uniqueWith: ["fulfillment"] }),
+        ),
         int("qty", { default: 1, validation: { min: 1 }, label: "Quantity shipped" }),
       ],
       samples: [
@@ -1390,8 +1507,8 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Handling", [
           ...half(ts("requested_at", { indexed: true, label: "Requested at" }), ts("received_at", { label: "Received at" })),
-          ...half(text("tracking_number", { label: "Return tracking" }), money("restocking_fee", { label: "Restocking fee" })),
-          rel("location", "locations", { label: "Returned to" }),
+          ...half(text("tracking_number", { label: "Return tracking" }), moneyIn("restocking_fee", { label: "Restocking fee" })),
+          ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), rel("location", "locations", { label: "Returned to" })),
           notes("note"),
         ]),
       ),
@@ -1422,6 +1539,17 @@ export const ecommerce: SchemaTemplate = {
       slug: "inventory_reservations", group: "Inventory", singular: "Reservation", plural: "Reservations", defaultSort: "-created_at",
       fields: [
         hint("reservations_committed", "The open reservations against a level are what its Committed number means. Release one when the order is cancelled; consume it when the goods ship."),
+        // The link that makes the sentence above TRUE.
+        //
+        // A reservation named a variant and a location, and an inventory level
+        // names the same pair — but nothing joined the two, so `committed` could
+        // not be derived from anything and was a number an operator was asked to
+        // keep in step by hand. It never was: a held reservation left `committed`
+        // at zero, and `available` (generated as on hand minus committed) went on
+        // reporting the reserved units as sellable. Same shape as the missing
+        // `variant_option_values` link one release earlier — three collections
+        // that look related and are not.
+        rel("level", "inventory_levels", { required: true, label: "Against level" }),
         ...half(rel("variant", "product_variants", { required: true }), rel("location", "locations", { required: true })),
         ...half(rel("order", "orders"), rel("order_item", "order_items")),
         ...half(
@@ -1431,7 +1559,7 @@ export const ecommerce: SchemaTemplate = {
         ts("expires_at", { indexed: true, label: "Expires at", description: "When an unconverted basket's hold lapses." }),
       ],
       samples: [
-        { variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, order: { ref: "orders:1" }, qty: 1, status: "held", expires_at: ms("2026-01-16") },
+        { level: { ref: "inventory_levels:1" }, variant: { ref: "product_variants:1" }, location: { ref: "locations:0" }, order: { ref: "orders:1" }, qty: 1, status: "held", expires_at: ms("2026-01-16") },
       ],
     },
     {
@@ -1440,12 +1568,24 @@ export const ecommerce: SchemaTemplate = {
       // stock discrepancy is ever explained.
       slug: "stock_movements", group: "Inventory", singular: "Stock movement", plural: "Stock movements", defaultSort: "-occurred_at",
       fields: [
+        // A movement is ONE location's ledger entry, and `transfer` is the kind
+        // that reads as if it should name two. It deliberately does not: the
+        // per-location question every stock report asks is `SUM(qty) WHERE
+        // location = X`, and a single row holding both ends would have to be
+        // special-cased out of that sum by every reader. So a transfer is the
+        // pair of signed rows, and the hint below says so — the gap was never a
+        // missing column, it was that nothing told two operators to record it
+        // the same way.
+        hint(
+          "movements_transfer",
+          "One row per location. A transfer is TWO rows sharing a reference — negative where the goods left, positive where they arrived — so every location's running total stays a plain sum of its own rows.",
+        ),
         ...half(rel("variant", "product_variants", { required: true }), rel("location", "locations", { required: true })),
         ...half(
           select("movement_type", [ch("receipt", C.green), ch("sale", C.blue), ch("return", C.teal), ch("adjustment", C.amber), ch("transfer", C.purple), ch("shrinkage", C.red)], { default: "adjustment", label: "Kind" }),
           int("qty", { label: "Quantity", description: "Signed: negative takes stock away." }),
         ),
-        ...half(text("reference", { indexed: true, description: "Order number, PO number or count sheet this movement came from." }), ts("occurred_at", { indexed: true, label: "Occurred at" })),
+        ...half(text("reference", { indexed: true, description: "Order number, PO number, count sheet or transfer number this movement came from — and what joins the two halves of a transfer." }), ts("occurred_at", { indexed: true, label: "Occurred at" })),
         notes("note"),
       ],
       samples: [
@@ -1942,9 +2082,11 @@ export const ecommerce: SchemaTemplate = {
         "currencies are never added together. Refunds are their own rows, so " +
         "revenue net of refunds is the orders total minus the refunds total, " +
         "not a single column. What a shopper can actually buy is `available` " +
-        "on an inventory level, per location — it is on hand minus committed, " +
-        "and a product's own stock number is a reporting roll-up that may " +
-        "lag. A variant's price may be overridden by a price list for a " +
+        "on an inventory level, per location — it is on hand minus committed. " +
+        "A product's `stock` and a variant's `inventory_quantity` are each " +
+        "summed from the inventory levels below them, so they count units " +
+        "already promised to an order and are never the sellable figure. " +
+        "A variant's price may be overridden by a price list for a " +
         "customer group, a channel or a quantity break, so the number on the " +
         "variant is the default and not necessarily what was charged. A " +
         "return, an exchange and a claim are all rows in `returns`, told " +

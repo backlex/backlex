@@ -56,6 +56,7 @@ import {
 import { FILES_COLLECTION } from "../services/storage/constants";
 import { assertStorageWithinLimit } from "../services/usage";
 import { defaultHook } from "../lib/openapi-router";
+import { readJsonOr } from "../lib/body";
 
 export { FILES_COLLECTION };
 
@@ -577,7 +578,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     const tenantId = requireTenantId(auth);
     const logicalKey = c.req.param("key");
     guardLogicalKey(logicalKey);
-    const body = (await c.req.json().catch(() => ({}))) as { ttlSeconds?: number };
+    const body = (await readJsonOr(c.req, {})) as { ttlSeconds?: number };
     const ttl = Math.max(60, Math.min(86400, body.ttlSeconds ?? 3600));
 
     // Confirm the object exists *and* is visible to this caller (the
@@ -772,7 +773,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     const perm = c.get("permission");
     const tenantId = requireTenantId(auth);
     const logicalKey = c.req.param("key");
-    const body = (await c.req.json().catch(() => ({}))) as {
+    const body = (await readJsonOr(c.req, {})) as {
       acl?: "public" | "private";
       folderId?: string | null;
       /** Free-form bag for display name, description, tags[], author,

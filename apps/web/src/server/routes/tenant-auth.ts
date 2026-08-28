@@ -24,6 +24,7 @@ import { type JwtEnv, signAccessToken } from "../lib/jwt";
 import { runCustomAccessTokenHook } from "../services/auth-hooks";
 import { loadRolesForUser } from "../services/permissions";
 import type { Env } from "../env";
+import { readJsonOr } from "../lib/body";
 
 /**
  * Workspace end-user auth surface — the "auth as a service" router. Mounted
@@ -629,7 +630,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
    */
   .post("/:slug/auth/ldap/sign-in", async (c) => {
     const { ctx, tenant } = await resolveTenant(c);
-    const body = (await c.req.json().catch(() => null)) as
+    const body = (await readJsonOr(c.req, null)) as
       | { username?: unknown; password?: unknown }
       | null;
     const username =
@@ -756,7 +757,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
    */
   .post("/:slug/auth/token/refresh", async (c) => {
     const { ctx, tenant } = await resolveTenant(c);
-    const body = (await c.req.json().catch(() => null)) as
+    const body = (await readJsonOr(c.req, null)) as
       | { refreshToken?: unknown; token?: unknown }
       | null;
     let refreshToken =
@@ -826,7 +827,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
   .post("/:slug/auth/invite/accept", async (c) => {
     const { ctx, tenant } = await resolveTenant(c);
     const dbCtx = { db: ctx.db, dialect: ctx.dialect };
-    const body = (await c.req.json().catch(() => null)) as
+    const body = (await readJsonOr(c.req, null)) as
       | { token?: unknown; password?: unknown }
       | null;
     const token = typeof body?.token === "string" ? body.token.trim() : "";

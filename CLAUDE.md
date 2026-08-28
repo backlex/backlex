@@ -373,6 +373,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Hashed fields (passwords/secrets) | `docs/hashed-fields.md` |
 | Field conditions (required/readonly/hidden) | `docs/field-conditions.md` |
 | Field validation (per-field constraints + cross-field rules) | `docs/field-validation.md` |
+| Unique together (one row per pair — the join-table rule) | `docs/unique-together.md` |
 | Rollup fields (a parent total kept from its child rows) | `docs/rollups.md` |
 | Sequence fields (a document number the server issues) | `docs/sequences.md` |
 | Order fields (the place a row holds in a hand-arranged list) | `docs/ordering.md` |

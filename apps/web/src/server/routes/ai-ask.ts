@@ -30,6 +30,7 @@ import { assertAiQuota } from "../services/usage";
 import { makeInternalFetch, readJson } from "../mcp/internal-fetch";
 import type { ToolCtx } from "../mcp/types";
 import { recordActivity, requestMeta } from "../services/activity";
+import { readJsonOr } from "../lib/body";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -429,7 +430,7 @@ const planHandler = async (
   // Cap per-IP so a stuck client / stolen admin session can't run up unbounded
   // LLM cost.
   await enforceIpRateLimit(c, "ai-plan", 20);
-  const body = (await c.req.json().catch(() => ({}))) as {
+  const body = (await readJsonOr(c.req, {})) as {
     prompt?: unknown;
     model?: unknown;
   };
@@ -545,7 +546,7 @@ const runHandler = async (
   env: Env,
 ) => {
   await enforceIpRateLimit(c, "ai-run", 40);
-  const body = (await c.req.json().catch(() => ({}))) as {
+  const body = (await readJsonOr(c.req, {})) as {
     tool?: unknown;
     args?: unknown;
   };

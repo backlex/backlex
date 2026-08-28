@@ -78,6 +78,19 @@ export interface ApplyTemplateResult {
   skipped: string[];
   /** Number of sample rows seeded across all newly-created collections. */
   seeded: number;
+  /**
+   * Sample rows that could not be built, keyed by collection.
+   *
+   * A sample points at its neighbours by `{ ref: "<slug>:<n>" }`, and a ref
+   * resolves only against collections THIS apply seeded. Applying a second
+   * template onto a workspace that already owns one of its collection names
+   * — `field-service` then `ecommerce`, both of which have `customers` —
+   * skips creating that collection, so every sample naming it has nothing to
+   * point at. Those rows are skipped and listed here instead of being inserted
+   * with a null relation, which used to abort the whole apply on a NOT NULL
+   * constraint and leave the workspace half-built.
+   */
+  samplesSkipped: Record<string, string[]>;
   /** Names of bundled roles created by this apply (existing names skipped). */
   roles: string[];
   /** Names of bundled dashboards created by this apply (existing names skipped). */
@@ -109,14 +122,33 @@ const isSampleRef = (v: unknown): v is { ref: string } =>
   typeof v === "object" && v !== null && "ref" in v &&
   typeof (v as { ref: unknown }).ref === "string";
 
-/** Resolve a sample value: `{ ref }` → the referenced id (or null if the target
- *  wasn't seeded), arrays element-wise, everything else passes through. */
-const resolveSample = (value: SampleValue, seeded: SeededIds): unknown => {
+/**
+ * Resolve a sample's `{ ref: "<slug>:<n>" }` handles against what this apply
+ * has seeded so far.
+ *
+ * `unresolved` collects the refs that pointed at nothing. That happens for one
+ * reason in practice: the target collection ALREADY EXISTED in the workspace,
+ * so `applyTemplate` skipped creating it and seeded none of its samples — which
+ * is what a second template applied onto a first does the moment they share a
+ * collection name (`field-service` and `ecommerce` both own `customers`).
+ *
+ * Before this was collected, an unresolved ref silently became `null`, the
+ * INSERT hit the relation's NOT NULL constraint, and the raw driver error
+ * escaped as `500 Internal server error` — abandoning the apply partway with
+ * 39 of 61 collections created and no way for the caller to know which.
+ */
+const resolveSample = (
+  value: SampleValue,
+  seeded: SeededIds,
+  unresolved?: string[],
+): unknown => {
   if (isSampleRef(value)) {
     const [slug, idx] = value.ref.split(":");
-    return seeded[slug ?? ""]?.[Number(idx)] ?? null;
+    const hit = seeded[slug ?? ""]?.[Number(idx)] ?? null;
+    if (hit === null) unresolved?.push(value.ref);
+    return hit;
   }
-  if (Array.isArray(value)) return value.map((v) => resolveSample(v, seeded));
+  if (Array.isArray(value)) return value.map((v) => resolveSample(v, seeded, unresolved));
   return value;
 };
 
@@ -247,9 +279,14 @@ async function seedSamples(
   tenantId: string,
   col: TemplateCollection,
   seeded: SeededIds,
-): Promise<{ ids: string[]; rows: Array<{ id: string; row: Record<string, unknown> }> }> {
+): Promise<{
+  ids: string[];
+  rows: Array<{ id: string; row: Record<string, unknown> }>;
+  /** Refs that pointed at a collection this apply did not seed. */
+  unresolvedRefs: string[];
+}> {
   const rows = col.samples ?? [];
-  if (rows.length === 0) return { ids: [], rows: [] };
+  if (rows.length === 0) return { ids: [], rows: [], unresolvedRefs: [] };
   const physicalTable = derivePhysicalTable(tenantId, col.slug);
   const fieldByName = new Map(col.fields.map((f) => [f.name, f]));
   const ids: string[] = [];
@@ -272,6 +309,7 @@ async function seedSamples(
   const seqTaken = new Map<string, number>();
   const ftsTarget = { fts: !!col.fts, physicalTable, pkColumn: "id", fields: col.fields };
   const searchable = isSearchable(ftsTarget);
+  const unresolvedRefs: string[] = [];
 
   for (const sample of rows as SampleRow[]) {
     const id = crypto.randomUUID();
@@ -292,6 +330,8 @@ async function seedSamples(
     }
 
     const raw: Record<string, unknown> = {};
+    /** Refs THIS sample row could not resolve. */
+    const rowUnresolved: string[] = [];
     // Money samples are written in major units, like every money value on every
     // other surface — `19.99`, not `1999`. Resolve each one against its field's
     // currency (fixed, or the sibling column in this same sample row) before
@@ -331,7 +371,7 @@ async function seedSamples(
       )
         continue;
       const resolved =
-        def.type === "money" ? moneySample[key] : resolveSample(value, seeded);
+        def.type === "money" ? moneySample[key] : resolveSample(value, seeded, rowUnresolved);
       raw[def.name] = resolved;
       let serialized = serializeField(resolved, def, ctx.dialect);
       // JSON-ish columns on Postgres: bind a JSON string, never a raw JS
@@ -363,6 +403,14 @@ async function seedSamples(
       vals.push(value);
     }
 
+    // A sample that cannot reach a row it names is not a sample with a hole in
+    // it — it is a sample this workspace has no way to build. Skipped and
+    // reported, rather than inserted as NULL and left to the constraint.
+    if (rowUnresolved.length > 0) {
+      unresolvedRefs.push(...rowUnresolved);
+      continue;
+    }
+
     const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
     const valSql = sql.join(vals.map((v) => sql`${v}`), sql`, `);
     await exec(
@@ -375,7 +423,7 @@ async function seedSamples(
     ids.push(id);
     seededRows.push({ id, row: raw });
   }
-  return { ids, rows: seededRows };
+  return { ids, rows: seededRows, unresolvedRefs };
 }
 
 /** Seed bundled roles + their permission grants. A role whose name already
@@ -904,6 +952,7 @@ export async function applyTemplateDefinition(
   const manifest: Record<string, string[]> = {};
   const perGroupCount = new Map<string, number>();
   let seeded = 0;
+  const samplesSkipped: Record<string, string[]> = {};
   try {
     for (const col of template.collections) {
       // Position within the group: an explicit `sortOrder` wins (extracted
@@ -929,6 +978,7 @@ export async function applyTemplateDefinition(
         seededIds[col.slug] = out.ids;
         manifest[col.slug] = out.ids;
         seeded += out.ids.length;
+        if (out.unresolvedRefs.length > 0) samplesSkipped[col.slug] = out.unresolvedRefs;
         // Vector backfill for the seeded rows — only when the caller handed us
         // a full Ctx (REST/GraphQL apply). The SEED_TEMPLATE auto-apply during
         // context assembly passes a bare DbCtx and skips it (rows remain
@@ -1037,6 +1087,7 @@ export async function applyTemplateDefinition(
     created,
     skipped,
     seeded,
+    samplesSkipped,
     roles,
     dashboards: dashboards.created,
     kpis,

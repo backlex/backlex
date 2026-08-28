@@ -528,6 +528,29 @@ export interface FieldDef {
    * for adopted tables (no DDL). Indexing aids write cost — opt-in per field.
    */
   indexed?: boolean;
+  /**
+   * Sibling columns this one is unique TOGETHER with — the join-table rule.
+   *
+   * `unique` is per column, and a join table's whole point is a pair: one
+   * inventory level per (variant, location), one listing per (product,
+   * channel), one selected value per (variant, option). Neither column is
+   * unique on its own, so nothing stopped a second row for the same pair —
+   * three levels for one (variant, location) made `sum(available)` answer 146
+   * for a number that should be one, and a variant could claim Size = S AND
+   * Size = M at once, which is exactly the unresolvability its link table was
+   * added to prevent.
+   *
+   * Declared on ONE of the participating fields, naming the others:
+   * `rel("location", "locations", { uniqueWith: ["variant"] })`. The set is
+   * order-insensitive and deduplicated, so declaring it on both ends of a pair
+   * produces one index, not two. A collection may hold several distinct sets by
+   * declaring each on a different field.
+   *
+   * `applyCollection` emits `CREATE UNIQUE INDEX IF NOT EXISTS` over
+   * `(tenant_id?, …columns)` — leading with the tenant exactly as the keyset
+   * index does, so one workspace's pair can never block another's.
+   */
+  uniqueWith?: string[];
   /** Target collection slug. Required when `type === "relation"`. The
    *  column stores the foreign id as TEXT; integrity enforced at the app
    *  layer (no DB-level FK in v1 to keep ALTER paths simple on SQLite). */
@@ -1839,6 +1862,82 @@ export const validateFields = (fields: FieldDef[]): void => {
       }
     }
   }
+  validateUniqueWith(fields);
+};
+
+/** A field that owns no base column can't be part of an index over columns. */
+const INDEXABLE_TOGETHER = (f: FieldDef): string | null => {
+  if (isPresentational(f)) return "is presentational and owns no column";
+  if (f.localized) return "is localized — its values live in the translations sidecar";
+  if (f.type === "relation_many") return "is a relation_many — its links are not a scalar column";
+  if (f.type === "hash") return "is a hash — a salted digest differs on every write";
+  if (f.rollup) return "is a rollup, written by the server from other rows";
+  return null;
+};
+
+/**
+ * `uniqueWith` names siblings, so it can only be checked once every field is
+ * known — hence a pass of its own at the end rather than a branch inside the
+ * per-field loop.
+ */
+const validateUniqueWith = (fields: FieldDef[]): void => {
+  const byName = new Map(fields.map((f) => [f.name, f]));
+  for (const f of fields) {
+    const partners = f.uniqueWith;
+    if (partners === undefined) continue;
+    if (!Array.isArray(partners) || partners.length === 0) {
+      throw new Error(`Field "${f.name}": "uniqueWith" must be a non-empty array of sibling field names`);
+    }
+    if (f.unique) {
+      // The column is already unique on its own, so the pair adds nothing and
+      // the two rules would disagree about which one refused a write.
+      throw new Error(
+        `Field "${f.name}": "uniqueWith" is redundant beside "unique" — a column unique on its own is unique in any pair`,
+      );
+    }
+    const why = INDEXABLE_TOGETHER(f);
+    if (why) throw new Error(`Field "${f.name}": "uniqueWith" is not allowed — the field ${why}`);
+    const seen = new Set<string>([f.name]);
+    for (const name of partners) {
+      if (typeof name !== "string" || !name) {
+        throw new Error(`Field "${f.name}": "uniqueWith" entries must be field names`);
+      }
+      if (name === f.name) {
+        throw new Error(`Field "${f.name}": "uniqueWith" cannot name the field itself`);
+      }
+      if (seen.has(name)) {
+        throw new Error(`Field "${f.name}": "uniqueWith" names "${name}" twice`);
+      }
+      seen.add(name);
+      const partner = byName.get(name);
+      if (!partner) {
+        throw new Error(`Field "${f.name}": "uniqueWith" references unknown field "${name}"`);
+      }
+      const partnerWhy = INDEXABLE_TOGETHER(partner);
+      if (partnerWhy) {
+        throw new Error(`Field "${f.name}": "uniqueWith" names "${name}", which ${partnerWhy}`);
+      }
+    }
+  }
+};
+
+/**
+ * The distinct column sets a collection's `uniqueWith` declarations ask for,
+ * each sorted and deduplicated.
+ *
+ * Sorting is what makes the declaration order-insensitive: putting
+ * `uniqueWith: ["variant"]` on `location` and `uniqueWith: ["location"]` on
+ * `variant` is the same constraint said twice, and has to produce one index
+ * rather than two that differ only in column order.
+ */
+export const compositeUniqueSets = (fields: FieldDef[]): string[][] => {
+  const out = new Map<string, string[]>();
+  for (const f of fields) {
+    if (!f.uniqueWith?.length) continue;
+    const cols = [...new Set([f.name, ...f.uniqueWith])].sort();
+    out.set(cols.join(","), cols);
+  }
+  return [...out.values()];
 };
 
 /** Canonical built-in format pattern for `validation.format: "email"`.

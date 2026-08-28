@@ -152,6 +152,16 @@ every rollup column on the collection from the rows it aggregates.
   quietly read 0. (External-DB migration is what creates those collections.)
 - **One hop.** A rollup reads the collection it names, not that collection's
   relations. For a grand total across two levels, roll up each level.
+
+  Which is not the same as chaining them, and the difference is the whole
+  trick. The E-commerce template stocks a `(variant, location)` inventory level
+  and wants a total on both the variant and the product. Summing the variant's
+  total onto the product would be a chain and would sit a write behind — so the
+  level carries a denormalised `product` relation alongside `variant`, and both
+  parents sum the level's plain `on_hand` column. Siblings over one child, not a
+  chain: a write to a level restates *every* parent that rolls up from
+  `inventory_levels`, so the two move together. The price is a redundant foreign
+  key that nothing forces to agree with `variant.product`.
 - **The reverse index is cached per isolate** (30s, shared with the schema
   cache). A rollup added elsewhere may not fire for that long; the refresh
   endpoint above is the recovery.

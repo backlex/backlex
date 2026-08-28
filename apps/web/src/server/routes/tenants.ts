@@ -89,10 +89,18 @@ const TenantRow = z
 
 const CreateTenantInput = z
   .object({
-    name: z.string().min(2).max(60),
+    name: z.string().min(2).max(60).openapi({
+      description:
+        "Display name. The workspace SLUG — the value every later `X-Backlex-Tenant` names — is folded from this and cannot be supplied.",
+    }),
     project: z.string().max(40).optional(),
     env: z.enum(["development", "staging", "production"]).optional(),
   })
+  // Strict, because the key most likely to be sent here is `slug`, and it is
+  // the one key that must not be dropped in silence: a caller who sends
+  // `{ name: "Shop 2", slug: "shop2" }` gets `shop-2`, then addresses `shop2`
+  // on every later request and is answered for a different workspace.
+  .strict()
   .openapi("CreateTenantInput");
 
 const InviteInput = z

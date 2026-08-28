@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedMoneyIn, computedNum, date, email, file, flag, flow, half, hint, money, moneyIn, ms, notes, num, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
+import { bool, C, ch, computedMoneyIn, date, email, file, flag, flow, half, hint, moneyIn, ms, notes, num, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const invoicing: SchemaTemplate = {
   id: "invoicing",
@@ -78,8 +78,9 @@ export const invoicing: SchemaTemplate = {
       slug: "quote_lines", group: "Sales", singular: "Quote line", plural: "Quote lines",
       fields: [
         ...half(rel("quote", "quotes"), text("description", { required: true })),
-        ...half(num("quantity", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Unit price" })),
-        ...half(rel("tax", "taxes"), computedNum("line_total", "quantity * unit_price", { label: "Line total" })),
+        ...half(num("quantity", { default: 1, validation: { min: 0 } }), moneyIn("unit_price", { label: "Unit price" })),
+        ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), rel("tax", "taxes")),
+        computedMoneyIn("line_total", "quantity * unit_price", { label: "Line total" }),
       ],
       samples: [
         { quote: { ref: "quotes:0" }, description: "Consulting — June retainer", quantity: 32, unit_price: 150, tax: { ref: "taxes:1" } },
@@ -145,8 +146,9 @@ export const invoicing: SchemaTemplate = {
       slug: "invoice_lines", group: "Billing", singular: "Line item", plural: "Line items",
       fields: [
         ...half(rel("invoice", "invoices"), text("description", { required: true })),
-        ...half(num("quantity", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Unit price" })),
-        ...half(rel("tax", "taxes"), computedNum("line_total", "quantity * unit_price", { label: "Line total" })),
+        ...half(num("quantity", { default: 1, validation: { min: 0 } }), moneyIn("unit_price", { label: "Unit price" })),
+        ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), rel("tax", "taxes")),
+        computedMoneyIn("line_total", "quantity * unit_price", { label: "Line total" }),
       ],
       samples: [
         { invoice: { ref: "invoices:0" }, description: "Consulting — June retainer", quantity: 32, unit_price: 150, tax: { ref: "taxes:1" } },
@@ -179,9 +181,10 @@ export const invoicing: SchemaTemplate = {
       fields: [
         ...half(rel("invoice", "invoices"), rel("customer", "customers")),
         ...half(
-          money("amount"),
-          select("method", [ch("bank_transfer", C.blue, "Bank transfer"), ch("card", C.purple), ch("cash", C.green), ch("check", C.gray), ch("other", C.slate)], { default: "bank_transfer" }),
+          moneyIn("amount"),
+          select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
         ),
+        select("method", [ch("bank_transfer", C.blue, "Bank transfer"), ch("card", C.purple), ch("cash", C.green), ch("check", C.gray), ch("other", C.slate)], { default: "bank_transfer" }),
         ...half(date("received_at", { indexed: true, label: "Received at" }), text("reference")),
       ],
       samples: [{ invoice: { ref: "invoices:0" }, customer: { ref: "customers:0" }, amount: 5208, method: "bank_transfer", received_at: ms("2026-06-28"), reference: "WIRE-84413" }],
@@ -190,8 +193,9 @@ export const invoicing: SchemaTemplate = {
       slug: "credit_notes", group: "Billing", singular: "Credit note", plural: "Credit notes", defaultSort: "-issued_at",
       fields: stacked(
         sec("Credit note", [
-          ...half(seq("number", "CN-{YYYY}-{####}"), money("amount")),
-          ...half(rel("invoice", "invoices"), rel("customer", "customers")),
+          ...half(seq("number", "CN-{YYYY}-{####}"), moneyIn("amount")),
+          ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), rel("invoice", "invoices")),
+          rel("customer", "customers"),
         ]),
         sec("Reason", [
           ...half(
@@ -289,8 +293,9 @@ export const invoicing: SchemaTemplate = {
       slug: "bill_lines", group: "Payables", singular: "Bill line", plural: "Bill lines",
       fields: [
         ...half(rel("bill", "bills"), text("description", { required: true })),
-        ...half(num("quantity", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Unit price" })),
-        ...half(rel("tax", "taxes"), computedNum("line_total", "quantity * unit_price", { label: "Line total" })),
+        ...half(num("quantity", { default: 1, validation: { min: 0 } }), moneyIn("unit_price", { label: "Unit price" })),
+        ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), rel("tax", "taxes")),
+        computedMoneyIn("line_total", "quantity * unit_price", { label: "Line total" }),
       ],
       samples: [
         { bill: { ref: "bills:0" }, description: "Dedicated server — June", quantity: 1, unit_price: 380, tax: { ref: "taxes:0" } },

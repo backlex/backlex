@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, date, email, flag, geo, half, hint, image, int, money, moneyIn, ms, notes, phone, position, rel, relMany, sec, select, stacked, tabbed, text, ts, userLink, when } from "../dsl";
+import { bool, C, ch, computedNum, date, email, flag, geo, half, hint, image, int, moneyIn, ms, notes, phone, position, rel, relMany, sec, select, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const appointments: SchemaTemplate = {
   id: "appointments",
@@ -132,7 +132,7 @@ export const appointments: SchemaTemplate = {
             select("status", [ch("pending", C.amber), ch("confirmed", C.blue), ch("completed", C.green), ch("cancelled", C.red), ch("no_show", C.slate, "No-show")], { default: "pending" }),
             select("payment_status", [ch("unpaid", C.gray), ch("paid", C.green), ch("refunded", C.red)], { default: "unpaid", label: "Payment" }),
           ),
-          money("amount"),
+          ...half(moneyIn("amount"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           notes("notes"),
         ]),
       ),
@@ -187,8 +187,9 @@ export const appointments: SchemaTemplate = {
         ...half(text("name", { required: true }), rel("service", "services")),
         ...half(
           int("session_count", { default: 5, validation: { min: 1 }, label: "Sessions included" }),
-          money("price"),
+          moneyIn("price"),
         ),
+        select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
         ...half(
           int("validity_days", { default: 90, validation: { min: 1 }, label: "Valid for (days)" }),
           flag("active", { label: "Active" }),
@@ -205,7 +206,8 @@ export const appointments: SchemaTemplate = {
           int("sessions_total", { default: 0, validation: { min: 0 }, label: "Sessions purchased" }),
           int("sessions_used", { default: 0, validation: { min: 0 }, label: "Sessions used" }),
         ),
-        ...half(computedNum("sessions_left", "sessions_total - sessions_used", { label: "Sessions left" }), money("price_paid", { label: "Price paid" })),
+        computedNum("sessions_left", "sessions_total - sessions_used", { label: "Sessions left" }),
+        ...half(moneyIn("price_paid", { label: "Price paid" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
         ...half(ts("purchased_at", { indexed: true, label: "Purchased at" }), date("expires_at", { label: "Expires" })),
       ],
       samples: [{ customer: { ref: "customers:0" }, package: { ref: "packages:0" }, sessions_total: 5, sessions_used: 1, price_paid: 1050, purchased_at: ms("2026-06-15T10:00:00Z"), expires_at: ms("2026-12-12") }],

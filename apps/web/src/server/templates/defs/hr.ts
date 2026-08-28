@@ -1,5 +1,5 @@
 import type { SchemaTemplate } from "../types";
-import { C, bool, ch, computedNum, computedText, date, email, file, flag, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
+import { bool, C, ch, computedNum, computedText, date, email, file, flag, flow, geo, half, hint, int, money, moneyIn, ms, notes, num, parent, pct, phone, rel, sec, select, seq, stacked, tabbed, text, ts, userLink, when } from "../dsl";
 
 export const hr: SchemaTemplate = {
   id: "hr",
@@ -138,7 +138,7 @@ export const hr: SchemaTemplate = {
       fields: [
         hint("leave_alloc_remaining", "Days remaining is generated as allocated − used; correct the two inputs rather than the balance."),
         ...half(rel("employee", "employees", { required: true }), rel("leave_type", "leave_types", { required: true, label: "Leave type" })),
-        ...half(int("year", { indexed: true, validation: { min: 2000 } }), num("days_allocated", { validation: { min: 0 }, label: "Days allocated" })),
+        ...half(int("year", { indexed: true, validation: { min: 2000 }, uniqueWith: ["employee", "leave_type"] }), num("days_allocated", { validation: { min: 0 }, label: "Days allocated" })),
         ...half(
           num("days_used", { default: 0, validation: { min: 0 }, label: "Days used" }),
           computedNum("days_remaining", "days_allocated - days_used", { label: "Days remaining" }),
@@ -360,21 +360,24 @@ export const hr: SchemaTemplate = {
     },
     {
       slug: "payslips", group: "Payroll", singular: "Payslip", plural: "Payslips", defaultSort: "-created_at",
-      fields: stacked(
+      // Fourteen storage columns once the eight amounts gained their currency —
+      // past what fits on one screen, so the sections become tabs.
+      fields: tabbed(
         sec("Payslip", [
-          ...half(rel("payroll_run", "payroll_runs", { required: true }), rel("employee", "employees", { required: true })),
+          ...half(rel("payroll_run", "payroll_runs", { required: true }), rel("employee", "employees", { required: true, uniqueWith: ["payroll_run"] })),
           ...half(
             select("status", [ch("draft", C.gray), ch("issued", C.blue), ch("paid", C.green)], { default: "draft" }),
             num("worked_days", { validation: { min: 0 }, label: "Worked days" }),
           ),
         ]),
         sec("Earnings", [
-          ...half(money("base_pay", { label: "Base pay" }), money("overtime_pay", { label: "Overtime" })),
-          ...half(money("bonus"), money("gross_pay", { label: "Gross pay" })),
+          select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
+          ...half(moneyIn("base_pay", { label: "Base pay" }), moneyIn("overtime_pay", { label: "Overtime" })),
+          ...half(moneyIn("bonus"), moneyIn("gross_pay", { label: "Gross pay" })),
         ]),
         sec("Deductions", [
-          ...half(money("tax"), money("social_security", { label: "Social security" })),
-          ...half(money("other_deductions", { label: "Other deductions" }), money("net_pay", { label: "Net pay" })),
+          ...half(moneyIn("tax"), moneyIn("social_security", { label: "Social security" })),
+          ...half(moneyIn("other_deductions", { label: "Other deductions" }), moneyIn("net_pay", { label: "Net pay" })),
           file("document", { label: "Payslip PDF" }),
         ]),
       ),
@@ -439,7 +442,7 @@ export const hr: SchemaTemplate = {
     {
       slug: "training_attendance", group: "Learning", singular: "Training attendance", plural: "Training attendance",
       fields: [
-        ...half(rel("training", "trainings", { required: true }), rel("employee", "employees", { required: true })),
+        ...half(rel("training", "trainings", { required: true }), rel("employee", "employees", { required: true, uniqueWith: ["training"] })),
         ...half(
           select("status", [ch("invited", C.gray), ch("registered", C.blue), ch("attended", C.green), ch("no_show", C.red, "No-show"), ch("completed", C.teal)], { default: "invited" }),
           date("completed_on", { label: "Completed on", conditions: [when("status", "_eq", "completed", "required")] }),

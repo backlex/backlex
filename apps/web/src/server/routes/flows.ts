@@ -12,6 +12,7 @@ import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { runFlowById } from "../services/flows";
 import { logActivity } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";
+import { readJsonOr } from "../lib/body";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.flows : sqlite.schema.flows;
@@ -375,7 +376,7 @@ export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         .where(and(eq(t.id, id), eq(t.tenantId, tenantId)))
         .limit(1);
       if (!own[0]) throw new AppError("NOT_FOUND", "Flow not found");
-      const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+      const body = (await readJsonOr(c.req, {})) as Record<string, unknown>;
       // runFlowById records its own `flow.run` activity row (so cron- and
       // webhook-triggered runs are logged too), including the failure message
       // in payload.error — don't double-log here.

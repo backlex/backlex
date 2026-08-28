@@ -78,6 +78,7 @@ import {
   ItemRow,
   TAGS,
 } from "../../services/items/schemas";
+import { readJson, readJsonOr } from "../../lib/body";
 
 export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
@@ -113,7 +114,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const auth = c.get("auth");
       const perm = c.get("permission");
       const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-      const data = (await c.req.json()) as Record<string, unknown>;
+      const data = (await readJson(c.req)) as Record<string, unknown>;
       const env: WriteEnv = {
         ctx,
         collection,
@@ -170,7 +171,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const perm = c.get("permission");
       const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
       const id = c.req.param("id");
-      const patch = (await c.req.json()) as Record<string, unknown>;
+      const patch = (await readJson(c.req)) as Record<string, unknown>;
       const env: WriteEnv = {
         ctx,
         collection,
@@ -324,7 +325,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantWhere = tenantFilter(collection, auth);
       const unpublish = c.req.query("unpublish") === "1";
       const archive = c.req.query("archive") === "1";
-      const body = (await c.req.json().catch(() => ({}))) as {
+      const body = (await readJsonOr(c.req, {})) as {
         publishAt?: string | null;
         unpublishAt?: string | null;
       };
@@ -771,7 +772,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // no content-type for the validator to match on. Same shape as the
       // publish route above. `field` is only ever matched against this
       // collection's own field list before it reaches any statement.
-      const body = (await c.req.json().catch(() => ({}))) as { field?: unknown };
+      const body = (await readJsonOr(c.req, {})) as { field?: unknown };
       const field = typeof body.field === "string" && body.field ? body.field : undefined;
       const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
       const targets = field
@@ -868,7 +869,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // content-type for the validator to match on. Same shape as
       // `order/normalize` above. `field` is matched against this collection's
       // own field list before it reaches any statement.
-      const body = (await c.req.json().catch(() => ({}))) as {
+      const body = (await readJsonOr(c.req, {})) as {
         field?: unknown;
         apply?: unknown;
       };
@@ -1070,7 +1071,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const perm = c.get("permission");
       const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
       const id = c.req.param("id");
-      const { field, value } = (await c.req.json()) as { field?: string; value?: string };
+      const { field, value } = (await readJson(c.req)) as { field?: string; value?: string };
       if (!field) throw new AppError("VALIDATION", "`field` is required");
       const valid = await verifyHashField(
         ctx,

@@ -64,6 +64,7 @@ import {
   signalChannel,
   signalScopeAllowsConditional,
 } from "../services/realtime-signal";
+import { readJson } from "../lib/body";
 
 /** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
 const REDIS_POLL_MS = 1_000;
@@ -639,7 +640,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!(await rateLimitOk(ctx.env, `pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS))) {
         throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
       }
-      let payload = await c.req.json();
+      let payload = await readJson(c.req);
       if (gate.collab) {
         // Collab channels never forward the raw body: validate the shape and
         // stamp identity + timestamp from the session so a member can't

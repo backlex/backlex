@@ -52,7 +52,7 @@ export const projects: SchemaTemplate = {
       slug: "project_members", group: "Organize", singular: "Project member", plural: "Project members", defaultSort: "-created_at",
       note: "Who works on which project, in what capacity and at what allocation.",
       fields: [
-        ...half(rel("project", "projects", { required: true }), rel("member", "members", { required: true })),
+        ...half(rel("project", "projects", { required: true }), rel("member", "members", { required: true, uniqueWith: ["project"] })),
         ...half(
           select("role", [ch("lead", C.purple), ch("member", C.blue), ch("viewer", C.gray)], { default: "member" }),
           pct("allocation", { label: "Allocation %" }),
@@ -129,7 +129,7 @@ export const projects: SchemaTemplate = {
       slug: "task_dependencies", group: "Work", singular: "Dependency", plural: "Dependencies", defaultSort: "-created_at",
       note: "Directed links between issues — `task` waits on `depends_on` when kind is blocks.",
       fields: [
-        ...half(rel("task", "issues", { required: true }), rel("depends_on", "issues", { required: true, label: "Depends on" })),
+        ...half(rel("task", "issues", { required: true }), rel("depends_on", "issues", { required: true, label: "Depends on", uniqueWith: ["task"] })),
         select("kind", [ch("blocks", C.red), ch("relates", C.blue)], { default: "blocks" }),
       ],
       samples: [{ task: { ref: "issues:1" }, depends_on: { ref: "issues:0" }, kind: "blocks" }],

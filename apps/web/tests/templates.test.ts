@@ -177,10 +177,19 @@ describe("schema template sample seeding", () => {
     expect(apply.status).toBe(201);
 
     // Computed column: order_items.line_total = qty * unit_price (seeded rows).
+    // Both sides are MONEY — the formula multiplies minor units, and the result
+    // is read back denominated. A bare number here would be the silent
+    // wrongness the money type exists to end: `8500` beside a total of `$85.00`.
+    type Money = { amount: number; currency: string };
     const oiRes = await h2.fetch("/api/items/order_items");
-    const oi = (await oiRes.json()) as { data: { qty: number; unit_price: number; line_total: number }[] };
+    const oi = (await oiRes.json()) as {
+      data: { qty: number; unit_price: Money; line_total: Money }[];
+    };
     expect(oi.data.length).toBeGreaterThan(0);
-    for (const row of oi.data) expect(row.line_total).toBe(row.qty * row.unit_price);
+    for (const row of oi.data) {
+      expect(row.line_total.amount).toBe(row.qty * row.unit_price.amount);
+      expect(row.line_total.currency).toBe(row.unit_price.currency);
+    }
 
     // Writing a computed column is rejected (read-only end-to-end).
     expect((await post("order_items", { qty: 1, unit_price: 5, line_total: 999 })).status).toBe(422);

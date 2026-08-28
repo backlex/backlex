@@ -101,6 +101,7 @@ export default defineConfig({
             { slug: "hashed-fields" },
             { slug: "field-conditions" },
             { slug: "field-validation" },
+            { slug: "unique-together" },
             { slug: "rollups" },
             { slug: "sequences" },
             { slug: "ordering" },

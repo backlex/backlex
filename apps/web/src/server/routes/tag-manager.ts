@@ -48,6 +48,7 @@ import {
   updateTrigger,
   updateVariable,
 } from "../services/tag-manager";
+import { readJsonOr } from "../lib/body";
 
 const TAGS = ["tag-manager"];
 
@@ -447,7 +448,7 @@ export const tagManagerRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const siteId = c.req.param("siteId");
       // A bodyless POST arrives with no content-type, so the body is optional
       // here and read defensively rather than through the validator.
-      const body = await c.req.json().catch(() => ({}));
+      const body = await readJsonOr(c.req, {});
       const data = await publishContainer(
         ctx,
         auth.tenantId ?? null,

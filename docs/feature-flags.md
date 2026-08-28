@@ -31,8 +31,22 @@ A flag is **on for a caller** when `enabled` **and** its targeting passes.
 ### Targeting
 
 - **`rollout`** — `0–100`. The caller is bucketed by a stable hash of
-  `userId|key`, so a user stays in or out of the rollout across calls. `0` = off,
-  `100` (or omitted) = everyone.
+  `identity|key`, so a caller stays in or out of the rollout across calls.
+  `0` = off, `100` (or omitted) = everyone.
+
+  The identity is `bucket` when you send one, else the caller's user id or
+  email. **A partial rollout can only split traffic that identifies itself.**
+  A logged-out visitor has no id, so pass one — the analytics visitor id is the
+  obvious choice, since a site running the tag already has it:
+
+  ```
+  GET /api/flags?bucket=<stable-visitor-id>
+  ```
+
+  Without it a logged-out caller falls **outside** every partial rollout. That
+  is deliberate: the alternative is re-deciding on each page load, and an A/B
+  test that flickers between reloads is worse than one that has not started.
+  `100` still reaches everyone, identified or not.
 - **`condition`** — a [permission-DSL](/docs/permissions/) condition matched against
   the **caller-context row** `{ user_id, email, roles, tenant_id }`. Examples:
 
@@ -52,7 +66,21 @@ GET /api/flags
 ```
 
 The map only ever reflects what the caller is allowed to see — `value` is
-withheld (`null`) when a flag is off. SDK:
+withheld (`null`) when a flag is off.
+
+:::caution[A flag value is public]
+`/api/flags` is anonymous-readable and answers `Access-Control-Allow-Origin: *`
+to any origin the workspace has not allowlisted, so your marketing page can
+read it — and so can anybody else who knows your workspace host. An **enabled**
+flag's `value` is world-readable. Ship copy, layout, limits and feature
+switches in it; never a key, a price you have not announced, or anything you
+would not put in your own page source.
+
+An allowlisted origin (a workspace `redirectUrls` host) still gets the
+credentialed answer, so a signed-in caller keeps its own evaluation.
+:::
+
+SDK:
 
 ```ts
 const backlex = createClient({ url, apiKey });

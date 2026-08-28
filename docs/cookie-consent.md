@@ -224,11 +224,22 @@ some browsers set by default; Global Privacy Control is neither, and in
 California it carries legal weight. Turning both off is a decision, so it is
 spelled out rather than inferred from a missing attribute.
 
-> The old `data-respect-dnt` attribute still works on the plain
-> `/api/analytics/script.js` install, and only there. It cannot work on the tag
-> manager's snippet at all: `document.currentScript` is `null` for a
-> dynamically injected script, so there is no element to read an attribute
-> from. That is why this is a policy field and not a second attribute.
+> The older `data-respect-dnt` attribute still works, and on **both** installs
+> — including the tag manager's, where this page used to say it could not.
+> Measured in a browser on 2026-08-27: `document.currentScript` is the script
+> element for a parser-inserted `<script defer src>`, which is exactly what
+> `Tag manager → Install` hands you, and it is set for a dynamically injected
+> classic script too. It is `null` for a **module** script and for code running
+> later from a callback — neither of which is the tag.
+>
+> An attribute only fails to arrive when a loader snippet builds the `<script>`
+> element itself and does not copy the attribute onto it, which is what the
+> GA-style async wrapper does.
+>
+> The attribute is still the weaker place for this decision, and that is why
+> the policy field exists: it is per-site rather than per-page, it survives
+> somebody re-pasting the snippet, and it covers GPC, which
+> `data-respect-dnt` — named for Do Not Track — deliberately does not.
 
 ## What the tracker is filed as, and what that now does
 

@@ -28,6 +28,7 @@
 //   snapport, `:hover`, `prefers-color-scheme`), not for a second look.
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useParams } from "react-router";
+import { useDocumentLang, useDocumentTitle } from "./use-document-title";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   bookPublicApi,
@@ -226,12 +227,37 @@ const useRailFade = (dayCount: number) => {
  *  explicitly keeps the "next two weeks" wording honest. */
 const WINDOW_DAYS = 14;
 
-const fmt = (iso: string, timeZone: string, opts: Intl.DateTimeFormatOptions): string => {
+/**
+ * A slot's printable date/time, in the RESOURCE's zone and the PAGE's language.
+ *
+ * `locale` is not optional decoration. This used to pass `undefined`, which
+ * means "the JS runtime's default locale" — and in a browser that is the
+ * BROWSER UI language, not `navigator.language` and not `Accept-Language`.
+ * Lingui boots from `navigator.language`, so the two disagree the moment a
+ * visitor asks for one language in a browser whose UI is another, which is an
+ * ordinary combination rather than a corner case.
+ *
+ * Measured on a live booking page on 2026-08-27 with `navigator.language =
+ * tr-TR` and the browser UI in English: `Intl.DateTimeFormat().resolvedOptions()
+ * .locale` reported `en-US`, and the page drew "BUGÜN 27" and "MON 31" in the
+ * SAME strip, under the heading "Thursday, August 27", with every other word
+ * on the page in Turkish and the clock in 12-hour AM/PM.
+ *
+ * So the language is passed in from the one place that already decided it.
+ */
+const fmt = (
+  iso: string,
+  timeZone: string,
+  opts: Intl.DateTimeFormatOptions,
+  locale: string,
+): string => {
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return "";
   try {
-    return new Intl.DateTimeFormat(undefined, { timeZone, ...opts }).format(new Date(ms));
+    return new Intl.DateTimeFormat(locale || undefined, { timeZone, ...opts }).format(new Date(ms));
   } catch {
+    // An unshipped or malformed tag: the runtime default is still better than
+    // nothing, and it is what this whole function used to do.
     return new Date(ms).toLocaleString();
   }
 };
@@ -408,7 +434,10 @@ function Skeleton() {
 
 export function Book() {
   const { token = "" } = useParams();
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
+  // The language the page is actually rendering in — see `fmt`. Read from
+  // Lingui rather than left to the JS runtime, because the two disagree.
+  const lang = i18n.locale;
   usePageStyles();
 
   const [data, setData] = useState<ApiPublicSlots | null>(null);
@@ -452,6 +481,8 @@ export function Book() {
     };
   }, [token]);
 
+  useDocumentTitle(data?.resource.name);
+  useDocumentLang(lang);
   const zone = data?.resource.timeZone ?? "UTC";
   const days = useMemo(() => groupByDay(data?.slots ?? [], zone), [data, zone]);
   const railRef = useRailFade(days.length);
@@ -574,7 +605,7 @@ export function Book() {
             <Trans>You are booked in.</Trans>
           </h1>
           <p className="bxb-sub" style={{ margin: 0 }}>
-            {fmt(done.start, zone, { dateStyle: "full", timeStyle: "short" })}
+            {fmt(done.start, zone, { dateStyle: "full", timeStyle: "short" }, lang)}
             {zonesDiffer ? ` (${zone})` : ""}
           </p>
           {data.resource.confirmationMessage && (
@@ -661,9 +692,9 @@ export function Book() {
                           ? t`Today`
                           : key === tomorrowKey
                             ? t`Tomorrow`
-                            : fmt(first, zone, { weekday: "short" })}
+                            : fmt(first, zone, { weekday: "short" }, lang)}
                       </span>
-                      <span className="bxb-chip-num">{fmt(first, zone, { day: "numeric" })}</span>
+                      <span className="bxb-chip-num">{fmt(first, zone, { day: "numeric" }, lang)}</span>
                       <span className="bxb-chip-free">
                         <Trans>{slots.length} free</Trans>
                       </span>
@@ -677,7 +708,7 @@ export function Book() {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
-                })}
+                }, lang)}
               </div>
 
               {parts.map(({ part, slots }) => (
@@ -699,7 +730,7 @@ export function Book() {
                         className="bxb-time"
                         onClick={() => setPicked(s)}
                       >
-                        {fmt(s.start, zone, { hour: "numeric", minute: "2-digit" })}
+                        {fmt(s.start, zone, { hour: "numeric", minute: "2-digit" }, lang)}
                         {data.resource.capacity > 1 && (
                           <small>
                             <Trans>{s.remaining} left</Trans>
@@ -722,7 +753,7 @@ export function Book() {
                     <Trans>Your appointment</Trans>
                   </p>
                   <div className="bxb-chosen-when">
-                    {fmt(picked.start, zone, { dateStyle: "long", timeStyle: "short" })}
+                    {fmt(picked.start, zone, { dateStyle: "long", timeStyle: "short" }, lang)}
                   </div>
                 </div>
                 <button type="button" className="bxb-btn bxb-btn-quiet" onClick={() => setPicked(null)}>
@@ -887,6 +918,8 @@ export function Book() {
  */
 export function ManageBooking() {
   const { token = "" } = useParams();
+  const { i18n } = useLingui();
+  const lang = i18n.locale;
   usePageStyles();
   const [view, setView] = useState<Awaited<ReturnType<typeof bookPublicApi.get>>["data"] | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -924,6 +957,8 @@ export function ManageBooking() {
     }
   };
 
+  useDocumentTitle(view?.resource.name);
+  useDocumentLang(lang);
   const zone = view?.resource.timeZone ?? "UTC";
 
   const look = view?.resource.settings ?? null;
@@ -976,7 +1011,7 @@ export function ManageBooking() {
               <Trans>Your appointment</Trans>
             </p>
             <div className="bxb-chosen-when">
-              {fmt(view.start, zone, { dateStyle: "long", timeStyle: "short" })}
+              {fmt(view.start, zone, { dateStyle: "long", timeStyle: "short" }, lang)}
             </div>
             <p className="bxb-note" style={{ marginTop: 3 }}>{zone}</p>
           </div>

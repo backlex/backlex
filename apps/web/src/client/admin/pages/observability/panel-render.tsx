@@ -7,7 +7,7 @@
 // chart-less embeds never download recharts.
 import { lazy, Suspense, type ReactNode } from "react";
 import { Skeleton } from "@backlex/ui/components/skeleton";
-import { detectSeries, isChartViz } from "./panel-series";
+import { detectSeries, isChartViz, seriesLabel } from "./panel-series";
 
 const PanelChart = lazy(() => import("./panel-charts"));
 
@@ -64,7 +64,7 @@ export function PanelBody({
           key={i}
           className={`flex justify-between pb-1 font-mono ${i < Math.min(rows.length, 8) - 1 ? "border-b border-border" : ""}`}
         >
-          <span>{String(r[labelCol ?? cols[0]!])}</span>
+          <span>{seriesLabel(r[labelCol ?? cols[0]!])}</span>
           <span className="tabular-nums">{numericCol ? Number(r[numericCol]).toLocaleString() : ""}</span>
         </div>
       ))}

@@ -20,7 +20,7 @@ made CI report drift on every Linux run over a single digit.
 
 Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
-**1124 resolved package versions across 21 distinct licences.**
+**1123 resolved package versions across 21 distinct licences.**
 
 > **10 packages have no usable licence field.** They are listed under `Unknown` below. Treat that as "unreviewed", not "permissive" — someone has to read the actual repository before shipping against it.
 
@@ -33,17 +33,15 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `tslib@1.14.1`
 - `tslib@2.8.1`
 
-### Apache-2.0 (62)
+### Apache-2.0 (60)
 
 - `@ably/msgpack-js@0.4.1`
-- `@ai-sdk/anthropic@3.0.79`
-- `@ai-sdk/gateway@3.0.120`
-- `@ai-sdk/google@3.0.102`
-- `@ai-sdk/openai@3.0.89`
-- `@ai-sdk/provider-utils@4.0.27`
-- `@ai-sdk/provider-utils@4.0.40`
-- `@ai-sdk/provider@3.0.10`
-- `@ai-sdk/provider@3.0.14`
+- `@ai-sdk/anthropic@4.0.45`
+- `@ai-sdk/gateway@4.0.68`
+- `@ai-sdk/google@4.0.57`
+- `@ai-sdk/openai@4.0.51`
+- `@ai-sdk/provider-utils@5.0.33`
+- `@ai-sdk/provider@4.0.8`
 - `@cf-wasm/photon@0.3.6`
 - `@img/sharp-darwin-arm64@0.35.3`
 - `@img/sharp-darwin-x64@0.35.3`
@@ -57,7 +55,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@img/sharp-linuxmusl-arm64@0.35.3`
 - `@img/sharp-linuxmusl-x64@0.35.3`
 - `@img/sharp-webcontainers-wasm32@0.35.3`
-- `@opentelemetry/api@1.9.1`
 - `@opentelemetry/semantic-conventions@1.40.0`
 - `@swc/helpers@0.5.23`
 - `@typescript/typescript-aix-ppc64@7.0.2`
@@ -81,8 +78,9 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@typescript/typescript-win32-arm64@7.0.2`
 - `@typescript/typescript-win32-x64@7.0.2`
 - `@vercel/oidc@3.2.0`
+- `@workflow/serde@4.1.0`
 - `ably@2.27.0`
-- `ai@6.0.191`
+- `ai@7.0.84`
 - `aria-query@5.3.2`
 - `axobject-query@4.1.0`
 - `baseline-browser-mapping@2.10.27`
@@ -207,7 +205,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@img/sharp-libvips-linuxmusl-arm64@1.3.2`
 - `@img/sharp-libvips-linuxmusl-x64@1.3.2`
 
-### MIT (936)
+### MIT (937)
 
 - `@asteasolutions/zod-to-openapi@8.5.0`
 - `@astrojs/check@0.9.10`
@@ -1082,6 +1080,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `uncrypto@0.1.3`
 - `undici-types@7.16.0`
 - `undici-types@7.19.2`
+- `undici@7.29.0`
 - `undici@8.10.0`
 - `unified@11.0.5`
 - `unifont@0.7.5`

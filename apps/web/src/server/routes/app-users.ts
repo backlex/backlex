@@ -7,7 +7,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { invalidateUserRoles } from "../services/permissions-cache";
+import { invalidateAppSessions, invalidateUserRoles } from "../services/permissions-cache";
 import { inviteAppUser, resolveAssignableRoles } from "../services/app-user-invites";
 import { removeAppUserFromAllOrgs } from "../services/app-orgs";
 import { defaultHook } from "../lib/openapi-router";
@@ -344,9 +344,26 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           })
           .where(and(eq(t.appUsers.id, appUserId), eq(t.appUsers.tenantId, tenantId)));
         if (body.status === "suspended") {
+          // Read the ids BEFORE deleting: the rows are what the access tokens
+          // name, and once they are gone there is nothing left to key the
+          // isolate-local eviction on.
+          //
+          // Deleting the rows used to be the whole of "suspend". It reached the
+          // two credentials that hit the database and missed the one the SDK
+          // actually sends — `verifyAccessToken` performs zero reads, so a
+          // suspended end-user kept full access for the token's remaining TTL
+          // while this handler's own docstring promised the opposite.
+          // `middleware/session.ts::appSessionLive` closes that; this line makes
+          // the cut immediate on the isolate serving the suspend instead of
+          // waiting out its 30s cache.
+          const doomed = (await (ctx.db as any)
+            .select({ id: t.appSessions.id })
+            .from(t.appSessions)
+            .where(eq(t.appSessions.userId, appUserId))) as Array<{ id: string }>;
           await (ctx.db as any)
             .delete(t.appSessions)
             .where(eq(t.appSessions.userId, appUserId));
+          invalidateAppSessions(doomed.map((r) => r.id));
         }
       }
       if (body.name !== undefined) {
@@ -460,6 +477,10 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             eq(t.appSessions.tenantId, tenantId),
           ),
         );
+      // The access tokens minted from this row stop here too, not only the
+      // refresh token the row itself is. Revoking one device is the operation
+      // this route exists for, and it was the one the JWT ignored.
+      invalidateAppSessions([sessionId]);
       return c.json({ ok: true });
     },
   )
@@ -505,7 +526,15 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       );
       await (ctx.db as any).delete(t.appUserRoles).where(eq(t.appUserRoles.appUserId, appUserId));
       invalidateUserRoles(tenantId, appUserId);
+      // Ids first, for the same reason suspend reads them first: they are what
+      // the outstanding access tokens name, and after the DELETE there is
+      // nothing left to evict by.
+      const doomed = (await (ctx.db as any)
+        .select({ id: t.appSessions.id })
+        .from(t.appSessions)
+        .where(eq(t.appSessions.userId, appUserId))) as Array<{ id: string }>;
       await (ctx.db as any).delete(t.appSessions).where(eq(t.appSessions.userId, appUserId));
+      invalidateAppSessions(doomed.map((r) => r.id));
       await (ctx.db as any).delete(accounts).where(eq(accounts.userId, appUserId));
       // `app_verifications` keys on the identifier (email/token), not a user id —
       // those short-lived rows just expire on their own.

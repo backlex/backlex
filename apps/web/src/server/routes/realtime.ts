@@ -2,12 +2,22 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
 import type { Context as HonoContext } from "hono";
-import { AppError, SYSTEM_ROLES, type Condition, normalizeCondition } from "@backlex/core";
+import {
+  AppError,
+  SYSTEM_ROLES,
+  type AuthSubject,
+  type Condition,
+  isAppError,
+  normalizeCondition,
+} from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { resolvePermission } from "../services/permissions";
+import { resolveOrgContext } from "../services/app-orgs";
+import { ORG_HEADER, resolveTenantAccess } from "../middleware/tenant";
+import { appSessionLive } from "../middleware/session";
 import {
   loadCollection,
   type CollectionRow,
@@ -75,8 +85,21 @@ const REDIS_HOLD_MS = 20_000;
 
 const ITEMS_PREFIX = "items:";
 const PRESENCE_PREFIX = "presence:";
-/** Comment-frame keep-alive so idle SSE connections survive proxy timeouts. */
+/** Comment-frame keep-alive so idle SSE connections survive proxy timeouts —
+ *  and, since the identity refresh rides the same timer, the ceiling on how
+ *  long a revoked subscriber keeps receiving rows. See `refreshGate`. */
 const HEARTBEAT_MS = 25_000;
+/** The live heartbeat period. Only tests move it, through
+ *  `__setRealtimeHeartbeatMs` — a held SSE stream has no other clock, so a spec
+ *  that has to observe a refresh would otherwise have to wait 25 real seconds. */
+let heartbeatMs: number = HEARTBEAT_MS;
+/** Test-only override for {@link HEARTBEAT_MS}. Pass `null` to restore the
+ *  production period. Named with the `__` prefix the other test hooks in this
+ *  codebase use (`services/permissions-cache.ts::__cacheStats`) so it reads as
+ *  what it is at every call site. */
+export const __setRealtimeHeartbeatMs = (ms: number | null): void => {
+  heartbeatMs = ms ?? HEARTBEAT_MS;
+};
 /** Hint the browser's EventSource reconnect delay (ms). */
 const RECONNECT_HINT_MS = 3_000;
 /** Backpressure bound for the in-process SSE outbound queue. A slow or dead
@@ -438,6 +461,208 @@ const gateForChannel = async (
 };
 
 /**
+ * ── Identity refresh on a held subscription ────────────────────────────────
+ *
+ * `gateForChannel` runs ONCE, at subscribe time, and its answer is frozen into
+ * the subscription's `meta`. `services/realtime-filter.ts` then evaluates every
+ * event against that frozen `authSubject` — and `packages/db/src/permission.ts`
+ * resolves `$org.id`, `$org.role` and `$user.orgs` straight out of it.
+ *
+ * So, before this: removing an end-user from an organization, demoting them,
+ * revoking the role that granted the read, or deleting the org itself did not
+ * stop an already-open SSE stream from delivering that org's rows. The REST
+ * path's staleness is bounded at 30s by the permission cache's TTL; this one
+ * was bounded only by how long the browser tab stayed open, which for a
+ * dashboard is hours. It was the one surface where a revoked B2B customer kept
+ * receiving live data with no ceiling at all.
+ *
+ * The refresh deliberately rides the EXISTING heartbeat rather than adding a
+ * timer of its own. The heartbeat already runs on every held stream, on both
+ * transports; coupling to it means the refresh cadence and the liveness cadence
+ * cannot drift apart, and it costs no extra wakeups on an idle connection.
+ */
+
+/** What a refresh concluded about a subscription that is currently open. */
+type GateRefresh =
+  /** Nothing that affects delivery moved — keep streaming. */
+  | { kind: "unchanged" }
+  /** The subscriber is still allowed on this channel, but with a different
+   *  identity or a different row scope. The new `meta` replaces the stored one. */
+  | { kind: "changed"; meta: SubscriptionMeta | undefined }
+  /** They can no longer subscribe at all. Close the stream. */
+  | { kind: "revoked"; reason: string };
+
+/**
+ * The parts of an `AuthSubject` that actually change what a subscriber
+ * receives: every variable the permission DSL can resolve out of it. Anything
+ * else on `auth` (request ids, API-key metering fields) is deliberately not
+ * compared — a difference there must not cost a stream a reconnect.
+ */
+const identityKey = (s: AuthSubject): string =>
+  JSON.stringify([
+    s.plane ?? "platform",
+    s.userId,
+    s.email,
+    [...s.roles].sort(),
+    s.tenantId ?? null,
+    s.access ?? "member",
+    s.orgId ?? null,
+    s.orgRole ?? null,
+    [...(s.orgIds ?? [])].sort(),
+  ]);
+
+/** Whether two gates deliver identically. `queryFilter` is re-parsed from the
+ *  same immutable `?filter=` on every refresh, so it can never differ and is
+ *  not compared; `conditions` and `fields` both can, and both do change what
+ *  goes on the wire. */
+const sameMeta = (
+  a: SubscriptionMeta | undefined,
+  b: SubscriptionMeta | undefined,
+): boolean => {
+  if (a === undefined || b === undefined) return a === b;
+  return (
+    identityKey(a.authSubject) === identityKey(b.authSubject) &&
+    JSON.stringify(a.conditions) === JSON.stringify(b.conditions) &&
+    JSON.stringify(a.fields) === JSON.stringify(b.fields)
+  );
+};
+
+/**
+ * Re-answer, from the database, both halves of "may this subscriber still
+ * receive this channel, and as whom?" — the workspace/organization context
+ * `tenantMiddleware` resolves at the top of a request, and then the channel
+ * gate itself.
+ *
+ * Every lookup underneath rides the same per-isolate caches the REST path uses
+ * (`services/permissions-cache.ts`, 30s TTL with explicit invalidation from the
+ * mutating routes), so a refresh on an unchanged subscription is a handful of
+ * map hits, and the isolate that served the revoke sees it on the very next
+ * beat.
+ *
+ * NOTE — what this does NOT re-check: whether an app-plane subscriber's
+ * `app_sessions` row is still live (owner suspended, session revoked). That
+ * authority is `middleware/session.ts::appSessionLive`, which is module-private
+ * there; duplicating its query here is exactly the drift this file's own
+ * comments warn about, so it is left to the follow-up that exports it.
+ */
+const refreshGate = async (
+  c: HonoContext<AppBindings>,
+  channel: string,
+  filterRaw: string | undefined,
+  current: SubscriptionMeta | undefined,
+): Promise<GateRefresh> => {
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  try {
+    let subject = auth;
+    if (auth.userId && auth.tenantId) {
+      if (auth.plane === "app") {
+        // Is the subscriber's SESSION still live? Asked before the org context,
+        // because a suspended or deleted end-user has no org context worth
+        // computing — and because this is the case a stream fails at worst:
+        // the REST path's staleness is bounded at 30s by the cache TTL, while
+        // an unrefreshed stream keeps delivering for as long as the tab is
+        // open, which for a dashboard is hours.
+        //
+        // `appSessionLive` is imported rather than reimplemented. The read path
+        // and the stream disagreeing about whether a credential is still valid
+        // is exactly the two-paths drift `services/realtime-filter.ts` was
+        // written to prevent for conditions.
+        //
+        // An impersonation subscriber is exempt for the same reason it is on
+        // the request path: its `sid` is the synthetic `imp:<row-id>` and names
+        // no `app_sessions` row. Its own liveness authority is the
+        // impersonation row, which `sessionMiddleware` re-reads per request —
+        // and a held stream re-enters this function through that middleware, so
+        // an ended impersonation already closes it.
+        const sid = auth.appSessionId ?? null;
+        if (sid && !sid.startsWith("imp:")) {
+          const live = await appSessionLive(
+            { db: ctx.db, dialect: ctx.dialect },
+            sid,
+          );
+          if (!live) {
+            return {
+              kind: "revoked",
+              reason: "this sign-in has been revoked or the account suspended",
+            };
+          }
+        }
+        // The app plane's org context. `resolveOrgContext` throws FORBIDDEN
+        // when an `X-Backlex-Org` the caller sent is no longer one of their
+        // memberships — which is precisely the "removed from the org" case, and
+        // the reason this is inside the try rather than beside it.
+        const org = await resolveOrgContext(
+          { db: ctx.db, dialect: ctx.dialect },
+          auth.tenantId,
+          auth.userId,
+          {
+            requestedOrg: c.req.header(ORG_HEADER) ?? null,
+            appSessionId: auth.appSessionId ?? null,
+          },
+        );
+        subject = {
+          ...auth,
+          orgId: org.orgId,
+          orgRole: org.orgRole,
+          orgIds: org.orgIds,
+        };
+      } else {
+        // The control plane's workspace access — the same call `tenantMiddleware`
+        // makes, so a membership removed or a role revoked mid-stream is seen
+        // here the same way it would be on the next REST request.
+        const access = await resolveTenantAccess(
+          ctx.db,
+          ctx.dialect,
+          auth.tenantId,
+          auth.userId,
+          {
+            apiKeyRoleId: auth.apiKeyRoleId ?? null,
+            apiKeyId: auth.apiKeyId ?? null,
+            env: ctx.env,
+            email: auth.email,
+            plane: auth.plane,
+          },
+        );
+        // `roles: null` is "refused", which is a different answer from "no
+        // roles" — see `resolveTenantAccess`. Only the first one closes a stream.
+        const roles = access.roles;
+        if (!roles) {
+          return {
+            kind: "revoked",
+            reason: "no longer a member of this workspace",
+          };
+        }
+        subject = { ...auth, roles, access: access.access };
+      }
+    }
+    const next = await gateForChannel(ctx, subject, channel, false, filterRaw);
+    return sameMeta(current, next.meta)
+      ? { kind: "unchanged" }
+      : { kind: "changed", meta: next.meta };
+  } catch (err) {
+    // A gate that says "no" is a revocation and must close the stream. Anything
+    // else — a DB blip, a driver timeout — is infrastructure, and closing every
+    // open stream on the instance because one query hiccuped would turn a blip
+    // into a reconnect stampede. Keep the current gate and try again on the next
+    // beat; the ceiling on staleness is then two heartbeats instead of one.
+    if (
+      isAppError(err) &&
+      (err.code === "FORBIDDEN" ||
+        err.code === "UNAUTHORIZED" ||
+        err.code === "NOT_FOUND")
+    ) {
+      return { kind: "revoked", reason: err.message };
+    }
+    console.warn(
+      `[realtime] identity refresh failed on "${channel}" — keeping the current gate:`,
+      err,
+    );
+    return { kind: "unchanged" };
+  }
+};
+
+/**
  * Gate every requested channel, then sign one Ably TokenRequest scoped to
  * exactly those channels. Shared by `/collab-token` (collab plane only) and
  * `/ably-token` (collab + the signal data plane), so the two can't drift on
@@ -529,13 +754,22 @@ const boundedEnqueue = (
 
 /** Drain `queue` to the SSE stream until `isDone()` flips, parking on `setWake`
  *  between flushes. Shared by the Bun (in-process) and Workers (DO-bridge)
- *  subscribe paths. */
+ *  subscribe paths.
+ *
+ *  `farewell` is consulted once, after the loop exits, and returns a reason
+ *  string when the SERVER is the one ending the stream — today, when the
+ *  heartbeat's identity refresh finds the subscriber may no longer read the
+ *  channel. It is written here rather than pushed onto `queue` because the loop
+ *  re-checks `isDone()` before draining, so anything enqueued in the same tick
+ *  that flips it would be dropped. A client-side abort returns null and nothing
+ *  is written: there is nobody left to tell. */
 const pumpSSE = async (
   stream: SSEStreamingApi,
   channel: string,
   queue: QueueItem[],
   isDone: () => boolean,
   setWake: (resolve: (() => void) | null) => void,
+  farewell?: () => string | null,
 ): Promise<void> => {
   await stream.writeSSE({ event: "ready", data: channel, retry: RECONNECT_HINT_MS });
   while (!isDone()) {
@@ -555,6 +789,15 @@ const pumpSSE = async (
     }
     if (isDone()) break;
     await new Promise<void>((resolve) => setWake(resolve));
+  }
+  const reason = farewell?.();
+  if (reason) {
+    try {
+      await stream.writeSSE({ event: "revoked", data: reason });
+    } catch {
+      // The socket went away first — the client is already gone, which is the
+      // outcome the frame was trying to bring about.
+    }
   }
 };
 
@@ -1149,9 +1392,34 @@ export const openRealtimeSubscribe = async (
           }
           wakeUp();
         });
+        // Heartbeat + identity refresh (see `refreshGate`). On this transport
+        // the gate lives INSIDE the Durable Object — `meta` was base64'd into
+        // the `/subscribe` URL once and there is no channel back to amend it —
+        // so a subscription whose scope has narrowed is closed rather than
+        // patched. The browser's EventSource reconnects, the new request runs
+        // `gateForChannel` from scratch, and it comes back with the scope the
+        // subscriber actually has now. Closing is also the only honest answer
+        // to a full revocation, which is what the local path does too.
+        let refreshing = false;
+        let revokedReason: string | null = null;
         const hb = setInterval(() => {
           enqueue({ kind: "ping" });
-        }, HEARTBEAT_MS);
+          if (refreshing || done) return;
+          refreshing = true;
+          void refreshGate(c, channel, filterRaw, gate.meta)
+            .then((verdict) => {
+              if (done || verdict.kind === "unchanged") return;
+              revokedReason =
+                verdict.kind === "revoked"
+                  ? verdict.reason
+                  : "your access to this channel changed — reconnect to resume";
+              done = true;
+              wakeUp();
+            })
+            .finally(() => {
+              refreshing = false;
+            });
+        }, heartbeatMs);
         // Accept only after listeners are wired so DO-side replay frames
         // (queued during the `/subscribe` fetch) aren't dispatched into the void.
         ws.accept();
@@ -1164,6 +1432,7 @@ export const openRealtimeSubscribe = async (
             (r) => {
               wake = r;
             },
+            () => revokedReason,
           );
         } finally {
           clearInterval(hb);
@@ -1181,6 +1450,12 @@ export const openRealtimeSubscribe = async (
     // `Last-Event-ID` replay come from the stream ids. Presence rosters need
     // shared mutable membership we don't track here, so presence channels still
     // fall through to the unsupported path below.
+    //
+    // This transport needs no identity refresh: it carries no heartbeat because
+    // it holds nothing open — every long-poll closes at `REDIS_HOLD_MS` (or as
+    // soon as it delivers a batch) and the client's reconnect runs
+    // `gateForChannel` again from scratch. Staleness here is already bounded by
+    // the hold window, which is shorter than the heartbeat period.
     if (redisRealtimeEnabled(ctx.env) && !gate.presence) {
       return streamSSE(c, async (stream) => {
         // Capture the resume position BEFORE announcing ready: resume from the
@@ -1271,9 +1546,35 @@ export const openRealtimeSubscribe = async (
         aborted = true;
         wakeUp();
       });
+      // Heartbeat + identity refresh (see `refreshGate`). The fan-out reads
+      // `sub.meta` afresh for every event (`services/events.ts::renderFor`), so
+      // on this transport a narrowed scope is applied by swapping the stored
+      // gate in place — no reconnect, and the very next published event is
+      // already filtered against the subscriber's current identity. Only a
+      // subscriber who may no longer read the channel AT ALL is disconnected.
+      let refreshing = false;
+      let revokedReason: string | null = null;
       const hb = setInterval(() => {
         enqueue({ kind: "ping" });
-      }, HEARTBEAT_MS);
+        if (refreshing || aborted) return;
+        refreshing = true;
+        void refreshGate(c, channel, filterRaw, sub.meta)
+          .then((verdict) => {
+            if (aborted) return;
+            if (verdict.kind === "changed") {
+              sub.meta = verdict.meta;
+              return;
+            }
+            if (verdict.kind === "revoked") {
+              revokedReason = verdict.reason;
+              aborted = true;
+              wakeUp();
+            }
+          })
+          .finally(() => {
+            refreshing = false;
+          });
+      }, heartbeatMs);
       if (since > 0 && since < snapshot) replayLocal(channel, sub, since, snapshot);
       const leavePresence =
         gate.presence && gate.meta?.authSubject.userId
@@ -1291,6 +1592,7 @@ export const openRealtimeSubscribe = async (
           (r) => {
             wake = r;
           },
+          () => revokedReason,
         );
       } finally {
         clearInterval(hb);

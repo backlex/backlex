@@ -26,6 +26,7 @@ import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
 import { planeFirewall } from "./middleware/plane-firewall";
+import { impersonationReadOnlyGate } from "./middleware/impersonation-readonly";
 import { accountRoutes } from "./routes/account";
 import { activityRoutes } from "./routes/activity";
 import { tracesRoutes } from "./routes/traces";
@@ -933,6 +934,11 @@ export const createApp = (env: Env) => {
   // runs, so one table answers for ~110 mount prefixes instead of five route
   // files remembering to. Defaults to `warn`; see the file header.
   app.use("*", timed("plane", skipOnProbe(planeFirewall)));
+  // Right behind it, for the same reason and with the same shape: `auth`
+  // already carries `impersonationReadOnly` by here, and asking once in front
+  // of every route is what stops "read-only" from meaning "read-only on
+  // collections". `permission.ts` keeps its own check — see the file header.
+  app.use("*", timed("imprw", skipOnProbe(impersonationReadOnlyGate)));
 
   // Mark when all pre-route middleware (ctx + CORS + session + tenant) is done,
   // so `premw` vs `route` (= total − premw) can be split in Server-Timing.

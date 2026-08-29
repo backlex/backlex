@@ -71,8 +71,22 @@ export interface PlatformIdentity {
 export interface AppIdentity {
   id: string;
   email: string;
-  /** The app-plane access token the SDK would send. */
+  /**
+   * The app-plane ACCESS token — the short-lived JWT the SDK actually puts in
+   * `Authorization`.
+   *
+   * This used to be the sign-in response's `token` field, which is the LEGACY
+   * alias for `refreshToken`: the opaque `app_sessions.token`. That credential
+   * has always been resolved by `findAppSession`, a real database read that
+   * has always checked the row and the owner's status — so any spec driving it
+   * would have shown a green revocation test even with the JWT's liveness
+   * check deleted outright. Every security assertion built on this fixture was
+   * therefore aimed at the one credential that was never broken.
+   */
   token: string;
+  /** The opaque `app_sessions.token`, for the refresh endpoint and for a spec
+   *  that specifically wants the database-backed credential. */
+  refreshToken: string;
   /** Stateless bearer caller. `org` sets `X-Backlex-Org` on every request. */
   fetch: Caller;
   bearer: (org?: string) => Caller;
@@ -193,14 +207,27 @@ export const buildTwoPlaneCast = async (): Promise<TwoPlaneCast> => {
       json("POST", { token: data.token, password: END_USER_PASSWORD }),
     );
     expect(accepted.status, `accept end-user invite for ${email}`).toBe(200);
-    const session = (await accepted.json()) as { token: string };
+    const session = (await accepted.json()) as {
+      token: string;
+      accessToken?: string;
+    };
+    // Prefer the JWT. `token` is the legacy alias for `refreshToken` and is
+    // kept only as a fallback for a surface that has not started returning
+    // `accessToken` — falling back silently is what made this fixture test the
+    // wrong credential, so the fallback is named rather than implicit.
+    const access = session.accessToken ?? session.token;
+    expect(
+      session.accessToken,
+      "the app-plane accept response should carry an accessToken; without it this fixture drives the opaque refresh token and every revocation assertion built on it is vacuous",
+    ).toBeDefined();
 
     return {
       id: data.id,
       email: data.email,
-      token: session.token,
-      fetch: bearerFor(session.token),
-      bearer: (org?: string) => bearerFor(session.token, org),
+      token: access,
+      refreshToken: session.token,
+      fetch: bearerFor(access),
+      bearer: (org?: string) => bearerFor(access, org),
     };
   };
 

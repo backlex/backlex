@@ -4878,9 +4878,22 @@ export const impersonations = pgTable(
  * and nothing beyond it, which is the honest description; the alternative is
  * keys that can only ever live in env.
  *
- * INSTANCE-level, not per workspace: the JWKS is one document at one URL and a
- * token's `iss` names the instance. A per-workspace key would need a
- * per-workspace JWKS URL, which is a different feature.
+ * ## `tenant_id`, and what it does NOT yet do
+ *
+ * Every key written so far is instance-level: the JWKS is one document at one
+ * URL and a token's `iss` names the instance. On a deployment holding more than
+ * one workspace that means the same key pair and the same issuer sign every
+ * workspace's app-plane access tokens, so a relying party verifying by JWKS and
+ * issuer accepts workspace A's token as workspace B's unless it independently
+ * checks the `tid` claim — which is not authenticated on its own. Rotation is
+ * all-or-nothing across every workspace for the same reason.
+ *
+ * The column exists so a key can eventually SAY which workspace it belongs to.
+ * NULL means "the instance's own key", which is what every row written before
+ * this column existed is, and what every row written today still is: nothing
+ * selects a key by tenant yet. Making the readers tenant-aware without
+ * per-workspace issuance and per-workspace JWKS endpoints would break token
+ * verification for existing tenants, so that is a separate, deliberate step.
  */
 export const signingKeys = pgTable(
   "signing_keys",
@@ -4897,6 +4910,10 @@ export const signingKeys = pgTable(
     publicKey: text("public_key").notNull(),
     /** `standby` | `in_use` | `previously_used` | `revoked`. */
     status: text("status").notNull().default("standby"),
+    /** The workspace this key belongs to, or NULL for the instance's own key.
+     *  Nullable and unbackfilled on purpose — see the table comment. No reader
+     *  filters on it yet. */
+    tenantId: text("tenant_id"),
     note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     activatedAt: timestamp("activated_at", { withTimezone: true }),

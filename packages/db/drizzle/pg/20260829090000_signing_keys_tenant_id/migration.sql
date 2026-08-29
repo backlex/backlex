@@ -1,0 +1,29 @@
+-- A signing key can now say which workspace it belongs to.
+--
+-- `signing_keys` had no tenant column at all, so on a deployment holding more
+-- than one workspace the same key pair and the same issuer sign every
+-- workspace's app-plane access tokens. A relying party that verifies by JWKS
+-- and issuer therefore accepts workspace A's token as workspace B's unless it
+-- independently checks the `tid` claim, which nothing authenticates on its own.
+-- Rotation is all-or-nothing across every workspace for the same reason.
+--
+-- NULLABLE, and deliberately NOT back-filled. NULL means "the instance's own
+-- key", which is exactly what every existing row is — the feature has only ever
+-- minted instance-level keys. Guessing a tenant for an existing key would
+-- silently re-scope live credentials, and there is no evidence in the table to
+-- guess from, so the honest migration adds the column and stops.
+--
+-- This step deliberately does NOT change how keys are SELECTED at runtime.
+-- `services/signing-keys.ts` still resolves the single `in_use` row for the
+-- whole instance and `/.well-known/jwks.json` is still one document. Making the
+-- readers tenant-aware without per-workspace issuance and per-workspace JWKS
+-- endpoints would leave every existing tenant's key unmatched and break
+-- verification of tokens that are already in the wild. Adding the column while
+-- every reader stays tenant-blind is a no-op at runtime, which is what makes it
+-- reviewable on its own.
+--
+-- Replayable: `IF NOT EXISTS`, because the boot-time runner in
+-- `packages/db/src/auto-migrate.ts` re-applies every migration file whenever
+-- the `__backlex_migrations` ledger does not already name it.
+
+ALTER TABLE "signing_keys" ADD COLUMN IF NOT EXISTS "tenant_id" text;

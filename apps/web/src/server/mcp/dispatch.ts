@@ -13,10 +13,9 @@ import {
   checkToolCall,
   filterByAllowlist,
   guardsFromAuth,
-  mergeGuards,
   type KeyGuards,
 } from "./guards";
-import { loadRoleMcpGuards } from "../services/roles/mcp-guards";
+import { resolveCallerMcpGuards } from "../services/roles/mcp-guards";
 import { auditMcp, auditMcpResource } from "./audit";
 import { resolveKind } from "./kind";
 import {
@@ -110,21 +109,11 @@ const resolveEffectiveGuards = async (
     apiKeyMcpTools?: string[] | null;
     apiKeyMcpReadOnly?: boolean;
   },
-): Promise<KeyGuards> => {
-  const keyGuards = guardsFromAuth(auth);
-  const dbCtx = honoCtx.get("ctx") as
-    | { db?: unknown; dialect?: "pg" | "sqlite" }
-    | undefined;
-  if (!dbCtx?.db || !dbCtx.dialect) return keyGuards;
-  const role = await loadRoleMcpGuards(
-    { db: dbCtx.db, dialect: dbCtx.dialect },
-    {
-      userId: auth.userId ?? null,
-      apiKeyRoleId: auth.apiKeyRoleId ?? null,
-    },
+): Promise<KeyGuards> =>
+  resolveCallerMcpGuards(
+    honoCtx.get("ctx") as { db: unknown; dialect: "pg" | "sqlite" } | undefined,
+    auth,
   );
-  return mergeGuards(keyGuards, role);
-};
 
 /** First text block of a tool result — the error message when `isError` is set.
  *  Clipped, because the audit row wants a reason, not a payload dump. */

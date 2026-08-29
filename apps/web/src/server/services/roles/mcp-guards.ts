@@ -12,7 +12,13 @@
  */
 import { and, eq } from "drizzle-orm";
 import { SYSTEM_ROLES } from "@backlex/core";
-import { combineRoleGuards, type RoleGuards } from "../../mcp/guards";
+import {
+  combineRoleGuards,
+  guardsFromAuth,
+  mergeGuards,
+  type KeyGuards,
+  type RoleGuards,
+} from "../../mcp/guards";
 import { tableFor } from "./tables";
 
 export interface RoleGuardCtx {
@@ -84,4 +90,32 @@ export const loadRoleMcpGuards = async (
     console.error("[mcp-guards] role lookup failed; falling back to open", e);
     return UNRESTRICTED;
   }
+};
+
+/**
+ * The caller's **effective** MCP guards: what their credential restricts folded
+ * together with what their roles do. Both only ever narrow.
+ *
+ * Lives here rather than in `mcp/guards.ts` because it needs the role lookup,
+ * and it is shared rather than duplicated because two surfaces must not be able
+ * to disagree about what bounds the same caller: the MCP dispatcher answering a
+ * direct `tools/call`, and the agent runner executing a tool on the caller's
+ * behalf. When those drifted apart, the second one enforced nothing.
+ */
+export const resolveCallerMcpGuards = async (
+  ctx: RoleGuardCtx | null | undefined,
+  auth: {
+    userId?: string | null;
+    apiKeyRoleId?: string | null;
+    apiKeyMcpTools?: string[] | null;
+    apiKeyMcpReadOnly?: boolean;
+  },
+): Promise<KeyGuards> => {
+  const keyGuards = guardsFromAuth(auth);
+  if (!ctx?.db || !ctx.dialect) return keyGuards;
+  const role = await loadRoleMcpGuards(ctx, {
+    userId: auth.userId ?? null,
+    apiKeyRoleId: auth.apiKeyRoleId ?? null,
+  });
+  return mergeGuards(keyGuards, role);
 };

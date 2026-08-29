@@ -19,14 +19,17 @@
  * can never exceed the starting USER's permissions — that is the guarantee that
  * makes agent tool calls safe.
  *
- * It is a guarantee about the user, not about the API key: a turn re-enters as
- * the user, so per-key MCP guards (`mcpTools`, `mcpReadOnly`) do not narrow an
- * agent's inner tool calls. The agent's own tool allow-list is that boundary.
- * Said out loud because the docs used to claim otherwise — see the caution in
+ * Re-entering as the user answers "whose permissions", but not "under which MCP
+ * guards" — a run token carries no API key, and by the time this runs the
+ * calling credential is gone. So the caller's effective guards are stamped onto
+ * the payload at enqueue time and enforced from there. Without that, a
+ * read-only credential (including an OAuth token granted `mcp:read` but not
+ * `mcp:write`) could write through an agent by asking it to. See the caution in
  * `docs/agents.md` and `tests/agent-guard-contract.test.ts`.
  */
 import type { Hono } from "hono";
 import { signAgentRunToken } from "../../lib/jwt";
+import type { KeyGuards } from "../../mcp/guards";
 import { makeDetachedFetch } from "../../mcp/internal-fetch";
 import type { Ctx } from "../../context";
 import { enqueueJob } from "../jobs";
@@ -41,12 +44,27 @@ export interface AgentTurnPayload {
   agentId: string;
   message: string;
   runAs: { userId: string; tenantId: string };
+  /** The caller's effective MCP guards, stamped from the enqueuing request.
+   *  A client never supplies this either — it is read off the server-resolved
+   *  `c.var.auth`, so it cannot be widened from outside. */
+  guards: KeyGuards;
   /** Origin used to build sub-request URLs. Only the URL is derived from it —
    *  the sub-fetch never leaves the process. */
   origin: string;
 }
 
 export const AGENT_TURN_JOB = "agent.turn" as const;
+
+const isKeyGuards = (g: unknown): g is KeyGuards => {
+  const v = g as Partial<KeyGuards> | null;
+  return Boolean(
+    v &&
+      typeof v === "object" &&
+      typeof v.readOnly === "boolean" &&
+      (v.allowlist === null || Array.isArray(v.allowlist)) &&
+      (v.roleAllowlist == null || Array.isArray(v.roleAllowlist)),
+  );
+};
 
 const isAgentTurnPayload = (p: unknown): p is AgentTurnPayload => {
   const v = p as Partial<AgentTurnPayload> | null;
@@ -58,7 +76,12 @@ const isAgentTurnPayload = (p: unknown): p is AgentTurnPayload => {
       typeof v.message === "string" &&
       v.runAs &&
       typeof v.runAs.userId === "string" &&
-      typeof v.runAs.tenantId === "string",
+      typeof v.runAs.tenantId === "string" &&
+      // A payload written before guards were carried has none. Refusing it
+      // rather than defaulting to unrestricted is the safe direction: the only
+      // such rows are queued turns spanning the deploy, and a refused turn is
+      // visible on its `agent_runs` row while a silently-unguarded one is not.
+      isKeyGuards(v.guards),
   );
 };
 
@@ -97,7 +120,7 @@ export const runQueuedAgentTurn = async (
   if (!isAgentTurnPayload(payload)) {
     return { ok: false, reason: "invalid agent.turn payload" };
   }
-  const { runId, threadId, agentId, message, runAs, origin } = payload;
+  const { runId, threadId, agentId, message, runAs, guards, origin } = payload;
 
   const run = await getRun(ctx, runId, runAs.tenantId);
   if (!run) return { ok: false, reason: "run not found" };
@@ -132,7 +155,7 @@ export const runQueuedAgentTurn = async (
       runId,
       message,
       fetchInternal,
-      auth: { userId: runAs.userId },
+      auth: { userId: runAs.userId, guards },
     });
     return { ok: true };
   } catch (e) {

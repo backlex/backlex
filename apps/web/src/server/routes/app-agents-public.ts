@@ -231,7 +231,14 @@ export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
       tenantId,
       threadId: thread.id,
       message,
-      auth: { userId: appUserId },
+      auth: {
+        userId: appUserId,
+        // App-plane end users hold no API key and no admin-plane role, so
+        // there is nothing to narrow: MCP guards are an admin-plane concept.
+        // Stated rather than defaulted, because "unrestricted" has to be a
+        // decision someone made and not a field somebody forgot.
+        guards: { allowlist: null, roleAllowlist: null, readOnly: false },
+      },
       // The identity the agent's tool calls inherit. This is the line that
       // makes the whole surface safe: the turn re-enters the API as the END
       // USER, so the permission DSL narrows it exactly as it narrows them.

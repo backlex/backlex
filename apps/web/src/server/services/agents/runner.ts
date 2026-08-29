@@ -21,6 +21,8 @@
 import { callClaudeTools, type AiEffort } from "../../mcp/ai-client";
 import { allTools } from "../../mcp/tools";
 import type { McpTool, ToolCtx } from "../../mcp/types";
+import { checkToolCall, filterByAllowlist, type KeyGuards } from "../../mcp/guards";
+import { resolveKind } from "../../mcp/kind";
 import type { ModelMessage } from "ai";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai-config";
 import { publishEvent } from "../events";
@@ -63,8 +65,15 @@ export interface RunTurnInput {
    *  route from the original request (carries the caller's session / key), or
    *  by the background worker from a short-lived agent-run token. */
   fetchInternal: (path: string, init?: RequestInit) => Promise<Response>;
-  /** Auth used to log activity + author the user message. */
-  auth: { userId: string | null };
+  /** Auth used to log activity + author the user message, plus the MCP guards
+   *  the turn runs under.
+   *
+   *  `guards` is resolved by the CALLER — at the seam where the credential that
+   *  asked for the turn is still in hand — and carried from there, including
+   *  across the job queue. It cannot be recomputed in here: the async path runs
+   *  long after the calling key is gone, and re-deriving from `userId` alone
+   *  would silently widen a turn that a read-only token started. */
+  auth: { userId: string | null; guards: KeyGuards };
 }
 
 export interface RunStep {
@@ -239,13 +248,40 @@ export const runAgentTurn = async (
   const agent = await getAgent(ctx, agentId, tenantId);
   if (!agent) throw new Error("agent not found");
 
-  // The agent's allow-list, resolved against the live registry. Unknown names
-  // (a tool removed since the agent was authored) are simply dropped. Native
-  // tool names are sanitized (dots → underscores) with a map back to the MCP
-  // tool the model's call resolves to.
-  const tools = allTools.filter((t) => agent.tools.includes(t.name));
+  // The MCP guards the turn runs under — the caller's, captured where their
+  // credential still existed. See `RunTurnInput.auth`.
+  const guards = input.auth.guards;
+
+  // The agent's allow-list, resolved against the live registry, then narrowed
+  // by the caller's role allowlist. Unknown names (a tool removed since the
+  // agent was authored) are simply dropped. Filtering the CATALOG as well as
+  // gating the call mirrors `tools/list`: a model that is never shown a tool
+  // it may not call doesn't waste a step discovering that. The call-time check
+  // below still runs — a model can invent a name it was never offered, and a
+  // poisoned tool result is a documented way to make it try.
+  const agentTools = allTools.filter((t) => agent.tools.includes(t.name));
+  const permittedNames = new Set(
+    filterByAllowlist(agentTools.map((t) => t.name), guards),
+  );
+  const tools = agentTools.filter((t) => permittedNames.has(t.name));
+  // Narrowing must not be silent. An API key minted with the default
+  // `mcpTools: []` (default-deny) can still reach the REST message route, and
+  // an agent that quietly answers from memory because its whole toolset was
+  // filtered away looks exactly like an agent that chose not to use its tools.
+  // Telling the model is what turns that into an answer the reader can act on.
+  const withheld = agentTools.length - tools.length;
   const { defs: toolDefs, byNative } = buildToolMap(tools);
   let system = buildSystem(agent, tools.length > 0);
+  if (withheld > 0) {
+    system +=
+      `\n\n${withheld} of this agent's ${agentTools.length} tools are not available to the ` +
+      "person who asked, because their credential or role restricts which tools they may " +
+      "reach. Answer with what you can, and say plainly which part you could not do and " +
+      "that it was a permission limit — do not silently omit it.";
+    console.warn(
+      `[agent:${agentId}] ${withheld}/${agentTools.length} tools withheld by the caller's MCP guards`,
+    );
+  }
 
   // Live progress channel — clients subscribe to `agent:thread:<id>` to watch
   // steps stream in. Best-effort: a publish failure never breaks the turn.
@@ -282,7 +318,7 @@ export const runAgentTurn = async (
     fetchInternal,
     mode: "admin",
     env: ctx.env,
-    guards: { allowlist: null, readOnly: false },
+    guards,
     // An agent turn is the heaviest AI spender in the product and has no
     // request of its own to be billed against, which is exactly why the ledger
     // counts generations rather than requests.
@@ -446,15 +482,25 @@ export const runAgentTurn = async (
             isError: false,
           };
         } else {
-          try {
-            observation = renderObservation(
-              await mcpTool.handler(call.args, toolCtx),
-            );
-          } catch (e) {
-            observation = {
-              text: e instanceof Error ? e.message : String(e),
-              isError: true,
-            };
+          // Same gate the MCP dispatcher applies to a direct `tools/call`, on
+          // the tool's resolved kind so a read-only caller can't mutate through
+          // an agent. Surfaced as an error OBSERVATION rather than thrown: the
+          // model can read it and pick a different approach, which is what it
+          // does on the MCP surface too.
+          const verdict = checkToolCall(mcpTool.name, resolveKind(mcpTool), guards);
+          if (!verdict.ok) {
+            observation = { text: `${verdict.code}: ${verdict.message}`, isError: true };
+          } else {
+            try {
+              observation = renderObservation(
+                await mcpTool.handler(call.args, toolCtx),
+              );
+            } catch (e) {
+              observation = {
+                text: e instanceof Error ? e.message : String(e),
+                isError: true,
+              };
+            }
           }
         }
         called.add(key);

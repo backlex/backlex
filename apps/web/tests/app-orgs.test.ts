@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { buildTwoPlaneCast, type TwoPlaneCast } from "./fixtures/two-plane-cast";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
@@ -941,5 +942,246 @@ describe("app-orgs — org-scoped role grants", () => {
     const after = await bearerFor(h, alice.token, acme)("/api/items/reports");
     // She's no longer a member, so the header names an org she can't act in.
     expect(after.status).toBe(403);
+  });
+});
+
+/**
+ * ── PHASE 0: the PLANE boundary around organizations ────────────────────────
+ *
+ * Everything above this line runs inside ONE plane. The admin CRUD suite drives
+ * a control-plane cookie at `/api/app-orgs`; the self-service suite drives an
+ * app-plane bearer at `/api/t/:slug/orgs`; the scoping suites vary the org, not
+ * the credential. So the suite has 38 tests about organizations and not one of
+ * them ever pointed a credential at the surface built for the OTHER plane —
+ * which is exactly the invariant a two-plane product cannot afford to leave
+ * unexecuted.
+ *
+ * This block pins TODAY's answers, including the ones that are only accidentally
+ * right. It changes no runtime behaviour, and it is deliberately written so that
+ * Phase 1's fix reads as a contract change in the diff rather than as a quiet
+ * test edit.
+ */
+describe("app-orgs — the plane boundary", () => {
+  let cast: TwoPlaneCast;
+  /** endUserA's own org in workspace A. Their membership makes it selectable. */
+  let alphaId = "";
+  /** An org in workspace A that endUserA is NOT a member of, minted through the
+   *  operator surface with no `ownerAppUserId` so it has no members at all. */
+  let foreignId = "";
+  /** endUserB's own org, in workspace B. Its presence is what makes the
+   *  cross-workspace assertions below non-vacuous: the two lists differ. */
+  let betaId = "";
+
+  beforeAll(async () => {
+    cast = await buildTwoPlaneCast();
+
+    const alpha = await cast.endUserA.fetch(
+      `/api/t/${cast.tenantA.slug}/orgs`,
+      json("POST", { name: "Alpha" }),
+    );
+    expect(alpha.status, "endUserA starts their own org in workspace A").toBe(201);
+    alphaId = ((await alpha.json()) as { data: { id: string } }).data.id;
+
+    const beta = await cast.endUserB.fetch(
+      `/api/t/${cast.tenantB.slug}/orgs`,
+      json("POST", { name: "Beta" }),
+    );
+    expect(beta.status, "endUserB starts their own org in workspace B").toBe(201);
+    betaId = ((await beta.json()) as { data: { id: string } }).data.id;
+
+    // ownerA is `admin` in workspace A but only `authenticated` in `default`,
+    // and `default` is where a freshly signed-in session lands. The operator
+    // surface reads the ACTIVE workspace, so the header is not decoration here:
+    // without it this call is a 403 from A's own administrator.
+    const foreign = await cast.ownerA.fetch("/api/app-orgs", {
+      ...json("POST", { name: "Foreign" }),
+      headers: { "content-type": "application/json", "X-Backlex-Tenant": cast.tenantA.slug },
+    });
+    expect(foreign.status, "the operator surface mints an org with no members").toBe(201);
+    foreignId = ((await foreign.json()) as { data: { id: string } }).data.id;
+  });
+  afterAll(() => cast.cleanup());
+
+  test("a platform cookie is not a credential at the end-user org surface", async () => {
+    // The positive control first, or the 401 below proves nothing: this identity
+    // is a real, signed-in, genuinely privileged operator on its own surface.
+    //
+    // The workspace header is load-bearing and NOT boilerplate. The harness has
+    // one cookie jar, so `backlex-tenant` survives an identity switch — and RBAC
+    // roles are loaded per workspace, so an instance operator whose jar happens
+    // to point at someone else's workspace holds NO roles there and is refused
+    // by the very gate this test needs to see pass. Naming the workspace makes
+    // the control independent of whoever called last.
+    const onItsOwnSurface = await cast.operator.fetch("/api/app-orgs", {
+      headers: { "X-Backlex-Tenant": cast.defaultTenant.slug },
+    });
+    expect(onItsOwnSurface.status, "the operator reaches the operator surface").toBe(200);
+
+    for (const slug of [cast.defaultTenant.slug, cast.tenantA.slug]) {
+      const res = await cast.operator.fetch(`/api/t/${slug}/orgs`);
+      expect(res.status, `platform cookie at /api/t/${slug}/orgs`).toBe(401);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe("UNAUTHORIZED");
+    }
+
+    // This one is a REAL check rather than an accident: `requireAppUser` in
+    // routes/app-orgs-public.ts tests `auth.plane !== "app"` explicitly. It is
+    // the shape the rest of the app is missing, not an example of the gap.
+  });
+
+  test("an app-plane bearer is refused at the operator org surface", async () => {
+    // Positive control: the same token, same instant, reaching the surface it IS
+    // entitled to. Without this the 403s below would also be satisfied by a
+    // token that had simply expired.
+    const onItsOwnSurface = await cast.endUserA.fetch(`/api/t/${cast.tenantA.slug}/orgs`);
+    expect(onItsOwnSurface.status, "endUserA reaches the end-user surface").toBe(200);
+
+    for (const [label, init] of [
+      ["list", undefined],
+      ["create", json("POST", { name: "Smuggled" })],
+    ] as const) {
+      const res = await cast.endUserA.fetch("/api/app-orgs", init);
+      expect(res.status, `app-plane bearer ${label} at /api/app-orgs`).toBe(403);
+      const body = (await res.json()) as { error: { code: string; message: string } };
+      expect(body.error.code).toBe("FORBIDDEN");
+      // KNOWN GAP — the message is the tell. `/api/app-orgs` carries
+      // `requireUser` + a local `requireAdmin` that reads `auth.roles`, and an
+      // app-plane identity is refused only because `tenantMiddleware` leaves
+      // that array EMPTY for `plane === "app"`. Nothing on this route ever asks
+      // which plane the caller is on. Populate `auth.roles` for app-plane
+      // identities for any reason — an org-scoped role bundle is one line away
+      // from doing exactly that — and this 403 becomes a 200. PHASE 1 replaces
+      // the accident with `requirePlatformMw`, at which point this expectation
+      // should be re-read: the status stays 403, but the message will name the
+      // plane rather than the role.
+      expect(body.error.message).toBe("Admin role required");
+    }
+  });
+
+  test("an app-plane bearer cannot reach another workspace's orgs", async () => {
+    // Positive control: B's own surface answers, and answers with B's data —
+    // so a 403 on A below is about the workspace, not about a dead session.
+    const own = await cast.endUserB.fetch(`/api/t/${cast.tenantB.slug}/orgs`);
+    expect(own.status).toBe(200);
+    expect(await ids(own.clone()), "endUserB sees Beta and only Beta").toEqual([betaId]);
+
+    const acrossPlainly = await cast.endUserB.fetch(`/api/t/${cast.tenantA.slug}/orgs`);
+    expect(acrossPlainly.status, "endUserB at workspace A's org surface").toBe(403);
+    expect(
+      ((await acrossPlainly.json()) as { error: { message: string } }).error.message,
+    ).toBe("Session belongs to a different workspace");
+
+    // Naming A in the header as well changes nothing, which is the point: the
+    // session's own workspace is what `requireAppUser` compares the path slug
+    // against, and the header never entered the comparison.
+    const acrossWithHeader = await cast.endUserB.fetch(`/api/t/${cast.tenantA.slug}/orgs`, {
+      headers: { "X-Backlex-Tenant": cast.tenantA.slug },
+    });
+    expect(acrossWithHeader.status, "X-Backlex-Tenant does not unlock workspace A").toBe(403);
+  });
+
+  test("X-Backlex-Tenant is IGNORED for an app-plane session, not merely absent", async () => {
+    // The assertions above are consistent with the header being honoured and
+    // then failing some later check. These two are not.
+    //
+    // (a) Point the header at workspace A while asking B's own surface. If the
+    //     header were honoured, `tenantMiddleware` would set the active tenant
+    //     to A, `requireAppUser` would find A !== B and answer 403. It answers
+    //     200 with B's rows, so the header was discarded before that point.
+    const pointedAway = await cast.endUserB.fetch(`/api/t/${cast.tenantB.slug}/orgs`, {
+      headers: { "X-Backlex-Tenant": cast.tenantA.slug },
+    });
+    expect(pointedAway.status).toBe(200);
+    expect(await ids(pointedAway.clone()), "still workspace B's orgs").toEqual([betaId]);
+
+    // (b) A value that names no workspace at all. `tenantMiddleware` refuses an
+    //     unresolvable header with NOT_FOUND rather than falling back — for the
+    //     PLATFORM plane. The app plane never reaches that refusal because its
+    //     tenant is already pinned, so the same nonsense is simply dropped.
+    const garbage = "no-such-workspace-" + Date.now();
+    const appPlane = await cast.endUserB.fetch(`/api/t/${cast.tenantB.slug}/orgs`, {
+      headers: { "X-Backlex-Tenant": garbage },
+    });
+    expect(appPlane.status, "an app-plane session ignores an unresolvable header").toBe(200);
+
+    const platformPlane = await cast.ownerA.fetch("/api/tenants", {
+      headers: { "X-Backlex-Tenant": garbage },
+    });
+    expect(platformPlane.status, "the SAME header is fatal on the platform plane").toBe(404);
+    // The contrast is the proof. One header value, two planes, two outcomes:
+    // the plane decides whether it is read at all.
+  });
+
+  test("X-Backlex-Org naming an org you do not belong to is refused, not downgraded", async () => {
+    // docs/app-organizations.md promises the header "must name an org the caller
+    // is a member of". Silently resolving to some other org instead would be the
+    // house's worst failure shape — a 200 that answered for the wrong subject.
+    //
+    // Positive control: the header DOES select, so the refusal below is a
+    // refusal and not the header being ignored.
+    const selected = await cast.endUserA.bearer(alphaId)(`/api/t/${cast.tenantA.slug}/orgs`);
+    expect(selected.status).toBe(200);
+    const echo = (await selected.json()) as { active: { orgId: string | null; role: string | null } };
+    expect(echo.active.orgId, "the header set the acting org").toBe(alphaId);
+    expect(echo.active.role).toBe("owner");
+
+    // `foreignId` is a real org, in the caller's OWN workspace, that they are
+    // simply not a member of — the case a "does this exist?" check would wave
+    // through and a membership check catches.
+    const foreign = await cast.endUserA.bearer(foreignId)(`/api/t/${cast.tenantA.slug}/orgs`);
+    expect(foreign.status, "a real org the caller is not a member of").toBe(403);
+    expect(((await foreign.json()) as { error: { message: string } }).error.message).toBe(
+      "Not a member of the organization named by X-Backlex-Org",
+    );
+
+    // And an org in ANOTHER workspace, which must not even be findable: the slug
+    // lookup behind the header is tenant-scoped, so this is the same 403 rather
+    // than a distinguishable "no such org".
+    const crossTenant = await cast.endUserA.bearer(betaId)(`/api/t/${cast.tenantA.slug}/orgs`);
+    expect(crossTenant.status, "workspace B's org, named from workspace A").toBe(403);
+
+    // A value naming nothing at all answers identically, so the header is not an
+    // existence oracle for org ids.
+    const nothing = await cast.endUserA.bearer("no-such-org")(`/api/t/${cast.tenantA.slug}/orgs`);
+    expect(nothing.status).toBe(403);
+  });
+
+  test("KNOWN GAP (Phase 2): X-Backlex-Org is not in the CORS allowHeaders list", async () => {
+    // A spec cannot run a browser's preflight, but it can run the request a
+    // browser would send and read what the app answers — which is the same CORS
+    // config object, exercised rather than re-read. Hono's `cors()` echoes the
+    // configured `allowHeaders` verbatim into `Access-Control-Allow-Headers`
+    // (it only mirrors the request's own list when `allowHeaders` is unset), so
+    // this response header IS `app.ts`'s array.
+    const preflight = await cast.h.app.request(`/api/t/${cast.tenantA.slug}/orgs`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://localhost:5173",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "X-Backlex-Org",
+      },
+    });
+    expect(preflight.status, "the CORS middleware short-circuits the preflight").toBe(204);
+    const allowed = (preflight.headers.get("access-control-allow-headers") ?? "")
+      .split(",")
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean);
+
+    // Positive control on the ASSERTION itself: the list is non-empty and the
+    // sibling header is in it. Without this, a missing or malformed response
+    // header would satisfy the absence check below vacuously.
+    expect(allowed.length, "the app declares an explicit allowHeaders list").toBeGreaterThan(0);
+    expect(allowed, "the workspace header IS allowed").toContain("x-backlex-tenant");
+    expect(allowed).toContain("authorization");
+
+    // THE GAP. A cross-origin browser SDK sending `X-Backlex-Org` — which is
+    // exactly what docs/client-sdks.md and `app.orgs.use(...)` tell it to do —
+    // fails its preflight, so the org header only ever works same-origin or
+    // from a server. `apps/web/tests/sdk-header-parity.test.ts` asserts the SDK
+    // SENDS it; nothing asserted the server would accept it.
+    //
+    // PHASE 2 adds "X-Backlex-Org" to the allowHeaders array in app.ts and
+    // flips exactly this one expectation to `.toContain`.
+    expect(allowed, "PHASE 2 flips this line").not.toContain("x-backlex-org");
   });
 });

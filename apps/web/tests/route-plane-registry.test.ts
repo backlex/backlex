@@ -1,0 +1,141 @@
+/**
+ * Every mounted `/api` route declares which auth plane it belongs to.
+ *
+ * This spec does not assert that the declarations are ENFORCED — nothing
+ * enforces them yet, deliberately. It asserts they are COMPLETE, which is the
+ * property that decays silently: a new route file gets mounted, nobody thinks
+ * about the plane, and the boundary quietly acquires another hole. Today
+ * `requirePlatformMw` sits on a handful of route files out of ~110 mounts, and
+ * the plane boundary everywhere else rests on `tenantMiddleware` leaving
+ * `auth.roles` empty for `plane === "app"` — an accident one line from being
+ * undone.
+ *
+ * The registry is built from the real app, not from a hand-written list of
+ * paths, so it cannot drift from what is actually served.
+ */
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { makeHarness, type TestHarness } from "./setup";
+import { ROUTE_PLANES, planeFor, type RoutePlane } from "../src/server/lib/route-planes";
+
+/** Paths served by the app that are deliberately outside the /api surface. */
+const NON_API = (path: string): boolean =>
+  path === "/health" ||
+  path === "/health/ready" ||
+  path.startsWith("/embed") ||
+  path.startsWith("/f/") ||
+  path.startsWith("/b/") ||
+  path.startsWith("/book/") ||
+  path === "/*" ||
+  path === "/";
+
+describe("route-plane registry: every /api mount declares a plane", () => {
+  let h: TestHarness;
+  let paths: string[];
+
+  beforeAll(() => {
+    h = makeHarness();
+    // Hono records one entry per registered handler, including the `use("*")`
+    // middleware chain. Middleware entries are the bare wildcards, and a
+    // route's own path is what we care about.
+    const seen = new Set<string>();
+    for (const r of (h.app as unknown as { routes: { path: string }[] }).routes) {
+      if (r.path === "*" || r.path === "/*") continue;
+      seen.add(r.path);
+    }
+    paths = [...seen].sort();
+  });
+
+  afterAll(() => h.cleanup());
+
+  test("the app actually registered routes (a vacuous pass would look identical)", () => {
+    // Without this, every assertion below is trivially true over an empty list
+    // — the repo's own documented failure mode, where a matcher that matches
+    // nothing reports success.
+    expect(paths.length).toBeGreaterThan(200);
+    expect(paths.some((p) => p.startsWith("/api/tenants"))).toBe(true);
+    expect(paths.some((p) => p.startsWith("/api/t/"))).toBe(true);
+  });
+
+  test("no /api route falls through to the catch-all entry unannounced", () => {
+    // `/api` is the last-resort entry (openapiRoutes). A route that resolves to
+    // it without BEING it means somebody mounted a new prefix and never said
+    // which plane it serves — the exact drift this file exists to catch.
+    const orphans = paths.filter((p) => {
+      if (NON_API(p)) return false;
+      if (!p.startsWith("/api") && !p.startsWith("/.well-known") && !p.startsWith("/mcp") && !p.startsWith("/s3")) {
+        return false;
+      }
+      const entry = planeFor(p);
+      if (!entry) return true;
+      if (entry.prefix !== "/api") return false;
+      // Genuinely served by openapiRoutes — a short path directly under /api.
+      return p.split("/").filter(Boolean).length > 2;
+    });
+
+    expect(
+      orphans,
+      `these paths have no plane declaration — add them to apps/web/src/server/lib/route-planes.ts:\n${orphans.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  test("every declared prefix is actually mounted (the registry has no fiction in it)", () => {
+    // The reverse direction. A prefix that names nothing is a dead declaration
+    // that will read as coverage forever.
+    const dead = ROUTE_PLANES.filter((entry) => {
+      if (entry.prefix === "/api") return false; // the fallback, always "live"
+      return !paths.some((p) => p === entry.prefix || p.startsWith(`${entry.prefix}/`));
+    }).map((e) => e.prefix);
+
+    expect(dead, `declared but never mounted:\n${dead.join("\n")}`).toEqual([]);
+  });
+
+  test("the control-plane surfaces this audit turns on are declared platform", () => {
+    const mustBePlatform = [
+      "/api/tenants",
+      "/api/api-keys",
+      "/api/users",
+      "/api/roles",
+      "/api/permissions",
+      "/api/activity",
+      "/api/admin/settings",
+      "/api/app-users",
+      "/api/app-orgs",
+    ];
+    for (const p of mustBePlatform) {
+      expect(planeFor(p)?.plane, `${p} must be declared platform`).toBe("platform" satisfies RoutePlane);
+    }
+  });
+
+  test("the end-user surface is declared app, and its longest-prefix beats /api", () => {
+    expect(planeFor("/api/t/default/auth/sign-in/email")?.plane).toBe("app");
+    expect(planeFor("/api/t/default/orgs")?.plane).toBe("app");
+  });
+
+  test("a lookalike prefix does not inherit a neighbour's plane", () => {
+    // `/api/webhook` (inbound, public) and `/api/webhooks` (outbound registry)
+    // differ by one character and by their whole threat model.
+    expect(planeFor("/api/webhook/abc")?.prefix).toBe("/api/webhook");
+    expect(planeFor("/api/webhooks")?.prefix).toBe("/api/webhooks");
+    // Segment-boundary matching, not raw startsWith.
+    expect(planeFor("/api/tenants-lookalike")?.prefix).not.toBe("/api/tenants");
+  });
+
+  test("every `either` that is only `either` by omission says what has to be decided", () => {
+    // `either` is the escape hatch. One granted without a reason is how a
+    // table like this stops meaning anything.
+    const unexplained = ROUTE_PLANES.filter(
+      (e) => e.plane === "either" && !e.note && !e.revisit,
+    ).map((e) => e.prefix);
+    expect(unexplained, `\`either\` with no justification:\n${unexplained.join("\n")}`).toEqual([]);
+  });
+
+  test("no prefix is declared twice", () => {
+    const seen = new Set<string>();
+    const dupes: string[] = [];
+    for (const e of ROUTE_PLANES) {
+      if (seen.has(e.prefix)) dupes.push(e.prefix);
+      seen.add(e.prefix);
+    }
+    expect(dupes).toEqual([]);
+  });
+});

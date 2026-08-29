@@ -564,7 +564,7 @@ describe("write-condition check — what it actually fences", () => {
      * held is replayable by anyone holding a conditioned `update` grant — and
      * "before an admin moved this row into your org" is exactly such a value.
      */
-    test("BUG: an end-user reverts a row back into the org it was moved out of", async () => {
+    test("a revert obeys the same condition the item route does", async () => {
       // The admin creates the row in the victim's org, then moves it into Acme.
       // That second write is what records a snapshot holding `org_id = victim`.
       const created = await h.fetch(
@@ -588,14 +588,17 @@ describe("write-condition check — what it actually fences", () => {
         .toBe(403);
 
       const reverted = await asAlice()(`/api/revisions/${list[0]!.id}/revert`, json("POST"));
-      // SHOULD BE: 403 — the revert produces a row the caller's own condition
-      // forbids, and the write core would have said so.
-      expect(reverted.status).toBe(200);
+      // The revert produces a row the caller's own condition forbids, and the
+      // write core says so — the same 403 the item route gives, because it is
+      // now the same code path. The revert used to build its own UPDATE from a
+      // four-field private `loadCollection`, and that private loader is what
+      // made the private statement look reasonable.
+      expect(reverted.status).toBe(403);
 
       const after = await h.fetch(`/api/items/tickets/${id}`);
-      expect((await dataOf(after)).org_id).toBe(victim);
-      // Gone from Acme, and alice can no longer see what she just did.
-      expect((await asAlice()(`/api/items/tickets/${id}`)).status).toBe(404);
+      expect((await dataOf(after)).org_id).toBe(acme);
+      // Still hers, and still visible to her — a refused revert wrote nothing.
+      expect((await asAlice()(`/api/items/tickets/${id}`)).status).toBe(200);
     });
   });
 
@@ -625,7 +628,7 @@ describe("write-condition check — what it actually fences", () => {
      * is the value the field's own docstring reserves for "an internal,
      * non-user-initiated write" — this one is user-initiated in full.
      */
-    test("BUG: a staged org move lands on the live row when the expiry fires", async () => {
+    test("a staged org move is refused on the way in, so the sweep has nothing to publish", async () => {
       const created = await h.fetch(
         "/api/items/articles",
         json("POST", { title: "staged", org_id: acme }),
@@ -634,12 +637,14 @@ describe("write-condition check — what it actually fences", () => {
       expect((await h.fetch(`/api/items/articles/${id}/publish`, { method: "POST" })).status)
         .toBe(200);
 
-      // The staged save is accepted with a 200 and the check never runs.
+      // The staged save is REFUSED on the way in. Checking here rather than at
+      // apply time is what makes the answer independent of who applies it: a
+      // patch that could not be written live cannot be staged either, so the
+      // cron sweep has nothing bad to publish and its `conditions: null` stays
+      // honest.
       const staged = await asAlice()(`/api/items/articles/${id}`, json("PATCH", { org_id: victim }));
-      // SHOULD BE: 403 here, or at the very least a check when it is applied.
-      expect(staged.status).toBe(200);
-      expect((await dataOf(staged))._staged).toBe(true);
-      // The live row has not moved yet.
+      expect(staged.status).toBe(403);
+      // Nothing was staged, and the live row never moved.
       expect((await dataOf(await h.fetch(`/api/items/articles/${id}`))).org_id).toBe(acme);
 
       // An operator schedules an ordinary expiry — nothing about this action
@@ -659,8 +664,9 @@ describe("write-condition check — what it actually fences", () => {
       await unpublishDueItems(await buildContext(h.env));
 
       const after = await dataOf(await h.fetch(`/api/items/articles/${id}`));
-      // SHOULD BE: `acme` — the sweep applied a patch nobody ever judged.
-      expect(after.org_id).toBe(victim);
+      // The sweep still runs and still unpublishes — only the org move it used
+      // to carry is gone, because it was never allowed to be staged.
+      expect(after.org_id).toBe(acme);
       expect(after._status).toBe("draft");
     });
   });

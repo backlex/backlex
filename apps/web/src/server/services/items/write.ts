@@ -885,6 +885,22 @@ export const performUpdate = async (
     !opts?.live &&
     (beforeRow as Record<string, unknown>)._status === "published"
   ) {
+    // Judged HERE, on the way in, and not only at the live UPDATE below.
+    //
+    // This branch returns before `assertWriteConditions` ever runs, so a staged
+    // patch used to be stored unjudged. Manual publish re-checks it — the
+    // publish route threads the caller's real conditions — but the cron sweep
+    // applies the SAME patch with `conditions: null`, justified in
+    // `scheduled-publish.ts` by "the scheduler is publishing what an operator
+    // already staged and approved". That premise holds only while `update` is
+    // an operator-only verb, and a collection that grants it to an end-user
+    // makes it false: the staged patch is then authored by someone whose
+    // permission nobody re-asks about.
+    //
+    // Checking on the way in is the fix that does not depend on who applies it
+    // later. A patch that could not be written live cannot be staged either.
+    assertWriteConditions(env, perm, { ...beforeRow, ...patch }, "update");
+
     // Canonical staged shape: base fields post-hash from `patch`; localized
     // fields as their full `{locale: value}` map (splitLocalized with a null
     // write-locale routes maps back into the sidecar on apply); a locale-less

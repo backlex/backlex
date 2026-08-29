@@ -1,58 +1,26 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
-import { type FieldDef } from "@backlex/db";
-import * as pg from "@backlex/db/pg";
-import * as sqlite from "@backlex/db/sqlite";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { resolvePermission } from "../services/permissions";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import {
-  getRevision,
-  listRevisions,
-  recordRevision,
-} from "../services/revisions";
-import { and, eq } from "drizzle-orm";
+import { getRevision, listRevisions } from "../services/revisions";
+import { loadCollection } from "../services/items/collection-loader";
+import { performUpdate, type WriteEnv } from "../services/items/write";
+import { elapsedMs, requestMeta } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";
 
-const collectionsTable = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
-
-interface CollectionRow {
-  slug: string;
-  physicalTable: string;
-  fields: FieldDef[];
-  ownerScoped: boolean;
-}
-
-const loadCollection = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  tenantId: string | null | undefined,
-  slug: string,
-): Promise<CollectionRow> => {
-  if (!tenantId) {
-    throw new AppError(
-      "UNAUTHORIZED",
-      "Active tenant required to access collections",
-    );
-  }
-  const t = collectionsTable(ctx.dialect);
-  const rows = await (ctx.db as any)
-    .select()
-    .from(t)
-    .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
-    .limit(1);
-  if (!rows[0]) throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
-  const r = rows[0] as Record<string, unknown>;
-  return {
-    slug: r.slug as string,
-    physicalTable: (r.physicalTable ?? r.physical_table) as string,
-    fields: r.fields as FieldDef[],
-    ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
-  };
-};
+/*
+ * `loadCollection` is the shared one from `services/items/collection-loader`.
+ *
+ * This file used to carry its own four-field copy — slug, physicalTable,
+ * fields, ownerScoped — which was enough for the hand-rolled `UPDATE … WHERE
+ * id = ?` the revert once built and not enough for anything else. That local
+ * copy is precisely how the revert path drifted away from the write core it
+ * should always have been part of: a private loader made the private statement
+ * look reasonable.
+ */
 
 const collectionFromParam = (c: Context<AppBindings>) =>
   c.req.param("collection" as never) as string;
@@ -154,45 +122,66 @@ export const revisionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
 
       const collection = await loadCollection(ctx, auth.tenantId, rev.collection);
-      const table = collection.physicalTable;
       const snapshot = rev.snapshot;
 
-      // Re-write the snapshot fields back. id stays the same.
-      const sets: SQL[] = [];
-      const now = ctx.dialect === "pg" ? new Date() : Date.now();
-      sets.push(sql`${sql.identifier("updated_at")} = ${now}`);
-      for (const f of collection.fields) {
-        const v = snapshot[f.name];
-        if (v === undefined) continue;
-        const serialized =
-          ctx.dialect === "sqlite"
-            ? f.type === "json"
-              ? JSON.stringify(v)
-              : f.type === "boolean"
-                ? v
-                  ? 1
-                  : 0
-                : v
-            : v;
-        sets.push(sql`${sql.identifier(f.name)} = ${serialized}`);
-      }
-
-      const exec =
-        ctx.dialect === "pg"
-          ? (q: SQL) => (ctx.db as any).execute(q)
-          : (q: SQL) => (ctx.db as any).run(q);
-      await exec(
-        sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} WHERE ${sql.identifier("id")} = ${rev.itemId}`,
-      );
-
-      // Record a new revision documenting the revert.
-      await recordRevision(ctx, {
-        collection: rev.collection,
-        itemId: rev.itemId,
-        tenantId: auth.tenantId ?? null,
-        snapshot,
+      // Routed through `performUpdate` rather than hand-rolled.
+      //
+      // This used to build its own `UPDATE … SET … WHERE id = ?` from the
+      // snapshot, having checked only that the caller holds `update` on the
+      // collection AT ALL. It applied neither `perm.whereSql` nor the condition
+      // behind it, and named no tenant in the WHERE — so a revision snapshot,
+      // which is by definition a `beforeRow`, made every value the column ever
+      // held replayable by anyone with the verb. Verified before the fix: an
+      // app-plane end-user reverted a row back into the organization an admin
+      // had moved it out of, while the identical change through PATCH was 403.
+      //
+      // A revert is an update. Sending it through the same core is what makes
+      // it obey the same rule — and it also picks up the field allow-list, the
+      // sync hooks, the FTS and vector reindex, the realtime event and the
+      // revision record, none of which the hand-rolled statement did.
+      //
+      // That last one replaces the explicit `recordRevision` this used to make,
+      // and the entry is better: the core records `beforeRow` — the state the
+      // row was in JUST BEFORE the revert — so the revert is itself undoable.
+      // The old call recorded the snapshot being reverted TO, which was already
+      // in the history and made the revert look like it changed nothing.
+      //
+      // The snapshot is passed as an ordinary patch, so `validateBody` sees it.
+      // A snapshot naming a field the schema has since dropped is refused with
+      // the same message any other stale payload gets, which is a better answer
+      // than writing a column that no longer means what it did.
+      const env: WriteEnv = {
+        ctx,
+        collection,
         userId: auth.userId,
+        tenantId: auth.tenantId,
+        roles: auth.roles,
+        email: auth.email ?? null,
+        orgId: auth.orgId ?? null,
+        orgRole: auth.orgRole ?? null,
+        orgIds: auth.orgIds ?? [],
+        meta: requestMeta(c.req.raw),
+        impersonatedBy: auth.impersonatedBy ?? null,
+        impersonationReadOnly: auth.impersonationReadOnly ?? false,
+        durationMs: () => elapsedMs(c),
+        locale: null,
+        readFields: new Set<string>(),
+      };
+      // Only the fields the collection still has, and only ones the snapshot
+      // actually carries — `performUpdate` treats an explicit `undefined` as a
+      // clear, which would turn a revert into a wipe of everything the snapshot
+      // predates.
+      const patch: Record<string, unknown> = {};
+      for (const f of collection.fields) {
+        if (snapshot[f.name] === undefined) continue;
+        patch[f.name] = snapshot[f.name];
+      }
+      const res = await performUpdate(env, rev.itemId, patch, {
+        whereSql: perm.whereSql,
+        fields: perm.fields,
+        conditions: perm.conditions,
       });
+      for (const fx of res.sideEffects) await fx();
 
       return c.json({ ok: true });
     },

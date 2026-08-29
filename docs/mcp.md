@@ -64,9 +64,52 @@ matter what the request declared:
 }
 ```
 
-`extensions` is declared empty rather than omitted, so a client can tell
-"supports none" from "predates the field". No extension
-(Tasks, MCP Apps, EMA) is implemented yet.
+`extensions` is declared rather than omitted, so a client can tell "supports
+none" from "predates the field". One extension is implemented — see below. MCP
+Apps and Enterprise Managed Authorization are not.
+
+### The Tasks extension
+
+`io.modelcontextprotocol/tasks` gives a client a **durable handle** for work
+that outlives a connection. A client opts in per request, in its
+`_meta` capabilities:
+
+```jsonc
+"io.modelcontextprotocol/clientCapabilities": {
+  "extensions": { "io.modelcontextprotocol/tasks": {} }
+}
+```
+
+**This server has no task table, and that is the design.** The extension is the
+protocol shape of two records that were already durable and tenant-scoped:
+
+| handle | backed by |
+|---|---|
+| `run:<id>` | `agent_runs` — one agent turn |
+| `job:<id>` | the durable job queue |
+
+The id carries its own kind, so `tasks/get` knows which store to read without a
+lookup table and a third handle can be added later without a migration.
+
+| method | behaviour |
+|---|---|
+| `tasks/get` | current status, plus `result` on `completed` or `error` on `failed` |
+| `tasks/update` | acknowledged. Nothing here surfaces `inputRequests`, and the spec's instruction for that case is to acknowledge and ignore unknown keys — refusing would strand a conforming client that always sends them |
+| `tasks/cancel` | **cooperative**: acknowledged always, honoured for jobs. An agent turn is deliberately not cancellable — its tool calls have already happened, which is the same reason a turn is never replayed |
+
+Status mapping: `queued`/`running`/`pending`/`active` → `working`,
+`done`/`succeeded` → `completed`, `error`/`failed`/`dead_letter` → `failed`,
+`cancelled` → `cancelled`. `dead_letter` reports as `failed` rather than
+`cancelled` because a job that exhausted its retries has failed, and
+`cancelled` would imply somebody chose it.
+
+Two rules worth knowing:
+
+- **A task is never handed to a client that did not ask for one.** A
+  `CreateTaskResult` is a different result shape; a client that has not opted in
+  reads it as a failed call or, worse, as the answer.
+- **An unknown task id and another workspace's task id answer identically.**
+  Otherwise a task id would be a probe for whether someone else's run exists.
 
 ### Cache hints
 
@@ -590,10 +633,14 @@ res = (client.from_("orders").query()
   neither: holding a stream open per client is the wrong shape for a Worker
   isolate, and the reactive SSE surface already covers the use case on its own
   endpoint. `GET /mcp` is `405`, which is what the revision prescribes.
-- **No extensions.** Tasks, MCP Apps and Enterprise Managed Authorization are
-  opt-in extensions; `server/discover` reports `extensions: {}`. Tasks is the
-  interesting one — it is the protocol shape of the durable job queue this
-  server already has (see [Jobs](/docs/jobs/)).
+- **MCP Apps and Enterprise Managed Authorization** are not implemented. Tasks
+  is (see above) — it turned out to be the protocol shape of the durable job
+  queue this server already had (see [Jobs](/docs/jobs/)), so it needed no new
+  storage.
+- **No `CreateTaskResult` from `tools/call` yet.** The task methods and the
+  handles work, but no tool currently *returns* a task instead of blocking. The
+  obvious first one is `agents.run`, which already has a durable `agent_runs`
+  row and an async path.
 - **No MRTR.** Tools never return `resultType: "input_required"`, so elicitation
   and sampling are not offered. Both are also deprecated as *client* features in
   this revision; the tool-approval path is the direction that replaces them.

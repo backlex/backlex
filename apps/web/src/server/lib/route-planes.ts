@@ -98,9 +98,15 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
 
   // ── app plane ───────────────────────────────────────────────────────────
   {
+    // `*` matches exactly one path segment — here the workspace slug.
+    prefix: "/api/t/*/auth",
+    plane: "public",
+    note: "A workspace's OWN auth surface: sign-up, sign-in, SAML ACS, LDAP bind, magic link, token refresh, invite accept. Nobody reaching it has an app-plane session yet — acquiring one is the point — and the caller's browser may well be holding a platform cookie from the dashboard on the same origin. Declaring the whole of /api/t as `app` made every one of these a violation, which is how the warn window earned its keep.",
+  },
+  {
     prefix: "/api/t",
     plane: "app",
-    note: "The whole per-workspace end-user surface: auth, orgs, agents. tenantMiddleware pins these to the workspace stamped on the session and ignores X-Backlex-Tenant.",
+    note: "The rest of the per-workspace end-user surface: orgs, agents. tenantMiddleware pins these to the workspace stamped on the session and ignores X-Backlex-Tenant.",
   },
 
   // ── platform plane ──────────────────────────────────────────────────────
@@ -210,10 +216,42 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   },
 ] as const;
 
-/** Sorted once, longest prefix first, so lookup is a plain scan. */
+/**
+ * Sorted once, most-specific first, so lookup is a plain scan.
+ *
+ * Specificity is SEGMENT COUNT, not string length: `/api/t/*​/auth` has to beat
+ * `/api/t` even though a longer literal like `/api/workspace-config` would win
+ * on characters. Ties break on length, which keeps the ordering stable and puts
+ * a literal segment ahead of a wildcard of the same depth.
+ */
+const depth = (p: string): number => p.split("/").filter(Boolean).length;
 const BY_LENGTH: readonly RoutePlaneEntry[] = [...ROUTE_PLANES].sort(
-  (a, b) => b.prefix.length - a.prefix.length,
+  (a, b) => depth(b.prefix) - depth(a.prefix) || b.prefix.length - a.prefix.length,
 );
+
+/**
+ * Does `path` sit at or under `prefix`, treating `*` as exactly one segment?
+ *
+ * The wildcard exists for one shape and should stay rare: a mount whose plane
+ * changes below a DYNAMIC segment. `/api/t/:slug/auth` is the only such case —
+ * a workspace's own sign-in surface is public while everything else under
+ * `/api/t` requires an app-plane session — and it cannot be written as a static
+ * prefix because the slug is the customer's.
+ */
+const covers = (prefix: string, path: string): boolean => {
+  const p = prefix.split("/");
+  const s = path.split("/");
+  if (s.length < p.length) return false;
+  for (let i = 0; i < p.length; i++) {
+    if (p[i] === "*") {
+      // A wildcard matches one non-empty segment, never a missing one.
+      if (!s[i]) return false;
+      continue;
+    }
+    if (p[i] !== s[i]) return false;
+  }
+  return true;
+};
 
 /**
  * The declared plane for a concrete request path.
@@ -222,11 +260,13 @@ const BY_LENGTH: readonly RoutePlaneEntry[] = [...ROUTE_PLANES].sort(
  * inherit `/api/tenants`'s answer. Returns `null` for a path no entry covers —
  * `/health`, `/embed/form.js`, the SPA fallback — which the completeness test
  * treats as "not an /api route" rather than as a hole.
+ *
+ * Longest prefix wins, counted in SEGMENTS rather than characters, so a
+ * wildcard entry is not penalised for the slug it stands in for.
  */
 export const planeFor = (path: string): RoutePlaneEntry | null => {
   for (const entry of BY_LENGTH) {
-    if (path === entry.prefix) return entry;
-    if (path.startsWith(`${entry.prefix}/`)) return entry;
+    if (covers(entry.prefix, path)) return entry;
   }
   return null;
 };

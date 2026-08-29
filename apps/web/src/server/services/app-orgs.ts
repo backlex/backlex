@@ -426,10 +426,18 @@ export const listOrgs = async (
   const t = tablesFor(ctx.dialect);
   const conds = [eq(t.orgs.tenantId, tenantId)];
   if (opts.q) {
-    const pat = `%${opts.q.toLowerCase()}%`;
-    conds.push(
-      sql`(lower(${t.orgs.name}) LIKE ${pat} OR lower(${t.orgs.slug}) LIKE ${pat})`,
-    );
+    // D1 rejects a BOUND parameter as a LIKE pattern, so the previous
+    // `LIKE ${pat}` 500s on the primary production target while passing on
+    // bun:sqlite — which is what the two tests covering this run on. The
+    // established shape for the same job is a dialect-branched position
+    // function with a plain bound value; see
+    // `services/analytics-segments.ts::containsExpr`, three files over.
+    const needle = opts.q.toLowerCase();
+    const contains = (col: typeof t.orgs.name) =>
+      ctx.dialect === "pg"
+        ? sql`strpos(lower(coalesce(${col}, '')), ${needle}) > 0`
+        : sql`instr(lower(coalesce(${col}, '')), ${needle}) > 0`;
+    conds.push(sql`(${contains(t.orgs.name)} OR ${contains(t.orgs.slug)})`);
   }
 
   let rows: Array<Record<string, unknown>>;

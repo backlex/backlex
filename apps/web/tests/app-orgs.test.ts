@@ -1174,14 +1174,15 @@ describe("app-orgs — the plane boundary", () => {
     expect(allowed, "the workspace header IS allowed").toContain("x-backlex-tenant");
     expect(allowed).toContain("authorization");
 
-    // THE GAP. A cross-origin browser SDK sending `X-Backlex-Org` — which is
-    // exactly what docs/client-sdks.md and `app.orgs.use(...)` tell it to do —
-    // fails its preflight, so the org header only ever works same-origin or
-    // from a server. `apps/web/tests/sdk-header-parity.test.ts` asserts the SDK
-    // SENDS it; nothing asserted the server would accept it.
-    //
-    // PHASE 2 adds "X-Backlex-Org" to the allowHeaders array in app.ts and
-    // flips exactly this one expectation to `.toContain`.
-    expect(allowed, "PHASE 2 flips this line").not.toContain("x-backlex-org");
+    // Closed in Phase 2. It used to be absent, so a cross-origin browser SDK
+    // sending `X-Backlex-Org` — exactly what `app.orgs.use(...)` tells it to do
+    // — failed its preflight, and the documented stateless org-switching path
+    // was unreachable from the only caller it exists for. Same-origin and
+    // server-side callers worked, which is why it survived; and
+    // `sdk-header-parity.test.ts` asserted the SDK SENDS it while nothing
+    // asserted the server would accept it.
+    expect(allowed, "the org header a browser SDK sends is accepted").toContain(
+      "x-backlex-org",
+    );
   });
 });

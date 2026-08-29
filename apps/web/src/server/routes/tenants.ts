@@ -3,11 +3,11 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { slugify as slugifySlug } from "@backlex/db/slug";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
-import { isInstanceOperator } from "../services/roles/guards";
+import { isInstanceOperator, requirePlatformMw } from "../services/roles/guards";
 import { errorResponses, OkSchema, SECURITY } from "../lib/openapi";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
@@ -18,8 +18,20 @@ import { defaultHook } from "../lib/openapi-router";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
-    ? { tenants: pg.schema.tenants, members: pg.schema.tenantMembers, users: pg.schema.users }
-    : { tenants: sqlite.schema.tenants, members: sqlite.schema.tenantMembers, users: sqlite.schema.users };
+    ? {
+        tenants: pg.schema.tenants,
+        members: pg.schema.tenantMembers,
+        users: pg.schema.users,
+        roles: pg.schema.roles,
+        userRoles: pg.schema.userRoles,
+      }
+    : {
+        tenants: sqlite.schema.tenants,
+        members: sqlite.schema.tenantMembers,
+        users: sqlite.schema.users,
+        roles: sqlite.schema.roles,
+        userRoles: sqlite.schema.userRoles,
+      };
 
 /** Authorize against the workspace named in the **path**, never the active one.
  *
@@ -208,7 +220,12 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       description:
         "The caller becomes owner. System roles are seeded and the creator is granted `admin`.",
       security: SECURITY,
-      middleware: [requireUser],
+      // Belt and braces with the plane firewall. This route was `requireUser`
+      // alone, and `requireUser` checks only that `auth.userId` is set — which
+      // an `app_users` id satisfies. A workspace's own end-user reached it,
+      // and where SQLite foreign keys were not enforced they became a
+      // platform-plane operator; where they were, they left orphan rows behind.
+      middleware: [requireUser, requirePlatformMw],
       request: {
         body: {
           required: true,
@@ -245,6 +262,22 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (taken[0])
         throw new AppError("CONFLICT", `Workspace "${slug}" already exists`);
       const id = crypto.randomUUID();
+      // Five writes, no transaction — and this repo has no cross-dialect one to
+      // reach for (D1 offers `batch`, not interactive transactions, and the two
+      // existing call sites are hand-branched pg-vs-sqlite). So the guarantee is
+      // made by COMPENSATION instead: everything after the tenant row runs
+      // inside a try, and a failure unwinds what was already written.
+      //
+      // It is not hypothetical. `user_roles.user_id` carries a real foreign key
+      // to `users.id`, so an identity that is not a platform user trips the
+      // FOURTH write — and the tenant and membership rows were already
+      // committed. The caller saw a 500, and the workspace stayed: listed as
+      // theirs, holding a globally-unique slug nobody else could then claim,
+      // and removable by no endpoint in the API. A 500 that looks like a
+      // failure and is not is worse than a 200.
+      //
+      // `requirePlatformMw` on this route now closes the specific cause. The
+      // unwind closes the SHAPE, which is what stops the next cause.
       await (ctx.db as any).insert(t.tenants).values({
         id,
         slug,
@@ -256,21 +289,53 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
         createdBy: auth.userId,
       });
-      await (ctx.db as any).insert(t.members).values({
-        id: crypto.randomUUID(),
-        tenantId: id,
-        userId: auth.userId,
-        email: auth.email!,
-        role: "owner",
-        status: "active",
-        joinedAt: new Date(),
-      });
-      // Seed system roles for the new workspace so admin/authenticated/public
-      // exist on day one, then make the creator an admin in the RBAC sense
-      // (the membership-level "owner" role is orthogonal to the role system).
-      const dbCtx = { db: ctx.db, dialect: ctx.dialect };
-      await ensureSystemRoles(dbCtx, id);
-      await assignRoleByName(dbCtx, id, auth.userId!, SYSTEM_ROLES.admin);
+      try {
+        await (ctx.db as any).insert(t.members).values({
+          id: crypto.randomUUID(),
+          tenantId: id,
+          userId: auth.userId,
+          email: auth.email!,
+          role: "owner",
+          status: "active",
+          joinedAt: new Date(),
+        });
+        // Seed system roles for the new workspace so admin/authenticated/public
+        // exist on day one, then make the creator an admin in the RBAC sense
+        // (the membership-level "owner" role is orthogonal to the role system).
+        const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+        await ensureSystemRoles(dbCtx, id);
+        await assignRoleByName(dbCtx, id, auth.userId!, SYSTEM_ROLES.admin);
+      } catch (err) {
+        // Best-effort unwind, in reverse dependency order. Each step is guarded
+        // on its own: a half-successful cleanup still leaves less behind than
+        // none, and an error thrown from HERE would replace the real cause with
+        // a misleading one.
+        //
+        // Every delete is scoped to THIS tenant, including the role bindings.
+        // Deleting them by `user_id` alone would be scoped to the person rather
+        // than the workspace and would strip their roles in every OTHER
+        // workspace they belong to — turning a failed create into a
+        // account-wide privilege wipe.
+        const undo = async () => {
+          const roleIds = (
+            (await (ctx.db as any)
+              .select({ id: t.roles.id })
+              .from(t.roles)
+              .where(eq(t.roles.tenantId, id))) as Array<{ id: string }>
+          ).map((r) => r.id);
+          if (roleIds.length > 0) {
+            await (ctx.db as any)
+              .delete(t.userRoles)
+              .where(inArray(t.userRoles.roleId, roleIds));
+          }
+          await (ctx.db as any).delete(t.roles).where(eq(t.roles.tenantId, id));
+          await (ctx.db as any).delete(t.members).where(eq(t.members.tenantId, id));
+          await (ctx.db as any).delete(t.tenants).where(eq(t.tenants.id, id));
+        };
+        await undo().catch(() => {});
+        invalidateTenantMembership(id);
+        throw err;
+      }
       // After both the membership row and the RBAC role binding are written.
       invalidateTenantMembership(id);
       return c.json({ data: { id, slug, name: body.name } }, 201);

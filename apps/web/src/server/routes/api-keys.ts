@@ -3,6 +3,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requirePlatformMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import {
@@ -295,7 +296,12 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       description:
         "Issues a new personal API key. The plaintext secret is returned once in the response body and never again.",
       security: SECURITY,
-      middleware: [requireUser],
+      // A `pak_` key is resolved on the PLATFORM plane by `sessionMiddleware`,
+      // so an app-plane caller minting one launders itself across the boundary
+      // and comes back holding an operator-shaped credential. `requireUser`
+      // alone could not see the difference — it checks only that some user id
+      // is set.
+      middleware: [requireUser, requirePlatformMw],
       request: {
         body: {
           required: true,

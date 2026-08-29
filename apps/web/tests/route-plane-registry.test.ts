@@ -81,9 +81,18 @@ describe("route-plane registry: every /api mount declares a plane", () => {
   test("every declared prefix is actually mounted (the registry has no fiction in it)", () => {
     // The reverse direction. A prefix that names nothing is a dead declaration
     // that will read as coverage forever.
+    // Mirrors `planeFor`'s segment matching, wildcard included — a literal
+    // `startsWith` would report `/api/t/*/auth` dead even though it covers a
+    // dozen live routes.
+    const covers = (prefix: string, path: string): boolean => {
+      const pp = prefix.split("/");
+      const sp = path.split("/");
+      if (sp.length < pp.length) return false;
+      return pp.every((seg, i) => (seg === "*" ? Boolean(sp[i]) : seg === sp[i]));
+    };
     const dead = ROUTE_PLANES.filter((entry) => {
       if (entry.prefix === "/api") return false; // the fallback, always "live"
-      return !paths.some((p) => p === entry.prefix || p.startsWith(`${entry.prefix}/`));
+      return !paths.some((p) => covers(entry.prefix, p));
     }).map((e) => e.prefix);
 
     expect(dead, `declared but never mounted:\n${dead.join("\n")}`).toEqual([]);
@@ -106,9 +115,19 @@ describe("route-plane registry: every /api mount declares a plane", () => {
     }
   });
 
-  test("the end-user surface is declared app, and its longest-prefix beats /api", () => {
-    expect(planeFor("/api/t/default/auth/sign-in/email")?.plane).toBe("app");
+  test("the end-user surface is declared app, except its own sign-in, which is public", () => {
+    // The split the warn window found. Everything under `/api/t` needs an
+    // app-plane session EXCEPT the surface where one is acquired: sign-up,
+    // sign-in, SAML ACS, magic link, invite accept. Nobody there has a session
+    // yet, and their browser may be holding a platform cookie from the
+    // dashboard on the same origin.
     expect(planeFor("/api/t/default/orgs")?.plane).toBe("app");
+    expect(planeFor("/api/t/default/agents")?.plane).toBe("app");
+    expect(planeFor("/api/t/default/auth/sign-in/email")?.plane).toBe("public");
+    expect(planeFor("/api/t/default/auth/invite/accept")?.plane).toBe("public");
+    // The wildcard stands for exactly one segment, so it cannot swallow the
+    // slug AND the subpath: `/api/t/auth` (no slug) is not the auth surface.
+    expect(planeFor("/api/t/auth")?.prefix).toBe("/api/t");
   });
 
   test("a lookalike prefix does not inherit a neighbour's plane", () => {

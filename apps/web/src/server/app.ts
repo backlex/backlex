@@ -25,6 +25,7 @@ import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
+import { planeFirewall } from "./middleware/plane-firewall";
 import { accountRoutes } from "./routes/account";
 import { activityRoutes } from "./routes/activity";
 import { tracesRoutes } from "./routes/traces";
@@ -774,6 +775,16 @@ export const createApp = (env: Env) => {
         "Content-Type",
         "Authorization",
         "X-Backlex-Tenant",
+        // Active app-plane organization. Its absence made the documented
+        // stateless org-switching path unreachable from the exact caller it
+        // exists for: an app-plane client is by definition a customer's browser
+        // app on another origin, `client.orgs.use("acme")` sends a custom
+        // header, that forces a preflight, and this list is non-empty so Hono
+        // answers with it literally rather than reflecting what was asked for.
+        // Same-origin and server-side callers were unaffected, which is why it
+        // survived — and the parity test is a source-text grep for the string,
+        // so nothing in CI noticed either.
+        "X-Backlex-Org",
         // Publishable analytics ingest key — a custom header, so a browser SDK
         // on a customer origin preflights before it can post events.
         "X-Backlex-Ingest-Key",
@@ -917,6 +928,11 @@ export const createApp = (env: Env) => {
 
   app.use("*", timed("session", skipOnProbe(sessionMiddleware)));
   app.use("*", timed("tenant", skipOnProbe(tenantMiddleware)));
+  // Immediately after tenant resolution, because it needs `auth.plane` (set by
+  // session) and reports `auth.tenantId` (set by tenant) — and before any route
+  // runs, so one table answers for ~110 mount prefixes instead of five route
+  // files remembering to. Defaults to `warn`; see the file header.
+  app.use("*", timed("plane", skipOnProbe(planeFirewall)));
 
   // Mark when all pre-route middleware (ctx + CORS + session + tenant) is done,
   // so `premw` vs `route` (= total − premw) can be split in Server-Timing.

@@ -70,6 +70,13 @@ const BLOCKED_WRITE_PREFIXES = [
   // which runs DDL against a shared table, is blocked.
   "/api/admin/advisor",
   "/api/messaging",
+  // The playground publishes its admin credentials, so anyone may sign in as
+  // an admin there. `POST /api/tenants` then mints a workspace whose slug is
+  // globally unique and which no endpoint can delete, and `POST /api/api-keys`
+  // mints a durable credential that outlives the demo's periodic reset. Both
+  // are writes the demo has no reason to offer.
+  "/api/tenants",
+  "/api/api-keys",
   "/api/auth/change-password",
   "/api/auth/change-email",
   "/api/auth/delete-user",

@@ -49,6 +49,18 @@ export interface Env {
    *  claiming a public instance URL first). Unset on self-host → any first
    *  visitor may claim. */
   OWNER_EMAIL?: string;
+  /** `"enforce"` makes the plane firewall refuse a request whose auth plane is
+   *  not admitted by the route's declared plane (`lib/route-planes.ts`);
+   *  anything else — including unset — logs the violation and lets it through.
+   *  Defaults to warn so a first-draft table cannot take a paying tenant down
+   *  on the release that introduces it. See `middleware/plane-firewall.ts`. */
+  PLANE_GUARD?: string;
+  /** `"off"` skips the `PRAGMA foreign_keys = ON` the Bun SQLite client now
+   *  issues. The pragma is defence in depth, not a fix — D1 and Postgres
+   *  enforce unconditionally — but an existing self-host may hold rows that
+   *  violate a constraint the schema always declared and the runtime never
+   *  applied, and that install needs a way to boot while it cleans up. */
+  DB_FK_ENFORCE?: string;
   /** `"1"`/`"true"` flips the instance into playground (demo) mode: the demo
    *  admin account is auto-provisioned, its credentials are published on the
    *  public auth surface (one-click sign-in), outbound/destructive endpoints
@@ -695,6 +707,8 @@ export const STRING_ENV_KEYS = [
   "OTLP_HEADERS",
   "SEED_TEMPLATE",
   "OWNER_EMAIL",
+  "PLANE_GUARD",
+  "DB_FK_ENFORCE",
   "DEMO_MODE",
   "DEMO_EMAIL",
   "DEMO_PASSWORD",

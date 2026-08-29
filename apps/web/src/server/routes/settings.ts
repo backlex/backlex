@@ -6,7 +6,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { isInstanceOperator } from "../services/roles/guards";
+import { isInstanceOperator, requirePlatformMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isCloudflareWorkers, isDenoDeploy, isNetlify } from "../lib/runtime";
 import {
@@ -203,7 +203,11 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       summary: "Patch settings",
       description: "Whitelisted keys only. Unknown keys are rejected (strict).",
       security: SECURITY,
-      middleware: [requireUser, requireAdminMw],
+      // The plane gate is explicit here as well as in the firewall: this
+      // handler is the one that can write the `tenant_id IS NULL` row, so it
+      // should not be reachable by an app-plane identity even for the instant
+      // before the operator check refuses them.
+      middleware: [requireUser, requirePlatformMw, requireAdminMw],
       request: {
         body: {
           required: true,

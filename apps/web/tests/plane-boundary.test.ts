@@ -146,6 +146,27 @@ describe("control-plane surfaces that deny an app-plane bearer", () => {
       });
     });
 
+    test("PATCH /api/admin/settings is refused by requirePlatformMw", async () => {
+      // Moved here in Phase 2. It used to sit in the table below, answering
+      // "Admin role required" because `requireAdminMw` read an empty
+      // `auth.roles` — the right status for the wrong reason, one populated
+      // array away from opening.
+      //
+      // It is the handler that can write the `tenant_id IS NULL` row, so it
+      // gets the plane check explicitly rather than relying on the firewall
+      // alone: two layers, because the audit's lesson was that one layer being
+      // right is what let four layers be wrong.
+      const res = await cast.endUserA.fetch(
+        "/api/admin/settings",
+        json("PATCH", { timezone: "Europe/Istanbul" }),
+      );
+      expect(res.status).toBe(403);
+      expect(await errorOf(res)).toMatchObject({
+        code: "FORBIDDEN",
+        message: "Operator access required",
+      });
+    });
+
     test("GET /api/admin/db/tables is refused by isInstanceOperator", async () => {
       // Stronger than the plane gate: the SQL console demands `admin` in the
       // DEFAULT workspace. Pinned here because it is the one surface a
@@ -179,8 +200,10 @@ describe("control-plane surfaces that deny an app-plane bearer", () => {
     const ADMIN_GATED: [string, string, RequestInit?][] = [
       ["GET", "/api/users"],
       ["GET", "/api/roles"],
+      // GET stays here; PATCH moved to the plane-checked block above in Phase 2.
+      // The split is the point: the read is still guarded only by an empty
+      // array, the write is guarded by the plane.
       ["GET", "/api/admin/settings"],
-      ["PATCH", "/api/admin/settings", json("PATCH", { timezone: "Europe/Istanbul" })],
       ["GET", "/api/app-users"],
       ["GET", "/api/app-orgs"],
       ["GET", "/api/webhooks"],
@@ -334,55 +357,58 @@ describe("KNOWN GAP — control-plane writes an app-plane bearer reaches (Phase 
   });
   afterAll(() => wcast.cleanup());
 
-  test("POST /api/tenants 500s AFTER creating the workspace", async () => {
-    // Phase 2: 403 FORBIDDEN "Operator access required", and every assertion
-    // after the first one inverts — the workspace must not exist, the slug must
-    // stay free.
-    //
-    // The 500 is `assignRoleByName` inserting into `user_roles`, whose
-    // `user_id` really does reference `users`. That constraint is the ONLY
-    // thing that stopped this request, and it stopped it two writes too late.
+  test("POST /api/tenants is refused on the plane, and writes nothing", async () => {
+    // Closed in Phase 2 by `requirePlatformMw`. It used to answer 500 — the
+    // FOURTH of five non-transactional writes, `assignRoleByName` inserting
+    // into `user_roles`, whose `user_id` really does reference `users`. That
+    // foreign key was the ONLY thing that stopped the request, it stopped it
+    // two writes too late, and where SQLite did not enforce it (its default,
+    // on every boot after the first) nothing stopped it at all.
     const created = await wcast.endUserA.fetch(
       "/api/tenants",
       json("POST", { name: "Plane Boundary Squat" }),
     );
-    expect(created.status).toBe(500);
-    expect((await errorOf(created)).code).toBe("INTERNAL");
+    expect(created.status).toBe(403);
+    const err = await errorOf(created);
+    expect(err.code).toBe("FORBIDDEN");
+    expect(err.message).toContain("Operator access required");
 
-    // The write survived the failure, and it is visible over HTTP: the
-    // end-user's own workspace list — the same "empty" list from the read block
-    // — now contains a workspace they own.
+    // Nothing was committed. This assertion is the one that used to fail: the
+    // end-user's workspace list held a workspace they owned, minted by a
+    // request that reported failure.
     const listed = await wcast.endUserA.fetch("/api/tenants");
     expect(listed.status).toBe(200);
     const body = (await listed.json()) as {
       data: { slug: string; name: string; role: string }[];
     };
-    const squatted = body.data.find((t) => t.slug === "plane-boundary-squat");
-    expect(squatted, "the 500 committed a tenants row before it failed").toBeDefined();
-    expect(squatted!.role).toBe("owner");
+    expect(body.data.find((t) => t.slug === "plane-boundary-squat")).toBeUndefined();
 
-    // And it is not merely orphaned data: the slug is globally unique, so an
-    // app-plane caller has permanently taken a name out of the platform's
-    // namespace. A real operator asking for it is refused.
-    const collision = await wcast.ownerB.fetch(
+    // And the slug stays in the platform's namespace: a real operator can still
+    // claim it. Without this the absence above would also be satisfied by a
+    // tenants row that merely failed to appear in one list.
+    const claimed = await wcast.ownerB.fetch(
       "/api/tenants",
       json("POST", { name: "Plane Boundary Squat" }),
     );
-    expect(collision.status).toBe(409);
-    expect((await errorOf(collision)).code).toBe("CONFLICT");
+    expect(claimed.status, "the name an app-plane caller could not take is still free").toBe(201);
   });
 
-  test("POST /api/api-keys 500s, and this one writes nothing", async () => {
-    // Phase 2: 403 FORBIDDEN "Operator access required".
+  test("POST /api/api-keys is refused on the plane", async () => {
+    // Closed in Phase 2 by `requirePlatformMw`. It used to answer 500 — same
+    // class as the tenants case above, different luck: the key row itself
+    // references `users`, so the FIRST insert tripped and there was no partial
+    // state. That difference is why the tenants test asserts absence explicitly:
+    // "it 500s" was never by itself evidence that nothing happened.
     //
-    // Same class of failure, different luck: the key row itself references
-    // `users`, so the very first insert trips and there is no partial state.
-    // Pinned as the CONTRAST to the tenants case — "it 500s" is not by itself
-    // evidence that nothing happened, and the difference between these two
-    // tests is the whole reason the assertion above exists.
+    // A `pak_` key is what made this one matter. `sessionMiddleware` resolves
+    // one on the PLATFORM plane, so an app-plane caller minting a key came back
+    // holding an operator-shaped credential — laundering itself across the
+    // boundary rather than crossing it.
     const res = await wcast.endUserA.fetch("/api/api-keys", json("POST", { name: "squat-key" }));
-    expect(res.status).toBe(500);
-    expect((await errorOf(res)).code).toBe("INTERNAL");
+    expect(res.status).toBe(403);
+    const err = await errorOf(res);
+    expect(err.code).toBe("FORBIDDEN");
+    expect(err.message).toContain("Operator access required");
 
     const keys = await wcast.ownerA.fetch("/api/api-keys");
     expect(keys.status, "the admin view of the same mount still answers").toBe(200);

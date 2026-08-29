@@ -48,6 +48,8 @@ const AgentType = new GraphQLObjectType({
     systemPrompt: { type: GraphQLString },
     model: { type: GraphQLString },
     tools: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    /** Names of the workspace skills this agent may consult. */
+    skills: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     maxSteps: { type: new GraphQLNonNull(GraphQLInt) },
     memory: { type: new GraphQLNonNull(GraphQLBoolean) },
     /** `thread` | `agent` — how far distilled semantic facts reach. */
@@ -81,6 +83,7 @@ const AgentInputType = new GraphQLInputObjectType({
     systemPrompt: { type: GraphQLString },
     model: { type: GraphQLString },
     tools: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+    skills: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     maxSteps: { type: GraphQLInt },
     memory: { type: GraphQLBoolean },
     memoryScope: { type: GraphQLString },
@@ -120,6 +123,7 @@ const normalizeAgentRow = (r: Record<string, unknown>) => ({
   memoryScope: r.memoryScope === "agent" ? "agent" : "thread",
   active: Boolean(r.active),
   tools: Array.isArray(r.tools) ? r.tools : [],
+  skills: Array.isArray(r.skills) ? r.skills : [],
 });
 
 const normalizeMemoryRow = (r: Record<string, unknown>) => ({

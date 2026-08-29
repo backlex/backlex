@@ -135,6 +135,7 @@ import m128 from "../../drizzle/sqlite/20260819100000_consent_policies/migration
 import m129 from "../../drizzle/sqlite/20260821090000_consent_versions/migration.sql" with { type: "text" };
 import m130 from "../../drizzle/sqlite/20260821140000_consent_records/migration.sql" with { type: "text" };
 import m131 from "../../drizzle/sqlite/20260822180000_consent_signal_handling/migration.sql" with { type: "text" };
+import m132 from "../../drizzle/sqlite/20260830090000_agent_skills/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -274,4 +275,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260821090000_consent_versions", sql: m129 },
   { name: "20260821140000_consent_records", sql: m130 },
   { name: "20260822180000_consent_signal_handling", sql: m131 },
+  { name: "20260830090000_agent_skills", sql: m132 },
 ];

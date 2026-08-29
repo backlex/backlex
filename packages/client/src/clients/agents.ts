@@ -17,6 +17,11 @@ export interface Agent {
   effort?: string | null;
   /** Allow-list of MCP tool names the agent may call. */
   tools: string[];
+  /** Names of the workspace skills this agent may consult — reusable written
+   *  instructions in the open Agent Skills format. Only each skill's name and
+   *  description reach the prompt; the agent fetches a body when it decides it
+   *  needs one, so a long runbook costs nothing until it is used. */
+  skills?: string[];
   maxSteps: number;
   /** Cross-turn memory — an episodic trace plus distilled semantic facts.
    *  Best-effort; needs an embedding provider. */

@@ -14,7 +14,7 @@
     "dev": "bun run --cwd apps/web dev",
     "dev:bun": "bun run --cwd apps/web dev:bun",
     "build": "bun scripts/require-green-checks.ts && bun run --cwd apps/web build",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun scripts/typecheck.ts",
     "db:generate:pg": "bun run --cwd packages/db generate:pg",
     "db:generate:sqlite": "bun run --cwd packages/db generate:sqlite",
     "db:migrate:pg": "bun run --cwd packages/db migrate:pg",
@@ -38,7 +38,8 @@
     "lint": "biome lint apps packages examples",
     "lint:fix": "biome lint --write apps packages examples",
     "prepare": "lefthook install --force || true",
-    "backlex": "bun run packages/cli/bin/backlex.ts"
+    "backlex": "bun run packages/cli/bin/backlex.ts",
+    "typecheck:raw": "bun run --filter '*' typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

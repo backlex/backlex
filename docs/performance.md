@@ -155,6 +155,52 @@ into `TS5102: Option 'baseUrl' has been removed`, so a tree that had silenced it
 would have had to do the work anyway, under a hard error. (`paths` has not
 needed `baseUrl` since 4.1.) The tree has since moved on to 7.0 — see below.
 
+##### One typecheck at a time, across processes — added 2026-08-29
+
+`lefthook.yml` made the pre-push gate serial for a measured reason: run
+typecheck beside the suite and the box spends 707s in the kernel instead of
+292s. That reasoning only ever applied INSIDE one gate run, and it cannot see
+the shape this repo actually has — several agent sessions, each in its own
+worktree, each free to start its own `tsc`.
+
+Observed 2026-08-29: four concurrent checker processes, 16% free memory, 559k
+pageouts, and a 7-minute job that had not finished at 22 minutes. Nothing was
+wrong with any one of them.
+
+`bun run typecheck` now goes through `scripts/typecheck.ts`, which holds an
+exclusive lock in the **common git dir** — the one path every worktree of this
+repo resolves to identically, so all of them share it and an unrelated checkout
+does not. A second run waits and says who it is waiting for; a lock whose owner
+died is cleared rather than waited on. `bun run typecheck:raw` and
+`BACKLEX_TYPECHECK_NO_LOCK=1` opt out.
+
+Waiting is strictly cheaper than thrashing: N serial runs cost the sum of their
+times, N paging runs cost considerably more, and may cost forever.
+
+It also keeps `--checkers 2` honest. That number is tuned for a machine with
+this project's ~9.8 GB peak footprint to itself, and the standing advice to drop
+it to `1` exists for exactly the contention this lock now prevents.
+
+**Do not lock at the workspace level.** The root holds the lock while it spawns
+each workspace's own `typecheck`, so a second acquire in a child would wait on a
+lock its own parent owns, forever.
+
+##### What "slow" actually means here, measured back to back
+
+Same machine, same tree, nothing else running:
+
+| | wall | user | sys |
+|---|---|---|---|
+| cold (a dependency moved) | 363s | 179s | **494s** |
+| warm (nothing changed) | **6s** | 25s | 3.9s |
+
+Two things to take from it. The warm number is the steady state — if a routine
+typecheck takes minutes, something invalidated the incremental state, and on
+this repo that is almost always a `bun install` or a branch switch, not a code
+change. And in the cold row `sys` is 2.75x `user`: three quarters of that run
+was paging, which is the same story every measurement on this page tells and the
+reason the lock above is worth more than any compiler flag.
+
 #### The real bottleneck: long `.openapi()` chains
 
 Attributing check time per file, without double-counting nested spans:

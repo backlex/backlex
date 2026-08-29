@@ -55,6 +55,14 @@ export interface Env {
    *  Defaults to warn so a first-draft table cannot take a paying tenant down
    *  on the release that introduces it. See `middleware/plane-firewall.ts`. */
   PLANE_GUARD?: string;
+  /** `"enforce"` makes a create/update whose proposed row fails its own
+   *  permission condition refuse with 403; anything else — including unset —
+   *  logs it and lets the write through. Defaults to warn because a tenant's
+   *  integrations may have been writing cross-scope rows for months against a
+   *  rule that only ever filtered reads, and turning that into a 403 on
+   *  upgrade breaks a working application. The advisor rule shipped alongside
+   *  is how an operator finds out whether they have any before flipping it. */
+  PERMISSION_WRITE_CHECK?: string;
   /** `"off"` skips the `PRAGMA foreign_keys = ON` the Bun SQLite client now
    *  issues. The pragma is defence in depth, not a fix — D1 and Postgres
    *  enforce unconditionally — but an existing self-host may hold rows that
@@ -709,6 +717,7 @@ export const STRING_ENV_KEYS = [
   "OWNER_EMAIL",
   "PLANE_GUARD",
   "DB_FK_ENFORCE",
+  "PERMISSION_WRITE_CHECK",
   "DEMO_MODE",
   "DEMO_EMAIL",
   "DEMO_PASSWORD",

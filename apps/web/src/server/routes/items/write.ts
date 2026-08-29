@@ -122,6 +122,9 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId: auth.tenantId,
         roles: auth.roles,
         email: auth.email,
+        orgId: auth.orgId ?? null,
+        orgRole: auth.orgRole ?? null,
+        orgIds: auth.orgIds ?? [],
         meta: requestMeta(c.req.raw),
         impersonatedBy: auth.impersonatedBy ?? null,
         impersonationReadOnly: auth.impersonationReadOnly ?? false,
@@ -132,6 +135,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const res = await performCreate(env, data, {
         whereSql: perm.whereSql,
         fields: perm.fields,
+        conditions: perm.conditions,
       });
       for (const fx of res.sideEffects) await fx();
       return c.json({ data: res.data ?? {}, ...(res.warnings ? { warnings: res.warnings } : {}) }, 201);
@@ -179,6 +183,9 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId: auth.tenantId,
         roles: auth.roles,
         email: auth.email,
+        orgId: auth.orgId ?? null,
+        orgRole: auth.orgRole ?? null,
+        orgIds: auth.orgIds ?? [],
         meta: requestMeta(c.req.raw),
         impersonatedBy: auth.impersonatedBy ?? null,
         impersonationReadOnly: auth.impersonationReadOnly ?? false,
@@ -211,7 +218,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         env,
         id,
         patch,
-        { whereSql: perm.whereSql, fields: perm.fields },
+        { whereSql: perm.whereSql, fields: perm.fields, conditions: perm.conditions },
         {
           ...(ifUnmodifiedSince !== undefined ? { ifUnmodifiedSince } : {}),
           ...(live ? { live: true } : {}),
@@ -254,6 +261,9 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId: auth.tenantId,
         roles: auth.roles,
         email: auth.email,
+        orgId: auth.orgId ?? null,
+        orgRole: auth.orgRole ?? null,
+        orgIds: auth.orgIds ?? [],
         meta: requestMeta(c.req.raw),
         impersonatedBy: auth.impersonatedBy ?? null,
         impersonationReadOnly: auth.impersonationReadOnly ?? false,
@@ -264,6 +274,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const res = await performDelete(env, id, {
         whereSql: perm.whereSql,
         fields: perm.fields,
+        conditions: perm.conditions,
       });
       for (const fx of res.sideEffects) await fx();
       return c.json({ ok: true });
@@ -396,6 +407,9 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             tenantId: auth.tenantId,
             roles: auth.roles,
             email: auth.email,
+            orgId: auth.orgId ?? null,
+            orgRole: auth.orgRole ?? null,
+            orgIds: auth.orgIds ?? [],
             meta: requestMeta(c.req.raw),
         impersonatedBy: auth.impersonatedBy ?? null,
         impersonationReadOnly: auth.impersonationReadOnly ?? false,
@@ -407,7 +421,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             env,
             id,
             staged.data,
-            { whereSql: perm.whereSql, fields: perm.fields },
+            { whereSql: perm.whereSql, fields: perm.fields, conditions: perm.conditions },
             { live: true },
           );
           for (const fx of res.sideEffects) await fx();
@@ -608,6 +622,9 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId: auth.tenantId,
         roles: auth.roles,
         email: auth.email,
+        orgId: auth.orgId ?? null,
+        orgRole: auth.orgRole ?? null,
+        orgIds: auth.orgIds ?? [],
         meta: requestMeta(c.req.raw),
         impersonatedBy: auth.impersonatedBy ?? null,
         impersonationReadOnly: auth.impersonationReadOnly ?? false,
@@ -618,6 +635,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const res = await setRetired(env, id, retired, {
         whereSql: perm.whereSql,
         fields: perm.fields,
+        conditions: perm.conditions,
       });
       return c.json(res);
     },
@@ -1077,7 +1095,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ctx,
         collection,
         { userId: auth.userId, tenantId: auth.tenantId, roles: auth.roles },
-        { whereSql: perm.whereSql, fields: perm.fields },
+        { whereSql: perm.whereSql, fields: perm.fields, conditions: perm.conditions },
         id,
         field,
         value,

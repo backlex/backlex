@@ -167,7 +167,12 @@ export const unpublishDueItems = async (ctx: Ctx): Promise<void> => {
                 env,
                 itemId,
                 staged.data,
-                { whereSql: null, fields: null },
+                // Unrestricted, deliberately: the scheduler is publishing what
+                // an operator already staged and approved, not acting for a
+                // caller whose permission needs re-checking. `null` here is a
+                // decision, which is why `conditions` is a required field
+                // rather than one a system write can omit by accident.
+                { whereSql: null, fields: null, conditions: null },
                 { live: true },
               );
               for (const fx of res.sideEffects) await fx();

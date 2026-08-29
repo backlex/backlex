@@ -123,7 +123,7 @@ export const itemsBatchRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         collection,
         keys: body.keys,
         data: body.data,
-        perm: { whereSql: perm.whereSql, fields: perm.fields },
+        perm: { whereSql: perm.whereSql, fields: perm.fields, conditions: perm.conditions },
         readFields: await (async () => {
           const r = await resolvePermission(ctx, auth, collection.slug, "read", getRequestPermCache(c));
           return r.allowed ? r.fields : new Set<string>();

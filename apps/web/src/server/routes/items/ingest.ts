@@ -15,7 +15,7 @@
  * a search should answer with the section, not with a document to go read.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { sql, type SQL } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../../app";
 import { requirePermission } from "../../middleware/permission";
@@ -23,7 +23,12 @@ import { resolvePermission } from "../../services/permissions";
 import { elapsedMs, requestMeta } from "../../services/activity";
 import { SECURITY, errorResponses } from "../../lib/openapi";
 import { collectionFromParam, loadCollection } from "../../services/items/collection-loader";
-import { performCreate, performDelete, type WriteEnv } from "../../services/items/write";
+import {
+  performCreate,
+  performDelete,
+  type ResolvedPerm,
+  type WriteEnv,
+} from "../../services/items/write";
 import {
   deletedFilter,
   fromOf,
@@ -193,7 +198,7 @@ export const itemsIngestRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
     // sitting next to the copy it was meant to replace.
     let replaceWith: {
       sourceField: string;
-      perm: { whereSql: SQL | null; fields: Set<string> | null };
+      perm: ResolvedPerm;
     } | null = null;
     if (input.replace) {
       if (!input.sourceField) {
@@ -205,7 +210,7 @@ export const itemsIngestRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
       }
       replaceWith = {
         sourceField: input.sourceField,
-        perm: { whereSql: del.whereSql, fields: del.fields },
+        perm: { whereSql: del.whereSql, fields: del.fields, conditions: del.conditions },
       };
     }
 
@@ -215,6 +220,10 @@ export const itemsIngestRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
       userId: auth.userId,
       tenantId: auth.tenantId,
       roles: auth.roles,
+      email: auth.email ?? null,
+      orgId: auth.orgId ?? null,
+      orgRole: auth.orgRole ?? null,
+      orgIds: auth.orgIds ?? [],
       meta: requestMeta(c.req.raw),
       impersonatedBy: auth.impersonatedBy ?? null,
       impersonationReadOnly: auth.impersonationReadOnly ?? false,
@@ -251,7 +260,7 @@ export const itemsIngestRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
       if (input.sourceField) row[input.sourceField] = input.key;
       if (input.sectionField) row[input.sectionField] = section.index;
       try {
-        const res = await performCreate(env, row, { whereSql: perm.whereSql, fields: perm.fields });
+        const res = await performCreate(env, row, { whereSql: perm.whereSql, fields: perm.fields, conditions: perm.conditions });
         for (const fx of res.sideEffects) await fx();
         inserted += 1;
       } catch (e) {
@@ -291,7 +300,7 @@ const deletePriorRows = async (
   auth: { tenantId?: string | null },
   sourceField: string,
   key: string,
-  perm: { whereSql: SQL | null; fields: Set<string> | null },
+  perm: ResolvedPerm,
 ): Promise<number> => {
   const { collection, ctx } = env;
   const ids = await queryAll<Record<string, unknown>>(

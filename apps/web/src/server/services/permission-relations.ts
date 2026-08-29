@@ -52,6 +52,76 @@ export const conditionHasDottedKey = (cond: unknown): boolean => {
   return Object.keys(c).some((k) => k.includes("."));
 };
 
+/**
+ * The part of a condition an IN-MEMORY evaluator can honestly judge: the same
+ * rule with every relation-path branch removed. `null` means nothing is left to
+ * judge.
+ *
+ * This exists because the write-side check (`services/items/write.ts`) and the
+ * SQL compiler disagree about dotted keys BY DESIGN — the compiler lowers
+ * `author.department` to a correlated EXISTS, the in-memory evaluator returns a
+ * hard `false` for any dotted key — and neither answer is usable for a WITH
+ * CHECK. Judging one would deny every write under a rule that filters reads
+ * correctly; ignoring the whole rule because it contains one relation key lets
+ * everything through.
+ *
+ * The polarity is what makes it safe, and it is not symmetric:
+ *
+ *   `$and` — an unjudgeable branch is DROPPED and the rest still judged. If
+ *            `org_id = $org.id` is false, the conjunction is false whatever the
+ *            relation branch says. This is the case that matters: the moment a
+ *            B2B schema has two tables it writes
+ *            `{$and: [{org_id: …}, {"project.status": …}]}`, and treating that
+ *            as unjudgeable disarmed the org check entirely.
+ *   `$or`  — one unjudgeable branch makes the WHOLE disjunction unjudgeable,
+ *            because that branch might have been the one permitting the row.
+ *   `$not` — likewise: an unjudgeable inner leaves the negation undecided.
+ *
+ * Same shape as `checkableRule` in `@backlex/db`, which narrows for a different
+ * reason (absent operands in cross-field validation). Kept here rather than
+ * there because "is this a relation path" is this file's subject, and a second
+ * private copy of that predicate is what the write-side check first shipped
+ * with — the two diverged immediately.
+ *
+ * `alsoUnjudgeable` extends the same treatment to keys the CALLER knows it
+ * cannot supply a value for. The write check passes the collection's localized
+ * fields: their values live in the `_i18n` sidecar, one per locale, so there is
+ * no single value to compare and inventing one would be worse than admitting
+ * the gap. Left out, such a key was judged against `undefined` — fail-closed
+ * for `_eq` and fail-OPEN for `_neq`, `_nin` and `_null`, silently.
+ */
+export const judgeableCondition = (
+  cond: unknown,
+  alsoUnjudgeable?: (field: string) => boolean,
+): unknown | null => {
+  const recurse = (n: unknown) => judgeableCondition(n, alsoUnjudgeable);
+  if (cond === null || typeof cond !== "object") return cond;
+  const c = cond as Record<string, unknown>;
+  if (Array.isArray(c.$and)) {
+    const kept = c.$and.map(recurse).filter((x) => x !== null);
+    if (kept.length === 0) return null;
+    return kept.length === 1 ? kept[0] : { $and: kept };
+  }
+  if (Array.isArray(c.$or)) {
+    const parts = c.$or.map(recurse);
+    if (parts.some((x) => x === null)) return null;
+    return { $or: parts };
+  }
+  if (c.$not !== undefined) {
+    const inner = recurse(c.$not);
+    return inner === null ? null : { $not: inner };
+  }
+  // A leaf object: `{ column: {_eq: …}, other: {_gt: …} }`. Drop the columns we
+  // cannot judge, keep the rest — an implicit AND, so the same rule applies.
+  const out: Record<string, unknown> = {};
+  for (const [field, cmp] of Object.entries(c)) {
+    if (field.includes(".")) continue;
+    if (alsoUnjudgeable?.(field)) continue;
+    out[field] = cmp;
+  }
+  return Object.keys(out).length === 0 ? null : out;
+};
+
 interface PermHop {
   /** FK column on the PARENT table (= the relation field's name). */
   relColumn: string;

@@ -80,6 +80,7 @@ export const retirementMutationFields: Record<string, GraphQLFieldConfig<unknown
         return setRetired(env, String(args.id), args.restore !== true, {
           whereSql: perm.whereSql,
           fields: perm.fields,
+          conditions: perm.conditions,
         });
       }),
   },

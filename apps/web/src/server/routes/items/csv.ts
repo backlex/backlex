@@ -371,6 +371,10 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         userId: auth.userId,
         tenantId: auth.tenantId,
         roles: auth.roles,
+        email: auth.email ?? null,
+        orgId: auth.orgId ?? null,
+        orgRole: auth.orgRole ?? null,
+        orgIds: auth.orgIds ?? [],
         meta: requestMeta(c.req.raw),
         impersonatedBy: auth.impersonatedBy ?? null,
         impersonationReadOnly: auth.impersonationReadOnly ?? false,
@@ -426,6 +430,7 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
               const res = await performUpdate(env, id, body, {
                 whereSql: updatePerm.whereSql,
                 fields: updatePerm.fields,
+                conditions: updatePerm.conditions,
               });
               for (const fx of res.sideEffects) await fx();
               updated += 1;
@@ -438,6 +443,7 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           const res = await performCreate(env, body, {
             whereSql: perm.whereSql,
             fields: perm.fields,
+            conditions: perm.conditions,
           });
           for (const fx of res.sideEffects) await fx();
           inserted += 1;

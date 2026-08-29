@@ -1,4 +1,4 @@
-import { hashSecret, isSecretHash } from "@backlex/auth";
+import { hashSecret, isSecretHash } from "@backlex/auth/secret-hash";
 import type { FieldDef } from "@backlex/db";
 
 /**

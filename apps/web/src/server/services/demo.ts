@@ -1,4 +1,4 @@
-import { hashSecret } from "@backlex/auth";
+import { hashSecret } from "@backlex/auth/secret-hash";
 import { dropCollection } from "@backlex/db";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -16,7 +16,7 @@ import {
   assignRoleByName,
 } from "./seed";
 import { applyTemplate } from "./templates";
-import { getTemplate } from "../templates/catalog";
+import { getTemplateLazy } from "../templates/lazy";
 import { SYSTEM_ROLES } from "@backlex/core";
 
 /**
@@ -344,7 +344,7 @@ export const resetDemoWorkspace = async (
 
   // 4. Re-seed the vertical template (roles/dashboards/sample rows).
   let templateApplied = false;
-  if (env.SEED_TEMPLATE && getTemplate(env.SEED_TEMPLATE)) {
+  if (env.SEED_TEMPLATE && (await getTemplateLazy(env.SEED_TEMPLATE))) {
     try {
       await applyTemplate(ctx, tenantId, env.SEED_TEMPLATE);
       templateApplied = true;

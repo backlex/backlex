@@ -11,22 +11,22 @@ import {
   type FieldDef,
 } from "@backlex/db";
 import { AppError, OPERATION_BRANCH_KEYS, SYSTEM_ROLES } from "@backlex/core";
-import {
-  getTemplate,
-  type SampleRow,
-  type SampleValue,
-  type SchemaTemplate,
-  type TemplateAgent,
-  type TemplateChannel,
-  type TemplateCollection,
-  type TemplateDashboard,
-  type TemplateDocument,
-  type TemplateFlag,
-  type TemplateFlow,
-  type TemplateForm,
-  type TemplateKpi,
-  type TemplateRole,
-} from "../templates/catalog";
+import type {
+  SampleRow,
+  SampleValue,
+  SchemaTemplate,
+  TemplateAgent,
+  TemplateChannel,
+  TemplateCollection,
+  TemplateDashboard,
+  TemplateDocument,
+  TemplateFlag,
+  TemplateFlow,
+  TemplateForm,
+  TemplateKpi,
+  TemplateRole,
+} from "../templates/types";
+import { getTemplateLazy } from "../templates/lazy";
 import type { Ctx } from "../context";
 import { createManagedCollection } from "./collections";
 import { invalidateTenantCollections } from "./collections-cache";
@@ -1102,7 +1102,7 @@ export async function applyTemplate(
   tenantId: string,
   templateId: string,
 ): Promise<ApplyTemplateResult> {
-  const template = getTemplate(templateId);
+  const template = await getTemplateLazy(templateId);
   if (!template) throw new AppError("VALIDATION", `Unknown template "${templateId}"`);
   return applyTemplateDefinition(ctx, tenantId, template);
 }

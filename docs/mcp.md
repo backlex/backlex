@@ -19,23 +19,94 @@ Two mounts, same tool set:
 | `POST /mcp` | Any authenticated identity (cookie session, `pak_…` API key, app-plane bearer). Permissions DSL filters results per the caller's roles. | Tenant agents (a workspace member wires Claude Desktop to their own Backlex). |
 | `POST /api/admin/mcp` | Same as above **plus** the system `admin` role. | Ops bots, CI agents — fails loudly on non-admin auth instead of silently returning empty results. |
 
-Both speak the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http)
+Both speak the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)
 in **stateless** mode: each POST is one JSON-RPC message, the response
-is `application/json` with the result. We don't expose `GET /mcp`
-(resumable SSE) yet — long-lived streams are awkward on Cloudflare
-Workers' subrequest budget. Re-issue requests instead of relying on a
-persistent session.
+is `application/json` with the result. There is no `GET /mcp` — `2026-07-28`
+removed the GET stream from the transport, so its absence is now the spec's
+shape rather than ours.
 
-Protocol revision **2025-11-25** (we also accept `2025-06-18` / `2025-03-26` at
-`initialize` and echo the client's requested version when supported). Transport
-rules we enforce:
+## Protocol revisions
+
+The server is **dual-era**. `2026-07-28` deleted the `initialize` handshake and
+moved version, identity and capabilities into per-request `_meta`, but it also
+opened a twelve-month deprecation window — and every client in the field today
+still opens with `initialize`. So both are served on the same path, and which
+one you get is a property of the **request**, never of a connection:
+
+| You send | You get |
+|---|---|
+| `_meta["io.modelcontextprotocol/protocolVersion"] = "2026-07-28"` (or the matching header) | The modern shape: `resultType`, `_meta["io.modelcontextprotocol/serverInfo"]`, and `ttlMs` / `cacheScope` on the cacheable methods. Standard headers are validated against the body. |
+| Anything else, including nothing at all | Byte-for-byte the pre-2026 shape. None of the new fields appear. |
+
+Accepted revisions, newest first: **`2026-07-28`**, `2025-11-25`, `2025-06-18`,
+`2025-03-26`. A request that declares nothing is assumed to be `2025-03-26`.
+
+`initialize` deliberately never negotiates `2026-07-28` — that revision has no
+handshake, so answering it there would send the client into
+`notifications/initialized` on a protocol that deleted the concept. It
+negotiates `2025-11-25` instead.
+
+### `server/discover`
+
+The modern replacement for the handshake, and the probe a dual-era client uses
+to tell a modern server from a legacy one. It answers in the modern shape no
+matter what the request declared:
+
+```jsonc
+{
+  "supportedVersions": ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"],
+  "capabilities": { "tools": {…}, "resources": {…}, "prompts": {…}, "extensions": {} },
+  "instructions": "backlex MCP server — …",
+  "resultType": "complete",
+  "_meta": { "io.modelcontextprotocol/serverInfo": { "name": "backlex", "version": "0.0.1" } },
+  "ttlMs": 3600000,
+  "cacheScope": "public"
+}
+```
+
+`extensions` is declared empty rather than omitted, so a client can tell
+"supports none" from "predates the field". No extension
+(Tasks, MCP Apps, EMA) is implemented yet.
+
+### Cache hints
+
+`2026-07-28` requires `ttlMs` + `cacheScope` on `tools/list`, `prompts/list`,
+`resources/list`, `resources/read` and `resources/templates/list`.
+**`cacheScope` here is a security decision, not a tuning knob** — `public` lets a
+shared intermediary keep one copy and hand it to the next caller, which is only
+true of results that are identical for everyone:
+
+| Result | `cacheScope` | Why |
+|---|---|---|
+| `server/discover`, `prompts/list`, `resources/templates/list` | `public` | Static per deploy, identical for every caller. |
+| `tools/list` | `private` | Filtered by the caller's per-key **and** per-role allowlist. |
+| `resources/list`, `resources/read` | `private` | The workspace's own collections, behind the permission DSL. |
+
+`tools/list` is also returned in a **deterministic (sorted) order**, which is
+what makes it cacheable at all — and what keeps an LLM provider's prompt cache
+from missing on every reconnect because two of the 300+ tools swapped places.
+
+### Transport rules we enforce
 
 - **`Origin`** — when present it must match `APP_URL` or a workspace-allowed
   origin (DNS-rebinding defense); a missing `Origin` (non-browser client) is fine.
-- **`MCP-Protocol-Version`** header — when present it must be one of the supported
-  revisions, else `400`; when absent we assume `2025-03-26` and proceed.
+- **`MCP-Protocol-Version`** — when present it must be a supported revision, else
+  `400` with `-32022` (`UnsupportedProtocolVersion`) whose `data.supported` lists
+  what to retry with. When it and the body's `_meta` both name a version, they
+  **must agree**.
+- **`Mcp-Method` / `Mcp-Name`** — mirrored from `method` and `params.name` /
+  `params.uri`. Required on a modern request; validated in **every** era when
+  present, because a header that disagrees with the body is how a gateway and
+  the server that executes the call end up doing different things. A mismatch is
+  `400` with `-32020` (`HeaderMismatch`). `Mcp-Name` values wrapped in the
+  Base64 sentinel (`=?base64?…?=`) are decoded before comparison.
+- **Unknown method** — `-32601`, answered with HTTP `404` for a modern caller and
+  HTTP `200` for a legacy one (which has always read it that way).
 - **No JSON-RPC batching** — removed in 2025-06-18; an array body is rejected with
   `400`. Send one message per POST.
+- **`Mcp-Session-Id` / `Last-Event-ID`** — ignored. This transport was already
+  sessionless and never resumable, which is the one place the implementation was
+  ahead of the spec rather than behind it.
 
 ## Tools
 
@@ -514,9 +585,25 @@ res = (client.from_("orders").query()
 
 ## Limitations & roadmap
 
-- **No resumable SSE.** Only `POST /mcp` is implemented; `GET /mcp` returns 405. Subscriptions, sampling, and progress notifications wait on this.
-- **Stateless transport.** No `Mcp-Session-Id` header; every request stands alone.
-- **No OAuth flow.** Agents authenticate via a pre-provisioned PAK. The hosted-Claude case (where the user shouldn't have to paste a secret) is a separate epic.
+- **No `subscriptions/listen`.** `2026-07-28` replaced the GET stream and
+  `resources/subscribe` with one long-lived POST-response stream. We serve
+  neither: holding a stream open per client is the wrong shape for a Worker
+  isolate, and the reactive SSE surface already covers the use case on its own
+  endpoint. `GET /mcp` is `405`, which is what the revision prescribes.
+- **No extensions.** Tasks, MCP Apps and Enterprise Managed Authorization are
+  opt-in extensions; `server/discover` reports `extensions: {}`. Tasks is the
+  interesting one — it is the protocol shape of the durable job queue this
+  server already has (see [Jobs](/docs/jobs/)).
+- **No MRTR.** Tools never return `resultType: "input_required"`, so elicitation
+  and sampling are not offered. Both are also deprecated as *client* features in
+  this revision; the tool-approval path is the direction that replaces them.
+- **OAuth: RFC 9207 `iss` and CIMD are not implemented.** The authorization
+  responses are minted by better-auth's OAuth provider, not by this code, so the
+  `iss` parameter and the shift from Dynamic Client Registration to Client ID
+  Metadata Documents land with the better-auth upgrade rather than here. DCR
+  still works and remains supported for backwards compatibility.
 
-See `apps/web/src/server/mcp/` for the implementation and
-`apps/web/tests/mcp.test.ts` for executable contract examples.
+See `apps/web/src/server/mcp/` for the implementation —
+`protocol.ts` owns the dual-era rules — and
+`apps/web/tests/mcp.test.ts` plus `apps/web/tests/mcp-protocol-2026.test.ts`
+for executable contract examples.

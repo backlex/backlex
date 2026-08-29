@@ -721,7 +721,13 @@ export const createApp = (env: Env) => {
         await seedOwnerScopedPermissions(dbCtx, defaultTenantId, FILES_COLLECTION);
         await seedEmailTemplates(dbCtx);
       };
-      let ec: ExecutionContext | undefined;
+      // Typed by what is actually used, not by the platform interface. The
+      // global `ExecutionContext` grows over time — workers-types v5 added
+      // `tracing` and `abort` — while Hono's `c.executionCtx` tracks its own
+      // definition, so naming the full type here makes an unrelated types bump
+      // a compile error about properties nobody calls. The same structural
+      // shape is what `entries/worker.ts` and the agent background hook use.
+      let ec: { waitUntil: (p: Promise<unknown>) => void } | undefined;
       try {
         ec = c.executionCtx;
       } catch {

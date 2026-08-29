@@ -1,6 +1,7 @@
 import type { Context } from "hono";
-import { dispatch, SUPPORTED_PROTOCOL_VERSIONS } from "./dispatch";
-import type { McpServerWiring } from "./types";
+import { dispatch } from "./dispatch";
+import { RPC_ERR, type McpServerWiring } from "./types";
+import { resolveEra, validateStandardHeaders, type ProtocolRejection } from "./protocol";
 import { isWorkspaceAllowedOrigin } from "../services/cors-origins";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
 
@@ -41,18 +42,23 @@ const withAiOverride = async (
  *  - request (has `id`)  → JSON response with the result
  *  - notification (no id) → 202 Accepted, empty body
  *
- *  GET/DELETE on the same path are 405 — we don't implement the resumable
- *  SSE stream or session termination. Sessionless: no `Mcp-Session-Id`.
+ *  GET/DELETE on the same path are 405, which is exactly what `2026-07-28`
+ *  prescribes for a server that hosts neither the removed GET stream nor
+ *  session termination. `Mcp-Session-Id` and `Last-Event-ID` are ignored for
+ *  the same reason: this transport was already sessionless and never
+ *  resumable, so the revision that deleted both cost us nothing.
  *
- *  Protocol baseline is the current MCP revision (see dispatch.ts). Two
- *  transport rules the spec makes load-bearing as of 2025-06-18:
+ *  The order below is deliberate. Origin is checked first because it is a
+ *  security gate and cheap; the body is parsed next because **the era lives in
+ *  the body** (`params._meta`) as well as in the header, and the two must be
+ *  compared before either is trusted. Only then are the standard headers
+ *  validated and the message dispatched.
+ *
+ *  Standing transport rules, unchanged:
  *  - **No JSON-RPC batching** — the body MUST be a single message; arrays are
  *    rejected.
- *  - **`MCP-Protocol-Version` header** — when present it MUST be a version we
- *    support, else 400. When absent we assume the legacy `2025-03-26` and
- *    proceed (non-browser clients on older revisions don't send it).
- *  And the standing **Origin** requirement: when an `Origin` header is present
- *  it must be allowed (DNS-rebinding defense); absent = a non-browser client. */
+ *  - **Origin** — when present it must be allowed (DNS-rebinding defense);
+ *    absent means a non-browser client, which auth still gates. */
 export const handleMcpRequest = async (
   c: Context,
   wiring: McpServerWiring,
@@ -79,20 +85,6 @@ export const handleMcpRequest = async (
     !isWorkspaceAllowedOrigin(origin, wiring.env)
   ) {
     return c.json({ error: { code: "FORBIDDEN", message: "origin not allowed" } }, 403);
-  }
-
-  // Negotiated protocol version, echoed by the client on every post-initialize
-  // request. Present + unsupported → 400; absent → assume 2025-03-26 and proceed.
-  const pv = c.req.header("mcp-protocol-version");
-  if (pv && !SUPPORTED_PROTOCOL_VERSIONS.has(pv)) {
-    return c.json(
-      {
-        jsonrpc: "2.0",
-        id: null,
-        error: { code: -32600, message: `unsupported MCP-Protocol-Version: ${pv}` },
-      },
-      400,
-    );
   }
 
   let body: unknown;
@@ -128,6 +120,36 @@ export const handleMcpRequest = async (
     );
   }
 
+  const message = body as { jsonrpc?: unknown; id?: unknown; method?: unknown; params?: unknown };
+  // A rejection here is answered with the request's own id when it has one.
+  // `null` reads as "we could not attribute this to a request", which is a
+  // different and less useful thing to hand a client that is trying to work
+  // out whether it is even talking to a modern server.
+  const rejectionId = typeof message.id === "string" || typeof message.id === "number" ? message.id : null;
+  const reject = (r: ProtocolRejection): Response =>
+    c.json(
+      {
+        jsonrpc: "2.0",
+        id: rejectionId,
+        error: { code: r.code, message: r.message, ...(r.data !== undefined ? { data: r.data } : {}) },
+      },
+      r.status,
+    );
+
+  const resolved = resolveEra(message, c.req.header("mcp-protocol-version") ?? null);
+  if ("rejection" in resolved) return reject(resolved.rejection);
+  const era = resolved.era;
+
+  if (typeof message.method === "string") {
+    const headerFault = validateStandardHeaders(
+      { method: message.method, params: message.params },
+      { get: (name) => c.req.header(name) ?? null },
+      era,
+      message.id === undefined,
+    );
+    if (headerFault) return reject(headerFault);
+  }
+
   const effectiveWiring = await withAiOverride(
     c,
     wiring,
@@ -138,6 +160,7 @@ export const handleMcpRequest = async (
     c.req.raw,
     c,
     body as Parameters<typeof dispatch>[3],
+    era,
   );
 
   // Notification (no id) — nothing to return.
@@ -145,8 +168,17 @@ export const handleMcpRequest = async (
     return new Response(null, { status: 202 });
   }
 
+  // Unknown method: `2026-07-28` wants HTTP 404 alongside the JSON-RPC
+  // `-32601`, so a dual-era client can tell "this endpoint exists but not that
+  // method" from a legacy server's bare 404. Only for modern requests — a
+  // handshake-era client has always read this as a 200 with an error body, and
+  // changing that under it would break clients the deprecation window exists
+  // to protect.
+  const status =
+    era.modern && "error" in response && response.error.code === RPC_ERR.METHOD_NOT_FOUND ? 404 : 200;
+
   return new Response(JSON.stringify(response), {
-    status: 200,
+    status,
     headers: { "content-type": "application/json" },
   });
 };

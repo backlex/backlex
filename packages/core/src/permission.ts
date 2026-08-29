@@ -130,6 +130,14 @@ export interface AuthSubject {
    *  that role. Permission resolution then considers *only* this role (and
    *  only while the owner still holds it). Absent/null = no key scoping. */
   apiKeyRoleId?: string | null;
+  /** MCP guards carried by the credential itself, as opposed to by its owner's
+   *  roles: the key's tool allowlist and its read-only flag. Set by
+   *  `sessionMiddleware` — an OAuth token without the `mcp:write` scope arrives
+   *  read-only here too. Declared on the subject because more than the MCP
+   *  dispatcher needs them: anything that runs tools on the caller's behalf has
+   *  to be able to resolve the same boundary. */
+  apiKeyMcpTools?: string[] | null;
+  apiKeyMcpReadOnly?: boolean;
   /**
    * App-plane organization context, resolved by `tenantMiddleware` for
    * `plane: "app"` requests (see `services/app-orgs.ts::resolveOrgContext`).

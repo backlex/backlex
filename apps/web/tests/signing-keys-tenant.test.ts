@@ -40,7 +40,12 @@ import { getTableColumns } from "drizzle-orm";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { ensureMigrations } from "@backlex/db";
+// The SUBPATH, not the root barrel. `packages/db/src/index.ts` deliberately
+// re-exports only `auto-migrate`'s TYPES: the module statically imports both
+// migration bundles, and pulling it through the barrel would drag ~700 KB of
+// SQL into every cold isolate that touches `@backlex/db` for anything at all.
+// `auto-migrate-pg.test.ts` imports it the same way.
+import { ensureMigrations } from "@backlex/db/auto-migrate";
 import { schema as pgSchema } from "@backlex/db/pg";
 import { schema as sqliteSchema } from "@backlex/db/sqlite";
 import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";

@@ -1,7 +1,22 @@
 import { createApp } from "../app";
 import { timingSafeEqual } from "../lib/timing";
-import { cronTick } from "../services/scheduler";
 import type { Env } from "../env";
+
+/**
+ * The scheduler reached lazily, from both of its two call sites below.
+ *
+ * `services/scheduler.ts` is the only thing in the worker that imports
+ * `cron-parser`, and `cron-parser` is the only thing that imports `luxon` —
+ * 260 KiB of date/timezone machinery that a cold isolate compiled before it
+ * could answer a request, for a module reached only from a cron trigger and an
+ * opt-in HTTP endpoint. Neither is on the request path.
+ *
+ * Both call sites were already async, so this costs nothing at either one. As
+ * always, the `import()` is only half of it: `vite.config.ts::workerManualChunks`
+ * needs the matching branch or `return "vendor"` pins cron-parser and luxon
+ * back into the eager chunk regardless.
+ */
+const scheduler = () => import("../services/scheduler");
 
 export { RealtimeRoom } from "../durable-objects/realtime-room";
 export { RateLimitRoom } from "../durable-objects/rate-limit-room";
@@ -33,7 +48,7 @@ export async function handleCronTick(request: Request, env: Env): Promise<Respon
   if (!env.CRON_SECRET || !provided || !timingSafeEqual(provided, env.CRON_SECRET)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
-  await cronTick(env);
+  await (await scheduler()).cronTick(env);
   return Response.json({ ok: true, ts: Date.now() });
 }
 
@@ -68,6 +83,8 @@ export default {
     env: Env,
     ctx: { waitUntil: (p: Promise<unknown>) => void },
   ) {
-    ctx.waitUntil(cronTick(env, new Date(event.scheduledTime)));
+    ctx.waitUntil(
+      scheduler().then((m) => m.cronTick(env, new Date(event.scheduledTime))),
+    );
   },
 };

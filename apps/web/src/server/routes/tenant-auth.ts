@@ -3,7 +3,7 @@ import { and, eq, lt } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import { hashSecret } from "@backlex/auth";
+import { hashSecret } from "@backlex/auth/secret-hash";
 import type { AppBindings } from "../app";
 import { findTenantBySlugOrId, getTenantAuth } from "../services/tenant-auth";
 import {

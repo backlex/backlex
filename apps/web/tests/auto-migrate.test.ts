@@ -23,7 +23,7 @@ import { drizzle as drizzleBunSqlite } from "drizzle-orm/bun-sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ensureMigrations } from "@backlex/db";
+import { ensureMigrations } from "@backlex/db/auto-migrate";
 import { MIGRATIONS as SQLITE_MIGRATIONS } from "@backlex/db/sqlite/migrations-bundle";
 
 let tmp: string;

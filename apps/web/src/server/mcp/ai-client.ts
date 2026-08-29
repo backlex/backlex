@@ -11,19 +11,23 @@
  * (`claude-haiku-4-5-20251001`). A caller's `model` field that contains
  * no `/` is treated as a bare Anthropic id and auto-prefixed in gateway
  * mode so old persisted settings keep working.
+ *
+ * **Nothing here imports the AI SDK.** The credential resolution, model-id
+ * mapping and provider-options logic below are read synchronously by routes
+ * that run on every request (`ai-config`, `agents`, `i18n`), while the SDK
+ * itself is ~860 KiB the worker would otherwise compile at every cold start for
+ * a deployment that may have no AI configured at all. It lives in `./ai-sdk`,
+ * reached by `await import()` from the two functions that generate — see that
+ * file for why the bundler branch matters as much as the import.
  */
-import {
-  generateText,
-  jsonSchema,
-  tool,
-  type JSONValue,
-  type LanguageModelUsage,
-  type ModelMessage,
-} from "ai";
-import { createGateway } from "@ai-sdk/gateway";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+// Type-only, which keeps the note above true: `import type` is erased at
+// compile time and pulls nothing into the eager graph. `LanguageModelUsage` is
+// here for `usageFromResult` below — the one place that reads the SDK's usage
+// shape, and the reason AI SDK 7's move of `cachedInputTokens` to
+// `inputTokenDetails.cacheReadTokens` is a compile error rather than a silent
+// zero.
+import type { JSONValue, LanguageModelUsage, ModelMessage } from "ai";
+import type { JsonSchemaInput } from "./ai-sdk";
 import { AppError } from "@backlex/core";
 import { cloudConfigured, cloudPost, reportToCloud } from "../lib/cloud-report";
 import {
@@ -172,24 +176,6 @@ export const pickProvider = (env: Env): AiCredential => {
     "UNAVAILABLE",
     `No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider), the legacy ANTHROPIC_API_KEY, a short-lived ANTHROPIC_AUTH_TOKEN, or AI_PROVIDER plus one of ${AI_PROVIDERS.map((p) => p.envKey).join(" / ")} on the backlex deployment.`,
   );
-};
-
-/** Build the AI-SDK model for a resolved credential. An OAuth token uses the
- *  provider's `authToken` option, which sends `Authorization: Bearer` and
- *  omits `x-api-key` — sending both is rejected by the API. */
-const modelFor = (cred: AiCredential, modelId: string) => {
-  switch (cred.kind) {
-    case "gateway":
-      return createGateway({ apiKey: cred.key })(modelId);
-    case "openai":
-      return createOpenAI({ apiKey: cred.key })(modelId);
-    case "google":
-      return createGoogleGenerativeAI({ apiKey: cred.key })(modelId);
-    default:
-      return cred.oauth
-        ? createAnthropic({ authToken: cred.key })(modelId)
-        : createAnthropic({ apiKey: cred.key })(modelId);
-  }
 };
 
 /** Reasoning effort. Lower effort = fewer thinking tokens and fewer, more
@@ -388,6 +374,7 @@ const generate = async (
   const modelId = resolveModelId(provider.kind, model);
   // The provider is constructed with the key from `env` instead of
   // `process.env`, which doesn't exist on CF Workers.
+  const { generateText, modelFor } = await import("./ai-sdk");
   const aiModel = modelFor(provider, modelId);
 
   try {
@@ -620,6 +607,7 @@ export const callClaudeTools = async (
 
   const provider = pickProvider(env);
   const modelId = resolveModelId(provider.kind, model);
+  const { generateText, jsonSchema, modelFor, tool } = await import("./ai-sdk");
   const aiModel = modelFor(provider, modelId);
 
   const aiTools = tools?.length
@@ -628,9 +616,7 @@ export const callClaudeTools = async (
           t.name,
           tool({
             description: t.description,
-            inputSchema: jsonSchema(
-              t.inputSchema as Parameters<typeof jsonSchema>[0],
-            ),
+            inputSchema: jsonSchema(t.inputSchema as JsonSchemaInput),
           }),
         ]),
       )

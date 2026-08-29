@@ -23,7 +23,7 @@ import {
   hasNoManagedCollections,
   parseCustomTemplate,
 } from "../templates";
-import { templateSummaries } from "../../templates/catalog";
+import { templateSummariesLazy } from "../../templates/lazy";
 
 // ── Schema templates ───────────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/admin/templates` + MCP
@@ -145,7 +145,7 @@ export const templateQueryFields: Record<string, GraphQLFieldConfig<unknown, Gql
     description: "List the schema-template catalog for the active workspace (admin-only).",
     resolve: (_src, _args, gqlCtx) => {
       requireTemplateAdmin(gqlCtx);
-      return templateSummaries();
+      return templateSummariesLazy();
     },
   },
   templateSeedStatus: {

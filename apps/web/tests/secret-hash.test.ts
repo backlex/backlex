@@ -9,7 +9,8 @@
  *   - `isSecretHash` recognises the stored `<32-hex-salt>:<128-hex-key>` form;
  *   - a malformed / empty stored hash verifies `false` WITHOUT throwing (the
  *     service contract: a corrupt row must not 500 the verify endpoint);
- *   - empty-string edge cases.
+ *   - empty-string edge cases;
+ *   - a digest written by the PREVIOUS implementation still verifies.
  */
 import { describe, expect, test } from "bun:test";
 import { hashSecret, verifySecret, isSecretHash } from "@backlex/auth";
@@ -61,6 +62,29 @@ describe("secret-hash", () => {
     const bogus = `${"0".repeat(32)}:${"0".repeat(128)}`;
     expect(isSecretHash(bogus)).toBe(true);
     expect(await verifySecret("anything", bogus)).toBe(false);
+  });
+
+  /**
+   * The stored format is a compatibility contract with every row already in
+   * every deployed database, and the module has changed which package it
+   * reaches scrypt through — `@better-auth/utils/password` directly, instead of
+   * `better-auth/crypto`, to keep `jose` and `@noble/ciphers` off the worker's
+   * cold-start path. The two are the same scrypt with the same parameters
+   * (`N=16384, r=16, p=1, dkLen=64`, NFKC-normalised plaintext, 16-byte salt),
+   * so the swap is invisible — but "invisible" is a claim, and every other test
+   * in this file round-trips within one implementation and would pass just as
+   * happily if the parameters had moved together.
+   *
+   * This digest was produced by `better-auth/crypto` BEFORE the swap. If a
+   * future change to either package moves a scrypt parameter, this is the
+   * assertion that fails instead of a customer's sign-in.
+   */
+  test("a digest written by the previous implementation still verifies", async () => {
+    const legacy =
+      "d2e874cc761fb47789337b1d16d477ad:5781413a0f12bb820ef9415faa93d0a0518d4dde4533808f35369994d3968a469558de792bd485c5b38705edfb39b52c9289b1e40534ad8aee7b41095662ee36";
+    expect(isSecretHash(legacy)).toBe(true);
+    expect(await verifySecret("backlex-secret-hash-fixture", legacy)).toBe(true);
+    expect(await verifySecret("backlex-secret-hash-fixtur", legacy)).toBe(false);
   });
 
   test("empty-string plaintext: hashable, verifies only against itself", async () => {

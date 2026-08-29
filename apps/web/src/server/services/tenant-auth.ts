@@ -1,9 +1,8 @@
 import { eq } from "drizzle-orm";
-import {
-  createTenantAuth,
-  type TenantAuth,
-  type OAuthProviderConfig,
-  type AuthPlugin,
+import type {
+  TenantAuth,
+  OAuthProviderConfig,
+  AuthPlugin,
 } from "@backlex/auth";
 import { isAppError, type EmailAdapter } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -194,6 +193,9 @@ export const getTenantAuth = async (
     tenant.id,
   );
 
+  // Deferred for the same reason as the admin-plane instance in `context.ts`:
+  // a static import would put better-auth back in the startup graph.
+  const { createTenantAuth } = await import("@backlex/auth");
   const auth = createTenantAuth(ctx.db, ctx.dialect, {
     tenantId: tenant.id,
     tenantSlug: tenant.slug,

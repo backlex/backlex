@@ -206,7 +206,15 @@ const workerManualChunks = (id: string): string | undefined => {
     id.includes("/node_modules/graphql-yoga/") ||
     id.includes("/node_modules/@graphql-yoga/") ||
     id.includes("/node_modules/@graphql-tools/") ||
-    id.includes("/node_modules/@envelop/")
+    id.includes("/node_modules/@envelop/") ||
+    // yoga's own HTTP/fetch layer and its helpers. None of these is reachable
+    // from eager source — they arrived here purely through `return "vendor"`
+    // below, which is the leak this whole list exists to close.
+    id.includes("/node_modules/@whatwg-node/") ||
+    id.includes("/node_modules/@fastify/busboy/") ||
+    id.includes("/node_modules/urlpattern-polyfill/") ||
+    id.includes("/node_modules/cross-inspect/") ||
+    id.includes("/node_modules/lru-cache/")
   ) {
     return undefined;
   }
@@ -232,6 +240,14 @@ const workerManualChunks = (id: string): string | undefined => {
     // (same class of bug as libsql) instead of the lazy samlify chunk.
     id.includes("/node_modules/@authenio/") ||
     id.includes("/node_modules/asn1/") ||
+    // `@peculiar/*` reaches X.509 through asn1js, which pulls pvtsutils +
+    // pvutils, and samlify serialises through `xml`. Naming only the scopes
+    // left 106 KiB of ASN.1 parsing in the eager chunk — the @authenio bug
+    // described just above, a second time and for the same reason.
+    id.includes("/node_modules/asn1js/") ||
+    id.includes("/node_modules/pvtsutils/") ||
+    id.includes("/node_modules/pvutils/") ||
+    id.includes("/node_modules/xml/") ||
     id.includes("/node_modules/xml-escape/") ||
     id.includes("/node_modules/safer-buffer/") ||
     id.includes("/node_modules/@xmldom/") ||
@@ -249,7 +265,8 @@ const workerManualChunks = (id: string): string | undefined => {
     id.includes("/node_modules/@simplewebauthn/") ||
     id.includes("/node_modules/@hexagon/") ||
     id.includes("/node_modules/cbor-x/") ||
-    id.includes("/node_modules/cbor/")
+    id.includes("/node_modules/cbor/") ||
+    id.includes("/node_modules/@levischuck/")
   ) {
     return undefined;
   }
@@ -259,7 +276,9 @@ const workerManualChunks = (id: string): string | undefined => {
   if (
     id.includes("/node_modules/@libsql/") ||
     id.includes("/node_modules/libsql/") ||
-    id.includes("/node_modules/drizzle-orm/libsql/")
+    id.includes("/node_modules/drizzle-orm/libsql/") ||
+    id.includes("/node_modules/js-base64/") ||
+    id.includes("/node_modules/promise-limit/")
   ) {
     return undefined;
   }
@@ -275,6 +294,72 @@ const workerManualChunks = (id: string): string | undefined => {
   }
   // `yaml` — used only by the on-demand `/api/openapi.yaml` handler.
   if (id.includes("/node_modules/yaml/")) {
+    return undefined;
+  }
+  // better-auth and the kysely query builder under it — the single largest
+  // thing in the worker's eager graph, and it builds its plugin/schema objects
+  // at module scope. Both auth instances are constructed behind an `import()`
+  // (`context.ts::buildContext`, `services/tenant-auth.ts`), so without this
+  // branch the `return "vendor"` below would pin all of it back into the
+  // cold-start eval path and the dynamic imports would buy nothing.
+  //
+  // `jose` and the `@noble/*` primitives are here now, and were deliberately
+  // NOT here before — this comment used to say naming them would change nothing
+  // because eager code shared them, which was true and is no longer. The shared
+  // edge was `packages/auth/src/secret-hash.ts` importing `better-auth/crypto`,
+  // whose index re-exports JWT and symmetric-encryption helpers on top of the
+  // scrypt it wanted; it now reaches `@better-auth/utils/password` directly.
+  // `zod` and `drizzle-orm` are still genuinely shared, so they still don't
+  // belong here — Rollup keeps a module eager when anything eager imports it,
+  // and listing one that is would only make this list read as though it did.
+  if (
+    id.includes("/node_modules/better-auth/") ||
+    id.includes("/node_modules/@better-auth/") ||
+    id.includes("/node_modules/better-call/") ||
+    id.includes("/node_modules/kysely/") ||
+    id.includes("/node_modules/jose/") ||
+    id.includes("/node_modules/@noble/") ||
+    id.includes("/node_modules/@better-fetch/") ||
+    id.includes("/node_modules/rou3/") ||
+    id.includes("/node_modules/defu/")
+  ) {
+    return undefined;
+  }
+  // The AI SDK and its four providers — reached only through
+  // `mcp/ai-sdk.ts`, which `mcp/ai-client.ts` `await import()`s from the two
+  // functions that generate. The largest single item left after the
+  // catalog/OpenAPI/better-auth split, and a deployment with no AI configured
+  // never touches it at all. `@opentelemetry/api` is `ai`'s tracing hook and
+  // `eventsource-parser` its streaming one; both arrive with it and with
+  // nothing else in this build.
+  if (
+    id.includes("/node_modules/ai/") ||
+    id.includes("/node_modules/@ai-sdk/") ||
+    id.includes("/node_modules/@opentelemetry/") ||
+    id.includes("/node_modules/eventsource-parser/")
+  ) {
+    return undefined;
+  }
+  // `tslib` — TypeScript's downlevel helpers, shared by the two lazy graphs
+  // above (`@peculiar/*` under samlify, `@graphql-tools/*` + `@envelop/*` under
+  // yoga) and imported by no eager source in this build. It gets its own branch
+  // rather than being appended to either one, because attaching a shared module
+  // to whichever subsystem you happened to notice it under is how this list
+  // grows wrong: Rollup places it with whatever ends up needing it, and both
+  // copies (2.8.1 and 1.14.1) were sitting in the eager chunk.
+  if (id.includes("/node_modules/tslib/")) {
+    return undefined;
+  }
+  // The cron scheduler's expression parser — reached only through
+  // `services/scheduler.ts`, which `entries/worker.ts` now imports lazily from
+  // its `scheduled()` handler and the opt-in HTTP cron endpoint. `luxon` is
+  // cron-parser's own dependency and is imported nowhere in this repo; it was
+  // 227 KiB of timezone tables on the cold-start path for a module no request
+  // reaches.
+  if (
+    id.includes("/node_modules/cron-parser/") ||
+    id.includes("/node_modules/luxon/")
+  ) {
     return undefined;
   }
   return "vendor";

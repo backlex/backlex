@@ -1,4 +1,5 @@
 import { JSONScalar, type GqlCtx } from "./core";
+import { resolveCallerMcpGuards } from "../roles/mcp-guards";
 import { requireFlowAdmin } from "./flows";
 import {
   GraphQLBoolean,
@@ -367,7 +368,12 @@ export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
         tenantId,
         threadId,
         message: a.message,
-        auth: { userId: gqlCtx.auth.userId },
+        auth: {
+          userId: gqlCtx.auth.userId,
+          // Same seam, same resolution as the REST route — GraphQL is a
+          // surface, not a second security model.
+          guards: await resolveCallerMcpGuards(ctx, gqlCtx.auth),
+        },
         request: rawRequest,
         forceAgentIds: [a.agent],
       });

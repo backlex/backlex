@@ -16,19 +16,45 @@ apply to every tool call, and roles are re-resolved from the database on each
 sub-request rather than baked into the run token. Every step is persisted to the
 thread, so a thread is a complete, replayable transcript.
 
-:::caution[What bounds an agent, and what does not]
+:::caution[What bounds an agent]
 A turn runs **as the user who started it**, with that user's roles — not as the
-API key that made the request. Per-key MCP guards (a key's `mcpTools` allowlist
-and its `mcpReadOnly` flag) narrow what that key may call **directly** over MCP;
-they are *not* re-applied to the tool calls an agent makes on its own. The
-boundary on an agent is its **own tool allow-list**, which only an admin can
-edit.
+API key that made the request. Three things bound it, and they compose:
+
+1. **The permission DSL and tenant scoping** of the starting user. Tool calls
+   re-enter the API through an in-process sub-fetch, and roles are re-resolved
+   from the database on every sub-request — so a user suspended or demoted
+   mid-turn loses access mid-turn.
+2. **The caller's MCP guards.** A tool allowlist or an `mcpReadOnly` flag —
+   whether it sits on the API key, on an OAuth token's scopes (a token without
+   `mcp:write` arrives read-only), or on one of the user's roles — narrows the
+   agent too. The agent's catalog is filtered to what the caller may reach, and
+   a call outside it comes back to the model as an error observation instead of
+   running.
+3. **The agent's own tool allowlist**, which only an admin can edit.
+
+**Narrowing is announced, not silent.** When the caller's guards withhold some
+of the agent's tools, the model is told how many and why, and asked to say
+plainly which part it could not do. An agent that quietly answers from its own
+knowledge because its whole toolset was filtered away reads exactly like an
+agent that chose not to look anything up — which is the failure mode worth
+designing against, since a key minted with the default `mcpTools: []`
+(default-deny) can still reach the message route.
+
+The guards are resolved where the credential that asked for the turn still
+exists, and travel with the turn from there — for a background turn, on the job
+payload, because it re-enters on a run token that carries no key. A queued turn
+whose payload has no guards is **refused**, not run unguarded.
 
 The practical consequence: granting a key `agents.run` delegates whatever that
-agent's tool list can reach, within the starting user's permissions. Scope keys
-with that in mind, and treat an agent's tool list as the security decision it
-is. (`agents.run` is classified `write`, so a read-only key cannot start a turn
-at all.)
+agent's tool list can reach, **intersected** with what that key itself may
+reach. A key scoped to `["agents.*"]` can start a turn but cannot use an agent
+as a way around its own allowlist. Scope keys with that in mind, and still treat
+an agent's tool list as the security decision it is. (`agents.run` is classified
+`write`, so a read-only credential cannot start a turn at all.)
+
+> Before this was enforced, an allowlist-scoped key holding `agents.run` could
+> drive an agent whose tool list was broader — the guards were resolved for the
+> MCP surface and then dropped on the way into the runner.
 :::
 
 ## Concepts

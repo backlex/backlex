@@ -13,6 +13,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
+import { resolveCallerMcpGuards } from "../services/roles/mcp-guards";
 import { AI_EFFORTS, type AiEffort } from "../mcp/ai-client";
 import { allTools } from "../mcp/tools";
 import { logActivity } from "../services/activity";
@@ -499,7 +500,16 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
       tenantId,
       threadId,
       message,
-      auth: { userId: auth.userId },
+      auth: {
+        userId: auth.userId,
+        // Resolved HERE, where the credential that asked for the turn is still
+        // in hand. The MCP `agents.run` tool reaches this endpoint through an
+        // in-process sub-fetch that forwards the caller's Authorization header,
+        // so `c.var.auth` carries that key's own MCP guards on this request
+        // too — which is why one resolution at this seam covers both the direct
+        // REST caller and the agent-over-MCP one.
+        guards: await resolveCallerMcpGuards(ctx, auth),
+      },
       request: c.req.raw,
       forceAgentIds,
       async: Boolean(body.async),

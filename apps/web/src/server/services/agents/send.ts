@@ -20,6 +20,7 @@
  */
 import type { Hono } from "hono";
 import { AppError } from "@backlex/core";
+import type { KeyGuards } from "../../mcp/guards";
 import type { Ctx } from "../../context";
 import type { Env } from "../../env";
 import { makeInternalFetch } from "../../mcp/internal-fetch";
@@ -47,7 +48,10 @@ export interface SendMessageInput {
   tenantId: string;
   threadId: string;
   message: string;
-  auth: { userId: string | null };
+  /** Who asked, and what bounds them. `guards` is the caller's effective MCP
+   *  guards (key + role); it travels with the turn and, for a background turn,
+   *  onto the job payload — the calling credential is gone by then. */
+  auth: { userId: string | null; guards: KeyGuards };
   /** The request this send arrived on — its identity is what a sync turn's
    *  tool calls inherit. */
   request: Request;
@@ -208,6 +212,11 @@ export const sendMessage = async (
         agentId: run.agentId,
         message,
         runAs: { userId: auth.userId, tenantId },
+        // Stamped from the request that asked for the turn. A background turn
+        // re-enters as the user via a run token, which carries no key — so a
+        // read-only credential's restriction only survives because it is
+        // written down here.
+        guards: auth.guards,
         origin,
       };
       await enqueueAgentTurn(ctx, payload);

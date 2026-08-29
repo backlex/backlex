@@ -13,32 +13,63 @@ import {
   checkToolCall,
   filterByAllowlist,
   guardsFromAuth,
-  mergeGuards,
   type KeyGuards,
 } from "./guards";
-import { loadRoleMcpGuards } from "../services/roles/mcp-guards";
+import { resolveCallerMcpGuards } from "../services/roles/mcp-guards";
 import { auditMcp, auditMcpResource } from "./audit";
 import { resolveKind } from "./kind";
-import { listResources, listResourceTemplates, readResource } from "./resources";
+import {
+  listResources,
+  listResourceTemplates,
+  readResource,
+  UnknownResourceError,
+} from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
 import { complete } from "./completions";
 import { resolveToolAlias } from "./tool-aliases";
 import { fromWireToolName, toWireToolName } from "./wire-names";
+import {
+  CACHE,
+  decorateResult,
+  LEGACY_PROTOCOL_VERSION,
+  MODERN_ERA,
+  PROTOCOL_VERSION,
+  SERVER_INFO,
+  SUPPORTED_PROTOCOL_VERSION_LIST,
+  SUPPORTED_PROTOCOL_VERSIONS,
+  type CacheHint,
+  type McpEra,
+} from "./protocol";
 
-/** The protocol version we prefer (latest we implement). Returned from
- *  `initialize` when the client doesn't request a version we recognise. */
-const PROTOCOL_VERSION = "2025-11-25";
-/** Versions we accept from a client — both at `initialize` negotiation and in
- *  the `MCP-Protocol-Version` header on later HTTP requests. We support the
- *  current revision plus the two prior ones (the transport is unchanged across
- *  them aside from batching, which we no longer accept regardless). */
-export const SUPPORTED_PROTOCOL_VERSIONS = new Set([
-  "2025-11-25",
-  "2025-06-18",
-  "2025-03-26",
-]);
-const SERVER_NAME = "backlex";
-const SERVER_VERSION = "0.0.1";
+/** What the server tells an LLM it is for. Shared by the legacy `initialize`
+ *  result and the modern `server/discover` one so the two can never drift. */
+const SERVER_INSTRUCTIONS =
+  "backlex MCP server — schema discovery, collection CRUD, storage, " +
+  "vector / graphql / functions, role + permission management, plus " +
+  "workspace resources and prompt templates. Permissions are enforced " +
+  "by the caller's identity (API key or session); per-key allowlist + " +
+  "read-only guards may further narrow what the agent can do.";
+
+/** Server capabilities, identical in both eras.
+ *
+ *  `subscribe: false` is honest rather than lazy: `2026-07-28` replaced
+ *  `resources/subscribe` with a long-lived `subscriptions/listen` stream, and
+ *  we serve neither — a Worker isolate is the wrong place to hold a stream
+ *  open per client, and the reactive SSE surface already covers the use case
+ *  through its own endpoint. */
+const serverCapabilities = () => ({
+  tools: { listChanged: false },
+  // Resources expose every collection as `backlex://collection/<slug>` so MCP
+  // clients with attach pickers (Claude Desktop) can browse and pull
+  // collection schema + sample rows into a chat.
+  resources: { listChanged: false, subscribe: false },
+  // Prompts ship starter templates: describe_collection, generate_queries,
+  // permission_rule, generate_sdk_code.
+  prompts: { listChanged: false },
+  // Argument autocompletion for prompt / resource-template args (collection
+  // slugs, generate_sdk_code language).
+  completions: {},
+});
 
 const error = (id: JsonRpcRequest["id"] | null, code: number, message: string, data?: unknown): JsonRpcResponse => ({
   jsonrpc: "2.0",
@@ -59,6 +90,7 @@ const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
  *  so the role-guard lookup is pure overhead for them. */
 const HANDSHAKE_METHODS = new Set([
   "initialize",
+  "server/discover",
   "ping",
   "notifications/initialized",
   "notifications/cancelled",
@@ -77,21 +109,11 @@ const resolveEffectiveGuards = async (
     apiKeyMcpTools?: string[] | null;
     apiKeyMcpReadOnly?: boolean;
   },
-): Promise<KeyGuards> => {
-  const keyGuards = guardsFromAuth(auth);
-  const dbCtx = honoCtx.get("ctx") as
-    | { db?: unknown; dialect?: "pg" | "sqlite" }
-    | undefined;
-  if (!dbCtx?.db || !dbCtx.dialect) return keyGuards;
-  const role = await loadRoleMcpGuards(
-    { db: dbCtx.db, dialect: dbCtx.dialect },
-    {
-      userId: auth.userId ?? null,
-      apiKeyRoleId: auth.apiKeyRoleId ?? null,
-    },
+): Promise<KeyGuards> =>
+  resolveCallerMcpGuards(
+    honoCtx.get("ctx") as { db: unknown; dialect: "pg" | "sqlite" } | undefined,
+    auth,
   );
-  return mergeGuards(keyGuards, role);
-};
 
 /** First text block of a tool result — the error message when `isError` is set.
  *  Clipped, because the audit row wants a reason, not a payload dump. */
@@ -134,7 +156,10 @@ const toolDescriptor = (t: McpTool, mode: McpServerWiring["mode"]) => {
  *
  *  `honoCtx` is the Hono context for the original MCP request — used to read
  *  the active key's MCP guards (allowlist, read-only) from `c.var.auth`.
- *  Cookie / session callers carry no guards and the checks become no-ops. */
+ *  Cookie / session callers carry no guards and the checks become no-ops.
+ *
+ *  Every result leaves through `ok()` rather than `success()` so the era's
+ *  obligations are applied in one place instead of at twelve return sites. */
 export const dispatch = async (
   wiring: McpServerWiring,
   originRequest: Request,
@@ -154,6 +179,10 @@ export const dispatch = async (
     };
   }>,
   body: JsonRpcRequest | { jsonrpc: "2.0"; method: string; params?: unknown },
+  /** Which revision this request declared — see `mcp/protocol.ts`. Decides
+   *  whether the result carries `resultType`, `_meta.serverInfo` and the cache
+   *  hints, or the pre-2026 shape a handshake-era client expects. */
+  era: McpEra,
 ): Promise<JsonRpcResponse | null> => {
   // Notification — no id, no response per JSON-RPC spec.
   const id = "id" in body ? body.id : undefined;
@@ -202,6 +231,12 @@ export const dispatch = async (
       ),
   };
 
+  /** Success, shaped for the caller's era. `cache` is passed only by the five
+   *  methods `2026-07-28` defines as cacheable; everything else omits it and
+   *  the hint fields simply don't appear. */
+  const ok = (rpcId: JsonRpcRequest["id"], result: unknown, cache?: CacheHint): JsonRpcResponse =>
+    success(rpcId, decorateResult(result, era, cache));
+
   // Stateless transport: every request stands alone, so `initialize` is
   // always idempotent and `notifications/initialized` is a no-op we accept.
   switch (body.method) {
@@ -210,36 +245,48 @@ export const dispatch = async (
       // support it, otherwise answer with our preferred one (per the lifecycle
       // spec). The client then sends this back in the MCP-Protocol-Version
       // header on subsequent HTTP requests.
+      // `initialize` exists only in the handshake era, so the fallback is the
+      // newest revision that HAS a handshake — never `PROTOCOL_VERSION`.
+      // Answering `2026-07-28` here would tell the client to follow up with
+      // `notifications/initialized` on a revision that deleted the concept.
       const requested = (body.params as { protocolVersion?: unknown } | undefined)?.protocolVersion;
       const negotiated =
-        typeof requested === "string" && SUPPORTED_PROTOCOL_VERSIONS.has(requested)
+        typeof requested === "string" &&
+        SUPPORTED_PROTOCOL_VERSIONS.has(requested) &&
+        requested !== PROTOCOL_VERSION
           ? requested
-          : PROTOCOL_VERSION;
-      return success(id!, {
+          : LEGACY_PROTOCOL_VERSION;
+      return ok(id!, {
         protocolVersion: negotiated,
-        serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-        capabilities: {
-          tools: { listChanged: false },
-          // Resources expose every collection as `backlex://collection/<slug>`
-          // so MCP clients with attach pickers (Claude Desktop) can browse
-          // and pull collection schema + sample rows into a chat. Subscribe
-          // isn't supported yet — would require resumable SSE.
-          resources: { listChanged: false, subscribe: false },
-          // Prompts ship starter templates: describe_collection,
-          // generate_queries, permission_rule, generate_sdk_code.
-          prompts: { listChanged: false },
-          // Argument autocompletion for prompt / resource-template args
-          // (collection slugs, generate_sdk_code language).
-          completions: {},
-        },
-        instructions:
-          "backlex MCP server — schema discovery, collection CRUD, storage, " +
-          "vector / graphql / functions, role + permission management, plus " +
-          "workspace resources and prompt templates. Permissions are enforced " +
-          "by the caller's identity (API key or session); per-key allowlist + " +
-          "read-only guards may further narrow what the agent can do.",
+        serverInfo: SERVER_INFO,
+        capabilities: serverCapabilities(),
+        instructions: SERVER_INSTRUCTIONS,
       });
     }
+
+    // `2026-07-28` replaced the handshake with this: one optional RPC that
+    // reports what the server is and which revisions it speaks. Servers MUST
+    // implement it, and a dual-era client uses it as the probe that tells a
+    // modern server from a legacy one — so it answers in the modern shape
+    // regardless of what the request itself declared.
+    case "server/discover":
+      return success(
+        id!,
+        decorateResult(
+          {
+            supportedVersions: [...SUPPORTED_PROTOCOL_VERSION_LIST],
+            capabilities: {
+              ...serverCapabilities(),
+              // No extensions yet. Declared empty rather than omitted so a
+              // client can tell "supports none" from "predates the field".
+              extensions: {},
+            },
+            instructions: SERVER_INSTRUCTIONS,
+          },
+          MODERN_ERA,
+          CACHE.discover,
+        ),
+      );
 
     case "notifications/initialized":
     case "notifications/cancelled":
@@ -248,7 +295,7 @@ export const dispatch = async (
       return null;
 
     case "ping":
-      return success(id!, {});
+      return ok(id!, {});
 
     case "tools/list": {
       // Allowlist narrows what the agent SEES; the dispatcher additionally
@@ -260,11 +307,22 @@ export const dispatch = async (
           guards,
         ),
       );
-      return success(id!, {
-        tools: wiring.tools
-          .filter((t) => allowedNames.has(t.name))
-          .map((t) => toolDescriptor(t, wiring.mode)),
-      });
+      return ok(
+        id!,
+        {
+          // Sorted by the name the client actually sees (wire name on the
+          // tenant mount, dotted id on admin). `2026-07-28` asks for a
+          // deterministic order because the catalog is large and a stable
+          // order is what lets a client cache it — and, downstream, what keeps
+          // an LLM provider's prompt cache from missing on every reconnect
+          // because two tools swapped places.
+          tools: wiring.tools
+            .filter((t) => allowedNames.has(t.name))
+            .map((t) => toolDescriptor(t, wiring.mode))
+            .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)),
+        },
+        CACHE.toolsList,
+      );
     }
 
     case "tools/call": {
@@ -310,7 +368,7 @@ export const dispatch = async (
           args,
           error: guardCheck.message,
         });
-        return success(id!, {
+        return ok(id!, {
           content: [{ type: "text", text: `${guardCheck.code}: ${guardCheck.message}` }],
           isError: true,
         });
@@ -328,7 +386,7 @@ export const dispatch = async (
           args,
           ...(result.isError ? { error: firstText(result) } : {}),
         });
-        return success(id!, result);
+        return ok(id!, result);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         auditMcp(honoCtx, wiring.env, {
@@ -345,7 +403,7 @@ export const dispatch = async (
         // error" apart from "the protocol layer failed". A thrown error
         // means the tool didn't return a result; we synthesise one so the
         // caller still gets an error to display, not a transport 500.
-        return success(id!, {
+        return ok(id!, {
           content: [{ type: "text", text: message }],
           isError: true,
         });
@@ -354,7 +412,7 @@ export const dispatch = async (
 
     case "resources/list": {
       try {
-        return success(id!, await listResources(toolCtx));
+        return ok(id!, await listResources(toolCtx), CACHE.resourcesList);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         return error(id ?? null, RPC_ERR.INTERNAL, message);
@@ -362,7 +420,7 @@ export const dispatch = async (
     }
 
     case "resources/templates/list":
-      return success(id!, listResourceTemplates());
+      return ok(id!, listResourceTemplates(), CACHE.resourceTemplates);
 
     case "resources/read": {
       const params = (body.params ?? {}) as { uri?: unknown };
@@ -377,7 +435,7 @@ export const dispatch = async (
           mode: wiring.mode,
           durationMs: Date.now() - startedAt,
         });
-        return success(id!, result);
+        return ok(id!, result, CACHE.resourceRead);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         auditMcpResource(honoCtx, wiring.env, {
@@ -386,12 +444,21 @@ export const dispatch = async (
           durationMs: Date.now() - startedAt,
           error: message,
         });
-        return error(id ?? null, RPC_ERR.INTERNAL, message);
+        // A URI that names no resource is a bad parameter, not a server
+        // fault. `2026-07-28` renumbered this case from the
+        // implementation-defined `-32002` to plain JSON-RPC `-32602`; we
+        // never used `-32002`, but we did report it as INTERNAL, which told
+        // a client to retry something that will never succeed.
+        return error(
+          id ?? null,
+          e instanceof UnknownResourceError ? RPC_ERR.INVALID_PARAMS : RPC_ERR.INTERNAL,
+          message,
+        );
       }
     }
 
     case "prompts/list":
-      return success(id!, listPrompts());
+      return ok(id!, listPrompts(), CACHE.promptsList);
 
     case "prompts/get": {
       const params = (body.params ?? {}) as { name?: unknown; arguments?: unknown };
@@ -403,7 +470,7 @@ export const dispatch = async (
           ? (params.arguments as Record<string, unknown>)
           : undefined;
       try {
-        return success(id!, await getPrompt(toolCtx, params.name, args));
+        return ok(id!, await getPrompt(toolCtx, params.name, args));
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         return error(id ?? null, RPC_ERR.INTERNAL, message);
@@ -413,7 +480,7 @@ export const dispatch = async (
     case "completion/complete": {
       const params = (body.params ?? {}) as { ref?: unknown; argument?: unknown };
       try {
-        return success(
+        return ok(
           id!,
           await complete(
             toolCtx,

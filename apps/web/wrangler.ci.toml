@@ -1,6 +1,7 @@
 name = "backlex-admin-ci"
 main = "src/server/entries/worker.ts"
-compatibility_date = "2025-01-01"
+# See wrangler.toml for why this tracks the installed workerd, not the calendar.
+compatibility_date = "2026-08-11"
 compatibility_flags = ["nodejs_compat"]
 
 # bun:sqlite is imported transitively (drizzle's bun-sqlite driver +

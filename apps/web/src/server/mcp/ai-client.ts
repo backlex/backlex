@@ -20,7 +20,13 @@
  * reached by `await import()` from the two functions that generate — see that
  * file for why the bundler branch matters as much as the import.
  */
-import type { JSONValue, ModelMessage } from "ai";
+// Type-only, which keeps the note above true: `import type` is erased at
+// compile time and pulls nothing into the eager graph. `LanguageModelUsage` is
+// here for `usageFromResult` below — the one place that reads the SDK's usage
+// shape, and the reason AI SDK 7's move of `cachedInputTokens` to
+// `inputTokenDetails.cacheReadTokens` is a compile error rather than a silent
+// zero.
+import type { JSONValue, LanguageModelUsage, ModelMessage } from "ai";
 import type { JsonSchemaInput } from "./ai-sdk";
 import { AppError } from "@backlex/core";
 import { cloudConfigured, cloudPost, reportToCloud } from "../lib/cloud-report";
@@ -311,6 +317,27 @@ const callCloudGeneration = async (
 export type AiMeterSink = ((usage: NonNullable<ClaudeResponse["usage"]>) => void) | null;
 
 /**
+ * The SDK's usage object in the shape the rest of this codebase speaks.
+ *
+ * Exported and typed against `LanguageModelUsage` on purpose: AI SDK 7 moved
+ * the cache counters from a flat `cachedInputTokens` to
+ * `inputTokenDetails.cacheReadTokens`, and reading the old name would have gone
+ * on compiling as `undefined` — zeroing the prompt-cache number the agent loop
+ * exists to make visible, with nothing failing. Pinning the mapping in one
+ * typed function means the next move breaks the build instead.
+ *
+ * `inputTokenDetails.cacheWriteTokens` is the other half of the caching trade
+ * (the ~1.25× write premium) and is available here when a surface wants it.
+ */
+export const usageFromResult = (
+  usage: LanguageModelUsage | undefined,
+): { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number } => ({
+  input_tokens: usage?.inputTokens,
+  output_tokens: usage?.outputTokens,
+  cache_read_input_tokens: usage?.inputTokenDetails?.cacheReadTokens,
+});
+
+/**
  * Generate, and record what it cost.
  *
  * The one chokepoint every AI path in the product goes through — MCP tools,
@@ -353,7 +380,7 @@ const generate = async (
   try {
     const result = await generateText({
       model: aiModel,
-      system,
+      instructions: system,
       messages: [{ role: "user", content: user }],
       maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
       providerOptions: anthropicProviderOptions(modelId, effort, provider.oauth),
@@ -368,11 +395,7 @@ const generate = async (
     });
     return {
       text: result.text,
-      usage: {
-        input_tokens: result.usage?.inputTokens,
-        output_tokens: result.usage?.outputTokens,
-        cache_read_input_tokens: result.usage?.cachedInputTokens,
-      },
+      usage: usageFromResult(result.usage),
     };
   } catch (e) {
     // AI SDK throws `AISDKError` subclasses with a `.message`. Surface as
@@ -602,7 +625,7 @@ export const callClaudeTools = async (
   try {
     const result = await generateText({
       model: aiModel,
-      system,
+      instructions: system,
       messages,
       tools: aiTools,
       maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
@@ -623,11 +646,7 @@ export const callClaudeTools = async (
         name: c.toolName,
         args: (c.input ?? {}) as Record<string, unknown>,
       })),
-      usage: {
-        input_tokens: result.usage?.inputTokens,
-        output_tokens: result.usage?.outputTokens,
-        cache_read_input_tokens: result.usage?.cachedInputTokens,
-      },
+      usage: usageFromResult(result.usage),
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

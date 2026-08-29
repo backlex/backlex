@@ -22,6 +22,7 @@ import { callClaudeTools, type AiEffort } from "../../mcp/ai-client";
 import { allTools } from "../../mcp/tools";
 import type { McpTool, ToolCtx } from "../../mcp/types";
 import { checkToolCall, filterByAllowlist, type KeyGuards } from "../../mcp/guards";
+import { approvalGate } from "./approval-gate";
 import { resolveKind } from "../../mcp/kind";
 import type { ModelMessage } from "ai";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai-config";
@@ -488,8 +489,27 @@ export const runAgentTurn = async (
           // model can read it and pick a different approach, which is what it
           // does on the MCP surface too.
           const verdict = checkToolCall(mcpTool.name, resolveKind(mcpTool), guards);
+          // A person's yes, where the agent's config asks for one. Runs AFTER
+          // the guards on purpose: a call the caller may not make at all should
+          // be refused outright rather than sent to a human who would be asked
+          // to approve something that could never run.
+          const gate = verdict.ok
+            ? await approvalGate({
+                ctx,
+                tenantId,
+                threadId,
+                agentName: agent.name,
+                toolName: mcpTool.name,
+                args: call.args,
+                approvalTools: agent.approvalTools,
+                approvers: agent.approvers,
+                userId: input.auth.userId,
+              })
+            : null;
           if (!verdict.ok) {
             observation = { text: `${verdict.code}: ${verdict.message}`, isError: true };
+          } else if (gate) {
+            observation = gate;
           } else {
             try {
               observation = renderObservation(

@@ -677,6 +677,24 @@ export const agents = sqliteTable(
      *  See the pg schema for the full note. */
     effort: text("effort"),
     tools: text("tools", { mode: "json" }).$type<string[]>().notNull().default([]),
+    /** Tool-name globs (same grammar as an MCP allowlist: `collections.delete`,
+     *  `collections.*`, `*`) whose calls need a person's yes before the agent may
+     *  run them. Empty = no gate, which is the default: an approval flow nobody
+     *  configured must not silently start refusing work.
+     *
+     *  Approval is per (thread, tool, exact arguments) and is spent by being
+     *  granted, not consumed — the same call in the same thread with the same
+     *  arguments is the same operation, and the request expires on its own. */
+    approvalTools: text("approval_tools", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    /** Who is asked. Without at least one there is nobody to say yes, so a gate
+     *  configured without approvers refuses the call rather than passing it. */
+    approvers: text("approvers", { mode: "json" })
+      .$type<Array<{ email: string; name?: string }>>()
+      .notNull()
+      .default([]),
     maxSteps: integer("max_steps").notNull().default(8),
     memory: integer("memory", { mode: "boolean" }).notNull().default(false),
     /** `thread` (default) | `agent` — how far distilled semantic facts reach.

@@ -796,6 +796,21 @@ export const agents = pgTable(
     effort: text("effort"),
     /** Allow-list of MCP tool names this agent may invoke. */
     tools: jsonb("tools").$type<string[]>().notNull().default([]),
+    /** Tool-name globs (same grammar as an MCP allowlist: `collections.delete`,
+     *  `collections.*`, `*`) whose calls need a person's yes before the agent may
+     *  run them. Empty = no gate, which is the default: an approval flow nobody
+     *  configured must not silently start refusing work.
+     *
+     *  Approval is per (thread, tool, exact arguments) and is spent by being
+     *  granted, not consumed — the same call in the same thread with the same
+     *  arguments is the same operation, and the request expires on its own. */
+    approvalTools: jsonb("approval_tools").$type<string[]>().notNull().default([]),
+    /** Who is asked. Without at least one there is nobody to say yes, so a gate
+     *  configured without approvers refuses the call rather than passing it. */
+    approvers: jsonb("approvers")
+      .$type<Array<{ email: string; name?: string }>>()
+      .notNull()
+      .default([]),
     /** Hard cap on reason→act iterations per turn (runaway-loop backstop). */
     maxSteps: integer("max_steps").notNull().default(8),
     /** Master switch for the agent's memory. When true the runner keeps an

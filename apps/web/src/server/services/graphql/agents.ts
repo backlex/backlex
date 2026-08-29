@@ -48,6 +48,12 @@ const AgentType = new GraphQLObjectType({
     systemPrompt: { type: GraphQLString },
     model: { type: GraphQLString },
     tools: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    /** Tool-name globs whose calls need a person's approval. Empty = no gate. */
+    approvalTools: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    /** `[{ email, name? }]`. JSON rather than a declared object type because it
+     *  is a small opaque shape the server validates, and half a gate — the
+     *  patterns without the people to ask — would be worse than none. */
+    approvers: { type: JSONScalar },
     maxSteps: { type: new GraphQLNonNull(GraphQLInt) },
     memory: { type: new GraphQLNonNull(GraphQLBoolean) },
     /** `thread` | `agent` — how far distilled semantic facts reach. */
@@ -81,6 +87,8 @@ const AgentInputType = new GraphQLInputObjectType({
     systemPrompt: { type: GraphQLString },
     model: { type: GraphQLString },
     tools: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+    approvalTools: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+    approvers: { type: JSONScalar },
     maxSteps: { type: GraphQLInt },
     memory: { type: GraphQLBoolean },
     memoryScope: { type: GraphQLString },
@@ -120,6 +128,8 @@ const normalizeAgentRow = (r: Record<string, unknown>) => ({
   memoryScope: r.memoryScope === "agent" ? "agent" : "thread",
   active: Boolean(r.active),
   tools: Array.isArray(r.tools) ? r.tools : [],
+  approvalTools: Array.isArray(r.approvalTools) ? r.approvalTools : [],
+  approvers: Array.isArray(r.approvers) ? r.approvers : [],
 });
 
 const normalizeMemoryRow = (r: Record<string, unknown>) => ({

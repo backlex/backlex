@@ -17,6 +17,16 @@ export interface Agent {
   effort?: string | null;
   /** Allow-list of MCP tool names the agent may call. */
   tools: string[];
+  /** Tool-name globs (same grammar as `tools`, plus `collections.*` and `*`)
+   *  whose calls need a person's approval before the agent may run them. The
+   *  turn ends when it hits one and an approval request is opened; once someone
+   *  approves, the same call with the same arguments in the same thread goes
+   *  through. Empty = no gate. */
+  approvalTools?: string[];
+  /** Who is asked. Addressed by email, because an approver need not be a user
+   *  of the instance. A gate with no approvers refuses the call rather than
+   *  passing it — there would be nobody who could grant it. */
+  approvers?: Array<{ email: string; name?: string }>;
   maxSteps: number;
   /** Cross-turn memory — an episodic trace plus distilled semantic facts.
    *  Best-effort; needs an embedding provider. */

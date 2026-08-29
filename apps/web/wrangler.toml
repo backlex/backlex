@@ -1,6 +1,17 @@
 name = "backlex-admin"
 main = "src/server/entries/worker.ts"
-compatibility_date = "2025-01-01"
+# ⚠ Keep this in step with the workerd this repo INSTALLS, never ahead of it.
+# `2026-08-11` is what `workerd@1.20260811.1` (via wrangler 4.123.0) honours; a
+# later date is silently clamped locally while production's newer runtime obeys
+# it, so `bun run dev`, the CI build and the deployed Worker would stop agreeing
+# about the same bundle. Raise this and the wrangler pin together, and read the
+# flags added since — the last twenty months brought node:http/https clients
+# (2025-08-15), node:fs + node:os + process v2 (2025-09-15), http.createServer
+# (2025-09-01), Node-shaped timers (2026-02-10), node:child_process /
+# worker_threads / perf_hooks stubs (2026-03-17), and nodejs_compat on by
+# default (2026-08-04) — which is why `nodejs_compat` below is now redundant
+# but harmless, and is kept so an older-dated fork still gets it.
+compatibility_date = "2026-08-11"
 compatibility_flags = ["nodejs_compat"]
 
 # Workers Logs — persist invocation logs (console.* + uncaught exceptions) so

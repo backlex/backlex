@@ -73,7 +73,7 @@
     "@azure/functions": "^4.16.2",
     "@babel/core": "7.29.6",
     "@cloudflare/vite-plugin": "1.52.1",
-    "@cloudflare/workers-types": "^4.20241127.0",
+    "@cloudflare/workers-types": "^5.20260828.1",
     "@electric-sql/pglite": "0.4.5",
     "@google-cloud/functions-framework": "^5.0.5",
     "@happy-dom/global-registrator": "^20.11.2",

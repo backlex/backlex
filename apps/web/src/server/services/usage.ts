@@ -613,6 +613,56 @@ const envPosInt = (v: string | undefined): number | null => {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
 };
 
+/** The four numeric caps a provisioner can inject. `mode` is deliberately not
+ *  in here — it is the switch, not a cap. */
+const ENV_CAP_KEYS = [
+  "USAGE_LIMIT_REQUESTS_MONTH",
+  "USAGE_LIMIT_STORAGE_BYTES",
+  "USAGE_LIMIT_DB_ROWS",
+  "USAGE_LIMIT_AI_CALLS",
+] as const;
+
+/**
+ * The mode the platform env dictates, or `null` when it dictates none and the
+ * workspace's own `usageLimits.mode` decides.
+ *
+ * The second clause is the load-bearing one. `USAGE_LIMIT_MODE` used to be
+ * INDEPENDENTLY optional: a provisioner that injected a plan's caps but not the
+ * mode fell through to `settingsLimits.mode`, whose default is `off` — so every
+ * enforcement site (`assertAiQuota`, `assertStorageWithinLimit`,
+ * `assertRowsWithinLimit`, the request cap, and the `over` list) short-circuited
+ * on the very first line and the caps applied to nothing. Worse in the other
+ * direction: with no env mode the workspace's OWN admin could set `off` from the
+ * Usage page and walk out of a plan the platform had pinned, which is the
+ * containment hole rather than merely an inert one.
+ *
+ * So a cap now implies enforcement. `hard` rather than `soft` because `soft`
+ * reports an overage and blocks nothing — that is the same silent no-op wearing
+ * a different name, and it is not what pinning a cap means. A provisioner that
+ * genuinely wants observe-only says `USAGE_LIMIT_MODE=soft`, and one that wants
+ * the numbers recorded but unenforced says `off`; both are still honoured
+ * verbatim, because an EXPLICIT mode always wins over the implication.
+ *
+ * Refusing to boot was the alternative and was rejected: `resolveUsageLimits` is
+ * a pure function on the request hot path, not a startup step, so "refuse" would
+ * mean 500-ing every request of a tenant whose config is merely ambiguous —
+ * turning an under-enforced workspace into a dead one.
+ *
+ * A malformed cap is not a cap: `envPosInt` rejects `""`, `0`, negatives and
+ * non-numbers, so `USAGE_LIMIT_DB_ROWS=""` implies nothing and leaves the
+ * workspace's own mode in charge.
+ */
+export const envUsageMode = (env: Env): UsageLimits["mode"] | null => {
+  if (
+    env.USAGE_LIMIT_MODE === "soft" ||
+    env.USAGE_LIMIT_MODE === "hard" ||
+    env.USAGE_LIMIT_MODE === "off"
+  )
+    return env.USAGE_LIMIT_MODE;
+  const capped = ENV_CAP_KEYS.some((k) => envPosInt(env[k]) !== null);
+  return capped ? "hard" : null;
+};
+
 /**
  * Merge the platform env overrides (`USAGE_LIMIT_*` — how managed cloud
  * injects a tenant's plan) over the admin-editable `usageLimits` setting.
@@ -622,14 +672,8 @@ export const resolveUsageLimits = (
   env: Env,
   settingsLimits: UsageLimits,
 ): UsageLimits => {
-  const envMode =
-    env.USAGE_LIMIT_MODE === "soft" ||
-    env.USAGE_LIMIT_MODE === "hard" ||
-    env.USAGE_LIMIT_MODE === "off"
-      ? env.USAGE_LIMIT_MODE
-      : null;
   return {
-    mode: envMode ?? settingsLimits.mode,
+    mode: envUsageMode(env) ?? settingsLimits.mode,
     maxRequestsPerMonth:
       envPosInt(env.USAGE_LIMIT_REQUESTS_MONTH) ?? settingsLimits.maxRequestsPerMonth,
     maxStorageBytes:
@@ -813,12 +857,12 @@ export const usageOverview = async (
 
   const limits = resolveUsageLimits(ctx.env, settings.usageLimits);
   const envPinned: UsageOverview["envPinned"] = [];
-  if (
-    ctx.env.USAGE_LIMIT_MODE === "off" ||
-    ctx.env.USAGE_LIMIT_MODE === "soft" ||
-    ctx.env.USAGE_LIMIT_MODE === "hard"
-  )
-    envPinned.push("mode");
+  // Pinned whenever the env DICTATES the mode, which now includes the mode a
+  // cap implies. Reporting only the explicit spelling would leave the admin UI
+  // rendering the mode control as editable while `resolveUsageLimits` ignores
+  // what they choose — a save that returns 200 and changes nothing, which is
+  // the same silent-success shape this phase exists to remove.
+  if (envUsageMode(ctx.env) !== null) envPinned.push("mode");
   if (ctx.env.USAGE_LIMIT_REQUESTS_MONTH) envPinned.push("maxRequestsPerMonth");
   if (ctx.env.USAGE_LIMIT_STORAGE_BYTES) envPinned.push("maxStorageBytes");
   if (ctx.env.USAGE_LIMIT_DB_ROWS) envPinned.push("maxDbRows");

@@ -21,8 +21,14 @@ import { EmailSettingsCard, PushSettingsCard, SmsSettingsCard } from "./messagin
 import { AiSettingsCard } from "./ai-card";
 import { AppearanceSettingsCard, SignInBrandingCard } from "./appearance-cards";
 import { WorkspaceLocaleCard } from "./locale-card";
+import { WorkspaceCard } from "./workspace-card";
 
+// Workspace comes first because it is the page's subject: every other tab
+// configures something that lives INSIDE a workspace, while this one is about
+// the workspace itself — its name, the address its tables are keyed by, and
+// whether it is still in circulation at all.
 const SETTINGS_TABS = [
+  "workspace",
   "general",
   "appearance",
   "email",
@@ -36,7 +42,7 @@ const SETTINGS_TABS = [
 
 export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: PushToast }) {
   const { t } = useLingui();
-  const [tab, setTab] = useUrlTab(SETTINGS_TABS, "general");
+  const [tab, setTab] = useUrlTab(SETTINGS_TABS, "workspace");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
   const [from, setFrom] = useState("hello@example.com");
   // First-load gate — drives the page skeleton until the General-tab settings
@@ -109,6 +115,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       <Tabs value={tab} onValueChange={(v) => setTab(v as (typeof SETTINGS_TABS)[number])}>
         <TabsList>
           {[
+            { id: "workspace", label: t`Workspace` },
             { id: "general", label: t`General` },
             { id: "appearance", label: t`Appearance` },
             { id: "email", label: t`Email` },
@@ -126,6 +133,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           ))}
         </TabsList>
       </Tabs>
+
+      {tab === "workspace" && <WorkspaceCard pushToast={pushToast} />}
 
       {tab === "general" && (
         <div className="flex flex-col gap-4">

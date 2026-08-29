@@ -1623,6 +1623,10 @@ msgstr "Webhook olan biteni haber alır. Sync hook ise yazmadan önce çalışı
 msgid "A website registered under Websites needs none of this: its script tag reports against the site it was issued for. Only reach for a key when the sender is not one of those sites."
 msgstr "Web siteleri altında kayıtlı bir siteye bunların hiçbiri gerekmez: script etiketi, verildiği sitenin adına raporlar. Anahtara yalnızca gönderen bu sitelerden biri değilken başvurun."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "A workspace name needs at least two characters."
+msgstr "Çalışma alanı adı en az iki karakter olmalı."
+
 #: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
@@ -2234,6 +2238,14 @@ msgstr "ekleyici"
 msgid "address"
 msgstr "adres"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Address"
+msgstr "Adres"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Address copied."
+msgstr "Adres kopyalandı."
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
 msgstr "<0>_status</0> + <1>_published_at</1> ekler. Kullanıcı tanımlı \"status\" alanından bağımsızdır."
@@ -2835,6 +2847,10 @@ msgstr "API anahtarları"
 msgid "API Keys"
 msgstr "API Anahtarları"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "API keys and integrations that address this workspace stop being answered until it is restored."
+msgstr "Bu çalışma alanını adresleyen API anahtarları ve entegrasyonlar, alan geri getirilene kadar yanıtsız kalır."
+
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "app (workspace end-users)"
 msgstr "app (çalışma alanı son kullanıcıları)"
@@ -3001,9 +3017,25 @@ msgstr "<0>c_{slug}</0> koleksiyonu arşivlensin mi?"
 msgid "Archive this collection"
 msgstr "Bu koleksiyonu arşivle"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive this workspace"
+msgstr "Bu çalışma alanını arşivle"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive this workspace?"
+msgstr "Bu çalışma alanı arşivlensin mi?"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive workspace"
+msgstr "Çalışma alanını arşivle"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "archive zone"
 msgstr "arşiv bölgesi"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive…"
+msgstr "Arşivle…"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "archived"
@@ -3017,6 +3049,10 @@ msgstr "Arşivlendi"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Archives"
 msgstr "Arşivler"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archiving…"
+msgstr "Arşivleniyor…"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Args copied"
@@ -3907,6 +3943,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/admin/ui.tsx
 #: src/client/components/confirm-action.tsx
@@ -4599,6 +4636,10 @@ msgstr "İki nokta ile ayrılmış parçalar: sabit bir metin, tek parçalık jo
 msgid "Color"
 msgstr "Renk"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Colour"
+msgstr "Renk"
+
 #: src/client/admin/collections/adopt-wizard.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Column"
@@ -5147,6 +5188,10 @@ msgstr "Kopyala"
 #: src/client/admin/app.tsx
 msgid "copy / paste"
 msgstr "kopyala / yapıştır"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Copy address"
+msgstr "Adresi kopyala"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Copy an external Postgres database into collections — primary keys preserved, relations intact, resumable. For databases the server can't reach, use the backlex import-db CLI."
@@ -5709,6 +5754,7 @@ msgstr "Admin hesabınızı oluşturun"
 #: src/client/admin/pages/automation/jobs.tsx
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 msgid "Created"
 msgstr "Oluşturuldu"
 
@@ -5730,6 +5776,10 @@ msgstr "{0} koleksiyon oluşturuldu"
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Created {0} collections with {seeded} sample rows"
 msgstr "{seeded} örnek satırla birlikte {0} koleksiyon oluşturuldu"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Created by"
+msgstr "Oluşturan"
 
 #. placeholder {0}: res.applied.indexName
 #: src/client/admin/pages/observability/advisor.tsx
@@ -5925,6 +5975,7 @@ msgstr "özel kural"
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/components/time-field.tsx
 msgid "Custom…"
 msgstr "Özel…"
@@ -6595,6 +6646,10 @@ msgstr "devre dışı"
 msgid "Disabling refuses every SCIM request without discarding the token."
 msgstr "Kapatmak, token'ı silmeden her SCIM isteğini reddeder."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "disappears from the workspace list of every member, not only yours, and nobody can switch into it or reach its data through the API while it is archived."
+msgstr "yalnızca sizin değil, her üyenin çalışma alanı listesinden kaybolur; arşivde kaldığı sürece kimse bu alana geçemez ve verilerine API üzerinden erişemez."
+
 #: src/client/admin/collections/item-editor.tsx
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -6603,6 +6658,7 @@ msgstr "Kapatmak, token'ı silmeden her SCIM isteğini reddeder."
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 msgid "Discard"
 msgstr "Vazgeç"
 
@@ -8493,6 +8549,10 @@ msgstr "Düzeltme panoya kopyalandı."
 #: src/client/admin/collections/item-editor.tsx
 msgid "Fix the highlighted fields before saving."
 msgstr "Kaydetmeden önce işaretli alanları düzeltin."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Fixed at creation. The address keys this workspace's physical table namespace — every collection's table name is built from it, and every API request that names a workspace uses it — so changing it would leave those tables addressed by a name nothing resolves."
+msgstr "Oluşturulurken sabitlenir. Adres, bu çalışma alanının fiziksel tablo ad alanını belirler — her koleksiyonun tablo adı bundan üretilir ve bir çalışma alanını adlandıran her API isteği bunu kullanır — bu yüzden değiştirmek, o tabloları hiçbir şeyin çözemediği bir adla adreslenmiş halde bırakır."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "fixed height, zero JavaScript"
@@ -11114,6 +11174,10 @@ msgstr "Harita önizlemesi"
 msgid "March"
 msgstr "Mart"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Mark"
+msgstr "İşaret"
+
 #: src/client/admin/ui.tsx
 msgid "Mark all read"
 msgstr "Tümünü okundu işaretle"
@@ -11776,6 +11840,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/api-keys.tsx
 #: src/client/pages/book.tsx
@@ -13121,6 +13186,10 @@ msgstr "Kayıtlı web sitesi yok"
 msgid "No workspace locales configured — add them under Settings → Localization."
 msgstr "Çalışma alanı dili yapılandırılmamış — Ayarlar → Yerelleştirme'den ekleyin."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "No workspace to configure"
+msgstr "Yapılandırılacak çalışma alanı yok"
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "No-show"
 msgstr "Gelmedi"
@@ -13351,6 +13420,10 @@ msgstr "Henüz rezerve edilebilir bir şey yok"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Nothing is coming up in this view."
 msgstr "Bu görünümde yaklaşan bir şey yok."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Nothing is deleted. The collections, their tables and every row in them stay exactly as they are, and an operator can bring the workspace back."
+msgstr "Hiçbir şey silinmez. Koleksiyonlar, tabloları ve içlerindeki her satır olduğu gibi kalır; bir operatör çalışma alanını geri getirebilir."
 
 #: src/client/pages/book.tsx
 #~ msgid "Nothing is free in the next two weeks."
@@ -13709,6 +13782,10 @@ msgstr "yukarıdaki etiketlerden biri"
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "Bir veya daha fazla benimsenmiş FK'da hedef koleksiyon eksik."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "One or two letters on the workspace tile."
+msgstr "Çalışma alanı kutucuğunda görünen bir veya iki harf."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row."
 msgstr "Satır başına bir kişi — e-posta, isteğe bağlı :ad:rol. Tek bir yer tutucu, satırın taşıdığı bir listenin tamamına da karşılık gelebilir."
@@ -13749,6 +13826,10 @@ msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "only a visitor holding an unspent link may answer"
 msgstr "yalnızca kullanılmamış bağlantısı olan biri yanıtlayabilir"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Only a workspace owner can archive a workspace."
+msgstr "Bir çalışma alanını yalnızca alanın sahibi arşivleyebilir."
 
 #: src/client/admin/fields/field-email-editor.tsx
 msgid "Only accept addresses at these domains"
@@ -15863,6 +15944,10 @@ msgstr "metnin tamamını oku"
 #~ msgid "Read the full text ↗"
 #~ msgstr "Metnin tamamını oku ↗"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Read what this does before confirming — it affects everyone, not just you."
+msgstr "Onaylamadan önce bunun ne yaptığını okuyun — yalnızca sizi değil, herkesi etkiler."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Read your basic profile"
 msgstr "Temel profilinizi okuma"
@@ -17583,6 +17668,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/sheet.tsx
 msgid "Save"
 msgstr "Kaydet"
@@ -17780,6 +17866,7 @@ msgstr "kaydediliyor…"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/reset-password.tsx
@@ -18809,6 +18896,10 @@ msgstr "Kenar çubuğunda ve Koleksiyonlar sayfasında gösterilir."
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Shown in the sidebar and the browser title."
 msgstr "Kenar çubuğunda ve tarayıcı başlığında gösterilir."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Shown in the workspace switcher and anywhere this workspace is named. Changing it renames nothing else."
+msgstr "Çalışma alanı değiştiricide ve bu alanın adının geçtiği her yerde görünür. Değiştirmek başka hiçbir şeyi yeniden adlandırmaz."
 
 #: src/client/admin/fields/field-validation-editor.tsx
 msgid "Shown instead of the default message"
@@ -19967,6 +20058,10 @@ msgstr "Yukarıdaki günlerdeki her açık aralıktan düşülür. Gün başına
 msgid "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
 msgstr "Telefonla alındığı için yayınlanan saatlerle sınırlı değil — ama dolu bir saat yine de reddedilir."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Takes the workspace out of circulation without deleting anything. Only an owner can do this."
+msgstr "Hiçbir şeyi silmeden çalışma alanını dolaşımdan çıkarır. Bunu yalnızca alanın sahibi yapabilir."
+
 #: src/client/admin/collections/item-form.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Target"
@@ -20688,6 +20783,10 @@ msgstr "Üçüncü taraf kimlik doğrulama"
 #~ msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
 #~ msgstr "Bu <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> işlemi geri alınamaz. Sütundaki mevcut veriler kaybolur."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "This account is not a member of any workspace yet. Create one from the switcher at the top of the sidebar."
+msgstr "Bu hesap henüz hiçbir çalışma alanının üyesi değil. Kenar çubuğunun üstündeki değiştiriciden bir tane oluşturun."
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data."
 msgstr "Bu ajanın aracı yok — yalnızca modelden yanıt verir. Verilerinizi okuyabilmesi için Düzenle’den araç ekleyin."
@@ -20854,6 +20953,10 @@ msgstr "Bu zaten mevcut durum"
 #: src/client/pages/sign-up.tsx
 msgid "This is the first user on this instance."
 msgstr "Bu örneğin ilk kullanıcısı bu."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "This is the instance's root workspace. It cannot be archived — everything that is not explicitly scoped elsewhere lives here."
+msgstr "Bu, kurulumun kök çalışma alanı. Arşivlenemez — başka bir yere açıkça bağlanmamış her şey burada durur."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "This is usually temporary — try again."
@@ -21058,6 +21161,10 @@ msgstr "Zaman damgaları"
 #: src/client/admin/pages/account-page.tsx
 msgid "Timestamps across the admin render in this zone."
 msgstr "Yönetici panelindeki tüm zaman damgaları bu dilimde gösterilir."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Tints the workspace tile. Theme tokens stay legible in both light and dark."
+msgstr "Çalışma alanı kutucuğunu renklendirir. Tema değişkenleri hem açık hem koyu temada okunaklı kalır."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/observability/consent.tsx
@@ -22739,8 +22846,14 @@ msgid "Working…"
 msgstr "İşleniyor…"
 
 #: src/client/admin/pages/automation/feature-flags.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Workspace"
 msgstr "Çalışma alanı"
+
+#. placeholder {0}: saved.name
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Workspace \"{0}\" archived."
+msgstr "\"{0}\" çalışma alanı arşivlendi."
 
 #. placeholder {0}: res.data.slug
 #: src/client/admin/ui.tsx
@@ -22788,6 +22901,10 @@ msgstr "çalışma alanı logosu"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace name"
 msgstr "Çalışma alanı adı"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Workspace saved."
+msgstr "Çalışma alanı kaydedildi."
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Workspace usage limits"

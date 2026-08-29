@@ -1623,6 +1623,10 @@ msgstr "A webhook is told what happened. A sync hook runs before the write and d
 msgid "A website registered under Websites needs none of this: its script tag reports against the site it was issued for. Only reach for a key when the sender is not one of those sites."
 msgstr "A website registered under Websites needs none of this: its script tag reports against the site it was issued for. Only reach for a key when the sender is not one of those sites."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "A workspace name needs at least two characters."
+msgstr "A workspace name needs at least two characters."
+
 #: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
@@ -2234,6 +2238,14 @@ msgstr "additive"
 msgid "address"
 msgstr "address"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Address"
+msgstr "Address"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Address copied."
+msgstr "Address copied."
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
 msgstr "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
@@ -2835,6 +2847,10 @@ msgstr "API keys"
 msgid "API Keys"
 msgstr "API Keys"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "API keys and integrations that address this workspace stop being answered until it is restored."
+msgstr "API keys and integrations that address this workspace stop being answered until it is restored."
+
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "app (workspace end-users)"
 msgstr "app (workspace end-users)"
@@ -3001,9 +3017,25 @@ msgstr "Archive collection <0>c_{slug}</0>?"
 msgid "Archive this collection"
 msgstr "Archive this collection"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive this workspace"
+msgstr "Archive this workspace"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive this workspace?"
+msgstr "Archive this workspace?"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive workspace"
+msgstr "Archive workspace"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "archive zone"
 msgstr "archive zone"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archive…"
+msgstr "Archive…"
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "archived"
@@ -3017,6 +3049,10 @@ msgstr "Archived"
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Archives"
 msgstr "Archives"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Archiving…"
+msgstr "Archiving…"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Args copied"
@@ -3907,6 +3943,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/admin/ui.tsx
 #: src/client/components/confirm-action.tsx
@@ -4599,6 +4636,10 @@ msgstr "Colon-separated segments: a literal, a single-segment wildcard, a rest w
 msgid "Color"
 msgstr "Color"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Colour"
+msgstr "Colour"
+
 #: src/client/admin/collections/adopt-wizard.tsx
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Column"
@@ -5147,6 +5188,10 @@ msgstr "Copy"
 #: src/client/admin/app.tsx
 msgid "copy / paste"
 msgstr "copy / paste"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Copy address"
+msgstr "Copy address"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "Copy an external Postgres database into collections — primary keys preserved, relations intact, resumable. For databases the server can't reach, use the backlex import-db CLI."
@@ -5709,6 +5754,7 @@ msgstr "Create your admin account"
 #: src/client/admin/pages/automation/jobs.tsx
 #: src/client/admin/pages/data/database.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 msgid "Created"
 msgstr "Created"
 
@@ -5730,6 +5776,10 @@ msgstr "Created {0} collections"
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Created {0} collections with {seeded} sample rows"
 msgstr "Created {0} collections with {seeded} sample rows"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Created by"
+msgstr "Created by"
 
 #. placeholder {0}: res.applied.indexName
 #: src/client/admin/pages/observability/advisor.tsx
@@ -5925,6 +5975,7 @@ msgstr "custom rule"
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/components/time-field.tsx
 msgid "Custom…"
 msgstr "Custom…"
@@ -6595,6 +6646,10 @@ msgstr "disabled"
 msgid "Disabling refuses every SCIM request without discarding the token."
 msgstr "Disabling refuses every SCIM request without discarding the token."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "disappears from the workspace list of every member, not only yours, and nobody can switch into it or reach its data through the API while it is archived."
+msgstr "disappears from the workspace list of every member, not only yours, and nobody can switch into it or reach its data through the API while it is archived."
+
 #: src/client/admin/collections/item-editor.tsx
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -6603,6 +6658,7 @@ msgstr "Disabling refuses every SCIM request without discarding the token."
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 msgid "Discard"
 msgstr "Discard"
 
@@ -8493,6 +8549,10 @@ msgstr "Fix copied to clipboard."
 #: src/client/admin/collections/item-editor.tsx
 msgid "Fix the highlighted fields before saving."
 msgstr "Fix the highlighted fields before saving."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Fixed at creation. The address keys this workspace's physical table namespace — every collection's table name is built from it, and every API request that names a workspace uses it — so changing it would leave those tables addressed by a name nothing resolves."
+msgstr "Fixed at creation. The address keys this workspace's physical table namespace — every collection's table name is built from it, and every API request that names a workspace uses it — so changing it would leave those tables addressed by a name nothing resolves."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "fixed height, zero JavaScript"
@@ -11114,6 +11174,10 @@ msgstr "Map preview"
 msgid "March"
 msgstr "March"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Mark"
+msgstr "Mark"
+
 #: src/client/admin/ui.tsx
 msgid "Mark all read"
 msgstr "Mark all read"
@@ -11776,6 +11840,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/api-keys.tsx
 #: src/client/pages/book.tsx
@@ -13121,6 +13186,10 @@ msgstr "No websites registered"
 msgid "No workspace locales configured — add them under Settings → Localization."
 msgstr "No workspace locales configured — add them under Settings → Localization."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "No workspace to configure"
+msgstr "No workspace to configure"
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "No-show"
 msgstr "No-show"
@@ -13351,6 +13420,10 @@ msgstr "Nothing is bookable yet"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Nothing is coming up in this view."
 msgstr "Nothing is coming up in this view."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Nothing is deleted. The collections, their tables and every row in them stay exactly as they are, and an operator can bring the workspace back."
+msgstr "Nothing is deleted. The collections, their tables and every row in them stay exactly as they are, and an operator can bring the workspace back."
 
 #: src/client/pages/book.tsx
 #~ msgid "Nothing is free in the next two weeks."
@@ -13709,6 +13782,10 @@ msgstr "one of the labels above"
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "One or more adopted FKs are missing a target collection."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "One or two letters on the workspace tile."
+msgstr "One or two letters on the workspace tile."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row."
 msgstr "One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row."
@@ -13749,6 +13826,10 @@ msgstr "One-time link, no <0>password</0>."
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "only a visitor holding an unspent link may answer"
 msgstr "only a visitor holding an unspent link may answer"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Only a workspace owner can archive a workspace."
+msgstr "Only a workspace owner can archive a workspace."
 
 #: src/client/admin/fields/field-email-editor.tsx
 msgid "Only accept addresses at these domains"
@@ -15863,6 +15944,10 @@ msgstr "read the full text"
 #~ msgid "Read the full text ↗"
 #~ msgstr "Read the full text ↗"
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Read what this does before confirming — it affects everyone, not just you."
+msgstr "Read what this does before confirming — it affects everyone, not just you."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Read your basic profile"
 msgstr "Read your basic profile"
@@ -17583,6 +17668,7 @@ msgstr "Sat"
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/sheet.tsx
 msgid "Save"
 msgstr "Save"
@@ -17780,6 +17866,7 @@ msgstr "saving…"
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/settings/workspace-card.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/reset-password.tsx
@@ -18809,6 +18896,10 @@ msgstr "Shown in the sidebar and on the Collections page."
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Shown in the sidebar and the browser title."
 msgstr "Shown in the sidebar and the browser title."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Shown in the workspace switcher and anywhere this workspace is named. Changing it renames nothing else."
+msgstr "Shown in the workspace switcher and anywhere this workspace is named. Changing it renames nothing else."
 
 #: src/client/admin/fields/field-validation-editor.tsx
 msgid "Shown instead of the default message"
@@ -19967,6 +20058,10 @@ msgstr "Taken out of every opening on the days above. Stored as one closed rule 
 msgid "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
 msgstr "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Takes the workspace out of circulation without deleting anything. Only an owner can do this."
+msgstr "Takes the workspace out of circulation without deleting anything. Only an owner can do this."
+
 #: src/client/admin/collections/item-form.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 msgid "Target"
@@ -20688,6 +20783,10 @@ msgstr "Third-party auth"
 #~ msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
 #~ msgstr "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
 
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "This account is not a member of any workspace yet. Create one from the switcher at the top of the sidebar."
+msgstr "This account is not a member of any workspace yet. Create one from the switcher at the top of the sidebar."
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data."
 msgstr "This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data."
@@ -20854,6 +20953,10 @@ msgstr "This is already the current state"
 #: src/client/pages/sign-up.tsx
 msgid "This is the first user on this instance."
 msgstr "This is the first user on this instance."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "This is the instance's root workspace. It cannot be archived — everything that is not explicitly scoped elsewhere lives here."
+msgstr "This is the instance's root workspace. It cannot be archived — everything that is not explicitly scoped elsewhere lives here."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "This is usually temporary — try again."
@@ -21058,6 +21161,10 @@ msgstr "Timestamps"
 #: src/client/admin/pages/account-page.tsx
 msgid "Timestamps across the admin render in this zone."
 msgstr "Timestamps across the admin render in this zone."
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Tints the workspace tile. Theme tokens stay legible in both light and dark."
+msgstr "Tints the workspace tile. Theme tokens stay legible in both light and dark."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/observability/consent.tsx
@@ -22739,8 +22846,14 @@ msgid "Working…"
 msgstr "Working…"
 
 #: src/client/admin/pages/automation/feature-flags.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Workspace"
 msgstr "Workspace"
+
+#. placeholder {0}: saved.name
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Workspace \"{0}\" archived."
+msgstr "Workspace \"{0}\" archived."
 
 #. placeholder {0}: res.data.slug
 #: src/client/admin/ui.tsx
@@ -22788,6 +22901,10 @@ msgstr "workspace logo"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace name"
 msgstr "Workspace name"
+
+#: src/client/admin/pages/settings/workspace-card.tsx
+msgid "Workspace saved."
+msgstr "Workspace saved."
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Workspace usage limits"

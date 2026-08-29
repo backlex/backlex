@@ -28,9 +28,15 @@ import {
 } from "../services/membership-guards";
 import {
   invalidateTenantMembership,
+  invalidateTenantResolve,
   invalidateUserRoles,
 } from "../services/permissions-cache";
-import { assignRoleByName, ensureSystemRoles, getRoleByName } from "../services/seed";
+import {
+  assignRoleByName,
+  DEFAULT_TENANT_SLUG,
+  ensureSystemRoles,
+  getRoleByName,
+} from "../services/seed";
 import { defaultHook } from "../lib/openapi-router";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
@@ -186,6 +192,101 @@ const loadActor = async (
   return row ? { id: auth.userId!, role: row.role } : null;
 };
 
+/** The lifecycle a workspace row is in.
+ *
+ *  `active` is the only state that behaves like a workspace. `suspended` is the
+ *  operator's lever against a delinquent or abusive tenant. `archived` is the
+ *  owner's own "delete", and is a state rather than a `DELETE FROM` for two
+ *  reasons stated on the route below. */
+const ARCHIVED = "archived";
+const ACTIVE = "active";
+
+/** One workspace row, in the shape the lifecycle routes below reason about. */
+interface TenantRowData {
+  id: string;
+  slug: string;
+  name: string;
+  mark: string | null;
+  color: string | null;
+  status: string;
+  archivedAt: Date | null;
+}
+
+const loadTenant = async (
+  c: Context<AppBindings>,
+  tenantId: string,
+): Promise<TenantRowData> => {
+  const ctx = c.get("ctx");
+  const t = tablesFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({
+      id: t.tenants.id,
+      slug: t.tenants.slug,
+      name: t.tenants.name,
+      mark: t.tenants.mark,
+      color: t.tenants.color,
+      status: t.tenants.status,
+      archivedAt: t.tenants.archivedAt,
+    })
+    .from(t.tenants)
+    .where(eq(t.tenants.id, tenantId))
+    .limit(1)) as TenantRowData[];
+  const row = rows[0];
+  if (!row) throw new AppError("NOT_FOUND", "No such workspace");
+  return row;
+};
+
+/** Timestamps cross the wire as ISO strings, never as whatever the driver
+ *  happened to hand back — bun:sqlite returns a `Date` for a `timestamp_ms`
+ *  column and Postgres returns one too, but a row written before the column
+ *  existed reads back NULL, and the two shapes must not reach a client as two
+ *  different types. */
+const iso = (v: Date | string | number | null): string | null =>
+  v === null || v === undefined ? null : new Date(v).toISOString();
+
+/** Only an owner may end a workspace's life, or bring it back.
+ *
+ *  Written as `manageOnly` + `assertMayGrant(actor, "owner")` rather than a
+ *  fresh role comparison, because that is exactly the pair `/transfer-ownership`
+ *  already uses to mean "owner, or the instance operator reaching in from
+ *  outside the ladder": `loadActor` answers null for the operator, and
+ *  `assertMayGrant` lets a null actor through on purpose. Restating the rule
+ *  here with its own comparison is how the two would drift. */
+const assertWorkspaceOwner = async (
+  c: Context<AppBindings>,
+  tenantId: string,
+  message: string,
+): Promise<void> => {
+  await assertWorkspaceAccess(c, tenantId, { manageOnly: true, message });
+  assertMayGrant(await loadActor(c, tenantId), "owner", WORKSPACE_RANK);
+};
+
+/** Who may call `POST /api/tenants`, from {@link Env.WORKSPACE_CREATION}. */
+type WorkspaceCreation = "open" | "operator" | "off";
+
+/**
+ * Read the creation policy, refusing a value nobody could have meant.
+ *
+ * Unset is `open` — today's behaviour, so no existing self-host loses its "New
+ * workspace" button on upgrade. A value that is SET but unrecognised throws
+ * instead of folding back to `open`: only an operator who meant to RESTRICT
+ * creation can produce one, so guessing the permissive reading would hand them
+ * the exact opposite of every intent they could have had, and would do it in
+ * silence. The value is echoed back (truncated) because an env var typo is
+ * undiagnosable otherwise, and it is a policy word rather than a credential.
+ */
+const workspaceCreationMode = (env: {
+  WORKSPACE_CREATION?: string | undefined;
+}): WorkspaceCreation => {
+  const raw = env.WORKSPACE_CREATION?.trim().toLowerCase();
+  if (!raw) return "open";
+  if (raw === "open" || raw === "operator" || raw === "off") return raw;
+  throw new AppError(
+    "INTERNAL",
+    `WORKSPACE_CREATION is set to "${raw.slice(0, 40)}" — expected \`open\`, \`operator\` or \`off\``,
+  );
+};
+
 /**
  * The authorization every per-member mutation shares, in a deliberate order.
  *
@@ -306,8 +407,60 @@ const TenantRow = z
     mark: z.string().nullable(),
     color: z.string().nullable(),
     role: z.string(),
+    /** `active` | `suspended` | `archived`. */
+    status: z.string(),
+    /** ISO timestamp, set when the workspace was archived; null otherwise. */
+    archivedAt: z.string().nullable(),
   })
   .openapi("TenantRow");
+
+/** Why `slug` is refused rather than dropped, said in the one place both the
+ *  OpenAPI description and the 422 body read it from. */
+const SLUG_IMMUTABLE =
+  "A workspace slug cannot be changed. It keys the default physical-table namespace `c_<tenantPrefix12>_<slug>`, so renaming it would orphan every managed collection the workspace owns — the tables would still be there and nothing would find them. Rename the workspace with `name`; the slug is an address, not a label.";
+
+/** The lifecycle-facing projection of a workspace row, shared by the update,
+ *  archive and restore replies so the three cannot describe one row three
+ *  ways. */
+const WorkspaceRowSchema = z
+  .object({
+    id: z.string(),
+    slug: z.string(),
+    name: z.string(),
+    mark: z.string().nullable(),
+    color: z.string().nullable(),
+    status: z.string(),
+    archivedAt: z.string().nullable(),
+  })
+  .openapi("WorkspaceRow");
+
+const UpdateTenantInput = z
+  .object({
+    name: z.string().min(2).max(60).optional().openapi({
+      description: "Display name. Purely cosmetic — it does not touch the slug.",
+    }),
+    mark: z.string().min(1).max(2).nullable().optional().openapi({
+      description: "One- or two-character sidebar tile initial. Null clears it.",
+    }),
+    color: z.string().min(1).max(64).nullable().optional().openapi({
+      description:
+        "Sidebar tile colour — a CSS colour or a design token such as `var(--chart-2)`. Null clears it.",
+    }),
+    /** Declared so it can be refused BY NAME with its reason attached. Left to
+     *  `.strict()` it would come back as a generic "unrecognized key", which
+     *  tells a caller that the field is unknown rather than that it is
+     *  deliberately immutable — and the difference is the whole point. */
+    slug: z
+      .unknown()
+      .optional()
+      .refine((v) => v === undefined, { message: SLUG_IMMUTABLE })
+      .openapi({ description: SLUG_IMMUTABLE }),
+  })
+  // Strict for the same reason `CreateTenantInput` is: a key this endpoint does
+  // not write must not be answered 200. `project`, `branch` and `env` are the
+  // likely misses, and none of them is settable here.
+  .strict()
+  .openapi("UpdateTenantInput");
 
 const CreateTenantInput = z
   .object({
@@ -414,9 +567,20 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "List my workspaces",
       description:
-        "Workspaces the caller belongs to. `active` reflects the currently-selected workspace.",
+        "Workspaces the caller belongs to. `active` reflects the currently-selected workspace. Archived workspaces are omitted unless `includeArchived=true` — which is how an owner finds one again in order to restore it.",
       security: SECURITY,
       middleware: [requireUser],
+      request: {
+        query: z.object({
+          includeArchived: z
+            .enum(["true", "false"])
+            .optional()
+            .openapi({
+              description:
+                "`true` also returns archived workspaces (each carrying `status: \"archived\"` and its `archivedAt`). Default `false`.",
+            }),
+        }),
+      },
       responses: {
         200: {
           description: "OK",
@@ -436,6 +600,7 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const t = tablesFor(ctx.dialect);
+      const includeArchived = c.req.valid("query").includeArchived === "true";
       const rows = (await (ctx.db as any)
         .select({
           id: t.tenants.id,
@@ -447,10 +612,23 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           mark: t.tenants.mark,
           color: t.tenants.color,
           role: t.members.role,
+          status: t.tenants.status,
+          archivedAt: t.tenants.archivedAt,
         })
         .from(t.members)
         .innerJoin(t.tenants, eq(t.members.tenantId, t.tenants.id))
-        .where(eq(t.members.userId, auth.userId!))) as Array<{
+        // `status` is NOT NULL with a `'active'` default that the migration
+        // back-fills as the column is added, so there is no row for which this
+        // comparison is unknown — an install upgrading into this release cannot
+        // lose its workspace list to a NULL.
+        .where(
+          includeArchived
+            ? eq(t.members.userId, auth.userId!)
+            : and(
+                eq(t.members.userId, auth.userId!),
+                ne(t.tenants.status, ARCHIVED),
+              ),
+        )) as Array<{
           id: string;
           slug: string;
           name: string;
@@ -460,8 +638,11 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           mark: string | null;
           color: string | null;
           role: string;
+          status: string;
+          archivedAt: Date | null;
         }>;
-      return c.json({ data: rows, active: auth.tenantId ?? null });
+      const data = rows.map((r) => ({ ...r, archivedAt: iso(r.archivedAt) }));
+      return c.json({ data, active: auth.tenantId ?? null });
     },
   )
   /** Create a new workspace (the caller becomes owner). */
@@ -505,6 +686,21 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const t = tablesFor(ctx.dialect);
+      // Who may open a new workspace is an INSTANCE policy, not a workspace
+      // one — there is no workspace yet to hold a permission about it — so it
+      // is read from the environment the operator controls rather than from
+      // any admin-editable setting a self-serve user could reach.
+      const creation = workspaceCreationMode(ctx.env);
+      if (creation === "off")
+        throw new AppError(
+          "FORBIDDEN",
+          "This instance does not allow new workspaces to be created",
+        );
+      if (creation === "operator" && !(await isInstanceOperator(ctx, auth)))
+        throw new AppError(
+          "FORBIDDEN",
+          "Only the instance operator may create a workspace here",
+        );
       const slug = slugify(body.name);
       if (slug.length < 2)
         throw new AppError("VALIDATION", "Workspace name must be 2+ chars (a-z, 0-9, -)");
@@ -632,18 +828,23 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const auth = c.get("auth");
       const t = tablesFor(ctx.dialect);
       // Resolve by id first, then slug.
+      const cols = {
+        id: t.tenants.id,
+        slug: t.tenants.slug,
+        status: t.tenants.status,
+      };
       const r = (await (ctx.db as any)
-        .select({ id: t.tenants.id, slug: t.tenants.slug })
+        .select(cols)
         .from(t.tenants)
         .where(eq(t.tenants.id, body.tenant))
-        .limit(1)) as Array<{ id: string; slug: string }>;
+        .limit(1)) as Array<{ id: string; slug: string; status: string }>;
       let target = r[0];
       if (!target) {
         const r2 = (await (ctx.db as any)
-          .select({ id: t.tenants.id, slug: t.tenants.slug })
+          .select(cols)
           .from(t.tenants)
           .where(eq(t.tenants.slug, body.tenant))
-          .limit(1)) as Array<{ id: string; slug: string }>;
+          .limit(1)) as Array<{ id: string; slug: string; status: string }>;
         target = r2[0];
       }
       // "Does not exist" and "exists and is not yours" answer identically, on
@@ -658,7 +859,16 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // caller asked for so a genuine typo is still diagnosable, which is the
       // only thing the split status was buying.
       const unavailable = `No workspace "${String(body.tenant).slice(0, 80)}" is available to you`;
-      if (!target) throw new AppError("NOT_FOUND", unavailable);
+      // A workspace that is not `active` answers exactly like one that does not
+      // exist — the same conflation `middleware/tenant.ts` makes when it
+      // resolves a workspace, and for the same two reasons. The status must not
+      // be readable from outside (otherwise "this slug is free" and "this slug
+      // belongs to a suspended workspace" are distinguishable by anybody), and
+      // switching INTO one would hand the caller a cookie that the very next
+      // request refuses — a success that leaves them worse off than the
+      // refusal would have.
+      if (!target || target.status !== ACTIVE)
+        throw new AppError("NOT_FOUND", unavailable);
       await assertWorkspaceAccess(c, target.id, {
         message: unavailable,
         code: "NOT_FOUND",
@@ -677,6 +887,232 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // post-next (otherwise its closed-over old tenantId overwrites ours).
       c.set("auth", { ...auth, tenantId: target.id });
       return c.json({ data: { id: target.id, slug: target.slug } });
+    },
+  )
+  /** Rename / re-badge a workspace. */
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/{id}",
+      tags: [TAG],
+      summary: "Update a workspace",
+      description:
+        "Changes the workspace's display `name`, `mark` or `color`. Owners/admins of THIS workspace (or the instance operator). `slug` is refused, not ignored: it keys the default physical-table namespace `c_<tenantPrefix12>_<slug>`, so renaming it would orphan every managed collection the workspace owns. An archived workspace must be restored before it can be edited.",
+      security: SECURITY,
+      // Belt and braces with the plane firewall, matching `POST /`: a
+      // workspace's own end-user must never be able to rename the workspace
+      // they are a customer of, and `requireUser` alone is satisfied by an
+      // `app_users` id.
+      middleware: [requireUser, requirePlatformMw],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: UpdateTenantInput } },
+        },
+      },
+      responses: {
+        200: {
+          description: "Updated",
+          content: {
+            "application/json": { schema: z.object({ data: WorkspaceRowSchema }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const body = c.req.valid("json");
+      const { id } = c.req.valid("param");
+      const t = tablesFor(ctx.dialect);
+      // Authorize BEFORE the row is read, for the reason `authorizeMemberAction`
+      // states: reading first would let a stranger tell a real workspace id
+      // from an invented one by the status code alone.
+      await assertWorkspaceAccess(c, id, {
+        manageOnly: true,
+        message: "Only owners/admins may change a workspace",
+      });
+      const current = await loadTenant(c, id);
+      if (current.status === ARCHIVED)
+        throw new AppError(
+          "CONFLICT",
+          "This workspace is archived — restore it before changing it",
+        );
+
+      const next = {
+        name: body.name ?? current.name,
+        mark: body.mark === undefined ? current.mark : body.mark,
+        color: body.color === undefined ? current.color : body.color,
+      };
+      // A PATCH that names nothing this route writes is a request that did
+      // nothing, and answering it 200 is the silent success this phase exists
+      // to stop. `slug` never reaches here — it is refused by the schema.
+      if (
+        body.name === undefined &&
+        body.mark === undefined &&
+        body.color === undefined
+      )
+        throw new AppError(
+          "VALIDATION",
+          "Nothing to change — send `name`, `mark`, `color`, or any combination",
+        );
+
+      await (ctx.db as any)
+        .update(t.tenants)
+        .set({ ...next, updatedAt: new Date() })
+        .where(eq(t.tenants.id, id));
+
+      return c.json({
+        data: {
+          id: current.id,
+          slug: current.slug,
+          ...next,
+          status: current.status,
+          archivedAt: iso(current.archivedAt),
+        },
+      });
+    },
+  )
+  /** Archive a workspace — the closest thing to deleting one. */
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/{id}",
+      tags: [TAG],
+      summary: "Archive a workspace",
+      description:
+        "Marks the workspace `archived` and stamps `archived_at`; it then disappears from `GET /api/tenants` unless `includeArchived=true`, and `POST /api/tenants/{id}/restore` brings it back. Owners only (or the instance operator).\n\nIt ARCHIVES rather than deletes, for two reasons. Recovery has to exist — an owner who ends a workspace by accident has no other way back, and no support path can reconstruct one. And a real delete means cascading across roughly a hundred tenant-scoped tables plus the workspace's own physical collection tables, which is a larger piece of work with its own failure modes; leaving it undone behind a route called DELETE would be worse than not having the route.\n\nThe `default` workspace can never be archived: `isInstanceOperator` resolves through it, so archiving it would strand the check that decides who the instance operator is.",
+      security: SECURITY,
+      middleware: [requireUser, requirePlatformMw],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "Archived",
+          content: {
+            "application/json": {
+              schema: z.object({ ok: z.literal(true), data: WorkspaceRowSchema }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const { id } = c.req.valid("param");
+      const t = tablesFor(ctx.dialect);
+      await assertWorkspaceOwner(c, id, "Only an owner may archive a workspace");
+      const current = await loadTenant(c, id);
+      // The bootstrap workspace is load-bearing infrastructure rather than a
+      // workspace anybody owns: `isInstanceOperator` answers "admin of the
+      // default workspace", and `ensureDefaultTenant` is what resolves it. An
+      // archived default would leave the instance with no operator and no route
+      // to appoint one — recoverable only by SQL.
+      if (current.slug === DEFAULT_TENANT_SLUG)
+        throw new AppError(
+          "VALIDATION",
+          "The default workspace cannot be archived — the instance resolves its operator through it",
+        );
+      if (current.status === ARCHIVED)
+        throw new AppError("CONFLICT", "This workspace is already archived");
+
+      const archivedAt = new Date();
+      await (ctx.db as any)
+        .update(t.tenants)
+        .set({ status: ARCHIVED, archivedAt, updatedAt: new Date() })
+        .where(eq(t.tenants.id, id));
+      // The membership answers cached for this workspace were computed while it
+      // still counted as a live one; drop them so nothing acts on the workspace
+      // for a TTL after it stopped being listed.
+      invalidateTenantMembership(id);
+      // And the slug→id resolution itself, which is the one that decides
+      // whether a request reaches this workspace AT ALL. `middleware/tenant.ts`
+      // now filters on `status`, but that lookup is cached — so without this an
+      // isolate that had already resolved the workspace keeps admitting
+      // requests into it for the rest of the TTL, including the isolate that
+      // just served the archive. Every other cache on that path had an
+      // invalidator and this one did not.
+      invalidateTenantResolve(id);
+
+      return c.json({
+        ok: true as const,
+        data: {
+          id: current.id,
+          slug: current.slug,
+          name: current.name,
+          mark: current.mark,
+          color: current.color,
+          status: ARCHIVED,
+          archivedAt: iso(archivedAt),
+        },
+      });
+    },
+  )
+  /** Bring an archived workspace back. */
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/restore",
+      tags: [TAG],
+      summary: "Restore an archived workspace",
+      description:
+        "Clears `archived` and `archived_at`, putting the workspace back in `GET /api/tenants`. Owners only (or the instance operator). This is the other half of archiving — an archive with no way out is a trapdoor, and the archived row is only findable through `GET /api/tenants?includeArchived=true`.",
+      security: SECURITY,
+      middleware: [requireUser, requirePlatformMw],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "Restored",
+          content: {
+            "application/json": {
+              schema: z.object({ ok: z.literal(true), data: WorkspaceRowSchema }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const { id } = c.req.valid("param");
+      const t = tablesFor(ctx.dialect);
+      await assertWorkspaceOwner(c, id, "Only an owner may restore a workspace");
+      const current = await loadTenant(c, id);
+      // Refused rather than answered 200, because restoring a workspace that
+      // was never archived is a caller who is looking at the wrong id — and a
+      // "restored" reply would confirm a state they did not observe. A
+      // `suspended` workspace is deliberately included in the refusal: this
+      // route is the archive's inverse, not an operator's un-suspend.
+      if (current.status !== ARCHIVED)
+        throw new AppError(
+          "VALIDATION",
+          `This workspace is not archived (status "${current.status}") — there is nothing to restore`,
+        );
+
+      await (ctx.db as any)
+        .update(t.tenants)
+        .set({ status: ACTIVE, archivedAt: null, updatedAt: new Date() })
+        .where(eq(t.tenants.id, id));
+      invalidateTenantMembership(id);
+      // Restoring needs no resolve-cache eviction of its own — a refusal is never
+      // cached, so the workspace resolves on its very next request. Dropping the
+      // entry anyway costs nothing and keeps the two handlers symmetrical, which
+      // is what stops the next reader assuming one of them forgot.
+      invalidateTenantResolve(id);
+
+      return c.json({
+        ok: true as const,
+        data: {
+          id: current.id,
+          slug: current.slug,
+          name: current.name,
+          mark: current.mark,
+          color: current.color,
+          status: ACTIVE,
+          archivedAt: null,
+        },
+      });
     },
   )
   /** Members of a workspace. Caller must be a member (admins bypass). */

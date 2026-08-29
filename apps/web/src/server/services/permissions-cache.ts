@@ -90,6 +90,16 @@ class TtlLru<K, V> {
     }
   }
 
+  /** Drop entries by their VALUE. Needed where one subject sits behind several
+   *  keys that cannot be derived from it — the tenant-resolve cache holds a
+   *  workspace under both its slug and its id, and a status change knows only
+   *  the id. Same O(n) reasoning as `deleteBy`. */
+  deleteByValue(pred: (value: V) => boolean): void {
+    for (const [serialized, entry] of this.map) {
+      if (pred(entry.value)) this.map.delete(serialized);
+    }
+  }
+
   clear(): void {
     this.map.clear();
   }
@@ -372,6 +382,28 @@ export const getCachedTenantResolve = (key: string): string | undefined =>
 
 export const setCachedTenantResolve = (key: string, tenantId: string): void =>
   tenantResolveCache.set(key, tenantId);
+
+/**
+ * Drop every cached resolution that answers with this workspace id.
+ *
+ * The cache is keyed by whatever the caller NAMED — a slug or an id — so one
+ * workspace can sit behind two keys and neither is derivable from the tenant id
+ * alone. Hence the value scan rather than a targeted delete.
+ *
+ * Needed because the lookup now filters on `tenants.status`: without this, an
+ * isolate that had already resolved a workspace keeps admitting requests into
+ * it for the rest of the TTL after it is archived or suspended. Every other
+ * cache on this path has an invalidator and this one did not, which is exactly
+ * the asymmetry that makes a status change feel unreliable — instant on the
+ * isolate that served it, up to 30s elsewhere, and previously never on the
+ * isolate that served it either.
+ *
+ * Restoring needs no invalidation: a refusal is never cached, so an un-archived
+ * workspace resolves on its very next request.
+ */
+export const invalidateTenantResolve = (tenantId: string): void => {
+  tenantResolveCache.deleteByValue((v) => v === tenantId);
+};
 
 // --- Invalidation ----------------------------------------------------------
 

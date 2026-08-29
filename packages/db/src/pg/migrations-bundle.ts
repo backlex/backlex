@@ -131,6 +131,8 @@ import m124 from "../../drizzle/pg/20260821090000_consent_versions/migration.sql
 import m125 from "../../drizzle/pg/20260821140000_consent_records/migration.sql" with { type: "text" };
 import m126 from "../../drizzle/pg/20260822180000_consent_signal_handling/migration.sql" with { type: "text" };
 import m127 from "../../drizzle/pg/20260829090000_signing_keys_tenant_id/migration.sql" with { type: "text" };
+import m128 from "../../drizzle/pg/20260829110000_tenant_status/migration.sql" with { type: "text" };
+import m129 from "../../drizzle/pg/20260829120000_app_settings_global_sentinel/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -266,4 +268,6 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260821140000_consent_records", sql: m125 },
   { name: "20260822180000_consent_signal_handling", sql: m126 },
   { name: "20260829090000_signing_keys_tenant_id", sql: m127 },
+  { name: "20260829110000_tenant_status", sql: m128 },
+  { name: "20260829120000_app_settings_global_sentinel", sql: m129 },
 ];

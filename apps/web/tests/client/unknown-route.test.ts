@@ -40,7 +40,14 @@ describe("isUnknownRoute", () => {
 
   test("a legacy segment the redirect effect rewrites is never a miss", () => {
     // Otherwise /activity flashes "not found" for one frame on its way to /logs.
-    for (const id of LEGACY_NAV_REDIRECTS) expect(ask(id)).toBe(false);
+    // A Map, so each entry is [segment, destination]. Both halves matter:
+    // a segment with no destination is a redirect that never happens, and
+    // that is the case this gate would otherwise wave through as "not a
+    // miss" while the fallback page renders under the original URL.
+    for (const [id, to] of LEGACY_NAV_REDIRECTS) {
+      expect(ask(id)).toBe(false);
+      expect(to.startsWith("/")).toBe(true);
+    }
     expect(ask("activity")).toBe(false);
   });
 

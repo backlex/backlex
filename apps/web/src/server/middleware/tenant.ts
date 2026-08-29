@@ -90,7 +90,27 @@ const loadTenantRoleNames = async (
   return names;
 };
 
-const tenantBySlugOrId = async (
+/**
+ * The one `tenants.status` value that lets a workspace be used at all.
+ *
+ * `suspended` and `archived` are both refused, and refused identically to a
+ * workspace that does not exist — see `refuseHeaderWorkspace`. Answering
+ * differently would make the status readable from outside: a caller could tell
+ * "this slug is free" from "this slug belongs to a workspace someone got
+ * suspended" by the shape of the refusal alone.
+ */
+const ACTIVE_STATUS = "active";
+
+/**
+ * Resolve a slug-or-id to a workspace id, but only for a workspace that is
+ * currently `active`.
+ *
+ * The status predicate lives IN this lookup rather than beside it so there is
+ * no call site that can resolve a workspace and then forget to ask whether it
+ * is usable. A non-active workspace and a non-existent one both come back
+ * `null`, which is exactly the conflation every caller here wants.
+ */
+const activeTenantBySlugOrId = async (
   db: unknown,
   dialect: "pg" | "sqlite",
   key: string,
@@ -99,6 +119,13 @@ const tenantBySlugOrId = async (
   // call, so it pays the D1 Sessions setup (~25ms in traces, vs <1ms SQL).
   // slug→id / id→id are stable; caching removes the last uncached round-trip on
   // the hot path. See services/permissions-cache `tenantResolveCache`.
+  //
+  // Only ACTIVE workspaces are ever written to the cache, and a refusal is
+  // never cached, so un-suspending a workspace is felt on the very next
+  // request. The reverse — suspending one — is stale for at most the cache's
+  // 30 s TTL in isolates that had already resolved it, which is the same
+  // false-allow window the role and membership caches next to it already
+  // accept and document.
   const cached = getCachedTenantResolve(key);
   if (cached !== undefined) return cached;
   const t = tablesFor(dialect).tenants;
@@ -108,12 +135,23 @@ const tenantBySlugOrId = async (
   const rows = (await (db as any)
     .select({ id: t.id })
     .from(t)
-    .where(or(eq(t.id, key), eq(t.slug, key)))
+    .where(and(or(eq(t.id, key), eq(t.slug, key)), eq(t.status, ACTIVE_STATUS)))
     .limit(1)) as { id: string }[];
   const id = rows[0]?.id ?? null;
   if (id) setCachedTenantResolve(key, id);
   return id;
 };
+
+/** Does this workspace exist AND is it `active`? The two questions are answered
+ *  together on purpose: every caller below treats "archived" and "never existed"
+ *  as the same answer, and keeping them separate would invite a call site that
+ *  checks one and not the other. Served from the same per-isolate cache as the
+ *  slug lookup, so on the request path this is usually free. */
+const tenantIsActive = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+): Promise<boolean> => (await activeTenantBySlugOrId(db, dialect, tenantId)) !== null;
 
 const isMember = async (
   db: unknown,
@@ -171,23 +209,6 @@ const isSuspendedMember = async (
   return rows.length > 0;
 };
 
-/** Lightweight existence check for a tenant id. Used only by the cross-tenant
- *  admin shortcut to keep the UUID-cookie bypass from leaking a syntactically-
- *  valid but non-existent id into `auth.tenantId` for the rest of the request. */
-const tenantExists = async (
-  db: unknown,
-  dialect: "pg" | "sqlite",
-  tenantId: string,
-): Promise<boolean> => {
-  const t = tablesFor(dialect).tenants;
-  const rows = (await (db as any)
-    .select({ id: t.id })
-    .from(t)
-    .where(eq(t.id, tenantId))
-    .limit(1)) as { id: string }[];
-  return rows.length > 0;
-};
-
 /**
  * May this control-plane identity act in this workspace, and with which role
  * names?
@@ -240,22 +261,44 @@ export const resolveTenantAccess = async (
   } = {},
 ): Promise<TenantAccess> => {
   const apiKeyRoleId = opts.apiKeyRoleId ?? null;
-  // Hot path: run the membership check and the tenant-scoped role load in
-  // parallel. If membership fails we fall back to a lazy global-admin lookup
-  // (the only reason we'd ever need the unfiltered role union) — this keeps
-  // the lookup off the request path for every member-of-tenant call, which
-  // is by far the common case.
-  const [member, scopedRoles] = await Promise.all([
+  // Hot path: run the workspace-status check, the membership check and the
+  // tenant-scoped role load in parallel. If membership fails we fall back to a
+  // lazy global-admin lookup (the only reason we'd ever need the unfiltered
+  // role union) — this keeps the lookup off the request path for every
+  // member-of-tenant call, which is by far the common case. The status check
+  // adds no latency (it runs alongside the other two) and usually no query at
+  // all, since it is served by the same per-isolate cache the slug lookup uses.
+  const [active, member, scopedRoles] = await Promise.all([
+    tenantIsActive(db, dialect, tenantId),
     isMember(db, dialect, tenantId, userId),
     loadTenantRoleNames(db, dialect, tenantId, userId, apiKeyRoleId),
   ]);
+  // A workspace that is `suspended` or `archived` is refused before anything
+  // else is consulted, and refused with the SAME `roles: null` a non-member
+  // gets — so the caller cannot distinguish "not yours" from "not live".
+  //
+  // This gate is above the instance-operator shortcut deliberately, so it holds
+  // for an operator too: a suspension an operator can simply work through is
+  // not a suspension. Operating ON a suspended workspace (reading its row,
+  // un-suspending it) goes through the platform-plane workspace endpoints,
+  // which address the workspace by path id and never route the request INTO it,
+  // so nothing an operator needs is locked behind this.
+  //
+  // Because this function is the single answer shared by the request path,
+  // the SSE path and the job runner, a workspace suspended while a long job is
+  // queued is refused when that job finally runs — which is the point: a job
+  // outlives the request that enqueued it, and so does the reason it was
+  // suspended.
+  if (!active) return { roles: null, viaAdminShortcut: false, access: "member" };
   if (member) return { roles: scopedRoles, viaAdminShortcut: false, access: "member" };
 
-  // Membership failed — last chance is the INSTANCE OPERATOR. We also confirm
-  // the tenant actually exists so a forged UUID can't ride the UUID-bypass into
-  // `auth.tenantId` for the rest of the request (the resolver would still deny
-  // on permissions, but audit logs / route handlers that trust `auth.tenantId`
-  // would see a bogus id).
+  // Membership failed — last chance is the INSTANCE OPERATOR. Existence is
+  // already settled: the `active` check above resolved the row, so a forged
+  // UUID cannot ride the UUID-bypass into `auth.tenantId` for the rest of the
+  // request (the resolver would still deny on permissions, but audit logs /
+  // route handlers that trust `auth.tenantId` would see a bogus id). That check
+  // used to be a second SELECT of its own; folding it into the status lookup
+  // removes a query from this path rather than adding one.
   //
   // This used to key on `loadUnfilteredRoleNames(...).includes("admin")` — a
   // union of role NAMES across every workspace, with no tenant predicate. That
@@ -270,8 +313,7 @@ export const resolveTenantAccess = async (
   // `isInstanceOperator` is the same function the SQL console gates on: admin
   // of the DEFAULT workspace (where the first signup is seeded), or
   // `OWNER_EMAIL`. A workspace minted later confers neither.
-  const [exists, suspendedHere, operator] = await Promise.all([
-    tenantExists(db, dialect, tenantId),
+  const [suspendedHere, operator] = await Promise.all([
     isSuspendedMember(db, dialect, tenantId, userId),
     isInstanceOperator(
       { db, dialect, env: opts.env ?? {} },
@@ -286,7 +328,7 @@ export const resolveTenantAccess = async (
   // A suspended member is denied even if they are the operator: the shortcut is
   // only for genuine non-members (status 'none') viewing a foreign workspace,
   // never for someone banned from this one.
-  if (operator && exists && !suspendedHere) {
+  if (operator && !suspendedHere) {
     // The operator keeps tenant-scoped role names — the shortcut decides
     // *whether* they may act here, never *as what*. `access` is what lets the
     // role resolver hand back that scoped bundle at all: with `"member"` it
@@ -302,14 +344,29 @@ const firstUserTenant = async (
   dialect: "pg" | "sqlite",
   userId: string,
 ): Promise<string | null> => {
-  const m = tablesFor(dialect).members;
+  const { members: m, tenants: t } = tablesFor(dialect);
   // Skip suspended memberships so a suspended user isn't auto-routed back into
   // the workspace they were just removed from (they fall through to the default
   // tenant / denial instead).
+  //
+  // The join onto `tenants` skips non-active workspaces for the mirror-image
+  // reason: this is a FALLBACK, so it picks a workspace the caller never named,
+  // and dropping someone into a suspended workspace they did not ask for would
+  // make the suspension visible as a broken session rather than as an absence.
+  // A member whose only workspace is suspended falls through to the default
+  // tenant, exactly as a member of nothing at all does. One statement, so the
+  // predicate costs no extra round-trip.
   const rows = (await (db as any)
     .select({ tenantId: m.tenantId })
     .from(m)
-    .where(and(eq(m.userId, userId), ne(m.status, "suspended")))
+    .innerJoin(t, eq(t.id, m.tenantId))
+    .where(
+      and(
+        eq(m.userId, userId),
+        ne(m.status, "suspended"),
+        eq(t.status, ACTIVE_STATUS),
+      ),
+    )
     .limit(1)) as { tenantId: string }[];
   return rows[0]?.tenantId ?? null;
 };
@@ -404,9 +461,17 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // Resolve the requested tenant id. UUIDs are accepted *as-is* — the membership
   // check below catches bogus ids cheaply, so we skip the dedicated lookup. Non-
   // UUID values (slugs) still need the SELECT to map slug → id.
+  //
+  // A slug naming a suspended or archived workspace resolves to `null` here, so
+  // it takes the same path as a slug naming nothing: `refuseHeaderWorkspace`.
+  // A UUID naming one is not caught here — it is caught by
+  // `resolveTenantAccess` below, which refuses it and then routes through the
+  // very same `refuseHeaderWorkspace` when the header was the caller's choice.
+  // Both spellings therefore produce one message, which is the whole reason
+  // that message is worded the way it is.
   const resolveTenantKey = async (key: string): Promise<string | null> => {
     if (UUID_RE.test(key)) return key;
-    return tenantBySlugOrId(db, dialect, key);
+    return activeTenantBySlugOrId(db, dialect, key);
   };
 
   const headerKey = c.req.header(TENANT_HEADER);
@@ -544,6 +609,29 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // didn't resolve, leave it null and let permission resolution deny.
   if (!tenantId && auth.plane !== "app") {
     tenantId = await ensureDefaultTenant({ db, dialect });
+  }
+
+  // The backstop for every route into `tenantId` that did NOT go through
+  // `resolveTenantAccess`: an app-plane session pinned to the workspace that
+  // issued it, an API key pinned to its home workspace whose owner has no
+  // control-plane user row, and the default workspace `ensureDefaultTenant`
+  // hands back. Each of those assigns a workspace id without ever asking
+  // whether the workspace is still live, and an end-user of a suspended
+  // workspace being served normally is precisely the failure suspension exists
+  // to prevent.
+  //
+  // Cheap enough to run unconditionally: it reads the same per-isolate cache
+  // `resolveTenantAccess` just populated, so on the control-plane path it is a
+  // map lookup and no query at all.
+  //
+  // Nulling rather than throwing keeps the refusal shape uniform — these
+  // callers never named a workspace, so there is no header to answer about, and
+  // permission resolution denies a null workspace the same way it denies one
+  // the caller has no roles in.
+  if (tenantId && !(await tenantIsActive(db, dialect, tenantId))) {
+    tenantId = null;
+    tenantRoles = [];
+    workspaceAccess = "member";
   }
 
   // App-plane identities don't participate in control-plane RBAC, so

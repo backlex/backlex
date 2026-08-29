@@ -35,6 +35,11 @@ export const tenants = sqliteTable(
     env: text("env").notNull().default("development"),
     mark: text("mark"),
     color: text("color"),
+    /** Lifecycle: `active` | `suspended` | `archived`. See the pg twin for why
+     *  `provisioning` is not in the set and why there is no CHECK constraint. */
+    status: text("status").notNull().default("active"),
+    /** When the workspace moved to `archived`; null for every other status. */
+    archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
     createdBy: text("created_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
@@ -2113,10 +2118,15 @@ export const i18nStrings = sqliteTable(
   ],
 );
 
+/** Per-workspace configuration plus one instance-wide tier, keyed by the
+ *  literal `'_global'` rather than NULL. See the pg twin for the full reasoning
+ *  — including the measurement that a UNIQUE index treats NULLs as distinct on
+ *  BOTH engines, which is what let the global tier accumulate duplicate keys. */
 export const appSettings = sqliteTable(
   "app_settings",
   {
     id: text("id").primaryKey(),
+    /** Workspace id, or the literal `'_global'` for the instance-wide tier. */
     tenantId: text("tenant_id"),
     key: text("key").notNull(),
     value: text("value", { mode: "json" }).$type<unknown>(),

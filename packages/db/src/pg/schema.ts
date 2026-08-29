@@ -38,6 +38,28 @@ export const tenants = pgTable(
     /** Optional UI mark/color for sidebar tile. */
     mark: text("mark"),
     color: text("color"),
+    /**
+     * Lifecycle: `active` | `suspended` | `archived`. Until this column existed
+     * a workspace had no way to be anything but live, so an operator's only
+     * lever against an abusive or delinquent tenant was tearing down the
+     * Worker. A workspace that is not `active` resolves exactly like one the
+     * caller does not belong to — see `middleware/tenant.ts`, which refuses
+     * both with the same message so the status is not an existence oracle.
+     *
+     * `provisioning` was considered for this set and deliberately left out.
+     * Nothing in this repo creates a workspace asynchronously — `POST
+     * /api/tenants` writes the row and every seed it needs before it answers —
+     * so no code path could produce the value, and a status nobody writes is
+     * one every reader has to branch on and no test can reach. The column is
+     * plain text with no CHECK constraint, matching `tenant_members.status`, so
+     * admitting a fourth value later is a schema-file edit rather than a
+     * migration.
+     */
+    status: text("status").notNull().default("active"),
+    /** When the workspace moved to `archived`, and null for every other status.
+     *  It records WHEN the move happened; `status` alone records that it did,
+     *  so this is an audit trail rather than a second copy of the state. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -2356,10 +2378,33 @@ export const i18nStrings = pgTable(
   ],
 );
 
+/**
+ * Per-workspace configuration, plus one instance-wide tier.
+ *
+ * The instance-wide tier is the literal string `'_global'`, NOT `NULL`. That
+ * distinction is the whole point: a NULL is indistinguishable from a row whose
+ * tenant column was simply never filled in, and readers that could not tell the
+ * two apart spread one admin's branding over every workspace's settings. The
+ * repo already wrote `'_global'` from several call sites (`routes/auth-admin.ts`,
+ * the email/push/SMS selectors) while others wrote NULL for the same tier, so
+ * the two representations of "global" coexisted in one table.
+ * `20260829120000_app_settings_global_sentinel` collapses them.
+ *
+ * NULL is also actively harmful under the unique index below. Measured on both
+ * engines rather than assumed: a UNIQUE index treats NULLs as DISTINCT in
+ * Postgres AND in SQLite, so `(NULL, 'branding')` could be inserted without
+ * limit and the global tier silently accumulated duplicate keys that the index
+ * was supposed to prevent. With the sentinel the index constrains the global
+ * tier like every other one.
+ *
+ * The column stays nullable at the DB level; see the migration for why a NOT
+ * NULL conversion was declined.
+ */
 export const appSettings = pgTable(
   "app_settings",
   {
     id: text("id").primaryKey(),
+    /** Workspace id, or the literal `'_global'` for the instance-wide tier. */
     tenantId: text("tenant_id"),
     key: text("key").notNull(),
     value: jsonb("value").$type<unknown>(),

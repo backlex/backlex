@@ -1,14 +1,25 @@
-import { hashPassword, verifyPassword } from "better-auth/crypto";
+import { hashPassword, verifyPassword } from "@better-auth/utils/password";
 
 /**
  * One-way secret hashing for `hash`-typed collection fields (passwords, PINs,
- * API secrets, …). Reuses better-auth's own scrypt primitives (`better-auth/
- * crypto`) so:
+ * API secrets, …). Reuses better-auth's own scrypt primitives so:
  *
  *  - it's the **same** algorithm the auth planes use for account passwords,
- *  - it's pure-JS scrypt (`@noble/hashes`), so it runs identically on Workers,
- *    Bun, Vercel and Netlify — no `node:crypto` / native scrypt dependency,
- *  - there's no new dependency: `better-auth` is already an auth-package dep.
+ *  - it's the same module better-auth itself reaches, resolved through the same
+ *    export conditions — `node:crypto` scrypt on Workers/Node/Bun, the
+ *    `@noble/hashes` pure-JS fallback elsewhere. Identical `N=16384, r=16, p=1,
+ *    dkLen=64` either way, so a digest written on one runtime verifies on
+ *    another.
+ *
+ * It imports `@better-auth/utils/password` DIRECTLY rather than `better-auth/
+ * crypto`, and that is a startup-cost decision, not a style one. `better-auth/
+ * crypto`'s index re-exports its JWT and symmetric-encryption helpers as well,
+ * which drags `jose` and `@noble/ciphers` — ~160 KiB — into the worker's EAGER
+ * graph for a module that only ever wanted scrypt. `crypto/index.mjs` has no
+ * deeper subpath in better-auth's `exports` map, so the leaf has to be reached
+ * at its own package. `better-auth/crypto`'s `password.mjs` is a five-line
+ * wrapper over exactly this import; the only difference is the call shape,
+ * which is positional here and an object there.
  *
  * The stored format is better-auth's `"<salt-hex>:<key-hex>"` — 16-byte salt
  * (32 hex chars) and a 64-byte scrypt key (128 hex chars). {@link isSecretHash}
@@ -38,7 +49,7 @@ export const verifySecret = async (
 ): Promise<boolean> => {
   if (!storedHash || !isSecretHash(storedHash)) return false;
   try {
-    return await verifyPassword({ hash: storedHash, password: plaintext });
+    return await verifyPassword(storedHash, plaintext);
   } catch {
     return false;
   }

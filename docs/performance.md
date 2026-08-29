@@ -411,6 +411,139 @@ eager shell may not import admin-only UI. Both were verified to fire.
 | a public form's whole graph | 616 KB gz | **97 KB gz** |
 | whole build | 1286 KB gz | 1286 KB gz |
 
+### Worker startup, first pass: 11.3 MB of eager graph → 8.2 MB
+
+Cloudflare rejects a deploy whose script takes too long to start — error 10021,
+`Script startup exceeded CPU time limit`. That budget pays for V8 compiling the
+**eager** module graph and running every module's top-level code, and this
+worker was living on the line: the *same bundle* measured 635 ms, 803 ms and
+928 ms across three builds, one of which was rejected outright. A retry passed,
+which is what made it dangerous — nothing in the code differed between the
+failure and the success, so there was nothing to blame and nothing to fix.
+
+Measured rather than guessed, with `node apps/web/scripts/measure-startup.mjs`
+(node, not bun: workerd is V8 and so is node, so compile and top-level-eval
+costs transfer; JSC would rank the same graph differently). Its `--profile` flag
+splits the number into **compile** — proportional to eager bytes — and
+**top-level execution**, which is what a module *does* when loaded. The two have
+opposite fixes, and the profile said compile dominated.
+
+Three things were on the startup path that no request needs there:
+
+| moved | ~size | who actually needs it |
+|---|---|---|
+| the 26-vertical schema-template catalog | 900 KB | the picker, apply, first-user seeding |
+| `openapi-static.generated.json` | 900 KB | `GET /api/openapi.json` |
+| better-auth + kysely | 1.3 MB | the first request that resolves a session |
+
+All three call sites were already `async`, so each became an `import()` — plus
+one split in `packages/auth`, because the hot paths only wanted `hashSecret` and
+reaching it through the package index dragged better-auth in behind it. It now
+lives at `@backlex/auth/secret-hash`.
+
+**The `import()` alone bought nothing, and that is the part worth remembering.**
+`vite.config.ts::workerManualChunks` ends in `return "vendor"`, which pins every
+un-listed `node_modules` module into the eager chunk *regardless of how it was
+imported* — deferring better-auth moved 19 KiB until a branch was added naming
+its packages. A dynamic import is only half the change; the chunking rule is the
+other half.
+
+| | before | after |
+|---|---|---|
+| eager graph | 11,352 KiB | **8,179 KiB** |
+| compile + top-level (local V8) | ~330 ms | **~280 ms** |
+| a deploy's reported startup | 635-928 ms | expect ~0.85x |
+
+`apps/web/tests/worker-startup-budget.test.ts` holds it: it walks static imports
+from the worker entry in **source** (so it runs with nothing built) and fails if
+any of the three returns, or if the graph outgrows its recorded budget. Being
+source-level it is blind to the chunking half — that is what the script measures.
+
+### Worker startup, second pass: 8.2 MB → 6.1 MB
+
+The first pass ended by saying drizzle-orm, zod and hono accounted for "most of
+the remaining 2.7 MB". **That was wrong, and it was wrong because it was
+asserted rather than measured.** Splitting the `vendor` chunk by its
+`//#region` markers gives the real distribution — those three are 874 KiB of
+2,714, under a third:
+
+| | KiB | | | KiB |
+|---|---:|---|---|---:|
+| zod | 528 | | jose | 92 |
+| drizzle-orm | 273 | | asn1js | 87 |
+| **luxon** | 227 | | `@whatwg-node/node-fetch` | 85 |
+| `@ai-sdk/openai` | 205 | | hono | 73 |
+| `@ai-sdk/google` | 181 | | `@fastify/busboy` | 43 |
+| `@ai-sdk/anthropic` | 157 | | lru-cache | 37 |
+| `@ai-sdk/provider-utils` | 115 | | cron-parser | 33 |
+| `ai` | 104 | | urlpattern-polyfill | 25 |
+
+Two facts fall straight out of that table. The AI SDK is **860 KiB** — the
+largest single thing in the worker, bigger than zod. And `luxon` is 227 KiB of
+timezone tables for a package **this repo never imports**: it is `cron-parser`'s
+dependency.
+
+Cross-referencing against the bare `node_modules` specifiers reachable from
+`entries/worker.ts` through static imports says something sharper still. Only
+these are actually reached eagerly:
+
+```
+@hono/zod-openapi (101 files)   drizzle-orm (184)   hono (33)   zod (13)
+@asteasolutions/zod-to-openapi  ai + @ai-sdk/* ← ONLY mcp/ai-client.ts
+cron-parser ← ONLY services/scheduler.ts       aws4fetch (2 adapters)
+better-auth ← packages/auth/src/secret-hash.ts
+```
+
+`jose`, `asn1js`, `@whatwg-node/*`, `@fastify/busboy`, `lru-cache`,
+`urlpattern-polyfill`, `pvtsutils`, `tslib`, `@noble/*`, `rou3` — **none of them
+is imported by eager source at all.** They are transitive dependencies of
+subsystems that already have a lazy branch (samlify, graphql-yoga, the passkey
+plugin, libsql) which fell through `return "vendor"` and were pinned eager
+anyway. The same class of bug the `@authenio` and libsql comments in
+`vite.config.ts` already warn about, three more times.
+
+Five changes, in the order they had to happen:
+
+| | eager KiB | what changed |
+|---|---:|---|
+| `secret-hash` → `@better-auth/utils/password` | −160 | `better-auth/crypto`'s index re-exports JWT + symmetric crypto on top of the scrypt it wanted, dragging `jose` and `@noble/ciphers`. The leaf is a five-line wrapper over that package; import it directly. |
+| the AI SDK | −860 | `mcp/ai-sdk.ts` holds `ai`, the four providers and `modelFor`; `ai-client.ts` keeps its whole public surface and imports none of it. Both generating functions were already `async`. |
+| `cron-parser` + `luxon` | −260 | `entries/worker.ts` reaches `services/scheduler.ts` through `import()` from `scheduled()` and the opt-in HTTP cron endpoint. |
+| the migration bundles | −338 | `auto-migrate.ts` inlines 259 `.sql` files as text; `@backlex/db`'s index re-exported it, so ~80 modules pulled it. The index now re-exports the **types** only, and `context.ts` loads the runtime inside the `if (!env.D1)` it was already guarded by — on Workers, never. |
+| the four chunking leaks | −435 | Branches for the yoga/whatwg graph, asn1js + pvtsutils/pvutils, `@levischuck`, `js-base64`/`promise-limit`, `tslib`. No code change; these were never imported eagerly in the first place. |
+
+The order matters for exactly one of them: `jose` could not be listed in the
+chunking rule while `secret-hash.ts` still reached it, because Rollup keeps a
+module eager when anything eager imports it — the branch would have been a lie
+that read like a fix.
+
+| | first pass | second pass |
+|---|---:|---:|
+| eager graph | 8,179 KiB | **6,062 KiB** |
+| eager chunks | 281 | **26** |
+| `vendor` | 2,714 KiB | **1,020 KiB** |
+| compile + top-level (local V8) | ~280 ms | **~220 ms** |
+
+The chunk count collapses because 259 of the 281 were the individual migration
+`.sql` files. What is left in `vendor` now really is shared: zod (528),
+drizzle-orm (276), hono (73), `zod-to-openapi` (56), unenv (36) — every one of
+them reached from eager route code, with no seam short of a redesign.
+
+**`zod` is the largest single item left, and replacing it with valibot would not
+move it.** Measured: an equivalent six-field schema is 320 KB minified in zod
+against 6.6 KB in valibot, and valibot's *entire* API is 86 KB — so the ceiling
+is ~440 KiB. But `zod` is a non-optional dependency of `better-auth`, `ai` and
+every `@ai-sdk/*` package, and `@modelcontextprotocol/sdk`; it cannot leave the
+tree. And `@hono/zod-openapi` re-exports `z` into 101 route files behind 1,095
+`.openapi()` registrations, with no valibot equivalent. The migration would add
+valibot's bytes on top of zod's, not instead of them.
+
+Two candidates remain, both larger than anything above and both needing their
+own pass: **`packages/integrations`** (763 KiB — 51 provider descriptors behind
+one eager `PROVIDERS` registry, the same shape as the template catalog) and the
+**MCP tool registry** (~370 KiB, consumed at *module scope* by four routes, so
+deferring it means a memoized accessor rather than an `import()`).
+
 ## Deferred (scoped, with rationale)
 
 These were evaluated and intentionally left for a follow-up — each needs an

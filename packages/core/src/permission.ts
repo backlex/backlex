@@ -109,6 +109,23 @@ export interface AuthSubject {
   roles: string[];
   /** Active workspace/tenant id for this request; null = single-tenant mode. */
   tenantId?: string | null;
+  /**
+   * HOW this identity reached `tenantId`, which is a different question from
+   * whether it may act there.
+   *
+   *   - `"member"` (or absent) — they hold a `tenant_members` row. The role
+   *     resolver requires one, so this is the ordinary, strict answer.
+   *   - `"operator-visit"` — the INSTANCE operator (admin of the default
+   *     workspace, or `OWNER_EMAIL`) looking at a workspace they do not belong
+   *     to. Only `tenantMiddleware` mints it, only after `isInstanceOperator`
+   *     returns true, and it exists so the admin workspace-switcher keeps
+   *     working for the one principal it was written for.
+   *
+   * Absent means `"member"` — the STRICTER of the two — so an `AuthSubject`
+   * rebuilt outside the request path (the job queue rebuilds one) cannot pick
+   * up cross-workspace reach by omission.
+   */
+  access?: "member" | "operator-visit";
   /** When the request authenticated with a role-scoped API key, the id of
    *  that role. Permission resolution then considers *only* this role (and
    *  only while the owner still holds it). Absent/null = no key scoping. */

@@ -16,7 +16,8 @@ import {
 } from "../services/permissions-cache";
 import { ensureDefaultTenant } from "../services/seed";
 import { resolveOrgContext, type OrgContext } from "../services/app-orgs";
-import { loadUnfilteredRoleNames } from "./session";
+import { isInstanceOperator } from "../services/roles/guards";
+import type { WorkspaceAccess } from "../services/permissions";
 
 /** Loose UUID v4-ish shape check — strict enough to avoid false positives on
  *  slugs (which can't contain `-` in groups of 8-4-4-4-12 hex). When a cookie
@@ -213,6 +214,8 @@ const tenantExists = async (
 export interface TenantAccess {
   roles: string[] | null;
   viaAdminShortcut: boolean;
+  /** What to stamp on `auth.access`, and what the role resolver is told. */
+  access: WorkspaceAccess;
 }
 
 export const resolveTenantAccess = async (
@@ -220,7 +223,21 @@ export const resolveTenantAccess = async (
   dialect: "pg" | "sqlite",
   tenantId: string,
   userId: string,
-  opts: { apiKeyRoleId?: string | null; apiKeyId?: string | null } = {},
+  opts: {
+    apiKeyRoleId?: string | null;
+    apiKeyId?: string | null;
+    /**
+     * Needed for the instance-operator check, which is now what gates the
+     * cross-workspace shortcut. `OWNER_EMAIL` is one of its two arms — the
+     * other is `admin` in the DEFAULT workspace — so the env and the caller's
+     * address both have to reach it. Optional so the shape stays compatible
+     * with a caller that has neither; a missing env simply means the
+     * `OWNER_EMAIL` arm cannot fire, never that the check is skipped.
+     */
+    env?: { OWNER_EMAIL?: string | undefined };
+    email?: string | null;
+    plane?: string;
+  } = {},
 ): Promise<TenantAccess> => {
   const apiKeyRoleId = opts.apiKeyRoleId ?? null;
   // Hot path: run the membership check and the tenant-scoped role load in
@@ -232,32 +249,52 @@ export const resolveTenantAccess = async (
     isMember(db, dialect, tenantId, userId),
     loadTenantRoleNames(db, dialect, tenantId, userId, apiKeyRoleId),
   ]);
-  if (member) return { roles: scopedRoles, viaAdminShortcut: false };
+  if (member) return { roles: scopedRoles, viaAdminShortcut: false, access: "member" };
 
-  // Membership failed — last chance is a cross-tenant super-admin. We also
-  // confirm the tenant actually exists so a forged UUID can't ride the
-  // UUID-bypass into `auth.tenantId` for the rest of the request (the resolver
-  // would still deny on permissions, but audit logs / route handlers that trust
-  // `auth.tenantId` would see a bogus id).
-  const [globalRoles, exists, suspendedHere] = await Promise.all([
-    loadUnfilteredRoleNames({ db, dialect }, userId, apiKeyRoleId),
+  // Membership failed — last chance is the INSTANCE OPERATOR. We also confirm
+  // the tenant actually exists so a forged UUID can't ride the UUID-bypass into
+  // `auth.tenantId` for the rest of the request (the resolver would still deny
+  // on permissions, but audit logs / route handlers that trust `auth.tenantId`
+  // would see a bogus id).
+  //
+  // This used to key on `loadUnfilteredRoleNames(...).includes("admin")` — a
+  // union of role NAMES across every workspace, with no tenant predicate. That
+  // made the shortcut self-serve: `POST /api/tenants` is gated by `requireUser`
+  // alone and grants the creator `admin` in the workspace they just made, so
+  // clicking "New workspace" put the name "admin" into that union and unlocked
+  // every OTHER workspace on the instance. `services/roles/guards.ts` already
+  // said this in writing — "that role name is self-serve and can never gate
+  // power that spans the whole database" — and this call site was the one
+  // place not honouring it.
+  //
+  // `isInstanceOperator` is the same function the SQL console gates on: admin
+  // of the DEFAULT workspace (where the first signup is seeded), or
+  // `OWNER_EMAIL`. A workspace minted later confers neither.
+  const [exists, suspendedHere, operator] = await Promise.all([
     tenantExists(db, dialect, tenantId),
     isSuspendedMember(db, dialect, tenantId, userId),
+    isInstanceOperator(
+      { db, dialect, env: opts.env ?? {} },
+      {
+        plane: opts.plane ?? "platform",
+        userId,
+        email: opts.email ?? null,
+        apiKeyId: opts.apiKeyId ?? null,
+      },
+    ),
   ]);
-  // A suspended member is denied even if they hold an admin role: the
-  // super-admin shortcut is only for genuine non-members (status 'none')
-  // viewing a foreign workspace, never for someone banned from this one.
-  if (
-    globalRoles.includes("admin") &&
-    exists &&
-    !(opts.apiKeyId ?? null) &&
-    !suspendedHere
-  ) {
-    // Admin keeps tenant-scoped role names — the shortcut decides *whether*
-    // they may act here, never *as what*.
-    return { roles: scopedRoles, viaAdminShortcut: true };
+  // A suspended member is denied even if they are the operator: the shortcut is
+  // only for genuine non-members (status 'none') viewing a foreign workspace,
+  // never for someone banned from this one.
+  if (operator && exists && !suspendedHere) {
+    // The operator keeps tenant-scoped role names — the shortcut decides
+    // *whether* they may act here, never *as what*. `access` is what lets the
+    // role resolver hand back that scoped bundle at all: with `"member"` it
+    // now requires a `tenant_members` row, which by definition the operator
+    // does not have here.
+    return { roles: scopedRoles, viaAdminShortcut: true, access: "operator-visit" };
   }
-  return { roles: null, viaAdminShortcut: false };
+  return { roles: null, viaAdminShortcut: false, access: "member" };
 };
 
 const firstUserTenant = async (
@@ -459,19 +496,27 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // *view* another workspace via the super-admin shortcut: their actual home
   // workspace should not be silently overwritten by a one-shot visit.
   let pinTenantCookie = true;
+  /** Stamped on `auth` below so the permission resolver is told HOW the caller
+   *  got here. Defaults to the strict value, and only the operator branch
+   *  moves it. */
+  let workspaceAccess: WorkspaceAccess = "member";
   if (auth.userId && auth.plane !== "app") {
     if (tenantId) {
       // One shared answer with the queue — see `resolveTenantAccess`. For
-      // non-admin non-members it refuses, and the tenant is nulled so the
+      // non-operator non-members it refuses, and the tenant is nulled so the
       // fallback below picks their own workspace instead.
       const access = await resolveTenantAccess(db, dialect, tenantId, auth.userId, {
         apiKeyRoleId: auth.apiKeyRoleId ?? null,
         apiKeyId: auth.apiKeyId ?? null,
+        env: ctx.env,
+        email: auth.email,
+        plane: auth.plane,
       });
       if (access.roles) {
         tenantRoles = access.roles;
-        // Cross-tenant admin shortcut: viewing only. Don't persist the visit so
-        // the next request without a header drops back to the admin's own
+        workspaceAccess = access.access;
+        // Instance-operator shortcut: viewing only. Don't persist the visit so
+        // the next request without a header drops back to the operator's own
         // workspace (and clear any leaked cookie below).
         if (access.viaAdminShortcut) pinTenantCookie = false;
       } else {
@@ -545,6 +590,11 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     ...auth,
     roles: tenantRoles,
     tenantId,
+    // How the caller got here, for the role resolver. Only the instance-operator
+    // branch above can make this anything other than `"member"`, and the
+    // resolver refuses to hand a non-member the workspace's `authenticated`
+    // bundle without it.
+    access: workspaceAccess,
     orgId: orgCtx.orgId,
     orgRole: orgCtx.orgRole,
     orgIds: orgCtx.orgIds,

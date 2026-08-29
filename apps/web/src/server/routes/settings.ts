@@ -6,6 +6,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { isInstanceOperator } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isCloudflareWorkers, isDenoDeploy, isNetlify } from "../lib/runtime";
 import {
@@ -226,6 +227,42 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // out of their own instance, and the fix would be a manual DB write. The
       // admin sign-in screen's own provider list is the authority on what is
       // left: if nothing but the password survives, refuse the change.
+      const globalKeys = new Set<string>(SIGN_IN_BRANDING_KEYS);
+      // These five keys land on the `tenant_id IS NULL` row, which is correct —
+      // the sign-in page is shown before any workspace is selected, so it can
+      // only have one answer. What was wrong is who could write it.
+      //
+      // `requireAdminMw` proves the caller is admin of THEIR OWN workspace, and
+      // `POST /api/tenants` hands that role to any authenticated user for the
+      // price of clicking "New workspace". So a stranger could rewrite the
+      // sign-in headline, tagline and Terms/Privacy links every other admin on
+      // the deployment sees — a ready-made phishing surface on the login page —
+      // and, via `passwordLogin`, lock everyone else out of a dashboard whose
+      // only recovery is `OWNER_EMAIL` or SQL.
+      //
+      // An instance-global write needs instance-global standing. The check runs
+      // once, before any row is touched, so a mixed body is refused whole
+      // rather than half-applied.
+      if (Object.keys(body).some((k) => globalKeys.has(k))) {
+        if (!(await isInstanceOperator(ctx, auth))) {
+          throw new AppError(
+            "FORBIDDEN",
+            "Sign-in branding is instance-wide, so only the instance operator may change it — sign in as an admin of the default workspace, or set OWNER_EMAIL to your address",
+          );
+        }
+      }
+
+      // Turning the password off with nothing else configured locks every admin
+      // out of their own instance, and the fix would be a manual DB write. The
+      // admin sign-in screen's own provider list is the authority on what is
+      // left: if nothing but the password survives, refuse the change.
+      //
+      // This runs AFTER the operator gate, and the order is load-bearing.
+      // `passwordLogin` is one of the instance-global keys, so a non-operator
+      // can never write it — but with the guard first they still reached it,
+      // and its 422 ("enable another way in first") versus a 200 answered a
+      // question they were not entitled to ask: whether this deployment has a
+      // second way in. Refuse before you reveal.
       if (body.passwordLogin && body.passwordLogin !== "enabled") {
         const surface = await resolvePlatformAuthSurface(
           { db: ctx.db as any, dialect: ctx.dialect },
@@ -242,7 +279,6 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           );
         }
       }
-      const globalKeys = new Set<string>(SIGN_IN_BRANDING_KEYS);
       for (const [key, value] of Object.entries(body)) {
         if (value === undefined) continue;
         // Login-screen branding is instance-global — the sign-in page is shown

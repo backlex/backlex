@@ -105,33 +105,19 @@ const touchLastUsedDebounced = (
   }
 };
 
-/**
- * Cross-tenant role names (unfiltered union). Only consulted by tenantMiddleware
- * when the caller isn't a member of the requested workspace — to decide whether
- * they're a super-admin who should pass through anyway. Skipped entirely on the
- * hot path (member of the active tenant), so this lookup is exported and called
- * lazily rather than from sessionMiddleware on every request.
+/*
+ * `loadUnfilteredRoleNames` used to live here: a union of role NAMES across
+ * every workspace, with no tenant predicate, consulted by `tenantMiddleware`
+ * to decide whether a non-member was "a super-admin who should pass through
+ * anyway". It is deleted rather than left unused, because a helper that
+ * answers "does this person hold the name `admin` ANYWHERE on the instance"
+ * has no safe caller: `POST /api/tenants` hands that name to whoever asks.
+ *
+ * The question it was standing in for is "is this the instance operator", and
+ * `services/roles/guards.ts::isInstanceOperator` is the function that actually
+ * answers it — scoped to the default workspace, with an `OWNER_EMAIL` arm and
+ * an explicit refusal for API keys.
  */
-export const loadUnfilteredRoleNames = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  userId: string,
-  restrictRoleId: string | null,
-): Promise<string[]> => {
-  const t =
-    ctx.dialect === "pg"
-      ? { roles: pg.schema.roles, userRoles: pg.schema.userRoles }
-      : { roles: sqlite.schema.roles, userRoles: sqlite.schema.userRoles };
-  const rows = (await (ctx.db as any)
-    .select({ name: t.roles.name })
-    .from(t.userRoles)
-    .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
-    .where(
-      restrictRoleId
-        ? and(eq(t.userRoles.userId, userId), eq(t.roles.id, restrictRoleId))
-        : eq(t.userRoles.userId, userId),
-    )) as { name: string }[];
-  return rows.map((r) => r.name);
-};
 
 /** The address `$user.email` binds to. Exported because a queued job has to
  *  rebuild the same identity the request had, and a permission condition

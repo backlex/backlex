@@ -225,8 +225,11 @@ const customClaimsFor = async (
           { db: ctx.db, dialect: ctx.dialect },
           args.userId,
           args.tenantId,
-          null,
-          "app",
+          // App plane: the membership gate is control-plane only, since an
+          // end-user has no `tenant_members` row — their session is pinned to
+          // its issuing workspace instead. `"member"` is still the honest
+          // answer, and it is the strict one.
+          { plane: "app", access: "member" },
         )
       ).map((r) => r.name),
   );

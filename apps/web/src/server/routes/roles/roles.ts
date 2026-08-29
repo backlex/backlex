@@ -167,6 +167,43 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId,
         id,
       );
+      // The guard DELETE has carried since it shipped, which PATCH never did —
+      // and PATCH is the more dangerous of the two, because it can strip a
+      // system role without removing it.
+      //
+      // Two independent tests both mean "admin" in this codebase and neither
+      // knows about the other: `requireAdmin` matches the role NAME on ~190
+      // routes, and the permission resolver's bypass matches the `roles.admin`
+      // FLAG. So one PATCH could rename `admin` — taking the whole admin route
+      // surface away from every user in the workspace at once, through an
+      // endpoint that is itself admin-gated, leaving no way back in — or clear
+      // the flag while the name stayed, or set the flag on a role called
+      // something harmless and hand out an unconditional data bypass under it.
+      //
+      // Renaming is refused outright. `description` and the MCP/org flags stay
+      // editable on a system role, because none of them is load-bearing for
+      // either test.
+      if (SYSTEM_ROLE_NAMES.has(before.name)) {
+        if (body.name !== undefined && body.name !== before.name) {
+          throw new AppError(
+            "FORBIDDEN",
+            `Cannot rename system role "${before.name}" — the permission layer matches it by name, and for "admin" every admin-gated route does too, including this one`,
+          );
+        }
+        if (body.admin !== undefined && body.admin !== before.admin) {
+          throw new AppError(
+            "FORBIDDEN",
+            `Cannot change the admin flag on system role "${before.name}"`,
+          );
+        }
+      }
+      // Deliberately NOT guarded: setting `admin: true` on a CUSTOM role.
+      // `POST /` already accepts `admin: body.admin ?? false`, so refusing it
+      // here would only mean an admin deletes the role and recreates it — a
+      // guard that changes the number of requests and not the outcome. The
+      // escalation worth refusing is the one with no way back, and that is the
+      // rename above: it is reachable through an endpoint that is itself gated
+      // on the name being renamed.
       const t = tableFor(ctx.dialect);
       await (ctx.db as any)
         .update(t.roles)

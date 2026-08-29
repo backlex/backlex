@@ -272,184 +272,227 @@ describe("tenants: a nonexistent slug in X-Backlex-Tenant is refused", () => {
 });
 
 /**
- * Locks in the design contract of middleware/session.ts `loadUnfilteredRoleNames`
- * and tenant.ts:244-256 — a control-plane admin in tenant T1 may *reach* URLs
- * for an unrelated tenant T2 (so workspace-switcher UX still works), but the
- * role bundle assigned for T2 stays tenant-scoped (empty for non-members) and
- * the request gets only the baseline `authenticated` permissions in T2.
+ * Who may reach a workspace they are not a member of.
  *
- * The cross-tenant union returned by loadUnfilteredRoleNames is consulted ONLY
- * as a super-admin gate inside tenantMiddleware; it never widens auth.roles.
- * Permission middleware (`requireAdmin`) reads auth.roles which loadTenantRoleNames
- * tenant-scoped — so an admin-only endpoint must return 403 in the foreign tenant.
+ * This block used to pin the OPPOSITE contract, and the shape of that flip is
+ * the whole point of the Phase 0 → Phase 1 pair. The gate was
+ * `middleware/session.ts::loadUnfilteredRoleNames` — an unfiltered union of
+ * role NAMES across every workspace the caller held a role in, with no tenant
+ * predicate — and `POST /api/tenants` hands the RBAC `admin` role to whoever
+ * creates a workspace. So any signed-in user could mint themselves a name that
+ * appeared in that union: the shortcut was self-serve rather than privileged,
+ * and clicking "New workspace" unlocked read-through access to every OTHER
+ * workspace on the instance. That function no longer exists.
  *
- * ── PINNED KNOWN GAP — Phase 1 changes this deliberately ────────────────────
+ * What replaced it is `services/roles/guards.ts::isInstanceOperator` — `admin`
+ * in the DEFAULT workspace (where the first signup is seeded), or
+ * `OWNER_EMAIL` — the principal `routes/tenants.ts::assertWorkspaceAccess` was
+ * already using for `POST /api/tenants/switch`. A workspace minted later
+ * confers neither.
  *
- * What this block asserts is today's contract, not a desired one. The gate it
- * pins is `loadUnfilteredRoleNames`: an UNFILTERED union of role NAMES across
- * every workspace the caller holds a role in. `POST /api/tenants` hands the
- * RBAC `admin` role to whoever creates a workspace, so any signed-in user can
- * mint themselves a name that appears in that union — which makes the shortcut
- * self-serve rather than privileged, and lets a non-member reach every
- * workspace on the instance in read-through mode.
+ * The contract therefore has two halves, and both are asserted here because
+ * either one alone describes a different change:
  *
- * Phase 1 re-keys the shortcut onto `isInstanceOperator` (`admin` in the
- * DEFAULT workspace, or `OWNER_EMAIL`) — a role a self-created workspace
- * cannot confer, and the same principal `assertWorkspaceAccess` in
- * routes/tenants.ts already uses. When that lands, these assertions change on
- * purpose and the diff should say so; that is why they are written down first
- * rather than edited quietly alongside the fix.
+ *   - `ownerA` is a SELF-SERVE workspace admin — `admin` only in the workspace
+ *     they created for themselves — and now gets nothing at all in workspace B.
+ *     Not baseline access, not read-through: the request is refused at tenant
+ *     resolution, before any handler runs.
+ *   - The `operator` still REACHES workspace B, which is what keeps the admin
+ *     workspace-switcher working, and still resolves to TENANT-SCOPED roles
+ *     there, so admin-only endpoints keep answering 403. The shortcut decides
+ *     *whether* they may act here, never *as what*.
+ *
+ * Without the second half this file would read as "we broke the switcher".
  */
-describe("tenants: cross-tenant admin gets baseline access in foreign workspaces, not admin powers", () => {
-  let h: TestHarness;
-  let tenantBSlug: string;
-  let adminEmail: string;
+describe("tenants: only the instance operator reaches a workspace they don't belong to", () => {
+  let cast: TwoPlaneCast;
 
-  const JSON_HEADERS = { "Content-Type": "application/json" };
-  const signIn = (h: TestHarness, email: string) =>
-    h.fetch("/api/auth/sign-in/email", {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ email, password: "correct-horse-battery" }),
+  /** A call into a named workspace, chosen explicitly by header rather than by
+   *  whatever the shared cookie jar happens to hold. */
+  const inWorkspace = (
+    caller: TwoPlaneCast["ownerA"]["fetch"],
+    slug: string,
+    path: string,
+    init: RequestInit = {},
+  ) =>
+    caller(path, {
+      ...init,
+      headers: { ...(init.headers ?? {}), "X-Backlex-Tenant": slug },
     });
-  const signOut = (h: TestHarness) =>
-    h.fetch("/api/auth/sign-out", { method: "POST" });
+
+  /** The workspace a header-less request resolves to — the same thing the admin
+   *  SPA reads to decide which workspace it is showing. */
+  const activeWorkspace = async (
+    caller: TwoPlaneCast["ownerA"]["fetch"],
+  ): Promise<string | null> => {
+    const res = await caller("/api/tenants");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { active: string | null };
+    return body.active;
+  };
 
   beforeAll(async () => {
-    h = makeHarness();
-
-    // User A — first signup, auto-promoted to admin in `default`.
-    const a = await seedAdmin(h);
-    adminEmail = a.email;
-
-    // Switch identity: sign out A, sign up user B (lands as `authenticated`).
-    await signOut(h);
-    const memberEmail = `member-${Date.now()}@example.test`;
-    const suB = await h.fetch("/api/auth/sign-up/email", {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({
-        email: memberEmail,
-        password: "correct-horse-battery",
-        name: "Member B",
-      }),
-    });
-    expect(suB.ok).toBe(true);
-
-    // B creates a new workspace; B becomes owner of tenant-B. A is NOT a member.
-    const suffix = `${Date.now()}`.slice(-6);
-    const createT = await h.fetch("/api/tenants", {
-      method: "POST",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ name: `Cross ${suffix}` }),
-    });
-    expect(createT.status).toBe(201);
-    const created = (await createT.json()) as { data: { id: string; slug: string } };
-    tenantBSlug = created.data.slug;
-
-    // Sign out B and sign A back in for the actual assertions.
-    await signOut(h);
-    const back = await signIn(h, adminEmail);
-    expect(back.ok).toBe(true);
+    cast = await buildTwoPlaneCast();
   });
 
   afterAll(() => {
-    h.cleanup();
+    cast.cleanup();
   });
 
-  test("admin reaches tenant-B URLs but auth.roles never includes 'admin' there", async () => {
-    // GET /api/tenants reflects what tenantMiddleware put on `auth` for the
-    // CURRENT request — list shows only workspaces A is a member of. A is
-    // admin in `default`, not a member of tenant-B → tenant-B never appears
-    // in A's own list (regardless of any header override).
-    const own = await h.fetch("/api/tenants");
+  test("a self-serve workspace admin gets nothing in a foreign workspace", async () => {
+    // The positive half first, so the refusal below cannot pass because ownerA
+    // is broken or unauthenticated: they really are an `admin`, and /api/roles
+    // really does answer them — in the workspace they created for themselves.
+    const own = await inWorkspace(cast.ownerA.fetch, cast.tenantA.slug, "/api/roles");
     expect(own.status).toBe(200);
-    const ownBody = (await own.json()) as { data: { slug: string }[] };
-    expect(ownBody.data.some((t) => t.slug === tenantBSlug)).toBe(false);
-    expect(ownBody.data.some((t) => t.slug === "default")).toBe(true);
+    const ownBody = (await own.json()) as { data: { name: string }[] };
+    expect(ownBody.data.some((r) => r.name === "admin")).toBe(true);
+
+    // Same identity, same endpoint, a workspace they are not a member of. This
+    // used to be a 403 — reached, then denied by `requireAdmin` — which meant
+    // the request had already been handed `auth.tenantId` for workspace B. It
+    // is refused at tenant resolution now, so no handler runs at all.
+    const foreign = await inWorkspace(cast.ownerA.fetch, cast.tenantB.slug, "/api/roles");
+    expect(foreign.status).toBe(404);
+    const foreignBody = (await foreign.json()) as { error: { code: string; message: string } };
+    expect(foreignBody.error.code).toBe("NOT_FOUND");
+    expect(foreignBody.error.message).toContain(cast.tenantB.slug);
+
+    // And it is the SAME refusal a slug matching nothing gets, deliberately —
+    // otherwise the header would be an existence oracle and any signed-in user
+    // could read off which workspaces exist from the status code alone.
+    const bogus = await inWorkspace(cast.ownerA.fetch, "no-such-workspace-here", "/api/roles");
+    expect(bogus.status).toBe(foreign.status);
+    const bogusBody = (await bogus.json()) as { error: { code: string } };
+    expect(bogusBody.error.code).toBe(foreignBody.error.code);
   });
 
-  test("admin in default cannot exercise admin-only routes against tenant-B", async () => {
-    // /api/roles is gated by requireAdminMw which checks
-    // `auth.roles.includes("admin")`. auth.roles is set by tenantMiddleware
-    // via loadTenantRoleNames(tenantId) — strictly scoped to the active
-    // workspace. A has zero user_roles rows in tenant-B, so the bundle
-    // resolves to empty and the gate returns 403.
-    const forbidden = await h.fetch("/api/roles", {
-      headers: { "X-Backlex-Tenant": tenantBSlug },
-    });
-    expect(forbidden.status).toBe(403);
-    const body = (await forbidden.json()) as {
-      error?: { code?: string };
-    };
-    expect(body.error?.code).toBe("FORBIDDEN");
+  test("the refused visit doesn't strand the visitor or move their own workspace", async () => {
+    // Establish where ownerA is inside this test rather than inheriting
+    // whatever the previous one left in the shared jar.
+    const home = await inWorkspace(cast.ownerA.fetch, cast.tenantA.slug, "/api/tenants");
+    expect(home.status).toBe(200);
+    expect(cast.h.cookies()[TENANT_COOKIE]).toBe(cast.tenantA.id);
+
+    const refused = await inWorkspace(cast.ownerA.fetch, cast.tenantB.slug, "/api/tenants");
+    expect(refused.status).toBe(404);
+
+    // The refusal throws before `next()`, so nothing writes a cookie: a rejected
+    // visit must not repoint the visitor at some other workspace, and must not
+    // knock them out of the one they were already in either.
+    expect(cast.h.cookies()[TENANT_COOKIE]).toBe(cast.tenantA.id);
+    expect(await activeWorkspace(cast.ownerA.fetch)).toBe(cast.tenantA.id);
   });
 
-  test("the cross-tenant visit doesn't leak backlex-tenant cookie", async () => {
-    // The previous test routed A through tenantB via header. tenantMiddleware
-    // must NOT have written a tenantB cookie back — otherwise every following
-    // request without a header would silently keep landing in the foreign
-    // workspace. Clearing/refusing the cookie on the pass-through path is the
-    // fix locked in here.
-    const jar = h.cookies();
-    expect(jar[TENANT_COOKIE]).not.toBe(tenantBSlug);
-    expect(jar[TENANT_COOKIE]).not.toBeDefined();
+  test("the instance operator still reaches a foreign workspace, as a non-admin", async () => {
+    // 403, not 404 — the operator's request DID resolve workspace B and then
+    // ran into `requireAdmin`. That difference from ownerA's 404 above is the
+    // entire contract: reach is keyed on being the instance operator, not on
+    // holding the name `admin` somewhere on the instance.
+    const foreign = await inWorkspace(cast.operator.fetch, cast.tenantB.slug, "/api/roles");
+    expect(foreign.status).toBe(403);
+    const body = (await foreign.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("FORBIDDEN");
+
+    // `auth.roles` comes from `loadTenantRoleNames`, which is strictly scoped to
+    // the active workspace, and the operator holds no `user_roles` row in B — so
+    // the bundle is empty there. The same endpoint in the operator's OWN
+    // workspace answers 200, which is what makes the 403 a statement about
+    // WHERE they are rather than about who they are.
+    const atHome = await inWorkspace(cast.operator.fetch, cast.defaultTenant.slug, "/api/roles");
+    expect(atHome.status).toBe(200);
+    const atHomeBody = (await atHome.json()) as { data: { name: string }[] };
+    expect(atHomeBody.data.some((r) => r.name === "admin")).toBe(true);
   });
 
-  test("the same admin endpoint succeeds in A's own workspace without an override", async () => {
-    // With the cookie cleared, a header-less request falls back through
-    // user.activeTenantId / firstUserTenant — which is `default`, A's home
-    // workspace. requireAdmin now sees A's admin role and returns 200.
-    const ok = await h.fetch("/api/roles");
-    expect(ok.status).toBe(200);
-    const body = (await ok.json()) as { data: { name: string }[] };
-    // Admin/authenticated/public are auto-seeded per workspace.
-    expect(body.data.some((r) => r.name === "admin")).toBe(true);
+  test("the operator's visit is one-shot — it does not repoint their active workspace", async () => {
+    // `tenantMiddleware` stamps `auth.access = "operator-visit"` on this path
+    // and, on the same branch, refuses to pin the `backlex-tenant` cookie. This
+    // is where that second half is observable: a support visit must not leave
+    // the operator's own SPA silently pointing at somebody else's workspace for
+    // the next thirty days.
+    const home = await inWorkspace(cast.operator.fetch, cast.defaultTenant.slug, "/api/tenants");
+    expect(home.status).toBe(200);
+    // Non-vacuous: a MEMBER's request does pin the cookie, so the absence
+    // asserted below is a decision and not a jar that never gets cookies.
+    expect(cast.h.cookies()[TENANT_COOKIE]).toBe(cast.defaultTenant.id);
+    expect(await activeWorkspace(cast.operator.fetch)).toBe(cast.defaultTenant.id);
+
+    const visit = await inWorkspace(cast.operator.fetch, cast.tenantB.slug, "/api/tenants");
+    expect(visit.status).toBe(200);
+    // Reaching B does not make the operator a MEMBER of it — the list is
+    // membership-driven and still omits B even on the request B is active for.
+    const listed = (await visit.json()) as { data: { id: string }[] };
+    expect(listed.data.some((t) => t.id === cast.tenantB.id)).toBe(false);
+    expect(listed.data.some((t) => t.id === cast.defaultTenant.id)).toBe(true);
+
+    // The visit actively CLEARS the cookie rather than moving it to B, so the
+    // next header-less request drops back to the operator's own workspace.
+    const jar = cast.h.cookies();
+    expect(jar[TENANT_COOKIE]).not.toBe(cast.tenantB.id);
+    expect(jar[TENANT_COOKIE]).toBeUndefined();
+    expect(await activeWorkspace(cast.operator.fetch)).toBe(cast.defaultTenant.id);
   });
 });
 
 /**
- * What a non-member cross-tenant visitor can actually DO once the shortcut has
- * let them in.
+ * What a non-member cross-tenant visitor can DO in a foreign workspace: nothing.
  *
- * The block above pins that such a visitor is not an ADMIN in the foreign
- * workspace. That is only half the question, and the quiet half is the other
- * one: `tenantMiddleware` leaves `auth.roles` empty for them, but the
- * permission resolver does not need `auth.roles` to grant anything — it
- * LEFT JOINs `user_roles` and unconditionally includes the active workspace's
- * builtin `authenticated` role for any signed-in control-plane identity
- * (services/permissions.ts). So the visitor arrives holding the foreign
- * workspace's `authenticated` bundle.
- *
- * And `services/seed.ts::seedOwnerScopedPermissions` grants that role an
+ * Phase 0 pinned the answer "create a row", and that was not a theoretical
+ * leak. `tenantMiddleware` left `auth.roles` empty for such a visitor — which
+ * is what the block above tests — but the permission resolver never consulted
+ * `auth.roles`: `loadRolesForUser`'s control-plane branch filtered on
+ * `roles.tenant_id` and `user_roles.user_id` and carried NO membership term, so
+ * it unconditionally included the foreign workspace's builtin `authenticated`
+ * role for any signed-in control-plane identity. And
+ * `services/seed.ts::seedOwnerScopedPermissions` grants that role an
  * UNCONDITIONAL `create` on every owner-scoped collection — read/update/delete
  * are fenced by `owner_id == $user.id`, create is not, because the row does not
- * exist yet to own. The two facts compose into WRITE access for a stranger.
+ * exist yet to own. The two facts composed into WRITE access for a stranger,
+ * and because the reads WERE fenced nothing ever came back to make it visible.
  *
- * `ownerA` is the principal that matters here rather than the operator: they
- * are `admin` only in the workspace they created for themselves, which is a
- * role any signed-in user can mint via `POST /api/tenants`. Phase 1 re-keys the
- * shortcut onto `isInstanceOperator`, and this test is what will show the
- * change: today it pins that the write LANDS.
+ * Phase 1 closes it in two independent places, and that is deliberate: either
+ * one alone would leave the write a single bypass away.
+ *   - `tenantMiddleware` refuses the visitor at tenant resolution (404), so no
+ *     handler runs and `auth.tenantId` never points at the foreign workspace.
+ *   - `loadRolesForUser` now requires a non-suspended `tenant_members` row
+ *     before it hands out that workspace's `authenticated` bundle, so a caller
+ *     who reached `auth.tenantId` some other way still resolves to zero roles.
+ *     "Authenticated" now means authenticated *in this workspace*, not merely
+ *     signed in somewhere on the deployment.
+ *
+ * The operator half is asserted here too, on the very same collection, because
+ * "a stranger can no longer write" and "nobody but the owner can reach it" are
+ * the same sentence unless the switcher is shown still working.
  */
-describe("tenants: a non-member cross-tenant visitor's write powers in a foreign workspace", () => {
+describe("tenants: a non-member cross-tenant visitor has no write powers in a foreign workspace", () => {
   let cast: TwoPlaneCast;
   const suffix = `${Date.now()}`.slice(-6);
-  // Collection slugs take letters and digits only — no hyphen.
+  // Collection slugs take letters and digits only — no hyphen. The SAME slug is
+  // created in BOTH workspaces on purpose: it removes "that slug just doesn't
+  // exist for this caller" as a reading of the 404s below.
   const collSlug = `notes${suffix}`;
 
-  /** A call into workspace B, chosen explicitly by header rather than by
+  /** A call into a named workspace, chosen explicitly by header rather than by
    *  whatever the shared cookie jar happens to hold. */
-  const inB = (caller: TwoPlaneCast["ownerA"]["fetch"], path: string, init: RequestInit = {}) =>
+  const inWorkspace = (
+    caller: TwoPlaneCast["ownerA"]["fetch"],
+    slug: string,
+    path: string,
+    init: RequestInit = {},
+  ) =>
     caller(path, {
       ...init,
-      headers: { ...(init.headers ?? {}), "X-Backlex-Tenant": cast.tenantB.slug },
+      headers: { ...(init.headers ?? {}), "X-Backlex-Tenant": slug },
     });
 
-  beforeAll(async () => {
-    cast = await buildTwoPlaneCast();
-    const created = await inB(
-      cast.ownerB.fetch,
+  const createOwnerScoped = async (
+    caller: TwoPlaneCast["ownerA"]["fetch"],
+    slug: string,
+  ): Promise<void> => {
+    const created = await inWorkspace(
+      caller,
+      slug,
       "/api/collections",
       json("POST", {
         slug: collSlug,
@@ -458,8 +501,16 @@ describe("tenants: a non-member cross-tenant visitor's write powers in a foreign
       }),
     );
     if (created.status !== 201) {
-      throw new Error(`owner-scoped collection create failed: ${created.status} ${await created.text()}`);
+      throw new Error(
+        `owner-scoped collection create in ${slug} failed: ${created.status} ${await created.text()}`,
+      );
     }
+  };
+
+  beforeAll(async () => {
+    cast = await buildTwoPlaneCast();
+    await createOwnerScoped(cast.ownerB.fetch, cast.tenantB.slug);
+    await createOwnerScoped(cast.ownerA.fetch, cast.tenantA.slug);
   });
 
   afterAll(() => {
@@ -467,48 +518,105 @@ describe("tenants: a non-member cross-tenant visitor's write powers in a foreign
   });
 
   test("the workspace's own owner can write to their owner-scoped collection", async () => {
-    // The positive control. Without it every assertion below could pass because
+    // The positive control. Without it every refusal below could pass because
     // the collection is broken rather than because access is what it is.
-    const res = await inB(cast.ownerB.fetch, `/api/items/${collSlug}`, json("POST", { title: "by-owner-b" }));
+    const res = await inWorkspace(
+      cast.ownerB.fetch,
+      cast.tenantB.slug,
+      `/api/items/${collSlug}`,
+      json("POST", { title: "by-owner-b" }),
+    );
     expect(res.status).toBe(201);
   });
 
-  test("the visitor holds no admin powers in the foreign workspace", async () => {
-    // Restates the boundary the block above pins, here so the write below is
-    // unambiguous: whatever lets it through is NOT an admin bypass.
-    const roles = await inB(cast.ownerA.fetch, "/api/roles");
-    expect(roles.status).toBe(403);
-  });
-
-  test("KNOWN GAP: the visitor CAN create a row in the foreign workspace", async () => {
-    // Pinned, not fixed — Phase 0 changes no runtime behaviour. `ownerA` is not
-    // a member of B, was never invited, and holds `admin` only in a workspace
-    // they created for themselves; the row still lands in B's physical table.
-    // Phase 1 (shortcut re-keyed to `isInstanceOperator`) is what turns this
-    // into a refusal, and this assertion is what will record that it did.
-    const res = await inB(cast.ownerA.fetch, `/api/items/${collSlug}`, json("POST", { title: "by-stranger" }));
+  test("the visitor can write the SAME collection slug in their own workspace", async () => {
+    // The other half of the control, and the half that makes the 404s specific:
+    // ownerA is a working, signed-in, admin-holding identity, and `notes<n>` is
+    // a collection they can create rows in. Everything that fails below fails
+    // because of WHICH workspace was named — not because of who is asking, and
+    // not because of what they asked for.
+    const res = await inWorkspace(
+      cast.ownerA.fetch,
+      cast.tenantA.slug,
+      `/api/items/${collSlug}`,
+      json("POST", { title: "by-owner-a-at-home" }),
+    );
     expect(res.status).toBe(201);
-    const body = (await res.json()) as { data: { id: string; title: string } };
-    expect(body.data.title).toBe("by-stranger");
-
-    // And it is really in B, not in a same-slug collection of the visitor's own
-    // — B's owner reads it back from B.
-    const asOwnerB = await inB(cast.ownerB.fetch, `/api/items/${collSlug}/${body.data.id}`);
-    expect(asOwnerB.status).toBe(200);
   });
 
-  test("the owner condition still fences READS, so the leak is write-shaped", async () => {
-    // `read` carries `owner_id == $user.id` while `create` carries nothing, so
-    // the visitor sees only what they themselves wrote — which is precisely why
-    // this has been invisible: nothing in the foreign workspace's data comes
-    // back to them, so no read test would ever have caught it.
-    const listed = await inB(cast.ownerA.fetch, `/api/items/${collSlug}`);
+  test("the visitor can no longer create a row in the foreign workspace", async () => {
+    // Phase 0 pinned this as a 201, and the row really did land in workspace
+    // B's physical table, written by someone who was never a member and was
+    // never invited. It is a 404 now, and the 404 comes from tenant resolution
+    // rather than from the collection lookup: the message names the header.
+    const res = await inWorkspace(
+      cast.ownerA.fetch,
+      cast.tenantB.slug,
+      `/api/items/${collSlug}`,
+      json("POST", { title: "by-stranger" }),
+    );
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(body.error.message).toContain("X-Backlex-Tenant");
+
+    // "Refused" is not the same claim as "wrote nothing", so ask the one
+    // identity that can see B's rows. Non-vacuous: their own row from the
+    // control above IS there, so an empty answer would mean the read failed
+    // rather than that the write did.
+    const listed = await inWorkspace(cast.ownerB.fetch, cast.tenantB.slug, `/api/items/${collSlug}`);
     expect(listed.status).toBe(200);
-    const body = (await listed.json()) as { data: { title: string }[] };
-    // Non-vacuous: the visitor's own row IS present, so an empty result would
-    // mean the query failed rather than that the fence held.
-    expect(body.data.some((r) => r.title === "by-stranger")).toBe(true);
-    expect(body.data.some((r) => r.title === "by-owner-b")).toBe(false);
+    const rows = (await listed.json()) as { data: { title: string }[] };
+    expect(rows.data.some((r) => r.title === "by-owner-b")).toBe(true);
+    expect(rows.data.some((r) => r.title === "by-stranger")).toBe(false);
+  });
+
+  test("the visitor cannot read the foreign workspace's collection either", async () => {
+    // Phase 0 answered 200 here — with an owner-fenced, and therefore empty,
+    // result — which is exactly how the write leak stayed invisible for so
+    // long: no read test could have caught it. Both verbs are refused at the
+    // same place now, before either permission is consulted.
+    const listed = await inWorkspace(cast.ownerA.fetch, cast.tenantB.slug, `/api/items/${collSlug}`);
+    expect(listed.status).toBe(404);
+    const body = (await listed.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  test("the instance operator still reaches the same collection, still owner-fenced", async () => {
+    // The counterweight. `tenantMiddleware` stamps `auth.access = "operator-visit"`
+    // for this caller, and that stamp is what lets `loadRolesForUser` hand back
+    // workspace B's `authenticated` bundle to someone with no `tenant_members`
+    // row — under `"member"` (the value everything defaults to when it does not
+    // say otherwise) the operator would resolve to zero roles and be denied
+    // here. So a 200 is the observable proof the stamp was applied.
+    const listed = await inWorkspace(
+      cast.operator.fetch,
+      cast.tenantB.slug,
+      `/api/items/${collSlug}`,
+    );
+    expect(listed.status).toBe(200);
+
+    // Reaching it is not reading it: `read` carries `owner_id == $user.id` and
+    // the operator owns nothing here, so B's rows stay fenced off. The visit
+    // buys a working workspace switcher, not a view of the data.
+    const rows = (await listed.json()) as { data: { title: string }[] };
+    expect(rows.data.some((r) => r.title === "by-owner-b")).toBe(false);
+    expect(rows.data).toHaveLength(0);
+
+    // And the write the block above closed for a stranger is still open for the
+    // operator, because it is the same mechanism narrowed to one principal:
+    // `operator-visit` hands them B's `authenticated` bundle, and that bundle's
+    // `create` carries no condition. Asserted rather than left implicit — this
+    // is the residue of the leak, it is deliberate (the operator already holds
+    // the SQL console), and it should have to be edited by anyone who decides a
+    // support visit ought to be read-only.
+    const written = await inWorkspace(
+      cast.operator.fetch,
+      cast.tenantB.slug,
+      `/api/items/${collSlug}`,
+      json("POST", { title: "by-operator" }),
+    );
+    expect(written.status).toBe(201);
   });
 });
 
@@ -518,7 +626,10 @@ describe("tenants: a non-member cross-tenant visitor's write powers in a foreign
  * It had ZERO tests before this block: the file's header docstring described it
  * and nothing executed it, which is the exact shape a contract change slips
  * through. What is pinned here is TODAY's behaviour, including the parts that
- * are wrong; each of those carries a comment naming the phase that fixes it.
+ * are wrong. Phase 1 left this route alone — it was already gated on
+ * `isInstanceOperator` and is in fact the shape the rest of the surface was
+ * moved onto — so the two gaps called out below (the existence oracle, and the
+ * dead `active_tenant_id` column) survived it and say so.
  *
  * The cast comes from `fixtures/two-plane-cast.ts` so the principals are the
  * ones the identity audit turns on: `ownerA` is `admin` only in the workspace
@@ -625,9 +736,11 @@ describe("tenants: POST /api/tenants/switch", () => {
   test("switching to a workspace the caller is not a member of is refused, and nothing moves", async () => {
     // ownerA holds `admin` in workspace A — a role they granted themselves by
     // creating it — and is not a member of B. `assertWorkspaceAccess` does NOT
-    // consult that unfiltered role union: its escape hatch is
-    // `isInstanceOperator`, so a self-created admin role buys nothing here.
-    // This route is therefore already keyed the way Phase 1 re-keys the rest.
+    // consult the unfiltered role union that `middleware/session.ts` used to
+    // export: its escape hatch is `isInstanceOperator`, so a self-created admin
+    // role buys nothing here. This route was always keyed that way, which is
+    // why Phase 1 changed nothing about it — it is the shape the rest of the
+    // surface was moved onto, not the other way round.
     const before = await activeWorkspace(cast.ownerA.fetch);
     expect(before).toBe(cast.defaultTenant.id);
 
@@ -635,10 +748,13 @@ describe("tenants: POST /api/tenants/switch", () => {
       "/api/tenants/switch",
       json("POST", { tenant: cast.tenantB.id }),
     );
-    expect(res.status).toBe(403);
+    // NOT_FOUND, not FORBIDDEN — and the message names no workspace that the
+    // caller did not already name themselves. See the existence-oracle test
+    // below: "no such workspace" and "not yours" now answer identically.
+    expect(res.status).toBe(404);
     const body = (await res.json()) as { error: { code: string; message: string } };
-    expect(body.error.code).toBe("FORBIDDEN");
-    expect(body.error.message).toBe("You are not a member of this workspace");
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(body.error.message).toContain("is available to you");
 
     // A refused switch must not have moved the caller, nor written the cookie.
     expect(cast.h.cookies()[TENANT_COOKIE]).toBe(cast.defaultTenant.id);
@@ -667,29 +783,38 @@ describe("tenants: POST /api/tenants/switch", () => {
     expect(listed.data.some((t) => t.id === cast.tenantB.id)).toBe(false);
   });
 
-  test("switching to a nonexistent workspace answers 404 — a different code than a real one you may not have", async () => {
-    const res = await cast.ownerA.fetch(
+  test("/switch is not an existence oracle: no-such-workspace and not-yours are indistinguishable", async () => {
+    // The route used to answer 404 "Workspace not found" for one and 403 "You
+    // are not a member of this workspace" for the other, which let any signed-in
+    // user enumerate every workspace id and slug on the deployment by status
+    // code alone — without ever being admitted to one.
+    //
+    // `middleware/tenant.ts::refuseHeaderWorkspace` already collapsed the two
+    // for the `X-Backlex-Tenant` header for exactly this reason; this route was
+    // the same door left open beside it.
+    const missing = await cast.ownerA.fetch(
       "/api/tenants/switch",
       json("POST", { tenant: "00000000-0000-4000-8000-000000000000" }),
     );
-    expect(res.status).toBe(404);
-    const body = (await res.json()) as { error: { code: string; message: string } };
-    expect(body.error.code).toBe("NOT_FOUND");
-    expect(body.error.message).toBe("Workspace not found");
-
-    // KNOWN GAP, pinned deliberately. A workspace that does not exist answers
-    // 404 while one that exists and is not yours answers 403 (the test above),
-    // so this route is an existence oracle: any signed-in user can enumerate
-    // workspace ids and slugs by status code alone. `tenantMiddleware`'s
-    // `X-Backlex-Tenant` path deliberately collapses both causes into ONE
-    // message for exactly this reason — see `refuseHeaderWorkspace` — and this
-    // route never got the same treatment. Phase 1 owns closing it; until then
-    // the divergence is the contract and is asserted, not assumed.
     const foreign = await cast.ownerA.fetch(
       "/api/tenants/switch",
       json("POST", { tenant: cast.tenantB.slug }),
     );
-    expect(foreign.status).toBe(403);
+
+    expect(missing.status).toBe(404);
+    expect(foreign.status).toBe(404);
+    const a = (await missing.json()) as { error: { code: string; message: string } };
+    const b = (await foreign.json()) as { error: { code: string; message: string } };
+    expect(a.error.code).toBe(b.error.code);
+
+    // The messages differ only by the string the CALLER supplied, so a typo is
+    // still diagnosable while the response carries nothing they did not send.
+    // Neither may leak the real workspace's id, and the one naming a slug must
+    // not confirm it resolved to anything.
+    expect(a.error.message.replace("00000000-0000-4000-8000-000000000000", "X"))
+      .toBe(b.error.message.replace(cast.tenantB.slug, "X"));
+    expect(a.error.message).not.toContain(cast.tenantB.id);
+    expect(b.error.message).not.toContain(cast.tenantB.id);
   });
 
   test("a malformed body is rejected before any lookup", async () => {
@@ -723,8 +848,9 @@ describe("tenants: POST /api/tenants/switch", () => {
     // `persistActive`, and read by no one — grep the server: the only hits are
     // the two writes, one comment, and the demo seeder.
     //
-    // Pinned rather than fixed because Phase 0 changes no runtime behaviour.
-    // The consequence is user-visible: drop the cookie (a new browser, a
+    // Still pinned rather than fixed: Phase 1 re-keyed who may reach a foreign
+    // workspace and left the resolution order alone, so this dead column is
+    // unchanged. The consequence is user-visible: drop the cookie (a new browser, a
     // cleared jar, a cross-tenant visit that clears it) and the caller lands
     // wherever `firstUserTenant` happens to answer, not where they last
     // deliberately switched to.

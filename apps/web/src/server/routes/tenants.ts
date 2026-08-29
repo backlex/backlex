@@ -3,7 +3,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { slugify as slugifySlug } from "@backlex/db/slug";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
@@ -37,7 +37,14 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
 const assertWorkspaceAccess = async (
   c: Context<AppBindings>,
   tenantId: string,
-  opts: { manageOnly?: boolean; message: string },
+  opts: {
+    manageOnly?: boolean;
+    message: string;
+    /** Defaults to FORBIDDEN. `/switch` passes NOT_FOUND so that "no such
+     *  workspace" and "not yours" are indistinguishable — see the comment
+     *  there. */
+    code?: "FORBIDDEN" | "NOT_FOUND";
+  },
 ): Promise<void> => {
   const ctx = c.get("ctx");
   const auth = c.get("auth");
@@ -46,13 +53,22 @@ const assertWorkspaceAccess = async (
     .select({ role: t.members.role })
     .from(t.members)
     .where(
-      and(eq(t.members.tenantId, tenantId), eq(t.members.userId, auth.userId!)),
+      and(
+        eq(t.members.tenantId, tenantId),
+        eq(t.members.userId, auth.userId!),
+        // Matches `isMember` in middleware/tenant.ts and the role resolver's
+        // membership gate. Without it a suspended owner/admin still passed
+        // here and could keep inviting and evicting people in the workspace
+        // they were just banned from — the one path where suspension has to
+        // bite hardest, since it is the path that decides who else belongs.
+        ne(t.members.status, "suspended"),
+      ),
     )
     .limit(1)) as Array<{ role: string }>;
   const row = m[0];
   if (row && (!opts.manageOnly || ["owner", "admin"].includes(row.role))) return;
   if (await isInstanceOperator(ctx, auth)) return;
-  throw new AppError("FORBIDDEN", opts.message);
+  throw new AppError(opts.code ?? "FORBIDDEN", opts.message);
 };
 
 /** Workspace handle, capped at 24 characters.
@@ -311,9 +327,22 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           .limit(1)) as Array<{ id: string; slug: string }>;
         target = r2[0];
       }
-      if (!target) throw new AppError("NOT_FOUND", "Workspace not found");
+      // "Does not exist" and "exists and is not yours" answer identically, on
+      // purpose. Answering 404 for the first and 403 for the second turns this
+      // endpoint into an existence oracle: any signed-in user could enumerate
+      // every workspace id and slug on the deployment by status code alone,
+      // without ever being allowed into one.
+      //
+      // `middleware/tenant.ts::refuseHeaderWorkspace` already collapses the two
+      // for the `X-Backlex-Tenant` header for exactly this reason, and this was
+      // the same door left open next to it. The message echoes back what the
+      // caller asked for so a genuine typo is still diagnosable, which is the
+      // only thing the split status was buying.
+      const unavailable = `No workspace "${String(body.tenant).slice(0, 80)}" is available to you`;
+      if (!target) throw new AppError("NOT_FOUND", unavailable);
       await assertWorkspaceAccess(c, target.id, {
-        message: "You are not a member of this workspace",
+        message: unavailable,
+        code: "NOT_FOUND",
       });
       setCookie(c, TENANT_COOKIE, target.id, {
         httpOnly: false,

@@ -1,4 +1,4 @@
-import { and, eq, inArray, or, type SQL } from "drizzle-orm";
+import { and, eq, inArray, ne, or, type SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import * as pg from "@backlex/db/pg";
@@ -66,7 +66,24 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
  *  checks deny them — suspension is otherwise invisible to the data-plane
  *  resolver (it never consulted membership status). Genuine non-members
  *  (super-admins viewing a foreign workspace) have no row and are unaffected. */
-const isMembershipSuspended = async (
+/**
+ * Does this control-plane user hold a usable membership in this workspace?
+ *
+ * "Usable" excludes `suspended` — a banned member must resolve to zero roles —
+ * and it deliberately INCLUDES `invited`, because an invite row exists before
+ * the account does and binding it is what `onUserCreated` does; a row whose
+ * `user_id` matches is already past that point.
+ *
+ * This replaced a narrower `isMembershipSuspended`, and the difference is the
+ * whole point. Asking "is this person banned here?" answers `false` for a
+ * complete stranger, so the query below then handed that stranger the
+ * workspace's `authenticated` role — which `seedOwnerScopedPermissions` gives
+ * an unconditional `create` on every owner-scoped collection. Asking "is this
+ * person a member?" answers `false` for both, which is the honest reading of a
+ * bundle named "authenticated": authenticated *in this workspace*, not merely
+ * signed in somewhere on the deployment.
+ */
+const isActiveMember = async (
   ctx: DbCtx,
   tenantId: string,
   userId: string,
@@ -79,24 +96,60 @@ const isMembershipSuspended = async (
       and(
         eq(t.tenantMembers.tenantId, tenantId),
         eq(t.tenantMembers.userId, userId),
-        eq(t.tenantMembers.status, "suspended"),
+        ne(t.tenantMembers.status, "suspended"),
       ),
     )
     .limit(1)) as { id: string }[];
   return rows.length > 0;
 };
 
+/**
+ * How the caller reached this workspace.
+ *
+ * `"member"` — they hold a `tenant_members` row. The ordinary case, and the
+ * one every route gets unless something explicitly says otherwise.
+ *
+ * `"operator-visit"` — the INSTANCE OPERATOR (admin of the default workspace,
+ * or `OWNER_EMAIL`) looking at a workspace they do not belong to. This is what
+ * makes the admin workspace-switcher work for the one principal it was written
+ * for. It is not a role, it is not stored, and no route hands it out: only
+ * `tenantMiddleware` mints it, and only after `isInstanceOperator` said yes.
+ *
+ * Undefined resolves to `"member"` everywhere, so a caller that forgets gets
+ * the STRICTER answer. That direction is not an accident — a hand-built
+ * `AuthSubject` (the job queue rebuilds one) must not be able to acquire
+ * cross-workspace reach by omission.
+ */
+export type WorkspaceAccess = "member" | "operator-visit";
+
 export const loadRolesForUser = async (
   ctx: DbCtx,
   userId: string | null,
   tenantId: string | null,
-  apiKeyRoleId: string | null = null,
-  plane: "platform" | "app" = "platform",
-  /** Active app-plane organization, when the request has one. Adds the roles
-   *  bound to this member *within that org* (`app_org_member_roles`) on top of
-   *  their workspace-wide ones. Ignored on the platform plane. */
-  orgId: string | null = null,
+  opts: {
+    apiKeyRoleId?: string | null;
+    plane?: "platform" | "app";
+    /** Active app-plane organization, when the request has one. Adds the roles
+     *  bound to this member *within that org* (`app_org_member_roles`) on top
+     *  of their workspace-wide ones. Ignored on the platform plane. */
+    orgId?: string | null;
+    /**
+     * REQUIRED, and required on purpose. This used to be absent, and its
+     * absence was the defect: the control-plane branch of the query below
+     * filters on `roles.tenant_id` and `user_roles.user_id` and had NO
+     * membership term at all, so containment rested entirely on
+     * `tenantMiddleware` refusing to set `auth.tenantId` — a single refusal,
+     * one bypass away from being handed out. Making every caller state the
+     * answer is what turns that from an invariant somebody has to remember
+     * into one the compiler asks about.
+     */
+    access: WorkspaceAccess;
+  },
 ): Promise<RoleRow[]> => {
+  const apiKeyRoleId = opts.apiKeyRoleId ?? null;
+  const plane = opts.plane ?? "platform";
+  const orgId = opts.orgId ?? null;
+  const access = opts.access;
   // Without an active tenant we can't pick the right copy of public/admin/etc.,
   // so deny everything by returning no roles. This is the safe default — the
   // request just hits the public-deny branch in resolvePermission.
@@ -108,16 +161,25 @@ export const loadRolesForUser = async (
   // `orgId` is part of the key: the same person in org A and org B resolves to
   // two different role bundles, and collapsing them would leak grants across
   // orgs for a full TTL window.
-  const cacheKey = { plane, tenantId, userId, apiKeyRoleId, orgId };
+  const cacheKey = { plane, tenantId, userId, apiKeyRoleId, orgId, access };
   const cached = getCachedRoles(cacheKey);
   if (cached) return cached;
-  // Suspension gate (control-plane only — app-plane end-users have no
-  // tenant_members row). A suspended member resolves to zero roles here, which
-  // is the authoritative deny for every REST/GraphQL/realtime permission check
-  // and for any API key the suspended user owns. Cached + invalidated on
-  // suspend/activate via invalidateUserRoles.
-  if (userId && plane === "platform") {
-    if (await isMembershipSuspended(ctx, tenantId, userId)) {
+  // Membership gate (control-plane only — app-plane end-users have no
+  // tenant_members row; their session is pinned to its issuing workspace
+  // instead, which is the same guarantee by a different mechanism).
+  //
+  // A non-member resolves to zero roles here, and that is the authoritative
+  // deny for every REST / GraphQL / realtime check and for any API key the
+  // user owns. It subsumes the suspension gate this replaced: a suspended
+  // member is not an active member.
+  //
+  // The `operator-visit` escape is the admin workspace-switcher, and only
+  // `tenantMiddleware` can mint it — after `isInstanceOperator` said yes, not
+  // after finding the name "admin" somewhere in the user's role rows.
+  // Invalidated on suspend / activate / membership change via
+  // `invalidateUserRoles`.
+  if (userId && plane === "platform" && access === "member") {
+    if (!(await isActiveMember(ctx, tenantId, userId))) {
       setCachedRoles(cacheKey, []);
       return [];
     }
@@ -295,14 +357,17 @@ export const resolvePermission = async (
     if (hit) return hit;
   }
 
-  const roles = await loadRolesForUser(
-    ctx,
-    auth.userId,
-    auth.tenantId ?? null,
-    auth.apiKeyRoleId ?? null,
-    auth.plane ?? "platform",
-    auth.orgId ?? null,
-  );
+  const roles = await loadRolesForUser(ctx, auth.userId, auth.tenantId ?? null, {
+    apiKeyRoleId: auth.apiKeyRoleId ?? null,
+    plane: auth.plane ?? "platform",
+    orgId: auth.orgId ?? null,
+    // `tenantMiddleware` stamps this after it decides HOW the caller reached
+    // the workspace. Falling back to "member" rather than to the permissive
+    // value matters: an `AuthSubject` rebuilt outside the request path (the
+    // job queue does this) has no `access`, and the strict answer is the one
+    // that stays correct when someone forgets.
+    access: auth.access ?? "member",
+  });
 
   const remember = (r: ResolvedPermission): ResolvedPermission => {
     requestCache?.set(memoKey, r);
@@ -461,14 +526,12 @@ export const listReadableCollections = async (
   ctx: DbCtx,
   auth: AuthSubject,
 ): Promise<"*" | Set<string>> => {
-  const roles = await loadRolesForUser(
-    ctx,
-    auth.userId,
-    auth.tenantId ?? null,
-    auth.apiKeyRoleId ?? null,
-    auth.plane ?? "platform",
-    auth.orgId ?? null,
-  );
+  const roles = await loadRolesForUser(ctx, auth.userId, auth.tenantId ?? null, {
+    apiKeyRoleId: auth.apiKeyRoleId ?? null,
+    plane: auth.plane ?? "platform",
+    orgId: auth.orgId ?? null,
+    access: auth.access ?? "member",
+  });
   if (roles.some((r) => r.admin)) return "*";
   if (roles.length === 0) return new Set();
   const t = tablesFor(ctx.dialect);
@@ -644,14 +707,15 @@ export const simulatePermission = async (
   let roles: RoleRow[];
   let email = input.email ?? null;
   if (input.userId) {
-    roles = await loadRolesForUser(
-      ctx,
-      input.userId,
-      tenantId,
-      null,
+    // The simulator answers "what would THIS member see", which is the
+    // question the operator is asking — never "what would the instance
+    // operator see if they visited". Modelling the visit here would have the
+    // tool report reach that the person being simulated does not have.
+    roles = await loadRolesForUser(ctx, input.userId, tenantId, {
       plane,
-      orgCtx.orgId,
-    );
+      orgId: orgCtx.orgId,
+      access: "member",
+    });
     if (!email && tenantId) {
       // Best-effort: surface the subject's email so `$user.email` conditions
       // resolve to a real value (platform users live in `users`, app-plane
@@ -683,7 +747,10 @@ export const simulatePermission = async (
       )) as RoleRow[];
   } else {
     // Anonymous: same path the resolver takes for an unauthenticated request.
-    roles = await loadRolesForUser(ctx, null, tenantId, null, plane);
+    // Anonymous — no user id, so the membership gate never runs; `access` is
+    // stated anyway because the parameter is required and silence is what this
+    // change exists to remove.
+    roles = await loadRolesForUser(ctx, null, tenantId, { plane, access: "member" });
   }
 
   const roleSummaries = roles.map((r) => ({

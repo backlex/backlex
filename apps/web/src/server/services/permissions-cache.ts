@@ -114,13 +114,21 @@ interface RolesKey {
    *  org-scoped role grants (`app_org_member_roles`) change the bundle: the
    *  same person resolves differently in org A and org B. */
   orgId?: string | null;
+  /** Whether the caller reached this workspace as a MEMBER or as the instance
+   *  operator visiting a workspace they do not belong to. Part of the key for
+   *  the same reason `orgId` is: the two resolve to different bundles for the
+   *  same person, and collapsing them would serve an operator-visit answer to
+   *  a membership request (or the reverse) for a full TTL window. That is not
+   *  a hypothetical — the operator visits their own workspaces too, so both
+   *  keys are live for one user id within seconds of each other. */
+  access?: "member" | "operator-visit";
 }
 
 const rolesCache = new TtlLru<RolesKey, CachedRoleRow[]>(
   MAX_ENTRIES,
   TTL_MS,
   (k) =>
-    `${k.plane}|${k.tenantId}|${k.userId ?? ""}|${k.apiKeyRoleId ?? ""}|${k.orgId ?? ""}`,
+    `${k.plane}|${k.tenantId}|${k.userId ?? ""}|${k.apiKeyRoleId ?? ""}|${k.orgId ?? ""}|${k.access ?? "member"}`,
 );
 
 export const getCachedRoles = (k: RolesKey): CachedRoleRow[] | undefined =>

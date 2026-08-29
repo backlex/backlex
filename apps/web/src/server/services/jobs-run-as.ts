@@ -103,6 +103,14 @@ export const resolveRunAsAuth = async (ctx: Ctx, runAs: RunAs): Promise<AuthSubj
     resolveTenantAccess(ctx.db, ctx.dialect, runAs.tenantId, runAs.userId, {
       apiKeyRoleId: null,
       apiKeyId: null,
+      // The queue re-runs the same check the request path did, so it needs the
+      // same inputs. `email` is loaded in parallel above and cannot be read
+      // here without serialising the two, so the `OWNER_EMAIL` arm of the
+      // operator check is deliberately not available to a queued job: a job
+      // that only ran because a human was OWNER_EMAIL should stop running when
+      // it is dequeued, not inherit that standing indefinitely.
+      env: ctx.env,
+      plane: "platform",
     }),
   ]);
   if (!access.roles) {
@@ -117,6 +125,11 @@ export const resolveRunAsAuth = async (ctx: Ctx, runAs: RunAs): Promise<AuthSubj
     email,
     roles: access.roles,
     tenantId: runAs.tenantId,
+    // Carry forward HOW the check passed. A job queued by the instance
+    // operator against a workspace they do not belong to keeps working; one
+    // queued by a member stays bound to that membership, and stops the moment
+    // it is revoked.
+    access: access.access,
     apiKeyRoleId: null,
     // Said out loud: a queued job is never an impersonation. Carrying one over
     // would let a read-only support session's job write after the session ended.

@@ -172,6 +172,11 @@ export type AppBindings = {
       roles: string[];
       /** Resolved by tenantMiddleware. Null only on /api/auth and /health. */
       tenantId?: string | null;
+      /** How the caller reached `tenantId` — membership, or the instance
+       *  operator visiting a workspace they do not belong to. Stamped by
+       *  tenantMiddleware; absent means membership, which is the stricter
+       *  reading. See `AuthSubject.access` in `@backlex/core`. */
+      access?: "member" | "operator-visit";
       /** Set by sessionMiddleware when the request authenticates with a
        *  bearer API key — the key's home tenant wins over user.activeTenantId
        *  so machine-to-machine calls always land in the right workspace. */

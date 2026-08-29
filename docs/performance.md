@@ -155,6 +155,51 @@ into `TS5102: Option 'baseUrl' has been removed`, so a tree that had silenced it
 would have had to do the work anyway, under a hard error. (`paths` has not
 needed `baseUrl` since 4.1.) The tree has since moved on to 7.0 — see below.
 
+### zod's locale table: 208 KB of the eager chunk, for a feature nobody uses
+
+`zod/v4/classic/external.js` ends with
+`export * as locales from "../locales/index.js"`. An `export * as` builds a
+namespace **object**, which has to be materialised — so all 63 locale modules
+are reachable and no bundler can tree-shake them. Every consumer of the plain
+`zod` barrel pays for the whole table.
+
+Measured with `bun build --minify`:
+
+| entry | bytes |
+|---|---|
+| `import { z } from "zod"` | 282,733 |
+| `import * as l from "zod/v4/locales"` | **152,209** |
+| `import en from ".../locales/en.js"` | 3,290 |
+
+Over half the barrel is languages, and in this repo **nothing asks for one** —
+zero references to `z.locales`, `z.config` or `zod/v4/locales` in our source, and
+zero in the five packages that consume zod here (better-auth,
+`@hono/zod-openapi`, `@asteasolutions/zod-to-openapi`, `ai`,
+`@ai-sdk/provider-utils`). Checked, not assumed.
+
+A `resolveId` plugin in `vite.config.ts` redirects that one relative import to an
+empty shim. `resolve.alias` cannot do it: the import is **relative, inside zod**,
+so there is no bare specifier to match. English is unaffected — `en` is imported
+on its own line and is not part of the namespace.
+
+Same tree, one build each:
+
+| | without | with |
+|---|---|---|
+| worker total | 15,588 KB | 15,380 KB |
+| **eager `vendor` chunk** | **884 KB** | **676 KB** |
+
+**−208 KB, −23.5% of that chunk**, off the graph Cloudflare compiles at every
+cold start. For scale, the zod 4.5 upgrade that was measured and deferred
+(see [[zod-barrel-is-283kb-eager]]) would have *added* 158 KB — this more than
+pays for it, and makes taking that bump nearly free.
+
+`worker-startup-budget.test.ts` cannot see any of this: it walks SOURCE and says
+so itself. `zod-locales-dropped.test.ts` covers the other half, and it guards the
+failure that matters — **not** "the plugin was removed", but "the plugin is still
+there and matches nothing" after zod moves the file. It asserts the shape in the
+INSTALLED zod, so a restructure fails loudly instead of silently costing 208 KB.
+
 ##### One typecheck at a time, across processes — added 2026-08-29
 
 `lefthook.yml` made the pre-push gate serial for a measured reason: run

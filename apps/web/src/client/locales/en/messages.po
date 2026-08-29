@@ -510,6 +510,11 @@ msgstr "{0} invited, {1} emailed."
 msgid "{0} is editing"
 msgstr "{0} is editing"
 
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "{0} is now the owner."
+msgstr "{0} is now the owner."
+
 #. placeholder {0}: f.name
 #: src/client/admin/collections/item-form.tsx
 msgid "{0} is required"
@@ -555,6 +560,11 @@ msgstr "{0} link(s) minted — copy them now."
 msgid "{0} loaded"
 msgstr "{0} loaded"
 
+#. placeholder {0}: confirming.member.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "{0} loses access to this workspace."
+msgstr "{0} loses access to this workspace."
+
 #. placeholder {0}: visible.length
 #. placeholder {1}: rows.length
 #: src/client/admin/pages/observability/logs.tsx
@@ -575,6 +585,11 @@ msgstr "{0} more questions are not summarised — this form has more than the pa
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "{0} ms"
 msgstr "{0} ms"
+
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "{0} no longer has access."
+msgstr "{0} no longer has access."
 
 #. placeholder {0}: filtered.length
 #. placeholder {1}: users.length
@@ -3849,6 +3864,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
+#: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/access/role-editor.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -8947,6 +8963,10 @@ msgstr "Go live"
 msgid "Go to Agents"
 msgstr "Go to Agents"
 
+#: src/client/admin/app.tsx
+msgid "Go to Overview"
+msgstr "Go to Overview"
+
 #: src/client/admin/pages/observability/consent.tsx
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Go to Websites"
@@ -9701,6 +9721,11 @@ msgstr "Invalid JSON."
 msgid "Invalid SQL."
 msgstr "Invalid SQL."
 
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Invitation for {0} withdrawn."
+msgstr "Invitation for {0} withdrawn."
+
 #. placeholder {0}: data.email
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "Invitation sent to {0}."
@@ -9749,6 +9774,11 @@ msgstr "Invite not found"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invite only"
 msgstr "Invite only"
+
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Invite re-sent to {0}."
+msgstr "Invite re-sent to {0}."
 
 #. placeholder {0}: payload.email
 #: src/client/admin/pages/users.tsx
@@ -10361,6 +10391,10 @@ msgstr "last invocation"
 msgid "Last name"
 msgstr "Last name"
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "last owner"
+msgstr "last owner"
+
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Last run"
 msgstr "Last run"
@@ -10581,6 +10615,10 @@ msgstr "Left empty, this is built from"
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Left out of the last publish"
 msgstr "Left out of the last publish"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "legacy"
+msgstr "legacy"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "legacy production"
@@ -11012,6 +11050,11 @@ msgstr "Mail sent, but this deployment's email transport cannot carry attachment
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). Existing rows are indexed automatically when you enable this or change which fields are searchable."
 msgstr "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). Existing rows are indexed automatically when you enable this or change which fields are searchable."
+
+#. placeholder {0}: confirming.member.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Make {0} the owner of this workspace."
+msgstr "Make {0} the owner of this workspace."
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Make default"
@@ -11941,6 +11984,10 @@ msgstr "New group"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "New insight panel"
 msgstr "New insight panel"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "New invite link created."
+msgstr "New invite link created."
 
 #: src/client/admin/extras.tsx
 msgid "New item"
@@ -13317,6 +13364,11 @@ msgstr "Nothing is mapped yet, so a run would publish nothing. Map the value you
 msgid "Nothing is removed at this step — the preview only counts."
 msgstr "Nothing is removed at this step — the preview only counts."
 
+#. placeholder {0}: location.pathname
+#: src/client/admin/app.tsx
+msgid "Nothing is routed at <0>{0}</0>. It may have been renamed, or the link may be out of date."
+msgstr "Nothing is routed at <0>{0}</0>. It may have been renamed, or the link may be out of date."
+
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Nothing is waiting on anybody"
 msgstr "Nothing is waiting on anybody"
@@ -14176,6 +14228,10 @@ msgstr "Owner-scoped"
 #: src/client/pages/api-keys.tsx
 msgid "Owner’s full access (no restriction)"
 msgstr "Owner’s full access (no restriction)"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "owners only"
+msgstr "owners only"
 
 #: src/client/admin/pages/overview.tsx
 msgid "p95 latency"
@@ -16393,6 +16449,10 @@ msgstr "Remove file"
 msgid "Remove from form"
 msgstr "Remove from form"
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Remove from workspace"
+msgstr "Remove from workspace"
+
 #: src/client/admin/rule-builder.tsx
 msgid "Remove group"
 msgstr "Remove group"
@@ -16409,6 +16469,10 @@ msgstr "Remove language"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Remove line column"
 msgstr "Remove line column"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Remove member"
+msgstr "Remove member"
 
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
@@ -16662,6 +16726,10 @@ msgstr "Reschedule"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Resend"
 msgstr "Resend"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Resend invitation"
+msgstr "Resend invitation"
 
 #: src/client/pages/sign-in.tsx
 msgid "Resend verification email"
@@ -19728,6 +19796,7 @@ msgstr "Suspend end-user"
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
+#: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/access/users.tsx
 msgid "suspended"
 msgstr "suspended"
@@ -20292,6 +20361,10 @@ msgstr "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgid "The key must be lowercase letters, digits, dash or underscore."
 msgstr "The key must be lowercase letters, digits, dash or underscore."
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "The last owner cannot be removed"
+msgstr "The last owner cannot be removed"
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The link in circulation stops working immediately. Anyone holding it — an email, a QR code, your own website — has to be given the new one."
 msgstr "The link in circulation stops working immediately. Anyone holding it — an email, a QR code, your own website — has to be given the new one."
@@ -20466,6 +20539,10 @@ msgstr "The selected folder has no backlex-extension.json at its root."
 msgid "The sender cancelled this request."
 msgstr "The sender cancelled this request."
 
+#: src/client/pages/sign-up.tsx
+msgid "The server took too long to respond. If your account was created, try signing in — otherwise please try again."
+msgstr "The server took too long to respond. If your account was created, try signing in — otherwise please try again."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "The server-wide upload ceiling still applies on top."
 msgstr "The server-wide upload ceiling still applies on top."
@@ -20554,6 +20631,10 @@ msgstr "The zone the opening hours are written in — not a display preference."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Their link to change or cancel"
 msgstr "Their link to change or cancel"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Their membership, workspace roles and API keys are revoked together — access ends immediately, on every surface. A new invitation is the only way back."
+msgstr "Their membership, workspace roles and API keys are revoked together — access ends immediately, on every surface. A new invitation is the only way back."
 
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "theme"
@@ -20809,6 +20890,10 @@ msgstr "This list updates in real time"
 #: src/client/admin/fields/field-phone-input.tsx
 msgid "This number already states its country code."
 msgstr "This number already states its country code."
+
+#: src/client/admin/app.tsx
+msgid "This page does not exist"
+msgstr "This page does not exist"
 
 #: src/client/pages/reset-password.tsx
 msgid "This password reset link is missing its token or has expired. Request a new one and try again."
@@ -21213,6 +21298,10 @@ msgstr "Traffic window"
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Transcript recall always stays inside its own conversation. This only controls the distilled facts — sharing them across rooms is what lets an agent build up lasting knowledge, and also what makes something one person told it visible to the next."
 msgstr "Transcript recall always stays inside its own conversation. This only controls the distilled facts — sharing them across rooms is what lets an agent build up lasting knowledge, and also what makes something one person told it visible to the next."
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Transfer ownership"
+msgstr "Transfer ownership"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Transform"
@@ -22614,6 +22703,10 @@ msgstr "With this set, <0>0532 111 22 33</0> is stored as <1>{example}</1>."
 msgid "Withdraw"
 msgstr "Withdraw"
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Withdraw invitation"
+msgstr "Withdraw invitation"
+
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Withdraw link"
 msgstr "Withdraw link"
@@ -22845,6 +22938,11 @@ msgstr "You haven't registered any passkeys yet."
 msgid "You signed in with a social provider. Setting a password lets you also sign in with email + password."
 msgstr "You signed in with a social provider. Setting a password lets you also sign in with email + password."
 
+#. placeholder {0}: confirming.member.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "You stop being the owner at the same moment: your own role drops to admin. From then on only {0}can transfer ownership back, delete this workspace, or grant the owner role."
+msgstr "You stop being the owner at the same moment: your own role drops to admin. From then on only {0}can transfer ownership back, delete this workspace, or grant the owner role."
+
 #: src/client/pages/sign-document.tsx
 msgid "You will be emailed as soon as it is your turn to sign."
 msgstr "You will be emailed as soon as it is your turn to sign."
@@ -22997,7 +23095,3 @@ msgstr "Yours only — the customer never sees these."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Yours to recognise it by — the trigger type is used if you leave it blank."
 msgstr "Yours to recognise it by — the trigger type is used if you leave it blank."
-
-#: src/client/pages/sign-up.tsx
-msgid "The server took too long to respond. If your account was created, try signing in — otherwise please try again."
-msgstr "The server took too long to respond. If your account was created, try signing in — otherwise please try again."

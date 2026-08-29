@@ -32,6 +32,38 @@ const tenantsFor = (dialect: "pg" | "sqlite") =>
 const isExpired = (expiresAt: InviteRow["inviteExpiresAt"]): boolean =>
   Boolean(expiresAt && new Date(expiresAt) < new Date());
 
+/**
+ * Every value the workspace membership ladder can hold, including the retired
+ * one.
+ *
+ * `editor` is readable but no longer mintable (see `WORKSPACE_INVITE_ROLES` in
+ * `services/roles/schemas.ts`). It has to stay in this list because it decides
+ * a stored value's MEANING, and a row written two years ago means what it meant
+ * then — dropping it here would reclassify those rows as RBAC role names.
+ */
+export const WORKSPACE_LADDER_ROLES = ["owner", "admin", "editor", "member"] as const;
+export type WorkspaceLadderRole = (typeof WORKSPACE_LADDER_ROLES)[number];
+
+/** Does this stored/incoming string name a membership standing rather than an
+ *  RBAC role? The one question `tenant_members.role` could not answer while a
+ *  single free-text column carried both vocabularies. */
+export const isWorkspaceLadderRole = (value: string): value is WorkspaceLadderRole =>
+  (WORKSPACE_LADDER_ROLES as readonly string[]).includes(value);
+
+/**
+ * The RBAC role a membership standing confers.
+ *
+ * `owner` and `admin` run the workspace, so they get the `admin` role that
+ * bypasses permission checks; everyone else gets the `authenticated` baseline
+ * both invite dialogs promise. Split out of `bindInvite` so the invite route
+ * can tell the caller — in the mint response — which role their invite will
+ * actually produce, instead of the caller finding out when the invitee signs in.
+ */
+export const standingToRbacRole = (standing: string): string =>
+  standing === "owner" || standing === "admin"
+    ? SYSTEM_ROLES.admin
+    : SYSTEM_ROLES.authenticated;
+
 /** Active (pending, unexpired, still-tokened) invite for an email, or null.
  *  Case-insensitive on email — the invite is stored as typed by the inviter, the
  *  sign-up email may differ in case. Reads degrade to null if the table isn't
@@ -96,10 +128,14 @@ export const hasValidInvite = async (ctx: DbCtx, email: string): Promise<boolean
  * (`hasValidInvite`) and the accept flow behave identically no matter where
  * the invite was minted.
  *
- * `role` is stored verbatim. It may be a workspace-membership role
- * (`owner`/`admin`/`editor`/`member`) or an RBAC role name from the `roles`
- * table (`authenticated`, custom roles…) — `acceptInviteForUser` first tries
- * an exact RBAC role-name match, then falls back to the membership mapping.
+ * `role` is stored verbatim in `tenant_members.role`, and callers should pass
+ * a MEMBERSHIP STANDING (`owner`/`admin`/`member`). An RBAC role name is still
+ * accepted, because rows written that way exist in the field and the Users-page
+ * body still carries a deprecated `role` field for one release — `bindInvite`
+ * classifies the stored value rather than guessing at it. New callers should
+ * not add to that pile: a non-ladder value in this column is invisible to every
+ * ladder reader (`assertWorkspaceAccess`, `WORKSPACE_RANK`), which scores it as
+ * a plain member.
  *
  * Throws `CONFLICT` when the email is already a member of (or invited to)
  * the workspace.
@@ -173,17 +209,26 @@ export const bindInvite = async (
     })
     .where(eq(m.id, inv.id));
   await ensureSystemRoles(ctx, inv.tenantId);
-  // The stored role may be an RBAC role name (Users-page invites offer the
-  // real `roles` table: `authenticated`, customs…) — honor an exact match
-  // first, then fall back to the workspace-membership mapping. Either way the
-  // user also gets the implicit `authenticated` baseline the invite dialogs
-  // promise.
-  const named = await getRoleByName(ctx, inv.tenantId, inv.role);
-  const rbacRole = named
-    ? inv.role
-    : inv.role === "owner" || inv.role === "admin"
-      ? SYSTEM_ROLES.admin
-      : SYSTEM_ROLES.authenticated;
+  // `tenant_members.role` carries two vocabularies, so the stored value has to
+  // be CLASSIFIED before it can be resolved. The ladder wins: a value the
+  // membership ladder owns is a standing, and its RBAC role follows from that.
+  // Anything else is a legacy Users-page invite that stored an RBAC role name
+  // (`authenticated`, a custom role) and is bound by exact name.
+  //
+  // This used to run the other way round — RBAC name first, ladder as the
+  // fallback — which made `admin` mean whichever the database answered for
+  // first, and let a workspace that happened to own a custom role called
+  // `owner` or `member` silently outrank the ladder with it. Ladder-first is
+  // deterministic and produces the same role as before for every value that
+  // was not already ambiguous. Either way the user also gets the implicit
+  // `authenticated` baseline both invite dialogs promise.
+  let rbacRole: string;
+  if (isWorkspaceLadderRole(inv.role)) {
+    rbacRole = standingToRbacRole(inv.role);
+  } else {
+    const named = await getRoleByName(ctx, inv.tenantId, inv.role);
+    rbacRole = named ? inv.role : SYSTEM_ROLES.authenticated;
+  }
   await assignRoleByName(ctx, inv.tenantId, userId, rbacRole);
   if (rbacRole !== SYSTEM_ROLES.authenticated)
     await assignRoleByName(ctx, inv.tenantId, userId, SYSTEM_ROLES.authenticated);

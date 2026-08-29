@@ -22,20 +22,33 @@ export const listUsers: McpTool = {
 export const inviteUser: McpTool = {
   name: "users.invite",
   description:
-    "Invite a user to the active workspace by email. The user receives " +
-    "an invitation email and lands in the workspace with the role you " +
-    "name in `roleName` (defaults to `authenticated`). Idempotent — " +
-    "inviting an already-member user is a no-op.",
+    "Invite a user to the active workspace by email. They receive an " +
+    "invitation and, on accepting, join with the membership standing named " +
+    "in `workspaceRole` (`owner` | `admin` | `member`, default `member`). " +
+    "Granting a standing above your own is refused. Idempotent — inviting " +
+    "someone who is already a member is a no-op.",
   inputSchema: {
     type: "object",
     properties: {
       email: { type: "string" },
-      roleName: { type: "string", description: "Role to assign on join." },
+      workspaceRole: {
+        type: "string",
+        enum: ["owner", "admin", "member"],
+        description:
+          "Membership standing — what the invitee may do to the workspace itself.",
+      },
     },
     required: ["email"],
     additionalProperties: false,
   },
   handler: async (args, ctx) => {
+    // The property was `roleName`, and `UserInviteInput` has never had a field
+    // by that name. `.strict()` was not in play, so zod stripped it silently
+    // and every invitation this tool ever sent used the default standing while
+    // the description promised otherwise — a 2xx that did nothing, which is the
+    // house failure mode. The name now matches the route's own schema, and
+    // `tenant-membership-surfaces.test.ts` drives the tool rather than the
+    // route so a rename cannot re-open the gap.
     const res = await ctx.fetchInternal(`/api/users/invite`, {
       method: "POST",
       headers: { "content-type": "application/json" },

@@ -16,13 +16,20 @@ import {
   requireAdminMw,
   requireTenant,
 } from "../../services/roles/guards";
-import { createMemberInvite } from "../../services/invites";
+import {
+  createMemberInvite,
+  isWorkspaceLadderRole,
+  standingToRbacRole,
+} from "../../services/invites";
+import { assertMayGrant, WORKSPACE_RANK } from "../../services/membership-guards";
 import { ensureRoleInTenant } from "../../services/roles/role-checks";
+import { getRoleByName } from "../../services/seed";
 import {
   SessionRow,
   USERS_TAG,
   UserAttachRoleInput,
   UserInviteInput,
+  UserInviteResult,
   UserRow,
   UserUpdateInput,
 } from "../../services/roles/schemas";
@@ -83,13 +90,17 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // Pending invites (no user row yet) surface in the same list so an
       // admin sees the invite they just sent — id is the tenant_members row
       // id (never collides with user ids), actions are limited client-side.
+      // The projection deliberately stops short of `invite_token`. Listing
+      // users is a read a whole workspace's admins do routinely, and the token
+      // is a bearer credential: whoever holds it can seat an account at the
+      // invited standing. It is not selected at all rather than selected and
+      // dropped, so a later `...row` spread cannot put it back.
       const pendingInvites = (await (ctx.db as any)
         .select({
           id: t.tenantMembers.id,
           email: t.tenantMembers.email,
           role: t.tenantMembers.role,
           invitedAt: t.tenantMembers.invitedAt,
-          inviteToken: t.tenantMembers.inviteToken,
         })
         .from(t.tenantMembers)
         .where(
@@ -103,7 +114,6 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         email: string;
         role: string;
         invitedAt: unknown;
-        inviteToken: string | null;
       }[];
       const userIds = users.map((u) => u.id);
       const userRoles = userIds.length
@@ -204,9 +214,6 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             twoFactorEnabled: false,
             status: "invited" as const,
             memberId: p.id,
-            inviteUrl: p.inviteToken
-              ? `${ctx.env.APP_URL}/invite?token=${p.inviteToken}`
-              : undefined,
           })),
         ],
       });
@@ -326,6 +333,13 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
    * membership + chosen role on account creation. The email itself is
    * best-effort; the response carries the accept link so no-SMTP deployments
    * can share it manually.
+   *
+   * The body is where this endpoint used to go wrong: one free-text `role`,
+   * written straight into `tenant_members.role`, which is the membership
+   * LADDER's column. An RBAC role name landed there, no ladder reader
+   * recognised it, and the invited teammate could never manage the workspace.
+   * `workspaceRole` is now the standing and the deprecated `role` is mapped to
+   * whichever of the two meanings it actually named.
    */
   .openapi(
     createRoute({
@@ -334,7 +348,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: USERS_TAG,
       summary: "Email-invite a user",
       description:
-        "Creates a pending workspace invite (7-day token) and best-effort mails the accept link. The user record is created when the invitee accepts.",
+        "Creates a pending workspace invite (7-day token) and best-effort mails the accept link. The user record is created when the invitee accepts. `workspaceRole` is the membership standing; the deprecated `role` field is still mapped for one release.",
       security: SECURITY,
       middleware: [requireUser, requireAdminMw],
       request: {
@@ -347,20 +361,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         200: {
           description: "OK",
           content: {
-            "application/json": {
-              schema: z.object({
-                data: z.object({
-                  id: z.string(),
-                  email: z.string(),
-                  token: z.string(),
-                  /** Ready-to-share accept link (`{APP_URL}/invite?token=…`). */
-                  url: z.string(),
-                  /** False when the mail only hit the console fallback — the
-                   *  UI should surface `url` for manual sharing instead. */
-                  sent: z.boolean(),
-                }),
-              }),
-            },
+            "application/json": { schema: z.object({ data: UserInviteResult }) },
           },
         },
         ...errorResponses,
@@ -371,15 +372,84 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const auth = c.get("auth");
       const tenantId = requireTenant(c);
       const body = c.req.valid("json");
-      const { id, token } = await createMemberInvite(
-        { db: ctx.db, dialect: ctx.dialect },
-        {
-          tenantId,
-          email: body.email,
-          role: body.role ?? "authenticated",
-          invitedBy: auth?.userId ?? null,
-        },
-      );
+      const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+
+      // ── what the caller asked for ────────────────────────────────
+      // `workspaceRole` says it outright. The deprecated `role` has to be
+      // CLASSIFIED, because that one field carried two vocabularies: a ladder
+      // value meant the standing, anything else meant an RBAC role from the
+      // `roles` table. A value naming NEITHER used to be accepted and written
+      // to the membership column anyway, where every ladder reader scored it 0
+      // and nothing ever explained why the invitee could not manage anything.
+      // That one is now refused, loudly, at the moment the mistake is made.
+      let stored: string;
+      let standing: string;
+      if (body.workspaceRole) {
+        stored = body.workspaceRole;
+        standing = body.workspaceRole;
+      } else if (body.role === undefined) {
+        stored = "member";
+        standing = "member";
+      } else if (isWorkspaceLadderRole(body.role)) {
+        stored = body.role;
+        standing = body.role;
+      } else {
+        const named = await getRoleByName(dbCtx, tenantId, body.role);
+        if (!named)
+          throw new AppError(
+            "VALIDATION",
+            `"${body.role}" is neither a workspace role (owner/admin/member) nor a role in this workspace — send workspaceRole instead`,
+          );
+        // It named an RBAC role, so that is what is stored and what
+        // `bindInvite` binds by name — the one-release compatibility path, kept
+        // because the admin SPA still sends it and dropping it silently would
+        // change what an in-flight invite grants. The standing such a row
+        // confers is `member`: that is already how every ladder reader scores a
+        // value it does not own, so reporting it is telling the truth rather
+        // than inventing a promotion.
+        stored = body.role;
+        standing = "member";
+      }
+
+      // ── may the caller confer it? ────────────────────────────────
+      // `requireAdminMw` proves the caller holds the RBAC `admin` role, which
+      // says nothing about their standing in this workspace — and `owner` was
+      // accepted here as free text, so any workspace admin could mint an owner
+      // who then outranked them. A caller with no membership row is not on the
+      // ladder at all (an instance operator, or a machine key acting for the
+      // control plane) and is passed as `null`, which `assertMayGrant`
+      // deliberately leaves unconstrained.
+      const t = tableFor(ctx.dialect);
+      const actorUserId = auth?.userId ?? null;
+      const actorRows = actorUserId
+        ? ((await (ctx.db as any)
+            .select({ role: t.tenantMembers.role })
+            .from(t.tenantMembers)
+            .where(
+              and(
+                eq(t.tenantMembers.tenantId, tenantId),
+                eq(t.tenantMembers.userId, actorUserId),
+              ),
+            )
+            .limit(1)) as { role: string }[])
+        : [];
+      const actorRole = actorRows[0]?.role;
+      const actor =
+        actorUserId && actorRole ? { id: actorUserId, role: actorRole } : null;
+      assertMayGrant(actor, standing, WORKSPACE_RANK);
+
+      const { id, token } = await createMemberInvite(dbCtx, {
+        tenantId,
+        email: body.email,
+        role: stored,
+        invitedBy: actorUserId,
+      });
+      // What the invitee will actually hold, derived exactly the way
+      // `bindInvite` derives it — so the answer the caller reads back is the
+      // answer the accept path will produce.
+      const rbacRole = isWorkspaceLadderRole(stored)
+        ? standingToRbacRole(stored)
+        : stored;
       const url = `${ctx.env.APP_URL}/invite?token=${token}`;
       const sent = await ctx
         .emailFor(tenantId)
@@ -395,13 +465,26 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // The invite TOKEN is a bearer credential — whoever holds it can seat an
       // account, so it never reaches the audit log. `redact()` would catch the
       // key name, but not the `url` it is embedded in, so neither is recorded.
+      // The RESOLVED standing is logged rather than the raw body, because "who
+      // was invited as what" is the question an auditor asks, and a body that
+      // may carry either vocabulary no longer answers it on its own.
       await logActivity(c, {
         action: "create",
         collection: "system_users",
         itemId: id,
-        payload: { email: body.email, role: body.role ?? null, sent },
+        payload: { email: body.email, workspaceRole: standing, rbacRole, sent },
       });
-      return c.json({ data: { id, email: body.email, token, url, sent } });
+      return c.json({
+        data: {
+          id,
+          email: body.email,
+          token,
+          url,
+          sent,
+          workspaceRole: standing,
+          rbacRole,
+        },
+      });
     },
   )
   /** Revoke a pending invite (delete its tenant_members row). Scoped to the

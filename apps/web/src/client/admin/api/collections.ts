@@ -121,6 +121,39 @@ export const tenantsApi = {
         body: JSON.stringify(input),
       },
     ),
+  /** Change a member's workspace role or status. The server owns the ladder —
+   *  an `admin` cannot mint an `owner`, nobody may demote the last one — so
+   *  callers apply the change optimistically and roll back on rejection. */
+  updateMember: (
+    tenantId: string,
+    memberId: string,
+    input: { role?: string; status?: "active" | "suspended" },
+  ) =>
+    api<{ ok: true; data?: ApiTenantMember }>(
+      `/api/tenants/${tenantId}/members/${memberId}`,
+      { method: "PATCH", body: JSON.stringify(input) },
+    ),
+  /** Hand the workspace over. The caller is demoted to `admin` in the same
+   *  statement, which is why every callsite must confirm first. */
+  transferOwnership: (tenantId: string, memberId: string) =>
+    api<{ ok: true }>(`/api/tenants/${tenantId}/transfer-ownership`, {
+      method: "POST",
+      body: JSON.stringify({ memberId }),
+    }),
+  /** Mint a fresh invite token for a member who is still `invited`. The link
+   *  comes back only here and on the original invite — the members list
+   *  deliberately no longer carries one. */
+  resendInvite: (tenantId: string, memberId: string) =>
+    api<{ ok: true; data?: { url?: string; sent?: boolean } }>(
+      `/api/tenants/${tenantId}/members/${memberId}/resend-invite`,
+      { method: "POST" },
+    ),
+  /** Withdraw a pending invitation. Distinct from `removeMember`, which evicts
+   *  someone who already accepted. */
+  revokeInvite: (tenantId: string, memberId: string) =>
+    api<{ ok: true }>(`/api/tenants/${tenantId}/members/${memberId}/invite`, {
+      method: "DELETE",
+    }),
   removeMember: (tenantId: string, memberId: string) =>
     api<{ ok: true }>(`/api/tenants/${tenantId}/members/${memberId}`, {
       method: "DELETE",

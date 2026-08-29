@@ -55,6 +55,11 @@ Usage:
       Dry-run the permission resolver and explain the allow/deny decision.
       Test a real user (\`--user <id>\`) or ad-hoc roles (\`--roles a,b\`).
 
+  backlex tenants <list|switch|members|invite|set-role|transfer|remove|...>
+      Workspaces and the OPERATORS in them — invite, change a role, hand
+      ownership over, evict. You must outrank whoever you act on, and the last
+      owner can only be replaced by \`transfer\`, never removed.
+
   backlex orgs <list|get|create|update|delete|members|invite|...>
       App-plane organizations ("teams") — the B2B grouping inside a workspace.
       Members are end-users; \`--roles\` binds workspace roles per-org.

@@ -510,6 +510,11 @@ msgstr "{0} kişi davet edildi, {1} kişiye e-posta gitti."
 msgid "{0} is editing"
 msgstr "{0} düzenliyor"
 
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "{0} is now the owner."
+msgstr "{0} artık sahip."
+
 #. placeholder {0}: f.name
 #: src/client/admin/collections/item-form.tsx
 msgid "{0} is required"
@@ -555,6 +560,11 @@ msgstr "{0} bağlantı oluşturuldu — şimdi kopyalayın."
 msgid "{0} loaded"
 msgstr "{0} yüklendi"
 
+#. placeholder {0}: confirming.member.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "{0} loses access to this workspace."
+msgstr "{0} bu çalışma alanına erişimini kaybediyor."
+
 #. placeholder {0}: visible.length
 #. placeholder {1}: rows.length
 #: src/client/admin/pages/observability/logs.tsx
@@ -575,6 +585,11 @@ msgstr "{0} soru daha özetlenmedi — bu formda panelin hesapladığından fazl
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "{0} ms"
 msgstr "{0} ms"
+
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "{0} no longer has access."
+msgstr "{0} artık erişemiyor."
 
 #. placeholder {0}: filtered.length
 #. placeholder {1}: users.length
@@ -3849,6 +3864,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
+#: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/access/role-editor.tsx
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -8947,6 +8963,10 @@ msgstr "Canlıya geç"
 msgid "Go to Agents"
 msgstr "Agents sayfasına git"
 
+#: src/client/admin/app.tsx
+msgid "Go to Overview"
+msgstr "Genel Bakış'a git"
+
 #: src/client/admin/pages/observability/consent.tsx
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Go to Websites"
@@ -9701,6 +9721,11 @@ msgstr "Geçersiz JSON."
 msgid "Invalid SQL."
 msgstr "Geçersiz SQL."
 
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Invitation for {0} withdrawn."
+msgstr "{0} için gönderilen davet geri alındı."
+
 #. placeholder {0}: data.email
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "Invitation sent to {0}."
@@ -9749,6 +9774,11 @@ msgstr "Davet bulunamadı"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invite only"
 msgstr "Yalnızca davetli"
+
+#. placeholder {0}: m.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Invite re-sent to {0}."
+msgstr "Davet {0} adresine yeniden gönderildi."
 
 #. placeholder {0}: payload.email
 #: src/client/admin/pages/users.tsx
@@ -10361,6 +10391,10 @@ msgstr "son çağrı"
 msgid "Last name"
 msgstr "Soyad"
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "last owner"
+msgstr "son sahip"
+
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Last run"
 msgstr "Son çalıştırma"
@@ -10581,6 +10615,10 @@ msgstr "Boş bırakılırsa şuradan üretilir:"
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Left out of the last publish"
 msgstr "Son yayında dışarıda kalanlar"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "legacy"
+msgstr "eski"
 
 #: src/client/admin/pages/data/database-import.tsx
 msgid "legacy production"
@@ -11012,6 +11050,11 @@ msgstr "E-posta gönderildi, ancak bu kurulumun e-posta taşıyıcısı ek taş�
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). Existing rows are indexed automatically when you enable this or change which fields are searchable."
 msgstr "<0> searchable</0> işaretli alanlardan bir anahtar kelime arama indeksi tutar.<1> ?q=</1> parametresini sıralı anahtar kelime eşleşmesine yükseltir ve<2> /search</2> endpoint'ini (tam metin / vektör / hibrit) etkinleştirir. Bunu açtığınızda veya hangi alanların aranabilir olduğunu değiştirdiğinizde mevcut satırlar otomatik olarak indekslenir."
+
+#. placeholder {0}: confirming.member.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Make {0} the owner of this workspace."
+msgstr "{0} kişisini bu çalışma alanının sahibi yap."
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Make default"
@@ -11941,6 +11984,10 @@ msgstr "Yeni grup"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "New insight panel"
 msgstr "Yeni içgörü paneli"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "New invite link created."
+msgstr "Yeni davet bağlantısı oluşturuldu."
 
 #: src/client/admin/extras.tsx
 msgid "New item"
@@ -13317,6 +13364,11 @@ msgstr "Henüz hiçbir eşleme yok, dolayısıyla bir çalıştırma hiçbir şe
 msgid "Nothing is removed at this step — the preview only counts."
 msgstr "Bu adımda hiçbir şey silinmez — önizleme yalnızca sayar."
 
+#. placeholder {0}: location.pathname
+#: src/client/admin/app.tsx
+msgid "Nothing is routed at <0>{0}</0>. It may have been renamed, or the link may be out of date."
+msgstr "<0>{0}</0> adresine bağlı bir sayfa yok. Adı değişmiş ya da bağlantı eskimiş olabilir."
+
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Nothing is waiting on anybody"
 msgstr "Kimseyi bekleyen bir şey yok"
@@ -14176,6 +14228,10 @@ msgstr "Sahip kapsamlı"
 #: src/client/pages/api-keys.tsx
 msgid "Owner’s full access (no restriction)"
 msgstr "Sahibin tam erişimi (kısıtlama yok)"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "owners only"
+msgstr "yalnızca sahipler"
 
 #: src/client/admin/pages/overview.tsx
 msgid "p95 latency"
@@ -16393,6 +16449,10 @@ msgstr "Dosyayı kaldır"
 msgid "Remove from form"
 msgstr "Formdan kaldır"
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Remove from workspace"
+msgstr "Çalışma alanından çıkar"
+
 #: src/client/admin/rule-builder.tsx
 msgid "Remove group"
 msgstr "Grubu kaldır"
@@ -16409,6 +16469,10 @@ msgstr "Dili kaldır"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Remove line column"
 msgstr "Satır sütununu kaldır"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Remove member"
+msgstr "Üyeyi çıkar"
 
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
@@ -16662,6 +16726,10 @@ msgstr "Yeniden planla"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Resend"
 msgstr "Yeniden gönder"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Resend invitation"
+msgstr "Daveti yeniden gönder"
 
 #: src/client/pages/sign-in.tsx
 msgid "Resend verification email"
@@ -19728,6 +19796,7 @@ msgstr "Son kullanıcıyı askıya al"
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
+#: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/access/users.tsx
 msgid "suspended"
 msgstr "askıya alındı"
@@ -20292,6 +20361,10 @@ msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
 msgid "The key must be lowercase letters, digits, dash or underscore."
 msgstr "Anahtar küçük harf, rakam, tire veya alt çizgi olmalı."
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "The last owner cannot be removed"
+msgstr "Son sahip çıkarılamaz"
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The link in circulation stops working immediately. Anyone holding it — an email, a QR code, your own website — has to be given the new one."
 msgstr "Dolaşımdaki bağlantı anında çalışmayı bırakır. Elinde bulunan herkese — bir e-posta, bir QR kod, kendi siteniz — yenisinin verilmesi gerekir."
@@ -20466,6 +20539,10 @@ msgstr "Seçilen klasörün kökünde backlex-extension.json yok."
 msgid "The sender cancelled this request."
 msgstr "Gönderen bu talebi iptal etti."
 
+#: src/client/pages/sign-up.tsx
+msgid "The server took too long to respond. If your account was created, try signing in — otherwise please try again."
+msgstr "Sunucu yanıt vermekte çok gecikti. Hesabınız oluşturulduysa giriş yapmayı deneyin — aksi halde lütfen tekrar deneyin."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "The server-wide upload ceiling still applies on top."
 msgstr "Sunucu genelindeki yükleme sınırı ayrıca geçerlidir."
@@ -20554,6 +20631,10 @@ msgstr "Çalışma saatlerinin yazıldığı saat dilimi — bir görüntüleme 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Their link to change or cancel"
 msgstr "Değiştirme veya iptal bağlantısı"
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Their membership, workspace roles and API keys are revoked together — access ends immediately, on every surface. A new invitation is the only way back."
+msgstr "Üyeliği, çalışma alanı rolleri ve API anahtarları birlikte iptal edilir — erişim her yüzeyde anında sona erer. Geri dönüşün tek yolu yeni bir davettir."
 
 #: src/client/admin/pages/data/forms/panels.tsx
 msgid "theme"
@@ -20809,6 +20890,10 @@ msgstr "Bu liste gerçek zamanlı güncellenir"
 #: src/client/admin/fields/field-phone-input.tsx
 msgid "This number already states its country code."
 msgstr "Bu numara ülke kodunu zaten belirtiyor."
+
+#: src/client/admin/app.tsx
+msgid "This page does not exist"
+msgstr "Böyle bir sayfa yok"
 
 #: src/client/pages/reset-password.tsx
 msgid "This password reset link is missing its token or has expired. Request a new one and try again."
@@ -21213,6 +21298,10 @@ msgstr "Trafik penceresi"
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Transcript recall always stays inside its own conversation. This only controls the distilled facts — sharing them across rooms is what lets an agent build up lasting knowledge, and also what makes something one person told it visible to the next."
 msgstr "Konuşma metni hatırlaması her zaman kendi konuşmasının içinde kalır. Bu ayar yalnızca damıtılmış bilgileri denetler — bunları odalar arasında paylaşmak ajanın kalıcı bilgi biriktirmesini sağlar, ama aynı zamanda birinin söylediğini bir sonraki kişiye görünür kılar."
+
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Transfer ownership"
+msgstr "Sahipliği devret"
 
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Transform"
@@ -22614,6 +22703,10 @@ msgstr "Bu ayarla <0>0532 111 22 33</0> şöyle saklanır: <1>{example}</1>."
 msgid "Withdraw"
 msgstr "Geri çek"
 
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "Withdraw invitation"
+msgstr "Daveti geri al"
+
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Withdraw link"
 msgstr "Geri çekme bağlantısı"
@@ -22845,6 +22938,11 @@ msgstr "Henüz hiç passkey kaydetmediniz."
 msgid "You signed in with a social provider. Setting a password lets you also sign in with email + password."
 msgstr "Sosyal sağlayıcıyla giriş yaptınız. Parola belirleyerek e-posta + parola ile de giriş yapabilirsiniz."
 
+#. placeholder {0}: confirming.member.email
+#: src/client/admin/pages/access/members-panel.tsx
+msgid "You stop being the owner at the same moment: your own role drops to admin. From then on only {0}can transfer ownership back, delete this workspace, or grant the owner role."
+msgstr "Aynı anda sahipliğin sona erer: kendi rolün admin'e düşer. Bundan sonra sahipliği geri devretmeyi, bu çalışma alanını silmeyi veya sahip rolünü vermeyi yalnızca {0}yapabilir."
+
 #: src/client/pages/sign-document.tsx
 msgid "You will be emailed as soon as it is your turn to sign."
 msgstr "Sıra size geldiğinde e-posta ile bilgilendirileceksiniz."
@@ -22997,7 +23095,3 @@ msgstr "Yalnızca size ait — müşteri bunları görmez."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Yours to recognise it by — the trigger type is used if you leave it blank."
 msgstr "Tanımanız için sizin verdiğiniz ad — boş bırakırsanız tetikleyici türü kullanılır."
-
-#: src/client/pages/sign-up.tsx
-msgid "The server took too long to respond. If your account was created, try signing in — otherwise please try again."
-msgstr "Sunucu yanıt vermekte çok gecikti. Hesabınız oluşturulduysa giriş yapmayı deneyin — aksi halde lütfen tekrar deneyin."

@@ -10,6 +10,11 @@ import {
 } from "@backlex/core";
 import type { Ctx } from "../context";
 import type { DbCtx } from "./seed";
+import {
+  ORG_RANK,
+  assertMayActOn as sharedMayActOn,
+  assertNotLastOwner as sharedNotLastOwner,
+} from "./membership-guards";
 import { resolveAssignableRoles } from "./app-user-invites";
 import {
   getCachedOrgMemberships,
@@ -275,15 +280,19 @@ const assertMayActOn = (
   actor: OrgActor,
   targetAppUserId: string,
   targetRole: OrgRole,
-): void => {
-  if (!actor) return;
-  if (actor.appUserId === targetAppUserId) return;
-  if (ORG_ROLE_RANK[targetRole] > ORG_ROLE_RANK[actor.role])
-    throw new AppError(
-      "FORBIDDEN",
-      `An organization "${actor.role}" can't act on an "${targetRole}"`,
-    );
-};
+): void =>
+  // Delegated to `services/membership-guards.ts`, which is the same rule the
+  // PLATFORM plane now runs. It lived only here, and the plane that supervises
+  // this one had no equivalent at all — an admin could delete a workspace's
+  // sole owner with one unconfirmed click. Two implementations of one invariant
+  // is what let them diverge, and the divergence was invisible because each
+  // plane's tests only ever exercised its own copy.
+  sharedMayActOn(
+    actor ? { id: actor.appUserId, role: actor.role } : null,
+    targetAppUserId,
+    targetRole,
+    ORG_RANK,
+  );
 
 /** How many owners the org has. Guards the "an org can never be ownerless"
  *  invariant on demote / remove / leave. */
@@ -298,20 +307,19 @@ const ownerCount = async (ctx: DbCtx, orgId: string): Promise<number> => {
   return Number(rows[0]?.n ?? 0);
 };
 
-/** Reject a change that would leave `orgId` without an owner. */
+/** Reject a change that would leave `orgId` without an owner.
+ *
+ *  The counting stays here — the two planes count different tables — while the
+ *  DECISION is shared, so the wording an operator sees and the exact edge
+ *  (“more than one owner”) cannot drift between them. */
 const assertNotLastOwner = async (
   ctx: DbCtx,
   orgId: string,
   appUserId: string,
 ): Promise<void> => {
   const role = await memberRole(ctx, orgId, appUserId);
-  if (role !== "owner") return;
-  if ((await ownerCount(ctx, orgId)) <= 1) {
-    throw new AppError(
-      "VALIDATION",
-      "This is the organization's last owner — promote someone else first",
-    );
-  }
+  if (!role) return;
+  sharedNotLastOwner(role, await ownerCount(ctx, orgId), "organization");
 };
 
 /** Confirm an `app_users` row exists in this workspace and hand back its email. */

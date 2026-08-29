@@ -145,11 +145,15 @@ export const UserRow = z
     /** tenant_members row id — present on pending-invite rows so the client
      *  can revoke the invite. */
     memberId: z.string().optional(),
-    /** Shareable accept link — present on pending-invite rows so an admin can
-     *  re-copy it (deployments without SMTP never emailed it). */
-    inviteUrl: z.string().optional(),
   })
   .openapi("UserRow");
+// There is deliberately no `inviteUrl` here any more. It used to carry
+// `{APP_URL}/invite?token=<plaintext token>` for every pending invite, which
+// made a plain list read — or a logged response body, or a screenshot — a
+// working credential that seats an account at the invited standing, `admin`
+// included. The token is still reachable the two ways an invitee legitimately
+// gets it: the emailed link, and the CREATE response, which is the one moment
+// the caller actually holds it. Re-copying an old link is a resend, not a read.
 
 export const UserAttachRoleInput = z
   .object({ roleId: z.string() })
@@ -159,9 +163,79 @@ export const UserUpdateInput = z
   .object({ name: z.string().trim().min(1).max(200) })
   .openapi("UserUpdateInput");
 
+/**
+ * The membership standings `POST /api/users/invite` will mint.
+ *
+ * Deliberately narrower than what `WORKSPACE_RANK` can READ: `editor` is still
+ * ranked, because rows written before it was deprecated still carry it and a
+ * guard that scored it 0 would let anyone act on those people — but it is no
+ * longer offered to a new invite. Reading a value the API no longer accepts is
+ * a different thing from accepting it.
+ */
+export const WORKSPACE_INVITE_ROLES = ["owner", "admin", "member"] as const;
+export type WorkspaceInviteRole = (typeof WORKSPACE_INVITE_ROLES)[number];
+
+/**
+ * Body for the Users-page invite.
+ *
+ * `role` used to be the whole story: one free-text string, no enum, written
+ * verbatim into `tenant_members.role`. That column is the workspace MEMBERSHIP
+ * LADDER — `assertWorkspaceAccess` reads it to decide who may manage the
+ * workspace — while the Users page was offering the RBAC role list
+ * (`authenticated`, `admin`, customs) from the `roles` table. Two vocabularies,
+ * one unconstrained TEXT column, and the sibling surface
+ * (`POST /api/tenants/{id}/members/invite`) validating a real enum against the
+ * same column. A teammate invited as `authenticated` therefore landed with a
+ * standing no ladder reader recognises, could never manage members, and got no
+ * error explaining why.
+ *
+ * So the two meanings get two fields. `workspaceRole` is the standing and is
+ * the only thing that reaches that column; the RBAC role the invitee lands with
+ * follows from the standing (see `standingToRbacRole` in `services/invites.ts`).
+ */
 export const UserInviteInput = z
-  .object({ email: z.string().email(), role: z.string().optional() })
+  .object({
+    email: z.string().email(),
+    workspaceRole: z
+      .enum(WORKSPACE_INVITE_ROLES)
+      .optional()
+      .openapi({
+        description:
+          "Membership standing in the workspace — what the invitee may DO to the workspace itself. Defaults to `member`. Granting a standing above your own is refused.",
+        example: "member",
+      }),
+    role: z
+      .string()
+      .optional()
+      .openapi({
+        deprecated: true,
+        description:
+          "DEPRECATED — use `workspaceRole`. Accepted for one release and mapped to whichever meaning it actually named: a ladder value (`owner`/`admin`/`editor`/`member`) is read as the membership standing, anything else must name an RBAC role that exists in this workspace and is read as the role to bind on accept. A value that names neither is now refused instead of being written to the membership column.",
+      }),
+  })
   .openapi("UserInviteInput");
+
+/** What `POST /api/users/invite` answers. The token and its link appear HERE
+ *  and nowhere else — this is the one response whose caller legitimately holds
+ *  the credential (see the note on `UserRow`). `workspaceRole` / `rbacRole`
+ *  echo how the request was interpreted, so a caller sending the deprecated
+ *  `role` can see which of the two meanings it was read as rather than guess. */
+export const UserInviteResult = z
+  .object({
+    id: z.string(),
+    email: z.string(),
+    token: z.string(),
+    /** Ready-to-share accept link (`{APP_URL}/invite?token=…`). */
+    url: z.string(),
+    /** False when the mail only hit the console fallback — the UI should
+     *  surface `url` for manual sharing instead. */
+    sent: z.boolean(),
+    /** The membership standing this invite will confer. */
+    workspaceRole: z.string(),
+    /** The RBAC role name that binds on accept. */
+    rbacRole: z.string(),
+  })
+  .openapi("UserInviteResult");
 
 export const SessionRow = z
   .object({

@@ -51,22 +51,23 @@ describe("users invite: creates a real invite", () => {
     // UI leans on the copyable link.
     expect(inv.sent).toBe(false);
 
-    // The pending invite shows up in the users list with its shareable link.
+    // The pending invite shows up in the users list — but WITHOUT its token.
     const list = (await (await h.fetch("/api/users")).json()) as {
       data: Array<{ email: string; status?: string; inviteUrl?: string; memberId?: string }>;
     };
     const pending = list.data.find((u) => u.email === "teammate@example.test");
     expect(pending).toBeDefined();
     expect(pending!.status).toBe("invited");
-    // KNOWN GAP, pinned deliberately rather than fixed here: `inviteUrl`
-    // embeds the PLAINTEXT invite token, so every caller who can read the
-    // users list walks away with a live credential for each pending invite —
-    // and the token is stored in `tenant_members.invite_token` in the clear,
-    // so a database read is equally sufficient. Phase 5 closes it by hashing
-    // the token at rest and returning the plaintext only in the mint response.
-    // Until then this assertion documents today's contract; changing it is
-    // Phase 5's job, not a passing edit.
-    expect(pending!.inviteUrl).toBe(inv.url);
+    // This row used to carry `inviteUrl` — `{APP_URL}/invite?token=<plaintext>`
+    // — for every pending invite, which made a routine list read hand over a
+    // working credential that seats an account at the invited standing. The
+    // token now appears only in the CREATE response, which is the one moment
+    // the caller legitimately holds it. Asserted on the whole serialized row
+    // rather than the one field, because the leak was a projection that
+    // over-selected: a `...row` spread would put it back without touching the
+    // named property.
+    expect(pending!.inviteUrl).toBeUndefined();
+    expect(JSON.stringify(pending)).not.toContain(inv.token);
 
     // The token resolves publicly (the /invite page metadata call).
     await signOut(h);

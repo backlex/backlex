@@ -34,7 +34,8 @@ import {
 } from "@backlex/ui/components/dropdown-menu";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
-import { rolesApi, usersApi, type ApiRole, type ApiUser } from "../../api";
+import { rolesApi, tenantsApi, usersApi, type ApiRole, type ApiUser } from "../../api";
+import { useTenants } from "../../queries";
 import { UsersSkeleton } from "../../page-skeletons";
 import { auth } from "@/lib/auth";
 
@@ -62,7 +63,39 @@ const PROVIDER_LABEL: Record<string, string> = {
   cloud: "cloud SSO",
 };
 
-type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; memberId?: string; inviteUrl?: string };
+type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; memberId?: string };
+
+/**
+ * Whether a password reset is a thing that can happen to this account.
+ *
+ * A federated identity's credential lives in the IdP: backlex holds no password
+ * to replace, and mailing a reset link to a SAML/LDAP/cloud-SSO user offers them
+ * a door their organisation has already decided they do not walk through. A
+ * pending invite has no account at all yet — the invite link IS its credential.
+ * Both cases are knowable from the row, so the control is simply not rendered
+ * rather than rendered and then failing (or, as it did before, "succeeding").
+ */
+const canResetPassword = (u: { status: string; provider: string }): boolean =>
+  u.status !== "invited" && !["saml", "ldap", "cloud", "invite"].includes(u.provider);
+
+/**
+ * Ask the auth server to mail a one-time password-reset link.
+ *
+ * better-auth's client RESOLVES on a refused request rather than throwing, so
+ * the `error` half of its envelope is the only place a failure appears. Reading
+ * it is the difference between "the mail went out" and "we posted something and
+ * looked away" — and looking away is what every reset control on this page used
+ * to do, two of them without even posting.
+ */
+const sendResetLink = async (email: string): Promise<void> => {
+  const client = auth as unknown as {
+    forgetPassword?: (o: { email: string; redirectTo?: string }) => Promise<{ error?: { message?: string } | null }>;
+  };
+  if (typeof client.forgetPassword !== "function")
+    throw new Error("This deployment's auth client cannot send password resets.");
+  const r = await client.forgetPassword({ email, redirectTo: "/reset-password" });
+  if (r?.error) throw new Error(r.error.message || "The reset request was refused.");
+};
 
 const fmtRelative = (ts: number | null): string => {
   if (!ts) return "—";
@@ -86,9 +119,7 @@ const toUserRow = (u: ApiUser & { lastSeenAt?: number | null }): UserRow => {
     last: fmtRelative(lastSeenAt),
     lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
     created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
-    sessions: 0,
     memberId: u.memberId,
-    inviteUrl: u.inviteUrl,
   };
 };
 
@@ -147,6 +178,16 @@ export function UsersPage({ pushToast }: { pushToast: PushToast }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeUser, setActiveUser] = useState<any>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
+  // A link handed back by a create or a resend. It is shown once, in a dialog,
+  // because that response is the only place it exists — the list deliberately
+  // stopped carrying invite tokens.
+  const [freshLink, setFreshLink] = useState<null | { email: string; url: string; sent: boolean }>(null);
+
+  // The workspace whose invites this page resends. `active` is what the server
+  // says the session is scoped to; the first tenant is the fallback for a
+  // single-workspace deployment that never set the cookie.
+  const tenantsQuery = useTenants();
+  const tenantId = tenantsQuery.data?.active ?? tenantsQuery.data?.data[0]?.id ?? null;
 
   const filtered = users.filter((u) => {
     if (q && !(u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase()))) return false;
@@ -182,30 +223,91 @@ export function UsersPage({ pushToast }: { pushToast: PushToast }) {
     return <Badge variant="secondary">{s}</Badge>;
   };
 
+  /**
+   * Apply one verb to the whole selection.
+   *
+   * `Promise.allSettled` never rejects, so the `catch` this used to sit in was
+   * unreachable and the closing toast announced the full count whatever the
+   * server had done — every request could have 403'd and the operator would
+   * still read "Suspended 5 users." Failures are counted instead, and a mixed
+   * outcome ends in a re-read: which rows actually moved is the server's
+   * answer to give, not something worth reconstructing from a snapshot.
+   */
   const bulk = async (verb: "delete" | "suspend" | "activate") => {
     const ids = [...selected];
-    try {
-      if (verb === "delete") {
-        await Promise.allSettled(ids.map((id) => usersApi.remove(id)));
-        setUsers((arr) => arr.filter((u) => !selected.has(u.id)));
-      } else if (verb === "suspend") {
-        await Promise.allSettled(ids.map((id) => usersApi.suspend(id)));
-        setUsers((arr) =>
-          arr.map((u) => (selected.has(u.id) ? { ...u, status: "suspended", sessions: 0 } : u)),
-        );
-      } else if (verb === "activate") {
-        await Promise.allSettled(ids.map((id) => usersApi.activate(id)));
-        setUsers((arr) => arr.map((u) => (selected.has(u.id) ? { ...u, status: "active" } : u)));
-      }
-      pushToast(t`${verb === "delete" ? "Deleted" : verb === "suspend" ? "Suspended" : "Activated"} ${ids.length} user${ids.length === 1 ? "" : "s"}.`);
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
+    const chosen = new Set(ids);
+    const snapshot = users;
+    const call =
+      verb === "delete" ? usersApi.remove : verb === "suspend" ? usersApi.suspend : usersApi.activate;
+    if (verb === "delete") setUsers((arr) => arr.filter((u) => !chosen.has(u.id)));
+    else
+      setUsers((arr) =>
+        arr.map((u) => (chosen.has(u.id) ? { ...u, status: verb === "suspend" ? "suspended" : "active" } : u)),
+      );
     setSelected(new Set());
+
+    const results = await Promise.allSettled(ids.map((id) => call(id)));
+    const done = results.filter((r) => r.status === "fulfilled").length;
+    const past = verb === "delete" ? "Deleted" : verb === "suspend" ? "Suspended" : "Activated";
+    if (done === ids.length) {
+      pushToast(t`${past} ${ids.length} user${ids.length === 1 ? "" : "s"}.`);
+      return;
+    }
+    const failure = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
+    pushToast(t`${past} ${done} of ${ids.length} — ${(failure.reason as Error).message}`);
+    setUsers(snapshot);
+    void reloadUsers().catch(() => {/* the snapshot stands until the next load */});
   };
 
   const applyUserPatch = (id: string, patch: { name?: string; roles?: string[] }) => {
     setUsers((arr) => arr.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+  };
+
+  /**
+   * Mail reset links to everyone in the selection who can receive one, and say
+   * how many actually went out.
+   *
+   * The count is not decoration. This used to be a `pushToast` with no request
+   * behind it, which is the same sentence a working button prints — so the
+   * replacement reports what the server answered, per address, rather than
+   * asserting a number the click merely intended.
+   */
+  const bulkReset = async () => {
+    const targets = users.filter((u) => selected.has(u.id) && canResetPassword(u));
+    if (targets.length === 0) {
+      pushToast(t`No selected account has a password for backlex to reset.`);
+      return;
+    }
+    const results = await Promise.allSettled(targets.map((u) => sendResetLink(u.email)));
+    const sent = results.filter((r) => r.status === "fulfilled").length;
+    const failure = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+    if (sent === 0) pushToast((failure?.reason as Error)?.message ?? t`No reset link could be sent.`);
+    else if (failure) pushToast(t`Reset link sent to ${sent} of ${targets.length} — ${(failure.reason as Error).message}`);
+    else pushToast(t`Reset link sent to ${sent} user${sent === 1 ? "" : "s"}.`);
+    setSelected(new Set());
+  };
+
+  /**
+   * Mint a fresh invite token for a pending member and surface the new link.
+   *
+   * This replaces a "Copy invite link" item that read a field the list stopped
+   * returning, so it silently vanished from a row after a reload while still
+   * appearing for one created in the same session. A resend is the honest form
+   * of that action anyway: the old token is rotated, so the only link that can
+   * now seat an account is the one this call just produced.
+   */
+  const resendInvite = async (u: UserRow) => {
+    if (!tenantId) {
+      pushToast(t`No active workspace — cannot resend this invite.`);
+      return;
+    }
+    try {
+      const r = await tenantsApi.resendInvite(tenantId, u.memberId ?? u.id);
+      if (r.data?.url) setFreshLink({ email: u.email, url: r.data.url, sent: !!r.data.sent });
+      else pushToast(t`Invite re-sent to ${u.email}.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
   };
 
   // First whole-page fetch — the user list hasn't landed yet.
@@ -269,7 +371,12 @@ export function UsersPage({ pushToast }: { pushToast: PushToast }) {
           <span className="text-[12.5px] text-muted-foreground"><Trans>Apply to selection:</Trans></span>
           <Button size="sm" variant="outline" onClick={() => bulk("activate")}><Trans>Activate</Trans></Button>
           <Button size="sm" variant="outline" onClick={() => bulk("suspend")}><Trans>Suspend</Trans></Button>
-          <Button size="sm" variant="outline" onClick={() => pushToast(t`Reset link sent to ${selected.size} user${selected.size === 1 ? "" : "s"}.`)}><Trans>Reset password</Trans></Button>
+          {/* Offered only while the selection contains an account a reset can
+              reach — a federated or still-invited selection has nothing for
+              this button to do, so it is not drawn. */}
+          {users.some((u) => selected.has(u.id) && canResetPassword(u)) && (
+            <Button size="sm" variant="outline" onClick={() => void bulkReset()}><Trans>Reset password</Trans></Button>
+          )}
           <Button size="sm" variant="outline" onClick={() => bulk("delete")} className="text-destructive"><Trans>Delete</Trans></Button>
           <div className="flex-1" />
           <Button variant="ghost" size="xs" icon={I.X} onClick={() => setSelected(new Set())} title={t`Clear selection`} />
@@ -346,14 +453,9 @@ export function UsersPage({ pushToast }: { pushToast: PushToast }) {
                       </DropdownMenuTrigger>
                       {u.status === "invited" ? (
                         <DropdownMenuContent align="end">
-                          {u.inviteUrl && (
-                            <DropdownMenuItem onSelect={() => {
-                              void navigator.clipboard.writeText(u.inviteUrl!).then(
-                                () => pushToast(t`Invite link copied.`),
-                                () => pushToast(u.inviteUrl!),
-                              );
-                            }}><I.Link size={12} /><Trans>Copy invite link</Trans></DropdownMenuItem>
-                          )}
+                          <DropdownMenuItem onSelect={() => { void resendInvite(u); }}>
+                            <I.Mail size={12} /><Trans>Resend invite</Trans>
+                          </DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onSelect={() => {
                             const memberId = u.memberId ?? u.id;
                             const snapshot = users;
@@ -367,42 +469,56 @@ export function UsersPage({ pushToast }: { pushToast: PushToast }) {
                       ) : (
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => { setActiveUser(u); }}><I.Eye size={12} /><Trans>View profile</Trans></DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => { pushToast(t`Reset link sent to ${u.email}.`); }}><I.Mail size={12} /><Trans>Send reset link</Trans></DropdownMenuItem>
+                        {canResetPassword(u) && (
+                          <DropdownMenuItem onSelect={() => {
+                            void sendResetLink(u.email).then(
+                              () => pushToast(t`Reset link sent to ${u.email}.`),
+                              (e: Error) => pushToast(e.message),
+                            );
+                          }}><I.Mail size={12} /><Trans>Send reset link</Trans></DropdownMenuItem>
+                        )}
+                        {/* Each of the four below paints first and rolls back on
+                            refusal. They used to await the request, report the
+                            error, and then apply the change and toast success
+                            anyway — so a rejected suspend left the row reading
+                            "suspended" behind two contradictory toasts. */}
                         {u.status !== "suspended" ? (
                           <DropdownMenuItem onSelect={() => {
-                            void (async () => {
-                              try { await usersApi.suspend(u.id); } catch (e) { pushToast((e as Error).message); }
-                              setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "suspended", sessions: 0 } : x));
-                              pushToast(t`${u.email} suspended.`);
-                            })();
+                            const snapshot = users;
+                            setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "suspended" } : x));
+                            void usersApi.suspend(u.id).then(
+                              () => pushToast(t`${u.email} suspended.`),
+                              (e) => { setUsers(snapshot); pushToast((e as Error).message); },
+                            );
                           }}><I.Lock size={12} /><Trans>Suspend</Trans></DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem onSelect={() => {
-                            void (async () => {
-                              try { await usersApi.activate(u.id); } catch (e) { pushToast((e as Error).message); }
-                              setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "active" } : x));
-                              pushToast(t`${u.email} activated.`);
-                            })();
+                            const snapshot = users;
+                            setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "active" } : x));
+                            void usersApi.activate(u.id).then(
+                              () => pushToast(t`${u.email} activated.`),
+                              (e) => { setUsers(snapshot); pushToast((e as Error).message); },
+                            );
                           }}><I.Check size={12} /><Trans>Activate</Trans></DropdownMenuItem>
                         )}
                         {u.mfa && (
                           <DropdownMenuItem onSelect={() => {
-                            void (async () => {
-                              try {
-                                await usersApi.resetTwoFactor(u.id);
-                                setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, mfa: false, sessions: 0 } : x));
-                                pushToast(t`2FA reset for ${u.email}. They can re-enrol from Account → Security.`);
-                              } catch (e) { pushToast((e as Error).message); }
-                            })();
+                            const snapshot = users;
+                            setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, mfa: false } : x));
+                            void usersApi.resetTwoFactor(u.id).then(
+                              () => pushToast(t`2FA reset for ${u.email}. They can re-enrol from Account → Security.`),
+                              (e) => { setUsers(snapshot); pushToast((e as Error).message); },
+                            );
                           }}><I.Shield size={12} /><Trans>Reset 2FA</Trans></DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem variant="destructive" onSelect={() => {
-                          void (async () => {
-                            try { await usersApi.remove(u.id); } catch (e) { pushToast((e as Error).message); }
-                            setUsers((arr) => arr.filter((x) => x.id !== u.id));
-                            pushToast(t`${u.email} deleted.`);
-                          })();
+                          const snapshot = users;
+                          setUsers((arr) => arr.filter((x) => x.id !== u.id));
+                          void usersApi.remove(u.id).then(
+                            () => pushToast(t`${u.email} deleted.`),
+                            (e) => { setUsers(snapshot); pushToast((e as Error).message); },
+                          );
                         }}><I.Trash size={12} /><Trans>Delete</Trans></DropdownMenuItem>
                       </DropdownMenuContent>
                       )}
@@ -416,7 +532,7 @@ export function UsersPage({ pushToast }: { pushToast: PushToast }) {
       </Card>
       )}
 
-      {activeUser && <UserDrawer user={activeUser} allRoles={allRoles} onClose={() => setActiveUser(null)} onSaved={applyUserPatch} pushToast={pushToast} />}
+      {activeUser && <UserDrawer user={activeUser} allRoles={allRoles} onClose={() => setActiveUser(null)} onSaved={applyUserPatch} onDeleted={(id) => setUsers((arr) => arr.filter((x) => x.id !== id))} pushToast={pushToast} />}
       {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} pushToast={pushToast} onCreated={(inv) => {
         // Optimistic: append the pending-invite row immediately (dedupe by
         // email so a re-invite doesn't double it), then reconcile against the
@@ -434,18 +550,63 @@ export function UsersPage({ pushToast }: { pushToast: PushToast }) {
             last: "—",
             lastIso: null,
             created: new Date().toISOString().slice(0, 10),
-            sessions: 0,
             memberId: inv.id,
-            inviteUrl: inv.url,
           },
         ]);
         void reloadUsers().catch(() => {/* keep the optimistic row */});
       }} />}
+      {freshLink && (
+        <Dialog open onOpenChange={(o) => { if (!o) setFreshLink(null); }}>
+          <DialogContent className="w-[460px] max-w-[92vw] gap-0 p-0 sm:max-w-none">
+            <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+              <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Invite re-sent</Trans></DialogTitle>
+              <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>The previous link no longer works. This one is valid for 7 days.</Trans></DialogDescription>
+            </DialogHeader>
+            <div className="px-5 py-[18px]">
+              <InviteLinkPanel invite={freshLink} pushToast={pushToast} />
+            </div>
+            <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
+              <Button variant="primary" onClick={() => setFreshLink(null)}><Trans>Done</Trans></Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
 
-function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any; allRoles: ApiRole[]; onClose: () => void; onSaved: (id: string, patch: { name?: string; roles?: string[] }) => void; pushToast: PushToast }) {
+/**
+ * The freshly-minted invite link, with the one thing the reader has to know
+ * about it: whether an email carrying it actually went out.
+ *
+ * Shared by the create dialog and the resend flow because those two responses
+ * are the ONLY places the link exists — the users list stopped returning invite
+ * tokens, so there is no third surface to read one from.
+ */
+function InviteLinkPanel({ invite, pushToast }: { invite: { email: string; url: string; sent: boolean }; pushToast: PushToast }) {
+  const { t } = useLingui();
+  const copy = () => {
+    void navigator.clipboard.writeText(invite.url).then(
+      () => pushToast(t`Invite link copied.`),
+      () => pushToast(invite.url),
+    );
+  };
+  return (
+    <div className="flex flex-col gap-1.5">
+      {invite.sent ? (
+        <span className="text-[12.5px] text-muted-foreground"><Trans>An invite email was sent to <span className="font-mono text-foreground">{invite.email}</span>. You can also share the link directly:</Trans></span>
+      ) : (
+        <span className="text-[12.5px] text-muted-foreground"><Trans>No email service is configured, so nothing was sent to <span className="font-mono text-foreground">{invite.email}</span> — share this link with them directly:</Trans></span>
+      )}
+      <div className="flex items-center gap-2">
+        <Input readOnly value={invite.url} onFocus={(e) => e.currentTarget.select()} className="font-mono text-[12px]" />
+        <Button variant="outline" size="sm" className="shrink-0" onClick={copy}><I.Link size={12} /><Trans>Copy link</Trans></Button>
+      </div>
+    </div>
+  );
+}
+
+function UserDrawer({ user, allRoles, onClose, onSaved, onDeleted, pushToast }: { user: any; allRoles: ApiRole[]; onClose: () => void; onSaved: (id: string, patch: { name?: string; roles?: string[] }) => void; onDeleted: (id: string) => void; pushToast: PushToast }) {
   const { t } = useLingui();
   const [name, setName] = useState<string>(user.name ?? "");
   const [roles, setRoles] = useState<string[]>(user.roles as string[]);
@@ -580,7 +741,10 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>2FA</Trans></span>{user.mfa ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]"><I.Shield size={11} /> <Trans>enrolled</Trans></span> : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground"><Trans>disabled</Trans></span>}</div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Created</Trans></span><span className="font-mono text-xs">{user.created}</span></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Last seen</Trans></span><span className="font-mono text-xs">{user.lastIso || "—"}</span></div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Sessions</Trans></span><span className="font-mono text-xs"><Trans>{user.sessions} active</Trans></span></div>
+            {/* Counted from the sessions the drawer actually fetched. The row
+                carried no such number — the field was hardcoded to 0, so this
+                tile read "0 active" above a list of three live sessions. */}
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Sessions</Trans></span><span className="font-mono text-xs"><Trans>{sessions.length} active</Trans></span></div>
           </div>
 
           <div>
@@ -618,8 +782,13 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
           <div>
             <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium">
               <span><Trans>Recent activity</Trans></span>
-              <span className="text-[11.5px] font-normal text-muted-foreground"><Trans>last 30 days</Trans></span>
+              {/* "last 30 days" was a claim the query does not make: it asks for
+                  the newest 20 rows workspace-wide and keeps this user's. */}
+              <span className="text-[11.5px] font-normal text-muted-foreground"><Trans>most recent</Trans></span>
             </div>
+            {activity.length === 0 ? (
+              <div className="rounded-control border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground"><Trans>No recent activity.</Trans></div>
+            ) : (
             <div className="flex flex-col overflow-hidden rounded-control border border-border">
               {activity.map((a, i) => (
                 <div key={i} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
@@ -631,31 +800,43 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
                 </div>
               ))}
             </div>
+            )}
           </div>
 
           <div className="rounded-control border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
             <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span><Trans>Danger zone</Trans></span></div>
-            <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
-              <div>
-                <div className="text-[12.5px] font-medium"><Trans>Send password reset</Trans></div>
-                <div className="text-[11.5px] text-muted-foreground"><Trans>Emails a one-time link valid for 30 minutes.</Trans></div>
+            {/* Same rule as the row menu: an account whose credential lives in
+                an IdP has no password here to reset, so the control is absent
+                rather than present-and-lying. */}
+            {canResetPassword(user) && (
+              <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
+                <div>
+                  <div className="text-[12.5px] font-medium"><Trans>Send password reset</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Emails a one-time link valid for 30 minutes.</Trans></div>
+                </div>
+                <Button size="sm" variant="outline" onClick={async () => {
+                  // `forgetPassword` was optional-chained here, so on a client
+                  // without the method the call evaluated to `undefined`, the
+                  // await resolved, and the success toast fired regardless.
+                  try {
+                    await sendResetLink(user.email);
+                    pushToast(t`Reset link sent to ${user.email}.`);
+                  } catch (e) {
+                    pushToast((e as Error).message);
+                  }
+                }}><Trans>Send</Trans></Button>
               </div>
-              <Button size="sm" variant="outline" onClick={async () => {
-                try {
-                  await (auth as unknown as { forgetPassword?: (o: { email: string; redirectTo?: string }) => Promise<{ error?: { message?: string } }> }).forgetPassword?.({ email: user.email, redirectTo: "/reset-password" });
-                  pushToast(t`Reset link sent to ${user.email}.`);
-                } catch (e) {
-                  pushToast((e as Error).message);
-                }
-              }}><Trans>Send</Trans></Button>
-            </div>
+            )}
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
                 <div className="text-[12.5px] font-medium"><Trans>Revoke all sessions</Trans></div>
                 <div className="text-[11.5px] text-muted-foreground"><Trans>Forces re-login on every device immediately.</Trans></div>
               </div>
               <Button size="sm" variant="outline" onClick={async () => {
-                try { await usersApi.revokeAll(user.id); } catch (e) { pushToast((e as Error).message); }
+                // The catch used to fall through to the success toast, so a
+                // refused revoke told the operator every device was signed out.
+                try { await usersApi.revokeAll(user.id); } catch (e) { pushToast((e as Error).message); return; }
+                setSessions([]);
                 pushToast(t`Sessions revoked for ${user.email}.`);
               }}><Trans>Revoke</Trans></Button>
             </div>
@@ -665,7 +846,10 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
                 <div className="text-[11.5px] text-muted-foreground"><Trans>Permanent. Owned items remain; ownership is reassigned to admin.</Trans></div>
               </div>
               <Button size="sm" variant="outline" className="text-destructive" onClick={async () => {
-                try { await usersApi.remove(user.id); } catch (e) { pushToast((e as Error).message); }
+                // A refused delete closed the drawer and reported the account
+                // gone; the row was still there behind it.
+                try { await usersApi.remove(user.id); } catch (e) { pushToast((e as Error).message); return; }
+                onDeleted(user.id);
                 pushToast(t`${user.email} deleted.`);
                 onClose();
               }}><Trans>Delete</Trans></Button>
@@ -688,7 +872,6 @@ const ROLE_HINTS: Record<string, string> = {
   authenticated: "standard signed-in user",
 };
 function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: string[]; onClose: () => void; onCreated: (inv: { id: string; email: string; role: string; url: string }) => void; pushToast: PushToast }) {
-  const { t } = useLingui();
   const roleOptions = (roles.length ? roles : ["authenticated"]).map((name) => ({
     value: name,
     label: name,
@@ -715,12 +898,6 @@ function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: str
       setBusy(false);
     }
   };
-  const copy = (url: string) => {
-    void navigator.clipboard.writeText(url).then(
-      () => pushToast(t`Invite link copied.`),
-      () => pushToast(url),
-    );
-  };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="w-[460px] max-w-[92vw] gap-0 p-0 sm:max-w-none">
@@ -730,17 +907,7 @@ function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: str
         </DialogHeader>
         {created ? (
           <div className="flex flex-col gap-4 px-5 py-[18px]">
-            <div className="flex flex-col gap-1.5">
-              {created.sent ? (
-                <span className="text-[12.5px] text-muted-foreground"><Trans>An invite email was sent to <span className="font-mono text-foreground">{created.email}</span>. You can also share the link directly:</Trans></span>
-              ) : (
-                <span className="text-[12.5px] text-muted-foreground"><Trans>No email service is configured, so nothing was sent to <span className="font-mono text-foreground">{created.email}</span> — share this link with them directly:</Trans></span>
-              )}
-              <div className="flex items-center gap-2">
-                <Input readOnly value={created.url} onFocus={(e) => e.currentTarget.select()} className="font-mono text-[12px]" />
-                <Button variant="outline" size="sm" className="shrink-0" onClick={() => copy(created.url)}><I.Link size={12} /><Trans>Copy link</Trans></Button>
-              </div>
-            </div>
+            <InviteLinkPanel invite={created} pushToast={pushToast} />
           </div>
         ) : (
         <DialogBody>

@@ -71,6 +71,88 @@ export const PermissionRowSchema = z
   })
   .openapi("Permission");
 
+/**
+ * One entry of a role's COMPLETE desired permission set.
+ *
+ * `id` is optional, and that is what makes the diff non-destructive. When the
+ * client sends it, that stored row is the one being described — so a condition
+ * can be rewritten, or a grant moved to another collection, without the row
+ * losing its identity and the audit trail already keyed to it. When the client
+ * omits it, the entry is matched against an existing row with the same
+ * `(collection, action)`, and creates one when there is none.
+ *
+ * The second half is what the role editor actually needs. That screen is a
+ * MATRIX: it knows which cells are ticked, not which database rows back them.
+ * Requiring it to carry row ids to express "read on posts" would be asking the
+ * client to reimplement this diff, which is the one thing it cannot do
+ * atomically.
+ */
+export const PermissionSetEntry = z
+  .object({
+    id: z.string().min(1).optional(),
+    collection: z.string().min(1),
+    action: z.enum(["read", "create", "update", "delete", "publish"]),
+    fields: z.array(z.string()).nullable().optional(),
+    condition: z.unknown().nullable().optional(),
+  })
+  .openapi("PermissionSetEntry");
+
+/**
+ * Body for `PUT /api/roles/{id}/permissions` — the role's whole permission set,
+ * not a delta. Anything the role holds today and this array does not name is
+ * revoked.
+ *
+ * The cap is deliberately generous rather than absent: five actions across a
+ * few hundred collections is a legitimate set for a large workspace, while an
+ * unbounded array is a write amplifier aimed at the permission table and the
+ * audit log by anyone holding an admin session.
+ */
+export const PermissionSetInput = z
+  .object({
+    permissions: z.array(PermissionSetEntry).max(1000),
+  })
+  .openapi("PermissionSetInput");
+
+/**
+ * What the set replace answers with.
+ *
+ * `data` is read back OUT of the table after the writes rather than echoed from
+ * the request. "The server accepted my payload" and "the rows now say what I
+ * asked for" are different claims, and this endpoint exists precisely because
+ * the second one was being asserted by a screen that never made the first.
+ */
+export const PermissionSetResult = z
+  .object({
+    data: z.array(PermissionRowSchema),
+    applied: z.object({
+      created: z.number().int(),
+      updated: z.number().int(),
+      deleted: z.number().int(),
+      unchanged: z.number().int(),
+    }),
+  })
+  .openapi("PermissionSetResult");
+
+/**
+ * Body for `PATCH /api/permissions/{id}`.
+ *
+ * Only the two mutable halves of a grant. `roleId`, `collection` and `action`
+ * are the row's identity as far as the resolver's lookup is concerned; moving a
+ * grant between cells goes through the set replace, which can see the whole
+ * picture and so will not leave a duplicate behind.
+ *
+ * Both keys are optional so a caller can edit one without restating the other,
+ * and an explicit `null` is meaningful — it CLEARS the condition or the field
+ * allow-list. That is why the handler tests for key PRESENCE rather than for a
+ * truthy value: `{"condition": null}` and `{}` mean different things.
+ */
+export const PermissionPatchInput = z
+  .object({
+    fields: z.array(z.string()).nullable().optional(),
+    condition: z.unknown().nullable().optional(),
+  })
+  .openapi("PermissionPatchInput");
+
 /** Body for the permission simulator. The subject is either an existing user
  *  (`userId` ⇒ roles read live from the DB) or an ad-hoc one (`roles` by name).
  *  Always scoped to the caller's active workspace. */

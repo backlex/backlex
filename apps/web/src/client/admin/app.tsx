@@ -35,7 +35,6 @@ import {
   Badge,
   Button,
   EmptyState,
-  IconButton,
   PageHeader,
   Sidebar,
   Topbar,
@@ -108,11 +107,8 @@ import { InsightsPage } from "./pages/observability/insights";
 import { KpisPage } from "./pages/observability/kpis";
 import { RevisionsPage } from "./pages/observability/revisions";
 import { TranslationsPage } from "./pages/observability/translations";
-import { RoleEditor, type RoleData } from "./pages/access/role-editor";
 import { MembersPanel } from "./pages/access/members-panel";
-import { PermissionsMatrix } from "./pages/access/permissions-matrix";
-import { RlsCard } from "./pages/access/rls-card";
-import { ImpersonationCard } from "./pages/access/impersonation-card";
+import { RolesPanel } from "./pages/access/roles-panel";
 import { PermissionTesterPanel } from "./pages/access/permission-tester";
 // Each admin page is split into its own chunk so the initial admin bundle
 // stays small. The shared `<Suspense>` boundary inside the page switch below
@@ -2109,148 +2105,8 @@ function RolesPageWithMembers({ pushToast }: { pushToast: PushToast }) {
         </TabsList>
       </Tabs>
       {tab === "members" && <MembersPanel roles={[]} pushToast={pushToast} />}
-      {tab === "roles" && <PermissionsPanel pushToast={pushToast} />}
+      {tab === "roles" && <RolesPanel pushToast={pushToast} />}
       {tab === "tester" && <PermissionTesterPanel pushToast={pushToast} />}
-    </div>
-  );
-}
-
-function PermissionsPanel({ pushToast }: { pushToast: PushToast }) {
-  const { t } = useLingui();
-  const [roles, setRoles] = useState<RoleData[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const r = await api<{ data: { id: string; name: string; description: string | null; admin: boolean; mcpTools: string[] | null; mcpReadOnly: boolean; orgAssignable: boolean }[] }>(`/api/roles`);
-        if (!cancelled && Array.isArray(r.data)) {
-          setRoles(
-            r.data.map((row) => ({
-              id: row.id,
-              name: row.name,
-              system: ["admin", "authenticated", "public"].includes(row.name),
-              badges: [
-                ...(row.admin ? ["bypass"] : []),
-                // Surfaced on the row so an operator can see at a glance which
-                // roles an agent is constrained by without opening each editor.
-                ...(row.mcpReadOnly ? ["mcp read-only"] : []),
-                ...(row.mcpTools ? ["mcp scoped"] : []),
-                // Which roles have left the workspace matters at a glance: it's
-                // the set a customer's org admin can hand out on their own.
-                ...(row.orgAssignable ? ["org-assignable"] : []),
-              ],
-              description: row.description ?? "",
-              matrix: { read: "all", create: "all", update: "all", delete: "all" } as any,
-              rule: row.description ?? "",
-              mcpTools: row.mcpTools ?? null,
-              mcpReadOnly: Boolean(row.mcpReadOnly),
-              orgAssignable: Boolean(row.orgAssignable),
-            })),
-          );
-        }
-      } catch {
-        // leave roles empty
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const [editing, setEditing] = useState<RoleData | null>(null);
-  const [isNew, setIsNew] = useState(false);
-
-  const openNew = () => { setEditing(null); setIsNew(true); };
-  const openEdit = (r: RoleData) => { setEditing(r); setIsNew(false); };
-  // Badges are derived, not stored — recompute them from whatever the editor
-  // returned so an MCP guard flipped in the dialog is visible on the row the
-  // instant it closes, without waiting for a refetch.
-  const badgesFor = (data: RoleData): string[] => [
-    ...((data.badges ?? []).includes("bypass") ? ["bypass"] : []),
-    ...(data.mcpReadOnly ? ["mcp read-only"] : []),
-    ...(data.mcpTools ? ["mcp scoped"] : []),
-    ...(data.orgAssignable ? ["org-assignable"] : []),
-  ];
-
-  const save = async (data: RoleData) => {
-    const payload = {
-      name: data.name,
-      description: data.description,
-      mcpTools: data.mcpTools ?? null,
-      mcpReadOnly: data.mcpReadOnly ?? false,
-      orgAssignable: data.orgAssignable ?? false,
-    };
-    const snapshot = roles;
-    setEditing(null);
-    setIsNew(false);
-    if (isNew) {
-      if (roles.find((r) => r.name === data.name)) { pushToast(t`Role "${data.name}" already exists.`); return; }
-      setRoles((arr) => [...arr, { ...data, badges: badgesFor(data) }]);
-      try {
-        const created = await api<{ data: { id: string } }>(`/api/roles`, {
-          method: "POST",
-          body: JSON.stringify({ ...payload, admin: false }),
-        });
-        // Reconcile the server-assigned id so a follow-up edit patches the
-        // right row instead of falling back to a name lookup.
-        setRoles((arr) =>
-          arr.map((r) => (r.name === data.name ? { ...r, id: created.data.id } : r)),
-        );
-        pushToast(t`Role "${data.name}" created.`);
-      } catch (e) {
-        setRoles(snapshot);
-        pushToast((e as Error).message);
-      }
-      return;
-    }
-    if (!editing) return;
-    setRoles((arr) =>
-      arr.map((r) =>
-        r.name === editing.name ? { ...r, ...data, badges: badgesFor(data) } : r,
-      ),
-    );
-    try {
-      const id = editing.id ?? data.id;
-      if (!id) throw new Error("Role id missing — reload the page and retry.");
-      await api(`/api/roles/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
-      pushToast(t`Role "${data.name}" saved.`);
-    } catch (e) {
-      setRoles(snapshot);
-      pushToast((e as Error).message);
-    }
-  };
-  const close = () => { setEditing(null); setIsNew(false); };
-  return (
-    <div className="flex flex-col gap-3.5">
-      <Card className="py-0 gap-0">
-        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-          <I.Shield size={14} />
-          <span className="text-[13px] font-medium"><Trans>roles</Trans></span>
-          <span className="font-mono text-xs text-muted-foreground"><Trans>{roles.filter((r) => r.system).length} system · {roles.filter((r) => !r.system).length} custom</Trans></span>
-          <div className="flex-1" />
-          <Button variant="primary" size="sm" icon={I.Plus} onClick={openNew}><Trans>Add role</Trans></Button>
-        </div>
-        {roles.map((r) => (
-          <div key={r.name} className="grid grid-cols-[24px_200px_1fr_32px] max-[640px]:grid-cols-[24px_1fr_32px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
-            <span><I.Users size={14} /></span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[13px]">{r.name}</span>
-              {r.system && <Badge variant="secondary"><Trans>system</Trans></Badge>}
-              {(r.badges || []).map((b) => <Badge key={b} variant="outline">{b}</Badge>)}
-            </div>
-            <span className="font-mono text-xs text-muted-foreground max-[640px]:hidden">{r.rule}</span>
-            <IconButton icon={I.Pencil} title={t`Edit`} onClick={() => openEdit(r)} />
-          </div>
-        ))}
-      </Card>
-
-      <PermissionsMatrix roles={roles} pushToast={pushToast} />
-      {/* The same rules, pushed into the database — so a connection that never
-          touches the API is filtered too. */}
-      <RlsCard pushToast={pushToast} />
-      {/* Seeing what one of those roles actually sees, for one real person. */}
-      <ImpersonationCard pushToast={pushToast} />
-      <RoleEditor open={editing !== null || isNew} role={editing} isNew={isNew} onClose={close} onSave={save} />
     </div>
   );
 }

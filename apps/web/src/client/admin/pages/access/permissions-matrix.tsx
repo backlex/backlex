@@ -26,6 +26,18 @@ import type { RoleData } from "./role-editor";
 import { ConditionEditor } from "./condition-editor";
 import { useCollections } from "../../queries";
 
+/** A stored permission row, as far as this matrix needs to read one. `fields`
+ *  and `condition` are what separate "full access" from a narrowed grant, so
+ *  both are fetched — deciding on `condition` alone would call a row with a
+ *  field allow-list unrestricted. */
+interface StoredPermission {
+  id: string;
+  collection: string;
+  action: string;
+  fields: string[] | null;
+  condition: unknown;
+}
+
 const persistMatrixCell = async (
   roleName: string,
   collection: string,
@@ -38,7 +50,7 @@ const persistMatrixCell = async (
   const role = rolesRes.data.find((r) => r.name === roleName);
   if (!role) throw new Error(`Role "${roleName}" not found`);
 
-  const perms = await api<{ data: { id: string; collection: string; action: string }[] }>(
+  const perms = await api<{ data: StoredPermission[] }>(
     `/api/roles/${role.id}/permissions`,
   );
   const existing = perms.data.find(
@@ -46,7 +58,9 @@ const persistMatrixCell = async (
   );
 
   if (state === "all") {
-    // Unrestricted: ensure a row with no condition exists.
+    // Already unrestricted — a row with neither a condition nor a field
+    // allow-list IS full access, so rewriting it would only churn its id.
+    if (existing && existing.condition == null && existing.fields == null) return;
     if (existing) {
       await api(`/api/permissions/${existing.id}`, { method: "DELETE" });
     }
@@ -70,8 +84,12 @@ const persistMatrixCell = async (
     return;
   }
 
-  // 'custom' — leave a row with a placeholder condition; the ConditionEditor
-  // overwrites the actual rule on save.
+  // 'custom' — a row already carrying a condition is left exactly as it is.
+  // The operator asked to EDIT the rule, and re-POSTing the starter condition
+  // here would silently throw away whatever was stored before the editor ever
+  // opened. Only a cell that has no rule yet gets the starter one, so the
+  // ConditionEditor opens on something rather than on nothing.
+  if (existing && existing.condition != null) return;
   if (existing) {
     await api(`/api/permissions/${existing.id}`, { method: "DELETE" });
   }
@@ -86,6 +104,12 @@ const persistMatrixCell = async (
   });
 };
 
+/**
+ * Every action this matrix renders a column for. It is also the complete set
+ * the permission DSL knows — `Action` in `@backlex/core` is
+ * `read | create | update | delete | publish` — so a row seeded from this list
+ * can hold anything the server might have stored against a collection.
+ */
 const PM_ACTIONS = [
   { v: "create", label: "C", title: "Create" },
   { v: "read", label: "R", title: "Read" },
@@ -98,11 +122,27 @@ type CellState = "all" | "none" | "custom";
 
 type Matrix = Record<string, Record<string, Record<string, CellState>>>;
 
+/**
+ * A row with every action set to one state.
+ *
+ * Seeded from {@link PM_ACTIONS} rather than a hand-written CRUD literal,
+ * because the read-back below only keeps actions the row already carries. With
+ * a CRUD-only seed a stored `publish` grant was dropped on the way in: the
+ * Publish column was rendered, the grant behind it was invisible, and setting
+ * that cell to "no access" changed nothing an operator could see. Anything the
+ * UI offers a column for has to survive the round trip.
+ */
+function uniformRow(state: CellState): Record<string, CellState> {
+  const row: Record<string, CellState> = {};
+  for (const a of PM_ACTIONS) row[a.v] = state;
+  return row;
+}
+
 function defaultRow(roleName: string): Record<string, CellState> {
-  if (roleName === "admin") return { create: "all", read: "all", update: "all", delete: "all" };
-  if (roleName === "public") return { create: "none", read: "none", update: "none", delete: "none" };
-  if (roleName === "authenticated") return { create: "none", read: "none", update: "none", delete: "none" };
-  return { create: "none", read: "none", update: "none", delete: "none" };
+  // `admin` bypasses the permission tables entirely, so its row reads full
+  // before any row is fetched; every other role starts denied and only opens
+  // up where a stored permission says so.
+  return uniformRow(roleName === "admin" ? "all" : "none");
 }
 
 function emptyMatrix(roles: RoleData[], collections: string[]): Matrix {
@@ -117,13 +157,18 @@ function emptyMatrix(roles: RoleData[], collections: string[]): Matrix {
   return out;
 }
 
-function cellSummary(state: CellState, action: string, collection: string) {
+/**
+ * The cell's tooltip. It used to invent a rule per action — "Where owner_id =
+ * $user.id", and a `status = "published"` clause for any collection named
+ * `posts` — none of which was read from the stored condition. A tooltip that
+ * states a rule the server may not hold is worse than one that states none, so
+ * the conditional case now says only what is certainly true and points at the
+ * editor that does show the real thing.
+ */
+function cellSummary(state: CellState) {
   if (state === "all") return "Full access — no condition.";
   if (state === "none") return "No access — denied for this role.";
-  if (action === "read") return collection === "posts" ? 'Where status = "published" OR owner_id = $user.id' : "Where owner_id = $user.id";
-  if (action === "create") return "Stamps owner_id = $user.id on insert";
-  if (action === "update") return 'Where owner_id = $user.id AND status ≠ "archived"';
-  return "Where owner_id = $user.id";
+  return "Conditional — open the rule builder to see the stored rule.";
 }
 
 function CellGlyph({ state }: { state: CellState }) {
@@ -194,7 +239,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       roles.map(async (r) => {
         if (r.name === "admin") return [r.name, null] as const;
         try {
-          const res = await api<{ data: { collection: string; action: string; condition: unknown }[] }>(
+          const res = await api<{ data: StoredPermission[] }>(
             `/api/roles/${r.id}/permissions`,
           );
           return [r.name, res.data ?? []] as const;
@@ -209,14 +254,19 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
         next[roleName] = {};
         for (const c of collections) {
           if (roleName === "admin") {
-            next[roleName][c] = { create: "all", read: "all", update: "all", delete: "all" };
+            next[roleName][c] = uniformRow("all");
             continue;
           }
-          const row: Record<string, CellState> = { create: "none", read: "none", update: "none", delete: "none" };
+          const row = uniformRow("none");
           for (const p of rows ?? []) {
             if (p.collection !== c) continue;
+            // The seed holds every action the matrix has a column for, so this
+            // only skips an action a newer server stored that this build has
+            // nowhere to show — never one the operator can see and click.
             if (!(p.action in row)) continue;
-            row[p.action] = p.condition == null ? "all" : "custom";
+            // A field allow-list narrows the grant just as a condition does,
+            // so a row carrying one reads as conditional rather than full.
+            row[p.action] = p.condition == null && p.fields == null ? "all" : "custom";
           }
           next[roleName][c] = row;
         }
@@ -324,7 +374,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                   <button
                     type="button"
                     className={cellCls}
-                    title={cellSummary(state, a.v, c)}
+                    title={cellSummary(state)}
                     aria-label={t`${activeRole} · ${a.title} · ${c}: ${state}`}
                   >
                     <CellGlyph state={isAdmin ? "all" : state} />

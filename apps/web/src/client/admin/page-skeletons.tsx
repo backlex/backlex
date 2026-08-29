@@ -998,12 +998,15 @@ function ApiKeysSkeletonImpl() {
   );
 }
 
-/** Settings — header, tab strip, then a stack of settings cards. */
+/** Settings — header, tab strip, then a stack of settings cards. The strip is
+ *  ten wide: Workspace / General / Appearance / Email / Push / SMS / AI /
+ *  Bindings / Environment / About. It stood at six while the page had ten, so
+ *  the strip visibly grew as the page took over from the skeleton. */
 function SettingsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
-      <TabStripSkeleton tabs={6} />
+      <TabStripSkeleton tabs={10} />
       {Array.from({ length: 3 }).map((_, i) => (
         <CardSkeleton key={i} lines={5} />
       ))}
@@ -1011,13 +1014,13 @@ function SettingsSkeletonImpl() {
   );
 }
 
-/** Account — header, a 4-tab strip (Profile / Security / Sessions /
- *  Connected), then the default tab's `max-w-3xl` card. */
+/** Account — header, a 5-tab strip (Profile / Preferences / Security /
+ *  Sessions / Connected), then the default tab's `max-w-3xl` card. */
 function AccountSkeletonImpl() {
   return (
     <div className="flex flex-col gap-5">
       <HeaderSkeleton actions={0} />
-      <TabStripSkeleton tabs={4} />
+      <TabStripSkeleton tabs={5} />
       <CardSkeleton lines={6} className="max-w-3xl" />
     </div>
   );
@@ -1067,6 +1070,9 @@ function CollectionItemsSkeletonImpl() {
     <div className="flex flex-col gap-4.5">
       <Skeleton className="h-8 w-32" />
       <HeaderSkeleton actions={3} />
+      {/* Three, not four: Items / Schema / Settings always render, while the
+          KPIs tab appears only for a collection that has any — and which
+          collection this is has not been fetched yet. */}
       <TabStripSkeleton tabs={3} />
       {/* Single column: the live-tail widget is hidden by default, so the real
           page renders one column (the 320px right panel only appears when the
@@ -1116,13 +1122,13 @@ function OpenApiSkeletonImpl() {
   );
 }
 
-/** Access (roles & permissions) — header, a Members / Roles & permissions
- *  tab strip, then the roles + members tables. */
+/** Access — header, a Members / Roles & permissions / Tester tab strip, then
+ *  the roles + members tables. */
 function AccessSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={0} />
-      <TabStripSkeleton tabs={2} />
+      <TabStripSkeleton tabs={3} />
       <TableCardSkeleton rows={5} cols={4} />
       <TableCardSkeleton rows={6} cols={5} />
     </div>

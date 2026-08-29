@@ -282,6 +282,12 @@ msgstr "(unnamed)"
 msgid "(use the configured default)"
 msgstr "(use the configured default)"
 
+#. placeholder {0}: r.rule
+#. placeholder {1}: r.opaque.length
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "{0} · {1} kept as written"
+msgstr "{0} · {1} kept as written"
+
 #. placeholder {0}: s.ip
 #. placeholder {1}: s.last
 #: src/client/admin/pages/access/users.tsx
@@ -298,8 +304,8 @@ msgstr "{0} {1} queued for {target}/."
 #. placeholder {1}: ids.length
 #. placeholder {2}: ids.length === 1 ? "" : "s"
 #: src/client/admin/pages/access/users.tsx
-msgid "{0} {1} user{2}."
-msgstr "{0} {1} user{2}."
+#~ msgid "{0} {1} user{2}."
+#~ msgstr "{0} {1} user{2}."
 
 #. placeholder {0}: h.name
 #. placeholder {1}: next ? t`resumed` : t`paused`
@@ -318,7 +324,7 @@ msgstr "{0} / {1} complete"
 msgid "{0} activated."
 msgstr "{0} activated."
 
-#. placeholder {0}: user.sessions
+#. placeholder {0}: sessions.length
 #. placeholder {0}: users.filter((u) => u.status === "active").length
 #: src/client/admin/pages/access/users.tsx
 msgid "{0} active"
@@ -799,8 +805,8 @@ msgstr "{0} suspended."
 #. placeholder {0}: roles.filter((r) => r.system).length
 #. placeholder {1}: roles.filter((r) => !r.system).length
 #: src/client/admin/app.tsx
-msgid "{0} system · {1} custom"
-msgstr "{0} system · {1} custom"
+#~ msgid "{0} system · {1} custom"
+#~ msgstr "{0} system · {1} custom"
 
 #. placeholder {0}: grouped.length
 #: src/client/pages/rest-explorer.tsx
@@ -941,8 +947,8 @@ msgid "{activeRole} · {0} · {c}: {state}"
 msgstr "{activeRole} · {0} · {c}: {state}"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "{allowedReadCount} readable · {allowedWriteCount} writable"
-msgstr "{allowedReadCount} readable · {allowedWriteCount} writable"
+#~ msgid "{allowedReadCount} readable · {allowedWriteCount} writable"
+#~ msgstr "{allowedReadCount} readable · {allowedWriteCount} writable"
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "{allowlistSize} of {totalTools} tools enabled."
@@ -990,6 +996,10 @@ msgstr "{failures} failed deliveries in a row"
 msgid "{folder}/<derived>"
 msgstr "{folder}/<derived>"
 
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "{holders} workspace member(s) hold this role and lose whatever it granted. Its permission rows are deleted with it."
+msgstr "{holders} workspace member(s) hold this role and lose whatever it granted. Its permission rows are deleted with it."
+
 #: src/client/admin/pages/observability/websites.tsx
 msgid "{ipCount} of {MAX_LIST_ENTRIES} addresses"
 msgstr "{ipCount} of {MAX_LIST_ENTRIES} addresses"
@@ -1022,6 +1032,10 @@ msgstr "{label} payment link"
 msgid "{label} refund"
 msgstr "{label} refund"
 
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "{loadError} — nothing is shown rather than a made-up rule, because saving one would replace whatever the server currently holds."
+msgstr "{loadError} — nothing is shown rather than a made-up rule, because saving one would replace whatever the server currently holds."
+
 #: src/client/admin/pages/observability/consent.tsx
 msgid "{maxAge} days"
 msgstr "{maxAge} days"
@@ -1029,6 +1043,18 @@ msgstr "{maxAge} days"
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "{name} deliveries"
 msgstr "{name} deliveries"
+
+#. placeholder {0}: ids.length
+#. placeholder {1}: ids.length === 1 ? "" : "s"
+#: src/client/admin/pages/access/users.tsx
+msgid "{past} {0} user{1}."
+msgstr "{past} {0} user{1}."
+
+#. placeholder {0}: ids.length
+#. placeholder {1}: (failure.reason as Error).message
+#: src/client/admin/pages/access/users.tsx
+msgid "{past} {done} of {0} — {1}"
+msgstr "{past} {done} of {0} — {1}"
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "{pathCount} of {MAX_LIST_ENTRIES} paths"
@@ -1109,6 +1135,10 @@ msgstr "{skipped} cells skipped (read-only or invalid value)."
 msgid "{slugClean} already exists"
 msgstr "{slugClean} already exists"
 
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "{systemCount} system · {customCount} custom"
+msgstr "{systemCount} system · {customCount} custom"
+
 #. placeholder {0}: schemaState.fields.length
 #: src/client/admin/app.tsx
 msgid "{total} rows · {0} fields"
@@ -1117,6 +1147,11 @@ msgstr "{total} rows · {0} fields"
 #: src/client/admin/pages/observability/logs.tsx
 msgid "{totalCount} total"
 msgstr "{totalCount} total"
+
+#. placeholder {0}: fields.length
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "{visibleCount} of {0} readable"
+msgstr "{visibleCount} of {0} readable"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "* (all collections)"
@@ -1145,8 +1180,8 @@ msgid "+ lines"
 msgstr "+ lines"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "+ preset"
-msgstr "+ preset"
+#~ msgid "+ preset"
+#~ msgstr "+ preset"
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "+ variants"
@@ -1183,12 +1218,12 @@ msgstr "<0>Snapshots</0> are immutable checkpoints of your schema. Capture the l
 
 #. placeholder {0}: testResult.ms
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "✓ passes · {0}ms"
-msgstr "✓ passes · {0}ms"
+#~ msgid "✓ passes · {0}ms"
+#~ msgstr "✓ passes · {0}ms"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "✗ denied"
-msgstr "✗ denied"
+#~ msgid "✗ denied"
+#~ msgstr "✗ denied"
 
 #. placeholder {0}: modelLabel(MANAGED_DEFAULT_MODEL)
 #: src/client/admin/pages/automation/agents.tsx
@@ -1509,6 +1544,10 @@ msgstr "A refund request counts as billing."
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 msgstr "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "A role's own permissions apply to every collection. The matrix below narrows or widens them one collection at a time."
+msgstr "A role's own permissions apply to every collection. The matrix below narrows or widens them one collection at a time."
 
 #: src/client/admin/pages/automation/chat.tsx
 msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
@@ -2115,7 +2154,7 @@ msgstr "Add provider"
 msgid "Add question"
 msgstr "Add question"
 
-#: src/client/admin/app.tsx
+#: src/client/admin/pages/access/roles-panel.tsx
 msgid "Add role"
 msgstr "Add role"
 
@@ -2646,7 +2685,7 @@ msgstr "An end-user who can administer the org from your app. You can add one la
 msgid "An expiry writes this one too."
 msgstr "An expiry writes this one too."
 
-#. placeholder {0}: created.email
+#. placeholder {0}: invite.email
 #: src/client/admin/pages/access/users.tsx
 msgid "An invite email was sent to <0>{0}</0>. You can also share the link directly:"
 msgstr "An invite email was sent to <0>{0}</0>. You can also share the link directly:"
@@ -3833,6 +3872,10 @@ msgstr "By p95 over {0} recorded span(s). Counts are spans seen, never extrapola
 msgid "bypass — read-only"
 msgstr "bypass — read-only"
 
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "bypasses every permission check"
+msgstr "bypasses every permission check"
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "c_{target} is empty."
 msgstr "c_{target} is empty."
@@ -4789,12 +4832,16 @@ msgid "Compiled rule"
 msgstr "Compiled rule"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Compiled SQL"
-msgstr "Compiled SQL"
+#~ msgid "Compiled SQL"
+#~ msgstr "Compiled SQL"
 
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Compiled WHERE"
 msgstr "Compiled WHERE"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Compiled WHERE clause"
+msgstr "Compiled WHERE clause"
 
 #: src/client/admin/pages/automation/jobs.tsx
 #: src/client/admin/pages/data/booking/index.tsx
@@ -4816,6 +4863,10 @@ msgstr "Computing diff"
 #: src/client/admin/pages/automation/feature-flags.tsx
 msgid "Condition (permission DSL JSON, optional)"
 msgstr "Condition (permission DSL JSON, optional)"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Condition DSL"
+msgstr "Condition DSL"
 
 #: src/client/admin/pages/automation/feature-flags.tsx
 msgid "Condition must be valid JSON."
@@ -5224,8 +5275,8 @@ msgid "Copy id"
 msgstr "Copy id"
 
 #: src/client/admin/pages/access/users.tsx
-msgid "Copy invite link"
-msgstr "Copy invite link"
+#~ msgid "Copy invite link"
+#~ msgstr "Copy invite link"
 
 #: src/client/admin/parity/booking.tsx
 #~ msgid "Copy it now. Only its hash is stored, so nothing can show it again — \"New link\" mints a replacement and kills this one."
@@ -5372,6 +5423,10 @@ msgstr "Could not publish."
 #: src/client/admin/pages/data/booking/parts.tsx
 msgid "Could not reach the clipboard — select the link and copy it."
 msgstr "Could not reach the clipboard — select the link and copy it."
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Could not read the stored rule"
+msgstr "Could not read the stored rule"
 
 #: src/client/admin/pages/observability/consent.tsx
 #~ msgid "Could not remove the policy."
@@ -6190,12 +6245,12 @@ msgid "Default value <0>(optional)</0>"
 msgstr "Default value <0>(optional)</0>"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Default values applied on create. The user cannot override these — they are stamped server-side after validation."
-msgstr "Default values applied on create. The user cannot override these — they are stamped server-side after validation."
+#~ msgid "Default values applied on create. The user cannot override these — they are stamped server-side after validation."
+#~ msgstr "Default values applied on create. The user cannot override these — they are stamped server-side after validation."
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "defaults"
-msgstr "defaults"
+#~ msgid "defaults"
+#~ msgstr "defaults"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Defaults to the dashboard's name and today's date."
@@ -6352,6 +6407,15 @@ msgstr "Delete panel"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Delete resource"
 msgstr "Delete resource"
+
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "Delete role"
+msgstr "Delete role"
+
+#. placeholder {0}: deleting?.name ?? ""
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "Delete role \"{0}\"?"
+msgstr "Delete role \"{0}\"?"
 
 #: src/client/admin/pages/automation/chat.tsx
 msgid "Delete room"
@@ -7075,7 +7139,6 @@ msgstr "Earliest"
 msgid "edit"
 msgstr "edit"
 
-#: src/client/admin/app.tsx
 #: src/client/admin/collections/item-form.tsx
 #: src/client/admin/collections/items.tsx
 #: src/client/admin/pages/automation/agents.tsx
@@ -7180,6 +7243,10 @@ msgstr "Edit raw DSL. Click Builder to round-trip back to visual."
 #: src/client/admin/parity/booking.tsx
 #~ msgid "Edit resource"
 #~ msgstr "Edit resource"
+
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "Edit role"
+msgstr "Edit role"
 
 #: src/client/admin/pages/access/permissions-matrix.tsx
 msgid "Edit rule"
@@ -7738,7 +7805,7 @@ msgstr "Error handling"
 msgid "Error rate"
 msgstr "Error rate"
 
-#. placeholder {0}: testResult.error
+#. placeholder {0}: previewResult.error
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "error: {0}"
 msgstr "error: {0}"
@@ -7761,6 +7828,10 @@ msgstr "Errors · {0}"
 #: src/client/admin/pages/observability/traces.tsx
 msgid "Errors only"
 msgstr "Errors only"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Evaluated in your browser against the rule as it stands here — not a request, and not proof of what the server will do. Dynamic variables are stubbed: <0>$user.id</0> is <1>usr_preview</1>. Use the Permission tester for a real decision from the server."
+msgstr "Evaluated in your browser against the rule as it stands here — not a request, and not proof of what the server will do. Dynamic variables are stubbed: <0>$user.id</0> is <1>usr_preview</1>. Use the Permission tester for a real decision from the server."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
@@ -8317,7 +8388,6 @@ msgstr "Field permissions"
 msgid "Field type"
 msgstr "Field type"
 
-#: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "field…"
 msgstr "field…"
@@ -9048,6 +9118,10 @@ msgstr "Good direction"
 msgid "Google documents its origins against script-src-elem. If your site sets that directive explicitly, add them there too."
 msgstr "Google documents its origins against script-src-elem. If your site sets that directive explicitly, add them there too."
 
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "Got it"
+msgstr "Got it"
+
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr "goto"
@@ -9225,8 +9299,12 @@ msgid "Hide"
 msgstr "Hide"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Hide compiled SQL"
-msgstr "Hide compiled SQL"
+#~ msgid "Hide compiled SQL"
+#~ msgstr "Hide compiled SQL"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Hide compiled WHERE"
+msgstr "Hide compiled WHERE"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Hide from the sidebar and the Collections page (\"Show hidden\" reveals it). Purely visual — API access and permissions are unaffected."
@@ -9617,8 +9695,8 @@ msgid "Includes {0} sample rows to explore — removable in one click later"
 msgstr "Includes {0} sample rows to explore — removable in one click later"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
-msgstr "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
+#~ msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
+#~ msgstr "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Index a Drive folder's files as a collection. Metadata only."
@@ -9835,8 +9913,14 @@ msgstr "Invite not found"
 msgid "Invite only"
 msgstr "Invite only"
 
+#: src/client/admin/pages/access/users.tsx
+msgid "Invite re-sent"
+msgstr "Invite re-sent"
+
 #. placeholder {0}: m.email
+#. placeholder {0}: u.email
 #: src/client/admin/pages/access/members-panel.tsx
+#: src/client/admin/pages/access/users.tsx
 msgid "Invite re-sent to {0}."
 msgstr "Invite re-sent to {0}."
 
@@ -10063,6 +10147,10 @@ msgstr "Items refreshed."
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Its panels, field editors, and hooks stop working immediately. Fields using its editors fall back to the default editor for their type. This can't be undone — reinstall to bring it back."
 msgstr "Its panels, field editors, and hooks stop working immediately. Fields using its editors fall back to the default editor for their type. This can't be undone — reinstall to bring it back."
+
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "Its permission rows go with it, and anyone still holding it loses whatever it granted. How many members hold it could not be read just now."
+msgstr "Its permission rows go with it, and anyone still holding it loses whatever it granted. How many members hold it could not be read just now."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Its rules and its public link go with it. A resource with upcoming bookings is refused — cancel or move those first."
@@ -10409,8 +10497,8 @@ msgid "Last 24 hours"
 msgstr "Last 24 hours"
 
 #: src/client/admin/pages/access/users.tsx
-msgid "last 30 days"
-msgstr "last 30 days"
+#~ msgid "last 30 days"
+#~ msgstr "last 30 days"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Last 30 days"
@@ -11651,6 +11739,10 @@ msgstr "More save options"
 msgid "Morning"
 msgstr "Morning"
 
+#: src/client/admin/pages/access/users.tsx
+msgid "most recent"
+msgstr "most recent"
+
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/pages/data/forms/block-panel.tsx
 #: src/client/admin/pages/data/forms/index.tsx
@@ -12273,6 +12365,10 @@ msgstr "No active devices for your account. Register one from a client app to re
 msgid "No active sessions."
 msgstr "No active sessions."
 
+#: src/client/admin/pages/access/users.tsx
+msgid "No active workspace — cannot resend this invite."
+msgstr "No active workspace — cannot resend this invite."
+
 #: src/client/admin/pages/access/members-panel.tsx
 msgid "No active workspace."
 msgstr "No active workspace."
@@ -12540,7 +12636,7 @@ msgstr "No editable fields. Add columns from the Schema tab to capture data on t
 msgid "No email service configured — share this link with {0}:"
 msgstr "No email service configured — share this link with {0}:"
 
-#. placeholder {0}: created.email
+#. placeholder {0}: invite.email
 #: src/client/admin/pages/access/users.tsx
 msgid "No email service is configured, so nothing was sent to <0>{0}</0> — share this link with them directly:"
 msgstr "No email service is configured, so nothing was sent to <0>{0}</0> — share this link with them directly:"
@@ -12924,6 +13020,10 @@ msgstr "No queries."
 msgid "No questions — the page asks only for name, email and phone."
 msgstr "No questions — the page asks only for name, email and phone."
 
+#: src/client/admin/pages/access/users.tsx
+msgid "No recent activity."
+msgstr "No recent activity."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "No referrers in this window."
 msgstr "No referrers in this window."
@@ -12940,6 +13040,10 @@ msgstr "No relation-typed fields detected. Add a field with type <0>relation</0>
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "No request spans recorded in the last {0} day(s) — the traffic-derived rules had nothing to measure."
 msgstr "No request spans recorded in the last {0} day(s) — the traffic-derived rules had nothing to measure."
+
+#: src/client/admin/pages/access/users.tsx
+msgid "No reset link could be sent."
+msgstr "No reset link could be sent."
 
 #: src/client/pages/rest-explorer.tsx
 msgid "No responses defined."
@@ -12962,6 +13066,7 @@ msgid "No roles found."
 msgstr "No roles found."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
+#: src/client/admin/pages/access/roles-panel.tsx
 msgid "No roles in this workspace yet."
 msgstr "No roles in this workspace yet."
 
@@ -13025,6 +13130,10 @@ msgstr "No SAML providers configured. Operators will sign in with email/password
 #: src/client/pages/rest-explorer.tsx
 msgid "No schema."
 msgstr "No schema."
+
+#: src/client/admin/pages/access/users.tsx
+msgid "No selected account has a password for backlex to reset."
+msgstr "No selected account has a password for backlex to reset."
 
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "No selection — any file type is accepted."
@@ -13185,6 +13294,10 @@ msgstr "No websites registered"
 #: src/client/admin/fields/field-translations-editor.tsx
 msgid "No workspace locales configured — add them under Settings → Localization."
 msgstr "No workspace locales configured — add them under Settings → Localization."
+
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "No workspace member holds this role. Its permission rows are deleted with it."
+msgstr "No workspace member holds this role. Its permission rows are deleted with it."
 
 #: src/client/admin/pages/settings/workspace-card.tsx
 msgid "No workspace to configure"
@@ -13441,6 +13554,10 @@ msgstr "Nothing is removed at this step — the preview only counts."
 #: src/client/admin/app.tsx
 msgid "Nothing is routed at <0>{0}</0>. It may have been renamed, or the link may be out of date."
 msgstr "Nothing is routed at <0>{0}</0>. It may have been renamed, or the link may be out of date."
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Nothing is stored for this combination yet. The rule below is a starting suggestion; it is not in effect until you save."
+msgstr "Nothing is stored for this combination yet. The rule below is a starting suggestion; it is not in effect until you save."
 
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "Nothing is waiting on anybody"
@@ -14642,8 +14759,8 @@ msgid "Per minute"
 msgstr "Per minute"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
-msgstr "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
+#~ msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
+#~ msgstr "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
 
 #: src/client/admin/field-format-editor.tsx
 #~ msgid "Percent"
@@ -15317,8 +15434,8 @@ msgid "presence"
 msgstr "presence"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Presets"
-msgstr "Presets"
+#~ msgid "Presets"
+#~ msgstr "Presets"
 
 #: src/client/admin/app.tsx
 msgid "Prev"
@@ -15342,6 +15459,10 @@ msgstr "Preview"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Preview · {0} rows · {1}ms"
 msgstr "Preview · {0} rows · {1}ms"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Preview against a row"
+msgstr "Preview against a row"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Preview error"
@@ -15859,6 +15980,10 @@ msgstr "Rate/min"
 msgid "Raw"
 msgstr "Raw"
 
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "Re-check every role created here before today"
+msgstr "Re-check every role created here before today"
+
 #. placeholder {0}: res.refreshed.checked
 #. placeholder {1}: labelFor(row.provider)
 #: src/client/admin/pages/automation/payments.tsx
@@ -15912,8 +16037,8 @@ msgid "reactivated"
 msgstr "reactivated"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Read"
-msgstr "Read"
+#~ msgid "Read"
+#~ msgstr "Read"
 
 #: src/client/pages/api-keys.tsx
 msgid "Read & write"
@@ -15994,6 +16119,14 @@ msgstr "read-only SELECT against the workspace database"
 #: src/client/admin/pages/data/storage/s3-card.tsx
 msgid "read-write"
 msgstr "read-write"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "readable"
+msgstr "readable"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Readable"
+msgstr "Readable"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Reading files…"
@@ -16462,7 +16595,6 @@ msgstr "reminded {0}"
 #: src/client/admin/collections/collection-settings.tsx
 #: src/client/admin/collections/item-editor.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
-#: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/access/rls-card.tsx
 #: src/client/admin/pages/account-page.tsx
@@ -16816,6 +16948,10 @@ msgstr "Resend"
 msgid "Resend invitation"
 msgstr "Resend invitation"
 
+#: src/client/admin/pages/access/users.tsx
+msgid "Resend invite"
+msgstr "Resend invite"
+
 #: src/client/pages/sign-in.tsx
 msgid "Resend verification email"
 msgstr "Resend verification email"
@@ -16845,14 +16981,25 @@ msgstr "Reset link sent"
 #. placeholder {0}: selected.size
 #. placeholder {1}: selected.size === 1 ? "" : "s"
 #: src/client/admin/pages/access/users.tsx
-msgid "Reset link sent to {0} user{1}."
-msgstr "Reset link sent to {0} user{1}."
+#~ msgid "Reset link sent to {0} user{1}."
+#~ msgstr "Reset link sent to {0} user{1}."
 
 #. placeholder {0}: u.email
 #. placeholder {0}: user.email
 #: src/client/admin/pages/access/users.tsx
 msgid "Reset link sent to {0}."
 msgstr "Reset link sent to {0}."
+
+#. placeholder {0}: targets.length
+#. placeholder {1}: (failure.reason as Error).message
+#: src/client/admin/pages/access/users.tsx
+msgid "Reset link sent to {sent} of {0} — {1}"
+msgstr "Reset link sent to {sent} of {0} — {1}"
+
+#. placeholder {0}: sent === 1 ? "" : "s"
+#: src/client/admin/pages/access/users.tsx
+msgid "Reset link sent to {sent} user{0}."
+msgstr "Reset link sent to {sent} user{0}."
 
 #: src/client/admin/pages/access/users.tsx
 msgid "Reset password"
@@ -17204,17 +17351,22 @@ msgid "Role"
 msgstr "Role"
 
 #. placeholder {0}: data.name
-#: src/client/admin/app.tsx
+#: src/client/admin/pages/access/roles-panel.tsx
 msgid "Role \"{0}\" already exists."
 msgstr "Role \"{0}\" already exists."
 
 #. placeholder {0}: data.name
-#: src/client/admin/app.tsx
+#: src/client/admin/pages/access/roles-panel.tsx
 msgid "Role \"{0}\" created."
 msgstr "Role \"{0}\" created."
 
+#. placeholder {0}: role.name
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "Role \"{0}\" deleted."
+msgstr "Role \"{0}\" deleted."
+
 #. placeholder {0}: data.name
-#: src/client/admin/app.tsx
+#: src/client/admin/pages/access/roles-panel.tsx
 msgid "Role \"{0}\" saved."
 msgstr "Role \"{0}\" saved."
 
@@ -17223,7 +17375,7 @@ msgstr "Role \"{0}\" saved."
 msgid "role: {0}"
 msgstr "role: {0}"
 
-#: src/client/admin/app.tsx
+#: src/client/admin/pages/access/roles-panel.tsx
 msgid "roles"
 msgstr "roles"
 
@@ -17321,9 +17473,17 @@ msgstr "Row data"
 msgid "Row data must be valid JSON."
 msgstr "Row data must be valid JSON."
 
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "row does not match"
+msgstr "row does not match"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Row id"
 msgstr "Row id"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "row matches the rule"
+msgstr "row matches the rule"
 
 #: src/client/admin/collections/item-editor.tsx
 msgid "Row put back in play."
@@ -17469,6 +17629,7 @@ msgstr "Run it again"
 msgid "Run now"
 msgstr "Run now"
 
+#: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Run preview"
 msgstr "Run preview"
@@ -17485,7 +17646,6 @@ msgstr "Run re-queued — the copy continues where it stopped."
 msgid "Run read-only MCP tools (query collections, schema, search)"
 msgstr "Run read-only MCP tools (query collections, schema, search)"
 
-#: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 msgid "Run test"
 msgstr "Run test"
@@ -17599,6 +17759,10 @@ msgstr "Sample data must be valid JSON."
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Sample event payload"
 msgstr "Sample event payload"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Sample row"
+msgstr "Sample row"
 
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "Sample row (optional JSON)"
@@ -17851,6 +18015,7 @@ msgstr "saving…"
 #: src/client/admin/collections/item-editor.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/app-users.tsx
+#: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/agents.tsx
 #: src/client/admin/pages/automation/feature-flags.tsx
@@ -18869,6 +19034,10 @@ msgstr "Showing the first {MAX_HITS} — narrow the search to see the rest."
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 msgstr "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Showing the rule stored for this role, action and collection."
+msgstr "Showing the rule stored for this role, action and collection."
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Shown as a \"read the full text\" link next to the checkbox."
 msgstr "Shown as a \"read the full text\" link next to the checkbox."
@@ -19674,6 +19843,10 @@ msgstr "Stored encrypted. It has no read-back path."
 msgid "stored objects"
 msgstr "stored objects"
 
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Stored on this rule, but only read, create and update consult the list; it does not change what {action} does."
+msgstr "Stored on this rule, but only read, create and update consult the list; it does not change what {action} does."
+
 #: src/client/admin/pages/automation/agents.tsx
 msgid "Stored without an embedding — not recalled by similarity."
 msgstr "Stored without an embedding — not recalled by similarity."
@@ -19948,9 +20121,9 @@ msgstr "Sync stopped: {0}"
 msgid "Synced {0} records from {1}."
 msgstr "Synced {0} records from {1}."
 
-#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/access/permissions-matrix.tsx
+#: src/client/admin/pages/access/roles-panel.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "system"
@@ -20148,8 +20321,8 @@ msgid "Test a token"
 msgstr "Test a token"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Test against an item"
-msgstr "Test against an item"
+#~ msgid "Test against an item"
+#~ msgstr "Test against an item"
 
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "Test assertion"
@@ -20536,6 +20709,10 @@ msgstr "The physical table is dropped. It holds no rows, so no data is lost."
 msgid "The physical table is dropped. It holds no rows, so no data is lost. Permissions, revisions, and webhooks tied to this collection are removed too."
 msgstr "The physical table is dropped. It holds no rows, so no data is lost. Permissions, revisions, and webhooks tied to this collection are removed too."
 
+#: src/client/admin/pages/access/users.tsx
+msgid "The previous link no longer works. This one is valid for 7 days."
+msgstr "The previous link no longer works. This one is valid for 7 days."
+
 #: src/client/admin/pages/automation/payments.tsx
 msgid "the provider has not decided this refund"
 msgstr "the provider has not decided this refund"
@@ -20823,6 +21000,10 @@ msgstr "this collection"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "This collection has no fields yet."
+msgstr "This collection has no fields yet."
+
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
@@ -20902,6 +21083,10 @@ msgstr "This domain is already registered in this workspace. Open that site inst
 #: src/client/admin/pages/observability/websites.tsx
 #~ msgid "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
 #~ msgstr "This domain is already registered. Adding it twice is allowed, but only the snippet you install will report."
+
+#: src/client/admin/pages/access/roles-panel.tsx
+msgid "This editor used to display a full permission matrix and save none of it. A role created that way holds no permission rows at all, so every request made under it is denied. Open each custom role, set the access it should have, and save — this screen now writes what it shows."
+msgstr "This editor used to display a full permission matrix and save none of it. A role created that way holds no permission rows at all, so every request made under it is denied. Open each custom role, set the access it should have, and save — this screen now writes what it shows."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "This form is closed."
@@ -21010,6 +21195,10 @@ msgstr "This period ends at"
 msgid "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
 msgstr "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
 
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "This permission is saved with no condition — every row matches. Add conditions to narrow it."
+msgstr "This permission is saved with no condition — every row matches. Add conditions to narrow it."
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "This plan failed validation — review or edit the args before running."
 msgstr "This plan failed validation — review or edit the args before running."
@@ -21039,6 +21228,10 @@ msgstr "This request is decided in order — the next person is asked once you a
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
 msgstr "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "This role may only send the checked fields — a payload touching any other is refused with \"No permission to write field\"."
+msgstr "This role may only send the checked fields — a payload touching any other is refused with \"No permission to write field\"."
 
 #: src/client/admin/pages/automation/chat.tsx
 msgid "this room"
@@ -21518,6 +21711,7 @@ msgstr "Try a different slug or group."
 msgid "Try a wider time range or clear the level filter."
 msgstr "Try a wider time range or clear the level filter."
 
+#: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/consent.tsx
 #: src/client/admin/pages/observability/websites.tsx
@@ -21687,6 +21881,10 @@ msgstr "unbound"
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "unchanged"
 msgstr "unchanged"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "Unchecked fields are stripped from this role's API responses."
+msgstr "Unchecked fields are stripped from this role's API responses."
 
 #: src/client/admin/app.tsx
 msgid "undo"
@@ -22146,7 +22344,6 @@ msgstr "valid"
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/fields/field-validation-editor.tsx
-#: src/client/admin/pages/access/condition-editor.tsx
 msgid "Validation"
 msgstr "Validation"
 
@@ -22184,7 +22381,6 @@ msgstr "Value must be valid JSON."
 msgid "value of {f}"
 msgstr "value of {f}"
 
-#: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "value or $user.id"
 msgstr "value or $user.id"
@@ -22317,8 +22513,12 @@ msgid "View archived"
 msgstr "View archived"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "View compiled SQL"
-msgstr "View compiled SQL"
+#~ msgid "View compiled SQL"
+#~ msgstr "View compiled SQL"
+
+#: src/client/admin/pages/access/condition-editor.tsx
+msgid "View compiled WHERE"
+msgstr "View compiled WHERE"
 
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "View full"
@@ -22923,12 +23123,12 @@ msgid "wrangler.toml snippet"
 msgstr "wrangler.toml snippet"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "writable"
-msgstr "writable"
+#~ msgid "writable"
+#~ msgstr "writable"
 
 #: src/client/admin/pages/access/condition-editor.tsx
-msgid "Write"
-msgstr "Write"
+#~ msgid "Write"
+#~ msgstr "Write"
 
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Write a comment · ⌘+Enter to send"

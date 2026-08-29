@@ -154,6 +154,12 @@ const passthroughJson = async (
   };
 };
 
+/** A `resources/read` for a URI this server does not host. Its own class so
+ *  the dispatcher can answer `-32602` (invalid params) instead of a generic
+ *  internal error — the distinction matters to a client deciding whether a
+ *  retry could ever help. */
+export class UnknownResourceError extends Error {}
+
 /** Read a resource. Per spec the response is a `contents` array; we always
  *  return one entry so MCP clients render it as a single attachment. */
 export const readResource = async (
@@ -162,7 +168,7 @@ export const readResource = async (
 ): Promise<McpResourceContents> => {
   const parsed = parseUri(uri);
   if (!parsed) {
-    throw new Error(`unknown resource uri: ${uri}`);
+    throw new UnknownResourceError(`unknown resource uri: ${uri}`);
   }
 
   if (parsed.kind === "openapi") {

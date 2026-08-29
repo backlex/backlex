@@ -2,8 +2,9 @@
  * Minimal MCP (Model Context Protocol) types. We hand-roll the JSON-RPC
  * surface instead of pulling in `@modelcontextprotocol/sdk` so the Worker
  * bundle stays small and we keep the same code path under Bun, CF Workers,
- * Vercel, Netlify, and Deno. The spec we target is the
- * `2025-03-26` Streamable HTTP variant in stateless mode.
+ * Vercel, Netlify, and Deno. The revision we target is `2026-07-28` — the
+ * stateless Streamable HTTP transport — while still answering the three
+ * handshake-era revisions before it. `mcp/protocol.ts` owns that split.
  */
 import type { Hono } from "hono";
 import type { Env } from "../env";
@@ -43,13 +44,28 @@ export interface JsonRpcError {
 
 export type JsonRpcResponse = JsonRpcSuccess | JsonRpcError;
 
-/** JSON-RPC error codes (per spec + MCP additions). */
+/** JSON-RPC error codes (per spec + MCP additions).
+ *
+ *  `2026-07-28` partitioned the JSON-RPC server-error range: `-32000`..`-32019`
+ *  stays implementation-defined and `-32020`..`-32099` is reserved for codes
+ *  the MCP specification itself allocates. The three below are that revision's
+ *  allocations — they were renumbered out of the implementation-defined range
+ *  before release, so do not reuse the pre-release values (`-32001`, `-32003`,
+ *  `-32004`) anywhere. */
 export const RPC_ERR = {
   PARSE: -32700,
   INVALID_REQUEST: -32600,
   METHOD_NOT_FOUND: -32601,
   INVALID_PARAMS: -32602,
   INTERNAL: -32603,
+  /** HTTP headers disagree with the request body, or a required standard
+   *  header is missing. Always answered with HTTP 400. */
+  HEADER_MISMATCH: -32020,
+  /** The request needs a client capability the caller did not declare. */
+  MISSING_REQUIRED_CLIENT_CAPABILITY: -32021,
+  /** The caller asked for a revision we do not implement. The error `data`
+   *  carries `{ supported, requested }` so the client can pick another. */
+  UNSUPPORTED_PROTOCOL_VERSION: -32022,
 } as const;
 
 /** MCP tool descriptor. `inputSchema` is JSON Schema; we keep it loose since

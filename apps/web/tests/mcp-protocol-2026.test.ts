@@ -89,9 +89,12 @@ describe("MCP 2026-07-28 — discovery", () => {
     expect(body.result.supportedVersions[0]).toBe(MODERN);
     expect(body.result.supportedVersions).toContain("2025-11-25");
     expect(body.result.capabilities.tools).toBeDefined();
-    // Declared-empty, not omitted: "supports no extensions" and "predates the
-    // field" are different answers.
-    expect(body.result.capabilities.extensions).toEqual({});
+    // Declared rather than omitted: "supports none" and "predates the field"
+    // are different answers, and a client reads the difference. The Tasks
+    // extension is in there now (see `mcp-tasks.test.ts`); what this pins is
+    // that the FIELD is always present.
+    expect(body.result.capabilities.extensions).toBeDefined();
+    expect(typeof body.result.capabilities.extensions).toBe("object");
     expect(typeof body.result.instructions).toBe("string");
   });
 

@@ -28,6 +28,7 @@ import { getPrompt, listPrompts } from "./prompts";
 import { complete } from "./completions";
 import { resolveToolAlias } from "./tool-aliases";
 import { fromWireToolName, toWireToolName } from "./wire-names";
+import { TASKS_EXTENSION, cancelTask, getTask } from "./tasks";
 import {
   CACHE,
   decorateResult,
@@ -91,6 +92,11 @@ const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
 const HANDSHAKE_METHODS = new Set([
   "initialize",
   "server/discover",
+  // Tasks read tenant-scoped run/job rows and can never reach a tool, so the
+  // role-guard join buys nothing here. Tenant scope still applies inside.
+  "tasks/get",
+  "tasks/update",
+  "tasks/cancel",
   "ping",
   "notifications/initialized",
   "notifications/cancelled",
@@ -277,9 +283,9 @@ export const dispatch = async (
             supportedVersions: [...SUPPORTED_PROTOCOL_VERSION_LIST],
             capabilities: {
               ...serverCapabilities(),
-              // No extensions yet. Declared empty rather than omitted so a
-              // client can tell "supports none" from "predates the field".
-              extensions: {},
+              // Declared empty for anything we do not implement, so a client
+              // can tell "supports none" from "predates the field".
+              extensions: { [TASKS_EXTENSION]: {} },
             },
             instructions: SERVER_INSTRUCTIONS,
           },
@@ -287,6 +293,50 @@ export const dispatch = async (
           CACHE.discover,
         ),
       );
+
+    // ---- Tasks extension (`io.modelcontextprotocol/tasks`) ------------------
+    // A durable handle for work that outlives a connection. No task table: the
+    // ids address `agent_runs` and the job queue, both of which are already
+    // durable and tenant-scoped. See `mcp/tasks.ts`.
+    case "tasks/get": {
+      const taskId = (body.params as { taskId?: unknown } | undefined)?.taskId;
+      if (typeof taskId !== "string") {
+        return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.taskId must be a string");
+      }
+      const dbCtx = honoCtx.get("ctx") as Parameters<typeof getTask>[0] | undefined;
+      const task = dbCtx ? await getTask(dbCtx, auth.tenantId ?? null, taskId) : null;
+      if (!task) {
+        // An unknown id and another workspace's id answer the same, so a task
+        // id cannot be used to probe for existence.
+        return error(id ?? null, RPC_ERR.INVALID_PARAMS, `unknown task: ${taskId}`);
+      }
+      return ok(id!, task);
+    }
+
+    case "tasks/update": {
+      // We surface no `inputRequests`, so there is nothing outstanding to
+      // answer. The spec's instruction for exactly this case is to acknowledge
+      // with an empty result and ignore responses for unknown keys — refusing
+      // would strand a conforming client that always sends them.
+      const taskId = (body.params as { taskId?: unknown } | undefined)?.taskId;
+      if (typeof taskId !== "string") {
+        return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.taskId must be a string");
+      }
+      return ok(id!, {});
+    }
+
+    case "tasks/cancel": {
+      // Cooperative by contract: acknowledge the intent, honour it where the
+      // store can. An agent turn is deliberately not cancellable — its tool
+      // calls have already happened.
+      const taskId = (body.params as { taskId?: unknown } | undefined)?.taskId;
+      if (typeof taskId !== "string") {
+        return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.taskId must be a string");
+      }
+      const dbCtx = honoCtx.get("ctx") as Parameters<typeof cancelTask>[0] | undefined;
+      if (dbCtx) await cancelTask(dbCtx, auth.tenantId ?? null, taskId);
+      return ok(id!, {});
+    }
 
     case "notifications/initialized":
     case "notifications/cancelled":

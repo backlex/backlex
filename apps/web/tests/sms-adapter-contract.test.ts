@@ -32,6 +32,7 @@ import { netgsmSms } from "../src/server/adapters/sms.netgsm";
 import { iletimerkeziSms } from "../src/server/adapters/sms.iletimerkezi";
 import { snsSms } from "../src/server/adapters/sms.sns";
 import { consoleSms } from "../src/server/adapters/sms.console";
+import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -131,10 +132,10 @@ const BACKENDS: Array<{
 /** Answer every outbound call with `reply`, and count the calls. */
 const stub = (reply: () => Response) => {
   let calls = 0;
-  globalThis.fetch = (async () => {
+  globalThis.fetch = asFetch(async () => {
     calls += 1;
     return reply();
-  }) as typeof fetch;
+  });
   return () => calls;
 };
 
@@ -174,9 +175,9 @@ for (const { label, make, wire, perNumber } of BACKENDS) {
       // The messaging service sends to many recipients in one call and reports
       // one summary. An adapter that throws takes the whole batch down,
       // including the recipients that would have succeeded.
-      globalThis.fetch = (async () => {
+      globalThis.fetch = asFetch(async () => {
         throw new Error("ECONNREFUSED");
-      }) as typeof fetch;
+      });
       if (label === "console") {
         // No provider to be unreachable — the dev sink writes to stdout.
         expect((await make().send({ to: [...TO], body: "x" })).sent).toBe(TO.length);

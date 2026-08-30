@@ -39,7 +39,7 @@ describe("ClickHouse", () => {
     const f = spy(() => new Response("", { status: 200 }));
     await pushToDestination(
       "clickhouse",
-      { config: CONFIG, settings: { table: "leads" }, rows: ROWS, columns: {} },
+      { config: CONFIG, settings: { table: "leads" }, rows: ROWS, columns: {}, syncKey: "sync-1" },
       f,
     );
     const call = f.calls[0]!;
@@ -61,7 +61,7 @@ describe("ClickHouse", () => {
     for (const settings of [{ table: "leads`; DROP TABLE x --" }, { table: "ok" }]) {
       const config = settings.table === "ok" ? { ...CONFIG, database: "a`b" } : CONFIG;
       await expect(
-        pushToDestination("clickhouse", { config, settings, rows: ROWS, columns: {} }, f),
+        pushToDestination("clickhouse", { config, settings, rows: ROWS, columns: {}, syncKey: "sync-1" }, f),
       ).rejects.toThrow(/not a plain identifier/);
     }
     // Nothing may have been sent on either attempt.
@@ -73,7 +73,7 @@ describe("ClickHouse", () => {
     await expect(
       pushToDestination(
         "clickhouse",
-        { config: CONFIG, settings: { table: "leads" }, rows: ROWS, columns: {} },
+        { config: CONFIG, settings: { table: "leads" }, rows: ROWS, columns: {}, syncKey: "sync-1" },
         f,
       ),
     ).rejects.toThrow(/No such column/);
@@ -124,7 +124,7 @@ describe("BigQuery", () => {
 
   test("the row key becomes the insertId, which is what makes a retry safe", async () => {
     const f = respond();
-    await pushToDestination("bigquery", { config: CONFIG(), settings: SETTINGS, rows: ROWS, columns: {} }, f);
+    await pushToDestination("bigquery", { config: CONFIG(), settings: SETTINGS, rows: ROWS, columns: {}, syncKey: "sync-1" }, f);
     const insert = f.calls.find((c) => c.url.includes("insertAll"))!;
     const body = JSON.parse(String(insert.init!.body)) as { rows: { insertId: string; json: unknown }[] };
     expect(body.rows.map((r) => r.insertId)).toEqual(["r1", "r2"]);
@@ -136,7 +136,7 @@ describe("BigQuery", () => {
     // success is how a mirror silently loses every row with a type mismatch.
     const f = respond([{ index: 0, errors: [{ message: "no such field: customer_name" }] }]);
     await expect(
-      pushToDestination("bigquery", { config: CONFIG(), settings: SETTINGS, rows: ROWS, columns: {} }, f),
+      pushToDestination("bigquery", { config: CONFIG(), settings: SETTINGS, rows: ROWS, columns: {}, syncKey: "sync-1" }, f),
     ).rejects.toThrow(/no such field/);
   });
 
@@ -145,7 +145,7 @@ describe("BigQuery", () => {
     await expect(
       pushToDestination(
         "bigquery",
-        { config: { ...CONFIG(), privateKey: "not a pem" }, settings: SETTINGS, rows: ROWS, columns: {} },
+        { config: { ...CONFIG(), privateKey: "not a pem" }, settings: SETTINGS, rows: ROWS, columns: {}, syncKey: "sync-1" },
         f,
       ),
       // WebCrypto's own "invalid key data" tells an operator nothing.
@@ -164,7 +164,7 @@ describe("BigQuery", () => {
     );
     let message = "";
     try {
-      await pushToDestination("bigquery", { config, settings: SETTINGS, rows: ROWS, columns: {} }, f);
+      await pushToDestination("bigquery", { config, settings: SETTINGS, rows: ROWS, columns: {}, syncKey: "sync-1" }, f);
       throw new Error("should have rejected");
     } catch (e) {
       message = (e as Error).message;
@@ -220,7 +220,7 @@ describe("registration", () => {
 
   test("an empty batch never reaches the provider", async () => {
     const f = spy(() => new Response("", { status: 200 }));
-    await pushToDestination("clickhouse", { config: {}, settings: {}, rows: [], columns: {} }, f);
+    await pushToDestination("clickhouse", { config: {}, settings: {}, rows: [], columns: {}, syncKey: "sync-1" }, f);
     // A zero-row INSERT is a wasted request and, for BigQuery, a rejected one.
     expect(f.calls).toHaveLength(0);
   });

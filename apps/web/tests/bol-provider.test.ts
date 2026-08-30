@@ -63,7 +63,7 @@ const recorder = (responses: { status?: number; body?: unknown }[] = []) => {
 describe("connecting", () => {
   test("client-credentials, with the length header bol's edge insists on", async () => {
     const { calls, fetchImpl } = recorder([{ body: { orders: [] } }]);
-    await pullFromSource("bol", { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" }, fetchImpl);
+    await pullFromSource("bol", { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" }, fetchImpl);
 
     const mint = calls[0]!;
     expect(mint.url.href).toBe("https://login.bol.com/token?grant_type=client_credentials");
@@ -79,10 +79,10 @@ describe("connecting", () => {
     const fetchImpl = async () =>
       new Response(JSON.stringify({ error: "invalid_client", client_secret: "csecret" }), { status: 401 });
     await expect(
-      pullFromSource("bol", { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" }, fetchImpl),
+      pullFromSource("bol", { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" }, fetchImpl),
     ).rejects.toThrow(/client id and secret/i);
     await expect(
-      pullFromSource("bol", { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" }, fetchImpl),
+      pullFromSource("bol", { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" }, fetchImpl),
     ).rejects.not.toThrow(/csecret/);
   });
 });
@@ -139,7 +139,7 @@ describe("orders", () => {
     const { calls, fetchImpl } = recorder([{ body: summary }, { body: detail }]);
     const page = await pullFromSource(
       "bol",
-      { config: CONFIG, settings: { lookbackDays: "7", status: "OPEN" }, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: { lookbackDays: "7", status: "OPEN" }, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
 
@@ -155,17 +155,20 @@ describe("orders", () => {
     const rec = page.records[0]!;
     expect(rec.data.zipCode).toBe("1012 NX");
     expect(rec.data.city).toBe("Amsterdam");
-    expect(rec.children!.lines[0]!.data.offerId).toBe("off-1");
+    expect(rec.children!.lines![0]!.data.offerId).toBe("off-1");
     // bol identifies a product by EAN — there is no seller SKU on an order.
-    expect(rec.children!.lines[0]!.data.ean).toBe("8718526018349");
-    expect(page.complete).toBe(true);
+    expect(rec.children!.lines![0]!.data.ean).toBe("8718526018349");
+    // The engine's only end-of-run signal is `cursor === null` (see
+    // `integration-syncs.ts`). This provider ALSO returns `complete` and
+    // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
+    expect(page.cursor).toBeNull();
   });
 
   test("an order whose detail bol will not give still arrives", async () => {
     const { fetchImpl } = recorder([{ body: summary }, { status: 404, body: {} }]);
     const page = await pullFromSource(
       "bol",
-      { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
     // Degrading to the summary beats losing the order: the ids, quantities and
@@ -186,6 +189,7 @@ describe("pushing price and stock", () => {
         settings: { fulfilmentParty: "retailer" },
         rows: [{ offerId: "off-1", price: 24.95, stock: 7 }],
         columns: {},
+        syncKey: "sync-1",
         connectionKey: "c1",
       },
       fetchImpl,
@@ -207,7 +211,7 @@ describe("pushing price and stock", () => {
     const { calls, fetchImpl } = recorder([{ status: 202, body: {} }]);
     await pushToDestination(
       "bol",
-      { config: CONFIG, settings: {}, rows: [{ offerId: "off-1", stock: 3 }], columns: {}, connectionKey: "c1" },
+      { config: CONFIG, settings: {}, rows: [{ offerId: "off-1", stock: 3 }], columns: {}, syncKey: "sync-1", connectionKey: "c1" },
       fetchImpl,
     );
     expect(calls.some((c) => c.url.pathname.endsWith("/price"))).toBe(false);
@@ -218,7 +222,7 @@ describe("pushing price and stock", () => {
     const { calls, fetchImpl } = recorder([]);
     await pushToDestination(
       "bol",
-      { config: CONFIG, settings: {}, rows: [{ price: 9.99, stock: 1 }], columns: {}, connectionKey: "c1" },
+      { config: CONFIG, settings: {}, rows: [{ price: 9.99, stock: 1 }], columns: {}, syncKey: "sync-1", connectionKey: "c1" },
       fetchImpl,
     );
     // The offer id is bol's, and there is nothing sensible to do without one.
@@ -235,7 +239,7 @@ describe("pushing price and stock", () => {
     await expect(
       pushToDestination(
         "bol",
-        { config: CONFIG, settings: {}, rows: [{ offerId: "off-1", price: 1 }], columns: {}, connectionKey: "c1" },
+        { config: CONFIG, settings: {}, rows: [{ offerId: "off-1", price: 1 }], columns: {}, syncKey: "sync-1", connectionKey: "c1" },
         fetchImpl,
       ),
     ).rejects.toThrow(/pricing\.bundlePrices: must not be empty/);

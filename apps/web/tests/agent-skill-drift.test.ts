@@ -29,7 +29,7 @@ describe("agent skill — frontmatter stays portable", () => {
     // `model`, …) are not part of the portable set, and a tool that validates
     // strictly rejects the file rather than ignoring the key.
     const fm = SKILL.split("---")[1] ?? "";
-    const keys = [...fm.matchAll(/^([a-z-]+):/gm)].map((m) => m[1]);
+    const keys = [...fm.matchAll(/^([a-z-]+):/gm)].map((m) => m[1]!);
     const PORTABLE = ["name", "description", "license", "compatibility", "metadata", "allowed-tools"];
     for (const k of keys) expect(PORTABLE).toContain(k);
     expect(keys).toContain("name");

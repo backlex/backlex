@@ -141,7 +141,7 @@ describe("messaging — GraphQL surface", () => {
       { u: adminId, d: { kind: "promo" } },
     );
     expect(ok.errors).toBeUndefined();
-    expect(ok.data?.sendPush.sent).toBe(1);
+    expect(ok.data?.sendPush?.sent).toBe(1);
     // …and the same length cap REST enforces (body <= 2000) rejects here too,
     // rather than silently dispatching an oversized payload.
     const tooLong = await gql(

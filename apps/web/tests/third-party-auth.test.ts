@@ -101,7 +101,7 @@ const seedTenant = (id: string, slug: string) =>
 /** Serve the JWKS from memory; anything else is a test bug, so it 500s loudly
  *  rather than falling through to the network. */
 let jwksHits = 0;
-const stubFetch = (keys: JsonWebKey[] = [{ ...publicJwk, kid: KID, alg: "ES256" }]) => {
+const stubFetch = (keys: Array<JsonWebKey & { kid?: string; alg?: string }> = [{ ...publicJwk, kid: KID, alg: "ES256" }]) => {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url === JWKS_URL) {
@@ -311,7 +311,7 @@ describe("SSRF guard on admin-supplied URLs", () => {
   const guarded = { CLOUD_PROJECT_ID: "proj-test" };
 
   test("discovery cannot be pointed at cloud metadata or loopback", async () => {
-    const g = { ...ctx, env: guarded };
+    const g = { ...ctx, env: guarded } as unknown as Parameters<typeof createThirdPartyProvider>[0];
     for (const url of [
       "http://169.254.169.254/.well-known/openid-configuration",
       "http://127.0.0.1:8787/.well-known/openid-configuration",

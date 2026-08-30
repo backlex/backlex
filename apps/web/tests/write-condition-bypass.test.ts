@@ -46,7 +46,7 @@ type Caller = (path: string, init?: RequestInit) => Promise<Response>;
 /** App-plane caller. `org` sets `X-Backlex-Org`, which is what selects `$org.id`. */
 const bearerFor = (h: TestHarness, token: string, org?: string): Caller =>
   (path, init = {}) =>
-    h.app.request(path, {
+    Promise.resolve(h.app.request(path, {
       ...init,
       headers: {
         ...JSON_HEADERS,
@@ -54,7 +54,7 @@ const bearerFor = (h: TestHarness, token: string, org?: string): Caller =>
         Authorization: `Bearer ${token}`,
         ...(org ? { "X-Backlex-Org": org } : {}),
       },
-    });
+    }));
 
 interface EndUser {
   id: string;

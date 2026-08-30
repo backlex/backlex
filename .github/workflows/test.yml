@@ -75,6 +75,23 @@ jobs:
       - name: Typecheck
         run: bun run --no-orphans typecheck
 
+      # `tests/` is its own tsconfig project and runs HERE rather than in the
+      # pre-push gate, on a measurement: 269s and a 4.5 GB peak RSS from cold,
+      # which on an 8 GB dev box pages against `bun test` running beside it.
+      # A runner has the memory and the step is incremental like the one above,
+      # so it costs seconds on a warm cache.
+      #
+      # It is not decoration. The specs are where API drift is cheapest to
+      # catch, and the first run of it found: eight specs calling a teardown
+      # (`h.close?.()`) the harness does not have, so each leaked its SQLite
+      # file every run; a `callClaude` call two arguments short of its
+      # signature; `PLATFORM_SSO` where the gate reads `PLATFORM_SSO_ENABLED`;
+      # and provider fixtures with no `limit`, which made every
+      # `Math.min(ctx.limit, PAGE)` in a marketplace source evaluate to NaN.
+      # None of it was visible to `bun test`, which does not typecheck.
+      - name: Typecheck tests
+        run: bun run --no-orphans typecheck:tests
+
       - name: Smoke tests
         run: bun run --no-orphans test
 

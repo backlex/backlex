@@ -40,12 +40,12 @@ const totp = (secretBytes: Uint8Array, period = 30, digits = 6): string => {
   const buf = Buffer.alloc(8);
   buf.writeBigUInt64BE(BigInt(counter));
   const hmac = createHmac("sha1", Buffer.from(secretBytes)).update(buf).digest();
-  const offset = hmac[hmac.length - 1] & 0x0f;
+  const offset = hmac[hmac.length - 1]! & 0x0f;
   const code =
-    ((hmac[offset] & 0x7f) << 24) |
-    ((hmac[offset + 1] & 0xff) << 16) |
-    ((hmac[offset + 2] & 0xff) << 8) |
-    (hmac[offset + 3] & 0xff);
+    ((hmac[offset]! & 0x7f) << 24) |
+    ((hmac[offset + 1]! & 0xff) << 16) |
+    ((hmac[offset + 2]! & 0xff) << 8) |
+    (hmac[offset + 3]! & 0xff);
   return (code % 10 ** digits).toString().padStart(digits, "0");
 };
 

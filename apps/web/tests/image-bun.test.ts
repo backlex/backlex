@@ -88,7 +88,7 @@ describe("bun image adapter", () => {
       quality: 80,
     });
     expect(out.contentType).toBe("image/webp");
-    const meta = await new Bun.Image(out.body as Uint8Array).metadata();
+    const meta = await new (Bun as unknown as { Image: new (b: Uint8Array) => { metadata(): Promise<{ format: string; width: number; height: number }> } }).Image(out.body as Uint8Array).metadata();
     expect(meta.format).toBe("webp");
     expect(meta.width).toBe(40);
   });
@@ -131,7 +131,7 @@ describe("bun image adapter", () => {
       width: 30,
       format: "jpeg",
     });
-    const meta = await new Bun.Image(out.body as Uint8Array).metadata();
+    const meta = await new (Bun as unknown as { Image: new (b: Uint8Array) => { metadata(): Promise<{ format: string; width: number; height: number }> } }).Image(out.body as Uint8Array).metadata();
     // Source is 120x60 landscape tagged "rotate 90". Auto-oriented it is 60x120
     // portrait, so a width of 30 gives 30x60. Without autoOrient it would be
     // 30x15 — the sideways thumbnail this guards against.

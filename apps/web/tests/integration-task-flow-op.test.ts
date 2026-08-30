@@ -24,6 +24,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "b
 import { Database } from "bun:sqlite";
 import * as realIntegrations from "@backlex/integrations";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const realTaskFor = realIntegrations.taskFor;
 const realRunIntegrationTask = realIntegrations.runIntegrationTask;
@@ -76,7 +77,7 @@ const runWithStep = async (
   if (made.status !== 201) throw new Error(`flow save → ${made.status} ${await made.text()}`);
   const flowId = ((await made.json()) as any).data.id as string;
   const run = await post(`/api/flows/${flowId}/run`, payload);
-  return (await run.json()) as { ok: boolean; error?: string };
+  return (await run.json()) as FlowRunResult;
 };
 
 const orderRow = (id: string) =>

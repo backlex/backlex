@@ -670,9 +670,9 @@ describe("tenants: POST /api/tenants/switch", () => {
       .map(([name, value]) => `${name}=${value}`)
       .join("; ");
     expect(cookie, "the session cookie must survive — otherwise this is an anonymous call").not.toBe("");
-    return cast.h.app.request(path, {
+    return Promise.resolve(cast.h.app.request(path, {
       headers: { Cookie: cookie, Origin: cast.h.env.APP_URL! },
-    });
+    }));
   };
 
   const activeWorkspace = async (caller: (p: string) => Promise<Response>): Promise<string | null> => {

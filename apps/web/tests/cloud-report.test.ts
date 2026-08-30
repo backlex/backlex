@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { reportToCloud } from "../src/server/lib/cloud-report";
 import type { Env } from "../src/server/env";
+import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
 let calls: { url: string; init?: RequestInit }[] = [];
 
 beforeEach(() => {
   calls = [];
-  globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+  globalThis.fetch = asFetch(async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init });
     return new Response(null, { status: 202 });
-  }) as typeof fetch;
+  });
 });
 afterEach(() => {
   globalThis.fetch = realFetch;
@@ -44,7 +45,7 @@ describe("reportToCloud — opt-in", () => {
     expect(p).toBeDefined();
     await p;
     expect(calls).toHaveLength(1);
-    const [{ url, init }] = calls;
+    const { url, init } = calls[0]!;
     expect(url).toBe("https://cloud.example.com/api/webhooks/tenant-report");
     expect(init?.method).toBe("POST");
     const headers = new Headers(init?.headers);
@@ -82,9 +83,9 @@ describe("reportToCloud — opt-in", () => {
   });
 
   test("swallows fetch failures (fire-and-forget)", async () => {
-    globalThis.fetch = (async () => {
+    globalThis.fetch = asFetch(async () => {
       throw new Error("network down");
-    }) as typeof fetch;
+    });
     const env = {
       CLOUD_REPORT_URL: "https://cloud.example.com",
       CLOUD_REPORT_SECRET: "rs_secret",

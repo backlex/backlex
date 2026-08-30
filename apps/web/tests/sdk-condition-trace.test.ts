@@ -12,7 +12,7 @@
  * harness.
  */
 import { describe, expect, test } from "bun:test";
-import { normalizeCondition as normalizeCore } from "@backlex/core";
+import { normalizeCondition as normalizeCore, type Condition } from "@backlex/core";
 import { normalizeCondition } from "../../../packages/client/src/condition";
 import {
   makeTraceparent,
@@ -46,7 +46,7 @@ describe("client normalizeCondition — logical alias mapping", () => {
   });
 
   test("canonical $and passes through unchanged", () => {
-    const c = { $and: [{ a: { _eq: 1 } }, { b: { _gt: 2 } }] };
+    const c: Condition = { $and: [{ a: { _eq: 1 } }, { b: { _gt: 2 } }] };
     expect(normalizeCondition(c)).toEqual(c);
   });
 });
@@ -97,12 +97,12 @@ describe("client normalizeCondition — nested-object relation form", () => {
   });
 
   test("WITHOUT relationFields, a nested object is NOT flattened (json-safe)", () => {
-    const c = { customer: { name: { _eq: "Alice" } } };
+    const c = { customer: { name: { _eq: "Alice" } } } as unknown as Condition;
     expect(normalizeCondition(c)).toEqual(c);
   });
 
   test("a non-relation key with a nested object is left untouched", () => {
-    const c = { meta: { a: { _eq: 1 } } };
+    const c = { meta: { a: { _eq: 1 } } } as unknown as Condition;
     expect(normalizeCondition(c, { relationFields: rels })).toEqual(c);
   });
 });
@@ -124,7 +124,7 @@ describe("client normalizeCondition — idempotency & passthrough", () => {
 
   test("non-object input returns unchanged", () => {
     expect(normalizeCondition(null as unknown)).toBeNull();
-    expect(normalizeCondition("x" as unknown)).toBe("x");
+    expect(normalizeCondition("x" as unknown)).toBe("x" as unknown as Condition);
   });
 
   test("dotted keys already in canonical form pass through", () => {

@@ -54,7 +54,7 @@ describe("revisions — surfaces", () => {
     });
   });
 
-  afterAll(() => h.close?.());
+  afterAll(() => h.cleanup());
 
   test("REST: a row that has been edited has a history", async () => {
     const res = await h.fetch(`${BASE}/pages/${itemId}`);

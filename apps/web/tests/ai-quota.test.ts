@@ -21,6 +21,7 @@ import {
   usageOverview,
 } from "../src/server/services/usage";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const BYO_KEY = "sk-ant-test-quota";
 
@@ -115,7 +116,7 @@ describe("monthly AI budget", () => {
     expect(created.status).toBe(201);
     const { data } = (await created.json()) as { data: { id: string } };
     const res = await h.fetch(`/api/flows/${data.id}/run`, json({}));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   test("under the cap a flow generates normally", async () => {

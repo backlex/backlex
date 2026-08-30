@@ -297,7 +297,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
           let msg = t`Transforms unavailable for this file on this runtime.`;
           try {
             const r2 = await fetch(transformedUrl, { credentials: "include", cache: "no-store", signal: ctrl.signal });
-            const j = await r2.json().catch(() => null);
+            const j = (await r2.json().catch(() => null)) as { error?: { message?: string } } | null;
             if (j?.error?.message) msg = j.error.message;
           } catch {}
           setTransformError(msg);

@@ -114,7 +114,7 @@ describe("integrations — GraphQL is admin-gated", () => {
     for (const q of probes) {
       const res = await anon(q);
       // Fail closed: an error with an auth code, and never a data payload.
-      expect(["FORBIDDEN", "UNAUTHORIZED"]).toContain(res.errors?.[0]?.extensions?.code);
+      expect(["FORBIDDEN", "UNAUTHORIZED"]).toContain(String(res.errors?.[0]?.extensions?.code));
     }
   });
 });

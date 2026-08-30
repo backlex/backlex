@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cloudEmailAdapter } from "../src/server/adapters/email.cloud";
 import type { Env } from "../src/server/env";
+import { asFetch } from "./helpers/fetch-stub";
 
 // Managed-cloud env: HTTP delivery channel (no service binding) so the adapter
 // uses global fetch, which we stub per-test.
@@ -21,14 +22,14 @@ const jsonResponse = (body: unknown, status = 200) =>
 describe("cloudEmailAdapter", () => {
   test("signs and posts the message to the gateway", async () => {
     let captured: { url: string; body: Record<string, unknown>; headers: Record<string, string> } | null = null;
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = asFetch(async (input: RequestInfo | URL, init?: RequestInit) => {
       captured = {
         url: String(input),
         body: JSON.parse(String(init?.body)),
         headers: init?.headers as Record<string, string>,
       };
       return jsonResponse({ ok: true });
-    }) as typeof fetch;
+    });
 
     await cloudEmailAdapter(env).send({
       to: "user@example.com",
@@ -46,15 +47,15 @@ describe("cloudEmailAdapter", () => {
   });
 
   test("maps a 429 throttle to a validation error", async () => {
-    globalThis.fetch = (async () =>
-      jsonResponse({ error: { code: "RATE_LIMITED", message: "Email send rate limit exceeded" } }, 429)) as typeof fetch;
+    globalThis.fetch = asFetch(async () =>
+      jsonResponse({ error: { code: "RATE_LIMITED", message: "Email send rate limit exceeded" } }, 429));
     await expect(
       cloudEmailAdapter(env).send({ to: "a@b.com", subject: "s", text: "t" }),
     ).rejects.toThrow(/rate limit/i);
   });
 
   test("throws on a gateway 500", async () => {
-    globalThis.fetch = (async () => jsonResponse({ error: { message: "boom" } }, 500)) as typeof fetch;
+    globalThis.fetch = asFetch(async () => jsonResponse({ error: { message: "boom" } }, 500));
     await expect(
       cloudEmailAdapter(env).send({ to: "a@b.com", subject: "s", text: "t" }),
     ).rejects.toThrow(/boom/);
@@ -77,10 +78,10 @@ describe("cloudEmailAdapter attachments", () => {
 
   const capture = () => {
     const seen: { body: Record<string, unknown> }[] = [];
-    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = asFetch(async (_input: RequestInfo | URL, init?: RequestInit) => {
       seen.push({ body: JSON.parse(String(init?.body)) });
       return jsonResponse({ ok: true });
-    }) as typeof fetch;
+    });
     return seen;
   };
 
@@ -121,8 +122,8 @@ describe("cloudEmailAdapter attachments", () => {
   test("a gateway refusal surfaces its reason, not a generic failure", async () => {
     // The gateway refuses rather than trims past its caps. That choice is only
     // worth anything if the reason reaches whoever sent the mail.
-    globalThis.fetch = (async () =>
-      jsonResponse({ error: { code: "VALIDATION", message: "Attachments are too large" } }, 400)) as typeof fetch;
+    globalThis.fetch = asFetch(async () =>
+      jsonResponse({ error: { code: "VALIDATION", message: "Attachments are too large" } }, 400));
 
     await expect(
       cloudEmailAdapter(env).send({ to: "a@b.com", subject: "s", text: "t", attachments: [file] }),

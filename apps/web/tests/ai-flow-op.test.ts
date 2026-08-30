@@ -22,6 +22,7 @@ import { AI_OP_DEFAULT_MAX_TOKENS, AI_OP_MAX_TOKENS } from "@backlex/core";
 import { buildContext } from "../src/server/context";
 import { flushUsage, usageRows } from "../src/server/services/usage";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const BYO_KEY = "sk-ant-test-flow-op";
 
@@ -125,7 +126,7 @@ describe("AI flow ops", () => {
     expect(created.status).toBe(201);
     const { data } = (await created.json()) as { data: { id: string } };
     const res = await h.fetch(`/api/flows/${data.id}/run`, json(input));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   describe("ai.generate", () => {
@@ -459,7 +460,7 @@ describe("AI flow ops", () => {
           expect(typeof id).toBe("string");
 
           const res = await h.fetch(`/api/flows/${id}/run`, json({}));
-          const out = (await res.json()) as { ok: boolean; error?: string };
+          const out = (await res.json()) as FlowRunResult;
           expect(out.ok).toBe(false);
           expect(out.error).toContain("fallback must be one of labels");
           expect(mock.calls.length).toBe(0);

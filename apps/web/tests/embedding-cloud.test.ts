@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cloudEmbeddingAdapter } from "../src/server/adapters/embedding.cloud";
 import type { Env } from "../src/server/env";
+import { asFetch } from "./helpers/fetch-stub";
 
 // Managed-cloud env: HTTP delivery channel (no service binding) so the adapter
 // uses global fetch, which we stub per-test.
@@ -22,14 +23,14 @@ describe("cloudEmbeddingAdapter", () => {
   test("signs and posts to the gateway, maps the model, returns vectors", async () => {
     let captured: { url: string; body: { model?: string; texts?: string[] }; headers: Record<string, string> } | null =
       null;
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = asFetch(async (input: RequestInfo | URL, init?: RequestInit) => {
       captured = {
         url: String(input),
         body: JSON.parse(String(init?.body)),
         headers: init?.headers as Record<string, string>,
       };
       return jsonResponse({ model: "@cf/baai/bge-m3", dimensions: 1024, data: [new Array(1024).fill(0.1)], neurons: 5 });
-    }) as typeof fetch;
+    });
 
     const res = await cloudEmbeddingAdapter(env).embed({ model: "bge-m3", texts: ["hello"] });
 
@@ -44,15 +45,15 @@ describe("cloudEmbeddingAdapter", () => {
   });
 
   test("surfaces a 402 budget-exhausted error", async () => {
-    globalThis.fetch = (async () =>
-      jsonResponse({ error: { code: "BILLING_REQUIRED", message: "monthly AI budget is exhausted" } }, 402)) as typeof fetch;
+    globalThis.fetch = asFetch(async () =>
+      jsonResponse({ error: { code: "BILLING_REQUIRED", message: "monthly AI budget is exhausted" } }, 402));
     await expect(cloudEmbeddingAdapter(env).embed({ model: "bge-m3", texts: ["x"] })).rejects.toThrow(
       /budget is exhausted/,
     );
   });
 
   test("rejects a dimension mismatch from the gateway", async () => {
-    globalThis.fetch = (async () => jsonResponse({ data: [[0.1, 0.2]] })) as typeof fetch;
+    globalThis.fetch = asFetch(async () => jsonResponse({ data: [[0.1, 0.2]] }));
     await expect(cloudEmbeddingAdapter(env).embed({ model: "bge-m3", texts: ["x"] })).rejects.toThrow(/dimensions/);
   });
 });

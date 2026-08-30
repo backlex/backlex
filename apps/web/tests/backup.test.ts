@@ -152,7 +152,7 @@ describe("restore", () => {
 describe("backup schedule config", () => {
   test("defaults to off/7 and round-trips a PUT", async () => {
     const def = ((await (await h.fetch("/api/admin/db/backups/config")).json()) as {
-      data: { schedule: string; retain: number };
+      data: { schedule: string; retain: number; retainDays: number | null };
     }).data;
     expect(def).toEqual({ schedule: "off", retain: 7, retainDays: null });
 

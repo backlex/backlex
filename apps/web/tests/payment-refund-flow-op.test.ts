@@ -21,6 +21,7 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const json = (body: unknown): RequestInit => ({
   method: "POST",
@@ -76,7 +77,10 @@ describe("payment.refund flow op", () => {
   });
   afterEach(() => h.cleanup());
 
-  const run = async (op: Record<string, unknown>, input: Record<string, unknown> = {}) => {
+  const run = async (
+    op: Record<string, unknown>,
+    input: Record<string, unknown> = {},
+  ): Promise<FlowRunResult & { saveError?: string }> => {
     const created = await h.fetch(
       "/api/flows",
       json({
@@ -88,7 +92,7 @@ describe("payment.refund flow op", () => {
     const body = (await created.json()) as { data?: { id: string }; error?: unknown };
     if (created.status !== 201) return { ok: false, saveError: JSON.stringify(body) };
     const res = await h.fetch(`/api/flows/${body.data!.id}/run`, json(input));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   const payment = async () => {
@@ -145,7 +149,7 @@ describe("payment.refund flow op", () => {
     const { data } = (await created.json()) as { data: { id: string } };
     const out = (await (
       await h.fetch(`/api/flows/${data.id}/run`, json({ id: orderId }))
-    ).json()) as { ok: boolean; error?: string };
+    ).json()) as FlowRunResult;
     expect(out.ok).toBe(true);
 
     const order = (await (await h.fetch(`/api/items/orders/${orderId}`)).json()) as {

@@ -32,7 +32,7 @@ const anon = (path: string, init: RequestInit = {}): Promise<Response> => {
   const headers = new Headers(init.headers ?? {});
   if (!headers.has("Origin")) headers.set("Origin", "https://customer.example");
   if (!headers.has("X-Forwarded-For")) headers.set("X-Forwarded-For", "203.0.113.44");
-  return h.app.fetch(new Request(`${h.env.APP_URL}${path}`, { ...init, headers }));
+  return Promise.resolve(h.app.fetch(new Request(`${h.env.APP_URL}${path}`, { ...init, headers })));
 };
 
 const post = (body: unknown, init: RequestInit = {}) =>

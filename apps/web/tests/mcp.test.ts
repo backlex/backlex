@@ -270,7 +270,7 @@ describe("MCP — initialize + tools/list", () => {
 
   test("tools/list surfaces outputSchema only where the shape is stable", async () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 34, method: "tools/list" });
-    const byName = new Map(
+    const byName = new Map<string, any>(
       (r as RpcSuccess).result.tools.map((t: any) => [(t.name as string).replaceAll("-", "."), t]),
     );
     // Schema-discovery + aggregate + the list envelope are schematized.

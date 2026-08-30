@@ -31,7 +31,7 @@ describe("storage — surfaces", () => {
     client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
   });
 
-  afterAll(() => h.close?.());
+  afterAll(() => h.cleanup());
 
   test("SDK: a multi-segment key survives put, list, download and delete", async () => {
     await client.storage.put(DEEP_KEY, "parity", "text/plain");

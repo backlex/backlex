@@ -276,7 +276,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
     let cancelled = false;
     setTargetLoading(true);
     fetch(`/api/collections/${to}`, { credentials: "include" })
-      .then((r) => r.json())
+      .then((r) => r.json() as Promise<{ data?: { fields?: Array<{ name: string; type: string }> } }>)
       .then((j) => {
         if (cancelled) return;
         const f = (j?.data?.fields ?? []) as Array<{ name: string; type: string }>;

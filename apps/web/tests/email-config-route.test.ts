@@ -90,7 +90,7 @@ describe("/api/admin/email-config", () => {
     // ciphertext) must never appear anywhere in the response.
     expect(data.secretsSet.apiKey).toBe(true);
     expect(data.secretsSet.pass).toBe(false);
-    expect((data as Record<string, unknown>).secrets).toBeUndefined();
+    expect((data as unknown as Record<string, unknown>).secrets).toBeUndefined();
     expect(raw).not.toContain(secret);
     expect(data.updatedAt).not.toBeNull();
   });

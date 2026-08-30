@@ -18,6 +18,7 @@ import { netgsmSms } from "../src/server/adapters/sms.netgsm";
 import { selectSmsSpec } from "../src/server/lib/sms-select";
 import type { Env } from "../src/server/env";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -34,7 +35,7 @@ interface Captured {
 /** Stub `fetch`, recording every call and answering with `reply(callIndex)`. */
 const stubFetch = (reply: (i: number, url: string) => Response): Captured[] => {
   const calls: Captured[] = [];
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = asFetch(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     calls.push({
       url,
@@ -43,7 +44,7 @@ const stubFetch = (reply: (i: number, url: string) => Response): Captured[] => {
       headers: (init?.headers ?? {}) as Record<string, string>,
     });
     return reply(calls.length - 1, url);
-  }) as typeof fetch;
+  });
   return calls;
 };
 
@@ -122,9 +123,9 @@ describe("netgsm SMS adapter", () => {
       invalidNumbers: [],
     });
 
-    globalThis.fetch = (async () => {
+    globalThis.fetch = asFetch(async () => {
       throw new Error("ECONNRESET");
-    }) as typeof fetch;
+    });
     // Must resolve, not reject: one dead socket may not abort the whole batch.
     expect(await netgsmSms(NETGSM).send({ to: ["+905321234567"], body: "x" })).toEqual({
       sent: 0,
@@ -213,9 +214,9 @@ describe("iletimerkezi SMS adapter", () => {
       invalidNumbers: [],
     });
 
-    globalThis.fetch = (async () => {
+    globalThis.fetch = asFetch(async () => {
       throw new Error("ECONNRESET");
-    }) as typeof fetch;
+    });
     expect(await iletimerkeziSms(ILETI).send({ to: ["+905321234567"], body: "x" })).toEqual({
       sent: 0,
       failed: 1,

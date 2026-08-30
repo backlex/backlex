@@ -293,7 +293,7 @@ describe("the retrieve call", () => {
     const auth = (fetchImpl.calls[0]!.init!.headers as Record<string, string>).Authorization;
     // Base64 of the UTF-8 BYTES, so it round-trips through a UTF-8 decode —
     // `btoa` would have thrown on the Ω rather than producing this.
-    const bytes = Uint8Array.from(atob(auth.slice("Basic ".length)), (ch) => ch.charCodeAt(0));
+    const bytes = Uint8Array.from(atob(auth!.slice("Basic ".length)), (ch) => ch.charCodeAt(0));
     expect(new TextDecoder().decode(bytes)).toBe(`${USERNAME}:şifre-Ω`);
   });
 });

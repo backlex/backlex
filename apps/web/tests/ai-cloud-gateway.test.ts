@@ -97,7 +97,7 @@ describe("what the cloud gateway reports comes back", () => {
       neurons: 42,
     });
 
-    const res = await callClaude(cloudEnv, { system: "s", user: "u", maxTokens: 64 });
+    const res = await callClaude(cloudEnv, { system: "s", user: "u", maxTokens: 64 }, null);
 
     expect(res.text).toBe("hi");
     expect(res.usage?.neurons).toBe(42);
@@ -107,7 +107,7 @@ describe("what the cloud gateway reports comes back", () => {
     // "Absent" and "zero" are different claims, and only one of them is true
     // when the gateway did not say.
     const { env: cloudEnv } = gatewayAnswering({ response: "hi" });
-    const res = await callClaude(cloudEnv, { system: "s", user: "u" });
+    const res = await callClaude(cloudEnv, { system: "s", user: "u" }, null);
     expect(res.text).toBe("hi");
     expect(res.usage).toBeUndefined();
   });

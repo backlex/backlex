@@ -81,7 +81,7 @@ describe("platform SAML metadata import", () => {
   let h: TestHarness;
 
   beforeAll(async () => {
-    h = makeHarness({ BLOCK_PRIVATE_FETCH_HOSTS: "1", PLATFORM_SSO: "1" });
+    h = makeHarness({ BLOCK_PRIVATE_FETCH_HOSTS: "1", PLATFORM_SSO_ENABLED: "true" });
     await seedAdmin(h);
   });
 

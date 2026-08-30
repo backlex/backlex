@@ -333,14 +333,33 @@ export const createAuth = async (
       // bare-token key, so the two windows COMPOUND: the last warm request at
       // t=59s keeps the token accepted to roughly t=89s.
       //
-      // Flipping `enabled` to false was measured too: revocation becomes
-      // IMMEDIATE (401 on the same request), because the handler already calls
-      // `invalidateSession` and nothing repopulates it. The price is
+      // Flipping `enabled` to false was measured too, and the harness result
+      // does NOT transfer to production unchanged. In-process it reads as
+      // immediate (401 on the very next request), because the handler calls
+      // `invalidateSession` and nothing repopulates the cache. But that cache
+      // is a module-level `TtlLru` with no shared store behind it, i.e. PER
+      // ISOLATE — `revoke-others` clears only the isolate that served it (see
+      // the note at `routes/auth-admin.ts`). Any other isolate that had the
+      // session cached keeps serving it until its own 30s TTL lapses.
+      //
+      //   as shipped       ~90s everywhere
+      //   enabled: false   immediate in the revoking isolate, <=30s elsewhere
+      //
+      // So disabling this is 90s -> 30s, not 90s -> 0, and the price is
       // better-auth's ~2 D1 round-trips on every request that misses the inner
-      // 30s cache. That trade — up to ~90s of stale access against a session
-      // read per cold request — is a deliberate open decision, not an
-      // oversight; it is written down here because this line is where someone
-      // would come to change it.
+      // cache.
+      //
+      // **What makes 30s no safer than 90s in practice:** `api_keys` is keyed
+      // on `user_id`, never on a session, and `revoke-others` does not touch
+      // it. So the window is not "extra read access" — it is time to mint a
+      // `pak_` key that outlives the revocation entirely, and 30 seconds is as
+      // sufficient for that as 90. Buying 90->30 with a session read per cold
+      // request therefore buys very little against the threat that matters.
+      //
+      // Left enabled deliberately. The levers that would actually close it are
+      // (1) `revoke-others` accounting for API keys, and (2) a shared
+      // revocation signal so the other isolates learn about it at all —
+      // neither of which is a TTL.
       cookieCache: { enabled: true, maxAge: 60 },
     },
     databaseHooks: {

@@ -37,6 +37,16 @@
  * The last test in this file pins that, because it is the number an operator
  * actually waits out and nothing else in the codebase states it.
  *
+ * **This harness is a single process, so its timings are a LOWER bound.** The
+ * inner cache is a module-level `TtlLru` with no shared store behind it — per
+ * isolate on Workers — and `revoke-others` clears only the isolate that served
+ * it (`routes/auth-admin.ts` says so at the call site). Anything measured here
+ * about how fast a revocation propagates therefore describes one isolate, and
+ * a conclusion like "disabling `cookieCache` makes revocation immediate" is
+ * true in this file and false in production, where every other isolate still
+ * serves its cached copy for up to its own 30s. `packages/auth/src/index.ts`
+ * carries the production numbers on the line someone would change.
+ *
  * The other sessions are real sign-ins rather than planted rows: better-auth
  * owns the session table's shape, and a row this file wrote by hand would prove
  * the handler can delete rows this file writes.

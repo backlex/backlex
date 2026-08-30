@@ -39,14 +39,26 @@ export const twilioSms = (cfg: TwilioConfig): SMSAdapter => ({
         if (cfg.messagingServiceSid) form.set("MessagingServiceSid", cfg.messagingServiceSid);
         else if (from) form.set("From", from);
 
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            authorization: `Basic ${auth}`,
-            "content-type": "application/x-www-form-urlencoded",
-          },
-          body: form.toString(),
-        });
+        let res: Response;
+        try {
+          res = await fetch(url, {
+            method: "POST",
+            headers: {
+              authorization: `Basic ${auth}`,
+              "content-type": "application/x-www-form-urlencoded",
+            },
+            body: form.toString(),
+          });
+        } catch {
+          // Network/DNS failure — transient, never a dead number. Counted
+          // rather than thrown: these run under `Promise.all`, so a rejection
+          // discards the verdicts of the recipients that already SUCCEEDED.
+          // The caller then records a total failure for a batch that was
+          // partly delivered, and a retry double-sends to those recipients.
+          // `sms.netgsm` and `sms.iletimerkezi` already do this.
+          result.failed++;
+          return;
+        }
         if (res.ok) {
           result.sent++;
           return;

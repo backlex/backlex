@@ -107,15 +107,23 @@ export const snsSms = (cfg: SnsConfig): SMSAdapter => ({
           `AWS4-HMAC-SHA256 Credential=${cfg.accessKeyId}/${scope}, ` +
           `SignedHeaders=${signedHeaders}, Signature=${signature}`;
 
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "content-type": "application/x-www-form-urlencoded",
-            "x-amz-date": amzDate,
-            authorization,
-          },
-          body,
-        });
+        let res: Response;
+        try {
+          res = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/x-www-form-urlencoded",
+              "x-amz-date": amzDate,
+              authorization,
+            },
+            body,
+          });
+        } catch {
+          // See the matching note in `sms.twilio.ts`: under `Promise.all` a
+          // thrown fetch discards the verdicts of recipients already sent.
+          result.failed++;
+          return;
+        }
         if (res.ok) {
           result.sent++;
           return;

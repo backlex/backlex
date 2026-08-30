@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { slugify } from "@backlex/db/slug";
@@ -10,7 +10,14 @@ import {
 } from "@backlex/core";
 import type { Ctx } from "../context";
 import type { DbCtx } from "./seed";
+import {
+  ORG_RANK,
+  assertMayActOn as sharedMayActOn,
+  assertNotLastOwner as sharedNotLastOwner,
+} from "./membership-guards";
+import { log } from "../lib/log";
 import { resolveAssignableRoles } from "./app-user-invites";
+import { hashToken } from "./shared-links";
 import {
   getCachedOrgMemberships,
   invalidateOrgMemberships,
@@ -275,15 +282,19 @@ const assertMayActOn = (
   actor: OrgActor,
   targetAppUserId: string,
   targetRole: OrgRole,
-): void => {
-  if (!actor) return;
-  if (actor.appUserId === targetAppUserId) return;
-  if (ORG_ROLE_RANK[targetRole] > ORG_ROLE_RANK[actor.role])
-    throw new AppError(
-      "FORBIDDEN",
-      `An organization "${actor.role}" can't act on an "${targetRole}"`,
-    );
-};
+): void =>
+  // Delegated to `services/membership-guards.ts`, which is the same rule the
+  // PLATFORM plane now runs. It lived only here, and the plane that supervises
+  // this one had no equivalent at all — an admin could delete a workspace's
+  // sole owner with one unconfirmed click. Two implementations of one invariant
+  // is what let them diverge, and the divergence was invisible because each
+  // plane's tests only ever exercised its own copy.
+  sharedMayActOn(
+    actor ? { id: actor.appUserId, role: actor.role } : null,
+    targetAppUserId,
+    targetRole,
+    ORG_RANK,
+  );
 
 /** How many owners the org has. Guards the "an org can never be ownerless"
  *  invariant on demote / remove / leave. */
@@ -298,20 +309,19 @@ const ownerCount = async (ctx: DbCtx, orgId: string): Promise<number> => {
   return Number(rows[0]?.n ?? 0);
 };
 
-/** Reject a change that would leave `orgId` without an owner. */
+/** Reject a change that would leave `orgId` without an owner.
+ *
+ *  The counting stays here — the two planes count different tables — while the
+ *  DECISION is shared, so the wording an operator sees and the exact edge
+ *  (“more than one owner”) cannot drift between them. */
 const assertNotLastOwner = async (
   ctx: DbCtx,
   orgId: string,
   appUserId: string,
 ): Promise<void> => {
   const role = await memberRole(ctx, orgId, appUserId);
-  if (role !== "owner") return;
-  if ((await ownerCount(ctx, orgId)) <= 1) {
-    throw new AppError(
-      "VALIDATION",
-      "This is the organization's last owner — promote someone else first",
-    );
-  }
+  if (!role) return;
+  sharedNotLastOwner(role, await ownerCount(ctx, orgId), "organization");
 };
 
 /** Confirm an `app_users` row exists in this workspace and hand back its email. */
@@ -426,10 +436,18 @@ export const listOrgs = async (
   const t = tablesFor(ctx.dialect);
   const conds = [eq(t.orgs.tenantId, tenantId)];
   if (opts.q) {
-    const pat = `%${opts.q.toLowerCase()}%`;
-    conds.push(
-      sql`(lower(${t.orgs.name}) LIKE ${pat} OR lower(${t.orgs.slug}) LIKE ${pat})`,
-    );
+    // D1 rejects a BOUND parameter as a LIKE pattern, so the previous
+    // `LIKE ${pat}` 500s on the primary production target while passing on
+    // bun:sqlite — which is what the two tests covering this run on. The
+    // established shape for the same job is a dialect-branched position
+    // function with a plain bound value; see
+    // `services/analytics-segments.ts::containsExpr`, three files over.
+    const needle = opts.q.toLowerCase();
+    const contains = (col: typeof t.orgs.name) =>
+      ctx.dialect === "pg"
+        ? sql`strpos(lower(coalesce(${col}, '')), ${needle}) > 0`
+        : sql`instr(lower(coalesce(${col}, '')), ${needle}) > 0`;
+    conds.push(sql`(${contains(t.orgs.name)} OR ${contains(t.orgs.slug)})`);
   }
 
   let rows: Array<Record<string, unknown>>;
@@ -820,6 +838,140 @@ const mapInvite = (r: Record<string, unknown>): OrgInviteRow => {
   };
 };
 
+/**
+ * The signal that retires this lifecycle's plaintext fallback.
+ *
+ * Same contract as the platform invite's marker in `services/invites.ts`: every
+ * read that had to reach for `app_org_invites.token` says so at warn. When it
+ * has been absent for a full invitation TTL (7 days) plus a margin, no live
+ * invitation predates hashing and the follow-up migration named in
+ * `packages/db/drizzle/pg/20260830090000_invite_token_hash/migration.sql` can
+ * take the column and this branch away.
+ */
+const LEGACY_PLAINTEXT_MSG = "[app-orgs] legacy plaintext invite token accepted";
+
+/**
+ * Resolve an invitation from the raw token that arrived in somebody's mailbox.
+ *
+ * Every reader of a link token goes through here — the public preview and the
+ * accept call both — so there is exactly ONE place that decides how a token in
+ * a URL becomes a row.
+ *
+ * That matters because the token is a bearer credential: whoever holds it is
+ * seated in the org at the invited role, `admin` included. So it is no longer
+ * readable at rest — `token_hash` holds a SHA-256 digest, the same scheme
+ * `services/form-invites.ts` and `services/shared-links.ts` already use, and
+ * the lookup hashes what arrives rather than comparing secrets.
+ *
+ * `app_org_invites.token` is NOT NULL and cannot cheaply be relaxed (see the
+ * pg schema's comment on the column), so a hashed row stores the DIGEST there
+ * too. That value is not a credential on its own — but only because of the
+ * `IS NULL` on the fallback below. Without it, the digest sitting in `token`
+ * would be submittable as a token: read the row, replay what you read, get
+ * seated. The guard confines the plaintext path to rows that have no digest at
+ * all, i.e. exactly the ones minted before this change.
+ */
+const findInviteByToken = async (
+  ctx: DbCtx,
+  tenantId: string,
+  token: string,
+): Promise<OrgInviteRow | null> => {
+  if (!token) return null;
+  const t = tablesFor(ctx.dialect);
+  const byHash = (await (ctx.db as any)
+    .select()
+    .from(t.invites)
+    .where(
+      and(
+        eq(t.invites.tokenHash, await hashToken(token)),
+        eq(t.invites.tenantId, tenantId),
+      ),
+    )
+    .limit(1)) as Array<Record<string, unknown>>;
+  if (byHash[0]) return mapInvite(byHash[0]);
+  const legacy = (await (ctx.db as any)
+    .select()
+    .from(t.invites)
+    .where(
+      and(
+        eq(t.invites.token, token),
+        isNull(t.invites.tokenHash),
+        eq(t.invites.tenantId, tenantId),
+      ),
+    )
+    .limit(1)) as Array<Record<string, unknown>>;
+  if (!legacy[0]) return null;
+  const row = mapInvite(legacy[0]);
+  log.warn(LEGACY_PLAINTEXT_MSG, {
+    lifecycle: "app_org_invites",
+    inviteId: row.id,
+    orgId: row.orgId,
+    tenantId,
+  });
+  return row;
+};
+
+/**
+ * What the public join page is allowed to learn from an invitation link.
+ *
+ * Deliberately narrow. The endpoint that serves this is unauthenticated and
+ * addressed by a secret, so it answers only the three things the page has to
+ * render — which organization, which mailbox it was sent to, and what the
+ * invitee would become — and nothing about the org's id, its members, or the
+ * workspace roles staged on the invitation.
+ *
+ * The narrowness is also where the phishing line is drawn. This renders on a
+ * page with no session, so every string here is attacker-controlled in the
+ * sense that matters: a workspace admin picks the org name, and any FREE-TEXT
+ * field added to this shape — an invitation message, a custom heading, a
+ * "reason" — would be an unauthenticated page on this instance's own domain
+ * displaying words a customer wrote. `orgName` is the one exception worth
+ * making, because the org is the thing being joined and naming it is the whole
+ * point of the page; it is a name the workspace legitimately owns, it is short,
+ * and the page renders it as text. Nothing else free-form belongs in this
+ * interface, and a URL or an image reference least of all.
+ */
+export interface OrgInvitePreview {
+  orgName: string;
+  email: string;
+  role: OrgRole;
+  expired: boolean;
+}
+
+/**
+ * Resolve a link token to the preview above, or `null` when there is nothing a
+ * person could act on.
+ *
+ * An ALREADY-ACCEPTED invitation resolves to `null` rather than to a preview
+ * carrying a flag: the invitation is single-use, and to the page a spent token
+ * and an unknown one are the same dead end. An EXPIRED one does come back,
+ * because "this expired, ask for a new one" is a different instruction from
+ * "this link is wrong".
+ */
+export const resolveOrgInviteByToken = async (
+  ctx: DbCtx,
+  tenantId: string,
+  token: string,
+): Promise<OrgInvitePreview | null> => {
+  if (!token) return null;
+  const invite = await findInviteByToken(ctx, tenantId, token);
+  if (!invite || invite.acceptedAt != null) return null;
+  const t = tablesFor(ctx.dialect);
+  const orgs = (await (ctx.db as any)
+    .select({ name: t.orgs.name })
+    .from(t.orgs)
+    .where(and(eq(t.orgs.id, invite.orgId), eq(t.orgs.tenantId, tenantId)))
+    .limit(1)) as Array<{ name: string }>;
+  const org = orgs[0];
+  if (!org) return null;
+  return {
+    orgName: org.name,
+    email: invite.email,
+    role: invite.role,
+    expired: invite.expiresAt <= Date.now(),
+  };
+};
+
 export const listInvites = async (
   ctx: DbCtx,
   tenantId: string,
@@ -902,6 +1054,7 @@ export const createOrgInvite = async (
 
   const id = crypto.randomUUID();
   const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
+  const tokenHash = await hashToken(token);
   const expiresAt = new Date(Date.now() + ORG_INVITE_TTL_MS);
   await (ctx.db as any).insert(t.invites).values({
     id,
@@ -910,7 +1063,16 @@ export const createOrgInvite = async (
     email,
     role,
     roleIds: input.roleIds?.length ? input.roleIds : null,
-    token,
+    // The digest goes into BOTH columns. `token` is NOT NULL and carries a
+    // unique index, and relaxing either is a SQLite table rebuild on a schema
+    // that migrates on the boot path of every serverless cold start — so the
+    // column is fed a value that is not the credential instead of being made
+    // optional. What keeps that safe is the `IS NULL` guard in
+    // {@link findInviteByToken}, not the value itself: a digest replayed as a
+    // token matches nothing, because the only query that reads `token` refuses
+    // rows that have a digest.
+    token: tokenHash,
+    tokenHash,
     invitedBy: input.invitedBy ?? null,
     expiresAt: dateFor(ctx.dialect, expiresAt),
     acceptedAt: null,
@@ -928,13 +1090,22 @@ export const createOrgInvite = async (
       .limit(1)) as Array<{ slug: string }>;
     const slug = slugRows[0]?.slug ?? tenantId;
     const transport = await ctx.emailFor(tenantId);
+    // The recipient is a person, not a client library, so the mail carries a
+    // link and nothing else. It used to instruct them to issue a JSON POST to
+    // the accept endpoint, which nobody outside this repository can act on.
+    //
+    // The token appears ONLY inside the URL. Repeating it as a copyable string
+    // — the shape the old body had — is what turns a forwarded quote of the
+    // email into a working credential, and it earns nothing: the page reads the
+    // token out of its own path.
+    const appUrl = (ctx.env.APP_URL ?? "").replace(/\/+$/, "");
+    const link = `${appUrl}/t/${slug}/join-org/${encodeURIComponent(token)}`;
     await transport.send({
       to: email,
       subject: `You've been invited to ${org.name}`,
       text:
         `You've been invited to join ${org.name} as ${role}.\n\n` +
-        `Sign in to your account, then POST ${ctx.env.APP_URL}/api/t/${slug}/orgs/invites/accept ` +
-        `with { "token": "${token}" }.\n` +
+        `Open this link to accept:\n${link}\n\n` +
         `The invitation expires ${expiresAt.toISOString()}.`,
     });
   })().catch(() => {});
@@ -983,14 +1154,8 @@ export const acceptOrgInvite = async (
   appUserId: string,
 ): Promise<AcceptOrgInviteResult> => {
   const t = tablesFor(ctx.dialect);
-  const rows = (await (ctx.db as any)
-    .select()
-    .from(t.invites)
-    .where(and(eq(t.invites.token, token), eq(t.invites.tenantId, tenantId)))
-    .limit(1)) as Array<Record<string, unknown>>;
-  const raw = rows[0];
-  if (!raw) throw new AppError("NOT_FOUND", "Invitation not found");
-  const invite = mapInvite(raw);
+  const invite = await findInviteByToken(ctx, tenantId, token);
+  if (!invite) throw new AppError("NOT_FOUND", "Invitation not found");
   if (invite.acceptedAt != null)
     throw new AppError("VALIDATION", "This invitation has already been accepted");
   if (invite.expiresAt <= Date.now())

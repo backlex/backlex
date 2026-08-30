@@ -72,7 +72,7 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
   const permFor = async (action: "create" | "update" | "delete"): Promise<ResolvedPerm> => {
     const p = await resolvePermission(ctx, auth, collection.slug, action, permCache);
     if (!p.allowed) throw new AppError("FORBIDDEN", `No ${action} permission on ${collection.slug}`);
-    return { whereSql: p.whereSql, fields: p.fields };
+    return { whereSql: p.whereSql, fields: p.fields, conditions: p.conditions };
   };
   // What every op's RESPONSE is projected through — the caller's read grant,
   // not the grant that authorised the write. See `WriteEnv.readFields`.
@@ -100,6 +100,9 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     tenantId: auth.tenantId,
     roles: auth.roles,
     email: auth.email,
+    orgId: auth.orgId ?? null,
+    orgRole: auth.orgRole ?? null,
+    orgIds: auth.orgIds ?? [],
     meta: params.meta,
     impersonatedBy: params.auth.impersonatedBy ?? null,
     impersonationReadOnly: params.auth.impersonationReadOnly ?? false,

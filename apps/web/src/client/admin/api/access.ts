@@ -27,10 +27,68 @@ export interface ApiAppUser {
   email: string;
   name: string | null;
   emailVerified: boolean;
-  status: "active" | "suspended";
+  /**
+   * `invited` is a real row with no credential behind it — the invitation has
+   * been sent and not accepted. It was missing from this union while the only
+   * way to become an end-user was self-signup; an admin-issued invitation
+   * writes one on every create, so a page that treats "not suspended" as
+   * "active" now says the opposite of the truth about a third of its rows.
+   */
+  status: "active" | "suspended" | "invited";
   createdAt: string | number;
   roles: { id: string; name: string }[];
 }
+
+/** What `POST /api/app-users/invite` answers. */
+export interface ApiAppUserInvite {
+  id: string;
+  email: string;
+  /**
+   * The raw invite token. Deliberately not rendered anywhere in the admin: the
+   * invitee receives it inside the emailed accept link, and a token that is
+   * also a string on an operator's screen is a credential that outlives the
+   * mailbox it was addressed to.
+   */
+  token: string;
+  expiresAt: number;
+}
+
+export interface InviteAppUserBody {
+  email: string;
+  name?: string;
+  /** Workspace roles bound at invite time. The admin role is refused by the
+   *  server (`resolveAssignableRoles`), so never offer it. */
+  roleIds?: string[];
+}
+
+/**
+ * Why the server refused an invitation, off the CONFLICT's `details`. Mirrors
+ * `server/services/app-user-invites.ts::InviteConflictDetails` — the two are
+ * the same contract seen from either end.
+ */
+export interface AppUserInviteConflict {
+  reason: "already_invited" | "already_a_user";
+  appUserId: string;
+  email: string;
+  status: string;
+}
+
+/** Read the conflict shape off a thrown `ApiError`, or null when the failure
+ *  was something else. Written defensively because `details` is whatever the
+ *  server put there — an older deploy puts nothing. */
+export const appUserInviteConflict = (err: unknown): AppUserInviteConflict | null => {
+  const d = (err as { details?: unknown } | null)?.details as
+    | Partial<AppUserInviteConflict>
+    | undefined;
+  if (!d || (d.reason !== "already_invited" && d.reason !== "already_a_user")) return null;
+  if (typeof d.appUserId !== "string" || typeof d.email !== "string") return null;
+  return {
+    reason: d.reason,
+    appUserId: d.appUserId,
+    email: d.email,
+    status: typeof d.status === "string" ? d.status : "invited",
+  };
+};
 
 export interface ApiRole {
   id: string;
@@ -138,6 +196,17 @@ export const permissionsApi = {
     }),
 };
 
+/** Written outside the namespace so `resendInvite` can call both without the
+ *  object having to refer to itself. */
+const inviteAppUser = (body: InviteAppUserBody) =>
+  api<Envelope<ApiAppUserInvite>>(`/api/app-users/invite`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+const deleteAppUser = (id: string) =>
+  api<{ ok: true }>(`/api/app-users/${id}`, { method: "DELETE" });
+
 /** Workspace end-user pool admin (the `app_users` table). All endpoints are
  *  admin-only and scoped to the active workspace. */
 export const appUsersApi = {
@@ -160,14 +229,47 @@ export const appUsersApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  remove: (id: string) =>
-    api<{ ok: true }>(`/api/app-users/${id}`, { method: "DELETE" }),
+  remove: deleteAppUser,
   sessions: (id: string) =>
     api<Envelope<{ id: string; userAgent: string | null; ipAddress: string | null; createdAt: number | null; updatedAt: number | null }[]>>(
       `/api/app-users/${id}/sessions`,
     ),
   revokeSession: (id: string, sessionId: string) =>
     api<{ ok: true }>(`/api/app-users/${id}/sessions/${sessionId}`, { method: "DELETE" }),
+  /**
+   * Provision an end-user the operator names, rather than waiting for one to
+   * sign themselves up. Writes a pending row and mails an accept link; the
+   * account exists but cannot sign in until that link is opened.
+   *
+   * A repeat of an address already in the pool throws — read the failure with
+   * {@link appUserInviteConflict} to learn which kind.
+   */
+  invite: inviteAppUser,
+  /**
+   * Withdraw an invitation nobody has accepted.
+   *
+   * The pending row IS the invitation, so deleting it is what withdrawal means:
+   * the outstanding token then resolves to nothing and the accept endpoint
+   * answers "Invited end-user no longer exists". There is no separate revoke
+   * route because there is nothing else to revoke.
+   */
+  revokeInvite: deleteAppUser,
+  /**
+   * Send a fresh invitation to somebody who never accepted the first one.
+   *
+   * Composed rather than a single call: `/api/app-users/invite` has no resend
+   * counterpart, so the only honest way to mint a new token is to withdraw the
+   * pending invitation and issue another. Safe precisely because the row is
+   * pending — it has no credential, no session and no OAuth account, and the
+   * roles come from the dialog that is calling. It is NOT an update: the new
+   * invitation carries a new `app_users.id`, so anything that recorded the old
+   * one (a person row linked at invite time via `link`) still points at the
+   * withdrawn row. Only offer it for `status: "invited"`.
+   */
+  resendInvite: async (appUserId: string, body: InviteAppUserBody) => {
+    await deleteAppUser(appUserId);
+    return inviteAppUser(body);
+  },
 };
 
 /** A member's standing inside an organization — governs org administration,

@@ -880,6 +880,12 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       try {
         res = await performCreate(env, data, {
           whereSql: null,
+          // Unrestricted, deliberately. A public form submission is not made by
+          // a principal holding a role, so there is no permission condition to
+          // judge it against — the form's own `exposed` field list IS the
+          // authority here, and it is passed on the line above. Stating `null`
+          // rather than inheriting it is the point of the field being required.
+          conditions: null,
           fields: exposed,
         });
       } catch (e) {

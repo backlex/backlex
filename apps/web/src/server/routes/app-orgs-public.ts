@@ -14,6 +14,7 @@ import {
   removeMember,
   requireOrg,
   requireOrgRole,
+  resolveOrgInviteByToken,
   revokeOrgInvite,
   setActiveOrg,
   updateMember,
@@ -26,10 +27,13 @@ import { readJsonOr } from "../lib/body";
  *
  * This is the half a workspace's own application calls: list the orgs I belong
  * to, start a new one, invite a colleague, switch which org I'm acting in.
- * Everything is authenticated as an **app-plane** identity (the bearer token or
- * cookie issued by `/api/t/:slug/auth/*`) — a control-plane admin session is
- * deliberately NOT accepted here; admins use `/api/app-orgs` instead, which is
- * the same service behind an admin gate.
+ * Everything here bar one route is authenticated as an **app-plane** identity
+ * (the bearer token or cookie issued by `/api/t/:slug/auth/*`) — a
+ * control-plane admin session is deliberately NOT accepted; admins use
+ * `/api/app-orgs` instead, which is the same service behind an admin gate.
+ *
+ * The exception is `GET /:slug/orgs/invites/:token`, which the join page calls
+ * before its visitor has any session at all; see its own comment.
  *
  * Authorization inside an org is the membership role: `admin` may invite and
  * manage members, `owner` may additionally rename and delete. Nothing here can
@@ -116,6 +120,40 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
       ownerAppUserId: appUserId,
     });
     return c.json({ data: { ...org, role: "owner", memberCount: 1 } }, 201);
+  })
+
+  /**
+   * Resolve an invitation link, for the join page at `/t/:slug/join-org/:token`.
+   *
+   * The ONE unauthenticated route in this file, and deliberately so: the person
+   * holding the link may not have an account yet, and requiring a session to
+   * find out what the link is for is the dead end this endpoint exists to
+   * remove. The token in the path is the whole authorisation, which is why the
+   * answer is `OrgInvitePreview` and not an invite row — org name, invited
+   * address, role, expiry, nothing else.
+   *
+   * A spent or unknown token is a 404 either way. Distinguishing them would
+   * turn this into an oracle for guessed tokens, and the page has the same
+   * thing to say about both.
+   *
+   * Registered before `/:slug/orgs/:orgId/invites` so a token can never be read
+   * as an org id.
+   */
+  .get("/:slug/orgs/invites/:token", async (c) => {
+    const ctx = c.get("ctx");
+    const slug = c.req.param("slug");
+    const tenant = await findTenantBySlugOrId(
+      { db: ctx.db, dialect: ctx.dialect },
+      slug,
+    );
+    if (!tenant) throw new AppError("NOT_FOUND", `Workspace "${slug}" not found`);
+    const preview = await resolveOrgInviteByToken(
+      dbCtx(c),
+      tenant.id,
+      c.req.param("token"),
+    );
+    if (!preview) throw new AppError("NOT_FOUND", "Invitation not found");
+    return c.json({ data: preview });
   })
 
   /**

@@ -54,6 +54,12 @@ const SignDocument = lazy(() =>
 const SignIn = lazy(() => import("@/pages/sign-in").then((m) => ({ default: m.SignIn })));
 const SignUp = lazy(() => import("@/pages/sign-up").then((m) => ({ default: m.SignUp })));
 const Invite = lazy(() => import("@/pages/invite").then((m) => ({ default: m.Invite })));
+const JoinWorkspaceUser = lazy(() =>
+  import("@/pages/join-workspace-user").then((m) => ({
+    default: m.JoinWorkspaceUser,
+  })),
+);
+const JoinOrg = lazy(() => import("@/pages/join-org").then((m) => ({ default: m.JoinOrg })));
 const OAuthConsent = lazy(() =>
   import("@/pages/oauth-consent").then((m) => ({ default: m.OAuthConsent })),
 );
@@ -128,6 +134,24 @@ export const App = () => {
           {/* Public invite-acceptance — outside AuthGate; the invitee has no
               account yet. Resolves the token, then signs up + binds membership. */}
           <Route path="/invite" element={<Invite />} />
+          {/* The workspace plane's two accept pages, registered here for the
+              same reason `/invite` is: everything below `/*` renders inside
+              `<AuthGate>`, which redirects a visitor with no session to
+              /sign-in. An invitee is *by definition* that visitor — the
+              end-user invite creates the account and the org invite may be the
+              first time the person has heard of this workspace — so a gated
+              accept page would bounce exactly the people it exists for. Being
+              listed above the catch-all is the whole mechanism; there is no
+              opt-out wrapper to add.
+
+              They must also be matched by PATTERN rather than by a valid
+              token: `/t/:slug/join/:token` claims every shape of that URL, so a
+              stale or already-used link still reaches the page and gets told
+              what went wrong. Were it to fall through to `/*` instead, the
+              admin's not-found copy would tell the invitee the page does not
+              exist, which is both untrue and unactionable. */}
+          <Route path="/t/:slug/join/:token" element={<JoinWorkspaceUser />} />
+          <Route path="/t/:slug/join-org/:token" element={<JoinOrg />} />
           {/* MCP OAuth consent — outside AuthGate so it renders the auth shell;
               the flow only lands here with a live session (authorize redirects
               unauthenticated users to /sign-in first). */}

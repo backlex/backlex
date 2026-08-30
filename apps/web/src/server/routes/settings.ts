@@ -1,14 +1,15 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, eq, isNull } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { isInstanceOperator, requirePlatformMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isCloudflareWorkers, isDenoDeploy, isNetlify } from "../lib/runtime";
 import {
+  GLOBAL_SETTINGS_TENANT_ID,
   loadAppSettings,
   loadPasswordLoginMode,
   loadSignInBranding,
@@ -62,15 +63,15 @@ const SettingsInput = z
       .regex(/^[A-Za-z]{3}$/, "Expected a three-letter ISO-4217 code")
       .optional(),
     /** Instance-global copy for the public sign-in screen — persisted on the
-     *  `tenant_id IS NULL` row, not per-workspace. Blank = built-in default. */
+     *  `_global` sentinel row, not per-workspace. Blank = built-in default. */
     signInHeadline: z.string().max(120).optional(),
     signInTagline: z.string().max(280).optional(),
     /** Sign-up consent links. Empty string clears (hides) the link; otherwise
-     *  must be a valid absolute URL. Also instance-global (`tenant_id IS NULL`). */
+     *  must be a valid absolute URL. Also instance-global (the `_global` row). */
     termsUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
     privacyUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
     /** Whether an email + password may be exchanged for a session, and on which
-     *  plane. Instance-global (`tenant_id IS NULL`). Leaving `enabled` is gated
+     *  plane. Instance-global (the `_global` row). Leaving `enabled` is gated
      *  on another way in existing — see the lock-out check in the handler. */
     passwordLogin: z.enum(["enabled", "app-only", "disabled"]).optional(),
     /** Saved Schema-graph (ERD) node positions, keyed by collection slug.
@@ -111,11 +112,27 @@ const SettingsInput = z
   )
   .openapi("SettingsInput");
 
+/** The instance-wide tier: one value per deployment, shared by every workspace
+ *  on it. Nothing here is the calling workspace's to own. */
+const GlobalSettings = z
+  .object({
+    signInHeadline: z.string(),
+    signInTagline: z.string(),
+    termsUrl: z.string(),
+    privacyUrl: z.string(),
+    passwordLogin: z.enum(["enabled", "app-only", "disabled"]),
+  })
+  .openapi("GlobalSettings");
+
 const SettingsRow = z
   .object({
     i18nLocales: z.array(z.string()).optional(),
     i18nDefaultLocale: z.string().nullable().optional(),
     timezone: z.string().optional(),
+    /** The calling workspace's OWN values — nothing instance-wide is in here. */
+    workspace: z.record(z.string(), z.unknown()),
+    /** The instance-wide values, named as such rather than mixed in. */
+    global: GlobalSettings,
     appUrl: z.string(),
     emailFrom: z.string().nullable(),
   })
@@ -161,7 +178,7 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "Get settings",
       description:
-        "Active workspace's runtime-mutable settings plus env-derived `appUrl`/`emailFrom` (read-only).",
+        "Active workspace's runtime-mutable settings under `workspace`, the instance-wide tier under `global`, plus env-derived `appUrl`/`emailFrom` (read-only). Both tiers are ALSO mirrored flat at the top level for compatibility; prefer the two blocks.",
       security: SECURITY,
       middleware: [requireUser, requireAdminMw],
       responses: {
@@ -177,16 +194,31 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const [settings, branding, passwordLogin] = await Promise.all([
+      const [workspace, branding, passwordLogin] = await Promise.all([
         loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null),
         loadSignInBranding(ctx.db, ctx.dialect),
         loadPasswordLoginMode(ctx.db, ctx.dialect),
       ]);
+      // Two tiers answer this endpoint and they are not the same kind of thing:
+      // `workspace` is what THIS workspace chose, `global` is one value for the
+      // whole deployment that only the instance operator may write. Spreading
+      // both flat — which is all this used to do — meant every workspace read
+      // the operator's sign-in copy back as if it had chosen it, and there was
+      // no way for a caller to tell the two apart. Now there is: a field's tier
+      // is the block it appears in.
+      //
+      // The flat mirror stays for one release because the admin SPA, the CLI
+      // and the MCP settings tool all read these keys at the top level today,
+      // and none of those files is owned by this change. New callers should
+      // read `data.workspace` / `data.global`; the mirror goes when the last
+      // top-level reader does.
+      const global = { ...branding, passwordLogin };
       return c.json({
         data: {
-          ...settings,
-          ...branding,
-          passwordLogin,
+          ...workspace,
+          ...global,
+          workspace,
+          global,
           appUrl: ctx.env.APP_URL,
           emailFrom: ctx.env.EMAIL_FROM ?? null,
         },
@@ -202,7 +234,11 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       summary: "Patch settings",
       description: "Whitelisted keys only. Unknown keys are rejected (strict).",
       security: SECURITY,
-      middleware: [requireUser, requireAdminMw],
+      // The plane gate is explicit here as well as in the firewall: this
+      // handler is the one that can write the instance-global `_global` row, so it
+      // should not be reachable by an app-plane identity even for the instant
+      // before the operator check refuses them.
+      middleware: [requireUser, requirePlatformMw, requireAdminMw],
       request: {
         body: {
           required: true,
@@ -226,6 +262,42 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // out of their own instance, and the fix would be a manual DB write. The
       // admin sign-in screen's own provider list is the authority on what is
       // left: if nothing but the password survives, refuse the change.
+      const globalKeys = new Set<string>(SIGN_IN_BRANDING_KEYS);
+      // These five keys land on the instance-global `_global` row, which is
+      // correct — the sign-in page is shown before any workspace is selected,
+      // so it can only have one answer. What was wrong is who could write it.
+      //
+      // `requireAdminMw` proves the caller is admin of THEIR OWN workspace, and
+      // `POST /api/tenants` hands that role to any authenticated user for the
+      // price of clicking "New workspace". So a stranger could rewrite the
+      // sign-in headline, tagline and Terms/Privacy links every other admin on
+      // the deployment sees — a ready-made phishing surface on the login page —
+      // and, via `passwordLogin`, lock everyone else out of a dashboard whose
+      // only recovery is `OWNER_EMAIL` or SQL.
+      //
+      // An instance-global write needs instance-global standing. The check runs
+      // once, before any row is touched, so a mixed body is refused whole
+      // rather than half-applied.
+      if (Object.keys(body).some((k) => globalKeys.has(k))) {
+        if (!(await isInstanceOperator(ctx, auth))) {
+          throw new AppError(
+            "FORBIDDEN",
+            "Sign-in branding is instance-wide, so only the instance operator may change it — sign in as an admin of the default workspace, or set OWNER_EMAIL to your address",
+          );
+        }
+      }
+
+      // Turning the password off with nothing else configured locks every admin
+      // out of their own instance, and the fix would be a manual DB write. The
+      // admin sign-in screen's own provider list is the authority on what is
+      // left: if nothing but the password survives, refuse the change.
+      //
+      // This runs AFTER the operator gate, and the order is load-bearing.
+      // `passwordLogin` is one of the instance-global keys, so a non-operator
+      // can never write it — but with the guard first they still reached it,
+      // and its 422 ("enable another way in first") versus a 200 answered a
+      // question they were not entitled to ask: whether this deployment has a
+      // second way in. Refuse before you reveal.
       if (body.passwordLogin && body.passwordLogin !== "enabled") {
         const surface = await resolvePlatformAuthSurface(
           { db: ctx.db as any, dialect: ctx.dialect },
@@ -242,43 +314,45 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           );
         }
       }
-      const globalKeys = new Set<string>(SIGN_IN_BRANDING_KEYS);
       for (const [key, value] of Object.entries(body)) {
         if (value === undefined) continue;
         // Login-screen branding is instance-global — the sign-in page is shown
-        // before any workspace is selected — so it always lands on the
-        // `tenant_id IS NULL` row. Everything else is scoped to the workspace.
+        // before any workspace is selected — so it lands on the `_global`
+        // sentinel row. Everything else is scoped to the workspace.
+        //
+        // A caller with no active workspace has no workspace tier to write to,
+        // so their non-global keys fall to the same sentinel rather than to a
+        // NULL that would read back as "instance-wide" by accident. That
+        // accident is exactly the ambiguity the sentinel exists to remove.
         const scopeTenantId = globalKeys.has(key)
-          ? null
-          : (auth.tenantId ?? null);
+          ? GLOBAL_SETTINGS_TENANT_ID
+          : (auth.tenantId ?? GLOBAL_SETTINGS_TENANT_ID);
         const updatedAt = ctx.dialect === "pg" ? new Date() : Date.now();
-        if (scopeTenantId !== null) {
-          // Tenant-scoped keys go through an ATOMIC upsert keyed on the
-          // `(tenant_id, key)` unique index. The old select-then-insert/update
-          // was a check-then-act race: two concurrent PATCHes for a not-yet-
-          // existing key both saw "no row" and both INSERTed, and the loser hit
-          // `UNIQUE constraint failed: app_settings.tenant_id, app_settings.key`
-          // → a 500 (confirmed via a concurrent-write load test). ON CONFLICT
-          // collapses that to a single write with no window.
-          await (ctx.db as any)
-            .insert(t)
-            .values({ id: crypto.randomUUID(), tenantId: scopeTenantId, key, value })
-            .onConflictDoUpdate({ target: [t.tenantId, t.key], set: { value, updatedAt } });
-        } else {
-          // Global (branding) keys carry a NULL tenant_id. SQLite/D1 treat NULLs
-          // as DISTINCT in a unique index, so ON CONFLICT can't dedupe them —
-          // keep select-then-update here. These aren't a concurrent-write path.
-          const existing = (await (ctx.db as any)
-            .select({ id: t.id })
-            .from(t)
-            .where(and(eq(t.key, key), isNull(t.tenantId)))
-            .limit(1)) as { id: string }[];
-          if (existing[0]) {
-            await (ctx.db as any).update(t).set({ value, updatedAt }).where(eq(t.id, existing[0].id));
-          } else {
-            await (ctx.db as any).insert(t).values({ id: crypto.randomUUID(), tenantId: null, key, value });
-          }
-        }
+        // Every key now goes through ONE atomic upsert keyed on the
+        // `(tenant_id, key)` unique index. The old select-then-insert/update
+        // was a check-then-act race: two concurrent PATCHes for a not-yet-
+        // existing key both saw "no row" and both INSERTed, and the loser hit
+        // `UNIQUE constraint failed: app_settings.tenant_id, app_settings.key`
+        // → a 500 (confirmed via a concurrent-write load test). ON CONFLICT
+        // collapses that to a single write with no window.
+        //
+        // The global keys could not take this path before, and the sentinel is
+        // why they can now: SQLite/D1 treat NULLs as DISTINCT inside a unique
+        // index, so `ON CONFLICT (tenant_id, key)` never matched the old NULL
+        // row and the branding writes kept a hand-rolled select-then-update
+        // (and, with it, the race). `'_global'` is an ordinary value and
+        // conflicts like any other.
+        //
+        // Nothing here deletes the pre-sentinel `tenant_id IS NULL` row: an
+        // isolate still running the previous release reads it, and this write
+        // already wins for every new reader (the sentinel row shadows the
+        // legacy one — see `readGlobalRows`). The reader logs when the legacy
+        // row is what answered, which is the signal for deleting both it and
+        // the fallback a release from now.
+        await (ctx.db as any)
+          .insert(t)
+          .values({ id: crypto.randomUUID(), tenantId: scopeTenantId, key, value })
+          .onConflictDoUpdate({ target: [t.tenantId, t.key], set: { value, updatedAt } });
       }
       return c.json({ ok: true });
     },

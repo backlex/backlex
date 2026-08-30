@@ -9,7 +9,12 @@ import { resolveImpersonation } from "../services/impersonation";
 import { verifyThirdPartyToken } from "../lib/third-party-jwt";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
 import { resolveThirdPartyUser } from "../services/third-party-auth";
-import { getCachedSession, setCachedSession } from "../services/permissions-cache";
+import {
+  getCachedAppSessionLive,
+  getCachedSession,
+  setCachedAppSessionLive,
+  setCachedSession,
+} from "../services/permissions-cache";
 
 const extractIp = (req: Request): string | null => {
   const h = req.headers;
@@ -105,33 +110,19 @@ const touchLastUsedDebounced = (
   }
 };
 
-/**
- * Cross-tenant role names (unfiltered union). Only consulted by tenantMiddleware
- * when the caller isn't a member of the requested workspace — to decide whether
- * they're a super-admin who should pass through anyway. Skipped entirely on the
- * hot path (member of the active tenant), so this lookup is exported and called
- * lazily rather than from sessionMiddleware on every request.
+/*
+ * `loadUnfilteredRoleNames` used to live here: a union of role NAMES across
+ * every workspace, with no tenant predicate, consulted by `tenantMiddleware`
+ * to decide whether a non-member was "a super-admin who should pass through
+ * anyway". It is deleted rather than left unused, because a helper that
+ * answers "does this person hold the name `admin` ANYWHERE on the instance"
+ * has no safe caller: `POST /api/tenants` hands that name to whoever asks.
+ *
+ * The question it was standing in for is "is this the instance operator", and
+ * `services/roles/guards.ts::isInstanceOperator` is the function that actually
+ * answers it — scoped to the default workspace, with an `OWNER_EMAIL` arm and
+ * an explicit refusal for API keys.
  */
-export const loadUnfilteredRoleNames = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  userId: string,
-  restrictRoleId: string | null,
-): Promise<string[]> => {
-  const t =
-    ctx.dialect === "pg"
-      ? { roles: pg.schema.roles, userRoles: pg.schema.userRoles }
-      : { roles: sqlite.schema.roles, userRoles: sqlite.schema.userRoles };
-  const rows = (await (ctx.db as any)
-    .select({ name: t.roles.name })
-    .from(t.userRoles)
-    .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
-    .where(
-      restrictRoleId
-        ? and(eq(t.userRoles.userId, userId), eq(t.roles.id, restrictRoleId))
-        : eq(t.userRoles.userId, userId),
-    )) as { name: string }[];
-  return rows.map((r) => r.name);
-};
 
 /** The address `$user.email` binds to. Exported because a queued job has to
  *  rebuild the same identity the request had, and a permission condition
@@ -200,6 +191,67 @@ const findAppSession = async (
     tenantId: row.tenantId,
     email: row.email,
   };
+};
+
+/**
+ * Is the session an app-plane ACCESS TOKEN names still live, and its owner
+ * still active?
+ *
+ * `verifyAccessToken` performs zero database reads by design — it checks a
+ * signature and some claims and returns. That is what makes the access token
+ * cheap, and it is also why suspending an end-user did not suspend them:
+ * `PATCH /api/app-users/{id}` deletes their `app_sessions` rows, which only
+ * reaches the two credentials that DO hit the database, while the token the
+ * SDK actually sends kept full read and write for the rest of its TTL. The
+ * suspend handler's own docstring claimed the opposite ("existing tokens stop
+ * working immediately"), and the same gap made sign-out advisory.
+ *
+ * So the token is now checked against the row it names. Every access token
+ * carries `sid` — it is a required claim, not an optional one — so this needs
+ * no fallback for older tokens and no fail-open arm.
+ *
+ * The cost is one indexed lookup, cached per isolate for the same 30s as every
+ * other identity lookup on this path. That window is the ceiling on how long a
+ * revoked token can still work on an isolate that had already seen it; the
+ * isolate serving the suspend evicts immediately.
+ *
+ * EXPORTED for `routes/realtime.ts`, which re-asks it on the heartbeat of a
+ * held SSE stream. It has to be this function and not a copy: the read path and
+ * the stream disagreeing about whether a session is live is the same
+ * two-paths-drift that `services/realtime-filter.ts` exists to prevent for
+ * conditions. Note that `getCachedAppSessionLive` is NOT a substitute for a
+ * long-lived stream — nothing repopulates that entry after the request
+ * middleware's one call, and `invalidateAppSessions` DELETES rather than
+ * setting `false`, so it cannot tell "not cached" from "live".
+ */
+export const appSessionLive = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  sessionId: string,
+): Promise<boolean> => {
+  const cached = getCachedAppSessionLive(sessionId);
+  if (cached !== undefined) return cached;
+  const t =
+    ctx.dialect === "pg"
+      ? { sessions: pg.schema.appSessions, users: pg.schema.appUsers }
+      : { sessions: sqlite.schema.appSessions, users: sqlite.schema.appUsers };
+  const rows = (await (ctx.db as any)
+    .select({ status: t.users.status, expiresAt: t.sessions.expiresAt })
+    .from(t.sessions)
+    .innerJoin(t.users, eq(t.sessions.userId, t.users.id))
+    .where(eq(t.sessions.id, sessionId))
+    .limit(1)) as Array<{ status: string; expiresAt: Date | number }>;
+  const row = rows[0];
+  // Deleted session, suspended owner, or a refresh row that has itself expired
+  // all mean the same thing: the access token minted from it is spent. The
+  // access token's own `exp` is shorter, so the last case is belt and braces.
+  const exp = row
+    ? row.expiresAt instanceof Date
+      ? row.expiresAt.getTime()
+      : Number(row.expiresAt)
+    : 0;
+  const live = Boolean(row) && row!.status === "active" && exp > Date.now();
+  setCachedAppSessionLive(sessionId, live);
+  return live;
 };
 
 /** Resolve an MCP OAuth access token (better-auth `mcp` plugin) to its user.
@@ -381,7 +433,28 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         email = await loadUserEmail(ctx, runClaims.sub);
       } else {
         const claims = await verifyAccessToken(ctx.env, token);
-        if (claims) {
+        // The signature says the token was ours; the session row says it still
+        // is. Nothing is assigned when it fails, so the request stays
+        // unauthenticated rather than falling through to the other token
+        // shapes: this token verified as ours, and re-probing it against the
+        // third-party issuers below would spend a network call per retry on a
+        // credential we already know is spent.
+        //
+        // An IMPERSONATION token is exempt, and not as a concession: its `sid`
+        // is the synthetic `imp:<row-id>` that `services/impersonation.ts`
+        // mints, never an `app_sessions` id — an operator can act as a subject
+        // who has never signed in, which is the point. Its liveness authority
+        // is the impersonation row, re-read on every request a few lines
+        // below, and that is a stricter guarantee than this one: ended,
+        // expired or deleted all stop the token on the next call with no cache
+        // window at all.
+        const impersonating = claims !== null && typeof claims.imp === "string";
+        const sessionStillLive =
+          claims === null
+            ? false
+            : impersonating ||
+              (await appSessionLive({ db: ctx.db, dialect: ctx.dialect }, claims.sid));
+        if (claims && sessionStillLive) {
           const impId = typeof claims.imp === "string" ? claims.imp : null;
           if (impId) {
             // An impersonation token is only as valid as its row. Ended,
@@ -414,6 +487,11 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
             appSessionTenantId = claims.tid;
             appSessionId = claims.sid ?? null;
           }
+        } else if (claims) {
+          // Verified as ours, but the session behind it is gone or its owner is
+          // suspended. Deliberately assigns nothing and probes nothing further:
+          // a revoked token must not get a second chance at the opaque-session
+          // or third-party paths below.
         } else {
           const appSess = await findAppSession(
             { db: ctx.db, dialect: ctx.dialect },

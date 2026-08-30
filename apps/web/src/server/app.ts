@@ -25,6 +25,8 @@ import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
+import { planeFirewall } from "./middleware/plane-firewall";
+import { impersonationReadOnlyGate } from "./middleware/impersonation-readonly";
 import { accountRoutes } from "./routes/account";
 import { activityRoutes } from "./routes/activity";
 import { tracesRoutes } from "./routes/traces";
@@ -172,6 +174,11 @@ export type AppBindings = {
       roles: string[];
       /** Resolved by tenantMiddleware. Null only on /api/auth and /health. */
       tenantId?: string | null;
+      /** How the caller reached `tenantId` — membership, or the instance
+       *  operator visiting a workspace they do not belong to. Stamped by
+       *  tenantMiddleware; absent means membership, which is the stricter
+       *  reading. See `AuthSubject.access` in `@backlex/core`. */
+      access?: "member" | "operator-visit";
       /** Set by sessionMiddleware when the request authenticates with a
        *  bearer API key — the key's home tenant wins over user.activeTenantId
        *  so machine-to-machine calls always land in the right workspace. */
@@ -775,6 +782,16 @@ export const createApp = (env: Env) => {
         "Content-Type",
         "Authorization",
         "X-Backlex-Tenant",
+        // Active app-plane organization. Its absence made the documented
+        // stateless org-switching path unreachable from the exact caller it
+        // exists for: an app-plane client is by definition a customer's browser
+        // app on another origin, `client.orgs.use("acme")` sends a custom
+        // header, that forces a preflight, and this list is non-empty so Hono
+        // answers with it literally rather than reflecting what was asked for.
+        // Same-origin and server-side callers were unaffected, which is why it
+        // survived — and the parity test is a source-text grep for the string,
+        // so nothing in CI noticed either.
+        "X-Backlex-Org",
         // Publishable analytics ingest key — a custom header, so a browser SDK
         // on a customer origin preflights before it can post events.
         "X-Backlex-Ingest-Key",
@@ -918,6 +935,16 @@ export const createApp = (env: Env) => {
 
   app.use("*", timed("session", skipOnProbe(sessionMiddleware)));
   app.use("*", timed("tenant", skipOnProbe(tenantMiddleware)));
+  // Immediately after tenant resolution, because it needs `auth.plane` (set by
+  // session) and reports `auth.tenantId` (set by tenant) — and before any route
+  // runs, so one table answers for ~110 mount prefixes instead of five route
+  // files remembering to. Defaults to `warn`; see the file header.
+  app.use("*", timed("plane", skipOnProbe(planeFirewall)));
+  // Right behind it, for the same reason and with the same shape: `auth`
+  // already carries `impersonationReadOnly` by here, and asking once in front
+  // of every route is what stops "read-only" from meaning "read-only on
+  // collections". `permission.ts` keeps its own check — see the file header.
+  app.use("*", timed("imprw", skipOnProbe(impersonationReadOnlyGate)));
 
   // Mark when all pre-route middleware (ctx + CORS + session + tenant) is done,
   // so `premw` vs `route` (= total − premw) can be split in Server-Timing.

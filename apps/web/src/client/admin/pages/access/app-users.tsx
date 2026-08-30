@@ -1,7 +1,17 @@
 import type { PushToast } from "../../types";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@backlex/ui/components/dialog";
 import {
   Sheet,
   SheetContent,
@@ -17,10 +27,13 @@ import { I } from "../../icons";
 import { Badge, Button, Checkbox, PageHeader } from "../../ui";
 import { ConfirmDialog } from "../../sheet";
 import {
+  appUserInviteConflict,
   appUsersApi,
   rolesApi,
   type ApiAppUser,
   type ApiRole,
+  type AppUserInviteConflict,
+  type InviteAppUserBody,
 } from "../../api";
 import { AppUsersSkeleton } from "../../page-skeletons";
 import { ErasureCard } from "./erasure-card";
@@ -30,7 +43,22 @@ import { ErasureCard } from "./erasure-card";
  * from `UsersPage`, which manages the control-plane (admin-app) accounts.
  * ────────────────────────────────────────────────────────────────────── */
 
+/**
+ * The three built-ins an end-user is never *given*.
+ *
+ * `admin` is refused outright by the server —
+ * `services/app-user-invites.ts::resolveAssignableRoles` is the authority, and
+ * it rejects the admin role on every surface that binds one, so offering it
+ * here would only produce a 422. `authenticated` and `public` are implicit:
+ * every signed-in end-user holds the first and every request holds the second,
+ * so a checkbox for either would be a control with nothing behind it. What
+ * remains after this filter is exactly the set the operator may grant.
+ */
 const APP_USER_SYSTEM_ROLES = new Set(["admin", "authenticated", "public"]);
+
+/** A pending row has no credential and no session behind it: the invitation was
+ *  sent and nobody has opened the link yet. */
+const isPending = (u: ApiAppUser): boolean => u.status === "invited";
 
 const initials = (s: string): string =>
   s
@@ -49,6 +77,7 @@ export function AppUsersPage({ pushToast }: { pushToast: PushToast }) {
   const [q, setQ] = useState("");
   const [activeUser, setActiveUser] = useState<ApiAppUser | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ApiAppUser | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,9 +142,16 @@ export function AppUsersPage({ pushToast }: { pushToast: PushToast }) {
         description={
           <>
             <Trans>End-users of the application built on this workspace — a pool separate from the
-            dashboard <strong>Team</strong> (the admin/control-plane operators). They sign up via this
-            workspace's own auth endpoint (see <strong>Authentication → Workspace auth API</strong>).</Trans>
+            dashboard <strong>Team</strong> (the admin/control-plane operators). They arrive one of two
+            ways: they sign themselves up through this workspace's own auth endpoint (see{" "}
+            <strong>Authentication → Workspace auth API</strong>), or you invite them here and they
+            choose a password from the emailed link.</Trans>
           </>
+        }
+        actions={
+          <Button variant="primary" icon={I.Plus} onClick={() => setInviteOpen(true)}>
+            <Trans>Invite end-user</Trans>
+          </Button>
         }
       />
       <Card className="py-0 gap-0">
@@ -140,15 +176,21 @@ export function AppUsersPage({ pushToast }: { pushToast: PushToast }) {
             {filtered.length === 0 && (
               <TableRow><TableCell colSpan={5} className="text-muted-foreground">
                 {rows.length === 0
-                  ? <Trans>No end-users yet — they appear here after signing up via the workspace auth endpoint.</Trans>
+                  ? <Trans>No end-users yet — invite one, or wait for the first sign-up through the workspace auth endpoint.</Trans>
                   : <Trans>No matches.</Trans>}
               </TableCell></TableRow>
             )}
             {filtered.map((u) => (
               <TableRow key={u.id} onClick={() => setActiveUser(u)} className="cursor-pointer">
-                <TableCell>{u.email}{!u.emailVerified && <Badge variant="outline" className="ml-1.5"><Trans>unverified</Trans></Badge>}</TableCell>
+                <TableCell>{u.email}{!u.emailVerified && !isPending(u) && <Badge variant="outline" className="ml-1.5"><Trans>unverified</Trans></Badge>}</TableCell>
                 <TableCell className="text-muted-foreground">{u.name ?? "—"}</TableCell>
-                <TableCell>{u.status === "suspended" ? <Badge variant="destructive"><Trans>suspended</Trans></Badge> : <Badge variant="default"><Trans>active</Trans></Badge>}</TableCell>
+                {/* A pending row is neither active nor suspended, and calling it
+                    active was a straight untruth: nobody can sign in as it. */}
+                <TableCell>{u.status === "suspended"
+                  ? <Badge variant="destructive"><Trans>suspended</Trans></Badge>
+                  : isPending(u)
+                    ? <Badge variant="outline"><Trans>invited</Trans></Badge>
+                    : <Badge variant="default"><Trans>active</Trans></Badge>}</TableCell>
                 <TableCell>
                   {u.roles.length === 0
                     ? <span className="text-xs text-muted-foreground">authenticated</span>
@@ -173,6 +215,20 @@ export function AppUsersPage({ pushToast }: { pushToast: PushToast }) {
           pushToast={pushToast}
         />
       )}
+      {inviteOpen && (
+        <InviteAppUserDialog
+          roles={roles}
+          onClose={() => setInviteOpen(false)}
+          pushToast={pushToast}
+          onInvited={(row, replacedId) =>
+            // Straight into the table, no refetch. The row IS the evidence the
+            // invitation happened, and making the operator wait for a list
+            // round-trip to see it is the stale-row shape the house rule bans.
+            // A re-send passes the withdrawn id so the list never shows both.
+            setRows((arr) => [row, ...arr.filter((x) => x.id !== row.id && x.id !== replacedId)])
+          }
+        />
+      )}
       <ConfirmDialog
         open={!!confirmDelete}
         title={t`Delete end-user`}
@@ -191,6 +247,198 @@ export function AppUsersPage({ pushToast }: { pushToast: PushToast }) {
           the account; erasure removes the person. */}
       <ErasureCard pushToast={pushToast} />
     </div>
+  );
+}
+
+/**
+ * Invite an end-user by address, from the dashboard.
+ *
+ * `POST /api/app-users/invite` has shipped on the SDK, GraphQL, MCP and the CLI
+ * for a while; the one surface that could not reach it was the page whose whole
+ * subject is the end-user pool, which instead told the operator that end-users
+ * "sign up via this workspace's own auth endpoint" — true of one of the two
+ * ways in, and dead-ending the other. B2B is where that bit hardest: an
+ * organization invitation requires the account to exist already, so an operator
+ * with no self-signup traffic could not seat the first member of anything.
+ */
+function InviteAppUserDialog({
+  roles,
+  onClose,
+  onInvited,
+  pushToast,
+}: {
+  /** Already narrowed to what the caller may grant — see APP_USER_SYSTEM_ROLES. */
+  roles: ApiRole[];
+  onClose: () => void;
+  /** `replacedId` is set on a re-send: the pending row that was withdrawn. */
+  onInvited: (row: ApiAppUser, replacedId?: string) => void;
+  pushToast: PushToast;
+}) {
+  const { t } = useLingui();
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [roleIds, setRoleIds] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  // Set when the server refuses the address. Held in the dialog rather than
+  // thrown at a toast because the useful next move — send it again — belongs
+  // beside the form that was just filled in, and a toast takes it away after
+  // five seconds.
+  const [conflict, setConflict] = useState<AppUserInviteConflict | null>(null);
+
+  const trimmed = email.trim().toLowerCase();
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+
+  const body = (): InviteAppUserBody => ({
+    email: trimmed,
+    ...(name.trim() ? { name: name.trim() } : {}),
+    ...(roleIds.size ? { roleIds: [...roleIds] } : {}),
+  });
+
+  /** The table row the invitation just created, as the list models it. */
+  const rowFor = (id: string, addr: string): ApiAppUser => ({
+    id,
+    email: addr,
+    name: name.trim() || null,
+    emailVerified: false,
+    status: "invited",
+    createdAt: Date.now(),
+    roles: roles.filter((r) => roleIds.has(r.id)).map((r) => ({ id: r.id, name: r.name })),
+  });
+
+  const toggleRole = (id: string, on: boolean) =>
+    setRoleIds((s) => {
+      const n = new Set(s);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+
+  const send = async () => {
+    setBusy(true);
+    setConflict(null);
+    try {
+      const r = await appUsersApi.invite(body());
+      onInvited(rowFor(r.data.id, r.data.email));
+      pushToast(t`Invitation sent to ${r.data.email}.`);
+      onClose();
+    } catch (e) {
+      const c = appUserInviteConflict(e);
+      if (c) setConflict(c);
+      else pushToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resend = async (withdrawnId: string) => {
+    setBusy(true);
+    try {
+      const r = await appUsersApi.resendInvite(withdrawnId, body());
+      onInvited(rowFor(r.data.id, r.data.email), withdrawnId);
+      pushToast(t`A new invitation is on its way to ${r.data.email}.`);
+      onClose();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="w-[460px] max-w-[92vw] gap-0 p-0 sm:max-w-none">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Invite end-user</Trans></DialogTitle>
+          <DialogDescription className="mt-0.5 text-[12.5px]">
+            <Trans>They get an email with a link, choose a password there, and land in this workspace's app — not in this dashboard.</Trans>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex flex-col gap-4 px-5 py-[18px]">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium text-foreground"><Trans>Email</Trans></label>
+              <Input
+                autoFocus
+                type="email"
+                placeholder="customer@example.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setConflict(null); }}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>The invitation link is valid for 7 days.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="font-normal text-muted-foreground"><Trans>(optional)</Trans></span></label>
+              <Input placeholder={t`Display name`} value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium text-foreground"><Trans>Roles</Trans></label>
+              {roles.length === 0 ? (
+                // Three built-ins and no explanation reads as a broken list. Say
+                // why there is nothing to tick, and point at the page that fixes
+                // it — the invitation itself still works without one.
+                <div className="rounded-control border border-dashed border-border px-3.5 py-3 text-[12.5px] text-muted-foreground">
+                  <Trans>This workspace has only the three built-in roles, and none of them is grantable
+                  here: <span className="font-mono">admin</span> is refused for end-users, and{" "}
+                  <span className="font-mono">authenticated</span> and <span className="font-mono">public</span>{" "}
+                  are already implicit. You can invite without one — they will sign in as{" "}
+                  <span className="font-mono">authenticated</span>.</Trans>
+                  <div className="mt-2">
+                    <Link to="/access/roles" className="font-medium text-foreground underline underline-offset-2">
+                      <Trans>Create a role first →</Trans>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col overflow-hidden rounded-control border border-border">
+                  {roles.map((r) => (
+                    <label key={r.id} className="flex cursor-pointer items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
+                      <div className="min-w-0">
+                        <div className="text-[12.5px] font-medium text-foreground">{r.name}</div>
+                        {r.description && <div className="text-[11.5px] text-muted-foreground">{r.description}</div>}
+                      </div>
+                      <Checkbox checked={roleIds.has(r.id)} onChange={(on) => toggleRole(r.id, on)} />
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            {conflict && (
+              <div className="flex flex-col gap-2 rounded-control border border-border bg-muted px-3.5 py-3 text-[12.5px]">
+                {conflict.reason === "already_invited" ? (
+                  <>
+                    <span>
+                      <Trans><span className="font-medium">{conflict.email}</span> has already been invited and
+                      hasn't accepted yet.</Trans>
+                    </span>
+                    <span className="text-muted-foreground">
+                      <Trans>Sending again withdraws the old invitation — its link stops working — and mails a
+                      fresh one with the roles selected above.</Trans>
+                    </span>
+                    <div>
+                      <Button variant="primary" disabled={busy} onClick={() => void resend(conflict.appUserId)}>
+                        {busy ? <Trans>Sending…</Trans> : <Trans>Send a new invitation</Trans>}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <span>
+                    <Trans><span className="font-medium">{conflict.email}</span> already has an account in this
+                    workspace ({conflict.status}). Close this and open their row to change roles or reinstate
+                    them.</Trans>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogBody>
+        <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
+          <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" disabled={!valid || busy || !!conflict} onClick={() => void send()}>
+            {busy ? <Trans>Sending…</Trans> : <Trans>Send invitation</Trans>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -302,7 +550,9 @@ function AppUserDrawer({
               {name || user.email}
               {user.status === "suspended"
                 ? <Badge variant="destructive"><Trans>suspended</Trans></Badge>
-                : <Badge variant="default"><Trans>active</Trans></Badge>}
+                : isPending(user)
+                  ? <Badge variant="outline"><Trans>invited</Trans></Badge>
+                  : <Badge variant="default"><Trans>active</Trans></Badge>}
             </SheetTitle>
             <SheetDescription className="mt-0.5 text-[12.5px]">{user.email} · id <span className="font-mono">{user.id}</span></SheetDescription>
           </div>

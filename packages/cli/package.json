@@ -1,6 +1,6 @@
 {
   "name": "@backlex/cli",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "The backlex CLI \u2014 auth/profiles, collection + item CRUD, backups, users/roles, feature flags, functions/flows/webhooks/jobs, advisor, scaffolding, and type/OpenAPI generation against any backlex instance.",
   "type": "module",
   "license": "Apache-2.0",

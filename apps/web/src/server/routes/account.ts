@@ -1,12 +1,12 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { loadAppSettings } from "../services/settings";
+import { GLOBAL_SETTINGS_TENANT_ID, loadAppSettings } from "../services/settings";
 import { defaultHook } from "../lib/openapi-router";
 import {
   DEFAULT_LOCALE,
@@ -244,12 +244,22 @@ export const accountRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!auth.userId) throw new AppError("UNAUTHORIZED", "Not signed in");
       const t = settingsTable(ctx.dialect);
       const key = `userListColumns:${auth.userId}`;
-      const tenantId = auth.tenantId ?? null;
+      // `_global` for a caller with no active workspace — the same sentinel the
+      // write below uses, and the same one the settings service moved to. The
+      // legacy `IS NULL` row is still matched so a row written before the
+      // migration (or by an isolate still running the old build during a
+      // rolling deploy) is not silently invisible.
+      const tenantId = auth.tenantId ?? GLOBAL_SETTINGS_TENANT_ID;
       const rows = (await (ctx.db as any)
         .select({ value: t.value })
         .from(t)
         .where(
-          and(eq(t.key, key), tenantId ? eq(t.tenantId, tenantId) : isNull(t.tenantId)),
+          and(
+            eq(t.key, key),
+            auth.tenantId
+              ? eq(t.tenantId, tenantId)
+              : or(eq(t.tenantId, GLOBAL_SETTINGS_TENANT_ID), isNull(t.tenantId)),
+          ),
         )
         .limit(1)) as { value: unknown }[];
       const value = rows[0]?.value;
@@ -287,39 +297,30 @@ export const accountRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const { listColumns } = c.req.valid("json");
       const t = settingsTable(ctx.dialect);
       const key = `userListColumns:${auth.userId}`;
-      const tenantId = auth.tenantId ?? null;
+      // A caller with no active workspace files this under the same `_global`
+      // sentinel the settings service uses, NOT under `tenant_id IS NULL`.
+      //
+      // The old NULL had two meanings in one column — "the instance's own
+      // value" for the settings service, and "this user has no workspace" here
+      // — and the sentinel migration moves every NULL row to `_global`. Left
+      // as it was, this route kept READING `IS NULL` and would have quietly
+      // stopped finding rows the migration had just moved: a user's saved list
+      // columns vanish with no error anywhere.
+      //
+      // The upsert also stops being a special case. The comment this replaces
+      // explained that NULL rows cannot dedupe through the `(tenant_id, key)`
+      // unique index because NULLs are distinct — true on BOTH dialects, not
+      // just SQLite — which is precisely the ambiguity the sentinel removes.
+      // One atomic path now, and the unique index actually holds.
+      const tenantId = auth.tenantId ?? GLOBAL_SETTINGS_TENANT_ID;
       const updatedAt = ctx.dialect === "pg" ? new Date() : Date.now();
-      if (tenantId !== null) {
-        // Atomic upsert on the `(tenant_id, key)` unique index — same
-        // race-free shape as PATCH /api/admin/settings.
-        await (ctx.db as any)
-          .insert(t)
-          .values({ id: crypto.randomUUID(), tenantId, key, value: listColumns })
-          .onConflictDoUpdate({
-            target: [t.tenantId, t.key],
-            set: { value: listColumns, updatedAt },
-          });
-      } else {
-        // NULL tenant_id rows can't dedupe through the unique index on
-        // SQLite/D1 (NULLs are distinct) — select-then-update. Only the
-        // owning user ever writes this key, so there's no concurrent-writer
-        // window worth hardening here.
-        const existing = (await (ctx.db as any)
-          .select({ id: t.id })
-          .from(t)
-          .where(and(eq(t.key, key), isNull(t.tenantId)))
-          .limit(1)) as { id: string }[];
-        if (existing[0]) {
-          await (ctx.db as any)
-            .update(t)
-            .set({ value: listColumns, updatedAt })
-            .where(eq(t.id, existing[0].id));
-        } else {
-          await (ctx.db as any)
-            .insert(t)
-            .values({ id: crypto.randomUUID(), tenantId: null, key, value: listColumns });
-        }
-      }
+      await (ctx.db as any)
+        .insert(t)
+        .values({ id: crypto.randomUUID(), tenantId, key, value: listColumns })
+        .onConflictDoUpdate({
+          target: [t.tenantId, t.key],
+          set: { value: listColumns, updatedAt },
+        });
       return c.json({ ok: true });
     },
   )

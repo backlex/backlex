@@ -465,7 +465,9 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     // SQLite + no D1 → Bun self-host. Dynamically import so the top-level
     // sqlite module stays edge-safe (no `bun:sqlite` at module init).
     const { createBunSqliteClient } = await import("@backlex/db/sqlite/bun");
-    db = createBunSqliteClient(env.SQLITE_PATH);
+    db = createBunSqliteClient(env.SQLITE_PATH, {
+      enforceForeignKeys: env.DB_FK_ENFORCE !== "off",
+    });
     txCapable = true;
   }
 

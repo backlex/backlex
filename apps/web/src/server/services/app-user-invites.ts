@@ -3,25 +3,106 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { Ctx } from "../context";
+import { log } from "../lib/log";
 import type { DbCtx } from "./seed";
 import { invalidateUserRoles } from "./permissions-cache";
 import { linkPersonRow } from "./portal-links";
+import { hashToken } from "./shared-links";
 
 /**
  * End-user invite tokens — the app-plane sibling of the platform member
  * invite (`tenant_members.invite_token`). The `app_users` table has no invite
  * columns, so the token + expiry live in `app_verifications` (the same table
  * better-auth and the SAML flow use for short-lived secrets), keyed as
- * `app-invite:<token>` with a JSON `{ appUserId, email }` value.
+ * `app-invite-h:<sha256(token)>` with a JSON `{ appUserId, email }` value.
+ *
+ * The key used to be `app-invite:<token>` — the credential itself. See
+ * {@link hashedInviteIdentifier} for what changed and why the prefix moved
+ * with it.
  *
  * Lifecycle: `POST /api/app-users/invite` (admin, control plane) writes one;
- * `POST /api/t/:slug/auth/invite/accept` (public, app plane) consumes it and
+ * the invitee opens `/t/:slug/join/:token` (public, app plane) and that page
+ * posts to `POST /api/t/:slug/auth/invite/accept`, which consumes the token and
  * sets the credential. Same 7-day expiry as the platform flow.
  */
 
 export const APP_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-const inviteIdentifier = (token: string) => `app-invite:${token}`;
+/**
+ * Where an invitation is accepted — the accept PAGE, not the accept endpoint.
+ *
+ * The invitation used to mail the endpoint instead: the recipient was told to
+ * `POST /api/t/{slug}/auth/invite/accept` with a JSON body holding the token
+ * and a password of their choosing. Everybody an operator actually invites —
+ * a customer, a member of staff, a supplier — reads that as a dead end, so the
+ * whole admin-driven half of the end-user lifecycle only worked for people who
+ * own an HTTP client. The link goes to a page that asks for a password now.
+ *
+ * The token travels only inside this URL. It is not repeated as a copyable
+ * string in the mail body, because a token sitting in prose gets pasted into
+ * chat, a ticket, or a reply-all, and it seats an account at whatever roles the
+ * invitation carries.
+ */
+export const appInviteAcceptUrl = (
+  appUrl: string | undefined,
+  slug: string,
+  token: string,
+): string =>
+  `${(appUrl ?? "").replace(/\/+$/, "")}/t/${encodeURIComponent(slug)}/join/${encodeURIComponent(token)}`;
+
+/**
+ * Why an invitation was refused, on the `details` of the CONFLICT it throws.
+ *
+ * A duplicate is two different situations wearing one status code, and only one
+ * of them has a next move an operator can take. Machine-readable so a UI can
+ * offer that move without parsing the message.
+ */
+export type InviteConflictReason =
+  /** A pending invitation exists: no credential, no session. Re-send it. */
+  | "already_invited"
+  /** A real account exists (active or suspended). Open it instead. */
+  | "already_a_user";
+
+export interface InviteConflictDetails {
+  reason: InviteConflictReason;
+  /** `app_users.id` of the row already holding this address. */
+  appUserId: string;
+  email: string;
+  status: string;
+}
+
+/**
+ * The identifier a hashed invitation is stored under.
+ *
+ * This lifecycle has no token column — the credential IS the row key
+ * (`app_verifications.identifier`), so hashing it needs no migration, only a
+ * different string. The prefix changes with the scheme rather than staying
+ * `app-invite:` for both, and that is the whole safety argument: were the
+ * hashed form written under the SAME prefix, the stored identifier would read
+ * `app-invite:<digest>`, and anyone who could read the table could submit
+ * `<digest>` as their token — {@link legacyInviteIdentifier} would rebuild
+ * exactly that string and match. Two prefixes make a value read out of the
+ * table unusable as an input to either lookup.
+ */
+const hashedInviteIdentifier = (tokenHash: string) => `app-invite-h:${tokenHash}`;
+
+/**
+ * The identifier rows minted BEFORE hashing are stored under — the raw token
+ * in the clear, as a row key.
+ *
+ * Kept only so an invitation already sitting in somebody's mailbox still opens.
+ * Every read that resolves through it logs {@link LEGACY_PLAINTEXT_MSG}; when
+ * that has been silent for a full {@link APP_INVITE_TTL_MS} plus a margin, no
+ * such row can still be live (they are one-shot and self-expiring), and this
+ * function and its branch in {@link findAppUserInvite} can go. Unlike the other
+ * two lifecycles this one needs no migration to finish the job: the rows expire
+ * out on their own.
+ */
+const legacyInviteIdentifier = (token: string) => `app-invite:${token}`;
+
+/** See {@link legacyInviteIdentifier}. Logged, never silent, so the fallback is
+ *  observably dead before anyone deletes it. */
+const LEGACY_PLAINTEXT_MSG = "[app-user-invites] legacy plaintext invite token accepted";
 
 const verificationsFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appVerifications : sqlite.schema.appVerifications;
@@ -48,7 +129,10 @@ export const createAppUserInvite = async (
   await (ctx.db as any).insert(t).values({
     id: crypto.randomUUID(),
     tenantId,
-    identifier: inviteIdentifier(token),
+    // Digest, not the token. The row used to BE the credential: `identifier`
+    // read `app-invite:<token>`, so a dump of `app_verifications` was a list of
+    // working invitations, each one a pending account waiting to be claimed.
+    identifier: hashedInviteIdentifier(await hashToken(token)),
     value: JSON.stringify({ appUserId, email }),
     expiresAt: ctx.dialect === "pg" ? expiresAt : expiresAt.getTime(),
   });
@@ -56,18 +140,34 @@ export const createAppUserInvite = async (
 };
 
 /** Resolve a token to its invite. Returns the row even when expired (the
- *  accept endpoint surfaces "expired" distinctly); null only when unknown. */
+ *  accept endpoint surfaces "expired" distinctly); null only when unknown.
+ *
+ *  Hashed identifier first, plaintext identifier second and only for as long as
+ *  invitations minted before hashing can still be live — see
+ *  {@link legacyInviteIdentifier}. */
 export const findAppUserInvite = async (
   ctx: DbCtx,
   tenantId: string,
   token: string,
 ): Promise<AppUserInvite | null> => {
+  if (!token) return null;
   const t = verificationsFor(ctx.dialect);
-  const rows = (await (ctx.db as any)
-    .select({ id: t.id, value: t.value, expiresAt: t.expiresAt })
-    .from(t)
-    .where(and(eq(t.tenantId, tenantId), eq(t.identifier, inviteIdentifier(token))))
-    .limit(1)) as Array<{ id: string; value: string; expiresAt: Date | number }>;
+  const lookup = async (identifier: string) =>
+    (await (ctx.db as any)
+      .select({ id: t.id, value: t.value, expiresAt: t.expiresAt })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.identifier, identifier)))
+      .limit(1)) as Array<{ id: string; value: string; expiresAt: Date | number }>;
+  let rows = await lookup(hashedInviteIdentifier(await hashToken(token)));
+  if (!rows[0]) {
+    rows = await lookup(legacyInviteIdentifier(token));
+    if (rows[0])
+      log.warn(LEGACY_PLAINTEXT_MSG, {
+        lifecycle: "app_verifications",
+        verificationId: rows[0].id,
+        tenantId,
+      });
+  }
   const row = rows[0];
   if (!row) return null;
   let parsed: { appUserId?: unknown; email?: unknown };
@@ -200,8 +300,12 @@ export interface InviteAppUserResult {
  * `inviteAppUser` mutation and MCP `app_users.invite`. Mirrors the platform
  * member invite: pending `app_users` row (`status: "invited"`, no credential)
  * + 7-day token + best-effort email (a mail-transport failure never fails the
- * invite). The invitee accepts on the app plane via
- * `POST /api/t/{slug}/auth/invite/accept` with `{ token, password }`.
+ * invite). The invitee accepts on the app plane by opening the emailed
+ * `/t/{slug}/join/{token}` page, which posts the token and the password they
+ * choose to `POST /api/t/{slug}/auth/invite/accept`.
+ *
+ * A duplicate address throws CONFLICT carrying {@link InviteConflictDetails},
+ * which says whether the address is a pending invitation or a real account.
  */
 export const inviteAppUser = async (
   ctx: Ctx,
@@ -216,7 +320,7 @@ export const inviteAppUser = async (
   // duplicate check.
   const email = input.email.trim().toLowerCase();
   const dup = (await (ctx.db as any)
-    .select({ id: t.appUsers.id })
+    .select({ id: t.appUsers.id, status: t.appUsers.status })
     .from(t.appUsers)
     .where(
       and(
@@ -224,12 +328,30 @@ export const inviteAppUser = async (
         sql`lower(${t.appUsers.email}) = ${email}`,
       ),
     )
-    .limit(1)) as Array<{ id: string }>;
-  if (dup[0])
+    .limit(1)) as Array<{ id: string; status: string }>;
+  const held = dup[0];
+  if (held) {
+    // Both branches are a 409, and until now they were indistinguishable: an
+    // operator inviting somebody a colleague had already invited last week got
+    // the same "already has an account" sentence as one inviting a customer who
+    // signed up on their own — and the move the first case wants, send it
+    // again, was unreachable from any surface. The reason rides on `details` so
+    // a caller can offer that move instead of re-reading the message.
+    const pending = held.status === "invited";
+    const details: InviteConflictDetails = {
+      reason: pending ? "already_invited" : "already_a_user",
+      appUserId: held.id,
+      email,
+      status: held.status,
+    };
     throw new AppError(
       "CONFLICT",
-      `${email} already has an end-user account in this workspace`,
+      pending
+        ? `${email} has already been invited to this workspace and hasn't accepted yet`
+        : `${email} already has an end-user account in this workspace`,
+      details,
     );
+  }
 
   // Validate roles + link target BEFORE creating anything, so a bad
   // request leaves no half-provisioned user behind.
@@ -274,13 +396,17 @@ export const inviteAppUser = async (
       .limit(1)) as Array<{ slug: string }>;
     const slug = slugRows[0]?.slug ?? tenantId;
     const transport = await ctx.emailFor(tenantId);
+    const acceptUrl = appInviteAcceptUrl(ctx.env.APP_URL, slug, token);
     await transport.send({
       to: email,
       subject: "You've been invited",
+      // One link, and nothing else worth copying. See {@link appInviteAcceptUrl}
+      // for why the token appears only as part of that URL.
       text:
-        `You've been invited to sign in. Set your password with this invite token: ${token}\n\n` +
-        `POST ${ctx.env.APP_URL}/api/t/${slug}/auth/invite/accept with { "token": "${token}", "password": "<your password>" }.\n` +
-        `The token expires ${expiresAt.toISOString()}.`,
+        "You've been invited to create an account.\n\n" +
+        `Open this link to choose a password and sign in:\n${acceptUrl}\n\n` +
+        `The link expires ${expiresAt.toISOString()}. ` +
+        "If you weren't expecting this invitation, ignore this message — nothing happens until the link is opened.",
     });
   })().catch(() => {});
 

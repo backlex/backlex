@@ -105,6 +105,17 @@ export const runBulkUpdate = async (params: RunBulkUpdateParams): Promise<BulkUp
     userId: auth.userId,
     tenantId: auth.tenantId,
     roles: auth.roles,
+    // `email` and the org triple were both missing here, and this factory is
+    // the one the write-condition check reaches through bulk update, its
+    // GraphQL twin and the MCP tool. Their absence broke it in BOTH directions
+    // on this surface: `$org.id` resolved to null, so a member's bulk update of
+    // their OWN in-org row was refused while the identical single-row PATCH
+    // succeeded, AND `org_id: null` was accepted — the exact escape PATCH
+    // answers 403 for. A false denial and a false permit from one omission.
+    email: auth.email ?? null,
+    orgId: auth.orgId ?? null,
+    orgRole: auth.orgRole ?? null,
+    orgIds: auth.orgIds ?? [],
     meta: params.meta,
     impersonatedBy: params.auth.impersonatedBy ?? null,
     impersonationReadOnly: params.auth.impersonationReadOnly ?? false,

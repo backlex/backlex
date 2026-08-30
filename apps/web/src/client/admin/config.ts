@@ -344,8 +344,26 @@ export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {
   netlify: { db: "pg (neon)", storage: "s3", realtime: "upstash" },
 };
 
-/** First path segments the legacy-redirect effect rewrites — never "unknown". */
-export const LEGACY_NAV_REDIRECTS: ReadonlySet<string> = new Set(["activity"]);
+/**
+ * First path segments the legacy-redirect effect rewrites, each mapped to where
+ * it now goes.
+ *
+ * This was a `ReadonlySet<string>`, and a set can only say "this path is
+ * legacy" — not "…and here is where it went". The destination lived somewhere
+ * else entirely (hard-coded in `app.tsx`'s redirect effect), so the two halves
+ * of one rule could disagree with nothing to notice. The dangerous direction is
+ * a segment listed here that the effect does not rewrite: `isUnknownRoute`
+ * answers "not a miss", the not-found page is suppressed, and the URL renders
+ * the fallback page with the address bar unchanged — the exact silent shape the
+ * not-found gate was added to end. Keys and destinations sit together now so a
+ * reviewer sees both, and so a caller that needs the target has one to read.
+ *
+ * Values are absolute admin paths, the same form `navigate()` takes.
+ */
+export const LEGACY_NAV_REDIRECTS: ReadonlyMap<string, string> = new Map([
+  // The standalone "Activity log" page was merged into "Logs".
+  ["activity", "/logs"],
+]);
 
 /**
  * Does this URL point at nothing?

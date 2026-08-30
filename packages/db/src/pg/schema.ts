@@ -38,6 +38,28 @@ export const tenants = pgTable(
     /** Optional UI mark/color for sidebar tile. */
     mark: text("mark"),
     color: text("color"),
+    /**
+     * Lifecycle: `active` | `suspended` | `archived`. Until this column existed
+     * a workspace had no way to be anything but live, so an operator's only
+     * lever against an abusive or delinquent tenant was tearing down the
+     * Worker. A workspace that is not `active` resolves exactly like one the
+     * caller does not belong to — see `middleware/tenant.ts`, which refuses
+     * both with the same message so the status is not an existence oracle.
+     *
+     * `provisioning` was considered for this set and deliberately left out.
+     * Nothing in this repo creates a workspace asynchronously — `POST
+     * /api/tenants` writes the row and every seed it needs before it answers —
+     * so no code path could produce the value, and a status nobody writes is
+     * one every reader has to branch on and no test can reach. The column is
+     * plain text with no CHECK constraint, matching `tenant_members.status`, so
+     * admitting a fourth value later is a schema-file edit rather than a
+     * migration.
+     */
+    status: text("status").notNull().default("active"),
+    /** When the workspace moved to `archived`, and null for every other status.
+     *  It records WHEN the move happened; `status` alone records that it did,
+     *  so this is an audit trail rather than a second copy of the state. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -63,8 +85,22 @@ export const tenantMembers = pgTable(
     invitedBy: text("invited_by"),
     invitedAt: timestamp("invited_at", { withTimezone: true }),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
-    /** One-time invite token; null after accept. */
+    /**
+     * LEGACY plaintext invite token; null after accept.
+     *
+     * A row's invite token is a bearer credential — whoever holds it is seated
+     * at the invited standing, `admin` included — so it is no longer stored in
+     * the clear. New invites write `invite_token_hash` and leave this NULL;
+     * rows minted before that change still carry their plaintext here and are
+     * still accepted, through a fallback in `services/invites.ts` that logs
+     * every time it fires. The column is dropped once those logs go quiet.
+     */
     inviteToken: text("invite_token"),
+    /** SHA-256 (hex) of the one-time invite token — the only form kept at
+     *  rest. Same scheme as `shared_links.token_hash` and
+     *  `form_invites.token_hash`; the plaintext exists for exactly the moment
+     *  `createMemberInvite` hands it back to its caller. */
+    inviteTokenHash: text("invite_token_hash"),
     inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
     /** Touched by tenantMiddleware on every authenticated request — drives
      *  Members panel "last active" without needing a separate sessions join. */
@@ -76,6 +112,7 @@ export const tenantMembers = pgTable(
     uniqueIndex("tenant_members_tenant_email_idx").on(t.tenantId, t.email),
     index("tenant_members_user_idx").on(t.userId),
     index("tenant_members_invite_token_idx").on(t.inviteToken),
+    index("tenant_members_invite_token_hash_idx").on(t.inviteTokenHash),
   ],
 );
 
@@ -631,6 +668,26 @@ export const appOrgInvites = pgTable(
     /** Org-scoped workspace role ids bound on accept. */
     roleIds: jsonb("role_ids").$type<string[] | null>(),
     token: text("token").notNull(),
+    /**
+     * SHA-256 (hex) of the invite token — the only form a new invitation
+     * stores, and the column `services/app-orgs.ts` matches on.
+     *
+     * `token` above stays NOT NULL on purpose. Relaxing it would mean
+     * rebuilding the table on SQLite, and this schema's migrations run on the
+     * boot path of every Vercel/Netlify cold start, where a process that dies
+     * mid-rebuild loses the table outright. So a hashing writer keeps `token`
+     * populated with the same digest, which satisfies both the NOT NULL and
+     * the unique index.
+     *
+     * What makes that safe is NOT the value — it is the `token_hash IS NULL`
+     * on the plaintext lookup in `findInviteByToken`. A digest stored in a
+     * readable column is still a string somebody can read and replay, and
+     * without that guard replaying it would match `WHERE token = ?` and seat
+     * the replayer at the invited role. With it, the plaintext query can only
+     * ever answer for rows minted before hashing, which by definition hold a
+     * real plaintext token and no digest.
+     */
+    tokenHash: text("token_hash"),
     /** `app_users.id` of the inviter; null when an admin invited from the
      *  control plane. No FK for the same reason as `app_orgs.created_by`. */
     invitedBy: text("invited_by"),
@@ -640,6 +697,7 @@ export const appOrgInvites = pgTable(
   },
   (t) => [
     uniqueIndex("app_org_invites_token_idx").on(t.token),
+    uniqueIndex("app_org_invites_token_hash_idx").on(t.tokenHash),
     index("app_org_invites_org_idx").on(t.orgId),
     index("app_org_invites_email_idx").on(t.email),
     index("app_org_invites_tenant_idx").on(t.tenantId),
@@ -2414,10 +2472,33 @@ export const i18nStrings = pgTable(
   ],
 );
 
+/**
+ * Per-workspace configuration, plus one instance-wide tier.
+ *
+ * The instance-wide tier is the literal string `'_global'`, NOT `NULL`. That
+ * distinction is the whole point: a NULL is indistinguishable from a row whose
+ * tenant column was simply never filled in, and readers that could not tell the
+ * two apart spread one admin's branding over every workspace's settings. The
+ * repo already wrote `'_global'` from several call sites (`routes/auth-admin.ts`,
+ * the email/push/SMS selectors) while others wrote NULL for the same tier, so
+ * the two representations of "global" coexisted in one table.
+ * `20260829120000_app_settings_global_sentinel` collapses them.
+ *
+ * NULL is also actively harmful under the unique index below. Measured on both
+ * engines rather than assumed: a UNIQUE index treats NULLs as DISTINCT in
+ * Postgres AND in SQLite, so `(NULL, 'branding')` could be inserted without
+ * limit and the global tier silently accumulated duplicate keys that the index
+ * was supposed to prevent. With the sentinel the index constrains the global
+ * tier like every other one.
+ *
+ * The column stays nullable at the DB level; see the migration for why a NOT
+ * NULL conversion was declined.
+ */
 export const appSettings = pgTable(
   "app_settings",
   {
     id: text("id").primaryKey(),
+    /** Workspace id, or the literal `'_global'` for the instance-wide tier. */
     tenantId: text("tenant_id"),
     key: text("key").notNull(),
     value: jsonb("value").$type<unknown>(),
@@ -4936,9 +5017,22 @@ export const impersonations = pgTable(
  * and nothing beyond it, which is the honest description; the alternative is
  * keys that can only ever live in env.
  *
- * INSTANCE-level, not per workspace: the JWKS is one document at one URL and a
- * token's `iss` names the instance. A per-workspace key would need a
- * per-workspace JWKS URL, which is a different feature.
+ * ## `tenant_id`, and what it does NOT yet do
+ *
+ * Every key written so far is instance-level: the JWKS is one document at one
+ * URL and a token's `iss` names the instance. On a deployment holding more than
+ * one workspace that means the same key pair and the same issuer sign every
+ * workspace's app-plane access tokens, so a relying party verifying by JWKS and
+ * issuer accepts workspace A's token as workspace B's unless it independently
+ * checks the `tid` claim — which is not authenticated on its own. Rotation is
+ * all-or-nothing across every workspace for the same reason.
+ *
+ * The column exists so a key can eventually SAY which workspace it belongs to.
+ * NULL means "the instance's own key", which is what every row written before
+ * this column existed is, and what every row written today still is: nothing
+ * selects a key by tenant yet. Making the readers tenant-aware without
+ * per-workspace issuance and per-workspace JWKS endpoints would break token
+ * verification for existing tenants, so that is a separate, deliberate step.
  */
 export const signingKeys = pgTable(
   "signing_keys",
@@ -4955,6 +5049,10 @@ export const signingKeys = pgTable(
     publicKey: text("public_key").notNull(),
     /** `standby` | `in_use` | `previously_used` | `revoked`. */
     status: text("status").notNull().default("standby"),
+    /** The workspace this key belongs to, or NULL for the instance's own key.
+     *  Nullable and unbackfilled on purpose — see the table comment. No reader
+     *  filters on it yet. */
+    tenantId: text("tenant_id"),
     note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     activatedAt: timestamp("activated_at", { withTimezone: true }),

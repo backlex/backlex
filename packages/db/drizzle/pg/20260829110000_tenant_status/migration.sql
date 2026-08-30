@@ -1,0 +1,32 @@
+-- A workspace now has a lifecycle.
+--
+-- `tenants` carried no status column at all, so every row in the table was
+-- permanently live. An operator with an abusive or delinquent tenant had no
+-- lever short of tearing down the Worker that serves it, and there was no way
+-- to retire a workspace without deleting its data outright.
+--
+-- Three values: `active`, `suspended`, `archived`. `provisioning` was listed in
+-- the plan and is deliberately absent — nothing in this repo creates a
+-- workspace asynchronously (`POST /api/tenants` writes the row and its seed
+-- data before it answers), so no code path could ever produce that value, and a
+-- status nobody writes is one every reader must branch on and no test can
+-- reach. There is no CHECK constraint, matching `tenant_members.status`, so
+-- admitting a fourth value later is a schema-file edit and not a migration.
+--
+-- NOT NULL with DEFAULT 'active' means every existing row is correct the moment
+-- the column lands: Postgres fills it in as part of the ADD COLUMN, so there is
+-- no back-fill statement to get wrong and no window in which a live workspace
+-- reads back as NULL and is refused by the middleware.
+--
+-- `archived_at` is nullable and NOT back-filled. It records when the move to
+-- `archived` happened; a row that has never been archived has no such moment,
+-- and inventing one from `created_at` would put a fabricated audit timestamp in
+-- front of an operator.
+--
+-- Replayable: `IF NOT EXISTS`, because the boot-time runner in
+-- `packages/db/src/auto-migrate.ts` re-applies every migration file whenever
+-- the `__backlex_migrations` ledger does not already name it.
+
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "status" text DEFAULT 'active' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "archived_at" timestamp with time zone;

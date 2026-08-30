@@ -1421,6 +1421,14 @@ export const writeEnvOf = async (
     tenantId: gqlCtx.auth.tenantId,
     roles: gqlCtx.auth.roles,
     email: gqlCtx.auth.email ?? null,
+    // Org context reaches the write core here too, so `$org.id` means the same
+    // thing on the GraphQL twin as on REST. Omitting it would have made the
+    // write-condition check evaluate every org rule against a null org on this
+    // surface alone — the two surfaces disagreeing about a permission is the
+    // exact failure this file's other comments keep warning about.
+    orgId: gqlCtx.auth.orgId ?? null,
+    orgRole: gqlCtx.auth.orgRole ?? null,
+    orgIds: gqlCtx.auth.orgIds ?? [],
     // GraphQL has one HTTP request behind a whole document, so per-mutation
     // request metadata would be a guess. The activity row records the surface
     // instead of inventing an IP for it.
@@ -1582,7 +1590,7 @@ export const verifyResolver = async (
       ctx,
       loaded,
       { userId: auth.userId, tenantId: auth.tenantId ?? null, roles: auth.roles },
-      { whereSql: perm.whereSql, fields: perm.fields },
+      { whereSql: perm.whereSql, fields: perm.fields, conditions: perm.conditions },
       args.id,
       args.field,
       args.value,
@@ -1673,7 +1681,7 @@ export const bulkUpdateResolver = async (
       collection: full,
       keys,
       data,
-      perm: { whereSql: perm.whereSql, fields: perm.fields },
+      perm: { whereSql: perm.whereSql, fields: perm.fields, conditions: perm.conditions },
       readFields: await (async () => {
         const r = await resolvePermission(ctx, auth, collection.slug, "read");
         return r.allowed ? r.fields : new Set<string>();
@@ -1887,6 +1895,8 @@ export const changesResolver = async (
       ctx,
       auth,
       collection: loaded,
+      // A read path: `whereSql` is the whole question here, and the changefeed
+      // has no proposed row to judge.
       perm: { whereSql: perm.whereSql, fields: perm.fields },
       canSeeDrafts,
       since: args.since ?? undefined,

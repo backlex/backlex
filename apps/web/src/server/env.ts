@@ -49,6 +49,54 @@ export interface Env {
    *  claiming a public instance URL first). Unset on self-host → any first
    *  visitor may claim. */
   OWNER_EMAIL?: string;
+  /** Who may create a workspace on this instance: `open` (the default) |
+   *  `operator` | `off`.
+   *
+   *  `open` is today's behaviour — any signed-in platform user may create one —
+   *  and it stays the default precisely so that an existing self-host does not
+   *  lose its "New workspace" button by upgrading. `operator` narrows creation
+   *  to `isInstanceOperator` (admin of the `default` workspace, or
+   *  `OWNER_EMAIL`). `off` refuses everyone.
+   *
+   *  **Managed cloud should set `off`.** There a Worker is provisioned per
+   *  workspace, so a second workspace created inside one is a tenant the
+   *  control plane never issued: it is not on a plan, not billed, not backed
+   *  up, and not migrated with the rest.
+   *
+   *  The default is deliberately NOT `operator`, even though that is the
+   *  tighter setting. Phase 1 re-keyed the cross-workspace shortcut that every
+   *  `/api/tenants/{id}` route used to honour onto `isInstanceOperator`, which
+   *  a self-created workspace cannot confer — so an open entrance no longer
+   *  buys anybody reach into a workspace that is not theirs. What is left of
+   *  the open door is plan multiplication, which is a cost question rather
+   *  than an authorization one, and the cloud closes it with this variable.
+   *
+   *  A value that is SET but unrecognised is refused at the route rather than
+   *  folded back to `open`. Only an operator who meant to restrict something
+   *  can produce one, so guessing `open` would hand them the opposite of every
+   *  intent they could have had — while an unset value is not a typo and keeps
+   *  its meaning. */
+  WORKSPACE_CREATION?: string;
+  /** `"enforce"` makes the plane firewall refuse a request whose auth plane is
+   *  not admitted by the route's declared plane (`lib/route-planes.ts`);
+   *  anything else — including unset — logs the violation and lets it through.
+   *  Defaults to warn so a first-draft table cannot take a paying tenant down
+   *  on the release that introduces it. See `middleware/plane-firewall.ts`. */
+  PLANE_GUARD?: string;
+  /** `"enforce"` makes a create/update whose proposed row fails its own
+   *  permission condition refuse with 403; anything else — including unset —
+   *  logs it and lets the write through. Defaults to warn because a tenant's
+   *  integrations may have been writing cross-scope rows for months against a
+   *  rule that only ever filtered reads, and turning that into a 403 on
+   *  upgrade breaks a working application. The advisor rule shipped alongside
+   *  is how an operator finds out whether they have any before flipping it. */
+  PERMISSION_WRITE_CHECK?: string;
+  /** `"off"` skips the `PRAGMA foreign_keys = ON` the Bun SQLite client now
+   *  issues. The pragma is defence in depth, not a fix — D1 and Postgres
+   *  enforce unconditionally — but an existing self-host may hold rows that
+   *  violate a constraint the schema always declared and the runtime never
+   *  applied, and that install needs a way to boot while it cleans up. */
+  DB_FK_ENFORCE?: string;
   /** `"1"`/`"true"` flips the instance into playground (demo) mode: the demo
    *  admin account is auto-provisioned, its credentials are published on the
    *  public auth surface (one-click sign-in), outbound/destructive endpoints
@@ -695,6 +743,10 @@ export const STRING_ENV_KEYS = [
   "OTLP_HEADERS",
   "SEED_TEMPLATE",
   "OWNER_EMAIL",
+  "WORKSPACE_CREATION",
+  "PLANE_GUARD",
+  "DB_FK_ENFORCE",
+  "PERMISSION_WRITE_CHECK",
   "DEMO_MODE",
   "DEMO_EMAIL",
   "DEMO_PASSWORD",

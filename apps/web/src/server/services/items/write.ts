@@ -1,6 +1,16 @@
 import { sql, type SQL } from "drizzle-orm";
-import { type FieldDef, resolveAutoFill, sidecarFields } from "@backlex/db";
-import { AppError, type AuthSubject } from "@backlex/core";
+import {
+  type FieldDef,
+  matchesCondition,
+  resolveAutoFill,
+  sidecarFields,
+} from "@backlex/db";
+import {
+  AppError,
+  type AuthSubject,
+  type Condition,
+  type OrgRole,
+} from "@backlex/core";
 import type { Ctx } from "../../context";
 import { dispatchEventHandlers, publishEvent } from "../events";
 import { recordActivity } from "../activity";
@@ -40,6 +50,7 @@ import {
   readBackPositions,
   sameScope,
 } from "./order";
+import { judgeableCondition } from "../permission-relations";
 import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
 import { applySlugs, resolveSlugsForWrite, slugFieldsOf } from "./slug";
 import { assertInitialStates, assertTransitions, transitionEventName } from "./transitions";
@@ -87,6 +98,31 @@ import {
 export interface ResolvedPerm {
   whereSql: SQL | null | undefined;
   fields: Set<string> | null;
+  /**
+   * The raw conditions behind `whereSql`, so a WRITE can be judged against the
+   * row it PROPOSES rather than only against rows that already exist.
+   *
+   * `whereSql` answers "which rows may I touch", which is the whole question
+   * for read and delete and only half of it for create and update. Before this
+   * field existed, `performCreate` read `perm.fields` and nothing else, and
+   * `performUpdate` used `whereSql` solely to choose WHICH row — never to
+   * check what the row BECAME. So the canonical B2B rule that
+   * `docs/app-organizations.md` sells,
+   * `{ org_id: { _eq: "$org.id" } }`, filtered reads, updates and deletes and
+   * did not constrain an insert: a member could plant a row into another
+   * organization and simply not read it back. The Postgres RLS projection of
+   * the SAME condition emits `WITH CHECK` for INSERT, so the database was
+   * stricter than the API in front of it.
+   *
+   * `null` means at least one matching permission row carried no condition —
+   * i.e. unrestricted — and is the value an internal, non-user-initiated write
+   * passes deliberately.
+   *
+   * REQUIRED rather than optional. The audit's shape was a guarantee nobody
+   * had to state; making every call site name its answer is what stops the
+   * next one inheriting a permissive default by silence.
+   */
+  conditions: Condition[] | null;
 }
 
 export interface WriteEnv {
@@ -178,6 +214,20 @@ export interface WriteEnv {
    * duplicate. See `services/items/sequence.ts`.
    */
   sequencePool?: SequencePool;
+  /**
+   * App-plane organization context, when the request has one.
+   *
+   * `authSubjectOf` used to build its subject from `{userId, email, roles,
+   * tenantId}` alone while `AuthSubject` carries these three as well — so
+   * `$org.id`, `$org.role` and `$user.orgs` all resolved to null/empty on the
+   * write side. That would have made the write-condition check below evaluate
+   * every org rule against a null org and refuse every insert, which is a
+   * worse bug than the one it fixes. The org context has to arrive here before
+   * the check can mean anything.
+   */
+  orgId?: string | null;
+  orgRole?: OrgRole | null;
+  orgIds?: string[];
 }
 
 /** Execute a write statement, or queue it when collecting for an atomic batch. */
@@ -231,7 +281,119 @@ const authSubjectOf = (env: WriteEnv): AuthSubject => ({
   email: env.email ?? null,
   roles: env.roles,
   tenantId: env.tenantId ?? null,
+  // Carried so `$org.id` / `$org.role` / `$user.orgs` resolve on the write
+  // side too. Their absence here is why the write-condition check could not
+  // have been added without this line first: every org-scoped rule would have
+  // been judged against a null org and refused everything.
+  orgId: env.orgId ?? null,
+  orgRole: env.orgRole ?? null,
+  orgIds: env.orgIds ?? [],
 });
+
+/**
+ * Does the row a write PROPOSES satisfy the permission's own condition?
+ *
+ * This is a `WITH CHECK`, in the Postgres sense, and it is deliberately a
+ * different question from `perm.whereSql`. `whereSql` chooses which existing
+ * rows the caller may touch; this asks whether the result is a row they were
+ * allowed to produce. Read, update and delete were fenced by the first; create
+ * was fenced by nothing, and update never re-asked after the patch.
+ *
+ * MULTIPLE CONDITIONS ARE OR-ED, matching how roles combine everywhere else: a
+ * caller holding two roles that each grant `create` under different conditions
+ * may create a row satisfying either.
+ *
+ * DOTTED RELATION KEYS ARE SKIPPED, NOT REFUSED. `packages/db/src/permission.ts`
+ * returns a hard `false` for any key containing a dot, while the SQL compiler
+ * lowers the same key to a correlated EXISTS. So a rule like
+ * `{ "author.department": { _eq: "…" } }` filters reads correctly today and
+ * would deny every write if evaluated in memory. Refusing writes that the
+ * product has been accepting for months, on a rule the operator wrote for
+ * reads, is not a security fix — it is an outage. Such a condition is skipped
+ * and the skip is LOGGED, so the gap is visible rather than silent.
+ */
+const assertWriteConditions = (
+  env: WriteEnv,
+  perm: ResolvedPerm,
+  proposed: Record<string, unknown>,
+  action: "create" | "update",
+): void => {
+  // `null` = at least one matching permission row was unconditional.
+  if (perm.conditions === null || perm.conditions.length === 0) return;
+
+  const subject = authSubjectOf(env);
+  // Localized columns live in the `_i18n` sidecar, one value per locale, and
+  // `splitLocalized` has already pulled them off `data` by the time we get
+  // here. There is no single value to compare, so a condition keyed on one is
+  // narrowed out rather than judged against `undefined` — which was
+  // fail-closed for `_eq` and fail-OPEN for `_neq` / `_nin` / `_null`, with no
+  // log line either way.
+  const localized = new Set(
+    env.collection.fields.filter((f) => f.localized).map((f) => f.name),
+  );
+  const unjudgeable = localized.size > 0 ? (f: string) => localized.has(f) : undefined;
+  const skipped: Condition[] = [];
+  let matched = false;
+  for (const cond of perm.conditions) {
+    // NARROWED, not skipped whole. The first version of this asked "does this
+    // condition contain a relation key anywhere" and skipped the entire rule if
+    // so — which meant one dotted key disarmed every other key beside it, and
+    // `{$and: [{org_id: {_eq: "$org.id"}}, {"project.status": {_eq: "open"}}]}`
+    // is the shape a B2B schema writes the moment it has two tables. The org
+    // half was silently unenforced on writes while the SQL compiler honoured
+    // both halves on reads.
+    const judgeable = judgeableCondition(cond, unjudgeable) as Condition | null;
+    if (judgeable === null) {
+      skipped.push(cond);
+      continue;
+    }
+    if (matchesCondition(proposed, judgeable, subject)) {
+      matched = true;
+      break;
+    }
+  }
+  if (matched) return;
+  // Nothing was left to judge in ANY condition — every one was relation paths
+  // all the way down. Treat that as "no opinion" rather than a denial.
+  if (skipped.length === perm.conditions.length) {
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        msg: "permission-write-check-skipped",
+        reason: "every condition uses a relation path the in-memory evaluator cannot judge",
+        collection: env.collection.slug,
+        action,
+        tenantId: env.tenantId ?? null,
+      }),
+    );
+    return;
+  }
+
+  const mode = env.ctx.env.PERMISSION_WRITE_CHECK ?? "warn";
+  const detail = {
+    msg: "permission-write-check",
+    collection: env.collection.slug,
+    action,
+    userId: env.userId,
+    tenantId: env.tenantId ?? null,
+    orgId: env.orgId ?? null,
+    // The failing FIELDS, never their values: a rejected row is the caller's
+    // own payload, but this line lands in shared logs.
+    fields: perm.conditions.flatMap((c) => Object.keys(c as Record<string, unknown>)),
+    skippedRelationConditions: skipped.length,
+    mode,
+  };
+  if (mode !== "enforce") {
+    console.warn(JSON.stringify({ level: "warn", ...detail, action_taken: "allowed" }));
+    return;
+  }
+  console.warn(JSON.stringify({ level: "warn", ...detail, action_taken: "refused" }));
+  throw new AppError(
+    "FORBIDDEN",
+    `This ${action} would produce a row outside what your permission on "${env.collection.slug}" allows.`,
+  );
+};
+
 
 /** Refuse a write made by a read-only impersonation. See
  *  `WriteEnv.impersonationReadOnly` for why this lives here as well as at the
@@ -475,6 +637,30 @@ export const performCreate = async (
     vals.push(serializeField(data[f.name], f, ctx.dialect));
   }
 
+  // The WITH CHECK, placed HERE and not earlier: everything above may still
+  // rewrite `data` — sync hooks, geo/money/phone canonicalisation, auto-filled
+  // columns, an issued sequence number, a folded slug, an appended order — and
+  // judging the caller's raw payload instead of the row that is about to exist
+  // would be checking a different object than the one the rule is about.
+  //
+  // The stamped columns are folded in because a condition may name them and
+  // they are not in `data`: `owner_id` is server-set from the session, and
+  // `tenant_id` likewise. An `appendPositionSql` order column is deliberately
+  // NOT resolved — it is a subquery the database evaluates at insert time, so
+  // no value exists to judge, and a rule keyed on a hand-arranged position is
+  // not a shape this is for.
+  assertWriteConditions(
+    env,
+    perm,
+    {
+      ...data,
+      [collection.pkColumn]: id,
+      ...(collection.ownerScoped && !collection.adopted ? { owner_id: env.userId } : {}),
+      ...(collection.tenantScoped ? { tenant_id: env.tenantId } : {}),
+    },
+    "create",
+  );
+
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
   const valSql = sql.join(vals.map((v) => sql`${v}`), sql`, `);
   await emit(env, sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`);
@@ -699,6 +885,22 @@ export const performUpdate = async (
     !opts?.live &&
     (beforeRow as Record<string, unknown>)._status === "published"
   ) {
+    // Judged HERE, on the way in, and not only at the live UPDATE below.
+    //
+    // This branch returns before `assertWriteConditions` ever runs, so a staged
+    // patch used to be stored unjudged. Manual publish re-checks it — the
+    // publish route threads the caller's real conditions — but the cron sweep
+    // applies the SAME patch with `conditions: null`, justified in
+    // `scheduled-publish.ts` by "the scheduler is publishing what an operator
+    // already staged and approved". That premise holds only while `update` is
+    // an operator-only verb, and a collection that grants it to an end-user
+    // makes it false: the staged patch is then authored by someone whose
+    // permission nobody re-asks about.
+    //
+    // Checking on the way in is the fix that does not depend on who applies it
+    // later. A patch that could not be written live cannot be staged either.
+    assertWriteConditions(env, perm, { ...beforeRow, ...patch }, "update");
+
     // Canonical staged shape: base fields post-hash from `patch`; localized
     // fields as their full `{locale: value}` map (splitLocalized with a null
     // write-locale routes maps back into the sidecar on apply); a locale-less
@@ -835,6 +1037,20 @@ export const performUpdate = async (
     sets.push(sql`${sql.identifier(f.name)} = ${stored}`);
     patch[f.name] = deserialize(stored, f.type, ctx.dialect);
   }
+  // The WITH CHECK for update, judged against the row AFTER the patch lands.
+  //
+  // `perm.whereSql` in the statement below is a different guarantee and always
+  // was: it picks WHICH row may be touched. It says nothing about what the row
+  // becomes, so under `{ org_id: { _eq: "$org.id" } }` a member could PATCH
+  // their own row's `org_id` to another organization's and move it out of their
+  // own — the update mirror of the create hole, and the reason both halves land
+  // together.
+  //
+  // `beforeRow` is the deserialized snapshot taken before any change; the patch
+  // laid over it is what will exist. Columns the patch does not mention keep
+  // their old values, which is exactly what the condition should see.
+  assertWriteConditions(env, perm, { ...beforeRow, ...patch }, "update");
+
   if (sets.length > 0) {
     await emit(
       env,

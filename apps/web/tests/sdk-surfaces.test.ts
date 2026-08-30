@@ -219,7 +219,15 @@ const MCP_SURFACES: Record<string, Coverage> = {
   support: { client: "support" },
   "sync-hooks": { client: "sync-hooks" },
   templates: { client: "templates" },
-  tenants: { deferred: ADMIN_PLANE("Tenant listing and switching"), until: "wave-21" },
+  // The module grew from "list + switch" to the whole membership lifecycle —
+  // role changes, ownership transfer, invite resend/revoke, eviction. That
+  // makes the deferral MORE argued, not less: deciding who administers a
+  // workspace is the one surface an app-plane session must never reach, and a
+  // client method for it would return 403 for every caller the SDK has.
+  tenants: {
+    deferred: ADMIN_PLANE("Workspace listing, switching and membership administration"),
+    until: "wave-21",
+  },
   "third-party-auth": {
     deferred: ADMIN_PLANE("Trusted-issuer configuration"),
     until: "wave-21",

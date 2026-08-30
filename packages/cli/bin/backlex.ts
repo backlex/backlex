@@ -9,6 +9,7 @@ import { runItems } from "../src/items";
 import { runBackup } from "../src/backup";
 import { runUsers, runRoles, runFlags, runSettings } from "../src/admin";
 import { runPermissions } from "../src/permissions";
+import { runTenants } from "../src/tenants";
 import { runOrgs } from "../src/orgs";
 import { runFunctions } from "../src/functions";
 import { runExtensions } from "../src/extensions";
@@ -101,6 +102,14 @@ const run = async () => {
     case "permission":
     case "perms":
       await runPermissions(rest);
+      return;
+    // `tenant` (singular) is NOT accepted as an alias: `--tenant` is the
+    // connection flag every other command takes, and a command spelled the same
+    // way invites `backlex tenant --tenant …`, which reads like two settings and
+    // is one command with a scope.
+    case "tenants":
+    case "workspaces":
+      await runTenants(rest);
       return;
     case "orgs":
     case "org":

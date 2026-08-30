@@ -90,6 +90,16 @@ class TtlLru<K, V> {
     }
   }
 
+  /** Drop entries by their VALUE. Needed where one subject sits behind several
+   *  keys that cannot be derived from it — the tenant-resolve cache holds a
+   *  workspace under both its slug and its id, and a status change knows only
+   *  the id. Same O(n) reasoning as `deleteBy`. */
+  deleteByValue(pred: (value: V) => boolean): void {
+    for (const [serialized, entry] of this.map) {
+      if (pred(entry.value)) this.map.delete(serialized);
+    }
+  }
+
   clear(): void {
     this.map.clear();
   }
@@ -114,13 +124,21 @@ interface RolesKey {
    *  org-scoped role grants (`app_org_member_roles`) change the bundle: the
    *  same person resolves differently in org A and org B. */
   orgId?: string | null;
+  /** Whether the caller reached this workspace as a MEMBER or as the instance
+   *  operator visiting a workspace they do not belong to. Part of the key for
+   *  the same reason `orgId` is: the two resolve to different bundles for the
+   *  same person, and collapsing them would serve an operator-visit answer to
+   *  a membership request (or the reverse) for a full TTL window. That is not
+   *  a hypothetical — the operator visits their own workspaces too, so both
+   *  keys are live for one user id within seconds of each other. */
+  access?: "member" | "operator-visit";
 }
 
 const rolesCache = new TtlLru<RolesKey, CachedRoleRow[]>(
   MAX_ENTRIES,
   TTL_MS,
   (k) =>
-    `${k.plane}|${k.tenantId}|${k.userId ?? ""}|${k.apiKeyRoleId ?? ""}|${k.orgId ?? ""}`,
+    `${k.plane}|${k.tenantId}|${k.userId ?? ""}|${k.apiKeyRoleId ?? ""}|${k.orgId ?? ""}|${k.access ?? "member"}`,
 );
 
 export const getCachedRoles = (k: RolesKey): CachedRoleRow[] | undefined =>
@@ -193,6 +211,44 @@ const membershipCache = new TtlLru<MembershipKey, boolean>(
   TTL_MS,
   (k) => `${k.tenantId}|${k.userId}`,
 );
+
+/**
+ * Is the `app_sessions` row an access token names still live?
+ *
+ * The app-plane access JWT verifies with zero database reads, so before this
+ * cache existed there was nothing to invalidate: suspending an end-user
+ * deleted their session rows and the token kept working for its full TTL.
+ * `middleware/session.ts::appSessionLive` now asks the row, and this keeps that
+ * question off the hot path.
+ *
+ * Keyed by session id alone — the id is already the credential's identity, and
+ * a deleted row and a suspended owner are the same answer here.
+ */
+const appSessionLiveCache = new TtlLru<string, boolean>(
+  MAX_ENTRIES,
+  TTL_MS,
+  (k) => k,
+);
+
+export const getCachedAppSessionLive = (sessionId: string): boolean | undefined =>
+  appSessionLiveCache.get(sessionId);
+
+export const setCachedAppSessionLive = (sessionId: string, live: boolean): void =>
+  appSessionLiveCache.set(sessionId, live);
+
+/**
+ * Cut an app-plane session's access tokens NOW on this isolate.
+ *
+ * Called by suspend and delete. Other isolates catch up when the 30s TTL
+ * lapses, which is the same ceiling every other identity fact on this path
+ * carries — but the isolate that served the revocation must not be the one
+ * still honouring it.
+ */
+export const invalidateAppSessions = (sessionIds: readonly string[]): void => {
+  if (sessionIds.length === 0) return;
+  const gone = new Set(sessionIds);
+  appSessionLiveCache.deleteBy((k) => gone.has(k));
+};
 
 export const getCachedMembership = (k: MembershipKey): boolean | undefined =>
   membershipCache.get(k);
@@ -326,6 +382,28 @@ export const getCachedTenantResolve = (key: string): string | undefined =>
 
 export const setCachedTenantResolve = (key: string, tenantId: string): void =>
   tenantResolveCache.set(key, tenantId);
+
+/**
+ * Drop every cached resolution that answers with this workspace id.
+ *
+ * The cache is keyed by whatever the caller NAMED — a slug or an id — so one
+ * workspace can sit behind two keys and neither is derivable from the tenant id
+ * alone. Hence the value scan rather than a targeted delete.
+ *
+ * Needed because the lookup now filters on `tenants.status`: without this, an
+ * isolate that had already resolved a workspace keeps admitting requests into
+ * it for the rest of the TTL after it is archived or suspended. Every other
+ * cache on this path has an invalidator and this one did not, which is exactly
+ * the asymmetry that makes a status change feel unreliable — instant on the
+ * isolate that served it, up to 30s elsewhere, and previously never on the
+ * isolate that served it either.
+ *
+ * Restoring needs no invalidation: a refusal is never cached, so an un-archived
+ * workspace resolves on its very next request.
+ */
+export const invalidateTenantResolve = (tenantId: string): void => {
+  tenantResolveCache.deleteByValue((v) => v === tenantId);
+};
 
 // --- Invalidation ----------------------------------------------------------
 

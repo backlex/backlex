@@ -22,13 +22,35 @@ export const CE_OPS = [
   { v: "_nnull", label: "is not null" },
 ];
 
+/**
+ * The value-side palette: what an operator may type on the RIGHT of a
+ * comparison. Every `$`-prefixed entry has to be one `resolveVar` in
+ * `packages/db/src/permission.ts` actually answers — anything else is stored
+ * verbatim and then compared as the literal string `"$user.role"`, which
+ * matches nothing and reads as a rule that simply does not work.
+ * `apps/web/tests/client/permissions-matrix.test.tsx` asserts this list against
+ * that function's source so the two cannot drift.
+ *
+ * Two entries were removed for exactly that reason: `$user.role` (the compiler
+ * has only the plural `$user.roles`) and `$now.year` (there is no such
+ * variable; relative time is expressed as `{"$now": {"sub": {...}}}` in the raw
+ * DSL, which the visual builder does not offer).
+ *
+ * Every key on the LEFT of a comparison is a column name, so these belong on
+ * the right only — `$org.role` is the caller's role, compared against a column
+ * that stores one, not a field to filter on. Both consumers of this list (the
+ * datalist below and the reference chips + presets in `condition-editor.tsx`)
+ * are value-side, so nothing here implies otherwise.
+ */
 export const CE_DYNAMIC_VARS = [
-  { v: "$user.id", desc: "current user uuid" },
-  { v: "$user.email", desc: "email" },
-  { v: "$user.role", desc: "primary role name" },
-  { v: "$user.roles", desc: "array of role names" },
-  { v: "$now", desc: "server time (ISO)" },
-  { v: "$now.year", desc: "current year" },
+  { v: "$user.id", desc: "the signed-in user's id" },
+  { v: "$user.email", desc: "the signed-in user's email address" },
+  { v: "$user.roles", desc: "every role name the user holds — use with 'is one of'" },
+  { v: "$tenant.id", desc: "the active workspace id" },
+  { v: "$org.id", desc: "the caller's active organization — no org selected denies" },
+  { v: "$org.role", desc: "the caller's role in that organization (owner/admin/member)" },
+  { v: "$user.orgs", desc: "every organization the user belongs to — use with 'is one of'" },
+  { v: "$now", desc: "server time" },
   { v: "true", desc: "literal true" },
   { v: "false", desc: "literal false" },
   { v: "null", desc: "null literal" },

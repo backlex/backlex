@@ -90,11 +90,31 @@ export const createSharedLink = async (
 };
 
 /**
+ * "Belongs to the caller's workspace."
+ *
+ * `shared_links.tenant_id` is nullable because the create path stamps
+ * `auth.tenantId ?? null`, so a link minted with no active workspace is stored
+ * with a NULL owner. Matching NULL with `eq` never succeeds in SQL, so the two
+ * cases are branched explicitly: a caller inside a workspace sees that
+ * workspace's links, a caller with no workspace sees exactly the ownerless ones
+ * they could have created. Neither can see the other's.
+ *
+ * Note this is deliberately NOT the `or(eq(tenantId), isNull(tenantId))` shape
+ * used for genuinely global rows elsewhere. A share link is never global — an
+ * ownerless one is an artefact of how it was minted, not a resource the whole
+ * instance shares — and OR-ing the two would hand every workspace a set of rows
+ * none of them owns.
+ */
+const ownedBy = (t: any, tenantId: string | null) =>
+  tenantId === null ? isNull(t.tenantId) : eq(t.tenantId, tenantId);
+
+/**
  * Active (non-revoked) links for a record. Degrades to an empty list if the
  * table doesn't exist yet.
  */
 export const listSharedLinks = async (
   ctx: DbCtx,
+  tenantId: string | null,
   collection: string,
   itemId: string,
 ): Promise<SharedLinkRow[]> => {
@@ -105,6 +125,7 @@ export const listSharedLinks = async (
       .from(t)
       .where(
         and(
+          ownedBy(t, tenantId),
           eq(t.collection, collection),
           eq(t.itemId, itemId),
           isNull(t.revokedAt),
@@ -116,9 +137,11 @@ export const listSharedLinks = async (
   }
 };
 
-/** Fetch a single link by id (revoked or not). Null if missing / no table. */
+/** Fetch a single link by id, within one workspace (revoked or not). Null if
+ *  missing, owned by another workspace, or the table does not exist. */
 export const getSharedLinkById = async (
   ctx: DbCtx,
+  tenantId: string | null,
   id: string,
 ): Promise<SharedLinkRow | null> => {
   const t = tableFor(ctx.dialect);
@@ -126,7 +149,7 @@ export const getSharedLinkById = async (
     const rows = (await (ctx.db as any)
       .select()
       .from(t)
-      .where(eq(t.id, id))
+      .where(and(ownedBy(t, tenantId), eq(t.id, id)))
       .limit(1)) as SharedLinkRow[];
     return rows[0] ?? null;
   } catch {
@@ -134,9 +157,17 @@ export const getSharedLinkById = async (
   }
 };
 
-/** Revoke a link by id (idempotent — sets `revoked_at` if not already set). */
+/** Revoke a link by id, within one workspace (idempotent — sets `revoked_at`
+ *  if not already set).
+ *
+ *  The predicate is repeated here rather than left to the caller's prior read.
+ *  `getSharedLinkById` already scopes, so in today's only caller this UPDATE
+ *  could not stray — but a write that is safe only because of what someone
+ *  else read is safe until the next caller. Containment on the statement that
+ *  mutates is the version that survives being called from somewhere new. */
 export const revokeSharedLink = async (
   ctx: DbCtx,
+  tenantId: string | null,
   id: string,
 ): Promise<void> => {
   const t = tableFor(ctx.dialect);
@@ -144,7 +175,7 @@ export const revokeSharedLink = async (
   await (ctx.db as any)
     .update(t)
     .set({ revokedAt: now })
-    .where(eq(t.id, id));
+    .where(and(ownedBy(t, tenantId), eq(t.id, id)));
 };
 
 /**

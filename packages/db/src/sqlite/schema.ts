@@ -35,6 +35,11 @@ export const tenants = sqliteTable(
     env: text("env").notNull().default("development"),
     mark: text("mark"),
     color: text("color"),
+    /** Lifecycle: `active` | `suspended` | `archived`. See the pg twin for why
+     *  `provisioning` is not in the set and why there is no CHECK constraint. */
+    status: text("status").notNull().default("active"),
+    /** When the workspace moved to `archived`; null for every other status. */
+    archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
     createdBy: text("created_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
@@ -56,7 +61,11 @@ export const tenantMembers = sqliteTable(
     invitedBy: text("invited_by"),
     invitedAt: integer("invited_at", { mode: "timestamp_ms" }),
     joinedAt: integer("joined_at", { mode: "timestamp_ms" }),
+    /** LEGACY plaintext invite token. Written only by rows minted before the
+     *  hash column landed; new invites leave this NULL. See the pg twin. */
     inviteToken: text("invite_token"),
+    /** SHA-256 of the one-time invite token — the only form kept at rest. */
+    inviteTokenHash: text("invite_token_hash"),
     inviteExpiresAt: integer("invite_expires_at", { mode: "timestamp_ms" }),
     lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }),
     createdAt: ts("created_at"),
@@ -66,6 +75,7 @@ export const tenantMembers = sqliteTable(
     uniqueIndex("tenant_members_tenant_email_idx").on(t.tenantId, t.email),
     index("tenant_members_user_idx").on(t.userId),
     index("tenant_members_invite_token_idx").on(t.inviteToken),
+    index("tenant_members_invite_token_hash_idx").on(t.inviteTokenHash),
   ],
 );
 
@@ -537,6 +547,11 @@ export const appOrgInvites = sqliteTable(
     role: text("role").notNull().default("member"),
     roleIds: text("role_ids", { mode: "json" }).$type<string[] | null>(),
     token: text("token").notNull(),
+    /** SHA-256 of the invite token. See the pg twin for why `token` stays
+     *  NOT NULL, what a hashing writer puts in it, and why the safety comes
+     *  from the `token_hash IS NULL` guard on the plaintext lookup rather than
+     *  from the value stored there. */
+    tokenHash: text("token_hash"),
     invitedBy: text("invited_by"),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
@@ -544,6 +559,7 @@ export const appOrgInvites = sqliteTable(
   },
   (t) => [
     uniqueIndex("app_org_invites_token_idx").on(t.token),
+    uniqueIndex("app_org_invites_token_hash_idx").on(t.tokenHash),
     index("app_org_invites_org_idx").on(t.orgId),
     index("app_org_invites_email_idx").on(t.email),
     index("app_org_invites_tenant_idx").on(t.tenantId),
@@ -2174,10 +2190,15 @@ export const i18nStrings = sqliteTable(
   ],
 );
 
+/** Per-workspace configuration plus one instance-wide tier, keyed by the
+ *  literal `'_global'` rather than NULL. See the pg twin for the full reasoning
+ *  — including the measurement that a UNIQUE index treats NULLs as distinct on
+ *  BOTH engines, which is what let the global tier accumulate duplicate keys. */
 export const appSettings = sqliteTable(
   "app_settings",
   {
     id: text("id").primaryKey(),
+    /** Workspace id, or the literal `'_global'` for the instance-wide tier. */
     tenantId: text("tenant_id"),
     key: text("key").notNull(),
     value: text("value", { mode: "json" }).$type<unknown>(),
@@ -4307,8 +4328,9 @@ export const impersonations = sqliteTable(
 /**
  * A JWT signing key and its state — see packages/db/src/pg/schema.ts for the
  * four states, why `standby` exists (a verifier's JWKS cache means a key has to
- * be visible before it signs), and why the private half is encrypted rather
- * than hashed. SQLite twin: timestamps epoch-ms.
+ * be visible before it signs), why the private half is encrypted rather than
+ * hashed, and why `tenant_id` is nullable with no reader filtering on it yet.
+ * SQLite twin: timestamps epoch-ms.
  */
 export const signingKeys = sqliteTable(
   "signing_keys",
@@ -4319,6 +4341,8 @@ export const signingKeys = sqliteTable(
     privateKey: text("private_key").notNull(),
     publicKey: text("public_key").notNull(),
     status: text("status").notNull().default("standby"),
+    /** NULL means the instance's own key. See the pg twin. */
+    tenantId: text("tenant_id"),
     note: text("note"),
     createdAt: ts("created_at"),
     activatedAt: integer("activated_at", { mode: "timestamp_ms" }),

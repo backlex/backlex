@@ -343,23 +343,6 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   // Each one is a real behaviour somebody has to decide about; none of them is
   // a reason to relax the rule.
   {
-    file: "apps/web/src/server/services/shared-links.ts",
-    symbol: "getSharedLinkById",
-    reason:
-      "SUSPECT: reads a shared link by id with no tenant predicate, and DELETE /api/shared-links/:id authorises on `row.createdBy === auth.userId || isAdmin` — so an admin of workspace A can read (and then revoke) a link belonging to workspace B. Left unfixed deliberately: a containment fix belongs in its own commit.",
-  },
-  {
-    file: "apps/web/src/server/services/shared-links.ts",
-    symbol: "revokeSharedLink",
-    reason: "SUSPECT: the write half of the getSharedLinkById finding above.",
-  },
-  {
-    file: "apps/web/src/server/services/shared-links.ts",
-    symbol: "listSharedLinks",
-    reason:
-      "SUSPECT: lists links by (collection, itemId) with no tenant predicate. `shared_links.collection` holds a SLUG, and slugs repeat across workspaces, so containment rests entirely on itemId being unguessable.",
-  },
-  {
     file: "apps/web/src/server/services/invites.ts",
     symbol: "findActiveInviteByEmail",
     reason:

@@ -145,6 +145,7 @@ export const sharedLinksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
       const { collection, itemId } = c.req.valid("query");
       if (!collection || !itemId) {
         throw new AppError(
@@ -154,6 +155,7 @@ export const sharedLinksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
       const rows = await listSharedLinks(
         { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
         collection,
         itemId,
       );
@@ -188,10 +190,21 @@ export const sharedLinksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const { id } = c.req.valid("param");
+      // Scoped to the caller's workspace BEFORE the ownership check, and that
+      // order is the fix. The check below is `isAdmin || row.createdBy ===
+      // auth.userId`, and `roles` are per-workspace (`roles.tenantId`) — so an
+      // admin of workspace A used to satisfy it against a row belonging to
+      // workspace B and revoke a link they could not otherwise see. A
+      // permission answers "may this person do this HERE"; it was being asked
+      // about a row from somewhere else.
       const row = await getSharedLinkById(
         { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
         id,
       );
+      // A link owned by another workspace is now indistinguishable from one
+      // that never existed, so this cannot be walked to learn which ids are
+      // live elsewhere.
       if (!row) throw new AppError("NOT_FOUND", "Share link not found");
       const isAdmin = auth.roles.includes(SYSTEM_ROLES.admin);
       if (!isAdmin && row.createdBy !== auth.userId) {
@@ -200,7 +213,11 @@ export const sharedLinksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           "Only the creator or an admin can revoke this link",
         );
       }
-      await revokeSharedLink({ db: ctx.db, dialect: ctx.dialect }, id);
+      await revokeSharedLink(
+        { db: ctx.db, dialect: ctx.dialect },
+        auth.tenantId ?? null,
+        id,
+      );
       return c.json({ ok: true });
     },
   );

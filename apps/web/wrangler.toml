@@ -82,6 +82,37 @@ EMAIL_FROM = "onboarding@resend.dev"
 # auth_config.redirectUrls). Set this if customer apps live on other domains:
 # EXTRA_TRUSTED_ORIGINS = "https://app.customer-a.com,https://app.customer-b.com"
 
+# Two containment guards from the identity-containment work, both shipped in
+# `warn` and flipped here on 2026-08-30.
+#
+# They are set in this FILE rather than in the Cloudflare dashboard on purpose:
+# a dashboard-only setting is invisible from the repo, which is the shape that
+# has already bitten this project three times (see the BUN_VERSION and
+# PREDEPLOY_GATE_TOKEN notes in CLAUDE.md). Here they are reviewable and they
+# deploy with the code that reads them.
+#
+# PLANE_GUARD — `middleware/plane-firewall.ts`. Every route prefix declares
+# which auth plane may call it (`lib/route-planes.ts`); a mismatch is a 403
+# instead of a log line. A path the registry does not name is still allowed in
+# either mode, deliberately: a typo in the registry must not take the site down.
+PLANE_GUARD = "enforce"
+# PERMISSION_WRITE_CHECK — `services/items/write.ts`. A permission's condition
+# (`owner_id = $user.id`) used to filter READS only, so a role could create or
+# hand over a row it could never see afterwards. This makes the condition judge
+# the row a write PROPOSES.
+#
+# Both defaulted to `warn` so an existing integration writing cross-scope rows
+# would be visible in the logs before it was broken. That window is closed
+# because there are no third-party customers on this instance — the only test
+# tenant is the maintainer's own account. A deployment with real customers
+# should run `warn` first and grep for `plane-violation` / `permission-write-check`
+# with `"allowed"` before setting these.
+#
+# NOTE these do not close the whole hole: a write whose every condition uses a
+# relation path the in-memory evaluator cannot judge is skipped in BOTH modes
+# and logs `permission-write-check-skipped`.
+PERMISSION_WRITE_CHECK = "enforce"
+
 # Serve the Vite SPA build (./dist) as static assets from the same Worker.
 # SPA fallback returns index.html for unknown paths so React Router handles
 # routing client-side. /api/*, /health (+ /health/* for the readiness probe),

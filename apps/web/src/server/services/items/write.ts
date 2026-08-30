@@ -24,6 +24,7 @@ import {
   collectFieldWarnings,
   enforceFieldConditions,
   enforceValidationRules,
+  hydrateRuleHops,
   type FieldWarning,
   validateAppUserLinks,
   validateBody,
@@ -483,12 +484,17 @@ export const performCreate = async (
   // Enforce conditional `required` effects against the proposed row (runs before
   // hashing so a rule sees the plaintext the user typed).
   enforceFieldConditions(data, collection.fields, authSubjectOf(env));
-  // Cross-field validation rules run on the same plaintext proposed row.
-  enforceValidationRules(data, collection.fields, authSubjectOf(env));
+  // Cross-field validation rules run on the same plaintext proposed row —
+  // carrying, on a copy, whatever one-hop relation values those rules name
+  // (`$field.zone.warehouse`). `conditions` above deliberately keep only the
+  // row: the admin evaluates the same rule client-side to grey a box out, and a
+  // browser has no row on the other side to read.
+  const ruleRow = await hydrateRuleHops(data, collection.fields, ctx, env.tenantId);
+  enforceValidationRules(ruleRow, collection.fields, authSubjectOf(env));
   // A lifecycle field can only ask one thing of a create — whether the row is
   // allowed to START here. There is no `from` to judge against.
   assertInitialStates(collection.fields, data);
-  const warnings = collectFieldWarnings(data, collection.fields, authSubjectOf(env));
+  const warnings = collectFieldWarnings(ruleRow, collection.fields, authSubjectOf(env));
   // Replace any `hash` field's plaintext with its scrypt digest before the row
   // is built. Empty values are dropped (see hashIncomingFields).
   await hashIncomingFields(data, collection.fields);
@@ -855,8 +861,17 @@ export const performUpdate = async (
     if (patch[f.name] !== undefined) mergedForConditions[f.name] = patch[f.name];
   }
   enforceFieldConditions(mergedForConditions, collection.fields, authSubjectOf(env));
-  enforceValidationRules(mergedForConditions, collection.fields, authSubjectOf(env));
-  const warnings = collectFieldWarnings(mergedForConditions, collection.fields, authSubjectOf(env));
+  // Same copy-with-hops as the create path. It is read off the MERGED row, so a
+  // PATCH that repoints the relation is judged against the row it now points
+  // at, not the one it used to.
+  const ruleRow = await hydrateRuleHops(
+    mergedForConditions,
+    collection.fields,
+    ctx,
+    env.tenantId,
+  );
+  enforceValidationRules(ruleRow, collection.fields, authSubjectOf(env));
+  const warnings = collectFieldWarnings(ruleRow, collection.fields, authSubjectOf(env));
 
   // Lifecycle check. Sits here — before the staged-edits interception below —
   // for the same reason the validation above does: a staged save has to surface

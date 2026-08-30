@@ -1100,46 +1100,162 @@ const validateComputedFormula = (name: string, raw: unknown): void => {
   }
 };
 
-/** Walk a Condition and collect the field keys it references (relation
- *  dot-paths contribute their head segment). Used to validate that a field
- *  condition's rule only names real columns. */
-export const collectConditionFields = (cond: unknown, out: Set<string>): void => {
+/** Walk a Condition and collect the field keys it references, spelled as
+ *  written — a relation dot-path stays whole (`employee.app_user_id`). */
+const collectConditionKeys = (cond: unknown, out: Set<string>): void => {
   if (!cond || typeof cond !== "object") return;
   const c = cond as Record<string, unknown>;
   if (Array.isArray(c.$and)) {
-    for (const s of c.$and) collectConditionFields(s, out);
+    for (const s of c.$and) collectConditionKeys(s, out);
     return;
   }
   if (Array.isArray(c.$or)) {
-    for (const s of c.$or) collectConditionFields(s, out);
+    for (const s of c.$or) collectConditionKeys(s, out);
     return;
   }
   if (c.$not !== undefined) {
-    collectConditionFields(c.$not, out);
+    collectConditionKeys(c.$not, out);
     return;
   }
   for (const k of Object.keys(c)) {
     if (k.startsWith("$")) continue;
-    out.add(k.split(".")[0]!);
+    out.add(k);
   }
 };
 
-/** Collect `$field.<name>` references appearing as comparison *values* in a
- *  rule (head segment for dotted paths). Complements `collectConditionFields`,
- *  which only sees the left-hand field keys. */
-const collectFieldVarRefs = (node: unknown, out: Set<string>): void => {
+/** Walk a Condition and collect the field keys it references (relation
+ *  dot-paths contribute their head segment). Used to validate that a field
+ *  condition's rule only names real columns. */
+export const collectConditionFields = (cond: unknown, out: Set<string>): void => {
+  const keys = new Set<string>();
+  collectConditionKeys(cond, keys);
+  for (const k of keys) out.add(k.split(".")[0]!);
+};
+
+/** Collect `$field.<path>` references appearing as comparison *values* in a
+ *  rule, as the FULL dotted path (`zone.warehouse`, not `zone`). Complements
+ *  `collectConditionFields`, which only sees the left-hand field keys. */
+const collectFieldVarPaths = (node: unknown, out: Set<string>): void => {
   if (typeof node === "string") {
-    if (node.startsWith("$field.")) {
-      out.add(node.slice("$field.".length).split(".")[0]!);
-    }
+    if (node.startsWith("$field.")) out.add(node.slice("$field.".length));
     return;
   }
   if (Array.isArray(node)) {
-    for (const x of node) collectFieldVarRefs(x, out);
+    for (const x of node) collectFieldVarPaths(x, out);
     return;
   }
   if (node && typeof node === "object") {
-    for (const x of Object.values(node)) collectFieldVarRefs(x, out);
+    for (const x of Object.values(node)) collectFieldVarPaths(x, out);
+  }
+};
+
+/** One `$field.<relation>.<sub>` reference found in a field's
+ *  `validation.rule`. See {@link collectRuleHops}. */
+export interface RuleHop {
+  /** The field whose `validation.rule` names the hop. */
+  field: string;
+  /** The local `relation` field the hop travels through. */
+  relation: string;
+  /** The column read on the row that relation points at. */
+  sub: string;
+  /** `"<relation>.<sub>"` — the key the row matcher looks the value up under,
+   *  and therefore the key the write path has to hydrate. */
+  path: string;
+}
+
+/**
+ * Every one-hop reference the given fields' `validation.rule`s make, so the
+ * write path knows what to fetch and the collections route knows what to check
+ * against the other collection. Assumes {@link validateFields} has already run:
+ * anything it refuses (two hops, a hop through a non-relation) cannot appear
+ * here, so callers get a list they can act on without re-checking the shape.
+ */
+export const collectRuleHops = (fields: readonly FieldDef[]): RuleHop[] => {
+  const hops: RuleHop[] = [];
+  const seen = new Set<string>();
+  for (const f of fields) {
+    const rule = f.validation?.rule;
+    if (!rule) continue;
+    const paths = new Set<string>();
+    collectFieldVarPaths(rule, paths);
+    for (const path of paths) {
+      const dot = path.indexOf(".");
+      if (dot < 0) continue;
+      const key = `${f.name}\u0000${path}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      hops.push({
+        field: f.name,
+        relation: path.slice(0, dot),
+        sub: path.slice(dot + 1),
+        path,
+      });
+    }
+  }
+  return hops;
+};
+
+/**
+ * A `validation.rule` may reach ONE relation hop deep, and only on the
+ * comparison side: `{ warehouse: { _eq: "$field.zone.warehouse" } }` reads
+ * `warehouse` off the row `zone` points at. The write path fetches that value
+ * and puts it on the row before the rule is judged, so everything downstream is
+ * the same row-local matcher it has always been.
+ *
+ * Why this function refuses the rest rather than letting it through: the row
+ * matcher answers `undefined` for a path it cannot resolve, and `_eq` against
+ * `undefined` is false for every real value. So an unsupported hop used to save
+ * fine and then REFUSE EVERY WRITE to its collection — fail-closed, silent, and
+ * visible only as "this collection stopped accepting rows". Each refusal below
+ * is one shape that would have ended there:
+ *
+ *  - two hops (`$field.a.b.c`) — one fetch is one fetch;
+ *  - a hop through a field that is not a `relation` — there is no row to read;
+ *  - a hop through `relation_many` — many rows, and a comparison wants one;
+ *  - the hop spelled as the left-hand KEY (`{"zone.warehouse": …}`) — that is
+ *    the query language's correlated-EXISTS form, which the row matcher
+ *    declines outright. Naming the spelling that works beats bricking a column.
+ *
+ * The one thing left is a sub-field that does not exist on the target, which
+ * needs the other collection: `checkRuleHopTargets` in the collections route.
+ */
+const assertRuleHops = (
+  field: FieldDef,
+  fields: readonly FieldDef[],
+  rule: unknown,
+): void => {
+  const keys = new Set<string>();
+  collectConditionKeys(rule, keys);
+  for (const k of keys) {
+    if (!k.includes(".")) continue;
+    const head = k.split(".")[0]!;
+    throw new Error(
+      `Field "${field.name}": validation.rule cannot look through a relation on the left of a comparison ("${k}"). Put the hop on the value side instead — {"<a column of this row>": {"_eq": "$field.${k}"}} — or compare "${head}" itself.`,
+    );
+  }
+  const paths = new Set<string>();
+  collectFieldVarPaths(rule, paths);
+  for (const path of paths) {
+    const parts = path.split(".");
+    if (parts.length === 1) continue;
+    if (parts.length > 2) {
+      throw new Error(
+        `Field "${field.name}": validation.rule reference "$field.${path}" goes ${parts.length - 1} relations deep — only one hop is supported. Carry the value you need onto "${parts[0]}" (a rollup, or a column copied on write), then compare that.`,
+      );
+    }
+    const head = parts[0]!;
+    const via = fields.find((x) => x.name === head);
+    if (!via) continue; // the unknown-field check above already names it
+    if (via.type === "relation_many") {
+      throw new Error(
+        `Field "${field.name}": validation.rule reference "$field.${path}" travels through "${head}", which is a relation_many — it points at many rows, and a comparison needs one. Use a rollup over those rows instead.`,
+      );
+    }
+    if (via.type !== "relation") {
+      throw new Error(
+        `Field "${field.name}": validation.rule reference "$field.${path}" travels through "${head}", which is a ${via.type} field, not a relation — there is no row on the other side to read "${parts[1]}" from.`,
+      );
+    }
   }
 };
 
@@ -1851,7 +1967,9 @@ export const validateFields = (fields: FieldDef[]): void => {
         }
         const refs = new Set<string>();
         collectConditionFields(val.rule, refs);
-        collectFieldVarRefs(val.rule, refs);
+        const varPaths = new Set<string>();
+        collectFieldVarPaths(val.rule, varPaths);
+        for (const p of varPaths) refs.add(p.split(".")[0]!);
         for (const r of refs) {
           if (!names.has(r) && !isReservedField(r)) {
             throw new Error(
@@ -1859,6 +1977,9 @@ export const validateFields = (fields: FieldDef[]): void => {
             );
           }
         }
+        // After the name check, so an unknown head is reported as an unknown
+        // field rather than as a malformed hop.
+        assertRuleHops(f, fields, val.rule);
       }
     }
   }

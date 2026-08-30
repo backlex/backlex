@@ -604,6 +604,21 @@ const ORDERED_OPS = new Set(["_gt", "_gte", "_lt", "_lte", "_between"]);
 const absent = (v: unknown): boolean => v === undefined || v === null || v === "";
 
 /**
+ * Is `value` a `$field.` reference that travels through a relation
+ * (`$field.zone.warehouse`) and has no hydrated value on this row? The write
+ * path fills these in before judging a rule — see `hydrateRuleHops` — so an
+ * absent one means the relation itself is unset, not that the hop is
+ * unsupported. A same-row ref (`$field.start_date`) is never "absent" by this
+ * test, which is what keeps the older narrowing rules intact.
+ */
+const isAbsentHop = (row: Record<string, unknown>, value: string): boolean => {
+  if (!value.startsWith("$field.")) return false;
+  const path = value.slice("$field.".length);
+  if (!path.includes(".")) return false;
+  return absent(lookup(row, path));
+};
+
+/**
  * Narrow a condition to the part this row can actually be judged on, for the
  * VALIDATION path only. Returns `null` when the row supports no verdict at all.
  *
@@ -629,6 +644,13 @@ const absent = (v: unknown): boolean => v === undefined || v === null || v === "
  * that satisfied it, and a `$not` of an unknown is unknown — so only `$and`
  * survives partially, which is sound because a conjunction only ever gets
  * stricter as branches drop.
+ *
+ * The one operand that steps aside for EVERY operator, not just the ordered
+ * ones, is a relation hop (`$field.zone.warehouse`) the row has no value for —
+ * see {@link isAbsentHop}. An unset relation is not a disagreement about a
+ * value, it is the absence of the row that would have held one, and `_eq`
+ * cannot say that: it would refuse a bin for not having a zone yet. Same-row
+ * refs keep the narrower rule above, so nothing already in production moves.
  *
  * Deliberately NOT a flag on `matchesCondition`: one boolean away from turning
  * a permission's fail-closed into a fail-open is not a place to put an option.
@@ -664,9 +686,18 @@ export const checkableRule = (
       const left = lookup(row, field);
       const rest: Record<string, unknown> = {};
       for (const [op, operand] of Object.entries(cmp as Record<string, unknown>)) {
+        const sides = Array.isArray(operand) ? operand : [operand];
+        // A hop through a relation the row does not set has no row on the
+        // other side, so there is nothing to compare against — the rule is a
+        // question, not a violation. Narrowed for EVERY operator, unlike the
+        // same-row case below: `_eq` against an absent operand is false for
+        // every real left value, so leaving it in would refuse a bin merely for
+        // having no zone yet. Same-row `$field.` refs keep the older, narrower
+        // behaviour (only orderings step aside) — widening that would quietly
+        // weaken rules already in production.
+        if (sides.some((x) => typeof x === "string" && isAbsentHop(row, x))) continue;
         if (ORDERED_OPS.has(op)) {
           if (absent(left)) continue;
-          const sides = Array.isArray(operand) ? operand : [operand];
           const missing = sides.some(
             (s) =>
               typeof s === "string" &&

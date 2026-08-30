@@ -102,6 +102,60 @@ Reference a sibling field's value with `"$field.<name>"`:
 - Equality is not affected: `_eq` against an absent column is `false`, and that
   is a real verdict rather than a missing one.
 
+### Looking one relation out
+
+A `$field.` reference may travel **one relation hop** to read a column on the
+row it points at. That is what makes a cross-*row* invariant expressible — the
+constraint a warehouse actually needs is not about two columns of a bin, it is
+about a bin and its zone:
+
+```json
+{
+  "name": "warehouse",
+  "type": "relation",
+  "to": "warehouses",
+  "validation": {
+    "rule": { "warehouse": { "_eq": "$field.zone.warehouse" } },
+    "message": "A bin's zone must belong to the bin's own warehouse"
+  }
+}
+```
+
+`zone` is a `relation` field on this collection; `warehouse` is a column on the
+collection it points at. On every write the server fetches that one row and
+compares — one `SELECT` per relation a rule travels through, and none at all for
+a collection whose rules stay row-local.
+
+- **An unset relation is a question, not a violation.** A bin with no zone yet
+  has no row on the other side, so the rule above says nothing about it — the
+  same reasoning as a missing operand, extended to every operator (`_eq`
+  included) because a hop that cannot be resolved is not a disagreement.
+- **Judged against the row the relation points at *now*.** A PATCH that moves
+  the bin to a zone in another warehouse is refused; one that moves both at once
+  is allowed.
+- Money hops compare in **major units**, so a `100.00` ceiling on the other row
+  is `100.00` here and not the `10000` minor units the column holds. The
+  currency code itself is not part of the comparison — the same as comparing
+  two money columns of one row — so hop across currencies only when you know
+  both sides are denominated the same way.
+
+The limits are enforced when the **schema** is saved, not when a row is written,
+so a mistake shows up where it was made:
+
+| Not allowed | Why | Instead |
+|---|---|---|
+| `$field.a.b.c` | Two hops is two fetches | Carry the value onto `a` — a [rollup](/docs/rollups/), or a column copied on write |
+| A hop through a non-relation field | Nothing on the other side to read | Compare the column itself |
+| A hop through `relation_many` | Many rows; a comparison needs one | A [rollup](/docs/rollups/) over those rows |
+| `{ "zone.warehouse": { "_eq": … } }` | That spelling is the query language's relation filter, which a row check cannot answer | Put the hop on the value side: `{ "warehouse": { "_eq": "$field.zone.warehouse" } }` |
+| A sub-field the target does not have — including a `localized` one | The value is not in the column the hop reads | Hop to a real, non-localized column |
+
+What a hop is *not* is an aggregate. "The sum of open reservations may not exceed
+this level's quantity" reads many rows and races other writers, so it is not a
+rule the write path can settle on its own; a
+[rollup](/docs/rollups/) plus a same-row rule covers the cases where the total is
+already maintained for you.
+
 Note this differs from the same DSL used as a **permission** filter, on
 purpose. There, a row with no amount must not match `amount >= 100` — a filter
 that fell open on absence would be a hole. A validation rule asks the opposite
@@ -114,7 +168,10 @@ The **Add field** and **Edit field** dialogs render a **Validation** panel with
 the type-appropriate inputs (length / bounds / format / date bounds /
 cardinality), a **Custom error message** box, and an **Advanced — cross-field
 rule** section that builds the `rule` visually. In the rule builder, the value
-autocomplete offers each sibling field as `$field.<name>`.
+autocomplete offers each sibling field as `$field.<name>`. A **relation hop**
+has no autocomplete entry yet — type `$field.<relation>.<column>` into the value
+box; it is checked when the collection is saved, so a wrong one is refused with
+the target's field list rather than accepted.
 
 ## Related
 

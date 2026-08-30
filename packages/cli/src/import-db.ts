@@ -609,7 +609,18 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
           // Reuse is only safe when the shapes agree (the resume path). A
           // pre-existing collection of a different shape would fail every
           // row with "Unknown column" — bail with the fix instead.
-          const mismatch = collectionShapeMismatch(t, existing.json.data);
+          // Re-read once when the field list is missing before giving up. That
+          // response has been seen to arrive without `fields` under
+          // concurrency, and the two outcomes are very different: a transient
+          // read is worth another attempt, while a persistent one is a real
+          // shape problem the operator has to look at. Dying on the first is
+          // how a resumable import became unresumable.
+          let detail = existing.json.data as { fields?: unknown } | undefined;
+          if (!Array.isArray(detail?.fields)) {
+            const retry = await api(ctx, "GET", `/api/collections/${t.slug}`);
+            if (retry.status === 200) detail = retry.json.data;
+          }
+          const mismatch = collectionShapeMismatch(t, detail as never);
           if (mismatch) {
             die(`${mismatch}\nEdit ${planPath} (the table's "slug") and re-run.`);
           }

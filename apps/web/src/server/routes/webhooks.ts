@@ -126,12 +126,11 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const rows = (await listWebhooks(ctx, tenantId)) as any[];
       // Projected, not spread: a future column that happens to hold a
       // credential would otherwise join the list response by default.
-      return c.json({
-        data: rows.map(({ secret, ...rest }: Record<string, unknown>) => ({
-          ...rest,
-          hasSecret: typeof secret === "string" && secret.length > 0,
-        })),
-      });
+      const data = rows.map(({ secret, ...rest }: Record<string, unknown>) => ({
+        ...rest,
+        hasSecret: typeof secret === "string" && secret.length > 0,
+      }));
+      return c.json({ data } as never);
     },
   )
   .openapi(

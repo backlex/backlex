@@ -457,7 +457,8 @@ const FieldObject = z.object({
       .optional(),
     /**
      * The lifecycle this dropdown may move through — `{ allow: [{from, to,
-     * roles?, requires?, label?}], initial? }`.
+     * roles?, requires?, label?}], initial? }`, where `initial` is the value or
+     * values a NEW row may be created with.
      *
      * Safe over the API for the same reason `rollup` and `sequence` are:
      * nothing here reaches the DDL or any SQL. Every value is checked against
@@ -465,6 +466,15 @@ const FieldObject = z.object({
      * collection's own fields by `validateTransitionSpec`, so the worst a
      * malformed spec can do is fail at save time. The bounds are what stop a
      * caller storing an unbounded graph in the collection metadata.
+     *
+     * All three value slots — `from`, `to` and `initial` — accept a bare string
+     * or a list, and a bare string is normalized to a one-element list here so
+     * everything downstream sees one shape. `initial` used to be the only one
+     * that refused a string, which read as an arbitrary rule rather than a
+     * design: a spec whose other two sides both coerce, written the way they
+     * are written, was answered `expected array, received string` on the third.
+     * Seven collections in a row were refused for it while this example was
+     * being provisioned.
      */
     transitions: z
       .object({
@@ -483,7 +493,10 @@ const FieldObject = z.object({
           )
           .min(1)
           .max(128),
-        initial: z.array(z.string().max(120)).min(1).max(64).optional(),
+        initial: z
+          .union([z.string().max(120), z.array(z.string().max(120)).min(1).max(64)])
+          .transform((v) => (typeof v === "string" ? [v] : v))
+          .optional(),
       })
       .optional(),
 });

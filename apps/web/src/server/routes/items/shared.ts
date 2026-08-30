@@ -60,3 +60,49 @@ export const canSeeDraftsFor = async (
   if ((await resolvePermission(dbctx, auth, collection.slug, "publish")).allowed) return true;
   return (await resolvePermission(dbctx, auth, collection.slug, "update")).allowed;
 };
+
+/**
+ * The collection-level sub-paths that only answer POST, mapped to what they are.
+ *
+ * `/api/items/{slug}/{id}` matches literally any second segment, so a GET of a
+ * POST-only sub-path is routed to the by-id handler with `id: "search"`, finds
+ * no such row, and answers `404 Item not found` — a sentence about a missing
+ * ROW, when the truth is that the path exists and takes a different verb. It
+ * sends the reader looking for the item.
+ *
+ * Two of this session's "findings" were exactly that message believed. Both
+ * were withdrawn, but only after the endpoints were re-read; a caller without
+ * the source has nothing to re-read.
+ *
+ * Keep in step with the `path: "/{slug}/…"` registrations in this directory.
+ * `export` and `changes` are deliberately absent — they answer GET, so they
+ * never fall through to here.
+ */
+export const POST_ONLY_SUBPATHS: Readonly<Record<string, string>> = {
+  aggregate: "count / sum / avg / min / max over the collection",
+  search: "full-text, vector or hybrid ranking",
+  batch: "mixed create / update / delete in one request",
+  "bulk-update": "one patch applied to every row a filter matches",
+  import: "CSV or JSON rows in",
+  ingest: "schema-on-read ingest",
+  reorder: "move a row within a manually ordered list",
+};
+
+/**
+ * The message for a by-id lookup that found nothing.
+ *
+ * Identical for every real miss — a caller must not be able to tell a row that
+ * does not exist from one they cannot read. The only case that says anything
+ * else is an id that is not an id at all but the name of a sibling endpoint,
+ * where no row was ever in question.
+ */
+export const itemNotFoundMessage = (id: string): string => {
+  // `Object.hasOwn`, not a plain lookup: `POST_ONLY_SUBPATHS["constructor"]`
+  // finds `Object` on the prototype chain and is truthy, so a bare index would
+  // answer `GET …/constructor` with a message naming a native function — and
+  // would make three ids (`constructor`, `toString`, `valueOf`) behave unlike
+  // every other miss, which is the seam this message must not have.
+  if (!Object.hasOwn(POST_ONLY_SUBPATHS, id)) return "Item not found";
+  const what = POST_ONLY_SUBPATHS[id];
+  return `"${id}" is not an item id — it is a POST endpoint on this collection (${what}). Send POST /api/items/{slug}/${id} with a JSON body.`;
+};

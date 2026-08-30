@@ -1,6 +1,6 @@
 {
   "name": "@backlex/backlex",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
@@ -10,6 +10,12 @@
     "./react": "./src/react.ts"
   },
   "publish": {
-    "include": ["src", "README.md", "LICENSE", "jsr.json"]
+    "include": [
+      "src",
+      "README.md",
+      "LICENSE",
+      "skills",
+      "jsr.json"
+    ]
   }
 }

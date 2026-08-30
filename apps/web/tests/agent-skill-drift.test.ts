@@ -142,3 +142,60 @@ describe("agent skill — it actually ships", () => {
     expect(pkg.files ?? []).toContain("skills");
   });
 });
+
+/**
+ * A skill that is correct and unpublished is worth exactly nothing, and that is
+ * not hypothetical: `backlex@0.3.2` was tagged, published green on both
+ * registries, and shipped WITHOUT this file. Nothing was red. The content
+ * assertions above all passed, because they check what the skill SAYS, and the
+ * release-drift tripwires passed too, because they compare public NAMESPACES
+ * and adding a shipped asset is not a namespace change.
+ *
+ * The cause is that neither registry publishes what `package.json` declares.
+ * npm publishes a REWRITTEN manifest (`scripts/npm-manifest.mjs` swaps `src` for
+ * `dist` and hardcodes the rest), and JSR publishes `jsr.json`'s own
+ * `publish.include`. Three lists, edited in three places, and the one everybody
+ * looks at is the one neither registry reads. That shape has now bitten twice —
+ * `exports` on 2026-06-28 (`backlex@0.1.3`), assets here.
+ */
+describe("agent skill — it actually ships", () => {
+  const clientDir = join(ROOT, "packages", "client");
+  const pkg = JSON.parse(readFileSync(join(clientDir, "package.json"), "utf8")) as {
+    files: string[];
+  };
+  const jsr = JSON.parse(readFileSync(join(clientDir, "jsr.json"), "utf8")) as {
+    publish: { include: string[] };
+  };
+  // The npm manifest is a SCRIPT, so its list has to be read out of the source.
+  // Parsing the literal is deliberate: asserting on the built tarball would
+  // need a publish to have happened, which is the thing that is too late.
+  const npmFiles: string[] = JSON.parse(
+    /pkg\.files = (\[[^\]]*\]);/.exec(
+      readFileSync(join(clientDir, "scripts", "npm-manifest.mjs"), "utf8"),
+    )?.[1] ?? "[]",
+  );
+
+  // `src` is the one entry that legitimately differs: npm ships the compiled
+  // `dist` in its place. Everything else `package.json` names is an asset that
+  // must reach BOTH registries or it reaches neither user.
+  const assets = pkg.files.filter((f) => f !== "src");
+
+  for (const asset of assets) {
+    test(`\`${asset}\` reaches npm`, () => {
+      expect(`${asset} in npm files: ${npmFiles.includes(asset)}`).toBe(
+        `${asset} in npm files: true`,
+      );
+    });
+    test(`\`${asset}\` reaches JSR`, () => {
+      expect(`${asset} in jsr include: ${jsr.publish.include.includes(asset)}`).toBe(
+        `${asset} in jsr include: true`,
+      );
+    });
+  }
+
+  test("the skill directory is one of those assets", () => {
+    // Guards the guard: if someone drops `skills` from package.json entirely,
+    // the loop above goes green by having nothing to check.
+    expect(assets).toContain("skills");
+  });
+});

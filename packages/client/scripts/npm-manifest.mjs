@@ -25,7 +25,7 @@ pkg.exports = {
   "./token": { types: "./dist/token.d.ts", default: "./dist/token.js" },
   "./react": { types: "./dist/react.d.ts", default: "./dist/react.js" },
 };
-pkg.files = ["dist", "README.md", "LICENSE"];
+pkg.files = ["dist", "README.md", "LICENSE", "skills"];
 // Build-only tooling — consumers never need it.
 delete pkg.scripts;
 delete pkg.devDependencies;

@@ -48,6 +48,12 @@ AUTH_PLUGINS = "passkey,magic-link,email-otp"
 # so the console adapter is fine.
 DEMO_MODE = "1"
 SEED_TEMPLATE = "ecommerce"
+# The two containment guards, same as the control worker — see the long
+# note in wrangler.toml. A PUBLIC demo is the one deploy where a stranger
+# is genuinely poking at the plane boundary, so leaving it in `warn` here
+# would be the wrong way round.
+PLANE_GUARD = "enforce"
+PERMISSION_WRITE_CHECK = "enforce"
 
 [assets]
 directory = "./dist/client"

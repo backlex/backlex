@@ -111,6 +111,41 @@ const parseAgentInput = (body: Record<string, unknown>, partial: boolean) => {
     }
     out.tools = body.tools;
   }
+  if (body.approvalTools !== undefined) {
+    // Deliberately NOT validated against `KNOWN_TOOLS` the way `tools` is:
+    // these are glob patterns (`collections.*`, `*`), and a pattern naming a
+    // tool that does not exist yet is a gate waiting for it rather than a typo
+    // to reject. Over-matching fails safe — it asks a human about something
+    // harmless; under-matching would run something unattended.
+    if (
+      !Array.isArray(body.approvalTools) ||
+      body.approvalTools.some((t) => typeof t !== "string" || !t.trim())
+    ) {
+      throw new AppError(
+        "VALIDATION",
+        "approvalTools must be an array of tool-name patterns (e.g. \"collections.delete\", \"collections.*\")",
+      );
+    }
+    out.approvalTools = body.approvalTools;
+  }
+  if (body.approvers !== undefined) {
+    if (!Array.isArray(body.approvers)) {
+      throw new AppError("VALIDATION", "approvers must be an array of { email, name? }");
+    }
+    const cleaned = (body.approvers as unknown[]).map((a) => {
+      const row = a as { email?: unknown; name?: unknown };
+      const email = typeof row?.email === "string" ? row.email.trim() : "";
+      // An approver is reached by email and nothing else, so an entry without a
+      // usable one is a person who can never be asked.
+      if (!email || !email.includes("@")) {
+        throw new AppError("VALIDATION", "each approver needs an email address");
+      }
+      return typeof row.name === "string" && row.name.trim()
+        ? { email, name: row.name.trim() }
+        : { email };
+    });
+    out.approvers = cleaned;
+  }
   if (body.maxSteps !== undefined) {
     const n = Number(body.maxSteps);
     if (!Number.isInteger(n) || n < 1 || n > 25) {

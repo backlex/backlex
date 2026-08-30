@@ -31,6 +31,10 @@ API key that made the request. Three things bound it, and they compose:
    a call outside it comes back to the model as an error observation instead of
    running.
 3. **The agent's own tool allowlist**, which only an admin can edit.
+4. **A person, for the calls you name.** `approvalTools` holds tool-name globs
+   (`collections.delete`, `collections.*`, `*` — the same grammar as an MCP
+   allowlist) whose calls need someone's yes. See
+   [Approval before a tool runs](#approval-before-a-tool-runs).
 
 **Narrowing is announced, not silent.** When the caller's guards withhold some
 of the agent's tools, the model is told how many and why, and asked to say
@@ -56,6 +60,68 @@ an agent's tool list as the security decision it is. (`agents.run` is classified
 > drive an agent whose tool list was broader — the guards were resolved for the
 > MCP surface and then dropped on the way into the runner.
 :::
+
+## Approval before a tool runs
+
+The three bounds above all answer *is this allowed at all*. This one says
+**allowed, but not unattended** — the thing you want for a delete, a payment, or
+anything a person would rather see before it happens.
+
+```bash
+curl -X POST $URL/api/agents -H 'content-type: application/json' --cookie "$C" -d '{
+  "name": "Ops buddy",
+  "tools": ["collections.list", "collections.delete"],
+  "approvalTools": ["collections.delete"],
+  "approvers": [{ "email": "ayse@example.com", "name": "Ayşe" }]
+}'
+```
+
+When the agent reaches a gated tool it **does not run it**. It opens an
+[approval request](./approvals.md), which reaches the approvers by email with
+the tool name and the exact arguments, and the model is told plainly so the
+answer says what is waiting on whom rather than pretending the work is done.
+
+### Approve, then retry
+
+Once someone approves, the same call — same tool, same arguments, same thread —
+goes through on the next turn. The turn does **not** resume by itself, and that
+is deliberate rather than unfinished:
+
+- a flow parks its remaining operations in the request's `continuation` and is
+  resumed by the settlement. Both the settlement path and the expiry tick can
+  reach a parked continuation, which is why `services/approvals.ts` carries a
+  note about running one twice. For a flow that is an operator's own oplist;
+  for an agent it would be arbitrary tool calls — a second delete, a second
+  payment;
+- the turn already persists every step, so asking again costs one model call
+  rather than a conversation.
+
+The cost is that a person has to ask the agent again. The gain is that no
+approval mechanism in this codebase can cause an operation to happen twice.
+
+### What one approval covers
+
+Exactly one `(thread, tool, arguments)` triple. The same tool against a
+different row is a different decision and asks again; argument **order** is
+normalised, so the same call does not look new because the model serialised it
+differently. An approval is not consumed on use — the same call with the same
+arguments in the same conversation is the same operation — and it expires on its
+own through the approvals service.
+
+### Two edges worth knowing
+
+- **A gate with no approvers refuses.** If `approvalTools` matches and
+  `approvers` is empty there is nobody who could grant it, so the call is
+  refused rather than passed. "Configured for approval, ran unapproved" is the
+  one outcome that must be impossible.
+- **Patterns are not validated against the tool registry**, unlike `tools`.
+  They are globs, and a pattern naming a tool that does not exist yet is a gate
+  waiting for it rather than a typo. Over-matching fails safe — it asks a human
+  about something harmless; under-matching would run something unattended.
+
+Available on REST, GraphQL (`approvalTools`, `approvers`), the SDK and the CLI's
+`agents create --data`. There is no MCP tool for agent CRUD, so nothing is owed
+there.
 
 ## Concepts
 

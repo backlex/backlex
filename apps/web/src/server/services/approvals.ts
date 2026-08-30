@@ -821,11 +821,22 @@ export const getApprovalRequest = async (
 export const listApprovalRequests = async (
   ctx: Ctx,
   tenantId: string | null,
-  opts: { status?: string; limit?: number } = {},
+  opts: { status?: string; limit?: number; subject?: { collection: string; id: string } } = {},
 ): Promise<Array<ReturnType<typeof toPublicRequest>>> => {
   const t = requestsTable(ctx.dialect);
   const scope = tenantId == null ? isNull(t.tenantId) : eq(t.tenantId, tenantId);
-  const where = opts.status ? and(scope, eq(t.status, opts.status)) : scope;
+  // `subject` narrows to the thing the request is ABOUT, which is what lets a
+  // caller ask "has this exact operation already been approved" instead of
+  // paging the whole list and matching by hand. The agent tool gate is the
+  // first caller; it keys on (thread, tool, arguments).
+  const filters = [
+    scope,
+    ...(opts.status ? [eq(t.status, opts.status)] : []),
+    ...(opts.subject
+      ? [eq(t.subjectCollection, opts.subject.collection), eq(t.subjectId, opts.subject.id)]
+      : []),
+  ];
+  const where = filters.length === 1 ? scope : and(...filters);
   const rows = (await (ctx.db as AnyDb)
     .select()
     .from(t)

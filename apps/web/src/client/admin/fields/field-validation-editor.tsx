@@ -193,12 +193,24 @@ const FieldLabel = ({ children }: { children: ReactNode }) => (
 
 export function FieldValidationEditor({
   type,
+  name,
   fields,
   hops = [],
   value,
   onChange,
 }: {
   type: string;
+  /**
+   * The field this rule belongs to. Prepended to the rule builder's own field
+   * list, because a validation rule is almost always ABOUT the field it is
+   * declared on — `{ end_date: { _gte: "$field.start_date" } }` lives on
+   * `end_date`. Both dialogs pass a sibling list that excludes the field being
+   * edited (right for the conditions panel, where a field gating itself is
+   * circular), so without this the left-hand picker of an existing rule
+   * rendered BLANK: the stored value had no matching option, and an admin
+   * looking at their own rule could not see what it compared.
+   */
+  name?: string;
   /** Sibling field names — offered as `$field.<name>` in the cross-field rule. */
   fields: string[];
   /** Sibling relations and what they can be hopped to — offered as
@@ -212,12 +224,15 @@ export function FieldValidationEditor({
   const set = (patch: Partial<ValDraft>) => onChange({ ...value, ...patch });
   const textish = type === "text" || type === "longtext" || type === "hash";
   const numeric = type === "integer" || type === "number";
-  // Siblings first, then one entry per hop-able column. Both sides are value-
-  // side only — the LEFT of a comparison stays a plain column, because the
-  // server refuses a dotted key there (that spelling is the query language's
-  // relation filter, which a row check cannot answer).
+  // The rule's own field first, then the siblings. Deduped so a caller that
+  // already includes it cannot produce two identical options.
+  const ruleFields = name && !fields.includes(name) ? [name, ...fields] : fields;
+  // Those, then one entry per hop-able column. Both groups are value-side only
+  // — the LEFT of a comparison stays a plain column, because the server refuses
+  // a dotted key there (that spelling is the query language's relation filter,
+  // which a row check cannot answer).
   const fieldVars = [
-    ...fields.map((f) => ({ v: `$field.${f}`, desc: t`value of ${f}` })),
+    ...ruleFields.map((f) => ({ v: `$field.${f}`, desc: t`value of ${f}` })),
     ...hops.flatMap((h) =>
       h.columns.map((c) => ({
         v: `$field.${h.relation}.${c}`,
@@ -360,7 +375,7 @@ export function FieldValidationEditor({
             <RuleBuilder
               tree={value.ruleTree}
               onChange={(tree) => set({ ruleTree: tree })}
-              fields={fields}
+              fields={ruleFields}
               extraVars={fieldVars}
             />
           </div>

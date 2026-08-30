@@ -945,7 +945,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
             )}
 
             {activeTab === "validation" && (
-              <FieldValidationEditor type={def.type} fields={availableFields} hops={relationHops} value={valDraft} onChange={setValDraft} />
+              <FieldValidationEditor type={def.type} name={safeName} fields={availableFields} hops={relationHops} value={valDraft} onChange={setValDraft} />
             )}
 
             {activeTab === "conditions" && (

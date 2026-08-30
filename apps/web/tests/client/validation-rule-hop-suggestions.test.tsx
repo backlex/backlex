@@ -118,11 +118,15 @@ describe("the Validation panel offers hop values", () => {
   const suggestions = (): string[] =>
     [...document.querySelectorAll("datalist option")].map((o) => o.getAttribute("value") ?? "");
 
-  const renderPanel = (hops: ReturnType<typeof buildRelationHops>) =>
+  const renderPanel = (
+    hops: ReturnType<typeof buildRelationHops>,
+    props: { name?: string; fields?: string[] } = {},
+  ) =>
     renderWithProviders(
       <FieldValidationEditor
         type="relation"
-        fields={["warehouse", "zone", "code"]}
+        name={props.name}
+        fields={props.fields ?? ["warehouse", "zone", "code"]}
         hops={hops}
         // Seeded with a rule so the Advanced panel is already open — that is
         // what `draftHasRule` keys the disclosure off, and it is the state an
@@ -182,6 +186,32 @@ describe("the Validation panel offers hop values", () => {
     expect(hint).toBeTruthy();
     expect(hint?.parentElement).toBe(above?.parentElement ?? null);
     expect(hint?.className).toBe(above?.className ?? "");
+  });
+
+  test("the rule's own field is offered, though the sibling list omits it", () => {
+    // Both dialogs pass a sibling list with the edited field REMOVED — correct
+    // for the conditions panel, where a field gating itself is circular, and
+    // wrong here: a validation rule is almost always about the field it is
+    // declared on (`{ end_date: { _gte: "$field.start_date" } }` lives on
+    // `end_date`). Without `name` the stored left-hand value matched no option
+    // and the picker rendered BLANK — an admin opening their own rule saw an
+    // empty box where the field should be, and re-picking was impossible.
+    renderPanel(buildRelationHops([{ name: "zone", type: "relation", to: "zones" }], TARGETS), {
+      name: "warehouse",
+      fields: ["zone", "code"],
+    });
+    const trigger = [...document.querySelectorAll("[role=combobox]")].find((el) =>
+      (el.textContent ?? "").includes("warehouse"),
+    );
+    expect(trigger).toBeTruthy();
+    // And it is offered as a value too, beside the siblings.
+    expect(suggestions()).toContain("$field.warehouse");
+  });
+
+  test("a field already in the sibling list is not offered twice", () => {
+    renderPanel([], { name: "warehouse" });
+    const own = suggestions().filter((v) => v === "$field.warehouse");
+    expect(own).toEqual(["$field.warehouse"]);
   });
 
   test("hops reach the value autocomplete and nowhere else", () => {

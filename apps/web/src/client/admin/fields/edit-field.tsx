@@ -875,6 +875,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
           {activeTab === "validation" && (
             <FieldValidationEditor
               type={draft.type}
+              name={draft.name}
               fields={availableFields}
               hops={relationHops}
               value={valDraft}

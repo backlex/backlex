@@ -896,12 +896,13 @@ function UsersSkeletonImpl() {
   );
 }
 
-/** App users — header, then a table card whose inner strip carries an
- *  "End-users" title, a count, and a right-aligned filter input. */
+/** App users — header with the "Invite end-user" action, then a table card
+ *  whose inner strip carries an "End-users" title, a count, and a
+ *  right-aligned filter input. */
 function AppUsersSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
-      <HeaderSkeleton actions={0} />
+      <HeaderSkeleton actions={1} />
       <Card className="gap-0 py-0">
         {/* Card header strip — icon + "End-users" + count + filter input. */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">

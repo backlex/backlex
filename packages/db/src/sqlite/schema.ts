@@ -61,7 +61,11 @@ export const tenantMembers = sqliteTable(
     invitedBy: text("invited_by"),
     invitedAt: integer("invited_at", { mode: "timestamp_ms" }),
     joinedAt: integer("joined_at", { mode: "timestamp_ms" }),
+    /** LEGACY plaintext invite token. Written only by rows minted before the
+     *  hash column landed; new invites leave this NULL. See the pg twin. */
     inviteToken: text("invite_token"),
+    /** SHA-256 of the one-time invite token — the only form kept at rest. */
+    inviteTokenHash: text("invite_token_hash"),
     inviteExpiresAt: integer("invite_expires_at", { mode: "timestamp_ms" }),
     lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }),
     createdAt: ts("created_at"),
@@ -71,6 +75,7 @@ export const tenantMembers = sqliteTable(
     uniqueIndex("tenant_members_tenant_email_idx").on(t.tenantId, t.email),
     index("tenant_members_user_idx").on(t.userId),
     index("tenant_members_invite_token_idx").on(t.inviteToken),
+    index("tenant_members_invite_token_hash_idx").on(t.inviteTokenHash),
   ],
 );
 
@@ -542,6 +547,11 @@ export const appOrgInvites = sqliteTable(
     role: text("role").notNull().default("member"),
     roleIds: text("role_ids", { mode: "json" }).$type<string[] | null>(),
     token: text("token").notNull(),
+    /** SHA-256 of the invite token. See the pg twin for why `token` stays
+     *  NOT NULL, what a hashing writer puts in it, and why the safety comes
+     *  from the `token_hash IS NULL` guard on the plaintext lookup rather than
+     *  from the value stored there. */
+    tokenHash: text("token_hash"),
     invitedBy: text("invited_by"),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
@@ -549,6 +559,7 @@ export const appOrgInvites = sqliteTable(
   },
   (t) => [
     uniqueIndex("app_org_invites_token_idx").on(t.token),
+    uniqueIndex("app_org_invites_token_hash_idx").on(t.tokenHash),
     index("app_org_invites_org_idx").on(t.orgId),
     index("app_org_invites_email_idx").on(t.email),
     index("app_org_invites_tenant_idx").on(t.tenantId),

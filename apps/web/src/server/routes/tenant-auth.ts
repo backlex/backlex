@@ -819,6 +819,109 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
     });
   })
   /**
+   * Public preview of an admin-issued end-user invitation — everything the
+   * accept page (`/t/:slug/join/:token`) can put in front of somebody who has
+   * no account yet, and nothing else.
+   *
+   * Unauthenticated by construction. The invitee is a person this workspace has
+   * only ever reached at an email address, so requiring a session to read the
+   * invitation would demand the very thing the invitation exists to hand over.
+   * Nothing upstream refuses them either, and that is a property of the mount
+   * rather than an exemption carved into it: `/api/t/*` carries four
+   * middlewares and all four let this GET through untouched — the auth rate
+   * limiter gates only POST/PUT/PATCH/DELETE, the per-account lockout and the
+   * captcha gate both return early on any method that is not POST, and the
+   * password-verification auth hook only fires on a sign-in. None consults a
+   * session. No shared middleware had to be weakened to make this reachable.
+   *
+   * ONE response shape for every unusable token. Unknown, expired, already
+   * spent, or pointing at an `app_users` row that has since been deleted or
+   * suspended — all four answer the identical
+   * `{ valid: false, workspaceName: null, email: null }`. So the endpoint
+   * cannot be walked to learn which tokens exist, and because the invited
+   * address is withheld on that branch it cannot be asked whether a given
+   * person was ever invited here. Reporting "expired" separately would be
+   * friendlier and is deliberately not done: it would turn each refusal into a
+   * two-valued answer about a token the caller has no other way to probe.
+   *
+   * The workspace existing at all is NOT concealed — `resolveTenant` still 404s
+   * an unknown slug, exactly as the sibling `GET /:slug/auth/providers` does.
+   * That fact is already public through that endpoint, so nothing new is
+   * disclosed by matching it, and one response shape per *token* is what the
+   * oracle argument is actually about.
+   *
+   * What the valid branch discloses is bounded to the two facts an invitee
+   * needs in order to decide whether the page is trustworthy: the workspace's
+   * OWN name (`tenants.name`) and the address the invitation was sent to —
+   * which is, by definition, already sitting in the mailbox that received the
+   * link. Nothing else about the workspace or its users crosses this line: not
+   * the tenant id, not who sent it, not the roles attached, not whether other
+   * members exist.
+   *
+   * Why the name and nothing more, on a page that is unauthenticated: a
+   * workspace admin picks `tenants.name`, so it is operator-authored text
+   * rendered to a stranger, and that is precisely the raw material of a
+   * phishing page. The line drawn is that a workspace may identify ITSELF and
+   * may not say anything else — the name is the minimum an invitee needs to
+   * recognise an expected invitation, React escapes it as text, and it is the
+   * only operator-controlled string the page renders. There is deliberately no
+   * invitation "message"/"note" field to pass through, because free text under
+   * the workspace's own branding, on a page that already shows a password box,
+   * is a credential-harvesting surface that this endpoint would be the one
+   * supplying.
+   *
+   * Mounted BEFORE the better-auth catch-all so it isn't proxied there.
+   */
+  .get("/:slug/auth/invite/:token", async (c) => {
+    const { ctx, tenant } = await resolveTenant(c);
+    const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+    // Declared once and returned from every refusal below, so the branches
+    // cannot drift apart into telling one kind of failure from another.
+    const unusable: { valid: boolean; workspaceName: string | null; email: string | null } = {
+      valid: false,
+      workspaceName: null,
+      email: null,
+    };
+
+    const token = (c.req.param("token") ?? "").trim();
+    if (!token) return c.json({ data: unusable });
+
+    const invite = await findAppUserInvite(dbCtx, tenant.id, token);
+    if (!invite || invite.expired) return c.json({ data: unusable });
+
+    // "Usable" is defined as "the accept call below would not refuse it" —
+    // same row lookup, same suspended check, kept adjacent so they stay in
+    // step. Answering `valid` for an invitation that accept then rejects would
+    // seat the invitee in front of a form that cannot succeed, which is the
+    // shape of dead end this whole page exists to remove.
+    const users = ctx.dialect === "pg" ? pg.schema.appUsers : sqlite.schema.appUsers;
+    const rows = (await (ctx.db as any)
+      .select({ id: users.id, status: users.status })
+      .from(users)
+      .where(and(eq(users.id, invite.appUserId), eq(users.tenantId, tenant.id)))
+      .limit(1)) as Array<{ id: string; status: string }>;
+    const user = rows[0];
+    if (!user || user.status === "suspended") return c.json({ data: unusable });
+
+    const tenantsTable = ctx.dialect === "pg" ? pg.schema.tenants : sqlite.schema.tenants;
+    const ws = (await (ctx.db as any)
+      .select({ name: tenantsTable.name })
+      .from(tenantsTable)
+      .where(eq(tenantsTable.id, tenant.id))
+      .limit(1)) as Array<{ name: string }>;
+
+    return c.json({
+      data: {
+        valid: true,
+        // Falls back to the slug rather than a literal like "workspace": the
+        // slug is in the URL the invitee already followed, so it can never be
+        // more identifying than what they hold.
+        workspaceName: ws[0]?.name ?? tenant.slug,
+        email: invite.email,
+      },
+    });
+  })
+  /**
    * Accept an admin-issued end-user invite (`POST /api/app-users/invite`):
    * `{ token, password }` sets the credential on the pending `app_users` row,
    * flips it to `active` (email counted as verified — the token arrived at
@@ -865,6 +968,25 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
     // Set the credential — better-auth's own scrypt format (`hashSecret`
     // re-exports better-auth/crypto), so the normal email+password sign-in
     // verifies it from here on.
+    //
+    // ...but ONLY when the account does not already have one. An invitation's
+    // job is to seat an account at the standing it was invited to; it is not a
+    // password reset, and this endpoint is public. Whoever holds a live token
+    // would otherwise overwrite a working credential without ever proving they
+    // know it — an unauthenticated account takeover of somebody who had already
+    // finished signing up. The accept page's `existing` mode verifies the
+    // current password before calling here, but that check runs in a browser
+    // the attacker simply does not use, so the guarantee has to live HERE.
+    //
+    // Skipping the write costs the legitimate `existing` flow nothing: that
+    // path submits the password the account already has, so the update was a
+    // no-op in the only case it was ever reached honestly. Everything below
+    // still runs, which is the part that actually matters — the invite is
+    // consumed and the roles are granted.
+    //
+    // A genuinely forgotten password goes through the workspace's own reset
+    // flow, which mails the address on file rather than trusting a token that
+    // may have been forwarded, screenshotted, or read out of a backup.
     const hash = await hashSecret(password);
     const now = ctx.dialect === "pg" ? new Date() : Date.now();
     const existing = (await (ctx.db as any)
@@ -872,12 +994,9 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       .from(t.accounts)
       .where(and(eq(t.accounts.userId, user.id), eq(t.accounts.providerId, "credential")))
       .limit(1)) as Array<{ id: string }>;
-    if (existing[0]) {
-      await (ctx.db as any)
-        .update(t.accounts)
-        .set({ password: hash, updatedAt: now })
-        .where(eq(t.accounts.id, existing[0].id));
-    } else {
+    // No `else` branch on purpose: an existing credential row is left exactly
+    // as it stands.
+    if (!existing[0]) {
       await (ctx.db as any).insert(t.accounts).values({
         id: crypto.randomUUID(),
         tenantId: tenant.id,

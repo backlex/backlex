@@ -1,0 +1,55 @@
+-- An invite token stops being readable at rest.
+--
+-- `tenant_members.invite_token` and `app_org_invites.token` held their tokens
+-- in the clear. Either one is a bearer credential: whoever reads the row can
+-- accept the invite and be seated at the standing it names — `admin` and
+-- `owner` included. That put a working credential inside every database dump,
+-- every nightly backup, and every support query that happened to `SELECT *`.
+-- The sibling feature `form_invites` already stores only a SHA-256 digest
+-- (`services/form-invites.ts`, itself following `shared_links`), so this brings
+-- the two invite lifecycles onto the scheme the repo already uses.
+--
+-- Both columns are ADDITIVE and NULLABLE, and the plaintext columns are NOT
+-- dropped here. That is deliberate, and there are two separate reasons:
+--
+--   1. Rows already in the field carry a live plaintext token and no digest.
+--      Reading them is the only way an invite mailed last week can still be
+--      accepted. `services/invites.ts` looks the hash up first, falls back to
+--      the plaintext column, and logs `[invites] legacy plaintext invite token
+--      accepted` every time the fallback fires — so an operator can watch the
+--      logs go quiet and know the column is safe to drop, rather than guessing.
+--      A compatibility path nobody can tell is unused never gets removed.
+--
+--   2. The SQLite twin of this file cannot drop a column cheaply. SQLite's
+--      DROP COLUMN is a table rebuild, and these migrations run on the BOOT
+--      PATH of every Vercel/Netlify cold start (`packages/db/src/auto-migrate.ts`)
+--      — a process killed mid-rebuild loses `tenant_members` entirely. A
+--      destructive step there has to be its own deliberate, supervised
+--      migration, not a passenger on an additive one.
+--
+-- FOLLOW-UP, once the legacy-fallback warning has stopped appearing in
+-- production logs for a full invite TTL (7 days) plus a margin:
+-- `20261xxxxx_drop_plaintext_invite_tokens` — drops `tenant_members.invite_token`
+-- and its index on both dialects, and drops `app_org_invites.token` if and only
+-- if every caller has moved to `token_hash`.
+--
+-- `app_org_invites.token` stays NOT NULL. Relaxing it is the same SQLite table
+-- rebuild as dropping it, so a writer that has stopped storing plaintext writes
+-- the digest into BOTH columns, satisfying the NOT NULL and the unique index.
+--
+-- That alone would NOT be safe, and the difference matters. A digest sitting in
+-- a readable column is still a string an attacker who read the row can replay,
+-- and `WHERE token = <that string>` would have matched it. So the plaintext
+-- lookup in `services/app-orgs.ts` carries `AND token_hash IS NULL`: it can
+-- only ever answer for rows minted before this migration, which hold a real
+-- plaintext token and no digest. The same guard is on
+-- `tenant_members.invite_token` in `services/invites.ts`.
+--
+-- Replayable: `IF NOT EXISTS` throughout, because the boot-time runner
+-- re-applies every migration file whenever the `__backlex_migrations` ledger
+-- does not already name it.
+
+ALTER TABLE "tenant_members" ADD COLUMN IF NOT EXISTS "invite_token_hash" text;--> statement-breakpoint
+ALTER TABLE "app_org_invites" ADD COLUMN IF NOT EXISTS "token_hash" text;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "tenant_members_invite_token_hash_idx" ON "tenant_members" ("invite_token_hash");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "app_org_invites_token_hash_idx" ON "app_org_invites" ("token_hash");

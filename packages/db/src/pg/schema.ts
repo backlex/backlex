@@ -85,8 +85,22 @@ export const tenantMembers = pgTable(
     invitedBy: text("invited_by"),
     invitedAt: timestamp("invited_at", { withTimezone: true }),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
-    /** One-time invite token; null after accept. */
+    /**
+     * LEGACY plaintext invite token; null after accept.
+     *
+     * A row's invite token is a bearer credential — whoever holds it is seated
+     * at the invited standing, `admin` included — so it is no longer stored in
+     * the clear. New invites write `invite_token_hash` and leave this NULL;
+     * rows minted before that change still carry their plaintext here and are
+     * still accepted, through a fallback in `services/invites.ts` that logs
+     * every time it fires. The column is dropped once those logs go quiet.
+     */
     inviteToken: text("invite_token"),
+    /** SHA-256 (hex) of the one-time invite token — the only form kept at
+     *  rest. Same scheme as `shared_links.token_hash` and
+     *  `form_invites.token_hash`; the plaintext exists for exactly the moment
+     *  `createMemberInvite` hands it back to its caller. */
+    inviteTokenHash: text("invite_token_hash"),
     inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
     /** Touched by tenantMiddleware on every authenticated request — drives
      *  Members panel "last active" without needing a separate sessions join. */
@@ -98,6 +112,7 @@ export const tenantMembers = pgTable(
     uniqueIndex("tenant_members_tenant_email_idx").on(t.tenantId, t.email),
     index("tenant_members_user_idx").on(t.userId),
     index("tenant_members_invite_token_idx").on(t.inviteToken),
+    index("tenant_members_invite_token_hash_idx").on(t.inviteTokenHash),
   ],
 );
 
@@ -653,6 +668,26 @@ export const appOrgInvites = pgTable(
     /** Org-scoped workspace role ids bound on accept. */
     roleIds: jsonb("role_ids").$type<string[] | null>(),
     token: text("token").notNull(),
+    /**
+     * SHA-256 (hex) of the invite token — the only form a new invitation
+     * stores, and the column `services/app-orgs.ts` matches on.
+     *
+     * `token` above stays NOT NULL on purpose. Relaxing it would mean
+     * rebuilding the table on SQLite, and this schema's migrations run on the
+     * boot path of every Vercel/Netlify cold start, where a process that dies
+     * mid-rebuild loses the table outright. So a hashing writer keeps `token`
+     * populated with the same digest, which satisfies both the NOT NULL and
+     * the unique index.
+     *
+     * What makes that safe is NOT the value — it is the `token_hash IS NULL`
+     * on the plaintext lookup in `findInviteByToken`. A digest stored in a
+     * readable column is still a string somebody can read and replay, and
+     * without that guard replaying it would match `WHERE token = ?` and seat
+     * the replayer at the invited role. With it, the plaintext query can only
+     * ever answer for rows minted before hashing, which by definition hold a
+     * real plaintext token and no digest.
+     */
+    tokenHash: text("token_hash"),
     /** `app_users.id` of the inviter; null when an admin invited from the
      *  control plane. No FK for the same reason as `app_orgs.created_by`. */
     invitedBy: text("invited_by"),
@@ -662,6 +697,7 @@ export const appOrgInvites = pgTable(
   },
   (t) => [
     uniqueIndex("app_org_invites_token_idx").on(t.token),
+    uniqueIndex("app_org_invites_token_hash_idx").on(t.tokenHash),
     index("app_org_invites_org_idx").on(t.orgId),
     index("app_org_invites_email_idx").on(t.email),
     index("app_org_invites_tenant_idx").on(t.tenantId),

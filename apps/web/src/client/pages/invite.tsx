@@ -15,7 +15,7 @@ import {
   type AuthShellCopy,
 } from "@backlex/auth-ui";
 import { api, ApiError } from "@/lib/api";
-import { auth } from "@/lib/auth";
+import { auth, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { notifyError } from "@/lib/error";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { version as appVersion } from "../../../package.json";
@@ -30,7 +30,42 @@ type State =
   | { kind: "loading" }
   | { kind: "invalid" }
   | { kind: "expired"; meta: InviteMeta }
-  | { kind: "ready"; meta: InviteMeta };
+  | { kind: "ready"; meta: InviteMeta }
+  // The account exists but the instance requires a confirmed address before it
+  // will issue a session. See the `verify` branch below for why this is a state
+  // of this screen rather than a redirect.
+  | { kind: "verify"; email: string };
+
+/**
+ * "We sent you a verification link" — the same card the sign-up screen shows,
+ * rebuilt here from the same primitives because `<SignUpPage>` keeps its verify
+ * branch private and this page does not go through it.
+ *
+ * A component rather than inline JSX for one specific reason: the Lingui macro
+ * names a placeholder after the expression inside the braces, so `{email}` and
+ * `{state.email}` compile to DIFFERENT message ids for the same English
+ * sentence. Taking the address as a prop called `email` keeps the id identical
+ * to the sign-up page's, so one translation serves both screens and a reworded
+ * one cannot drift apart.
+ */
+const VerifyCard = ({ email }: { email: string }) => {
+  const { t } = useLingui();
+  return (
+    <>
+      <AuthCardHeader
+        title={<Trans>Check your inbox</Trans>}
+        description={<Trans>We sent a verification link to {email}. Click it to finish creating your account.</Trans>}
+      />
+      <AuthCallout icon={<MailCheckIcon size={16} />}>
+        <strong><Trans>Verification required.</Trans></strong>{" "}
+        <Trans>Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand.</Trans>
+      </AuthCallout>
+      <AuthFootLink to="/sign-in" prefix={t`Already verified?`} label={t`Sign in`} Link={({ to, className, children }) => (
+        <Link to={to} className={className}>{children}</Link>
+      )} />
+    </>
+  );
+};
 
 /**
  * Invite-acceptance screen. Reached from the `${APP_URL}/invite?token=…` link in
@@ -39,13 +74,33 @@ type State =
  * password and create their account — the server admits this even while public
  * sign-up is closed (the invite is the authorisation), and `onUserCreated` binds
  * the workspace membership automatically.
+ *
+ * This is the PLATFORM invite — an operator joining the admin. The workspace
+ * plane's two accept screens (`/t/:slug/join/:token` for an end-user, and
+ * `/t/:slug/join-org/:token` for an org member) are separate pages; they are
+ * registered next to this one in `App.tsx` because all three share the one
+ * property that matters for routing: the person arriving has no session yet.
  */
 export const Invite = () => {
   const { t } = useLingui();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const wsBranding = useWorkspaceBranding();
+  const { surface } = useAuthSurface();
   const token = params.get("token") ?? "";
+
+  // Read the policy through `toSurfaceFlags` — the same flattening the sign-up
+  // screen passes to `<SignUpPage>` — so the nesting of `policy.*` under the
+  // `/api/auth/providers` response stays known in exactly one place. `surface`
+  // is null while that request is in flight, which reads as "not required": the
+  // flag is only consulted after a successful sign-up, by which point the
+  // request has long since settled.
+  // The `? … !== false : false` shape is copied verbatim from `<SignUpPage>`,
+  // so the two screens cannot disagree about what an incomplete surface means.
+  const surfaceFlags = toSurfaceFlags(surface);
+  const requireVerify = surfaceFlags
+    ? surfaceFlags.requireEmailVerification !== false
+    : false;
 
   const [state, setState] = useState<State>({ kind: "loading" });
   const [name, setName] = useState("");
@@ -135,6 +190,21 @@ export const Invite = () => {
         notifyError(msg || t`Sign-up failed`);
         return;
       }
+      // The membership is bound either way — `onUserCreated` runs on the server
+      // the moment the account exists — but the SESSION is not. On an instance
+      // that requires a confirmed email, better-auth withholds it until the
+      // link is clicked, so navigating to "/" here put the invitee in front of
+      // `<AuthGate>` with no session: an instant bounce to /sign-in, where the
+      // password they just chose is refused with a message about credentials.
+      // Nothing along that path ever mentions the unread email. Hold the screen
+      // and say so instead, reusing the sign-up page's own verify copy — the
+      // same source strings, so the same Lingui message ids and the same
+      // translations, rather than a second way of explaining one policy.
+      if (requireVerify) {
+        setBusy(false);
+        setState({ kind: "verify", email });
+        return;
+      }
       // autoSignIn gives a session; the server already bound the workspace
       // membership in onUserCreated. Land in the admin.
       navigate("/", { replace: true });
@@ -192,6 +262,10 @@ export const Invite = () => {
               <Link to={to} className={className}>{children}</Link>
             )} />
           </>
+        )}
+
+        {state.kind === "verify" && (
+          <VerifyCard email={state.email} />
         )}
 
         {state.kind === "ready" && (

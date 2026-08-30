@@ -162,3 +162,57 @@ test("pg: PATCH /api/roles flips the flag", async () => {
   );
   expect(now.status).toBe(200);
 }, PGLITE_TEST_TIMEOUT_MS);
+
+/**
+ * The invitation-token hashing round trip, on Postgres.
+ *
+ * `invite-token-hashing.test.ts` pins all of this on SQLite. It is repeated
+ * here for one reason: `app_org_invites.token` is NOT NULL on both dialects,
+ * and the write that satisfies it puts the DIGEST in the column rather than the
+ * credential. A dialect where that INSERT or the `token_hash IS NULL` fallback
+ * behaved differently would not fail loudly — it would make either every new
+ * invitation unacceptable, or every stored digest replayable, and only on
+ * Postgres. Neither shows up in a SQLite-only suite.
+ */
+test("pg: an org invitation stores a digest, resolves by token, and refuses its own digest", async () => {
+  if (skipped()) return;
+  const h = harness!;
+  const invitee = await makeEndUser(h, "pg-invitee@pg-orgs.test");
+
+  const minted = await asOwner(
+    `/api/t/default/orgs/${orgId}/invites`,
+    json("POST", { email: "pg-invitee@pg-orgs.test" }),
+  );
+  expect(minted.status).toBe(201);
+  const inv = ((await minted.json()) as { data: { id: string; token: string } }).data;
+
+  // What the database actually holds. Neither column may carry the token.
+  const rows = await h.exec(
+    `SELECT token, token_hash FROM app_org_invites WHERE id = '${inv.id}'`,
+  );
+  expect(rows.length).toBe(1);
+  const stored = rows[0] as { token: string; token_hash: string | null };
+  expect(stored.token).not.toBe(inv.token);
+  expect(stored.token_hash).not.toBeNull();
+  expect(stored.token_hash).toBe(stored.token);
+
+  // The link resolves for a caller with no session…
+  const preview = await h.app.request(
+    `/api/t/default/orgs/invites/${encodeURIComponent(inv.token)}`,
+  );
+  expect(preview.status).toBe(200);
+
+  // …and the value sitting in `token` is not a token. Read the row, replay
+  // what you read: refused, because the plaintext lookup skips hashed rows.
+  const replay = await h.app.request(
+    `/api/t/default/orgs/invites/${encodeURIComponent(stored.token)}`,
+  );
+  expect(replay.status).toBe(404);
+
+  // And the real token still accepts.
+  const accepted = await h.app.request("/api/t/default/orgs/invites/accept", {
+    ...json("POST", { token: inv.token }),
+    headers: { ...JSON_HEADERS, Authorization: `Bearer ${invitee.token}` },
+  });
+  expect(accepted.status).toBe(200);
+}, PGLITE_TEST_TIMEOUT_MS);

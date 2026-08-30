@@ -138,6 +138,7 @@ import m131 from "../../drizzle/sqlite/20260822180000_consent_signal_handling/mi
 import m132 from "../../drizzle/sqlite/20260829090000_signing_keys_tenant_id/migration.sql" with { type: "text" };
 import m133 from "../../drizzle/sqlite/20260829110000_tenant_status/migration.sql" with { type: "text" };
 import m134 from "../../drizzle/sqlite/20260829120000_app_settings_global_sentinel/migration.sql" with { type: "text" };
+import m135 from "../../drizzle/sqlite/20260830090000_invite_token_hash/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -280,4 +281,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260829090000_signing_keys_tenant_id", sql: m132 },
   { name: "20260829110000_tenant_status", sql: m133 },
   { name: "20260829120000_app_settings_global_sentinel", sql: m134 },
+  { name: "20260830090000_invite_token_hash", sql: m135 },
 ];

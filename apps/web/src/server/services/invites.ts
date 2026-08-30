@@ -1,9 +1,11 @@
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
+import { log } from "../lib/log";
 import { invalidateTenantMembership, invalidateUserRoles } from "./permissions-cache";
 import { assignRoleByName, type DbCtx, ensureSystemRoles, getRoleByName } from "./seed";
+import { hashToken } from "./shared-links";
 
 /**
  * Shared workspace-invite logic, used by both the tenants route (`POST /accept`,
@@ -19,7 +21,10 @@ export interface InviteRow {
   email: string;
   role: string;
   status: string;
+  /** LEGACY plaintext token. NULL on everything minted since hashing landed. */
   inviteToken: string | null;
+  /** SHA-256 (hex) of the token — the only form a new invite stores. */
+  inviteTokenHash: string | null;
   inviteExpiresAt: Date | number | string | null;
 }
 
@@ -64,6 +69,39 @@ export const standingToRbacRole = (standing: string): string =>
     ? SYSTEM_ROLES.admin
     : SYSTEM_ROLES.authenticated;
 
+/**
+ * The one-time invite token, in the two forms a `tenant_members` row can hold.
+ *
+ * Every writer of an invite token goes through this — {@link createMemberInvite}
+ * and the resend route in `routes/tenants.ts` — so neither can put a credential
+ * back in the clear on its own. `inviteToken` is written as an explicit NULL
+ * rather than omitted, because the resend route UPDATEs a row that may still
+ * carry a legacy plaintext token, and leaving the column out would leave that
+ * token alive next to the new digest.
+ */
+export const inviteTokenFields = async (
+  token: string,
+): Promise<{ inviteToken: null; inviteTokenHash: string }> => ({
+  inviteToken: null,
+  inviteTokenHash: await hashToken(token),
+});
+
+/**
+ * The signal that retires the plaintext fallback.
+ *
+ * Every read that had to fall back to `tenant_members.invite_token` logs this
+ * at warn, naming the member row it fired for. An operator watches for it: once
+ * it has not appeared for a full invite TTL (7 days) plus a margin, no live
+ * invite predates hashing, and the column and this branch can go in the
+ * follow-up migration named in
+ * `packages/db/drizzle/pg/20260830090000_invite_token_hash/migration.sql`.
+ *
+ * It is logged rather than silently tolerated for the reason a compatibility
+ * path usually outlives its cause: nobody can tell an unused one from a
+ * load-bearing one, so nobody ever dares delete it.
+ */
+const LEGACY_PLAINTEXT_MSG = "[invites] legacy plaintext invite token accepted";
+
 /** Active (pending, unexpired, still-tokened) invite for an email, or null.
  *  Case-insensitive on email — the invite is stored as typed by the inviter, the
  *  sign-up email may differ in case. Reads degrade to null if the table isn't
@@ -75,10 +113,22 @@ export const findActiveInviteByEmail = async (
   const t = membersFor(ctx.dialect);
   const wanted = email.trim().toLowerCase();
   try {
+    // EITHER column proves a token was issued and not yet spent: a legacy row
+    // carries the plaintext, a hashed row carries only the digest, and
+    // `bindInvite` clears both on accept. Filtering on `invite_token` alone —
+    // what this did before hashing — made every NEW invite invisible to the
+    // closed-sign-up bypass and to the sign-up auto-accept, so the invite that
+    // was supposed to let an invitee in would have turned them away at the
+    // door. Silent, and only ever on a fresh invite.
     const rows = (await (ctx.db as any)
       .select()
       .from(t)
-      .where(and(eq(t.status, "invited"), isNotNull(t.inviteToken)))) as InviteRow[];
+      .where(
+        and(
+          eq(t.status, "invited"),
+          or(isNotNull(t.inviteToken), isNotNull(t.inviteTokenHash)),
+        ),
+      )) as InviteRow[];
     for (const r of rows) {
       if (r.email.toLowerCase() === wanted && !isExpired(r.inviteExpiresAt)) return r;
     }
@@ -88,20 +138,51 @@ export const findActiveInviteByEmail = async (
   }
 };
 
-/** Resolve an invite token to `{ invite, workspaceName }`. Returns the row even
- *  when expired (callers surface an "expired" state); null only when unknown. */
+/**
+ * Resolve a raw invite token to its member row.
+ *
+ * The ONE place a token out of a URL becomes a `tenant_members` row — the
+ * public resolve route, `POST /api/tenants/accept` and the sign-up hooks all
+ * arrive here — so no two readers can hold different ideas of how a token is
+ * stored.
+ *
+ * Digest first; the plaintext column is consulted only for rows that have NO
+ * digest. That `IS NULL` is load-bearing rather than tidiness: without it the
+ * fallback is an oracle, because whoever can read the table could submit a
+ * value they read OUT of it and be seated — the exact reading hashing exists to
+ * defuse. With it, a row that has been hashed is reachable only by the token
+ * itself.
+ *
+ * Returns the row even when expired (callers surface an "expired" state); null
+ * only when unknown.
+ */
 export const findInviteByToken = async (
   ctx: DbCtx,
   token: string,
 ): Promise<{ invite: InviteRow; workspaceName: string; expired: boolean } | null> => {
   const m = membersFor(ctx.dialect);
   const tn = tenantsFor(ctx.dialect);
-  const rows = (await (ctx.db as any)
+  if (!token) return null;
+  const byHash = (await (ctx.db as any)
     .select()
     .from(m)
-    .where(eq(m.inviteToken, token))
+    .where(eq(m.inviteTokenHash, await hashToken(token)))
     .limit(1)) as InviteRow[];
-  const invite = rows[0];
+  let invite = byHash[0];
+  if (!invite) {
+    const legacy = (await (ctx.db as any)
+      .select()
+      .from(m)
+      .where(and(eq(m.inviteToken, token), isNull(m.inviteTokenHash)))
+      .limit(1)) as InviteRow[];
+    invite = legacy[0];
+    if (invite)
+      log.warn(LEGACY_PLAINTEXT_MSG, {
+        lifecycle: "tenant_members",
+        memberId: invite.id,
+        tenantId: invite.tenantId,
+      });
+  }
   if (!invite) return null;
   const ws = (await (ctx.db as any)
     .select({ name: tn.name })
@@ -164,7 +245,9 @@ export const createMemberInvite = async (
     status: "invited",
     invitedBy: args.invitedBy,
     invitedAt: new Date(),
-    inviteToken: token,
+    // The plaintext lives exactly as long as it takes to hand it back to the
+    // caller, which mails it. No column ever holds it.
+    ...(await inviteTokenFields(token)),
     inviteExpiresAt: expiresAt,
   });
   return { id, token, expiresAt };
@@ -204,7 +287,10 @@ export const bindInvite = async (
       userId,
       status: "active",
       joinedAt: new Date(),
+      // Both forms, not just whichever one this row happened to use — a spent
+      // invite has to stop resolving on either path.
       inviteToken: null,
+      inviteTokenHash: null,
       inviteExpiresAt: null,
     })
     .where(eq(m.id, inv.id));

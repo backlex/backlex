@@ -265,6 +265,10 @@ msgstr "(yok)"
 msgid "(not set)"
 msgstr "(ayarlanmadı)"
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "(optional)"
+msgstr "(isteğe bağlı)"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "(pick a collection first)"
 msgstr "(önce bir koleksiyon seçin)"
@@ -1200,6 +1204,17 @@ msgstr "+90 532 111 22 33"
 msgid "<0>{{username}}</0> is replaced with the submitted username (RFC-4515 escaped). Common: AD = <1>(sAMAccountName={{username}})</1>, OpenLDAP = <2>(uid={{username}})</2>."
 msgstr "<0>{{username}}</0> gönderilen kullanıcı adıyla değiştirilir (RFC-4515 ile kaçışlanmış). Yaygın kullanım: AD = <1>(sAMAccountName={{username}})</1>, OpenLDAP = <2>(uid={{username}})</2>."
 
+#. placeholder {0}: conflict.email
+#. placeholder {1}: conflict.status
+#: src/client/admin/pages/access/app-users.tsx
+msgid "<0>{0}</0> already has an account in this workspace ({1}). Close this and open their row to change roles or reinstate them."
+msgstr "<0>{0}</0> bu çalışma alanında zaten bir hesaba sahip ({1}). Bunu kapat ve rollerini değiştirmek ya da hesabı yeniden açmak için satırını aç."
+
+#. placeholder {0}: conflict.email
+#: src/client/admin/pages/access/app-users.tsx
+msgid "<0>{0}</0> has already been invited and hasn't accepted yet."
+msgstr "<0>{0}</0> zaten davet edilmiş ve henüz kabul etmemiş."
+
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "<0>{fieldsCount}</0> fields registered."
 msgstr "<0>{fieldsCount}</0> alan kaydedildi."
@@ -1477,9 +1492,18 @@ msgstr "Pazar yeri her birime ayrı ayrı ve saatler sonra karar verir. Cevabın
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "Bir matris, aynı sütunları paylaşabilecek iki alana ihtiyaç duyar — iki sayı alanı ya da aynı seçenekleri sunan iki açılır liste."
 
+#: src/client/pages/join-org.tsx
+msgid "a member"
+msgstr "bir üye"
+
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
 msgstr "Adlandırılmış bir gösterge ve arkasındaki formül. Paneller, Ask AI ve raporlar bu tanımlardan okur; tek bir düzenleme sayıyı göründüğü her yerde değiştirir."
+
+#. placeholder {0}: r.data.email
+#: src/client/admin/pages/access/app-users.tsx
+msgid "A new invitation is on its way to {0}."
+msgstr "{0} adresine yeni bir davet yolda."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "A new record may start as"
@@ -1706,6 +1730,11 @@ msgstr "Vurgu üstü metin"
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Accept button"
 msgstr "Kabul düğmesi"
+
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
+msgid "Accept invitation"
+msgstr "Daveti kabul et"
 
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
@@ -2605,6 +2634,7 @@ msgid "already exists"
 msgstr "zaten mevcut"
 
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Already have an account?"
 msgstr "Zaten bir hesabınız var mı?"
@@ -2622,6 +2652,11 @@ msgstr "Zaten listede."
 msgid "already set"
 msgstr "zaten ayarlandı"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Already sign in to this workspace?"
+msgstr "Bu çalışma alanına zaten giriş yapıyor musun?"
+
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Already verified?"
 msgstr "Zaten doğrulandı mı?"
@@ -2673,6 +2708,10 @@ msgstr "Hesabı olmayan bir adres de sayılır — bir koleksiyonda geçiyor ola
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "Bir admin bu örnek için genel kayıt kapatmış. Davet isteyin veya zaten bir hesabınız varsa giriş yapın."
 
+#: src/client/pages/join-org.tsx
+msgid "an administrator"
+msgstr "bir yönetici"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
 msgstr "Yazılacak alanı olmayan yanıt yine de akışa döner — yalnızca satıra işlenmez."
@@ -2697,6 +2736,10 @@ msgstr "Bir davet bağlantısı e-posta ile gönderilecek; 7 gün geçerlidir."
 #: src/client/pages/oauth-consent.tsx
 msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "Bir MCP istemcisi bu çalışma alanına sizin adınıza erişmek istiyor."
+
+#: src/client/pages/join-org.tsx
+msgid "an owner"
+msgstr "bir sahip"
 
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/consent.tsx
@@ -3155,6 +3198,8 @@ msgid "At (optional)"
 msgstr "Saat (isteğe bağlı)"
 
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/sign-up.tsx
 msgid "At least 8 characters"
 msgstr "En az 8 karakter"
@@ -3941,6 +3986,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/members-panel.tsx
@@ -4213,6 +4259,7 @@ msgstr "Snippet’i kontrol et"
 msgid "Check token"
 msgstr "Token’ı kontrol et"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Check your inbox"
@@ -4225,6 +4272,10 @@ msgstr "Kontrol, Kontrol sonrası, Acil"
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Checked against the half-hourly row gauge — approximate by design."
 msgstr "Yarım saatlik satır göstergesine göre denetlenir — tasarım gereği yaklaşıktır."
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Checked before anything changes — a wrong one changes nothing."
+msgstr "Hiçbir şey değişmeden önce kontrol edilir — yanlış olan hiçbir şeyi değiştirmez."
 
 #: src/client/pages/invite.tsx
 msgid "Checking your invite…"
@@ -4278,9 +4329,18 @@ msgstr "Farklı bir klasör seç"
 msgid "Choose a file or drag it here"
 msgstr "Bir dosya seçin veya buraya sürükleyin"
 
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Yeni parola seçin"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Choose a password"
+msgstr "Bir parola belirle"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Choose a password to finish setting up your account."
+msgstr "Hesabını kurmayı tamamlamak için bir parola belirle."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Choose a trigger"
@@ -4963,6 +5023,10 @@ msgstr "Yeni parolayı onayla"
 msgid "Confirm password"
 msgstr "Parolayı onayla"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Confirm your existing password to accept this invitation."
+msgstr "Bu daveti kabul etmek için mevcut parolanı doğrula."
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Confirm your password"
 msgstr "Şifrenizi onaylayın"
@@ -5340,6 +5404,11 @@ msgstr "Köşe yuvarlaklığı"
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
 
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
+msgid "Could not accept the invitation."
+msgstr "Davet kabul edilemedi."
+
 #: src/client/admin/pages/observability/websites.tsx
 #~ msgid "Could not add the site."
 #~ msgstr "Site eklenemedi."
@@ -5391,6 +5460,10 @@ msgstr "Etiket oluşturulamadı."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Could not create that trigger."
 msgstr "Tetikleyici oluşturulamadı."
+
+#: src/client/pages/join-org.tsx
+msgid "Could not create the account."
+msgstr "Hesap oluşturulamadı."
 
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not delete comment."
@@ -5677,9 +5750,18 @@ msgstr "Programatik erişimi (CI, betikler, üçüncü taraf uygulamalar) doğru
 msgid "Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles."
 msgstr "Sıfırdan yeni bir fiziksel tablo oluşturun. Bir ön ayar (İçerik / Taksonomi / Kişiler / Boş) seçin ve kapsam seçeneklerini yapılandırın."
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Create a role first →"
+msgstr "Önce bir rol oluştur →"
+
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Create account"
 msgstr "Hesap oluştur"
+
+#: src/client/pages/join-org.tsx
+msgid "Create account and join"
+msgstr "Hesap oluştur ve katıl"
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Create accounts on first sight"
@@ -5746,6 +5828,10 @@ msgstr "Bağlantı oluştur"
 msgid "Create new link"
 msgstr "Yeni bağlantı oluştur"
 
+#: src/client/pages/join-org.tsx
+msgid "Create one"
+msgstr "Bir tane oluştur"
+
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Create Opsgenie alerts on data events."
 msgstr "Veri olaylarında Opsgenie uyarıları oluştur."
@@ -5797,6 +5883,10 @@ msgstr "Çalışma alanı oluştur"
 #: src/client/pages/sign-up.tsx
 msgid "Create your <0>backlex</0> account."
 msgstr "<0>backlex</0> hesabınızı oluşturun."
+
+#: src/client/pages/join-org.tsx
+msgid "Create your account to accept this invitation."
+msgstr "Bu daveti kabul etmek için hesabını oluştur."
 
 #: src/client/pages/sign-up.tsx
 msgid "Create your admin account"
@@ -6789,6 +6879,10 @@ msgstr "Görüntü etiketi. Depolama anahtarı <0>{0}</0> olarak kalır."
 msgid "Display name"
 msgstr "Görünen ad"
 
+#: src/client/pages/join-org.tsx
+msgid "Display name (optional)"
+msgstr "Görünen ad (isteğe bağlı)"
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/pages/invite.tsx
@@ -7329,6 +7423,8 @@ msgstr "Eforu"
 #: src/client/pages/book.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -7560,8 +7656,12 @@ msgid "End-users of the app built on this workspace sign in here — separate fr
 msgstr "Bu çalışma alanı üzerinde oluşturulan uygulamanın son kullanıcıları buradan giriş yapar — admin girişinden ayrıdır. Yukarıdan sağlayıcıları yapılandırın."
 
 #: src/client/admin/pages/access/app-users.tsx
-msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
-msgstr "Bu workspace üstüne kurulan uygulamanın son kullanıcıları — panel <0>Ekip</0>'inden (admin/kontrol-düzlemi operatörleri) ayrı bir havuz. Bu workspace'in kendi auth uç noktasından kaydolurlar (bkz. <1>Authentication → Workspace auth API</1>)."
+msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They arrive one of two ways: they sign themselves up through this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>), or you invite them here and they choose a password from the emailed link."
+msgstr "Bu çalışma alanı üzerine kurulu uygulamanın son kullanıcıları — panonun <0>Ekip</0> listesinden (yönetim/kontrol düzlemi operatörleri) ayrı bir havuz. İki yoldan biriyle gelirler: bu çalışma alanının kendi auth endpoint'i üzerinden kendileri kayıt olur (bkz. <1>Kimlik doğrulama → Çalışma alanı auth API</1>), ya da onları buradan davet edersin ve e-postayla gelen bağlantıdan bir parola belirlerler."
+
+#: src/client/admin/pages/access/app-users.tsx
+#~ msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+#~ msgstr "Bu workspace üstüne kurulan uygulamanın son kullanıcıları — panel <0>Ekip</0>'inden (admin/kontrol-düzlemi operatörleri) ayrı bir havuz. Bu workspace'in kendi auth uç noktasından kaydolurlar (bkz. <1>Authentication → Workspace auth API</1>)."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
@@ -7723,6 +7823,7 @@ msgid "Enter your email and password."
 msgstr "E-posta ve parolanızı girin."
 
 #: src/client/admin/pages/account-page.tsx
+#: src/client/pages/join-workspace-user.tsx
 msgid "Enter your password to continue."
 msgstr "Devam etmek için şifrenizi girin."
 
@@ -9865,9 +9966,21 @@ msgid "Invitation for {0} withdrawn."
 msgstr "{0} için gönderilen davet geri alındı."
 
 #. placeholder {0}: data.email
+#. placeholder {0}: r.data.email
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/access/app-users.tsx
 msgid "Invitation sent to {0}."
 msgstr "{0} adresine davet gönderildi."
+
+#. placeholder {0}: state.meta.email
+#: src/client/pages/join-workspace-user.tsx
+msgid "Invitation sent to <0>{0}</0>."
+msgstr "<0>{0}</0> adresine davet gönderildi."
+
+#. placeholder {0}: state.meta.orgName
+#: src/client/pages/join-org.tsx
+msgid "Invitations to {0} are valid for 7 days. Ask for a new one."
+msgstr "{0} adresine gönderilen davetler 7 gün geçerli. Yeni bir tane iste."
 
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/members-panel.tsx
@@ -9895,6 +10008,10 @@ msgstr "Davet iletişim kutusu açıldı."
 #: src/client/admin/pages/access/members-panel.tsx
 msgid "Invite emailed to {0} — link:"
 msgstr "{0} adresine davet e-postalandı — link:"
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Invite end-user"
+msgstr "Son kullanıcı davet et"
 
 #: src/client/pages/invite.tsx
 msgid "Invite expired"
@@ -9943,6 +10060,7 @@ msgstr "{0} daveti iptal edildi."
 msgid "Invite user"
 msgstr "Kullanıcı davet et"
 
+#: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/users.tsx
 msgid "invited"
 msgstr "davet edildi"
@@ -9950,6 +10068,12 @@ msgstr "davet edildi"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invited"
 msgstr "Davet edilen"
+
+#. placeholder {0}: state.meta.email
+#. placeholder {1}: state.session.email
+#: src/client/pages/join-org.tsx
+msgid "Invited: <0>{0}</0>. Signed in as <1>{1}</1>."
+msgstr "Davet edilen: <0>{0}</0>. Giriş yapan: <1>{1}</1>."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invites"
@@ -10087,6 +10211,14 @@ msgstr "Yerini yenisi almış ya da takvim kapatılmış olabilir."
 msgid "It may have been withdrawn, already used, or replaced by a newer one."
 msgstr "Geri çekilmiş, daha önce kullanılmış ya da yenisiyle değiştirilmiş olabilir."
 
+#: src/client/pages/join-org.tsx
+msgid "It may have been withdrawn, or already used. Ask whoever invited you to send a new one."
+msgstr "Geri çekilmiş ya da kullanılmış olabilir. Seni davet eden kişiden yeni bir tane göndermesini iste."
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "It may have expired, already been used, or been withdrawn. Invitations are valid for 7 days — ask whoever invited you to send a new one."
+msgstr "Süresi dolmuş, kullanılmış ya da geri çekilmiş olabilir. Davetler 7 gün geçerli — seni davet eden kişiden yeni bir tane göndermesini iste."
+
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "It starts from the beginning of the collection and catches up one page per tick."
 msgstr "Koleksiyonun başından başlar ve her turda bir sayfa ilerler."
@@ -10189,14 +10321,21 @@ msgstr "İş yeniden kuyruğa alındı."
 msgid "Jobs"
 msgstr "İşler"
 
+#. placeholder {0}: state.meta.orgName
 #. placeholder {0}: state.meta.workspaceName
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 msgid "Join {0}"
 msgstr "{0} çalışma alanına katıl"
 
 #: src/client/pages/invite.tsx
 msgid "Join the <0>team</0>."
 msgstr "<0>Ekibe</0> katıl."
+
+#: src/client/pages/join-org.tsx
+msgid "Joining…"
+msgstr "Katılıyor…"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "JSON"
@@ -12025,6 +12164,10 @@ msgstr "Hiçbir zaman (son kullanma tarihi yok)"
 msgid "never run"
 msgstr "hiç çalışmadı"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Never signed in here before?"
+msgstr "Buraya daha önce hiç giriş yapmadın mı?"
+
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "never used"
 msgstr "hiç kullanılmadı"
@@ -12346,6 +12489,10 @@ msgstr "erişim yok"
 msgid "No access"
 msgstr "Erişim yok"
 
+#: src/client/pages/join-org.tsx
+msgid "No account yet?"
+msgstr "Henüz hesabın yok mu?"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "No action"
 msgstr "Aksiyon yok"
@@ -12666,8 +12813,12 @@ msgid "No end-users match \"{q}\"."
 msgstr "\"{q}\" ile eşleşen son kullanıcı yok."
 
 #: src/client/admin/pages/access/app-users.tsx
-msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
-msgstr "Henüz son kullanıcı yok — çalışma alanı kimlik doğrulama uç noktası aracılığıyla kaydolduklarında burada görünürler."
+msgid "No end-users yet — invite one, or wait for the first sign-up through the workspace auth endpoint."
+msgstr "Henüz son kullanıcı yok — birini davet et ya da çalışma alanı auth endpoint'i üzerinden ilk kaydı bekle."
+
+#: src/client/admin/pages/access/app-users.tsx
+#~ msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
+#~ msgstr "Henüz son kullanıcı yok — çalışma alanı kimlik doğrulama uç noktası aracılığıyla kaydolduklarında burada görünürler."
 
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "No erasure requests"
@@ -14535,6 +14686,7 @@ msgstr "Geçiş anahtarları"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Password"
@@ -14553,6 +14705,8 @@ msgid "Password must be at least 8 characters"
 msgstr "Parola en az 8 karakter olmalıdır"
 
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 msgid "Password must be at least 8 characters."
 msgstr "Parola en az 8 karakter olmalı."
 
@@ -18480,6 +18634,10 @@ msgstr "Bunun yerine sihirli bağlantı gönder"
 msgid "Send a message to start the conversation. Type @ to address an agent."
 msgstr "Sohbeti başlatmak için bir mesaj gönderin. Bir agent'a seslenmek için @ yazın."
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Send a new invitation"
+msgstr "Yeni bir davet gönder"
+
 #: src/client/admin/pages/access/users.tsx
 msgid "Send an email invite. The user finishes signup themselves."
 msgstr "E-posta daveti gönderin. Kullanıcı kaydı kendisi tamamlar."
@@ -18495,6 +18653,10 @@ msgstr "Veri olaylarını bir Telegram sohbetine gönder."
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Send for signature"
 msgstr "İmzaya gönder"
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Send invitation"
+msgstr "Daveti gönder"
 
 #: src/client/admin/pages/access/users.tsx
 msgid "Send invite"
@@ -18546,6 +18708,10 @@ msgstr "Gönderici (isteğe bağlı)"
 msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 msgstr "İşlemsel e-posta gönderici adresi — <0>wrangler secret put</0> / <1>.env</1> üzerinden ayarlanır. Ayarlanmadığında (veya RESEND_API_KEY eksikse) e-posta stdout'a kaydedilir. Burada salt okunur."
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Sending again withdraws the old invitation — its link stops working — and mails a fresh one with the roles selected above."
+msgstr "Yeniden göndermek eski daveti geri çeker — bağlantısı çalışmaz olur — ve yukarıda seçilen rollerle yeni bir tane postalar."
+
 #: src/client/pages/magic-link.tsx
 msgid "Sending magic link"
 msgstr "Sihirli bağlantı gönderiliyor"
@@ -18555,6 +18721,7 @@ msgid "Sending reset link"
 msgstr "Sıfırlama bağlantısı gönderiliyor"
 
 #: src/client/admin/collections/item-collaboration.tsx
+#: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -18589,6 +18756,11 @@ msgstr "{0} birim gönderildi. Pazar yeri kendi zamanında karar verir; partiyi 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
 msgstr "1 birim gönderildi. Pazar yeri kendi zamanında karar verir; partiyi izleyin."
+
+#. placeholder {0}: meta.email
+#: src/client/pages/join-org.tsx
+msgid "Sent to <0>{0}</0>, to join as {role}."
+msgstr "<0>{0}</0> adresine, {role} olarak katılmak üzere gönderildi."
 
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Separate several with a space."
@@ -18775,6 +18947,11 @@ msgstr "Ayarlar · Yapay Zekâ altında belirlenir"
 msgid "Set up"
 msgstr "Kur"
 
+#. placeholder {0}: state.meta.email
+#: src/client/pages/join-workspace-user.tsx
+msgid "Set up as <0>{0}</0>. This invitation link has been used and will not work again."
+msgstr "<0>{0}</0> olarak kuruldu. Bu davet bağlantısı kullanıldı ve bir daha çalışmayacak."
+
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Set up consent"
 msgstr "Çerez onayını kur"
@@ -18790,6 +18967,10 @@ msgstr "Özellik haritasını o IdP'nin varsayılanlarına ayarlar — daha sonr
 #: src/client/pages/sign-up.tsx
 msgid "Setting up passkey…"
 msgstr "Passkey ayarlanıyor…"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Setting up…"
+msgstr "Kuruluyor…"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/fields/add-field.tsx
@@ -19133,6 +19314,14 @@ msgstr "Tekrar oturum açıp bağlantıyı yeniden deneyin."
 #~ msgid "Sign in and approve the authorization screen"
 #~ msgstr "Giriş yapın ve yetkilendirme ekranını onaylayın"
 
+#: src/client/pages/join-org.tsx
+msgid "Sign in and join"
+msgstr "Giriş yap ve katıl"
+
+#: src/client/pages/join-org.tsx
+msgid "Sign in instead"
+msgstr "Bunun yerine giriş yap"
+
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Sign in order"
 msgstr "Sırayla imzalansın"
@@ -19140,6 +19329,10 @@ msgstr "Sırayla imzalansın"
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
 msgstr "<0>backlex</0>'a giriş yapın."
+
+#: src/client/pages/join-org.tsx
+msgid "Sign in to accept this invitation."
+msgstr "Bu daveti kabul etmek için giriş yap."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Sign in to backlex."
@@ -19168,6 +19361,10 @@ msgstr "E-posta ve parolanızla giriş yapın veya bir sağlayıcı kullanın."
 #: src/client/admin/ui.tsx
 msgid "Sign out"
 msgstr "Çıkış yap"
+
+#: src/client/pages/join-org.tsx
+msgid "Sign out and use another account"
+msgstr "Çıkış yap ve başka bir hesap kullan"
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Sign out elsewhere"
@@ -19204,6 +19401,10 @@ msgstr "Oturum açma"
 #: src/client/pages/sign-in.tsx
 msgid "Sign-in failed"
 msgstr "Giriş başarısız"
+
+#: src/client/pages/join-org.tsx
+msgid "Sign-in failed."
+msgstr "Giriş başarısız."
 
 #: src/client/admin/pages/users.tsx
 #~ msgid "Sign-in method"
@@ -19273,6 +19474,10 @@ msgstr "İmzalama anahtarları"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Signing order"
 msgstr "İmza sırası"
+
+#: src/client/pages/join-org.tsx
+msgid "Signing out…"
+msgstr "Çıkış yapılıyor…"
 
 #: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -20432,6 +20637,10 @@ msgstr "Bu alan adının bu çalışma alanında zaten bir sitesi var."
 msgid "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
 msgstr "Bu bir host değil. example.com gibi bir şey yazın — tam URL olur, boşluk veya yol olmaz."
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "That password didn't match the account for this address."
+msgstr "Bu parola, bu adrese ait hesapla eşleşmedi."
+
 #. placeholder {0}: chosen.provider
 #. placeholder {1}: chosen.key
 #: src/client/admin/collections/collection-settings.tsx
@@ -20611,6 +20820,10 @@ msgstr "İşlem yapılacak satırın kimliği. <0>{itemIdInterpolationExample}</
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "The insights endpoint returned an error. Re-run to try again."
 msgstr "İçgörü uç noktası hata döndürdü. Tekrar denemek için yeniden çalıştırın."
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "The invitation link is valid for 7 days."
+msgstr "Davet bağlantısı 7 gün geçerli."
 
 #: src/client/admin/pages/access/users.tsx
 msgid "The invite is valid for 7 days."
@@ -20948,6 +21161,10 @@ msgstr "Gelmedi."
 msgid "They do not clash — the end is not inside the period"
 msgstr "Çakışmazlar — bitiş döneme dahil değildir"
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "They get an email with a link, choose a password there, and land in this workspace's app — not in this dashboard."
+msgstr "Bağlantı içeren bir e-posta alırlar, orada bir parola belirlerler ve bu çalışma alanının uygulamasına düşerler — bu panoya değil."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Thinking…"
 #~ msgstr "Düşünüyor…"
@@ -21113,6 +21330,19 @@ msgstr "Bu örnek SQLite/D1 üzerinde çalışıyor; politikaların derleneceği
 #: src/client/admin/fields/edit-field.tsx
 msgid "This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here."
 msgstr "Bu arayüzün ek seçeneği yok. Seçim arayüzleri (açılır liste, radyo…) burada bir seçenek düzenleyicisi gösterir."
+
+#: src/client/pages/join-org.tsx
+msgid "This invitation has expired"
+msgstr "Bu davetin süresi dolmuş"
+
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
+msgid "This invitation link is not valid"
+msgstr "Bu davet bağlantısı geçerli değil"
+
+#: src/client/pages/join-org.tsx
+msgid "This invitation was sent to a different address than the one you're signed in with."
+msgstr "Bu davet, giriş yaptığın adresten farklı bir adrese gönderilmiş."
 
 #: src/client/pages/invite.tsx
 msgid "This invite link is invalid or has already been used."
@@ -21282,6 +21512,10 @@ msgstr "Bu çalışma alanı"
 #: src/client/admin/pages/access/app-users.tsx
 msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
 msgstr "Bu çalışma alanında henüz özel rol yok — <0>Roller ve izinler</0> altında bir tane oluşturun."
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "This workspace has only the three built-in roles, and none of them is grantable here: <0>admin</0> is refused for end-users, and <1>authenticated</1> and <2>public</2> are already implicit. You can invite without one — they will sign in as <3>authenticated</3>."
+msgstr "Bu çalışma alanında yalnızca üç yerleşik rol var ve hiçbiri burada verilebilir değil: <0>admin</0> son kullanıcılar için reddedilir, <1>authenticated</1> ve <2>public</2> ise zaten örtük. Rolsüz de davet edebilirsin — <3>authenticated</3> olarak giriş yaparlar."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Threshold"
@@ -22046,6 +22280,7 @@ msgstr "desteklenmeyen pk türü: {0}"
 msgid "Until one exists, every application-owned channel is refused. Add a rule to open one."
 msgstr "Bir kural olana kadar uygulamaya ait her kanal reddedilir. Bir kanalı açmak için kural ekleyin."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "E-postanızı onaylayana kadar giriş çalışmaz. Almadınız mı? Spam'i kontrol edin veya bir dakika bekleyip giriş yapmayı deneyin — talep üzerine yeniden göndeririz."
@@ -22273,6 +22508,10 @@ msgstr "Konumumu kullan"
 msgid "Use the default above"
 msgstr "Yukarıdaki varsayılanı kullan"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Use your existing password"
+msgstr "Mevcut parolanı kullan"
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Used as fallback when the requested locale has no string for a key."
 msgstr "İstenen yerel ayarın bir anahtar için dizesi olmadığında yedek olarak kullanılır."
@@ -22439,6 +22678,7 @@ msgstr "Sağlayıcı"
 msgid "Verification email sent."
 msgstr "Doğrulama e-postası gönderildi."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Verification required."
 msgstr "Doğrulama gerekli."
@@ -22594,6 +22834,7 @@ msgstr "uyarı"
 msgid "Warning"
 msgstr "Uyarı"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "We sent a verification link to {email}. Click it to finish creating your account."
 msgstr "{email} adresine doğrulama bağlantısı gönderdik. Hesabınızı oluşturmayı tamamlamak için tıklayın."
@@ -23186,6 +23427,10 @@ msgstr "Yazılı yanıtlar burada gösterilmez — koleksiyonda okuyun"
 msgid "Written in {zone}, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change. An \"open\" rule adds bookable time and a \"block\" takes it away; a span crossing midnight is two rules."
 msgstr "{zone} saatiyle yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada sabahın dokuzu olmayı sürdürür. \"Açık\" kuralı randevu alınabilir zaman ekler, \"kapalı\" kuralı çıkarır; gece yarısını aşan bir aralık iki kuraldır."
 
+#: src/client/pages/join-org.tsx
+msgid "Wrong account"
+msgstr "Yanlış hesap"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "xAI · optimized for code agents · cheap"
 msgstr "xAI · kod ajanları için optimize · ucuz"
@@ -23227,6 +23472,11 @@ msgstr "{1} onaylayandan {0}. sırasındakisiniz."
 msgid "You are booked in."
 msgstr "Rezervasyonunuz alındı."
 
+#. placeholder {0}: state.meta.workspaceName
+#: src/client/pages/join-workspace-user.tsx
+msgid "You can now sign in to {0} with your email address and the password you just set."
+msgstr "Artık {0} çalışma alanına e-posta adresin ve az önce belirlediğin parolayla giriş yapabilirsin."
+
 #: src/client/pages/sign-document.tsx
 msgid "You declined to sign this document. The sender has been notified."
 msgstr "Bu belgeyi imzalamayı reddettiniz. Gönderen bilgilendirildi."
@@ -23250,6 +23500,11 @@ msgstr "Kaydedilmemiş değişiklikleriniz var. Ayrılırsanız kaybolur."
 #: src/client/admin/pages/account-page.tsx
 msgid "You haven't registered any passkeys yet."
 msgstr "Henüz hiç passkey kaydetmediniz."
+
+#. placeholder {0}: state.meta.orgName
+#: src/client/pages/join-org.tsx
+msgid "You joined {0}. Head back to the app you were invited from — you'll see it there now."
+msgstr "{0} kuruluşuna katıldın. Davet edildiğin uygulamaya dön — orada artık görünüyor."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "You signed in with a social provider. Setting a password lets you also sign in with email + password."
@@ -23276,10 +23531,18 @@ msgstr "Varsayılan olarak authenticated rolünü alacaksınız."
 msgid "You're all caught up."
 msgstr "Her şey güncel."
 
+#: src/client/pages/join-org.tsx
+msgid "You're in"
+msgstr "İçeridesin"
+
 #. placeholder {0}: state.meta.email
 #: src/client/pages/invite.tsx
 msgid "You're joining as <0>{0}</0>."
 msgstr "<0>{0}</0> olarak katılıyorsun."
+
+#: src/client/pages/join-org.tsx
+msgid "You're signed in, and this invitation is addressed to you."
+msgstr "Giriş yapmış durumdasın ve bu davet sana gönderilmiş."
 
 #: src/client/pages/sign-up.tsx
 msgid "You're the <0>first</0>. Claim this instance."
@@ -23295,6 +23558,10 @@ msgstr "Bir backlex çalışma alanına davet edildin. Hesabını oluşturmayı 
 #: src/client/pages/sign-up.tsx
 msgid "you@example.com"
 msgstr "siz@ornek.com"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Your account is ready"
+msgstr "Hesabın hazır"
 
 #: src/client/pages/magic-link.tsx
 msgid "your address"
@@ -23347,6 +23614,10 @@ msgstr "Görünen adınız"
 #: src/client/pages/sign-in.tsx
 msgid "Your email isn't verified yet. Check your inbox for the verification link."
 msgstr "E-postanız henüz doğrulanmadı. Doğrulama bağlantısı için gelen kutunuzu kontrol edin."
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Your existing password"
+msgstr "Mevcut parolan"
 
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"

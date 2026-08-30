@@ -265,6 +265,10 @@ msgstr "(none)"
 msgid "(not set)"
 msgstr "(not set)"
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "(optional)"
+msgstr "(optional)"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "(pick a collection first)"
 msgstr "(pick a collection first)"
@@ -1200,6 +1204,17 @@ msgstr "+90 532 111 22 33"
 msgid "<0>{{username}}</0> is replaced with the submitted username (RFC-4515 escaped). Common: AD = <1>(sAMAccountName={{username}})</1>, OpenLDAP = <2>(uid={{username}})</2>."
 msgstr "<0>{{username}}</0> is replaced with the submitted username (RFC-4515 escaped). Common: AD = <1>(sAMAccountName={{username}})</1>, OpenLDAP = <2>(uid={{username}})</2>."
 
+#. placeholder {0}: conflict.email
+#. placeholder {1}: conflict.status
+#: src/client/admin/pages/access/app-users.tsx
+msgid "<0>{0}</0> already has an account in this workspace ({1}). Close this and open their row to change roles or reinstate them."
+msgstr "<0>{0}</0> already has an account in this workspace ({1}). Close this and open their row to change roles or reinstate them."
+
+#. placeholder {0}: conflict.email
+#: src/client/admin/pages/access/app-users.tsx
+msgid "<0>{0}</0> has already been invited and hasn't accepted yet."
+msgstr "<0>{0}</0> has already been invited and hasn't accepted yet."
+
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "<0>{fieldsCount}</0> fields registered."
 msgstr "<0>{fieldsCount}</0> fields registered."
@@ -1477,9 +1492,18 @@ msgstr "A marketplace rules on each unit separately and hours later. Without som
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 
+#: src/client/pages/join-org.tsx
+msgid "a member"
+msgstr "a member"
+
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
 msgstr "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
+
+#. placeholder {0}: r.data.email
+#: src/client/admin/pages/access/app-users.tsx
+msgid "A new invitation is on its way to {0}."
+msgstr "A new invitation is on its way to {0}."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "A new record may start as"
@@ -1706,6 +1730,11 @@ msgstr "Accent text"
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Accept button"
 msgstr "Accept button"
+
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
+msgid "Accept invitation"
+msgstr "Accept invitation"
 
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
@@ -2605,6 +2634,7 @@ msgid "already exists"
 msgstr "already exists"
 
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Already have an account?"
 msgstr "Already have an account?"
@@ -2622,6 +2652,11 @@ msgstr "Already on the list."
 msgid "already set"
 msgstr "already set"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Already sign in to this workspace?"
+msgstr "Already sign in to this workspace?"
+
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Already verified?"
 msgstr "Already verified?"
@@ -2673,6 +2708,10 @@ msgstr "An address with no account still counts — it may appear in a collectio
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 
+#: src/client/pages/join-org.tsx
+msgid "an administrator"
+msgstr "an administrator"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
 msgstr "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
@@ -2697,6 +2736,10 @@ msgstr "An invite link will be emailed; valid for 7 days."
 #: src/client/pages/oauth-consent.tsx
 msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "An MCP client is asking to access this workspace on your behalf."
+
+#: src/client/pages/join-org.tsx
+msgid "an owner"
+msgstr "an owner"
 
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/consent.tsx
@@ -3155,6 +3198,8 @@ msgid "At (optional)"
 msgstr "At (optional)"
 
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/sign-up.tsx
 msgid "At least 8 characters"
 msgstr "At least 8 characters"
@@ -3941,6 +3986,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/erasure-card.tsx
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/access/members-panel.tsx
@@ -4213,6 +4259,7 @@ msgstr "Check the snippet"
 msgid "Check token"
 msgstr "Check token"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Check your inbox"
@@ -4225,6 +4272,10 @@ msgstr "Check-up, Follow-up, Emergency"
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Checked against the half-hourly row gauge — approximate by design."
 msgstr "Checked against the half-hourly row gauge — approximate by design."
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Checked before anything changes — a wrong one changes nothing."
+msgstr "Checked before anything changes — a wrong one changes nothing."
 
 #: src/client/pages/invite.tsx
 msgid "Checking your invite…"
@@ -4278,9 +4329,18 @@ msgstr "Choose a different folder"
 msgid "Choose a file or drag it here"
 msgstr "Choose a file or drag it here"
 
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Choose a new password"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Choose a password"
+msgstr "Choose a password"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Choose a password to finish setting up your account."
+msgstr "Choose a password to finish setting up your account."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Choose a trigger"
@@ -4963,6 +5023,10 @@ msgstr "Confirm new password"
 msgid "Confirm password"
 msgstr "Confirm password"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Confirm your existing password to accept this invitation."
+msgstr "Confirm your existing password to accept this invitation."
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Confirm your password"
 msgstr "Confirm your password"
@@ -5340,6 +5404,11 @@ msgstr "Corner radius"
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
 
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
+msgid "Could not accept the invitation."
+msgstr "Could not accept the invitation."
+
 #: src/client/admin/pages/observability/websites.tsx
 #~ msgid "Could not add the site."
 #~ msgstr "Could not add the site."
@@ -5391,6 +5460,10 @@ msgstr "Could not create that tag."
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Could not create that trigger."
 msgstr "Could not create that trigger."
+
+#: src/client/pages/join-org.tsx
+msgid "Could not create the account."
+msgstr "Could not create the account."
 
 #: src/client/admin/collections/item-collaboration.tsx
 msgid "Could not delete comment."
@@ -5677,9 +5750,18 @@ msgstr "Create a key to authenticate programmatic access (CI, scripts, third-par
 msgid "Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles."
 msgstr "Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles."
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Create a role first →"
+msgstr "Create a role first →"
+
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Create account"
 msgstr "Create account"
+
+#: src/client/pages/join-org.tsx
+msgid "Create account and join"
+msgstr "Create account and join"
 
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Create accounts on first sight"
@@ -5746,6 +5828,10 @@ msgstr "Create links"
 msgid "Create new link"
 msgstr "Create new link"
 
+#: src/client/pages/join-org.tsx
+msgid "Create one"
+msgstr "Create one"
+
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Create Opsgenie alerts on data events."
 msgstr "Create Opsgenie alerts on data events."
@@ -5797,6 +5883,10 @@ msgstr "Create workspace"
 #: src/client/pages/sign-up.tsx
 msgid "Create your <0>backlex</0> account."
 msgstr "Create your <0>backlex</0> account."
+
+#: src/client/pages/join-org.tsx
+msgid "Create your account to accept this invitation."
+msgstr "Create your account to accept this invitation."
 
 #: src/client/pages/sign-up.tsx
 msgid "Create your admin account"
@@ -6789,6 +6879,10 @@ msgstr "Display label. The storage key stays <0>{0}</0>."
 msgid "Display name"
 msgstr "Display name"
 
+#: src/client/pages/join-org.tsx
+msgid "Display name (optional)"
+msgstr "Display name (optional)"
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/pages/invite.tsx
@@ -7329,6 +7423,8 @@ msgstr "Effort"
 #: src/client/pages/book.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -7560,8 +7656,12 @@ msgid "End-users of the app built on this workspace sign in here — separate fr
 msgstr "End-users of the app built on this workspace sign in here — separate from the admin login. Configure providers above."
 
 #: src/client/admin/pages/access/app-users.tsx
-msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
-msgstr "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They arrive one of two ways: they sign themselves up through this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>), or you invite them here and they choose a password from the emailed link."
+msgstr "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They arrive one of two ways: they sign themselves up through this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>), or you invite them here and they choose a password from the emailed link."
+
+#: src/client/admin/pages/access/app-users.tsx
+#~ msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+#~ msgstr "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
@@ -7723,6 +7823,7 @@ msgid "Enter your email and password."
 msgstr "Enter your email and password."
 
 #: src/client/admin/pages/account-page.tsx
+#: src/client/pages/join-workspace-user.tsx
 msgid "Enter your password to continue."
 msgstr "Enter your password to continue."
 
@@ -9865,9 +9966,21 @@ msgid "Invitation for {0} withdrawn."
 msgstr "Invitation for {0} withdrawn."
 
 #. placeholder {0}: data.email
+#. placeholder {0}: r.data.email
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/access/app-users.tsx
 msgid "Invitation sent to {0}."
 msgstr "Invitation sent to {0}."
+
+#. placeholder {0}: state.meta.email
+#: src/client/pages/join-workspace-user.tsx
+msgid "Invitation sent to <0>{0}</0>."
+msgstr "Invitation sent to <0>{0}</0>."
+
+#. placeholder {0}: state.meta.orgName
+#: src/client/pages/join-org.tsx
+msgid "Invitations to {0} are valid for 7 days. Ask for a new one."
+msgstr "Invitations to {0} are valid for 7 days. Ask for a new one."
 
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/members-panel.tsx
@@ -9895,6 +10008,10 @@ msgstr "Invite dialog opened."
 #: src/client/admin/pages/access/members-panel.tsx
 msgid "Invite emailed to {0} — link:"
 msgstr "Invite emailed to {0} — link:"
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Invite end-user"
+msgstr "Invite end-user"
 
 #: src/client/pages/invite.tsx
 msgid "Invite expired"
@@ -9943,6 +10060,7 @@ msgstr "Invite to {0} revoked."
 msgid "Invite user"
 msgstr "Invite user"
 
+#: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/users.tsx
 msgid "invited"
 msgstr "invited"
@@ -9950,6 +10068,12 @@ msgstr "invited"
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invited"
 msgstr "Invited"
+
+#. placeholder {0}: state.meta.email
+#. placeholder {1}: state.session.email
+#: src/client/pages/join-org.tsx
+msgid "Invited: <0>{0}</0>. Signed in as <1>{1}</1>."
+msgstr "Invited: <0>{0}</0>. Signed in as <1>{1}</1>."
 
 #: src/client/admin/pages/data/forms/share-tab.tsx
 msgid "Invites"
@@ -10087,6 +10211,14 @@ msgstr "It may have been replaced, or the calendar may be closed."
 msgid "It may have been withdrawn, already used, or replaced by a newer one."
 msgstr "It may have been withdrawn, already used, or replaced by a newer one."
 
+#: src/client/pages/join-org.tsx
+msgid "It may have been withdrawn, or already used. Ask whoever invited you to send a new one."
+msgstr "It may have been withdrawn, or already used. Ask whoever invited you to send a new one."
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "It may have expired, already been used, or been withdrawn. Invitations are valid for 7 days — ask whoever invited you to send a new one."
+msgstr "It may have expired, already been used, or been withdrawn. Invitations are valid for 7 days — ask whoever invited you to send a new one."
+
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "It starts from the beginning of the collection and catches up one page per tick."
 msgstr "It starts from the beginning of the collection and catches up one page per tick."
@@ -10189,14 +10321,21 @@ msgstr "Job requeued."
 msgid "Jobs"
 msgstr "Jobs"
 
+#. placeholder {0}: state.meta.orgName
 #. placeholder {0}: state.meta.workspaceName
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 msgid "Join {0}"
 msgstr "Join {0}"
 
 #: src/client/pages/invite.tsx
 msgid "Join the <0>team</0>."
 msgstr "Join the <0>team</0>."
+
+#: src/client/pages/join-org.tsx
+msgid "Joining…"
+msgstr "Joining…"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 msgid "JSON"
@@ -12025,6 +12164,10 @@ msgstr "Never (no expiry)"
 msgid "never run"
 msgstr "never run"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Never signed in here before?"
+msgstr "Never signed in here before?"
+
 #: src/client/admin/pages/settings/scim-card.tsx
 msgid "never used"
 msgstr "never used"
@@ -12346,6 +12489,10 @@ msgstr "no access"
 msgid "No access"
 msgstr "No access"
 
+#: src/client/pages/join-org.tsx
+msgid "No account yet?"
+msgstr "No account yet?"
+
 #: src/client/admin/collections/collection-settings.tsx
 msgid "No action"
 msgstr "No action"
@@ -12666,8 +12813,12 @@ msgid "No end-users match \"{q}\"."
 msgstr "No end-users match \"{q}\"."
 
 #: src/client/admin/pages/access/app-users.tsx
-msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
-msgstr "No end-users yet — they appear here after signing up via the workspace auth endpoint."
+msgid "No end-users yet — invite one, or wait for the first sign-up through the workspace auth endpoint."
+msgstr "No end-users yet — invite one, or wait for the first sign-up through the workspace auth endpoint."
+
+#: src/client/admin/pages/access/app-users.tsx
+#~ msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
+#~ msgstr "No end-users yet — they appear here after signing up via the workspace auth endpoint."
 
 #: src/client/admin/pages/access/erasure-card.tsx
 msgid "No erasure requests"
@@ -14535,6 +14686,7 @@ msgstr "Passkeys"
 
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Password"
@@ -14553,6 +14705,8 @@ msgid "Password must be at least 8 characters"
 msgstr "Password must be at least 8 characters"
 
 #: src/client/pages/invite.tsx
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
 msgid "Password must be at least 8 characters."
 msgstr "Password must be at least 8 characters."
 
@@ -18480,6 +18634,10 @@ msgstr "Send a magic link instead"
 msgid "Send a message to start the conversation. Type @ to address an agent."
 msgstr "Send a message to start the conversation. Type @ to address an agent."
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Send a new invitation"
+msgstr "Send a new invitation"
+
 #: src/client/admin/pages/access/users.tsx
 msgid "Send an email invite. The user finishes signup themselves."
 msgstr "Send an email invite. The user finishes signup themselves."
@@ -18495,6 +18653,10 @@ msgstr "Send data events to a Telegram chat."
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Send for signature"
 msgstr "Send for signature"
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Send invitation"
+msgstr "Send invitation"
 
 #: src/client/admin/pages/access/users.tsx
 msgid "Send invite"
@@ -18546,6 +18708,10 @@ msgstr "Sender (optional)"
 msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 msgstr "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "Sending again withdraws the old invitation — its link stops working — and mails a fresh one with the roles selected above."
+msgstr "Sending again withdraws the old invitation — its link stops working — and mails a fresh one with the roles selected above."
+
 #: src/client/pages/magic-link.tsx
 msgid "Sending magic link"
 msgstr "Sending magic link"
@@ -18555,6 +18721,7 @@ msgid "Sending reset link"
 msgstr "Sending reset link"
 
 #: src/client/admin/collections/item-collaboration.tsx
+#: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -18589,6 +18756,11 @@ msgstr "Sent {0} units. The marketplace rules on them in its own time; watch the
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
 msgstr "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
+
+#. placeholder {0}: meta.email
+#: src/client/pages/join-org.tsx
+msgid "Sent to <0>{0}</0>, to join as {role}."
+msgstr "Sent to <0>{0}</0>, to join as {role}."
 
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Separate several with a space."
@@ -18775,6 +18947,11 @@ msgstr "set under Settings · AI"
 msgid "Set up"
 msgstr "Set up"
 
+#. placeholder {0}: state.meta.email
+#: src/client/pages/join-workspace-user.tsx
+msgid "Set up as <0>{0}</0>. This invitation link has been used and will not work again."
+msgstr "Set up as <0>{0}</0>. This invitation link has been used and will not work again."
+
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Set up consent"
 msgstr "Set up consent"
@@ -18790,6 +18967,10 @@ msgstr "Sets the attribute map to that IdP's defaults — you can still tweak la
 #: src/client/pages/sign-up.tsx
 msgid "Setting up passkey…"
 msgstr "Setting up passkey…"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Setting up…"
+msgstr "Setting up…"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/fields/add-field.tsx
@@ -19133,6 +19314,14 @@ msgstr "Sign in again and retry the connection."
 #~ msgid "Sign in and approve the authorization screen"
 #~ msgstr "Sign in and approve the authorization screen"
 
+#: src/client/pages/join-org.tsx
+msgid "Sign in and join"
+msgstr "Sign in and join"
+
+#: src/client/pages/join-org.tsx
+msgid "Sign in instead"
+msgstr "Sign in instead"
+
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "Sign in order"
 msgstr "Sign in order"
@@ -19140,6 +19329,10 @@ msgstr "Sign in order"
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
 msgstr "Sign in to <0>backlex</0>."
+
+#: src/client/pages/join-org.tsx
+msgid "Sign in to accept this invitation."
+msgstr "Sign in to accept this invitation."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Sign in to backlex."
@@ -19168,6 +19361,10 @@ msgstr "Sign in with your email and password, or use a provider."
 #: src/client/admin/ui.tsx
 msgid "Sign out"
 msgstr "Sign out"
+
+#: src/client/pages/join-org.tsx
+msgid "Sign out and use another account"
+msgstr "Sign out and use another account"
 
 #: src/client/admin/pages/account-page.tsx
 msgid "Sign out elsewhere"
@@ -19204,6 +19401,10 @@ msgstr "Sign-in"
 #: src/client/pages/sign-in.tsx
 msgid "Sign-in failed"
 msgstr "Sign-in failed"
+
+#: src/client/pages/join-org.tsx
+msgid "Sign-in failed."
+msgstr "Sign-in failed."
 
 #: src/client/admin/pages/users.tsx
 #~ msgid "Sign-in method"
@@ -19273,6 +19474,10 @@ msgstr "Signing keys"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Signing order"
 msgstr "Signing order"
+
+#: src/client/pages/join-org.tsx
+msgid "Signing out…"
+msgstr "Signing out…"
 
 #: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
@@ -20432,6 +20637,10 @@ msgstr "That domain already has a site in this workspace."
 msgid "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
 msgstr "That is not a host. Use something like example.com — a full URL is fine, a space or a path is not."
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "That password didn't match the account for this address."
+msgstr "That password didn't match the account for this address."
+
 #. placeholder {0}: chosen.provider
 #. placeholder {1}: chosen.key
 #: src/client/admin/collections/collection-settings.tsx
@@ -20611,6 +20820,10 @@ msgstr "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the 
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "The insights endpoint returned an error. Re-run to try again."
 msgstr "The insights endpoint returned an error. Re-run to try again."
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "The invitation link is valid for 7 days."
+msgstr "The invitation link is valid for 7 days."
 
 #: src/client/admin/pages/access/users.tsx
 msgid "The invite is valid for 7 days."
@@ -20948,6 +21161,10 @@ msgstr "They did not turn up."
 msgid "They do not clash — the end is not inside the period"
 msgstr "They do not clash — the end is not inside the period"
 
+#: src/client/admin/pages/access/app-users.tsx
+msgid "They get an email with a link, choose a password there, and land in this workspace's app — not in this dashboard."
+msgstr "They get an email with a link, choose a password there, and land in this workspace's app — not in this dashboard."
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Thinking…"
 #~ msgstr "Thinking…"
@@ -21113,6 +21330,19 @@ msgstr "This instance runs on SQLite/D1, where there is nothing to compile polic
 #: src/client/admin/fields/edit-field.tsx
 msgid "This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here."
 msgstr "This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here."
+
+#: src/client/pages/join-org.tsx
+msgid "This invitation has expired"
+msgstr "This invitation has expired"
+
+#: src/client/pages/join-org.tsx
+#: src/client/pages/join-workspace-user.tsx
+msgid "This invitation link is not valid"
+msgstr "This invitation link is not valid"
+
+#: src/client/pages/join-org.tsx
+msgid "This invitation was sent to a different address than the one you're signed in with."
+msgstr "This invitation was sent to a different address than the one you're signed in with."
 
 #: src/client/pages/invite.tsx
 msgid "This invite link is invalid or has already been used."
@@ -21282,6 +21512,10 @@ msgstr "This workspace"
 #: src/client/admin/pages/access/app-users.tsx
 msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
 msgstr "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
+
+#: src/client/admin/pages/access/app-users.tsx
+msgid "This workspace has only the three built-in roles, and none of them is grantable here: <0>admin</0> is refused for end-users, and <1>authenticated</1> and <2>public</2> are already implicit. You can invite without one — they will sign in as <3>authenticated</3>."
+msgstr "This workspace has only the three built-in roles, and none of them is grantable here: <0>admin</0> is refused for end-users, and <1>authenticated</1> and <2>public</2> are already implicit. You can invite without one — they will sign in as <3>authenticated</3>."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Threshold"
@@ -22046,6 +22280,7 @@ msgstr "unsupported pk type: {0}"
 msgid "Until one exists, every application-owned channel is refused. Add a rule to open one."
 msgstr "Until one exists, every application-owned channel is refused. Add a rule to open one."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
@@ -22273,6 +22508,10 @@ msgstr "Use my location"
 msgid "Use the default above"
 msgstr "Use the default above"
 
+#: src/client/pages/join-workspace-user.tsx
+msgid "Use your existing password"
+msgstr "Use your existing password"
+
 #: src/client/admin/pages/observability/translations.tsx
 msgid "Used as fallback when the requested locale has no string for a key."
 msgstr "Used as fallback when the requested locale has no string for a key."
@@ -22439,6 +22678,7 @@ msgstr "Vendor"
 msgid "Verification email sent."
 msgstr "Verification email sent."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Verification required."
 msgstr "Verification required."
@@ -22594,6 +22834,7 @@ msgstr "warn"
 msgid "Warning"
 msgstr "Warning"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "We sent a verification link to {email}. Click it to finish creating your account."
 msgstr "We sent a verification link to {email}. Click it to finish creating your account."
@@ -23186,6 +23427,10 @@ msgstr "Written answers are not shown here — read them in the collection"
 msgid "Written in {zone}, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change. An \"open\" rule adds bookable time and a \"block\" takes it away; a span crossing midnight is two rules."
 msgstr "Written in {zone}, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change. An \"open\" rule adds bookable time and a \"block\" takes it away; a span crossing midnight is two rules."
 
+#: src/client/pages/join-org.tsx
+msgid "Wrong account"
+msgstr "Wrong account"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "xAI · optimized for code agents · cheap"
 msgstr "xAI · optimized for code agents · cheap"
@@ -23227,6 +23472,11 @@ msgstr "You are approver {0} of {1}."
 msgid "You are booked in."
 msgstr "You are booked in."
 
+#. placeholder {0}: state.meta.workspaceName
+#: src/client/pages/join-workspace-user.tsx
+msgid "You can now sign in to {0} with your email address and the password you just set."
+msgstr "You can now sign in to {0} with your email address and the password you just set."
+
 #: src/client/pages/sign-document.tsx
 msgid "You declined to sign this document. The sender has been notified."
 msgstr "You declined to sign this document. The sender has been notified."
@@ -23250,6 +23500,11 @@ msgstr "You have edits that haven't been saved. Leaving will lose them."
 #: src/client/admin/pages/account-page.tsx
 msgid "You haven't registered any passkeys yet."
 msgstr "You haven't registered any passkeys yet."
+
+#. placeholder {0}: state.meta.orgName
+#: src/client/pages/join-org.tsx
+msgid "You joined {0}. Head back to the app you were invited from — you'll see it there now."
+msgstr "You joined {0}. Head back to the app you were invited from — you'll see it there now."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "You signed in with a social provider. Setting a password lets you also sign in with email + password."
@@ -23276,10 +23531,18 @@ msgstr "You'll get the authenticated role by default."
 msgid "You're all caught up."
 msgstr "You're all caught up."
 
+#: src/client/pages/join-org.tsx
+msgid "You're in"
+msgstr "You're in"
+
 #. placeholder {0}: state.meta.email
 #: src/client/pages/invite.tsx
 msgid "You're joining as <0>{0}</0>."
 msgstr "You're joining as <0>{0}</0>."
+
+#: src/client/pages/join-org.tsx
+msgid "You're signed in, and this invitation is addressed to you."
+msgstr "You're signed in, and this invitation is addressed to you."
 
 #: src/client/pages/sign-up.tsx
 msgid "You're the <0>first</0>. Claim this instance."
@@ -23295,6 +23558,10 @@ msgstr "You've been invited to a backlex workspace. Set a password to finish cre
 #: src/client/pages/sign-up.tsx
 msgid "you@example.com"
 msgstr "you@example.com"
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Your account is ready"
+msgstr "Your account is ready"
 
 #: src/client/pages/magic-link.tsx
 msgid "your address"
@@ -23347,6 +23614,10 @@ msgstr "Your display name"
 #: src/client/pages/sign-in.tsx
 msgid "Your email isn't verified yet. Check your inbox for the verification link."
 msgstr "Your email isn't verified yet. Check your inbox for the verification link."
+
+#: src/client/pages/join-workspace-user.tsx
+msgid "Your existing password"
+msgstr "Your existing password"
 
 #: src/client/pages/sign-document.tsx
 msgid "Your full name"

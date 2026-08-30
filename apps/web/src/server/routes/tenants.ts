@@ -15,6 +15,7 @@ import {
   bindInvite,
   createMemberInvite,
   findInviteByToken,
+  inviteTokenFields,
   standingToRbacRole,
 } from "../services/invites";
 import {
@@ -1485,7 +1486,12 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await (ctx.db as any)
         .update(t.members)
         .set({
-          inviteToken: token,
+          // Digest only, through the same helper `createMemberInvite` uses —
+          // and it writes `invite_token = NULL` explicitly, which is what
+          // clears any legacy plaintext this row was still carrying. Setting
+          // the hash without clearing that would leave TWO live tokens on one
+          // invite, and the old link is exactly what a resend revokes.
+          ...(await inviteTokenFields(token)),
           inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS),
           invitedAt: new Date(),
           updatedAt: new Date(),
@@ -1677,14 +1683,16 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const body = c.req.valid("json");
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const t = tablesFor(ctx.dialect);
-      const rows = await (ctx.db as any)
-        .select()
-        .from(t.members)
-        .where(eq(t.members.inviteToken, body.token))
-        .limit(1);
-      const inv = rows[0];
-      if (!inv) throw new AppError("NOT_FOUND", "Invite not found");
+      // Through the service, not a local SELECT. This route used to match
+      // `invite_token` itself, which is a column a hashed invite leaves NULL —
+      // so the moment minting started hashing, every fresh invite resolved on
+      // the public `/invite/{token}` page and then 404'd on accept.
+      const found = await findInviteByToken(
+        { db: ctx.db, dialect: ctx.dialect },
+        body.token,
+      );
+      if (!found) throw new AppError("NOT_FOUND", "Invite not found");
+      const inv = found.invite;
       if (inv.inviteExpiresAt && new Date(inv.inviteExpiresAt) < new Date())
         throw new AppError("VALIDATION", "Invite has expired");
       if (inv.email.toLowerCase() !== (auth.email ?? "").toLowerCase())

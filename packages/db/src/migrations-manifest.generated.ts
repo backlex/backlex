@@ -138,6 +138,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "377e00fb7de0bcb2f47d561a808bdf9232c94d7a15463b0038f4ee67ccd31b7c": "20260829090000_signing_keys_tenant_id",
   "a297b6d078a5667871c2fa4896e23cfb21441512ad1edf59bf9024d7839b36f5": "20260829110000_tenant_status",
   "126f2f1616c1beb0e8a9dfc076c5b8edf454b385cf93971585987e058d0cd5ff": "20260829120000_app_settings_global_sentinel",
+  "8611668a78eac21d779795f2dee0164e4fc8bfaefbbf596cb705b5118b2f9e84": "20260830090000_invite_token_hash",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -271,4 +272,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "04a834e10980cbc03da956a389f303c4c628772fc21334261a5802378ed2b922": "20260829090000_signing_keys_tenant_id",
   "5a12e6034e5d44548223790ab31037d1df7653acaa410527b9e75eff32ab0637": "20260829110000_tenant_status",
   "925e74a84e56e5437fcdf4c9fdadaca7dc10ced470a578d465f4f1cf8df16127": "20260829120000_app_settings_global_sentinel",
+  "a5aa2f00896ca09dbf5b784847737540da6a2da5ebd879d4b1ffef1f6eb0212a": "20260830090000_invite_token_hash",
 };

@@ -11,6 +11,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { hashToken } from "../src/server/services/shared-links";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 const json = (body: unknown) => ({
@@ -245,17 +246,23 @@ describe("app-plane sign-up gate", () => {
  *  is not decoration: a silent zero-row UPDATE (a renamed column, a token that
  *  was already consumed) would leave every assertion below passing for the
  *  wrong reason. */
-const expireInvite = (h: TestHarness, token: string): void => {
+const expireInvite = async (h: TestHarness, token: string): Promise<void> => {
+  // Matched on `invite_token_hash`, not `invite_token`. The token is stored as
+  // a SHA-256 digest and the plaintext column is NULL on anything minted since
+  // — a `WHERE invite_token = ?` here would update zero rows, and the read-back
+  // below is what would have caught it.
+  const hash = await hashToken(token);
   const db = new Database(h.env.SQLITE_PATH as string);
   try {
     const past = Date.now() - 60_000;
-    db.query("UPDATE tenant_members SET invite_expires_at = ?1 WHERE invite_token = ?2").run(
-      past,
-      token,
-    );
+    db.query(
+      "UPDATE tenant_members SET invite_expires_at = ?1 WHERE invite_token_hash = ?2",
+    ).run(past, hash);
     const row = db
-      .query("SELECT invite_expires_at AS exp FROM tenant_members WHERE invite_token = ?1")
-      .get(token) as { exp: number } | null;
+      .query(
+        "SELECT invite_expires_at AS exp FROM tenant_members WHERE invite_token_hash = ?1",
+      )
+      .get(hash) as { exp: number } | null;
     if (!row) throw new Error(`expireInvite: no tenant_members row holds token ${token}`);
     if (row.exp !== past) throw new Error(`expireInvite: expiry not written (got ${row.exp})`);
   } finally {
@@ -376,7 +383,7 @@ describe("platform invite accept: the three refusal guards", () => {
     expect(fresh.status).toBe(200);
     expect(((await fresh.json()) as { data: { expired: boolean } }).data.expired).toBe(false);
 
-    expireInvite(h, inv.token);
+    await expireInvite(h, inv.token);
 
     // The resolve route deliberately answers 200 with `expired: true` rather
     // than 404 — the `/invite` page renders an "this link has expired" state
@@ -420,7 +427,7 @@ describe("platform invite accept: the three refusal guards", () => {
     const liveRes = await h.fetch("/api/users/invite", json({ email: "live@example.test" }));
     expect(liveRes.ok).toBe(true);
 
-    expireInvite(h, stale.token);
+    await expireInvite(h, stale.token);
 
     await signOut(h);
     expect((await signUp(h, "stale@example.test")).status).toBe(403);

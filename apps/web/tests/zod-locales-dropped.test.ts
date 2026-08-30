@@ -74,12 +74,14 @@ describe("zod locales stay out of the bundle", () => {
     // the caller can work — and it should fail here rather than at runtime with
     // an empty object.
     const hits: string[] = [];
+    let scanned = 0;
     const walk = (dir: string): void => {
       for (const e of require_("node:fs").readdirSync(dir, { withFileTypes: true })) {
         if (e.name === "node_modules" || e.name.startsWith(".")) continue;
         const p = join(dir, e.name);
         if (e.isDirectory()) walk(p);
         else if (/\.(ts|tsx)$/.test(e.name) && !p.includes("zod-locales")) {
+          scanned++;
           const src = readFileSync(p, "utf8");
           if (/\bz\.locales\b|from ["']zod\/(v4\/)?locales/.test(src)) hits.push(p);
         }
@@ -87,6 +89,12 @@ describe("zod locales stay out of the bundle", () => {
     };
     walk(join(ROOT, "apps/web/src"));
     walk(join(ROOT, "packages"));
+    // A walk that reaches nothing produces an empty `hits` and reads exactly
+    // like a clean repo. Verified 2026-08-30 by repointing the walk at a
+    // one-file directory and deleting the `packages` leg: still green. The
+    // floor is far below the ~1.7k files actually in range, so adding or
+    // moving sources is not a chore, and far above zero so a moved root is.
+    expect(`files scanned: ${scanned > 800}`).toBe("files scanned: true");
     expect(hits).toEqual([]);
   });
 });

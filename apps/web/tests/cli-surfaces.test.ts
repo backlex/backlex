@@ -45,6 +45,7 @@ import { readFileSync, readdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { OPEN_WAVE } from "./surfaces-wave";
 
 const REPO = join(import.meta.dir, "..", "..", "..");
 const CLI = join(REPO, "packages", "cli");
@@ -594,6 +595,11 @@ describe("CLI parity — every entry is well formed", () => {
       if (cov.deferred === undefined) continue;
       expect(`${key}: ${cov.deferred.length}`).toBe(`${key}: ${Math.max(cov.deferred.length, 60)}`);
       expect(`${key}: ${UNTIL.test(cov.until ?? "")}`).toBe(`${key}: true`);
+      // Shape is not enough: a wave that has already shipped reads exactly like
+      // one that has not. See `surfaces-wave.ts` for the drift this caught.
+      expect(`${key} defers to the open wave: ${cov.until}`).toBe(
+        `${key} defers to the open wave: ${OPEN_WAVE}`,
+      );
       expect(`${key} retiredBy: ${/^(module|command):[\w-]+$/.test(cov.retiredBy ?? "")}`).toBe(
         `${key} retiredBy: true`,
       );
@@ -642,6 +648,11 @@ describe("CLI parity — every entry is well formed", () => {
       if (!cov.missing) continue;
       expect(`${key}: ${cov.missing.length > 0}`).toBe(`${key}: true`);
       expect(`${key}: ${UNTIL.test(cov.until ?? "")}`).toBe(`${key}: true`);
+      // Shape is not enough: a wave that has already shipped reads exactly like
+      // one that has not. See `surfaces-wave.ts` for the drift this caught.
+      expect(`${key} defers to the open wave: ${cov.until}`).toBe(
+        `${key} defers to the open wave: ${OPEN_WAVE}`,
+      );
       const mod = byModule.get(cov.command as string);
       expect(`${key} names a module: ${Boolean(mod)}`).toBe(`${key} names a module: true`);
       for (const sub of cov.missing) {

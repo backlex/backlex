@@ -45,6 +45,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { OPEN_WAVE } from "./surfaces-wave";
 
 const REPO = join(import.meta.dir, "..", "..", "..");
 const GQL_DIR = join(REPO, "apps", "web", "src", "server", "services", "graphql");
@@ -692,6 +693,11 @@ describe("GraphQL parity — every entry is well formed", () => {
       // it, so quieting this file takes prose a reviewer reads as an argument.
       expect(`${key}: ${cov.deferred.length}`).toBe(`${key}: ${Math.max(cov.deferred.length, 60)}`);
       expect(`${key}: ${UNTIL.test(cov.until ?? "")}`).toBe(`${key}: true`);
+      // Shape is not enough: a wave that has already shipped reads exactly like
+      // one that has not. See `surfaces-wave.ts` for the drift this caught.
+      expect(`${key} defers to the open wave: ${cov.until}`).toBe(
+        `${key} defers to the open wave: ${OPEN_WAVE}`,
+      );
       expect(`${key} retiredBy: ${/^(module|field):[\w-]+$/.test(cov.retiredBy ?? "")}`).toBe(
         `${key} retiredBy: true`,
       );
@@ -733,6 +739,11 @@ describe("GraphQL parity — every entry is well formed", () => {
       if (!cov.missing) continue;
       expect(`${key}: ${cov.missing.length > 0}`).toBe(`${key}: true`);
       expect(`${key}: ${UNTIL.test(cov.until ?? "")}`).toBe(`${key}: true`);
+      // Shape is not enough: a wave that has already shipped reads exactly like
+      // one that has not. See `surfaces-wave.ts` for the drift this caught.
+      expect(`${key} defers to the open wave: ${cov.until}`).toBe(
+        `${key} defers to the open wave: ${OPEN_WAVE}`,
+      );
       for (const name of cov.missing) {
         // When it lands this fails, and deleting the entry is how the phase
         // reports itself finished.

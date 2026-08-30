@@ -62,11 +62,17 @@ const parseList = (xml: string): StoredObject[] => {
  * this when `Bun.S3Client` is unavailable.
  */
 export const s3FetchStorage = (cfg: S3FetchConfig): StorageAdapter => {
+  // `retries` is pinned rather than inherited — see the matching note in
+  // `email.ses.ts`. aws4fetch defaults to TEN retries with exponential backoff
+  // from 50 ms, which keeps one storage call blocked for tens of seconds on a
+  // 5xx or a 429. On a Worker that is most of the wall budget, and an upload
+  // that stalls that long has already lost the request it was serving.
   const aws = new AwsClient({
     accessKeyId: cfg.accessKeyId,
     secretAccessKey: cfg.secretAccessKey,
     region: cfg.region ?? FALLBACK_REGION,
     service: "s3",
+    retries: 2,
   });
 
   return {

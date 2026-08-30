@@ -1,5 +1,5 @@
 import { appendFile, mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { join, dirname, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
@@ -76,8 +76,33 @@ export const fsStorage = (root: string): StorageAdapter => {
       if (existsSync(target)) await unlink(target);
     },
     async list(prefix = "") {
-      const dir = path(prefix);
-      if (!existsSync(dir)) return [];
+      // `prefix` is a STRING prefix, not a directory path — that is what the
+      // `StorageAdapter` contract means and what R2 and S3 do. Treating it as a
+      // directory diverges in two reachable ways, and `routes/s3.ts` hands this
+      // a caller-supplied value straight from `?prefix=`:
+      //
+      //   - a full object key (`aws s3 ls s3://b/a/file.txt`, which is legal
+      //     S3) resolved to a FILE and `readdir` threw ENOTDIR → a 500 on fs
+      //     deploys and one listed object on R2;
+      //   - a partial name (`…/inv`) resolved to a directory that does not
+      //     exist and answered `[]` instead of the invoices under it.
+      //
+      // So: list from the nearest existing ancestor directory and filter by the
+      // string, which collapses all three cases (exact directory, exact file,
+      // partial name) into the one behaviour the other backends already have.
+      //
+      // The cost: a prefix with no `/` at all walks the whole root before
+      // filtering, where R2 answers from an index. Bounded in practice — the
+      // only caller, `routes/s3.ts`, passes `physicalKey(tenantId, …)`, which
+      // always carries a tenant segment — but worth knowing before this is
+      // called from somewhere new.
+      let dir = path(prefix);
+      let scope = prefix;
+      if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+        scope = prefix.includes("/") ? prefix.slice(0, prefix.lastIndexOf("/") + 1) : "";
+        dir = path(scope);
+        if (!existsSync(dir)) return [];
+      }
       const entries = await readdir(dir, { recursive: true, withFileTypes: true });
       const out: StoredObject[] = [];
       for (const e of entries) {
@@ -91,7 +116,11 @@ export const fsStorage = (root: string): StorageAdapter => {
         const parent = (e as { parentPath?: string; path?: string }).parentPath
           ?? (e as { path?: string }).path
           ?? dir;
-        const rel = join(prefix, relative(dir, join(parent, e.name)));
+        const rel = join(scope, relative(dir, join(parent, e.name)));
+        // The string filter, applied after the key is rebuilt: listing from an
+        // ancestor directory is how a partial prefix is served at all, and
+        // without this it would also serve the siblings that do not match.
+        if (!rel.startsWith(prefix)) continue;
         const s = await stat(path(rel));
         out.push({ key: rel, size: s.size, uploadedAt: new Date(s.mtimeMs) });
       }

@@ -42,6 +42,7 @@ import {
 import {
   compileValidation,
   emptyValDraft,
+  buildRelationHops,
   FieldValidationEditor,
   type ValDraft,
 } from "./field-validation-editor";
@@ -144,8 +145,14 @@ const DEFAULT_CHOICES = [
 export interface AddFieldDialogProps {
   open: boolean;
   schema: CollectionSchema;
-  /** Collections available as relation targets. Falls back to the mock seed. */
-  collections?: Array<{ slug: string; count?: number }>;
+  /** Collections available as relation targets. Falls back to the mock seed.
+   *  `fieldDefs` (which the list endpoint already returns) is what lets the
+   *  cross-field rule builder offer one-relation-hop values. */
+  collections?: Array<{
+    slug: string;
+    count?: number;
+    fieldDefs?: Array<{ name: string; type: string; to?: string; localized?: boolean }>;
+  }>;
   onClose: () => void;
   onCreate: (field: Record<string, unknown>) => void;
 }
@@ -248,6 +255,12 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const availableFields = useMemo(
     () => (schema?.fields ?? []).map((f) => (f as { name?: string }).name).filter((n): n is string => !!n),
     [schema],
+  );
+  // Read off the LIVE draft schema rather than the cached collections list, so
+  // a relation added earlier in this same dialog session is already hop-able.
+  const relationHops = useMemo(
+    () => buildRelationHops((schema?.fields ?? []) as never, collections ?? []),
+    [schema, collections],
   );
   // Existing section names on this collection — offered as datalist suggestions
   // so admins reuse a section instead of coining near-duplicates ("SEO"/"Seo").
@@ -932,7 +945,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
             )}
 
             {activeTab === "validation" && (
-              <FieldValidationEditor type={def.type} fields={availableFields} value={valDraft} onChange={setValDraft} />
+              <FieldValidationEditor type={def.type} fields={availableFields} hops={relationHops} value={valDraft} onChange={setValDraft} />
             )}
 
             {activeTab === "conditions" && (

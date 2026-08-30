@@ -142,7 +142,16 @@ export interface CollectionListItem {
    * and the list response already carries them, so this saves a request per
    * candidate collection rather than adding one.
    */
-  fieldDefs?: Array<{ name: string; type: string; to?: string; rollup?: unknown }>;
+  fieldDefs?: Array<{
+    name: string;
+    type: string;
+    to?: string;
+    rollup?: unknown;
+    /** A localized column's values live in the translations sidecar, so a
+     *  cross-field rule cannot hop onto it — the validation editor filters on
+     *  this when it builds `$field.<relation>.<column>` suggestions. */
+    localized?: boolean;
+  }>;
 }
 
 // Nav display labels are NOT stored here: `config.ts` has no JSX, so the

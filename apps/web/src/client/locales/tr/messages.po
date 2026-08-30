@@ -962,6 +962,12 @@ msgstr "{totalTools} aracın {allowlistSize} tanesi etkin."
 msgid "{c} is already in the list."
 msgstr "{c} zaten listede."
 
+#. placeholder {0}: h.slug
+#. placeholder {1}: h.relation
+#: src/client/admin/fields/field-validation-editor.tsx
+msgid "{c} on the {0} row \"{1}\" points at"
+msgstr "{0} kaydındaki {c} — \"{1}\" alanının işaret ettiği satır"
+
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "{changedCount} field(s) will change."
 msgstr "{changedCount} alan değişecek."
@@ -23471,6 +23477,10 @@ msgstr "{1} onaylayandan {0}. sırasındakisiniz."
 #: src/client/pages/book.tsx
 msgid "You are booked in."
 msgstr "Rezervasyonunuz alındı."
+
+#: src/client/admin/fields/field-validation-editor.tsx
+msgid "You can also look one relation out — <0>$field.relation.column</0> reads that column on the row the relation points at."
+msgstr "Bir ilişki ötesine de bakabilirsiniz — <0>$field.iliski.sutun</0>, ilişkinin işaret ettiği satırdaki o sütunu okur."
 
 #. placeholder {0}: state.meta.workspaceName
 #: src/client/pages/join-workspace-user.tsx

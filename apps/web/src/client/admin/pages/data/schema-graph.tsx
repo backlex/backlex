@@ -660,7 +660,7 @@ function ErdCanvas({
       <AddFieldDialog
         open={addFieldSlug !== null}
         schema={(addSchema ? { slug: addSchema.slug, ownerScoped: false, fields: addSchema.fields } : { slug: "", ownerScoped: false, fields: [] }) as never}
-        collections={collections.map((c) => ({ slug: c.slug }))}
+        collections={collections.map((c) => ({ slug: c.slug, fieldDefs: c.fields }))}
         onClose={() => setAddFieldSlug(null)}
         onCreate={async (field) => {
           if (!addSchema) return;
@@ -676,6 +676,12 @@ function ErdCanvas({
       <EditFieldDialog
         open={editField !== null}
         field={(editFieldDef ?? null) as never}
+        ownerSlug={editSrc?.slug ?? ""}
+        collections={collections.map((c) => ({
+          slug: c.slug,
+          fieldDefs: c.fields,
+          adopted: c.adopted,
+        }))}
         availableFields={(editSrc?.fields ?? [])
           .map((f) => f.name)
           .filter((n): n is string => !!n && n !== editField?.name)}

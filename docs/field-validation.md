@@ -168,10 +168,12 @@ The **Add field** and **Edit field** dialogs render a **Validation** panel with
 the type-appropriate inputs (length / bounds / format / date bounds /
 cardinality), a **Custom error message** box, and an **Advanced — cross-field
 rule** section that builds the `rule` visually. In the rule builder, the value
-autocomplete offers each sibling field as `$field.<name>`. A **relation hop**
-has no autocomplete entry yet — type `$field.<relation>.<column>` into the value
-box; it is checked when the collection is saved, so a wrong one is refused with
-the target's field list rather than accepted.
+autocomplete offers each sibling field as `$field.<name>`, and — for every
+`relation` on the collection — each column a hop may read, as
+`$field.<relation>.<column>`. The suggestions are filtered the same way the save
+is: no `relation_many`, no layout block, no localized column, so anything the
+list offers is something the server will accept. The field picker on the LEFT
+stays row-local, because a dotted key there is refused.
 
 ## Related
 

@@ -52,6 +52,10 @@ export interface ApiCollection {
     /** Target collection slug — present when `type === "relation"`. */
     to?: string;
     interface?: string;
+    /** Values live in the translations sidecar, one per locale, rather than in
+     *  the column. Read by the validation editor, which cannot offer such a
+     *  column as a one-relation-hop target. */
+    localized?: boolean;
   }[];
   ownerScoped: boolean;
   tenantScoped?: boolean;

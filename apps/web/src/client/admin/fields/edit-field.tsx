@@ -33,6 +33,7 @@ import {
   treeHasRule,
 } from "../rule-builder";
 import {
+  buildRelationHops,
   compileValidation,
   emptyValDraft,
   FieldValidationEditor,
@@ -206,7 +207,15 @@ export interface EditFieldDialogProps {
    *  source / relation / value pickers. */
   collections?: Array<{
     slug: string;
-    fieldDefs?: Array<{ name: string; type: string; to?: string; rollup?: unknown }>;
+    fieldDefs?: Array<{
+      name: string;
+      type: string;
+      to?: string;
+      rollup?: unknown;
+      /** A localized column keeps its values in the translations sidecar, so a
+       *  validation rule cannot hop onto it — see `buildRelationHops`. */
+      localized?: boolean;
+    }>;
     /** Adopted tables own no DDL, so the money editor hides the "add a companion
      *  currency column" affordance. Read off the owning collection. */
     adopted?: boolean;
@@ -236,6 +245,18 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [urlDraft, setUrlDraft] = useState<UrlDraft>(emptyUrlDraft);
   const [rangeDraft, setRangeDraft] = useState<RangeDraft>(emptyRangeDraft);
   const [tab, setTab] = useState("schema");
+
+  // The owning collection's own fields, as the server last returned them — the
+  // same source the rollup editor reads, and the only one this dialog has for
+  // the `to` of each sibling relation (`availableFields` is names alone).
+  const relationHops = useMemo(
+    () =>
+      buildRelationHops(
+        collections.find((c) => c.slug === ownerSlug)?.fieldDefs ?? [],
+        collections,
+      ),
+    [collections, ownerSlug],
+  );
 
   // Re-seed every time the dialog opens with a new target field.
   useEffect(() => {
@@ -855,6 +876,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
             <FieldValidationEditor
               type={draft.type}
               fields={availableFields}
+              hops={relationHops}
               value={valDraft}
               onChange={setValDraft}
             />

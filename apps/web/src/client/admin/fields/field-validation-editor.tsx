@@ -3,8 +3,9 @@
 // `FieldValidation` (length / bounds / format / date bounds / cardinality),
 // a custom error message, and an "Advanced" cross-field rule built with the
 // same RuleBuilder the conditions panel uses (values reference siblings via
-// `$field.<name>`). The parent owns a `ValDraft`; `compileValidation` turns it
-// into the `validation` object sent to POST/PATCH.
+// `$field.<name>`, or one relation out via `$field.<relation>.<column>`). The
+// parent owns a `ValDraft`; `compileValidation` turns it into the `validation`
+// object sent to POST/PATCH.
 import { type ReactNode, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
@@ -137,6 +138,55 @@ export const compileValidation = (
  *  Advanced panel and to show a summary badge). */
 export const draftHasRule = (d: ValDraft): boolean => treeHasRule(d.ruleTree);
 
+/** Layout-only types. They own no column, so a hop cannot read one — the same
+ *  test `isPresentational` makes server-side. Kept local rather than imported
+ *  from `collections/item-form`, which this dialog does not otherwise pull in. */
+const LAYOUT_TYPES = new Set(["divider", "notice"]);
+
+/** A sibling `relation` and the columns of the collection it points at, ready
+ *  to be offered as `$field.<relation>.<column>`. */
+export interface RelationHopSource {
+  relation: string;
+  slug: string;
+  columns: string[];
+}
+
+/**
+ * Pair every `relation` field on this collection with the columns a validation
+ * rule may read one hop away.
+ *
+ * The filter mirrors what the server refuses when the SCHEMA is saved, so the
+ * list never offers something that would be rejected on save: `relation_many`
+ * cannot be hopped through (it points at many rows), and on the far side a
+ * layout block owns no column while a `localized` field keeps its values in the
+ * translations sidecar. A target that is not in `collections` yet — a forward
+ * reference, which the API allows — simply contributes nothing.
+ *
+ * Deliberately uncapped. A wide collection makes a long list, but a datalist
+ * narrows as soon as you type the relation's name, and a column quietly missing
+ * from the suggestions is worse than a list you scroll past.
+ */
+export const buildRelationHops = (
+  ownFields: ReadonlyArray<{ name?: string; type?: string; to?: string | null }>,
+  collections: ReadonlyArray<{
+    slug: string;
+    fieldDefs?: ReadonlyArray<{ name: string; type: string; localized?: boolean }>;
+  }>,
+): RelationHopSource[] => {
+  const bySlug = new Map(collections.map((c) => [c.slug, c]));
+  const out: RelationHopSource[] = [];
+  for (const f of ownFields) {
+    if (f.type !== "relation" || !f.name || !f.to) continue;
+    const target = bySlug.get(f.to);
+    if (!target?.fieldDefs) continue;
+    const columns = target.fieldDefs
+      .filter((c) => !LAYOUT_TYPES.has(c.type) && !c.localized)
+      .map((c) => c.name);
+    if (columns.length > 0) out.push({ relation: f.name, slug: f.to, columns });
+  }
+  return out;
+};
+
 const FieldLabel = ({ children }: { children: ReactNode }) => (
   <label className="text-[11.5px] font-medium text-muted-foreground">{children}</label>
 );
@@ -144,12 +194,16 @@ const FieldLabel = ({ children }: { children: ReactNode }) => (
 export function FieldValidationEditor({
   type,
   fields,
+  hops = [],
   value,
   onChange,
 }: {
   type: string;
   /** Sibling field names — offered as `$field.<name>` in the cross-field rule. */
   fields: string[];
+  /** Sibling relations and what they can be hopped to — offered as
+   *  `$field.<relation>.<column>`. See {@link buildRelationHops}. */
+  hops?: RelationHopSource[];
   value: ValDraft;
   onChange: (next: ValDraft) => void;
 }) {
@@ -158,7 +212,19 @@ export function FieldValidationEditor({
   const set = (patch: Partial<ValDraft>) => onChange({ ...value, ...patch });
   const textish = type === "text" || type === "longtext" || type === "hash";
   const numeric = type === "integer" || type === "number";
-  const fieldVars = fields.map((f) => ({ v: `$field.${f}`, desc: t`value of ${f}` }));
+  // Siblings first, then one entry per hop-able column. Both sides are value-
+  // side only — the LEFT of a comparison stays a plain column, because the
+  // server refuses a dotted key there (that spelling is the query language's
+  // relation filter, which a row check cannot answer).
+  const fieldVars = [
+    ...fields.map((f) => ({ v: `$field.${f}`, desc: t`value of ${f}` })),
+    ...hops.flatMap((h) =>
+      h.columns.map((c) => ({
+        v: `$field.${h.relation}.${c}`,
+        desc: t`${c} on the ${h.slug} row "${h.relation}" points at`,
+      })),
+    ),
+  ];
 
   return (
     <div className="flex flex-col gap-2.5 rounded-control bg-muted p-3">
@@ -286,6 +352,11 @@ export function FieldValidationEditor({
             <span className="text-[11px] text-muted-foreground">
               <Trans>The row is rejected unless this matches. Reference another field's value with <span className="font-mono">$field.name</span> (e.g. <span className="font-mono">end_date ≥ $field.start_date</span>).</Trans>
             </span>
+            {hops.length > 0 && (
+              <span className="text-[11px] text-muted-foreground">
+                <Trans>You can also look one relation out — <span className="font-mono">$field.relation.column</span> reads that column on the row the relation points at.</Trans>
+              </span>
+            )}
             <RuleBuilder
               tree={value.ruleTree}
               onChange={(tree) => set({ ruleTree: tree })}

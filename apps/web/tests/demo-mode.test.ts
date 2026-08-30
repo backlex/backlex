@@ -174,3 +174,68 @@ describe("demo mode — reset", () => {
     expect((data as unknown[]).length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * The route, as opposed to the service the tests above call directly.
+ *
+ * `POST /api/admin/demo/reset` is a one-request destructor: it drops every
+ * managed collection's physical table and reseeds. The service refuses to run
+ * outside demo mode, but the service is not what an operator's browser reaches
+ * — the route is, and the route carries its OWN `isDemoMode` check plus three
+ * middlewares. Nothing asserted that stack, so a production instance's admin
+ * being one POST away from a wiped workspace would have been a silent change.
+ */
+describe("demo mode — the reset endpoint", () => {
+  const reset = () => h.fetch("/api/admin/demo/reset", { method: "POST" });
+
+  test("a normal instance does not have this endpoint at all", async () => {
+    h = makeHarness(); // no DEMO_MODE
+    await seedAdmin(h);
+    // Liveness: an admin session that can reach other admin routes, so the 404
+    // below is the demo gate and not a failed sign-in.
+    expect((await h.fetch("/api/collections")).status).toBe(200);
+
+    const res = await reset();
+    expect(res.status).toBe(404);
+    // Still signed in and still holding a workspace — the refusal must not have
+    // been a half-run reset.
+    expect((await h.fetch("/api/collections")).status).toBe(200);
+  });
+
+  test("a playground instance resets, and says what it did", async () => {
+    h = makeHarness({ DEMO_MODE: "1", SEED_TEMPLATE: "blog" });
+    // `seedAdmin` cannot be used here: it enables open signup first, and the
+    // playground refuses that (403 "disabled in the playground"). The demo
+    // admin is bootstrapped by the reset path itself and signs in with the
+    // credentials the instance publishes.
+    const ctx = await buildContext(h.env);
+    expect(await maybeResetDemo(ctx, h.env, new Date())).toBe(true);
+    const signIn = await h.fetch("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ email: "demo@backlex.com", password: "playground" }),
+    });
+    expect(signIn.status).toBe(200);
+
+    const res = await reset();
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as any;
+    // The service's own tests pin the wipe; what the ROUTE owes is the report,
+    // because the admin UI renders it as the confirmation that anything ran.
+    expect(data).toBeTruthy();
+    expect(typeof data).toBe("object");
+  });
+
+  test("a signed-out visitor cannot reset the playground", async () => {
+    // The instance is public and the credentials are printed on its sign-in
+    // screen, which makes it tempting to treat the reset as public too. It is
+    // not: an anonymous POST would let a passer-by wipe a live demo mid-use.
+    h = makeHarness({ DEMO_MODE: "1" });
+    const res = await h.app.request(
+      "/api/admin/demo/reset",
+      { method: "POST", headers: { origin: h.env.APP_URL as string } },
+      h.env,
+    );
+    expect(res.status).toBe(401);
+  });
+});

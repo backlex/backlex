@@ -19,15 +19,23 @@
  * — better-auth's `cookieCache`, a signed 60-second copy of the session that it
  * answers `getSession` from without reading the database. Underneath it,
  * `middleware/session.ts` keeps a per-isolate `TtlLru` keyed on the signed
- * token (`permissions-cache.ts`, TTL 30s), sized deliberately below the outer
- * one so it adds no lag of its own. Deleting the row therefore does not stop a
- * device that still holds a live `session_data` blob; it stops it from renewing
- * once that blob lapses. So a "device is signed out" assertion has to be made
- * against the credential that outlives the cache — the session token on its own
- * — and both shapes are pinned below, because a test that checked only the warm
- * one would report a working revocation as a broken one, and a test that
- * checked only the cold one would hide the 60-second window from whoever reads
- * this next.
+ * token (`permissions-cache.ts`, TTL 30s). Deleting the row therefore does not
+ * stop a device that still holds a live `session_data` blob; it stops it from
+ * renewing once that blob lapses. So a "device is signed out" assertion has to
+ * be made against the credential that outlives the cache — the session token on
+ * its own — and both shapes are pinned below, because a test that checked only
+ * the warm one would report a working revocation as a broken one, and a test
+ * that checked only the cold one would hide the window from whoever reads this
+ * next.
+ *
+ * **The inner cache is NOT nested inside the outer one, which this file used to
+ * say.** It was described as "sized deliberately below the outer one so it adds
+ * no lag of its own". Measured, it adds ~30s on top: a request that
+ * `cookieCache` answers is written into the inner cache under the BARE token
+ * key, so a browser holding a live blob keeps refreshing that 30s entry, and
+ * the last warm request at t=59s leaves the token accepted until about t=89s.
+ * The last test in this file pins that, because it is the number an operator
+ * actually waits out and nothing else in the codebase states it.
  *
  * The other sessions are real sign-ins rather than planted rows: better-auth
  * owns the session table's shape, and a row this file wrote by hand would prove
@@ -253,5 +261,46 @@ describe("revoking other sessions", () => {
     );
     expect(res.status).toBe(401);
     expect(sessionCount()).toBe(before);
+  });
+
+  test("the two caches COMPOUND rather than nest — the real lag is ~90s, not 60s", async () => {
+    // The claim this replaces was that the inner 30s TTL sits "below" the outer
+    // 60s one and therefore adds nothing. Three requests, each with the inner
+    // cache explicitly cleared first, show otherwise — and the order matters:
+    // asking warm first would repopulate the inner cache and make the cold
+    // request pass for the wrong reason, which is exactly how the nesting story
+    // survived this long.
+    const device = await signInSeparately(admin.email);
+    expect(await (await h.fetch(`${BASE}/revoke-others`, { method: "POST" })).json()).toEqual({
+      ok: true,
+      removed: 1,
+    });
+
+    // 1. Cold, inner cache cleared: the row really is gone.
+    sessionCacheExpires();
+    expect(`cold after revoke: ${(await device.cold("/api/me")).status}`).toBe(
+      "cold after revoke: 401",
+    );
+
+    // 2. Warm, inner cache cleared: 200 can now only be better-auth's
+    //    `cookieCache` — and it is answering `/api/me`, one of OUR routes, not
+    //    just its own `/api/auth/*`. That is the cost side of `maxAge`.
+    sessionCacheExpires();
+    expect(`warm after revoke: ${(await device.warm("/api/me")).status}`).toBe(
+      "warm after revoke: 200",
+    );
+
+    // 3. Cold again, WITHOUT clearing: the warm hit above wrote the session
+    //    into the inner cache under the bare-token key, so the credential that
+    //    was 401 in step 1 is now accepted. Every warm request buys the revoked
+    //    device another 30s, for as long as the 60s blob lasts.
+    expect(`cold immediately after a warm hit: ${(await device.cold("/api/me")).status}`).toBe(
+      "cold immediately after a warm hit: 200",
+    );
+
+    // If this test starts failing, the lag got SHORTER — check whether
+    // `cookieCache` was disabled or narrowed, or whether `sessionMiddleware`
+    // stopped caching what `cookieCache` resolved, and delete this rather than
+    // restoring the behaviour.
   });
 });

@@ -325,15 +325,31 @@ export const setCachedOrgMemberships = (
 /**
  * Per-isolate cache of the resolved cookie session, keyed by the signed
  * `*.session_token` cookie value. `sessionMiddleware` runs `getSession` (a
- * better-auth call costing ~2 D1 round-trips) on EVERY authed request;
- * better-auth's own `cookieCache` only short-circuits on its own `/api/auth/*`
- * routes, not our middleware — so without this every request paid the DB hit.
+ * better-auth call costing ~2 D1 round-trips) on EVERY authed request, so
+ * without this every request paid the DB hit.
  *
- * Safe because: the key is the signed session cookie (only its holder presents
- * it; without it you can't read another's entry), and the TTL is shorter than
- * better-auth's own 60s `cookieCache` — so sign-out/revocation lag is no worse
- * than the model already in place. false-allow ≤ TTL_MS; the win is the common
- * case of a logged-in user making many requests.
+ * Safe because the key is the signed session cookie: only its holder presents
+ * it, and without it you cannot read another's entry. false-allow <= TTL_MS.
+ *
+ * **This TTL does NOT bound the revocation lag, and the two earlier claims here
+ * were both wrong.** They said better-auth's `cookieCache` "only short-circuits
+ * on its own `/api/auth/*` routes", and that being shorter than its 60s made
+ * this cache "no worse than the model already in place". Measured on
+ * `/api/me` — revoke, clear this cache, ask again with the same token:
+ *
+ *   - without the `session_data` cookie -> 401
+ *   - with it -> 200
+ *
+ * So `cookieCache` answers our routes too, and worse, a request it answers is
+ * then WRITTEN here under the bare-token key. The windows therefore COMPOUND
+ * rather than nest: a browser holding a live `session_data` blob keeps
+ * refreshing this 30s entry for as long as the blob lasts, so the last warm
+ * request at t=59s leaves a revoked token accepted until roughly t=89s. The
+ * honest figure for "signed out on another device" is ~90s, not 60s.
+ *
+ * Lowering it here does not fix that — `cookieCache.maxAge` in `packages/auth`
+ * is the outer lever, and it costs a real session read on every route.
+ * `tests/auth-admin-sessions.test.ts` pins both halves.
  */
 export interface CachedSession {
   userId: string;
@@ -366,10 +382,16 @@ export const setCachedSession = (token: string, v: CachedSession): void =>
  * (`packages/auth`, `maxAge: 60`) answers `getSession` from a signed copy in
  * the `session_data` cookie without reading the database at all, and it sits
  * ABOVE this one. Clearing this cache closes the inner 30-second window and
- * leaves the outer 60-second one exactly where it was; the lever for that is
- * `cookieCache.maxAge`, and lowering it costs a database round-trip per
- * request. See `tests/auth-admin-sessions.test.ts`, which pins the remaining
- * lag rather than pretending it is gone.
+ * leaves the outer one exactly where it was; the lever for that is
+ * `cookieCache.maxAge`, and lowering it costs a real session read on every
+ * route (measured — see the `CachedSession` note above, which used to claim
+ * otherwise).
+ *
+ * And clearing it does not stay cleared: the next request that `cookieCache`
+ * answers re-populates this cache under the same bare-token key, so the two
+ * windows compound to ~90s rather than nesting inside 60. See
+ * `tests/auth-admin-sessions.test.ts`, which pins both halves rather than
+ * pretending either is gone.
  */
 export const invalidateSession = (token: string): void => {
   sessionCache.deleteBy((k) => k === token || k.startsWith(`${token}.`));

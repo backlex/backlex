@@ -321,9 +321,26 @@ export const createAuth = async (
       expiresIn: 60 * 60 * 24 * 7, // 7d
       updateAge: 60 * 60 * 24, // 1d
       // Sign the session payload into the cookie and skip the DB lookup for
-      // the next 60s. Cuts ~1 D1 round-trip off every authenticated request;
-      // sign-out / session revocation still works because better-auth invalidates
-      // the cache on its own sign-out paths.
+      // the next 60s. Cuts ~1 D1 round-trip off every authenticated request.
+      //
+      // **This is the lever for "sign out my other devices" latency, and the
+      // number is not 60 seconds.** Measured against the shipped config
+      // (`apps/web/tests/auth-admin-sessions.test.ts`): a revoked device still
+      // gets 200 on `/api/me` immediately after `revoke-others`, with nothing
+      // cleared, because this blob answers our routes too — not just
+      // better-auth's own `/api/auth/*`. Worse, a request it answers is written
+      // into `services/permissions-cache`'s 30s per-isolate cache under the
+      // bare-token key, so the two windows COMPOUND: the last warm request at
+      // t=59s keeps the token accepted to roughly t=89s.
+      //
+      // Flipping `enabled` to false was measured too: revocation becomes
+      // IMMEDIATE (401 on the same request), because the handler already calls
+      // `invalidateSession` and nothing repopulates it. The price is
+      // better-auth's ~2 D1 round-trips on every request that misses the inner
+      // 30s cache. That trade — up to ~90s of stale access against a session
+      // read per cold request — is a deliberate open decision, not an
+      // oversight; it is written down here because this line is where someone
+      // would come to change it.
       cookieCache: { enabled: true, maxAge: 60 },
     },
     databaseHooks: {

@@ -242,11 +242,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   usage: { client: "usage" },
   users: { deferred: ADMIN_PLANE("Administrator user management"), until: "wave-21" },
   vector: { client: "vector" },
-  webhooks: {
-    deferred:
-      "The cheapest four-of-five-to-five-of-five in the repository: REST, MCP and CLI all cover it and only the SDK does not. Sized at roughly seventy lines, and deferred only because wave 19's cut line put depth on the app-plane surfaces first.",
-    until: "wave-19-phase-5",
-  },
+  webhooks: { client: "webhooks" },
 };
 
 // ---------------------------------------------------------------------------

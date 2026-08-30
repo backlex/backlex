@@ -274,6 +274,8 @@ const UNDOCUMENTED_GETS: Record<string, string> = {
     "List, capped BELOW the route — see CAPPED_BELOW_THE_CONTRACT. `?limit` is read raw here and clamped in services/agents/memory.ts.",
   "/api/agents/:id/threads": "List, unpaged — one agent's threads.",
   "/api/agents/runs/:runId": "One agent run and its status.",
+  "/api/agents/skills":
+    "List, unpaged — one workspace's reusable agent skills. Registered with a bare `r.get()` rather than `.openapi(createRoute())`, so regenerating the spec does not describe it; it is unbounded and belongs in the same bucket as the other agent lists above.",
   "/api/agents/threads": "List, unpaged — threads in the workspace.",
   "/api/agents/threads/:threadId":
     "One thread — but its `messages` array is the whole transcript, unpaged.",

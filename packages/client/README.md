@@ -32,6 +32,17 @@ builder, batch writes, full-text/vector/hybrid search, realtime (SSE), storage +
 resumable uploads, jobs, feature flags, and offline-first sync. Full reference:
 **https://backlex.com/docs/sdk-and-cli**.
 
+## Agent skill
+
+An [Agent Skill](https://code.claude.com/docs/en/skills) ships in the package at
+`skills/backlex/`. Drop it into your project so any agent tool that reads the
+format — Claude Code, Codex CLI, Cursor, Copilot, Gemini CLI — drives this API
+correctly instead of guessing:
+
+```bash
+mkdir -p .claude/skills && cp -r node_modules/backlex/skills/backlex .claude/skills/
+```
+
 ## Distribution
 
 Published to two registries, both **zero-dependency**:

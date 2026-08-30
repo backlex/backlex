@@ -455,10 +455,37 @@ const wranglerVersion = (() => {
   }
 })();
 
+/**
+ * Drop zod's locale table from the bundle.
+ *
+ * `resolve.alias` cannot do this. The import that pulls all 63 locales is
+ * `export * as locales from "../locales/index.js"` INSIDE zod — relative, so
+ * there is no bare specifier to match. A `resolveId` hook sees the resolved
+ * importer and can redirect it.
+ *
+ * Measured with `bun build --minify`: the zod barrel is 282,733 B, of which
+ * 152,209 B is that namespace and 3,290 B is the `en` catalogue actually used.
+ * `en` is imported directly by zod's barrel on its own line and is untouched
+ * here. See `shims/zod-locales-shim.ts` for why nothing needs the rest.
+ *
+ * The importer test keeps this off any other package that happens to ship a
+ * `locales/index.js`.
+ */
+const dropZodLocales = (): Plugin => ({
+  name: "backlex:drop-zod-locales",
+  enforce: "pre",
+  resolveId(source, importer) {
+    if (!importer || !/[\\/]zod[\\/]/.test(importer)) return null;
+    if (!/(^|[\\/])\.\.[\\/]locales[\\/]index\.js$/.test(source)) return null;
+    return fileURLToPath(new URL("./src/server/shims/zod-locales-shim.ts", import.meta.url));
+  },
+});
+
 export default defineConfig({
   // `linguiMacro()` transforms the Lingui macro (must run before react()).
   // `lingui()` compiles `.po` catalog imports to runtime message objects.
   plugins: [
+    dropZodLocales(),
     linguiMacro(),
     react(),
     lingui(),

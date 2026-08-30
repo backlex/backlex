@@ -854,6 +854,25 @@ export const agents = pgTable(
     effort: text("effort"),
     /** Allow-list of MCP tool names this agent may invoke. */
     tools: jsonb("tools").$type<string[]>().notNull().default([]),
+    /** Tool-name globs (same grammar as an MCP allowlist: `collections.delete`,
+     *  `collections.*`, `*`) whose calls need a person's yes before the agent may
+     *  run them. Empty = no gate, which is the default: an approval flow nobody
+     *  configured must not silently start refusing work.
+     *
+     *  Approval is per (thread, tool, exact arguments) and is spent by being
+     *  granted, not consumed — the same call in the same thread with the same
+     *  arguments is the same operation, and the request expires on its own. */
+    approvalTools: jsonb("approval_tools").$type<string[]>().notNull().default([]),
+    /** Who is asked. Without at least one there is nobody to say yes, so a gate
+     *  configured without approvers refuses the call rather than passing it. */
+    approvers: jsonb("approvers")
+      .$type<Array<{ email: string; name?: string }>>()
+      .notNull()
+      .default([]),
+    /** Names of `agent_skills` rows this agent may consult. Only the name and
+     *  description of each reach the prompt; the body is fetched by the model
+     *  through a tool when it decides it needs it. */
+    skills: jsonb("skills").$type<string[]>().notNull().default([]),
     /** Hard cap on reason→act iterations per turn (runaway-loop backstop). */
     maxSteps: integer("max_steps").notNull().default(8),
     /** Master switch for the agent's memory. When true the runner keeps an
@@ -1043,6 +1062,45 @@ export const agentMessages = pgTable(
  * The vector record for a row uses the row id, so forgetting a fact removes
  * both halves.
  */
+/**
+ * A reusable block of procedural knowledge an agent can consult.
+ *
+ * The distinction from `system_prompt` is reuse and cost. A prompt belongs to
+ * one agent and is paid for on every turn; a skill belongs to the workspace,
+ * can be attached to several agents, and — because only its `name` and
+ * `description` go into the prompt — costs almost nothing until the model
+ * decides it needs the body and asks for it.
+ *
+ * The shape is deliberately the open Agent Skills format (a `SKILL.md`: name +
+ * description + markdown body), so a tenant can paste a skill written for any
+ * other agent tool and have it work here. That interoperability is the point;
+ * inventing our own shape would have thrown it away.
+ */
+export const agentSkills = pgTable(
+  "agent_skills",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** The handle an agent attaches and the model asks for. Unique per
+     *  workspace, because the model addresses a skill by name. */
+    name: text("name").notNull(),
+    /** What it is and when to use it. This is the ONLY part that goes into the
+     *  system prompt, so it is what the model decides on — a vague description
+     *  makes a good skill invisible. */
+    description: text("description").notNull(),
+    /** The markdown the model reads once it asks. Unbounded on purpose: it is
+     *  not in the prompt until it is wanted. */
+    body: text("body").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_skills_tenant_idx").on(t.tenantId),
+    uniqueIndex("agent_skills_tenant_name_idx").on(t.tenantId, t.name),
+  ],
+);
+
 export const agentMemories = pgTable(
   "agent_memories",
   {

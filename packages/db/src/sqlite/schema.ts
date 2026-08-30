@@ -693,6 +693,28 @@ export const agents = sqliteTable(
      *  See the pg schema for the full note. */
     effort: text("effort"),
     tools: text("tools", { mode: "json" }).$type<string[]>().notNull().default([]),
+    /** Tool-name globs (same grammar as an MCP allowlist: `collections.delete`,
+     *  `collections.*`, `*`) whose calls need a person's yes before the agent may
+     *  run them. Empty = no gate, which is the default: an approval flow nobody
+     *  configured must not silently start refusing work.
+     *
+     *  Approval is per (thread, tool, exact arguments) and is spent by being
+     *  granted, not consumed — the same call in the same thread with the same
+     *  arguments is the same operation, and the request expires on its own. */
+    approvalTools: text("approval_tools", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    /** Who is asked. Without at least one there is nobody to say yes, so a gate
+     *  configured without approvers refuses the call rather than passing it. */
+    approvers: text("approvers", { mode: "json" })
+      .$type<Array<{ email: string; name?: string }>>()
+      .notNull()
+      .default([]),
+    /** Names of `agent_skills` rows this agent may consult. Only the name and
+     *  description of each reach the prompt; the body is fetched by the model
+     *  through a tool when it decides it needs it. */
+    skills: text("skills", { mode: "json" }).$type<string[]>().notNull().default([]),
     maxSteps: integer("max_steps").notNull().default(8),
     memory: integer("memory", { mode: "boolean" }).notNull().default(false),
     /** `thread` (default) | `agent` — how far distilled semantic facts reach.
@@ -812,6 +834,45 @@ export const agentMessages = sqliteTable(
 /** Distilled semantic memory for an agent — see the pg/schema.ts twin for the
  *  full contract (why facts get rows while episodic memory stays vector-only,
  *  and why retrieval filters on the agent's *current* scope). */
+/**
+ * A reusable block of procedural knowledge an agent can consult.
+ *
+ * The distinction from `system_prompt` is reuse and cost. A prompt belongs to
+ * one agent and is paid for on every turn; a skill belongs to the workspace,
+ * can be attached to several agents, and — because only its `name` and
+ * `description` go into the prompt — costs almost nothing until the model
+ * decides it needs the body and asks for it.
+ *
+ * The shape is deliberately the open Agent Skills format (a `SKILL.md`: name +
+ * description + markdown body), so a tenant can paste a skill written for any
+ * other agent tool and have it work here. That interoperability is the point;
+ * inventing our own shape would have thrown it away.
+ */
+export const agentSkills = sqliteTable(
+  "agent_skills",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** The handle an agent attaches and the model asks for. Unique per
+     *  workspace, because the model addresses a skill by name. */
+    name: text("name").notNull(),
+    /** What it is and when to use it. This is the ONLY part that goes into the
+     *  system prompt, so it is what the model decides on — a vague description
+     *  makes a good skill invisible. */
+    description: text("description").notNull(),
+    /** The markdown the model reads once it asks. Unbounded on purpose: it is
+     *  not in the prompt until it is wanted. */
+    body: text("body").notNull(),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("agent_skills_tenant_idx").on(t.tenantId),
+    uniqueIndex("agent_skills_tenant_name_idx").on(t.tenantId, t.name),
+  ],
+);
+
 export const agentMemories = sqliteTable(
   "agent_memories",
   {

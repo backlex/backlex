@@ -20,8 +20,10 @@
  */
 import { callClaudeTools, type AiEffort } from "../../mcp/ai-client";
 import { allTools } from "../../mcp/tools";
+import { skillsForAgent, type SkillRow } from "./skills";
 import type { McpTool, ToolCtx } from "../../mcp/types";
 import { checkToolCall, filterByAllowlist, type KeyGuards } from "../../mcp/guards";
+import { approvalGate } from "./approval-gate";
 import { resolveKind } from "../../mcp/kind";
 import type { ModelMessage } from "ai";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai-config";
@@ -115,6 +117,33 @@ const buildSystem = (agent: AgentRow, hasTools: boolean): string => {
       "raw tool output or JSON back; that summary is your final answer."
     : "\n\nYou have no tools — answer from your own knowledge.";
   return persona + loop;
+};
+
+/** The one tool that is not an MCP tool.
+ *
+ *  Skills are the agent's own configuration, not a capability granted over MCP,
+ *  so this is handled in its own branch of the call loop rather than being
+ *  registered in the tool map: routing it through the MCP path would subject
+ *  reading an attached skill to a tool allowlist it has nothing to do with. */
+const SKILL_TOOL = "skills_load";
+
+/**
+ * What the model is told about the skills it can reach.
+ *
+ * Only the name and description — the body is the whole point of the format and
+ * is fetched on demand. A skill that is never asked for costs these two lines
+ * and nothing else, which is what makes attaching a long runbook reasonable.
+ */
+const buildSkillPrompt = (skills: SkillRow[]): string => {
+  if (skills.length === 0) return "";
+  const lines = skills.map((s) => `- ${s.name}: ${s.description}`).join("\n");
+  return (
+    `\n\nYou have skills — written instructions for particular jobs. You can see ` +
+    `only their names and descriptions here; call \`${SKILL_TOOL}\` with a name to read ` +
+    `one in full.\n${lines}\n` +
+    "Read a skill BEFORE doing the job it describes, not after. If none of them " +
+    "fits what you are doing, do not read one."
+  );
 };
 
 /** Anthropic/gateway tool names must match `[a-zA-Z0-9_-]{1,64}`, but MCP tool
@@ -271,7 +300,28 @@ export const runAgentTurn = async (
   // Telling the model is what turns that into an answer the reader can act on.
   const withheld = agentTools.length - tools.length;
   const { defs: toolDefs, byNative } = buildToolMap(tools);
-  let system = buildSystem(agent, tools.length > 0);
+
+  // Resolved by name against the workspace's skills, active ones only. A name
+  // that no longer resolves is simply not offered — a deleted skill should stop
+  // appearing the way a removed tool does, not break the turn.
+  const skills = await skillsForAgent(ctx, tenantId, agent.skills);
+  const skillByName = new Map(skills.map((s) => [s.name, s]));
+  if (skills.length > 0) {
+    toolDefs.push({
+      name: SKILL_TOOL,
+      description:
+        "Read one of your skills in full. Pass the skill's name. Use this when a " +
+        "skill's description matches what you are about to do.",
+      inputSchema: {
+        type: "object",
+        properties: { name: { type: "string", description: "The skill's name." } },
+        required: ["name"],
+        additionalProperties: false,
+      },
+    });
+  }
+
+  let system = buildSystem(agent, tools.length > 0) + buildSkillPrompt(skills);
   if (withheld > 0) {
     system +=
       `\n\n${withheld} of this agent's ${agentTools.length} tools are not available to the ` +
@@ -471,7 +521,19 @@ export const runAgentTurn = async (
 
         let observation: { text: string; isError: boolean };
         const key = `${call.name}:${argsKey(call.args)}`;
-        if (!mcpTool) {
+        if (call.name === SKILL_TOOL) {
+          // Handled before the MCP path on purpose — see SKILL_TOOL.
+          const wanted = typeof call.args.name === "string" ? call.args.name : "";
+          const skill = skillByName.get(wanted);
+          observation = skill
+            ? { text: skill.body, isError: false }
+            : {
+                text:
+                  `No skill named "${wanted}". You have: ` +
+                  `${skills.map((sk) => sk.name).join(", ") || "none"}.`,
+                isError: true,
+              };
+        } else if (!mcpTool) {
           observation = {
             text: `Unknown tool "${call.name}" — pick one from the provided tools.`,
             isError: true,
@@ -488,8 +550,27 @@ export const runAgentTurn = async (
           // model can read it and pick a different approach, which is what it
           // does on the MCP surface too.
           const verdict = checkToolCall(mcpTool.name, resolveKind(mcpTool), guards);
+          // A person's yes, where the agent's config asks for one. Runs AFTER
+          // the guards on purpose: a call the caller may not make at all should
+          // be refused outright rather than sent to a human who would be asked
+          // to approve something that could never run.
+          const gate = verdict.ok
+            ? await approvalGate({
+                ctx,
+                tenantId,
+                threadId,
+                agentName: agent.name,
+                toolName: mcpTool.name,
+                args: call.args,
+                approvalTools: agent.approvalTools,
+                approvers: agent.approvers,
+                userId: input.auth.userId,
+              })
+            : null;
           if (!verdict.ok) {
             observation = { text: `${verdict.code}: ${verdict.message}`, isError: true };
+          } else if (gate) {
+            observation = gate;
           } else {
             try {
               observation = renderObservation(

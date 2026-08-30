@@ -31,6 +31,14 @@ pre-commit:
     - name: migration-bundles-in-sync
       glob: "packages/db/drizzle/**/migration.sql"
       run: bun scripts/gen-migration-bundles.ts && git diff --exit-code packages/db/src/pg/migrations-bundle.ts packages/db/src/sqlite/migrations-bundle.ts
+    # The manifest is the OTHER generated artefact keyed off the same
+    # directory, and it had no job here. `schema-declared-vs-shipped.test.ts`
+    # went red within minutes of a merge that brought two new migrations,
+    # because nothing local regenerates this file — a red suite with no local
+    # gate is just friction, so the gate now exists.
+    - name: migration-manifest-in-sync
+      glob: "packages/db/drizzle/**/migration.sql"
+      run: bun run --cwd packages/db manifest && git diff --exit-code packages/db/src/migrations-manifest.generated.ts
     # Same shape for the consent banner: its source is a real tree, and what
     # ships is a minified bundle checked in beside the server that serves it.
     #

@@ -13,6 +13,14 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
+import { readJson } from "../lib/body";
+import {
+  createSkill,
+  deleteSkill,
+  listSkills,
+  parseSkillMarkdown,
+  updateSkill,
+} from "../services/agents/skills";
 import { resolveCallerMcpGuards } from "../services/roles/mcp-guards";
 import { AI_EFFORTS, type AiEffort } from "../mcp/ai-client";
 import { allTools } from "../mcp/tools";
@@ -110,6 +118,55 @@ const parseAgentInput = (body: Record<string, unknown>, partial: boolean) => {
       throw new AppError("VALIDATION", `unknown tool(s): ${unknown.join(", ")}`);
     }
     out.tools = body.tools;
+  }
+  if (body.approvalTools !== undefined) {
+    // Deliberately NOT validated against `KNOWN_TOOLS` the way `tools` is:
+    // these are glob patterns (`collections.*`, `*`), and a pattern naming a
+    // tool that does not exist yet is a gate waiting for it rather than a typo
+    // to reject. Over-matching fails safe — it asks a human about something
+    // harmless; under-matching would run something unattended.
+    if (
+      !Array.isArray(body.approvalTools) ||
+      body.approvalTools.some((t) => typeof t !== "string" || !t.trim())
+    ) {
+      throw new AppError(
+        "VALIDATION",
+        "approvalTools must be an array of tool-name patterns (e.g. \"collections.delete\", \"collections.*\")",
+      );
+    }
+    out.approvalTools = body.approvalTools;
+  }
+  if (body.approvers !== undefined) {
+    if (!Array.isArray(body.approvers)) {
+      throw new AppError("VALIDATION", "approvers must be an array of { email, name? }");
+    }
+    const cleaned = (body.approvers as unknown[]).map((a) => {
+      const row = a as { email?: unknown; name?: unknown };
+      const email = typeof row?.email === "string" ? row.email.trim() : "";
+      // An approver is reached by email and nothing else, so an entry without a
+      // usable one is a person who can never be asked.
+      if (!email || !email.includes("@")) {
+        throw new AppError("VALIDATION", "each approver needs an email address");
+      }
+      return typeof row.name === "string" && row.name.trim()
+        ? { email, name: row.name.trim() }
+        : { email };
+    });
+    out.approvers = cleaned;
+  }
+  if (body.skills !== undefined) {
+    // Names, not ids: the model addresses a skill by name and so does an
+    // operator reading the definition. Existence is NOT checked here — a name
+    // that does not resolve is simply not offered at run time, the same as a
+    // tool removed after the agent was authored, and requiring the skill to
+    // exist first would make ordering a template's seed data load-bearing.
+    if (
+      !Array.isArray(body.skills) ||
+      body.skills.some((n) => typeof n !== "string" || !n.trim())
+    ) {
+      throw new AppError("VALIDATION", "skills must be an array of skill names");
+    }
+    out.skills = (body.skills as string[]).map((n) => n.trim());
   }
   if (body.maxSteps !== undefined) {
     const n = Number(body.maxSteps);
@@ -222,6 +279,57 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
       agentIds,
     });
     return c.json({ data: { ...thread, agentIds } }, 201);
+  });
+
+  // ---- Workspace skills -----------------------------------------------
+  // Reusable procedural knowledge, in the open Agent Skills shape. Mounted
+  // under `/api/agents` because they are only meaningful to an agent, and
+  // admin-gated like everything else on this router.
+  r.get("/skills", async (c) => {
+    const ctx = c.get("ctx");
+    return c.json({ data: await listSkills(ctx, requireTenant(c)) });
+  });
+
+  r.post("/skills", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    // `readJson`, not a swallowed parse: a malformed body should say so rather
+    // than fall through to a validation error about a field the caller did
+    // send. `request-envelope.test.ts` enforces this across every route.
+    const body = await readJson<Record<string, unknown>>(c.req);
+    // A raw `SKILL.md` is the point of using the open format — paste one
+    // written for any other agent tool and it works here. Explicit fields still
+    // win, so a caller can override the frontmatter without editing it.
+    const parsed =
+      typeof body.markdown === "string" ? parseSkillMarkdown(body.markdown) : null;
+    const created = await createSkill(ctx, tenantId, {
+      name: (body.name as string) ?? parsed?.name,
+      description: (body.description as string) ?? parsed?.description,
+      body: (body.body as string) ?? parsed?.body,
+      active: body.active as boolean | undefined,
+    });
+    return c.json({ data: created }, 201);
+  });
+
+  r.patch("/skills/:id", async (c) => {
+    const ctx = c.get("ctx");
+    // `readJson`, not a swallowed parse: a malformed body should say so rather
+    // than fall through to a validation error about a field the caller did
+    // send. `request-envelope.test.ts` enforces this across every route.
+    const body = await readJson<Record<string, unknown>>(c.req);
+    await updateSkill(ctx, requireTenant(c), c.req.param("id"), {
+      name: body.name as string | undefined,
+      description: body.description as string | undefined,
+      body: body.body as string | undefined,
+      active: body.active as boolean | undefined,
+    });
+    return c.json({ data: { ok: true } });
+  });
+
+  r.delete("/skills/:id", async (c) => {
+    const ctx = c.get("ctx");
+    await deleteSkill(ctx, requireTenant(c), c.req.param("id"));
+    return c.json({ data: { ok: true } });
   });
 
   r.get("/runs/:runId", async (c) => {

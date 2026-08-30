@@ -34,7 +34,8 @@
   "files": [
     "src",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "skills"
   ],
   "publishConfig": {
     "access": "public",

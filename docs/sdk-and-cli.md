@@ -582,6 +582,33 @@ The per-key MCP tool allowlist (`mcpTools`) and read-only flag (`mcpReadOnly`)
 set when the key was issued govern what the agent can call — see
 `docs/api-keys-and-email.md`.
 
+## The agent skill
+
+The package ships an [Agent Skill](https://code.claude.com/docs/en/skills) at
+`node_modules/backlex/skills/backlex/` — a `SKILL.md` describing how this API is
+driven correctly. The format is an open standard read by Claude Code, Codex CLI,
+Cursor, Copilot, Gemini CLI and others, so one file teaches every agent tool.
+
+```bash
+mkdir -p .claude/skills
+cp -r node_modules/backlex/skills/backlex .claude/skills/
+```
+
+**It is not a copy of these docs, and that is the point.** The MCP server already
+answers "which tools exist"; the skill answers the question an agent gets wrong
+without it — which endpoint belongs to which auth plane, that a server-side
+`fetch` must send `Origin` or better-auth rejects it, that the probe is `/health`
+and not `/api/health`, that a freshly minted API key is MCP default-deny, and
+that the code to branch on is `error.code` rather than the HTTP status. Roughly:
+the things that make a first attempt fail for a reason the endpoint does not
+reveal.
+
+`apps/web/tests/agent-skill-drift.test.ts` asserts every claim in it against the
+source it describes — the MCP revision, the error-code mapping, the filter
+operators, the traps — because a skill full of stale facts is worse than no
+skill: an agent trusts it, writes confidently wrong code, and nothing fails
+until a person reads the output.
+
 ## Adding the SDK to a separate repo
 
 The SDK is published as `backlex` on npm (and on JSR):

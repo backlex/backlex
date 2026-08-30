@@ -54,6 +54,8 @@ const AgentType = new GraphQLObjectType({
      *  is a small opaque shape the server validates, and half a gate — the
      *  patterns without the people to ask — would be worse than none. */
     approvers: { type: JSONScalar },
+    /** Names of the workspace skills this agent may consult. */
+    skills: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     maxSteps: { type: new GraphQLNonNull(GraphQLInt) },
     memory: { type: new GraphQLNonNull(GraphQLBoolean) },
     /** `thread` | `agent` — how far distilled semantic facts reach. */
@@ -89,6 +91,7 @@ const AgentInputType = new GraphQLInputObjectType({
     tools: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     approvalTools: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     approvers: { type: JSONScalar },
+    skills: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     maxSteps: { type: GraphQLInt },
     memory: { type: GraphQLBoolean },
     memoryScope: { type: GraphQLString },
@@ -130,6 +133,7 @@ const normalizeAgentRow = (r: Record<string, unknown>) => ({
   tools: Array.isArray(r.tools) ? r.tools : [],
   approvalTools: Array.isArray(r.approvalTools) ? r.approvalTools : [],
   approvers: Array.isArray(r.approvers) ? r.approvers : [],
+  skills: Array.isArray(r.skills) ? r.skills : [],
 });
 
 const normalizeMemoryRow = (r: Record<string, unknown>) => ({

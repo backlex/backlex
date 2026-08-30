@@ -36,6 +36,10 @@ API key that made the request. Three things bound it, and they compose:
    allowlist) whose calls need someone's yes. See
    [Approval before a tool runs](#approval-before-a-tool-runs).
 
+Skills do not widen any of these: a skill is instructions the agent reads, never
+a capability it gains. A pasted `allowed-tools` key is ignored for exactly that
+reason.
+
 **Narrowing is announced, not silent.** When the caller's guards withhold some
 of the agent's tools, the model is told how many and why, and asked to say
 plainly which part it could not do. An agent that quietly answers from its own
@@ -122,6 +126,67 @@ own through the approvals service.
 Available on REST, GraphQL (`approvalTools`, `approvers`), the SDK and the CLI's
 `agents create --data`. There is no MCP tool for agent CRUD, so nothing is owed
 there.
+
+## Skills
+
+An agent already has a system prompt. A **skill** differs in two ways that
+matter: it belongs to the **workspace** rather than to one agent, and it is paid
+for only when used.
+
+```bash
+# Paste a SKILL.md written for any agent tool — that is the point of the format
+curl -X POST $URL/api/agents/skills -H 'content-type: application/json' --cookie "$C" \
+  -d "$(jq -Rs '{markdown: .}' < refunds/SKILL.md)"
+
+# Attach it by name
+curl -X PATCH $URL/api/agents/$AGENT -H 'content-type: application/json' --cookie "$C" \
+  -d '{"skills": ["refunds"]}'
+```
+
+**Only the name and description reach the prompt.** The agent is given a
+`skills_load` tool and calls it with a name when a description matches what it
+is about to do. So a 3,000-word runbook costs two lines until the turn that
+needs it — which is the whole economic argument for a skill over a longer
+system prompt, and the reason the format was designed this way.
+
+### The format is deliberately not ours
+
+The columns are the [Agent Skills](https://code.claude.com/docs/en/skills) shape
+— `name` + `description` in YAML frontmatter, markdown after it — so a tenant
+can paste a skill written for Claude Code, Codex CLI, Cursor or Copilot and have
+it work here. `POST /api/agents/skills` accepts either explicit fields or a raw
+`markdown` string; explicit fields win, so the frontmatter can be overridden
+without editing the file.
+
+> **Frontmatter is read narrowly, on purpose.** Two scalar keys, no YAML engine.
+> Anything else a real skill file carries is read past rather than obeyed —
+> `allowed-tools` in particular is a capability grant, and honouring one that
+> arrived in pasted text would let a skill widen what an agent may do. backlex
+> ships its own skill for driving this API the same way; see
+> [SDK & CLI](./sdk-and-cli.md).
+
+### Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/agents/skills` | List the workspace's skills |
+| `POST` | `/api/agents/skills` | Create one (`markdown`, or `name`/`description`/`body`) |
+| `PATCH` | `/api/agents/skills/{id}` | Edit, or set `active: false` |
+| `DELETE` | `/api/agents/skills/{id}` | Remove |
+
+A name must be lowercase letters, digits and dashes — the model addresses a
+skill by name, so it has to be typeable and unambiguous — and is unique per
+workspace. A description is **required**: it is the only part the model sees, so
+a skill without one is invisible rather than merely sparse.
+
+An attached name that no longer resolves, or a skill set `active: false`, simply
+stops being offered. That is the same contract a tool removed after the agent
+was authored has, and it is why `skills` is not validated against existing rows
+at write time — requiring the skill to exist first would make the order a
+template seeds its data in load-bearing.
+
+Available on REST, GraphQL (`skills`), the SDK type and the CLI's
+`agents update --data`.
 
 ## Concepts
 

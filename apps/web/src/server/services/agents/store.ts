@@ -27,6 +27,9 @@ export interface AgentRow {
   /** Who is asked when a gated tool comes up. Addressed by email because an
    *  approver is not necessarily a user of this instance. */
   approvers: Array<{ email: string; name?: string }>;
+  /** Names of the workspace skills this agent may consult. Only each skill's
+   *  name and description reach the prompt; the body is fetched on demand. */
+  skills: string[];
   maxSteps: number;
   memory: boolean;
   /** `thread` | `agent` — how far distilled semantic facts reach. See the
@@ -189,6 +192,8 @@ export interface AgentInput {
   approvalTools?: string[];
   /** Who is asked when a gated tool comes up. */
   approvers?: Array<{ email: string; name?: string }>;
+  /** Names of the workspace skills this agent may consult. */
+  skills?: string[];
   maxSteps?: number;
   memory?: boolean;
   /** `thread` | `agent` — how far distilled semantic facts reach. */
@@ -219,6 +224,7 @@ export const createAgent = async (
     tools: input.tools ?? [],
     approvalTools: input.approvalTools ?? [],
     approvers: input.approvers ?? [],
+    skills: input.skills ?? [],
     maxSteps: input.maxSteps ?? 8,
     memory: input.memory ?? false,
     memoryScope: input.memoryScope === "agent" ? "agent" : "thread",
@@ -254,6 +260,7 @@ export const updateAgent = async (
       ...(input.tools !== undefined ? { tools: input.tools } : {}),
       ...(input.approvalTools !== undefined ? { approvalTools: input.approvalTools } : {}),
       ...(input.approvers !== undefined ? { approvers: input.approvers } : {}),
+      ...(input.skills !== undefined ? { skills: input.skills } : {}),
       ...(input.maxSteps !== undefined ? { maxSteps: input.maxSteps } : {}),
       ...(input.memory !== undefined ? { memory: input.memory } : {}),
       ...(input.memoryScope !== undefined

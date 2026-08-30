@@ -57,6 +57,7 @@ import type { SignaturesClient } from "./clients/signatures";
 import type { StorageClient } from "./clients/storage";
 import type { SyncHooksClient } from "./clients/sync-hooks";
 import type { AuthHooksClient } from "./clients/auth-hooks";
+import type { WebhooksClient } from "./clients/webhooks";
 import type { ChannelsClient } from "./clients/channels";
 import type { RlsClient } from "./clients/rls";
 import type { S3Client } from "./clients/s3";
@@ -160,6 +161,7 @@ export * from "./clients/booking";
 export * from "./clients/integrations";
 export * from "./clients/sync-hooks";
 export * from "./clients/auth-hooks";
+export * from "./clients/webhooks";
 export * from "./clients/channels";
 export * from "./clients/rls";
 export * from "./clients/s3";
@@ -204,6 +206,7 @@ import { makeBooking } from "./clients/booking";
 import { makeIntegrations } from "./clients/integrations";
 import { makeSyncHooks } from "./clients/sync-hooks";
 import { makeAuthHooks } from "./clients/auth-hooks";
+import { makeWebhooks } from "./clients/webhooks";
 import { makeChannels } from "./clients/channels";
 import { makeRls } from "./clients/rls";
 import { makeS3 } from "./clients/s3";
@@ -330,6 +333,9 @@ export interface BacklexClient {
   /** Hooks into this workspace's END-USER auth: sign-up admission, access-token
    *  claims, password verification and auth-mail delivery. */
   authHooks: AuthHooksClient;
+  /** Outbound webhooks: subscriptions, the delivery log, and the retry that
+   *  re-enables a hook the breaker disabled. */
+  webhooks: WebhooksClient;
   /** Application-owned realtime channels: the rules that authorize them, plus
    *  publish / presence / retained history. Subscribing is `client.subscribe`. */
   channels: ChannelsClient;
@@ -1115,6 +1121,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const integrations = makeIntegrations(core);
   const syncHooks = makeSyncHooks(core);
   const authHooks = makeAuthHooks(core);
+  const webhooks = makeWebhooks(core);
   const channels = makeChannels(core);
   const rls = makeRls(core);
   const s3 = makeS3(core);
@@ -1185,6 +1192,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     integrations,
     syncHooks,
     authHooks,
+    webhooks,
     channels,
     rls,
     s3,

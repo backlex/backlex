@@ -353,9 +353,26 @@ export const getCachedSession = (token: string): CachedSession | undefined =>
 export const setCachedSession = (token: string, v: CachedSession): void =>
   sessionCache.set(token, v);
 
-/** Drop a cached session (call on sign-out for same-isolate freshness). */
+/**
+ * Drop a cached session, by the session's stored `token`.
+ *
+ * The cache is keyed on the SIGNED cookie better-auth sends
+ * (`<token>.<signature>`), while the `sessions` row holds the bare token — so
+ * an exact match never fired and this function, whose only caller deletes
+ * sessions by id, did nothing for anyone who found it. Prefix-matching the
+ * signature is what makes it usable from a revocation path.
+ *
+ * **This is not sufficient on its own.** better-auth's own `cookieCache`
+ * (`packages/auth`, `maxAge: 60`) answers `getSession` from a signed copy in
+ * the `session_data` cookie without reading the database at all, and it sits
+ * ABOVE this one. Clearing this cache closes the inner 30-second window and
+ * leaves the outer 60-second one exactly where it was; the lever for that is
+ * `cookieCache.maxAge`, and lowering it costs a database round-trip per
+ * request. See `tests/auth-admin-sessions.test.ts`, which pins the remaining
+ * lag rather than pretending it is gone.
+ */
 export const invalidateSession = (token: string): void => {
-  sessionCache.deleteBy((k) => k === token);
+  sessionCache.deleteBy((k) => k === token || k.startsWith(`${token}.`));
 };
 
 /**

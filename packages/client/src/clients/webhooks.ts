@@ -4,16 +4,12 @@ import type { ClientCore } from "../core";
  * An outbound webhook: where a workspace event is delivered, and what happens
  * when the endpoint stops answering.
  *
- * **`secret` is readable, unlike its sibling.** It signs each delivery as an
- * HMAC-SHA256 in `X-Backlex-Signature`, and `GET /api/webhooks` returns its
- * plaintext value — measured, not assumed. The neighbouring `auth-hooks`
- * surface takes the opposite line for the same class of credential and reports
- * `hasSecret: boolean` with no read-back path at all.
- *
- * Both are admin-gated, so this is an inconsistency rather than an exposure —
- * but it is one worth knowing before you log a `webhooks.list()` response or
- * paste it into an issue. The type below says `string | null` because that is
- * what the server sends; it is not an endorsement.
+ * **The secret is not on the list.** It signs each delivery as an HMAC-SHA256
+ * in `X-Backlex-Signature`, and `list()` reports only whether a hook has one.
+ * The plaintext is reachable through `get(id)` — an operator legitimately
+ * re-reads it to configure the receiving endpoint — but a list response is the
+ * thing that gets logged, pasted into an issue, or handed to an agent, so it
+ * does not travel there.
  */
 export interface Webhook {
   id: string;
@@ -26,7 +22,8 @@ export interface Webhook {
   headers: Record<string, string> | null;
   /** When set, the delivery payload is narrowed to these fields. */
   payloadFields?: string[] | null;
-  secret: string | null;
+  /** Whether a signing secret is set. The value itself comes from `get(id)`. */
+  hasSecret: boolean;
   active: boolean;
   /** Consecutive failed deliveries since the last success. */
   consecutiveFailures?: number | null;
@@ -74,6 +71,9 @@ export interface WebhookDeliveryQuery {
 
 export interface WebhooksClient {
   list: () => Promise<{ data: Webhook[] }>;
+  /** One hook, including the plaintext signing secret. The only surface that
+   *  returns it — see the note at the top of this file. */
+  get: (id: string) => Promise<{ data: Webhook & { secret: string | null } }>;
   create: (input: WebhookInput) => Promise<{ data: Webhook }>;
   /** Omit `secret` to keep the stored one. */
   update: (id: string, patch: Partial<WebhookInput>) => Promise<{ data: Webhook }>;
@@ -108,6 +108,7 @@ export const makeWebhooks = (core: ClientCore): WebhooksClient => {
 
   const webhooks: WebhooksClient = {
     list: () => core.request<{ data: Webhook[] }>("GET", "/api/webhooks"),
+    get: (id) => core.request<{ data: Webhook & { secret: string | null } }>("GET", hook(id)),
     create: (input) => core.request<{ data: Webhook }>("POST", "/api/webhooks", input),
     update: (id, patch) => core.request<{ data: Webhook }>("PATCH", hook(id), patch),
     delete: (id) => core.request<{ ok: boolean }>("DELETE", hook(id)),

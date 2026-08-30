@@ -50,7 +50,13 @@ const WebhookRow = z
     events: z.array(z.string()),
     headers: z.record(z.string(), z.string()).nullable(),
     payloadFields: z.array(z.string()).nullable().optional(),
-    secret: z.string().nullable(),
+    // Presence only. The plaintext secret is reachable through
+    // `GET /api/webhooks/{id}` — an operator legitimately re-reads it to
+    // configure the receiving endpoint, and the admin's "Show" button does
+    // exactly that. What it must not do is ride on the LIST, which is the
+    // response an SDK caller logs, pastes into an issue, or hands to an agent.
+    // `/api/admin/auth-hooks` reports presence the same way.
+    hasSecret: z.boolean(),
     active: z.boolean(),
     consecutiveFailures: z.number().int().nullable().optional().openapi({
       description: "Consecutive failed deliveries since the last success.",
@@ -117,8 +123,15 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
-      const rows = (await listWebhooks(ctx, tenantId)) as any;
-      return c.json({ data: rows });
+      const rows = (await listWebhooks(ctx, tenantId)) as any[];
+      // Projected, not spread: a future column that happens to hold a
+      // credential would otherwise join the list response by default.
+      return c.json({
+        data: rows.map(({ secret, ...rest }: Record<string, unknown>) => ({
+          ...rest,
+          hasSecret: typeof secret === "string" && secret.length > 0,
+        })),
+      });
     },
   )
   .openapi(
@@ -223,6 +236,46 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!out)
         throw new AppError("NOT_FOUND", "Delivery (or its hook) is gone");
       return c.json({ data: out });
+    },
+  )
+  // Registered AFTER `/_deliveries`. Hono matches in declaration order, so a
+  // `/{id}` placed above it swallows `/_deliveries` as an id and the delivery
+  // log 404s — which is exactly what happened when this route was first added.
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}",
+      tags,
+      summary: "Read one webhook, including its signing secret",
+      description:
+        "Admin-only. This is the ONE surface that returns the plaintext signing secret — an " +
+        "operator re-reads it to configure the receiving endpoint. The list deliberately does " +
+        "not, because a list response is what gets logged and pasted around.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({ data: WebhookRow.extend({ secret: z.string().nullable() }) }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const rows = (await listWebhooks(ctx, tenantId)) as any[];
+      const row = rows.find((r) => r.id === id);
+      if (!row) throw new AppError("NOT_FOUND", "Webhook not found");
+      return c.json({
+        data: { ...row, hasSecret: typeof row.secret === "string" && row.secret.length > 0 },
+      });
     },
   )
   .openapi(

@@ -83,6 +83,7 @@ describe("webhooks — every surface", () => {
     const webhooks = makeWebhooks(core);
 
     await webhooks.list();
+    await webhooks.get(id);
     await webhooks.create({ name: "x", url: "https://x.example.test", events: ["items.*"] });
     await webhooks.update(id, { active: false });
     await webhooks.test(id);
@@ -92,6 +93,7 @@ describe("webhooks — every surface", () => {
 
     expect(calls).toEqual([
       "GET /api/webhooks",
+      `GET /api/webhooks/${id}`,
       "POST /api/webhooks",
       `PATCH /api/webhooks/${id}`,
       `POST /api/webhooks/${id}/test`,
@@ -159,19 +161,18 @@ describe("webhooks — every surface", () => {
     expect(src).toContain("secret?: string");
   });
 
-  test("the list DOES return the secret — recorded, because its sibling does not", async () => {
-    // Measured while writing the SDK client, and worth pinning because the two
-    // surfaces disagree about the same class of credential:
+  test("the LIST reports secret presence; only the single read returns the value", async () => {
+    // The two surfaces disagreed with their own sibling: `/api/admin/auth-hooks`
+    // reports `hasSecret: boolean` and says in its type that the signing secret
+    // has no read-back path, while `/api/webhooks` handed the plaintext to
+    // every list caller. Both are admin-gated, so it was an inconsistency
+    // rather than an exposure — but a list response is the thing an SDK caller
+    // logs, pastes into an issue, or hands to an agent.
     //
-    //   `/api/webhooks`          → returns the signing secret in plaintext
-    //   `/api/admin/auth-hooks`  → returns `hasSecret: boolean` and says in its
-    //                              own type "the signing secret has no read-back
-    //                              path"
-    //
-    // Both are admin-gated, so this is an inconsistency rather than an
-    // exposure. It is asserted as the CURRENT behaviour, not as the desired
-    // one: an SDK caller who logs a `list()` response is logging a credential,
-    // and whoever changes that should have to change this line deliberately.
+    // Hiding it outright was the wrong fix: the admin has a "Show" button an
+    // operator uses to copy the secret into the receiving endpoint, and
+    // `hasSecret` alone would have removed that. So the value moved to a
+    // single-record read instead of disappearing.
     const secret = `whsec_surfaces_${Date.now()}`;
     const made = await h.fetch("/api/webhooks", {
       method: "POST",
@@ -184,10 +185,27 @@ describe("webhooks — every surface", () => {
       }),
     });
     expect(made.status).toBeLessThan(300);
+    const madeId = ((await made.json()) as { data: { id: string } }).data.id;
 
-    const body = await (await h.fetch("/api/webhooks")).text();
-    expect(`list returns the secret: ${body.includes(secret)}`).toBe(
-      "list returns the secret: true",
+    const listBody = await (await h.fetch("/api/webhooks")).text();
+    expect(`list leaks the secret: ${listBody.includes(secret)}`).toBe(
+      "list leaks the secret: false",
     );
+    // …but it still says the hook HAS one, or the admin cannot tell a
+    // configured hook from an unsigned one.
+    expect(listBody).toContain('"hasSecret":true');
+
+    // The single read is where the operator gets it back.
+    const one = await h.fetch(`/api/webhooks/${madeId}`);
+    expect(one.status).toBe(200);
+    expect(await one.text()).toContain(secret);
+  });
+
+  test("`/_deliveries` is not swallowed by the `/{id}` route", async () => {
+    // Hono matches in declaration order. When `GET /{id}` was first added above
+    // `/_deliveries`, the delivery log 404'd because `_deliveries` matched as
+    // an id — caught by the scoping test next door, pinned here on purpose.
+    const res = await h.fetch("/api/webhooks/_deliveries");
+    expect(res.status).toBe(200);
   });
 });

@@ -36,7 +36,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, nextSyntheticIp, seedAdmin, type TestHarness } from "./setup";
-import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
+import { __cacheStats, invalidateAllPermissions } from "../src/server/services/permissions-cache";
 
 /**
  * Stand in for the per-isolate session LRU's 30s TTL elapsing.
@@ -173,6 +173,29 @@ describe("revoking other sessions", () => {
     // gone, so the 200 above is the cache and nothing else.
     sessionCacheExpires();
     expect((await device.cold("/api/me")).status).toBe(401);
+  });
+
+  test("the per-isolate session cache is cleared, not left to time out", async () => {
+    // The inner half of the revocation. `middleware/session.ts` answers from a
+    // per-isolate LRU keyed on the SIGNED cookie, while the `sessions` row
+    // holds the bare token — so `invalidateSession` matched nothing until it
+    // learned to allow for the signature, and its only would-be caller deleted
+    // rows by id and never called it at all.
+    //
+    // Driven WITHOUT `sessionCacheExpires()` on purpose: the other tests model
+    // the TTL elapsing, which hides whether anything actively cleared the
+    // entry. Here the cache is deliberately warmed and then has to shrink
+    // because the handler emptied it.
+    const device = await signInSeparately(admin.email);
+    expect((await device.cold("/api/me")).status).toBe(200);
+    const before = __cacheStats().session;
+    expect(`cache warmed: ${before > 0}`).toBe("cache warmed: true");
+
+    expect((await h.fetch(`${BASE}/revoke-others`, { method: "POST" })).status).toBe(200);
+
+    // A decrease rather than zero: the CALLER's own session is legitimately
+    // still cached — it was not revoked.
+    expect(`cache shrank: ${__cacheStats().session < before}`).toBe("cache shrank: true");
   });
 
   test("it is idempotent — a second call removes nothing and keeps the caller in", async () => {

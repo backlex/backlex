@@ -6,6 +6,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { invalidateSession } from "../services/permissions-cache";
 import { encryptSecret } from "../lib/crypto";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
@@ -486,8 +487,12 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const t = tableFor(ctx.dialect);
+      // `token` as well as `id`: deleting the row is only half of a
+      // revocation, because `middleware/session.ts` answers from a per-isolate
+      // cache keyed on the session's cookie. Without this the revoked device
+      // kept passing for the cache's full TTL on top of better-auth's own.
       const allSessions = await (ctx.db as any)
-        .select({ id: t.sessions.id })
+        .select({ id: t.sessions.id, token: t.sessions.token })
         .from(t.sessions)
         .where(eq(t.sessions.userId, auth.userId!));
       // We only need to keep the caller's current session. Find it from the
@@ -495,9 +500,13 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const current = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
       const keepId = (current as { session?: { id?: string } } | null)?.session?.id ?? null;
       let removed = 0;
-      for (const s of allSessions as { id: string }[]) {
+      for (const s of allSessions as { id: string; token: string | null }[]) {
         if (s.id === keepId) continue;
         await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.id, s.id));
+        // Same isolate only — this is a per-worker cache, so it does not reach
+        // whichever other isolate served that device last. It is the half we
+        // can close from here; see `invalidateSession` for the half we cannot.
+        if (s.token) invalidateSession(s.token);
         removed += 1;
       }
       return c.json({ ok: true, removed });

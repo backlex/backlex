@@ -42,10 +42,22 @@ export const authAdminApi = {
   sessions: () => api<Envelope<ApiSession[]>>(`/api/admin/auth/sessions`),
   revokeSession: (id: string) =>
     api<{ ok: true }>(`/api/admin/auth/sessions/${id}`, { method: "DELETE" }),
-  revokeOthers: () =>
-    api<{ ok: true; removed: number }>(`/api/admin/auth/sessions/revoke-others`, {
-      method: "POST",
-    }),
+  /**
+   * Sign out every session but this one.
+   *
+   * `apiKeys` is a QUERY flag rather than a body because this is a bodyless
+   * POST — see `routes/auth-admin.ts` for why giving it a body is the shape
+   * that 500'd live in this repo twice.
+   *
+   * The response always reports `apiKeys`: the keys the caller still holds
+   * after the call. They are not sessions and a sign-out never touched them,
+   * which is the whole reason the number is surfaced.
+   */
+  revokeOthers: (opts?: { apiKeys?: boolean }) =>
+    api<{ ok: true; removed: number; apiKeys: number; apiKeysRevoked: number }>(
+      `/api/admin/auth/sessions/revoke-others${opts?.apiKeys ? "?apiKeys=1" : ""}`,
+      { method: "POST" },
+    ),
 };
 
 export interface ApiSamlProvider {

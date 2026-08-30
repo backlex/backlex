@@ -159,7 +159,7 @@ describe("revoking other sessions", () => {
 
     const res = await h.fetch(`${BASE}/revoke-others`, { method: "POST" });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, removed: 2 });
+    expect(await res.json()).toEqual({ ok: true, removed: 2, apiKeys: 0, apiKeysRevoked: 0 });
 
     // The point of the endpoint, checked behaviourally rather than by row
     // count: a deleted row and a row that still authenticates look identical in
@@ -185,7 +185,7 @@ describe("revoking other sessions", () => {
     const device = await signInSeparately(admin.email);
 
     const res = await h.fetch(`${BASE}/revoke-others`, { method: "POST" });
-    expect(await res.json()).toEqual({ ok: true, removed: 1 });
+    expect(await res.json()).toEqual({ ok: true, removed: 1, apiKeys: 0, apiKeysRevoked: 0 });
     expect(sessionCount()).toBe(1);
 
     expect((await device.warm("/api/me")).status).toBe(200);
@@ -226,7 +226,7 @@ describe("revoking other sessions", () => {
     // keep" as "keep nothing": the second call would sign the caller out of the
     // request that made it.
     const again = await h.fetch(`${BASE}/revoke-others`, { method: "POST" });
-    expect(await again.json()).toEqual({ ok: true, removed: 0 });
+    expect(await again.json()).toEqual({ ok: true, removed: 0, apiKeys: 0, apiKeysRevoked: 0 });
     expect((await h.fetch("/api/me")).status).toBe(200);
   });
 
@@ -284,6 +284,8 @@ describe("revoking other sessions", () => {
     expect(await (await h.fetch(`${BASE}/revoke-others`, { method: "POST" })).json()).toEqual({
       ok: true,
       removed: 1,
+      apiKeys: 0,
+      apiKeysRevoked: 0,
     });
 
     // 1. Cold, inner cache cleared: the row really is gone.
@@ -312,5 +314,142 @@ describe("revoking other sessions", () => {
     // `cookieCache` was disabled or narrowed, or whether `sessionMiddleware`
     // stopped caching what `cookieCache` resolved, and delete this rather than
     // restoring the behaviour.
+  });
+});
+
+describe("API keys outlive a session revocation, and the endpoint says so", () => {
+  /**
+   * The gap this closes. `api_keys` is keyed on `user_id` and carries no
+   * session reference at all, so "sign out my other devices" has never touched
+   * one — which is what makes the ~90s revocation window above expensive: it is
+   * long enough for a stolen session to mint a `pak_` key that survives the
+   * sign-out completely.
+   *
+   * Revoking them by DEFAULT would be the worse bug, and that is the half these
+   * tests spend the most effort on: the same personal key routinely powers a CI
+   * job or a server integration that has nothing to do with the laptop being
+   * signed out, so a default revoke turns a hygiene action into an outage.
+   */
+  const mintKey = async (name: string): Promise<{ id: string; secret: string }> => {
+    const r = await h.fetch("/api/api-keys", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    expect(`mint ${name}: ${r.status}`).toBe(`mint ${name}: 201`);
+    const { data } = (await r.json()) as { data: { id: string; secret: string } };
+    return data;
+  };
+
+  /**
+   * A bare Bearer call with NO cookie. Going through `h.fetch` would send the
+   * caller's session jar too, and the request would pass on the cookie no
+   * matter what the key's state is — the assertion would then be vacuous in
+   * exactly the direction that matters.
+   */
+  const callWithKey = (secret: string) =>
+    Promise.resolve(
+      h.app.fetch(
+        new Request(`${h.env.APP_URL}/api/me`, {
+          headers: {
+            Authorization: `Bearer ${secret}`,
+            Origin: h.env.APP_URL as string,
+            "x-forwarded-for": ip,
+          },
+        }),
+      ),
+    );
+
+  test("the count is reported even when nothing is revoked", async () => {
+    await mintKey("ci-deploy");
+    await mintKey("reporting-job");
+    const body = (await (
+      await h.fetch(`${BASE}/revoke-others`, { method: "POST" })
+    ).json()) as { ok: boolean; removed: number; apiKeys: number; apiKeysRevoked: number };
+    // The number an operator has to act on, surfaced from a call that did not
+    // touch it. Without this the gap is invisible from the endpoint, from its
+    // response, and from the screen that calls it.
+    expect(body).toEqual({ ok: true, removed: 0, apiKeys: 2, apiKeysRevoked: 0 });
+  });
+
+  test("by default the keys KEEP WORKING — a revoke is not an outage", async () => {
+    const { secret: key } = await mintKey("ci-deploy");
+    expect(`key before: ${(await callWithKey(key)).status}`).toBe("key before: 200");
+
+    await signInSeparately(admin.email);
+    const body = (await (
+      await h.fetch(`${BASE}/revoke-others`, { method: "POST" })
+    ).json()) as { removed: number; apiKeys: number; apiKeysRevoked: number };
+    expect(`removed ${body.removed}, keys revoked ${body.apiKeysRevoked}`).toBe(
+      "removed 1, keys revoked 0",
+    );
+    // The session went; the key did not. This is the assertion that keeps the
+    // default safe, and it has to be made against a REAL request rather than
+    // the count, because a count can be right while the credential is dead.
+    expect(`key after: ${(await callWithKey(key)).status}`).toBe("key after: 200");
+  });
+
+  test("`?apiKeys=1` revokes them, and the credential really stops working", async () => {
+    const { secret: key } = await mintKey("compromised");
+    expect((await callWithKey(key)).status).toBe(200);
+
+    const body = (await (
+      await h.fetch(`${BASE}/revoke-others?apiKeys=1`, { method: "POST" })
+    ).json()) as { ok: boolean; removed: number; apiKeys: number; apiKeysRevoked: number };
+    expect(body).toEqual({ ok: true, removed: 0, apiKeys: 0, apiKeysRevoked: 1 });
+
+    expect(`key after opt-in revoke: ${(await callWithKey(key)).status}`).toBe(
+      "key after opt-in revoke: 401",
+    );
+  });
+
+  test("`apiKeys` reports what is live AFTER the call, not before", async () => {
+    // A response that reported the pre-call count would tell an operator who
+    // just revoked everything that they still have keys to deal with.
+    await mintKey("a");
+    await mintKey("b");
+    const body = (await (
+      await h.fetch(`${BASE}/revoke-others?apiKeys=1`, { method: "POST" })
+    ).json()) as { ok: boolean; removed: number; apiKeys: number; apiKeysRevoked: number };
+    expect(body).toEqual({ ok: true, removed: 0, apiKeys: 0, apiKeysRevoked: 2 });
+  });
+
+  test("an already-revoked key is neither counted nor revoked twice", async () => {
+    const keep = await mintKey("still-live");
+    const gone = await mintKey("already-gone");
+    void gone;
+    const list = (await (await h.fetch("/api/api-keys")).json()) as {
+      data: { id: string; name: string }[];
+    };
+    const goneId = list.data.find((k) => k.name === "already-gone")!.id;
+    expect((await h.fetch(`/api/api-keys/${goneId}`, { method: "DELETE" })).status).toBe(200);
+
+    const body = (await (
+      await h.fetch(`${BASE}/revoke-others?apiKeys=1`, { method: "POST" })
+    ).json()) as { ok: boolean; removed: number; apiKeys: number; apiKeysRevoked: number };
+    expect(body).toEqual({ ok: true, removed: 0, apiKeys: 0, apiKeysRevoked: 1 });
+    expect(`the live one is gone too: ${(await callWithKey(keep)).status}`).toBe(
+      "the live one is gone too: 401",
+    );
+  });
+
+  test("any other query value is treated as absent — only `1` revokes", async () => {
+    // The flag destroys credentials, so it opts IN on one exact value rather
+    // than on truthiness. `?apiKeys=0` and `?apiKeys=false` are the two a
+    // caller would plausibly send meaning "no".
+    const { secret: key } = await mintKey("safe");
+    // `0` is a real answer and must work; anything else is refused rather
+    // than guessed at, because guessing on a destructive flag is how a "no"
+    // becomes a revoke.
+    const r0 = await h.fetch(`${BASE}/revoke-others?apiKeys=0`, { method: "POST" });
+    const b0 = (await r0.json()) as { apiKeysRevoked: number };
+    expect(`apiKeys=0 -> ${r0.status}, revoked ${b0.apiKeysRevoked}`).toBe(
+      "apiKeys=0 -> 200, revoked 0",
+    );
+    for (const q of ["true", "yes", "", "01"]) {
+      const r = await h.fetch(`${BASE}/revoke-others?apiKeys=${q}`, { method: "POST" });
+      expect(`apiKeys=${q} -> ${r.status}`).toBe(`apiKeys=${q} -> 422`);
+    }
+    expect(`key survived: ${(await callWithKey(key)).status}`).toBe("key survived: 200");
   });
 });

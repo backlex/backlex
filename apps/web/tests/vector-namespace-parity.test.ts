@@ -42,6 +42,7 @@ const FIELDS: FieldDef[] = [
  *  FTS branch to muddy which namespace the assertion is reading. */
 const meta: VectorizeMeta = {
   slug: "articles",
+  physicalTable: "c_t1_articles",
   vectorize: true,
   vectorizeModel: MODEL,
   fields: FIELDS,

@@ -671,44 +671,68 @@ describe("write-condition check — what it actually fences", () => {
     });
   });
 
-  /* ───────────── HOLE 5 — a column the proposed row cannot see ───────────── */
+  /* ────── CLOSED — a localized column, judged at the default locale ────── */
 
-  describe("HOLE — a localized column is invisible to the proposed row", () => {
+  describe("a localized column is judged, at the workspace default locale", () => {
     /**
-     * `performCreate` judges `{...data, pk, owner_id, tenant_id}`
-     * (services/items/write.ts:644), and the comment above that call is careful
-     * about which server-stamped columns are folded back in. It misses one
-     * class: `splitLocalized` (services/items/i18n-sidecar.ts) ran at
-     * write.ts:437, long before, and does `delete patch[f.name]` for every
-     * localized field, routing the value to the `_i18n` sidecar — whose INSERT
-     * is emitted at write.ts:665, AFTER the check.
+     * This was HOLE 5, and it is closed.
      *
-     * So a condition keyed on a localized column is always evaluated against
-     * `undefined`. For `_eq` that fails closed and is merely surprising; for
-     * `_neq`, `_nin`, `_null: true` and `_empty` it falls OPEN, because absence
-     * is not the forbidden value.
+     * `splitLocalized` pulls every localized field off the payload long before
+     * the check runs, so the proposed row had no value to compare and the key
+     * was narrowed out — the rule did not apply to writes at all. Meanwhile the
+     * READ side did apply it, so the same rule hid a row from you and let you
+     * create one.
+     *
+     * Both halves now compile to the same question: the value at the WORKSPACE
+     * DEFAULT locale. The write path reads it from this write if it set that
+     * locale, otherwise from what is stored.
+     *
+     * A field with NO value in the default locale is counted as unsatisfied
+     * rather than as "no opinion" — deliberately, because the two evaluators
+     * disagree there in the permissive direction: `matchesCondition` answers
+     * `_neq` against an absent value with TRUE, while SQL answers `NULL != 'x'`
+     * with NULL and drops the row. Refusing matches the read.
      */
-    test("BUG: a `_neq` rule on a localized field cannot see the value being written", async () => {
-      // Positive control first: `region` really is localized, so this test is not
-      // quietly passing against an ordinary column that never violated the rule.
-      const noLocale = await asAlice()(
+    test("the forbidden value is refused, in the locale the rule is read in", async () => {
+      // Positive control: `region` really is localized, so this is not quietly
+      // passing against an ordinary column. The proof is where the value LANDS
+      // — the sidecar, which `?locale=*` renders as a per-locale map.
+      const control = await asAlice()(
         "/api/items/docs",
-        json("POST", { title: "no locale", region: "confidential" }),
+        json("POST", { title: "no locale", region: "public" }),
       );
-      expect(noLocale.status).toBe(422);
-      expect(await noLocale.text()).toContain("localized");
+      expect(control.status).toBe(201);
+      const controlMap = await dataOf(
+        await h.fetch(`/api/items/docs/${String((await dataOf(control)).id)}?locale=*`),
+      );
+      expect(typeof controlMap.region).toBe("object");
+      expect(Object.values(controlMap.region as Record<string, unknown>)).toEqual(["public"]);
 
+      // Was 201 — the write the rule exists to prevent.
       const res = await asAlice()(
         "/api/items/docs?locale=en",
         json("POST", { title: "leak", region: "confidential" }),
       );
-      // SHOULD BE: 403 — `{ region: { _neq: "confidential" } }` is precisely what
-      // this row violates, and a read filtered by the same rule would exclude it.
-      expect(res.status).toBe(201);
+      expect(res.status).toBe(403);
 
-      const id = String((await dataOf(res)).id);
-      const stored = await h.fetch(`/api/items/docs/${id}?locale=en`);
-      expect((await dataOf(stored)).region).toBe("confidential");
+      // And a locale-less write of the same value, which reaches the sidecar
+      // by the same route now that a bare value means the default locale.
+      const bare = await asAlice()(
+        "/api/items/docs",
+        json("POST", { title: "leak2", region: "confidential" }),
+      );
+      expect(bare.status).toBe(403);
+    });
+
+    test("a value only in another locale is refused too, because the read would drop the row", async () => {
+      // Nothing in the default locale means `NULL` on the read side, and
+      // `NULL != 'confidential'` is not true — the row would be invisible to
+      // the very role creating it.
+      const res = await asAlice()(
+        "/api/items/docs?locale=tr",
+        json("POST", { title: "tr only", region: "public" }),
+      );
+      expect(res.status).toBe(403);
     });
   });
 });

@@ -645,9 +645,18 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // over nestedColRef for dotted keys, so a user filter that LEFT JOINs
       // the same relation can't reroute a permission condition through the
       // join alias (whose NULL-extending semantics differ from EXISTS).
+      // A localized key keeps the resolver `resolvePermission` built for it —
+      // the workspace-default subquery. Routing it through `nestedColRef` here
+      // would compile the SAME rule against the REQUESTED locale, so one
+      // permission would mean two different things depending on whether the
+      // caller named a locale, which is the split this fix exists to end.
+      const permColRef: ColRefResolver = (field) =>
+        perm.localizedColRef && !field.includes(".") && localizedNameSet.has(field)
+          ? perm.localizedColRef(field)
+          : nestedColRef(field);
       const permWhere =
         hasJoins && perm.conditions
-          ? combineConditions(perm.conditions, auth, nestedColRef, perm.relationLeaf, {
+          ? combineConditions(perm.conditions, auth, permColRef, perm.relationLeaf, {
               dialect: ctx.dialect,
             })
           : perm.whereSql;

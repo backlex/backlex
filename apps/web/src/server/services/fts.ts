@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
-import { type FieldDef, ftsTableName } from "@backlex/db";
+import { type FieldDef, ftsTableName, isLocalized } from "@backlex/db";
 import type { Ctx } from "../context";
+import { loadSidecarForRow, loadSidecarForRows } from "./items/i18n-sidecar";
 import { execute, queryAll } from "./items/sql-helpers";
 
 /**
@@ -30,9 +31,26 @@ export interface FtsTarget {
   fields: FieldDef[];
 }
 
-/** A field contributes to the index when flagged `searchable` and text-like. */
+/**
+ * A field contributes to the index when flagged `searchable`, text-like, and
+ * NOT `private`.
+ *
+ * The private exclusion belongs here rather than upstream, because upstream
+ * only covered one of the two callers. The write path scrubs private fields off
+ * the payload before the side effects run (`scrubPrivateFields`), so a create
+ * never indexed one — but `backfillFts` reads its rows with `SELECT *` and
+ * scrubs nothing, so `POST /collections/:slug/fts-reindex` put them straight
+ * into the index. Measured: a `private + searchable` value was not findable
+ * after a create and WAS findable after a reindex.
+ *
+ * That is a disclosure, not an untidiness. Search never returns the column, but
+ * it returns the ROW, so a caller can guess a value and learn from the hit
+ * whether the guess was right — an oracle over a field the API deliberately
+ * never renders. Deciding it here makes both callers agree, and makes the
+ * sidecar read below safe by construction rather than by remembering.
+ */
 const isFtsField = (f: FieldDef): boolean =>
-  Boolean(f.searchable) && (f.type === "text" || f.type === "longtext");
+  Boolean(f.searchable) && !f.private && (f.type === "text" || f.type === "longtext");
 
 /** Whether this collection actually maintains a full-text index. */
 export const isSearchable = (c: Pick<FtsTarget, "fts" | "fields">): boolean =>
@@ -48,17 +66,43 @@ export const ftsIndexSignature = (c: Pick<FtsTarget, "fts" | "fields">): string 
   c.fts
     ? c.fields
         .filter(isFtsField)
-        .map((f) => f.name)
+        // The localized flag is part of the signature because it changes WHERE
+        // the text comes from — base column or sidecar — without changing the
+        // field's name. Toggling it used to leave the signature identical, so
+        // the backfill did not fire and the index kept serving the old
+        // base-column string for a row that now reads as empty.
+        .map((f) => (isLocalized(f) ? `${f.name}:i18n` : f.name))
         .sort()
         .join(",")
     : "";
 
-/** Concatenate the `searchable` text fields of a row into one index string.
- *  Mirrors the vectorize `buildText`. Returns "" when nothing is indexable. */
+/** The `searchable` text fields whose value lives in the `__i18n` sidecar. */
+const localizedFtsFields = (fields: FieldDef[]): FieldDef[] =>
+  fields.filter((f) => isFtsField(f) && isLocalized(f));
+
+/**
+ * Concatenate the `searchable` text fields of a row into one index string.
+ * Mirrors the vectorize `buildText`. Returns "" when nothing is indexable.
+ *
+ * Localized fields are SKIPPED here and supplied by {@link sidecarText}, because
+ * this row never holds their real value. It holds one of three things depending
+ * on which caller built it, and two of them silently corrupted the index:
+ *
+ *  - create passes the base payload, from which `splitLocalized` has already
+ *    DELETED every localized field — so the field was never indexed at all;
+ *  - `PATCH ?locale=tr` passes `echoLocalized(...)`'s single native value — so
+ *    the whole blob was rebuilt from Turkish alone and the English text
+ *    disappeared from the index;
+ *  - a locale-less PATCH passes the `{locale: value}` map, and `String(map)` is
+ *    `"[object Object]"` — measured: searching "object" returned the row.
+ *
+ * Reading the sidecar instead makes all three correct at once, and makes the
+ * index a function of what is STORED rather than of which endpoint wrote last.
+ */
 const buildSearchText = (row: Record<string, unknown>, fields: FieldDef[]): string => {
   const parts: string[] = [];
   for (const f of fields) {
-    if (!isFtsField(f)) continue;
+    if (!isFtsField(f) || isLocalized(f)) continue;
     const v = row[f.name];
     if (v === null || v === undefined) continue;
     const s = String(v).trim();
@@ -67,6 +111,38 @@ const buildSearchText = (row: Record<string, unknown>, fields: FieldDef[]): stri
   }
   return parts.join("\n");
 };
+
+/**
+ * Every locale's text for the localized `searchable` fields, from sidecar rows.
+ *
+ * All locales go into the ONE blob rather than a blob per locale, and that is a
+ * deliberate limit of this shape: both dialects keep a single index per row
+ * (SQLite one `<table>__fts` row, Postgres one `_fts` tsvector column on the
+ * base table), so a per-locale index would have to move the Postgres column
+ * onto the sidecar — a migration and a second read path. What the one blob
+ * costs is cross-language matching: a query finds the row if ANY locale
+ * matches. For a storefront that is the behaviour you want anyway — the shopper
+ * gets the row, and the read path still renders it in the requested locale.
+ */
+const sidecarText = (
+  sidecarRows: Array<Record<string, unknown>>,
+  defs: FieldDef[],
+): string => {
+  const parts: string[] = [];
+  for (const r of sidecarRows) {
+    for (const f of defs) {
+      const v = r[f.name];
+      if (v === null || v === undefined) continue;
+      const s = String(v).trim();
+      if (s) parts.push(s);
+    }
+  }
+  return parts.join("\n");
+};
+
+/** Base-row text plus every locale's sidecar text, joined. */
+const joinText = (base: string, extra: string): string =>
+  base && extra ? `${base}\n${extra}` : base || extra;
 
 /**
  * Turn arbitrary user text into a safe FTS5 MATCH expression. Tokenizes on
@@ -125,9 +201,41 @@ export const indexFts = async (
   row: Record<string, unknown>,
 ): Promise<void> => {
   if (!isSearchable(collection)) return;
+  await writeIndex(ctx, collection, itemId, await indexTextFor(ctx, collection, itemId, row));
+};
+
+/**
+ * The index text for one row: its base fields, plus every locale held in the
+ * sidecar. The sidecar read is guarded on its own — a failure there must cost
+ * the localized half, not the whole index entry.
+ */
+const indexTextFor = async (
+  ctx: Ctx,
+  collection: FtsTarget,
+  itemId: string,
+  row: Record<string, unknown>,
+): Promise<string> => {
+  const base = buildSearchText(row, collection.fields);
+  const locDefs = localizedFtsFields(collection.fields);
+  if (locDefs.length === 0) return base;
+  try {
+    const rows = await loadSidecarForRow(ctx, collection.physicalTable, itemId, locDefs);
+    return joinText(base, sidecarText(rows, locDefs));
+  } catch (e) {
+    console.error(`[fts] sidecar read failed for ${collection.physicalTable}/${itemId}:`, e);
+    return base;
+  }
+};
+
+/** Persist one row's computed index text. Best-effort, as above. */
+const writeIndex = async (
+  ctx: Ctx,
+  collection: FtsTarget,
+  itemId: string,
+  text: string,
+): Promise<void> => {
   const table = collection.physicalTable;
   const pk = collection.pkColumn;
-  const text = buildSearchText(row, collection.fields);
   try {
     if (ctx.dialect === "pg") {
       await run(
@@ -180,10 +288,30 @@ export const indexFtsBatch = async (
   rows: Array<{ id: string; row: Record<string, unknown> }>,
 ): Promise<number> => {
   if (!isSearchable(collection)) return 0;
+  const locDefs = localizedFtsFields(collection.fields);
+  // One sidecar query for the whole batch. Calling `indexFts` per row would
+  // issue one per row, which is the difference between a backfill that finishes
+  // and one that does not.
+  let sidecars = new Map<string, Array<Record<string, unknown>>>();
+  if (locDefs.length > 0) {
+    try {
+      sidecars = await loadSidecarForRows(
+        ctx,
+        collection.physicalTable,
+        rows.map((r) => r.id),
+        locDefs,
+      );
+    } catch (e) {
+      console.error(`[fts] sidecar batch read failed for ${collection.physicalTable}:`, e);
+    }
+  }
   let indexed = 0;
   for (const { id, row } of rows) {
-    const text = buildSearchText(row, collection.fields);
-    await indexFts(ctx, collection, id, row);
+    const text = joinText(
+      buildSearchText(row, collection.fields),
+      sidecarText(sidecars.get(id) ?? [], locDefs),
+    );
+    await writeIndex(ctx, collection, id, text);
     if (text) indexed += 1;
   }
   return indexed;

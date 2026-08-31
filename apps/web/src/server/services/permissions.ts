@@ -11,7 +11,17 @@ import {
   normalizeCondition,
   SYSTEM_ROLES,
 } from "@backlex/core";
-import { combineConditions, matchesCondition, type LeafCompiler } from "@backlex/db";
+import {
+  type ColRefResolver,
+  combineConditions,
+  i18nTableName,
+  isLocalized,
+  matchesCondition,
+  type LeafCompiler,
+} from "@backlex/db";
+import { sql } from "drizzle-orm";
+import { loadCollection } from "./items/collection-loader";
+import { loadAppSettings } from "./settings";
 import { resolveOrgContext, type OrgContext } from "./app-orgs";
 import type { DbCtx } from "./seed";
 import {
@@ -318,6 +328,14 @@ export interface ResolvedPermission {
   /** OR-combined condition across matching permissions; null = unrestricted. */
   whereSql: SQL | null;
   /**
+   * How a `localized` key was compiled into {@link whereSql}. Carried so a
+   * consumer that RE-compiles `conditions` — the list path does, whenever a
+   * join is present — reaches the same column this did, instead of routing the
+   * key through its own per-request-locale resolver and quietly giving the rule
+   * a second meaning.
+   */
+  localizedColRef?: ColRefResolver;
+  /**
    * Raw conditions across matching permission rows. `null` means at least one
    * matching row had no condition (= unrestricted access). An array means
    * access is granted only when at least one of these conditions matches.
@@ -341,6 +359,66 @@ export interface ResolvedPermission {
  *  is fixed for the lifetime of one request. Optional — when omitted the
  *  resolver falls back to L2+L3 only. */
 export type PermResolveCache = Map<string, ResolvedPermission>;
+
+/**
+ * A condition keyed on a `localized` column has to read the sidecar, because
+ * the base table has no such column — and what happened without this is the
+ * reason it exists.
+ *
+ * `defaultColRef` emits a bare `"region"`. SQLite treats a double-quoted
+ * identifier that matches no column as a STRING LITERAL, so
+ * `"region" != 'confidential'` compiles to `'region' != 'confidential'` —
+ * always true. The predicate evaporates and every row passes. Measured on a
+ * restricted end-user: a bare list read returned rows whose value was
+ * `confidential` in every language, while the same read with `?locale=xx`
+ * filtered them correctly (by accident — the sidecar JOIN that mode adds gives
+ * the bare identifier something to bind to). SQLite is the production dialect
+ * for D1 tenants, so the silent arm is the one that ships.
+ *
+ * Judged against the WORKSPACE DEFAULT locale, deliberately and consistently:
+ * reads fall back to it, the slug fold takes it, a locale-less write files
+ * under it, a bare template sample means it. One predictable answer beats
+ * today's, which depends on whether the caller happened to name a locale.
+ *
+ * The correlated reference to the row's own key is left UNQUALIFIED on purpose.
+ * The sidecar has no column by that name (`row_id`, `locale`, and the localized
+ * fields), so it resolves outward — which keeps this correct on the read paths
+ * that alias the base table as well as the ones that do not.
+ *
+ * Costs nothing unless the permission actually carries a condition AND the
+ * collection actually has a localized column.
+ */
+const localizedColRef = async (
+  ctx: DbCtx,
+  tenantId: string | null,
+  slug: string,
+  conds: (Condition | null | undefined)[],
+): Promise<ColRefResolver | undefined> => {
+  if (conds.length === 0 || conds.some((c) => c == null)) return undefined;
+  if (!tenantId) return undefined;
+  let col: Awaited<ReturnType<typeof loadCollection>>;
+  try {
+    col = await loadCollection(ctx, tenantId, slug);
+  } catch (e) {
+    // Falls back to the bare-identifier compile, which on SQLite is the
+    // fail-OPEN arm this function exists to remove — so it is logged rather
+    // than swallowed. Reaching here means the caller's own load is about to
+    // raise the real error anyway; if that ever stops being true, this line is
+    // what says so.
+    console.error(`[permissions] collection load failed for "${slug}" — condition on a localized column will not be scoped:`, e);
+    return undefined;
+  }
+  const localized = new Set(col.fields.filter(isLocalized).map((f) => f.name));
+  if (localized.size === 0) return undefined;
+  const locale =
+    (await loadAppSettings(ctx.db, ctx.dialect, tenantId)).i18nDefaultLocale ?? "en";
+  const side = sql.identifier(i18nTableName(col.physicalTable));
+  const alias = sql.identifier("perm_i18n");
+  return (field: string) =>
+    localized.has(field)
+      ? sql`(SELECT ${alias}.${sql.identifier(field)} FROM ${side} AS ${alias} WHERE ${alias}.${sql.identifier("row_id")} = ${sql.identifier(col.pkColumn)} AND ${alias}.${sql.identifier("locale")} = ${locale})`
+      : sql`${sql.identifier(field)}`;
+};
 
 export const resolvePermission = async (
   ctx: DbCtx,
@@ -487,10 +565,16 @@ export const resolvePermission = async (
       )
     : undefined;
 
+  const localizedRef = await localizedColRef(
+    ctx,
+    auth.tenantId ?? null,
+    collection,
+    staticPerm.rawConditions,
+  );
   const whereSql = combineConditions(
     staticPerm.rawConditions,
     auth,
-    undefined,
+    localizedRef,
     relationLeaf,
     { dialect: ctx.dialect },
   );
@@ -507,6 +591,7 @@ export const resolvePermission = async (
     whereSql,
     conditions,
     fields,
+    ...(localizedRef ? { localizedColRef: localizedRef } : {}),
     ...(relationLeaf ? { relationLeaf } : {}),
   });
 };

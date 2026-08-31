@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
 import {
   type FieldDef,
+  isLocalized,
   matchesCondition,
   resolveAutoFill,
   sidecarFields,
@@ -52,16 +53,21 @@ import {
   sameScope,
 } from "./order";
 import { judgeableCondition } from "../permission-relations";
+import { loadAppSettings } from "../settings";
 import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
 import { applySlugs, resolveSlugsForWrite, slugFieldsOf } from "./slug";
 import { assertInitialStates, assertTransitions, transitionEventName } from "./transitions";
 import {
   echoLocalized,
+  type LocaleSplit,
+  loadSidecarForRow,
   sidecarClear,
   sidecarDeleteRow,
   sidecarInsert,
   sidecarUpsert,
   splitIsEmpty,
+  pickLocalizedValues,
+  sidecarByLocale,
   splitLocalized,
   validateLocalePatches,
 } from "./i18n-sidecar";
@@ -318,21 +324,34 @@ const assertWriteConditions = (
   perm: ResolvedPerm,
   proposed: Record<string, unknown>,
   action: "create" | "update",
+  /**
+   * The default-locale values for the localized columns this permission names,
+   * from {@link localizedJudgeValues}. REQUIRED, not defaulted: a call site
+   * that omitted it would judge a localized key against `undefined`, and
+   * `matchesCondition` answers `_neq` against absence with TRUE — an arm that
+   * allows the write AND skips the warn log. The typechecker names the caller
+   * instead.
+   */
+  localized: { values: Record<string, unknown>; absent: Set<string> } | null,
 ): void => {
   // `null` = at least one matching permission row was unconditional.
   if (perm.conditions === null || perm.conditions.length === 0) return;
 
   const subject = authSubjectOf(env);
-  // Localized columns live in the `_i18n` sidecar, one value per locale, and
-  // `splitLocalized` has already pulled them off `data` by the time we get
-  // here. There is no single value to compare, so a condition keyed on one is
-  // narrowed out rather than judged against `undefined` — which was
-  // fail-closed for `_eq` and fail-OPEN for `_neq` / `_nin` / `_null`, with no
-  // log line either way.
-  const localized = new Set(
-    env.collection.fields.filter((f) => f.localized).map((f) => f.name),
-  );
-  const unjudgeable = localized.size > 0 ? (f: string) => localized.has(f) : undefined;
+  // Localized columns live in the `_i18n` sidecar, so `splitLocalized` has
+  // pulled them off `data` long before this runs and every such key used to be
+  // narrowed out — the rule simply did not apply to writes.
+  //
+  // It applies now, judged against the WORKSPACE DEFAULT locale, which is what
+  // the read filter compiles to. A field with no value in that locale stays
+  // unjudgeable, because `matchesCondition` answers `_neq` against an absent
+  // value with TRUE — the fail-open arm — while SQL answers `NULL != 'x'` with
+  // NULL and drops the row. Rather than adopt either, such a condition is
+  // counted as UNSATISFIED below instead of as "no opinion": the two must not
+  // disagree in the permissive direction.
+  const judged = localized ? { ...proposed, ...localized.values } : proposed;
+  const absent = localized?.absent ?? new Set<string>();
+  const unjudgeable = absent.size > 0 ? (f: string) => absent.has(f) : undefined;
   const skipped: Condition[] = [];
   let matched = false;
   for (const cond of perm.conditions) {
@@ -345,10 +364,14 @@ const assertWriteConditions = (
     // both halves on reads.
     const judgeable = judgeableCondition(cond, unjudgeable) as Condition | null;
     if (judgeable === null) {
-      skipped.push(cond);
+      // A condition emptied by a MISSING localized value is not "no opinion" —
+      // the read filter would drop this row, so the write must not read as
+      // permitted. Left out of `skipped` so it falls through to the refusal.
+      const byAbsence = Object.keys(cond as Record<string, unknown>).some((k) => absent.has(k));
+      if (!byAbsence) skipped.push(cond);
       continue;
     }
-    if (matchesCondition(proposed, judgeable, subject)) {
+    if (matchesCondition(judged, judgeable, subject)) {
       matched = true;
       break;
     }
@@ -408,6 +431,156 @@ const assertNotReadOnlyImpersonation = (env: WriteEnv, action: string): void => 
   );
 };
 
+/**
+ * The DEFAULT-locale value of each localized column a permission condition
+ * names, so the write check can judge the same thing the read filter does.
+ *
+ * The read side compiles such a key to a correlated read of the sidecar at the
+ * workspace default locale (`services/permissions.ts`). This is that rule on
+ * the write path: the value from THIS write if it set the default locale,
+ * otherwise the one already stored.
+ */
+const localizedJudgeValues = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  env: WriteEnv,
+  perm: ResolvedPerm,
+  split: LocaleSplit,
+  rowId: string | null,
+  defaultLocaleHint: string | null,
+): Promise<{ values: Record<string, unknown>; absent: Set<string> } | null> => {
+  if (perm.conditions === null || perm.conditions.length === 0) return null;
+  const named = new Set(perm.conditions.flatMap((c) => Object.keys(c as Record<string, unknown>)));
+  const defs = collection.fields.filter((f) => isLocalized(f) && named.has(f.name));
+  if (defs.length === 0) return null;
+
+  const locale =
+    defaultLocaleHint ??
+    (await loadAppSettings(ctx.db, ctx.dialect, env.tenantId ?? null)).i18nDefaultLocale ??
+    "en";
+  const values: Record<string, unknown> = { ...(split.localePatches.get(locale) ?? {}) };
+  const missing = defs.filter((f) => !(f.name in values) && !split.clearAll.has(f.name));
+  if (rowId && missing.length > 0) {
+    try {
+      for (const r of await loadSidecarForRow(ctx, collection.physicalTable, rowId, missing)) {
+        if (String(r.locale) !== locale) continue;
+        for (const f of missing) if (r[f.name] !== undefined) values[f.name] = r[f.name];
+      }
+    } catch (e) {
+      console.error(`[permissions] sidecar read failed judging ${collection.physicalTable}/${rowId}:`, e);
+    }
+  }
+  const absent = new Set(
+    defs.filter((f) => values[f.name] === undefined || values[f.name] === null).map((f) => f.name),
+  );
+  for (const name of absent) delete values[name];
+  return { values, absent };
+};
+
+/**
+ * The write permission's field allowlist, applied to the localized half.
+ *
+ * `validateBody` is the only place `perm.fields` is enforced on a write, and it
+ * walks the payload's own keys — which `splitLocalized` has already emptied of
+ * every localized column. So a role granted `update` on `{title}` could also
+ * write any localized field on the same collection, and the refusal it should
+ * have got never existed. Read-side field permissions were never affected; this
+ * is the write half only.
+ *
+ * Raises the SAME error `validateBody` raises for an ordinary column, so the
+ * two halves of one rule cannot answer a caller differently.
+ */
+const assertLocalizedFieldsWritable = (
+  split: LocaleSplit,
+  allow: Set<string> | null,
+): void => {
+  if (!allow) return;
+  const touched = new Set<string>(split.clearAll);
+  for (const [, fieldMap] of split.localePatches) for (const n of Object.keys(fieldMap)) touched.add(n);
+  for (const n of Object.keys(split.bare)) touched.add(n);
+  for (const name of touched) {
+    if (!allow.has(name)) {
+      throw new AppError("FORBIDDEN", `No permission to write field "${name}"`);
+    }
+  }
+};
+
+/**
+ * File the locale-less values under the workspace default, and answer with the
+ * locale that was.
+ *
+ * Costs one settings read, and only on a write that actually sent a bare value
+ * for a localized column — a caller that states `?locale=` or `{locale: value}`
+ * pays nothing. Returned so the slug fold below can reuse it rather than
+ * reading the same row again.
+ */
+const adoptBareLocalized = async (
+  ctx: Ctx,
+  env: WriteEnv,
+  split: LocaleSplit,
+): Promise<string | null> => {
+  const names = Object.keys(split.bare);
+  if (names.length === 0) return null;
+  const settings = await loadAppSettings(ctx.db, ctx.dialect, env.tenantId ?? null);
+  const loc = settings.i18nDefaultLocale ?? "en";
+  const m = split.localePatches.get(loc) ?? {};
+  for (const name of names) m[name] = split.bare[name];
+  split.localePatches.set(loc, m);
+  return loc;
+};
+
+/**
+ * The single value each localized column contributes to a slug fold.
+ *
+ * Returns `null` — and costs nothing — unless this collection actually has a
+ * slug whose `from` names a localized field, which is the only case that ever
+ * needed this. When it does: the write's own locale wins, then the workspace
+ * default, then the lowest-sorted locale carrying text, so one title cannot
+ * fold to two different handles depending on key order.
+ *
+ * `rowId` is passed on update, where the source usually is NOT part of the
+ * write — the title was set some other day and lives only in the sidecar. On
+ * create there is nothing to read yet, so the split is the whole truth.
+ */
+const localizedSlugSources = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  env: WriteEnv,
+  split: LocaleSplit,
+  rowId: string | null,
+  knownDefaultLocale: string | null,
+): Promise<Record<string, unknown> | null> => {
+  const wanted = new Set<string>();
+  for (const f of slugFieldsOf(collection.fields)) for (const src of f.spec.from ?? []) wanted.add(src);
+  if (wanted.size === 0) return null;
+  const defs = collection.fields.filter((f) => isLocalized(f) && wanted.has(f.name));
+  if (defs.length === 0) return null;
+
+  const byLocale: Array<[string, Record<string, unknown>]> = [];
+  for (const [loc, fieldMap] of split.localePatches) {
+    const kept: Record<string, unknown> = {};
+    for (const f of defs) if (f.name in fieldMap) kept[f.name] = fieldMap[f.name];
+    if (Object.keys(kept).length > 0) byLocale.push([loc, kept]);
+  }
+  // Anything this write did not carry has to come from what is already stored,
+  // or clearing a handle to re-derive it would fold from nothing a second time.
+  if (rowId && defs.some((f) => !byLocale.some(([, m]) => f.name in m))) {
+    try {
+      byLocale.push(
+        ...sidecarByLocale(await loadSidecarForRow(ctx, collection.physicalTable, rowId, defs), defs),
+      );
+    } catch (e) {
+      console.error(`[slug] sidecar read failed for ${collection.physicalTable}/${rowId}:`, e);
+    }
+  }
+  if (byLocale.length === 0) return null;
+
+  const defaultLocale =
+    knownDefaultLocale ??
+    (await loadAppSettings(ctx.db, ctx.dialect, env.tenantId ?? null)).i18nDefaultLocale;
+  return pickLocalizedValues(byLocale, [env.locale, defaultLocale]);
+};
+
 export const performCreate = async (
   env: WriteEnv,
   dataIn: Record<string, unknown>,
@@ -444,6 +617,8 @@ export const performCreate = async (
   // Pull `localized` fields out of `data` up front so the base INSERT never
   // targets a sidecar-only column, and validate each provided per-locale value.
   const localeSplit = splitLocalized(data, collection.fields, env.locale);
+  assertLocalizedFieldsWritable(localeSplit, perm.fields);
+  const adoptedLocale = await adoptBareLocalized(ctx, env, localeSplit);
   validateLocalePatches(localeSplit, collection.fields);
   validateBody(data, collection.fields, false, perm.fields);
   // Canonicalize every accepted point shape into `{ lat, lng }` on the payload
@@ -604,7 +779,14 @@ export const performCreate = async (
   // had to learn. The generic column loop below then picks it up like any other
   // value, so nothing here has to know how a text column is serialized.
   if (slugFieldsOf(collection.fields).length > 0) {
-    applySlugs(data, await resolveSlugsForWrite(ctx, collection, data, { db: env.db }));
+    // A slug folds from sibling columns, and `splitLocalized` has already taken
+    // every localized one off `data` — so a title that lives in the sidecar
+    // read as absent and the handle came out NULL, with a 201 and no warning.
+    // Overlaid for the fold only; `data` itself must stay free of sidecar-only
+    // names or the INSERT would name a column the base table does not have.
+    const sources = await localizedSlugSources(ctx, collection, env, localeSplit, null, adoptedLocale);
+    const foldFrom = sources ? { ...data, ...sources } : data;
+    applySlugs(data, await resolveSlugsForWrite(ctx, collection, foldFrom, { db: env.db }));
   }
   // Order columns — where this row lands in the list it belongs to. A caller
   // that STATES a position keeps it (a CSV import, a restore and a template's
@@ -655,6 +837,15 @@ export const performCreate = async (
   // NOT resolved — it is a subquery the database evaluates at insert time, so
   // no value exists to judge, and a rule keyed on a hand-arranged position is
   // not a shape this is for.
+  const judgeLocalized = await localizedJudgeValues(
+    ctx,
+    collection,
+    env,
+    perm,
+    localeSplit,
+    null,
+    adoptedLocale,
+  );
   assertWriteConditions(
     env,
     perm,
@@ -665,6 +856,7 @@ export const performCreate = async (
       ...(collection.tenantScoped ? { tenant_id: env.tenantId } : {}),
     },
     "create",
+    judgeLocalized,
   );
 
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
@@ -761,6 +953,8 @@ export const performUpdate = async (
   const table = collection.physicalTable;
   // Split localized fields out before base validation/write (same as create).
   const localeSplit = splitLocalized(patch, collection.fields, env.locale);
+  assertLocalizedFieldsWritable(localeSplit, perm.fields);
+  const adoptedLocale = await adoptBareLocalized(ctx, env, localeSplit);
   validateLocalePatches(localeSplit, collection.fields);
   validateBody(patch, collection.fields, true, perm.fields);
   normalizeGeoFields(patch, collection.fields);
@@ -914,7 +1108,13 @@ export const performUpdate = async (
     //
     // Checking on the way in is the fix that does not depend on who applies it
     // later. A patch that could not be written live cannot be staged either.
-    assertWriteConditions(env, perm, { ...beforeRow, ...patch }, "update");
+    assertWriteConditions(
+      env,
+      perm,
+      { ...beforeRow, ...patch },
+      "update",
+      await localizedJudgeValues(ctx, collection, env, perm, localeSplit, id, adoptedLocale),
+    );
 
     // Canonical staged shape: base fields post-hash from `patch`; localized
     // fields as their full `{locale: value}` map (splitLocalized with a null
@@ -1006,7 +1206,13 @@ export const performUpdate = async (
   // never be published — the value resolves on the live write that applies it.
   const slugFields = slugFieldsOf(collection.fields);
   if (slugFields.length > 0 && slugFields.some((f) => patch[f.name] !== undefined)) {
-    const merged: Record<string, unknown> = { ...beforeRow, ...patch };
+    // Same overlay as create. `beforeRow` comes from the base table, so a
+    // localized source is missing from it too — and re-deriving a handle by
+    // clearing it would otherwise fold from nothing a second time. Passing `id`
+    // lets the helper read the sidecar when this write did not carry the source
+    // itself, which is the ordinary case: the title was set some other day.
+    const sources = await localizedSlugSources(ctx, collection, env, localeSplit, id, adoptedLocale);
+    const merged: Record<string, unknown> = { ...beforeRow, ...sources, ...patch };
     const outcomes = (
       await resolveSlugsForWrite(ctx, collection, merged, { excludeId: id, db: env.db })
     ).filter((o) => patch[o.field] !== undefined);
@@ -1064,7 +1270,13 @@ export const performUpdate = async (
   // `beforeRow` is the deserialized snapshot taken before any change; the patch
   // laid over it is what will exist. Columns the patch does not mention keep
   // their old values, which is exactly what the condition should see.
-  assertWriteConditions(env, perm, { ...beforeRow, ...patch }, "update");
+  assertWriteConditions(
+    env,
+    perm,
+    { ...beforeRow, ...patch },
+    "update",
+    await localizedJudgeValues(ctx, collection, env, perm, localeSplit, id, adoptedLocale),
+  );
 
   if (sets.length > 0) {
     await emit(

@@ -3,7 +3,7 @@ import { AppError } from "@backlex/core";
 import { type FieldDef, i18nTableName, isLocalized, validateValue } from "@backlex/db";
 import type { Ctx } from "../../context";
 import { deserialize, serialize } from "./serialize";
-import { queryAll } from "./sql-helpers";
+import { execute, queryAll } from "./sql-helpers";
 
 /** Alias for the requested-locale sidecar join (single-locale read). */
 export const I18N_REQ_ALIAS = "i18n_req";
@@ -24,6 +24,9 @@ export const I18N_DEF_ALIAS = "i18n_def";
  */
 
 export interface LocaleSplit {
+  /** Localized values written with no locale stated. Empty on a `?locale=`
+   *  write and on one that states `{locale: value}` maps. */
+  bare: Record<string, unknown>;
   /** locale → { fieldName → native value }. A `null` value clears that column
    *  for that locale. */
   localePatches: Map<string, Record<string, unknown>>;
@@ -47,6 +50,9 @@ export const splitLocalized = (
 ): LocaleSplit => {
   const localePatches = new Map<string, Record<string, unknown>>();
   const clearAll = new Set<string>();
+  /** Values sent without a locale — the caller files them under the workspace
+   *  default once it has resolved it. */
+  const bare: Record<string, unknown> = {};
   const put = (loc: string, name: string, val: unknown): void => {
     let m = localePatches.get(loc);
     if (!m) {
@@ -74,12 +80,24 @@ export const splitLocalized = (
       for (const [loc, val] of Object.entries(v)) put(loc, f.name, val);
       continue;
     }
-    throw new AppError(
-      "VALIDATION",
-      `Field "${f.name}" is localized — send {locale: value} or set ?locale=xx`,
-    );
+    // A bare value on a locale-less write is the workspace's default language.
+    //
+    // This used to be a 422 saying "send {locale: value} or set ?locale=xx",
+    // and the strictness was defensible in isolation: it stops a Turkish title
+    // being filed under `en` because nobody said. But it made localizing an
+    // EXISTING column a breaking change for every writer — `products.create({
+    // name })` is the first line of both examples, every doc snippet and the
+    // SDK's own quickstart — so no field already in use could ever adopt it,
+    // which is most of them.
+    //
+    // Resolved lazily by the caller (`bare` is only inspected when non-empty)
+    // so the settings read costs nothing on a write that states its locale.
+    // Nothing else in the stack is stricter than this: reads fall back to the
+    // default locale, the slug fold takes it, and a bare template sample means
+    // it too.
+    bare[f.name] = v;
   }
-  return { localePatches, clearAll };
+  return { localePatches, clearAll, bare };
 };
 
 /** Whether the split carries any sidecar work. */
@@ -145,6 +163,64 @@ export const sidecarInsert = (
 };
 
 /**
+ * Move a column's existing values into the sidecar, the moment it becomes
+ * `localized`.
+ *
+ * Without this, turning `localized: true` on a POPULATED field silently empties
+ * it. Measured: a row reading `name: "Classic Tee"` answered `name: {}` on the
+ * next request — 200, no warning — because `applyCollection` is additive, so it
+ * adds the sidecar column and leaves the base one behind ORPHANED, with every
+ * read now looking somewhere the text is not. Worse, the search index still
+ * held the old string, so the row came back for a query and displayed nothing.
+ *
+ * The same reasoning as the rollup backfill one screen over: the applier gives
+ * a new column its neutral value, and a confidently-wrong answer is worse than
+ * an obviously-missing one.
+ *
+ * The base column is deliberately NOT dropped. Losing a column is what
+ * `dropField` is for — an audited, explicit act — and leaving it means the
+ * toggle is reversible. It is unread from here on.
+ *
+ * Set-based: one statement per field, whatever the row count.
+ *
+ * Scoped to `tenantId` when the collection is tenant-scoped, exactly as
+ * `backfillFts` is — a shared physical table would otherwise have one tenant's
+ * schema change write sidecar rows for every other tenant's rows. A global
+ * table has no `tenant_id` column to filter on.
+ */
+export const backfillNewlyLocalized = async (
+  ctx: Ctx,
+  physicalTable: string,
+  pkColumn: string,
+  defs: FieldDef[],
+  locale: string,
+  opts: { tenantScoped?: boolean; tenantId: string | null },
+): Promise<string[]> => {
+  const done: string[] = [];
+  const tenantWhere =
+    (opts.tenantScoped ?? true) && opts.tenantId
+      ? sql` AND ${sql.identifier("tenant_id")} = ${opts.tenantId}`
+      : sql``;
+  for (const f of defs) {
+    const col = sql.identifier(f.name);
+    try {
+      await execute(
+        ctx,
+        sql`INSERT INTO ${sql.identifier(i18nTableName(physicalTable))} (${sql.identifier("row_id")}, ${sql.identifier("locale")}, ${col})
+          SELECT ${sql.identifier(pkColumn)}, ${locale}, ${col} FROM ${sql.identifier(physicalTable)} WHERE ${col} IS NOT NULL${tenantWhere}
+          ON CONFLICT (${sql.identifier("row_id")}, ${sql.identifier("locale")}) DO UPDATE SET ${col} = excluded.${col}`,
+      );
+      done.push(f.name);
+    } catch (e) {
+      // Reported, never swallowed: a field whose text did not move is a field
+      // that just went blank, and the caller has to be told which one.
+      console.error(`[i18n] localize backfill failed for ${physicalTable}.${f.name}:`, e);
+    }
+  }
+  return done;
+};
+
+/**
  * UPSERT one locale row, setting ONLY the provided columns so other fields on
  * that locale row — and every other locale — are preserved. Both dialects accept
  * the `excluded.` alias in the conflict target.
@@ -196,6 +272,14 @@ export const echoLocalized = (
   }
   for (const [loc, fieldMap] of split.localePatches) {
     for (const [name, val] of Object.entries(fieldMap)) {
+      // A field sent as a bare value is echoed as one. Filing it under the
+      // default locale is a storage decision; answering `{en: "Widget"}` to a
+      // caller who wrote `"Widget"` would move the break rather than remove it
+      // — the response is what an optimistic client reconciles from.
+      if (name in split.bare) {
+        out[name] = split.bare[name];
+        continue;
+      }
       const cur = (out[name] as Record<string, unknown> | undefined) ?? {};
       cur[loc] = val;
       out[name] = cur;
@@ -203,6 +287,66 @@ export const echoLocalized = (
   }
   return out;
 };
+
+/**
+ * One scalar per localized field, for the consumers that need a single value
+ * rather than a per-locale map.
+ *
+ * Slug derivation is the caller that forced this. A slug column is `unique`, so
+ * it cannot itself be localized — there is one handle per row whatever language
+ * the title is read in — and `resolveSlug` reads its `from` sources off the
+ * payload, which `splitLocalized` has already emptied. The result was a silent
+ * `null`: creating a product whose `name` was localized produced a row with no
+ * URL handle at all, with a 201 and no warning.
+ *
+ * `order` is tried in turn — the write's own `?locale=`, then the workspace
+ * default — and anything still unresolved falls back to the lowest-sorted
+ * locale that has a value. Sorted rather than first-seen so two identical
+ * writes cannot fold to two different slugs depending on key order.
+ */
+export const pickLocalizedValues = (
+  byLocale: Iterable<[string, Record<string, unknown>]>,
+  order: Array<string | null | undefined>,
+): Record<string, unknown> => {
+  const locales = [...byLocale];
+  const preferred = order.filter((l): l is string => Boolean(l) && l !== "*");
+  const out: Record<string, unknown> = {};
+  const names = new Set<string>();
+  for (const [, fields] of locales) for (const n of Object.keys(fields)) names.add(n);
+  const has = (v: unknown): boolean => v !== null && v !== undefined && v !== "";
+  for (const name of names) {
+    let picked: unknown;
+    for (const loc of preferred) {
+      const v = locales.find(([l]) => l === loc)?.[1][name];
+      if (has(v)) {
+        picked = v;
+        break;
+      }
+    }
+    if (picked === undefined) {
+      for (const [, fields] of [...locales].sort((a, b) => a[0].localeCompare(b[0]))) {
+        if (has(fields[name])) {
+          picked = fields[name];
+          break;
+        }
+      }
+    }
+    if (picked !== undefined) out[name] = picked;
+  }
+  return out;
+};
+
+/** Sidecar rows (`{locale, …fields}`) in the shape {@link pickLocalizedValues}
+ *  reads — used when the source of a slug was not part of this write. */
+export const sidecarByLocale = (
+  rows: Array<Record<string, unknown>>,
+  defs: FieldDef[],
+): Array<[string, Record<string, unknown>]> =>
+  rows.map((r) => {
+    const fields: Record<string, unknown> = {};
+    for (const f of defs) if (f.name in r) fields[f.name] = r[f.name];
+    return [String(r.locale), fields] as [string, Record<string, unknown>];
+  });
 
 // ── Read side ───────────────────────────────────────────────────────────────
 

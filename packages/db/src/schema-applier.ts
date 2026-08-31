@@ -82,10 +82,12 @@ interface CollectionShape {
   adopted?: boolean;
 }
 
-/** Whether a field contributes to the full-text index — `searchable` and a
- *  text-like type. Mirrors the vectorize `text`/`longtext`-only rule. */
+/** Whether a field contributes to the full-text index — `searchable`, a
+ *  text-like type, and not `private`. Mirrors the vectorize rule, and must stay
+ *  in step with `services/fts.ts`'s copy: that one decides what gets INDEXED,
+ *  this one decides whether the index objects are created at all. */
 const isFtsField = (f: FieldDef): boolean =>
-  Boolean(f.searchable) && (f.type === "text" || f.type === "longtext");
+  Boolean(f.searchable) && !f.private && (f.type === "text" || f.type === "longtext");
 
 /**
  * Create the full-text-search index objects for a managed collection.

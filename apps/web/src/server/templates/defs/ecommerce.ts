@@ -52,22 +52,25 @@ export const ecommerce: SchemaTemplate = {
       fields: [image("file"), ...half(text("alt", { label: "Alt text" }), position())],
     },
     {
-      slug: "brands", group: "Catalog", singular: "Brand", plural: "Brands", defaultSort: "name",
-      fields: [...half(text("name", { required: true }), slugField("name")), ...half(image("logo"), url("website"))],
+      slug: "brands", group: "Catalog", singular: "Brand", plural: "Brands", defaultSort: "slug",
+      fields: [...half(text("name", { localized: true, required: true }), slugField("name")), ...half(image("logo"), url("website"))],
       samples: [{ name: "Northwind", slug: "northwind" }, { name: "Acme", slug: "acme" }],
     },
     {
       // Hierarchical navigation tree (Saleor / BigCommerce category model).
       slug: "categories", group: "Catalog", singular: "Category", plural: "Categories", defaultSort: "position",
       fields: [
-        ...half(text("name", { required: true }), slugField("name")),
-        notes("description"),
+        ...half(text("name", { localized: true, required: true }), slugField("name")),
+        notes("description", { localized: true }),
         ...half(parent("categories"), image("image")),
         ...half(position("parent"), flag("visible", { label: "Visible" })),
       ],
       samples: [
-        { name: "Apparel", slug: "apparel", position: 1 },
-        { name: "Accessories", slug: "accessories", position: 2 },
+        // Per-locale sample values. `slug` stays one handle for every language —
+        // it is `unique`, which a localized column cannot be — and folds from
+        // the workspace's default locale.
+        { name: { en: "Apparel", tr: "Giyim" }, slug: "apparel", position: 1 },
+        { name: { en: "Accessories", tr: "Aksesuar" }, slug: "accessories", position: 2 },
       ],
     },
     {
@@ -75,8 +78,8 @@ export const ecommerce: SchemaTemplate = {
       slug: "collections", group: "Catalog", singular: "Collection", plural: "Collections", defaultSort: "position",
       fields: stacked(
         sec("Collection", [
-          ...half(text("title", { required: true }), slugField("title")),
-          notes("description"),
+          ...half(text("title", { localized: true, required: true }), slugField("title")),
+          notes("description", { localized: true }),
           image("image"),
         ]),
         sec("Merchandising", [
@@ -99,15 +102,15 @@ export const ecommerce: SchemaTemplate = {
     {
       // Storefront content page (Shopify Storefront `page`). A store needs
       // About / Shipping policy / FAQ without pulling in the whole blog model.
-      slug: "pages", group: "Storefront", singular: "Page", plural: "Pages", versioned: true, fts: true, defaultSort: "title",
+      slug: "pages", group: "Storefront", singular: "Page", plural: "Pages", versioned: true, fts: true, defaultSort: "slug",
       fields: stacked(
         sec("Content", [
-          ...half(text("title", { required: true, searchable: true }), slugField("title")),
-          { name: "body", type: "longtext", interface: "richtext", searchable: true },
+          ...half(text("title", { localized: true, required: true, searchable: true }), slugField("title")),
+          { name: "body", type: "longtext", interface: "richtext", localized: true, searchable: true },
         ]),
         sec("SEO", [
-          text("seo_title", { label: "SEO title" }),
-          notes("seo_description", { label: "SEO description" }),
+          text("seo_title", { localized: true, label: "SEO title" }),
+          notes("seo_description", { localized: true, label: "SEO description" }),
           flag("visible"),
         ], { folded: true }),
       ),
@@ -186,8 +189,14 @@ export const ecommerce: SchemaTemplate = {
         notes("value", { required: true, searchable: true }),
       ],
       samples: [
-        { collection: "categories", row_id: "seed-apparel", field: "name", locale: "tr", value: "Giyim" },
-        { collection: "categories", row_id: "seed-accessories", field: "name", locale: "tr", value: "Aksesuar" },
+        // Deliberately NOT a `localized` column. `categories.name` carries its
+        // own per-locale values now, and a row here naming it would be a second
+        // source of truth for one string. This table is the escape hatch for
+        // columns the schema does not localize — a merchant can translate one
+        // without a schema change, at the cost of the storefront doing the
+        // lookup itself.
+        { collection: "shipping_rates", row_id: "seed-standard", field: "name", locale: "tr", value: "Standart" },
+        { collection: "return_reasons", row_id: "seed-too-small", field: "reason", locale: "tr", value: "Çok küçük" },
       ],
     },
     {
@@ -463,11 +472,11 @@ export const ecommerce: SchemaTemplate = {
       ],
     },
     {
-      slug: "products", group: "Catalog", singular: "Product", plural: "Products", versioned: true, vectorize: true, fts: true, defaultSort: "name",
+      slug: "products", group: "Catalog", singular: "Product", plural: "Products", versioned: true, vectorize: true, fts: true, defaultSort: "slug",
       fields: tabbed(
         sec("Basics", [
-          ...half(text("name", { required: true, vectorize: true, searchable: true }), slugField("name")),
-          { name: "description", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
+          ...half(text("name", { localized: true, required: true, vectorize: true, searchable: true }), slugField("name")),
+          { name: "description", type: "longtext", interface: "richtext", localized: true, vectorize: true, searchable: true },
           ...half(
             // The product's own lifecycle, and the one every store has whether
             // or not it uses channels. Per-channel publication is a listing row;
@@ -529,12 +538,12 @@ export const ecommerce: SchemaTemplate = {
           ...half(ts("published_at", { indexed: true, label: "Published at" }), ts("available_from", { label: "Buyable from" })),
           ...half(
             ts("preorder_release_at", { label: "Pre-order release" }),
-            text("preorder_message", { label: "Pre-order message", description: "Shown instead of the stock line while the release date is in the future." }),
+            text("preorder_message", { localized: true, label: "Pre-order message", description: "Shown instead of the stock line while the release date is in the future." }),
           ),
         ]),
         sec("Storefront", [
-          text("seo_title", { label: "SEO title" }),
-          notes("seo_description", { label: "SEO description" }),
+          text("seo_title", { localized: true, label: "SEO title" }),
+          notes("seo_description", { localized: true, label: "SEO description" }),
           // Kept by the server from approved reviews, so the storefront can sort
           // and filter by rating without counting rows on every request.
           ...half(

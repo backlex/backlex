@@ -34,6 +34,7 @@ import {
 
 const meta: VectorizeMeta = {
   slug: "articles",
+  physicalTable: "c_t1_articles",
   vectorize: true,
   vectorizeModel: "bge-m3",
   fields: [{ name: "body", type: "longtext", vectorize: true } as never],

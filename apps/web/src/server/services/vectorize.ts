@@ -1,10 +1,16 @@
 import { isEmbeddingModel, type EmbeddingModel } from "@backlex/core";
-import type { FieldDef } from "@backlex/db";
+import { type FieldDef, isLocalized } from "@backlex/db";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
+import { loadSidecarForRow, loadSidecarForRows } from "./items/i18n-sidecar";
 
 export interface VectorizeMeta {
   slug: string;
+  /** Needed to reach the `__i18n` sidecar, where a `localized` field's value
+   *  lives. Required rather than optional on purpose: an optional one would let
+   *  a new caller drop localized text out of the embedding with nothing to
+   *  notice, which is the exact failure this field was added to end. */
+  physicalTable: string;
   vectorize: boolean;
   vectorizeModel: string | null;
   fields: FieldDef[];
@@ -14,14 +20,29 @@ export interface VectorizeMeta {
  *  flagged `vectorize: true` on the collection's field defs. Non-string
  *  fields are coerced via `String(...)` — skipped if empty/null. Returns
  *  empty string when nothing is fit to embed (caller skips). */
+/** Vectorizable text, `private` excluded for the reason spelled out on
+ *  `services/fts.ts`'s `isFtsField`: the embedding backfill reads rows with
+ *  `SELECT *` and scrubs nothing, so a private field's text became semantically
+ *  searchable the first time anyone re-embedded a collection. */
+const isVectorField = (f: FieldDef): boolean =>
+  Boolean(f.vectorize) && !f.private && (f.type === "text" || f.type === "longtext");
+
+/** The `vectorize` text fields whose value lives in the `__i18n` sidecar. */
+const localizedVectorFields = (fields: FieldDef[]): FieldDef[] =>
+  fields.filter((f) => isVectorField(f) && isLocalized(f));
+
 const buildText = (
   row: Record<string, unknown>,
   fields: FieldDef[],
 ): string => {
   const parts: string[] = [];
   for (const f of fields) {
-    if (!f.vectorize) continue;
-    if (f.type !== "text" && f.type !== "longtext") continue;
+    // Localized fields are supplied by `sidecarVectorText`. This row does not
+    // hold their value: create deletes them from the payload, a concrete-locale
+    // PATCH echoes one locale, and a locale-less PATCH echoes a map that
+    // `String(...)` renders as "[object Object]". Same defect the FTS index
+    // carried; see `services/fts.ts`.
+    if (!isVectorField(f) || isLocalized(f)) continue;
     const v = row[f.name];
     if (v === null || v === undefined) continue;
     const s = String(v).trim();
@@ -30,6 +51,28 @@ const buildText = (
   }
   return parts.join("\n");
 };
+
+/** Every locale's text for the localized `vectorize` fields, sidecar rows in.
+ *  One embedding covers all locales, matching the FTS index's one-blob shape —
+ *  a multilingual model then answers a query in any of them. */
+const sidecarVectorText = (
+  sidecarRows: Array<Record<string, unknown>>,
+  defs: FieldDef[],
+): string => {
+  const parts: string[] = [];
+  for (const r of sidecarRows) {
+    for (const f of defs) {
+      const v = r[f.name];
+      if (v === null || v === undefined) continue;
+      const str = String(v).trim();
+      if (str) parts.push(`${f.name}: ${str}`);
+    }
+  }
+  return parts.join("\n");
+};
+
+const joinText = (base: string, extra: string): string =>
+  base && extra ? `${base}\n${extra}` : base || extra;
 
 /**
  * How much text goes into one vector.
@@ -323,7 +366,16 @@ export const embedAndUpsert = async (
   if (!meta.vectorize) return;
   const model = resolveModel(meta, ctx.env);
   if (!model) return;
-  const text = buildText(row, meta.fields);
+  const locDefs = localizedVectorFields(meta.fields);
+  let text = buildText(row, meta.fields);
+  if (locDefs.length > 0) {
+    try {
+      const sc = await loadSidecarForRow(ctx, meta.physicalTable, itemId, locDefs);
+      text = joinText(text, sidecarVectorText(sc, locDefs));
+    } catch (e) {
+      console.error(`[vectorize] sidecar read failed for ${meta.physicalTable}/${itemId}:`, e);
+    }
+  }
   if (!text) {
     // Nothing to embed — also delete any prior vector so stale text doesn't
     // linger after a user empties every vectorized field.
@@ -370,8 +422,24 @@ export const embedAndUpsertBatch = async (
   if (!meta.vectorize) return 0;
   const model = resolveModel(meta, ctx.env);
   if (!model) return 0;
+  const locDefs = localizedVectorFields(meta.fields);
+  // One sidecar query for the batch — per row it would be an N+1 inside a
+  // backfill that already walks the whole collection.
+  let sidecars = new Map<string, Array<Record<string, unknown>>>();
+  if (locDefs.length > 0) {
+    try {
+      sidecars = await loadSidecarForRows(ctx, meta.physicalTable, rows.map((r) => r.id), locDefs);
+    } catch (e) {
+      console.error(`[vectorize] sidecar batch read failed for ${meta.physicalTable}:`, e);
+    }
+  }
   const prepared = rows
-    .map(({ id, row }) => ({ id, chunks: chunkText(buildText(row, meta.fields)) }))
+    .map(({ id, row }) => ({
+      id,
+      chunks: chunkText(
+        joinText(buildText(row, meta.fields), sidecarVectorText(sidecars.get(id) ?? [], locDefs)),
+      ),
+    }))
     .filter((r) => r.chunks.length > 0);
   if (prepared.length === 0) return 0;
   // One provider call for the whole batch's chunks, then each row's records

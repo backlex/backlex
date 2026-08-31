@@ -988,6 +988,7 @@ export async function applyTemplateDefinition(
         if (rich.embedding && rich.vector && rich.env && out.rows.length) {
           const meta: VectorizeMeta = {
             slug: col.slug,
+            physicalTable: derivePhysicalTable(tenantId, col.slug),
             vectorize: !!col.vectorize,
             vectorizeModel: col.vectorizeModel ?? null,
             fields: col.fields,
@@ -1212,6 +1213,7 @@ export async function clearTemplateSamples(
           ctx,
           {
             slug,
+            physicalTable: col.physicalTable,
             vectorize: true,
             vectorizeModel: col.vectorizeModel ?? null,
             fields: col.fields ?? [],

@@ -2253,6 +2253,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     const r = rows[0] as Record<string, unknown>;
     const meta = {
       slug,
+      physicalTable: (r.physicalTable ?? r.physical_table) as string,
       vectorize: Boolean(r.vectorize),
       vectorizeModel:
         ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ??

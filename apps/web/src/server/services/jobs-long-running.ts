@@ -410,6 +410,7 @@ const reindexVector = async (
 ): Promise<unknown> => {
   const meta = {
     slug: collection.slug,
+    physicalTable: collection.physicalTable,
     vectorize: collection.vectorize,
     vectorizeModel: collection.vectorizeModel,
     fields: collection.fields,

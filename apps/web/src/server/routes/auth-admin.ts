@@ -553,20 +553,36 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         removed += 1;
       }
 
-      // Scoped to the caller's own keys in the active workspace, the same seat
-      // the sessions above belong to. A key with `revoked_at` already set is
-      // not live and is neither counted nor re-revoked.
+      // Scoped to the caller's own keys IN THE ACTIVE WORKSPACE. Both halves
+      // are load-bearing and the second one was added because
+      // `scripts/scan-tenant-scope.ts` refused the query without it — rightly:
+      // `api_keys` carries a `tenant_id` and `sessions` does not, which is this
+      // codebase saying that a key belongs to a workspace while a session
+      // belongs to an account. Dropping the tenant predicate would let a
+      // sign-out on workspace A kill the key a job runs against workspace B.
+      //
+      // The residual, stated rather than left to be discovered: keys the caller
+      // holds in their OTHER workspaces are out of reach from here, so an
+      // account-level compromise still needs this run once per workspace.
+      const keyScope = and(
+        eq(t.apiKeys.tenantId, auth.tenantId!),
+        eq(t.apiKeys.userId, auth.userId!),
+        // Already-revoked keys are not live: neither counted nor revoked twice.
+        isNull(t.apiKeys.revokedAt),
+      );
       const liveKeys = await (ctx.db as any)
         .select({ id: t.apiKeys.id })
         .from(t.apiKeys)
-        .where(and(eq(t.apiKeys.userId, auth.userId!), isNull(t.apiKeys.revokedAt)));
+        .where(keyScope);
       let apiKeysRevoked = 0;
       if (c.req.query("apiKeys") === "1") {
         for (const k of liveKeys as { id: string }[]) {
           await (ctx.db as any)
             .update(t.apiKeys)
             .set({ revokedAt: new Date() })
-            .where(eq(t.apiKeys.id, k.id));
+            // Re-stating the scope on the write, not just `id`: the scanner
+            // reads each statement on its own, and so does anyone auditing it.
+            .where(and(eq(t.apiKeys.id, k.id), keyScope));
           apiKeysRevoked += 1;
         }
       }

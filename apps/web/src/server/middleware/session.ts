@@ -343,11 +343,19 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   let oauthClientId: string | null = null;
 
   // Cookie session resolution, with a per-isolate cache keyed on the signed
-  // `*.session_token` cookie. better-auth's getSession costs ~2 D1 round-trips
-  // and its own cookieCache only short-circuits on `/api/auth/*`, not here — so
-  // without this cache every authenticated request paid the DB hit. See
+  // `*.session_token` cookie. better-auth's getSession costs ~2 D1 round-trips,
+  // so without this cache every authenticated request paid the DB hit. See
   // services/permissions-cache `CachedSession` for the safety rationale (key is
   // the signed cookie; TTL < better-auth's 60s cookieCache).
+  //
+  // This comment used to say better-auth's own `cookieCache` "only
+  // short-circuits on `/api/auth/*`, not here". **That is false**, and the
+  // difference matters because it is the whole cost side of the revocation-lag
+  // trade. Measured: revoke a device, clear THIS cache, then ask `/api/me` with
+  // the same session token — 401 without the `session_data` cookie, 200 with
+  // it. `cookieCache` answers here too, so shortening its `maxAge` buys a
+  // shorter lag at the price of a real session read on every route, not just on
+  // better-auth's own.
   let sessionToken: string | undefined;
   // App-plane cookies are namespaced `wo_<tenantSlug>.session_token` (see
   // packages/auth/src/tenant.ts `advanced.cookiePrefix`). They must NOT be fed

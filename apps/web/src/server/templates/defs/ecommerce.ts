@@ -45,7 +45,7 @@ export const ecommerce: SchemaTemplate = {
   label: "E-commerce",
   groups: ["Catalog", "Channels & pricing", "Inventory", "Customers", "Orders", "Post-purchase", "Marketing", "Storefront", "Shipping & tax"],
   description:
-    "A full commerce model: products with typed attributes, options, variants and non-stocked modifiers; sales channels with per-channel publication, price lists, quantity breaks and multi-currency; multi-location inventory with reservations and a movement ledger; carts with lines, orders with a lifecycle separate from payment and delivery, consignments for pickup and split shipments, per-line tax, coded and automatic promotions, gift-card ledgers, returns/exchanges/claims, subscriptions — plus the storefront itself: pages, menus, redirects and content translations.",
+    "A full commerce model: products with typed attributes, options, variants and non-stocked modifiers; sales channels with per-channel publication, price lists, quantity breaks and multi-currency; discounts and shipping rates priced and scoped per channel; multi-location inventory with reservations and a movement ledger; carts with lines, orders with a lifecycle separate from payment and delivery, consignments for pickup and split shipments, per-line tax, coded and automatic promotions, gift-card ledgers, returns/exchanges/claims, subscriptions — plus the storefront itself: pages, menus, redirects and content translations.",
   collections: [
     {
       slug: "media", group: "Catalog", singular: "Media", plural: "Media",
@@ -339,6 +339,7 @@ export const ecommerce: SchemaTemplate = {
       slug: "shipping_rates", group: "Shipping & tax", singular: "Shipping rate", plural: "Shipping rates", defaultSort: "price",
       fields: stacked(
         sec("Rate", [
+          hint("shipping_rates_channel_price", "The price here is what applies in a channel with no rate listing of its own. A zone can span channels that charge in different currencies, so a rate offered in more than one is priced per channel rather than converted."),
           ...half(text("name", { required: true }), rel("zone", "shipping_zones")),
           text("carrier"),
           ...half(moneyIn("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
@@ -372,6 +373,35 @@ export const ecommerce: SchemaTemplate = {
       ],
       samples: [
         { rate: { ref: "shipping_rates:1" }, attribute: "country", operator: "in", value: "US,CA" },
+      ],
+    },
+    {
+      // Saleor's `ShippingMethodChannelListing`. A rate is defined once, in a
+      // zone, and PRICED per channel — because the channel is what decides the
+      // currency the shopper is charged in, and $6.50 is not €6.50.
+      //
+      // A `channel` column on the rate itself would not do: the rate carries
+      // its eligibility rules as child rows, so scoping it that way duplicates
+      // the rate AND every rule under it once per channel. Saleor puts `price`,
+      // `minimumOrderPrice` and `maximumOrderPrice` on the listing for the same
+      // reason, and it is the shape `product_channel_listings` already uses
+      // here — availability on the listing, one row per (thing, channel).
+      slug: "shipping_rate_channel_listings", group: "Shipping & tax", singular: "Rate listing", plural: "Rate listings",
+      fields: [
+        hint("rate_listings_scope", "A rate with no listings at all is offered in every channel at its own price. Add a listing to narrow it to the channels named here, and to restate the price and threshold in each one's currency."),
+        ...half(
+          rel("rate", "shipping_rates", { required: true, label: "Rate" }),
+          rel("channel", "channels", { required: true, uniqueWith: ["rate"] }),
+        ),
+        ...half(moneyIn("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        ...half(moneyIn("min_order_subtotal", { label: "Minimum order subtotal" }), flag("active")),
+      ],
+      samples: [
+        { rate: { ref: "shipping_rates:0" }, channel: { ref: "channels:0" }, price: 6.5, currency: "USD", active: true },
+        // Priced for the euro storefront rather than converted into it: what a
+        // carrier charges in Europe is its own number, not $6.50 at today's rate.
+        { rate: { ref: "shipping_rates:0" }, channel: { ref: "channels:1" }, price: 7.5, currency: "EUR", active: true },
+        { rate: { ref: "shipping_rates:1" }, channel: { ref: "channels:0" }, price: 0, currency: "USD", min_order_subtotal: 75, active: true },
       ],
     },
     {
@@ -1107,6 +1137,7 @@ export const ecommerce: SchemaTemplate = {
           pct("get_discount_pct", { default: 100, label: "Discount on the free items (%)", conditions: [when("discount_type", "_neq", "buy_get", "hidden")] }),
         ]),
         sec("Limits", [
+          hint("discounts_channel_money", "The value, currency and minimum here are what applies in a channel with no listing of its own. A channel is denominated by one currency, so a fixed amount and a minimum only mean something once a discount listing restates them in that channel's."),
           ...half(
             select("target_selection", [ch("all", C.gray), ch("entitled", C.amber)], { default: "all", label: "Scope", description: "Entitled means only what the rules tab names — and with no target rule there, it names nothing and the discount comes off nothing." }),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", description: "The unit a fixed-amount value and the minimum below are in." }),
@@ -1153,6 +1184,46 @@ export const ecommerce: SchemaTemplate = {
       ],
       samples: [
         { discount: { ref: "discounts:1" }, scope: "condition", attribute: "country", operator: "in", value: "US,CA" },
+      ],
+    },
+    {
+      // Saleor's `VoucherChannelListing`, and the reason it has to be a row
+      // rather than a column on the discount: `discounts.code` is UNIQUE, so
+      // scoping a coupon with a `channel` relation would force one discount row
+      // per channel — and the same code could then never exist in two of them.
+      //
+      // It carries the money as well as the scope, which is the half that is
+      // easy to miss. A channel is denominated by one currency, so "$10 off"
+      // and "spend $75" mean nothing in the euro storefront. Saleor stores
+      // `discountValue`, `currency` and `minSpent` per listing for exactly that
+      // reason, and refuses a promotion rule that spans currencies at all
+      // (`MULTIPLE_CURRENCIES_NOT_ALLOWED`).
+      slug: "discount_channel_listings", group: "Marketing", singular: "Discount listing", plural: "Discount listings",
+      fields: [
+        hint("discount_listings_scope", "A discount with no listings at all applies in every channel at its own value. Add a listing to narrow it to the channels named here, and to restate the value and minimum in each one's currency."),
+        ...half(
+          rel("discount", "discounts", { required: true }),
+          rel("channel", "channels", { required: true, uniqueWith: ["discount"] }),
+        ),
+        ...half(
+          num("value", {
+            validation: { min: 0 },
+            label: "Value in this channel",
+            description: "A percentage is the same number everywhere; a fixed amount is its own number in each currency, never a conversion of one.",
+          }),
+          select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
+        ),
+        ...half(moneyIn("minimum_amount", { label: "Minimum order amount" }), flag("active")),
+      ],
+      samples: [
+        // Neither discount is listed on the POS channel, which is the narrowing
+        // half: a coupon that runs online and not at the counter.
+        { discount: { ref: "discounts:0" }, channel: { ref: "channels:0" }, value: 10, currency: "USD", active: true },
+        { discount: { ref: "discounts:0" }, channel: { ref: "channels:1" }, value: 10, currency: "EUR", active: true },
+        { discount: { ref: "discounts:1" }, channel: { ref: "channels:0" }, value: 0, currency: "USD", minimum_amount: 75, active: true },
+        // The threshold that made this worth a table: €70 is what free shipping
+        // costs in Europe, not "$75, converted at checkout".
+        { discount: { ref: "discounts:1" }, channel: { ref: "channels:1" }, value: 0, currency: "EUR", minimum_amount: 70, active: true },
       ],
     },
     {

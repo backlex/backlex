@@ -279,6 +279,85 @@ describe("ecommerce model", () => {
     }
   });
 
+  test("a discount is listed once per channel, and the second row is refused", async () => {
+    // The defect: a discount had no channel scope at all, so "web only" could
+    // not be said and `discounts.code` being UNIQUE meant it could not be said
+    // by cloning the row either — the same coupon code cannot exist twice.
+    const discounts = await get("discounts?limit=10");
+    const channels = await get("channels?limit=10");
+    const pos = channels.data.find((c) => c.code === "pos-sf")!;
+    const welcome = discounts.data.find((d) => d.code === "WELCOME10")!;
+
+    // Seeded on the two web channels and deliberately not on the counter.
+    const listed = await get(`discount_channel_listings?${where({ discount: { _eq: welcome.id } })}&limit=10`);
+    expect(listed.data).toHaveLength(2);
+    expect(listed.data.some((l) => l.channel === pos.id)).toBe(false);
+
+    const first = await post("discount_channel_listings", {
+      discount: welcome.id,
+      channel: pos.id,
+      value: 10,
+      currency: "USD",
+    });
+    expect([200, 201]).toContain(first.status);
+    const again = await post("discount_channel_listings", {
+      discount: welcome.id,
+      channel: pos.id,
+      value: 5,
+      currency: "USD",
+    });
+    expect(again.status).toBe(409);
+  });
+
+  test("a per-channel threshold is its own number in that currency, never a conversion", async () => {
+    // The whole reason this is a table rather than a `channel` column. The
+    // model's own rule is that a channel is denominated by ONE currency, so a
+    // single `minimum_amount` on the discount was a dollar figure being
+    // compared against a euro subtotal — with nothing anywhere saying so.
+    const discounts = await get("discounts?limit=10");
+    const free = discounts.data.find((d) => d.name === "Free shipping over $75")!;
+    const rows = await get(`discount_channel_listings?${where({ discount: { _eq: free.id } })}&limit=10`);
+    const amounts = rows.data.map((r) => r.minimum_amount as { amount: number; currency: string });
+    expect(amounts.map((a) => `${a.amount} ${a.currency}`).sort()).toEqual(["70 EUR", "75 USD"]);
+
+    // And the amounts are genuinely denominated rather than two floats that
+    // happen to sit beside a currency label: summing across them is refused,
+    // which is the only difference that matters downstream.
+    const summed = await h.fetch(`/api/items/discount_channel_listings/aggregate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agg: "sum", field: "minimum_amount" }),
+    });
+    expect(summed.status).toBe(422);
+    // For the RIGHT reason: a 422 from a mistyped field name would satisfy the
+    // line above while proving nothing.
+    expect(JSON.stringify(await summed.json())).toMatch(/different currency per row/);
+
+    // Grouped by currency it answers, and the two totals are the two channels'
+    // thresholds — which is the shape a report has to read them in.
+    const perCurrency = await h.fetch(`/api/items/discount_channel_listings/aggregate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agg: "sum", field: "minimum_amount", groupBy: "currency" }),
+    });
+    expect(perCurrency.status).toBe(200);
+    const totals = ((await perCurrency.json()) as { data: { label: string; value: number }[] }).data;
+    expect(new Map(totals.map((t) => [t.label, Number(t.value)]))).toEqual(
+      new Map([["USD", 75], ["EUR", 70]]),
+    );
+  });
+
+  test("a shipping rate is priced per channel, and the euro price is not the dollar one", async () => {
+    // Same defect one table over: a zone can span channels that charge in
+    // different money, so a rate offered in both had one price and one currency
+    // for both of them.
+    const rates = await get("shipping_rates?limit=10");
+    const standard = rates.data.find((r) => r.name === "Standard")!;
+    const rows = await get(`shipping_rate_channel_listings?${where({ rate: { _eq: standard.id } })}&limit=10`);
+    const prices = rows.data.map((r) => r.price as { amount: number; currency: string });
+    expect(prices.map((p) => `${p.amount} ${p.currency}`).sort()).toEqual(["6.5 USD", "7.5 EUR"]);
+  });
+
   test("every collection the model needs is reachable from another one", () => {
     // The structural version of D1 and D9: a collection nothing points at is
     // either a root (a catalog, a setting) or a modelling hole. This lists the
@@ -303,6 +382,7 @@ describe("ecommerce model", () => {
       "fulfillment_items", "wishlist_items", "gift_card_transactions",
       "discount_rules", "shipping_rate_rules", "modifier_values",
       "cart_items", "redirects", "translations", "consignments", "transactions",
+      "discount_channel_listings", "shipping_rate_channel_listings",
     ]);
     const orphans = tpl.collections
       .map((c) => c.slug)

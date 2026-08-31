@@ -17,6 +17,7 @@
  * apply completes and the caller can see exactly what could not be seeded.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { TEMPLATES } from "../src/server/templates/catalog";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 interface ApplyResult {
@@ -54,9 +55,14 @@ describe("applying a template over a colliding one", () => {
   afterAll(() => h.cleanup());
 
   test("the apply completes rather than 500-ing on the first unresolvable ref", () => {
-    // 62 collections in the commerce model, one of which already existed.
+    // Everything the commerce model declares, minus the one name this workspace
+    // already owned. Derived rather than typed out: a hardcoded count breaks on
+    // the next collection the template gains and says nothing about the applier
+    // when it does — the property is "created + skipped covers the template",
+    // not "the number is 61".
+    const declared = TEMPLATES.find((t) => t.id === "ecommerce")!.collections.length;
     expect(second.skipped).toEqual(["customers"]);
-    expect(second.created.length).toBe(61);
+    expect(second.created.length).toBe(declared - second.skipped.length);
   });
 
   test("every collection the template names exists afterwards", async () => {

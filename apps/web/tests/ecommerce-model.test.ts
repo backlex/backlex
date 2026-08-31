@@ -80,6 +80,169 @@ describe("ecommerce model", () => {
     expect(resolved?.sku).toBe("TEE-001-S-BLK");
   });
 
+  test("a configured line totals base plus options, and an unconfigured one still totals", async () => {
+    // The defect: `line_total` was `qty * unit_price` while the chosen options
+    // were free text in a `tags` column, so a configured unit's price was
+    // whatever a storefront happened to fold into `unit_price` — the breakdown
+    // could not be shown back and the figure could not be rechecked.
+    //
+    // Adding the options to the generated column is only half of it. A bare
+    // `unit_price + options_total` is NULL for every line that configures
+    // nothing, so the ordinary lines — the overwhelming majority — would have
+    // silently lost their total the day this column arrived. Hence COALESCE,
+    // and hence the second half of this test.
+    const orders = await get("orders?limit=5");
+    const products = await get("products?limit=5");
+    const variants = await get("product_variants?limit=10");
+
+    const configured = await post("order_items", {
+      order: orders.data[0]!.id,
+      product: products.data[0]!.id,
+      variant: variants.data[0]!.id,
+      title: "Classic Tee — S / Black",
+      qty: 2,
+      unit_price: 25,
+      options_total: 5,
+      currency: "USD",
+    });
+    expect([200, 201]).toContain(configured.status);
+    const { data: line } = (await configured.json()) as { data: { id: string } };
+    // Read back — a generated column is only known once the database has it.
+    expect((await one("order_items", line.id)).line_total).toEqual({ amount: 60, currency: "USD" });
+
+    const plain = await post("order_items", {
+      order: orders.data[0]!.id,
+      product: products.data[0]!.id,
+      title: "Nothing configured",
+      qty: 3,
+      unit_price: 10,
+      currency: "USD",
+    });
+    expect([200, 201]).toContain(plain.status);
+    const { data: bare } = (await plain.json()) as { data: { id: string } };
+    expect((await one("order_items", bare.id)).line_total).toEqual({ amount: 30, currency: "USD" });
+
+    // Generated, so it is refused as input — like every other derived amount.
+    expect((await patch("order_items", line.id, { line_total: 1 })).status).toBe(422);
+  });
+
+  test("one product carries the same option set in more than one slot", async () => {
+    // The case a per-product option list cannot express at all. A machine with
+    // four drive bays prices and stocks each bay on its own, so the four are
+    // four SLOTS over ONE shared set — not one option picked four times, and
+    // not four duplicated lists that drift apart on the first price change.
+    // Uniqueness on (product, set) would forbid exactly this, which is why
+    // there is none, and why that absence needs a test to stay deliberate.
+    const products = await get("products?limit=5");
+    const machine = products.data[0]!.id;
+
+    const set = await post("modifier_sets", {
+      name: "M.2 SSD",
+      code: "SSD",
+      input_type: "choice",
+      min_select: 0,
+      max_select: 1,
+      active: true,
+    });
+    expect([200, 201]).toContain(set.status);
+    const { data: ssd } = (await set.json()) as { data: { id: string } };
+
+    for (const bay of [1, 2, 3, 4]) {
+      const made = await post("product_modifiers", {
+        product: machine,
+        modifier_set: ssd.id,
+        label: `Drive bay ${bay}`,
+        position: 100 + bay,
+      });
+      expect([200, 201]).toContain(made.status);
+    }
+
+    const slots = await get(
+      `product_modifiers?${where({ product: { _eq: machine }, modifier_set: { _eq: ssd.id } })}&limit=20`,
+    );
+    expect(slots.data).toHaveLength(4);
+    // Four rows over one set, each separately labelled — that is the whole point.
+    expect(new Set(slots.data.map((s) => s.label)).size).toBe(4);
+  });
+
+  test("a chosen option is a reference, and names the component it consumes", async () => {
+    // The defect: `modifier_values` was reachable from NOTHING — the
+    // reachability test at the bottom of this file listed it among the roots,
+    // which is how an orphan hides. A choice could be defined and priced, a
+    // storefront could show it, and the line that was sold recorded a
+    // name/value pair of free text. So the price could not be recomputed, the
+    // upgrade could not be counted, and the part it consumed could not be taken
+    // off the shelf.
+    const products = await get("products?limit=5");
+    const variants = await get("product_variants?limit=10");
+    const orders = await get("orders?limit=5");
+    const component = variants.data[1]!;
+
+    const set = await post("modifier_sets", {
+      name: "Memory", code: "RAM", input_type: "choice", min_select: 1, max_select: 1, active: true,
+    });
+    const { data: ram } = (await set.json()) as { data: { id: string } };
+
+    const upgrade = await post("modifier_values", {
+      modifier_set: ram.id,
+      label: "32 GB",
+      code: "32GB",
+      adjustment_type: "fixed_amount",
+      price_adjustment: 240,
+      currency: "USD",
+      // The half BigCommerce's modifiers deliberately cannot do: a choice that
+      // consumes a real, stocked unit.
+      component_variant: component.id,
+      consumes_qty: 2,
+      position: 1,
+      active: true,
+    });
+    expect([200, 201]).toContain(upgrade.status);
+    const { data: gb32 } = (await upgrade.json()) as { data: { id: string } };
+
+    const slot = await post("product_modifiers", {
+      product: products.data[0]!.id, modifier_set: ram.id, label: "Memory", is_required: true, position: 200,
+    });
+    const { data: memorySlot } = (await slot.json()) as { data: { id: string } };
+
+    const sold = await post("order_items", {
+      order: orders.data[0]!.id, product: products.data[0]!.id,
+      title: "Configured machine", qty: 1, unit_price: 1200, options_total: 240,
+      currency: "USD", config_code: "TEE/32GB",
+    });
+    const { data: soldLine } = (await sold.json()) as { data: { id: string } };
+
+    const chosen = await post("order_item_options", {
+      line: soldLine.id,
+      modifier: memorySlot.id,
+      value: gb32.id,
+      label: "32 GB",
+      qty: 1,
+      price_adjustment: 240,
+      currency: "USD",
+      component_variant: component.id,
+      position: 1,
+    });
+    expect([200, 201]).toContain(chosen.status);
+
+    // The chain the free-text column could not make: line → slot → choice →
+    // the stocked unit a picker has to fit.
+    const rows = await get(`order_item_options?${where({ line: { _eq: soldLine.id } })}&limit=10`);
+    expect(rows.data).toHaveLength(1);
+    const row = rows.data[0]!;
+    expect(row.value).toBe(gb32.id);
+    expect(row.price_adjustment).toEqual({ amount: 240, currency: "USD" });
+    expect(row.component_variant).toBe(component.id);
+
+    // And the line's own total agrees with what its options came to — the
+    // question "does the price match the build" now HAS an answer.
+    const sum = rows.data.reduce(
+      (acc, r) => acc + ((r.price_adjustment as { amount: number } | null)?.amount ?? 0) * Number(r.qty ?? 1),
+      0,
+    );
+    expect((await one("order_items", soldLine.id)).options_total).toEqual({ amount: sum, currency: "USD" });
+  });
+
   test("available is generated from on hand minus committed, and NEITHER can be written", async () => {
     // The defect: `available` was a third integer with a hint telling the
     // operator to keep all three consistent by hand. It is a definition, not a
@@ -259,10 +422,13 @@ describe("ecommerce model", () => {
       const unit = l.unit_price as unknown as { amount: number; currency: string };
       const total = l.line_total as unknown as { amount: number; currency: string };
       const tax = l.tax_amount as unknown as { amount: number; currency: string } | null;
+      const options = l.options_total as unknown as { amount: number } | null;
       expect(typeof unit.currency).toBe("string");
       // The computed column still works alongside the new ones, and keeps the
-      // unit rather than handing back a bare count of minor units.
-      expect(total.amount).toBe(Number(l.qty) * unit.amount);
+      // unit rather than handing back a bare count of minor units. The base and
+      // the configured half are separate columns and one total — a line that
+      // configures nothing contributes 0 here rather than NULLing the total.
+      expect(total.amount).toBe(Number(l.qty) * (unit.amount + (options?.amount ?? 0)));
       expect(total.currency).toBe(unit.currency);
       if (tax) expect(tax.currency).toBe(unit.currency);
     }
@@ -380,9 +546,10 @@ describe("ecommerce model", () => {
       "related_products", "variant_option_values", "product_attributes",
       "prices", "order_discounts", "order_items", "return_items",
       "fulfillment_items", "wishlist_items", "gift_card_transactions",
-      "discount_rules", "shipping_rate_rules", "modifier_values",
+      "discount_rules", "shipping_rate_rules", "modifier_rules",
       "cart_items", "redirects", "translations", "consignments", "transactions",
       "discount_channel_listings", "shipping_rate_channel_listings",
+      "cart_item_options", "order_item_options", "product_addons",
     ]);
     const orphans = tpl.collections
       .map((c) => c.slug)

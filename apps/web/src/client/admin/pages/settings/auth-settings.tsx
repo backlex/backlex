@@ -1,6 +1,7 @@
 import type { PushToast } from "../../types";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { Checkbox } from "@backlex/ui/components/checkbox";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
@@ -473,15 +474,39 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
       pushToast?.((e as Error).message);
     }
   };
-  const revokeOthers = async () => {
+  /**
+   * Sign out every other device.
+   *
+   * Optimistic: the rows go the moment the operator confirms, and come back if
+   * the call fails. `current` is the flag the server keeps this session by, so
+   * the client can predict the outcome exactly rather than waiting on a
+   * refetch to redraw the table.
+   */
+  const revokeOthers = async (alsoKeys: boolean) => {
+    const snapshot = sessions;
+    setSessions((arr) => arr.filter((sess) => sess.current));
     try {
-      const r = await authAdminApi.revokeOthers();
-      pushToast?.(t`Revoked ${r.removed} other session${r.removed === 1 ? "" : "s"}.`);
+      const r = await authAdminApi.revokeOthers({ apiKeys: alsoKeys });
+      const signedOut = t`Revoked ${r.removed} other session${r.removed === 1 ? "" : "s"}.`;
+      // The count is only worth saying when there is something to act on, and
+      // it has to be said out loud when it was NOT revoked — that is the gap
+      // this whole flow exists to make visible.
+      pushToast?.(
+        r.apiKeysRevoked > 0
+          ? `${signedOut} ${t`Also revoked ${r.apiKeysRevoked} API key${r.apiKeysRevoked === 1 ? "" : "s"}.`}`
+          : r.apiKeys > 0
+            ? `${signedOut} ${t`${r.apiKeys} API key${r.apiKeys === 1 ? "" : "s"} still grant access — API keys are not sessions.`}`
+            : signedOut,
+      );
       await loadSessions();
     } catch (e) {
+      setSessions(snapshot);
       pushToast?.((e as Error).message);
     }
   };
+
+  const [confirmRevokeOthers, setConfirmRevokeOthers] = useState(false);
+  const [alsoRevokeKeys, setAlsoRevokeKeys] = useState(false);
 
   const userCount = new Set(sessions.map((s) => s.user)).size;
 
@@ -814,7 +839,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           <span className="text-[13px] font-medium"><Trans>Active sessions</Trans></span>
           <span className="font-mono text-[11.5px] text-muted-foreground">{sessions.length} {sessions.length === 1 ? t`session` : t`sessions`} · {userCount} {userCount === 1 ? t`user` : t`users`}</span>
           <div className="flex-1" />
-          <Button size="sm" variant="outline" icon={I.LogOut} onClick={revokeOthers}><Trans>Revoke others</Trans></Button>
+          <Button size="sm" variant="outline" icon={I.LogOut} onClick={() => { setAlsoRevokeKeys(false); setConfirmRevokeOthers(true); }}><Trans>Revoke others</Trans></Button>
         </div>
         <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
           <TableHeader><TableRow><TableHead><Trans>User</Trans></TableHead><TableHead><Trans>Device</Trans></TableHead><TableHead><Trans>Location</Trans></TableHead><TableHead>IP</TableHead><TableHead><Trans>Created</Trans></TableHead><TableHead><Trans>Last seen</Trans></TableHead><TableHead className="sticky right-0 w-11 border-l border-border bg-card shadow-[-8px_0_12px_-8px_oklch(0_0_0/0.18)]" /></TableRow></TableHeader>
@@ -888,6 +913,48 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           onSave={(body, existing) => void saveOidcProvider(body, existing)}
         />
       )}
+      <ConfirmDialog
+        open={confirmRevokeOthers}
+        title={t`Sign out other devices?`}
+        description={
+          <span className="flex flex-col gap-2.5">
+            <span>
+              <Trans>
+                Every other session for your account is signed out. This one stays.
+              </Trans>
+            </span>
+            {/* The gap, stated where the decision is made. API keys are keyed on
+                the user and never on a session, so a sign-out has never touched
+                one — and a stolen session is long-lived enough to mint a key
+                that outlives it. Off by default because the same key routinely
+                powers a CI job or a server integration that has nothing to do
+                with the device being signed out. */}
+            <label className="flex cursor-pointer items-start gap-2 text-[13px] leading-snug">
+              <Checkbox
+                className="mt-0.5 shrink-0"
+                checked={alsoRevokeKeys}
+                onCheckedChange={(v) => setAlsoRevokeKeys(v === true)}
+              />
+              <span>
+                <Trans>Also revoke my API keys</Trans>
+                <span className="block text-muted-foreground">
+                  <Trans>
+                    API keys are not sessions and survive a sign-out. Revoking them
+                    breaks anything using them — CI jobs, server integrations.
+                  </Trans>
+                </span>
+              </span>
+            </label>
+          </span>
+        }
+        actionLabel={alsoRevokeKeys ? t`Revoke sessions and keys` : t`Revoke sessions`}
+        destructive={alsoRevokeKeys}
+        onConfirm={async () => {
+          setConfirmRevokeOthers(false);
+          await revokeOthers(alsoRevokeKeys);
+        }}
+        onCancel={() => setConfirmRevokeOthers(false)}
+      />
       <ConfirmDialog
         open={!!confirmRemoveOidc}
         title={t`Delete OIDC provider?`}

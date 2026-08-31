@@ -1,11 +1,12 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { invalidateSession } from "../services/permissions-cache";
 import { encryptSecret } from "../lib/crypto";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
@@ -19,12 +20,14 @@ const tableFor = (dialect: "pg" | "sqlite") =>
         users: pg.schema.users,
         config: pg.schema.authConfig,
         tenantMembers: pg.schema.tenantMembers,
+        apiKeys: pg.schema.apiKeys,
       }
     : {
         sessions: sqlite.schema.sessions,
         users: sqlite.schema.users,
         config: sqlite.schema.authConfig,
         tenantMembers: sqlite.schema.tenantMembers,
+        apiKeys: sqlite.schema.apiKeys,
       };
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
@@ -460,9 +463,36 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "Revoke other sessions",
       description:
-        "Signs out every session for the caller except the one making this request.",
+        "Signs out every session for the caller except the one making this request. " +
+        "Always reports how many API keys the caller still holds — those are not " +
+        "sessions and outlive a sign-out. Pass `?apiKeys=1` to revoke them too.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
+      request: {
+        // A QUERY flag, not a body. This route has always been a bodyless POST,
+        // and giving it an optional JSON body is the exact shape that 500'd
+        // live twice in this repo: a client that sets
+        // `content-type: application/json` with an empty body makes the
+        // zod-openapi body validator throw `Malformed JSON in request body`,
+        // even with `body.required: false`. A query parameter cannot reach that
+        // code path, and every existing caller keeps working untouched.
+        query: z.object({
+          // `"0"` is accepted and means no. It would be easy to allow only
+          // `"1"` and let everything else 422, but then the natural way to say
+          // no — `?apiKeys=0` — is an error, and a caller who gets a 422 on a
+          // destructive endpoint cannot tell whether the sessions went too.
+          apiKeys: z
+            .enum(["0", "1"])
+            .optional()
+            .openapi({
+              description:
+                "Set to `1` to ALSO revoke every API key the caller owns. Off by " +
+                "default on purpose: a personal key can be powering a CI job or a " +
+                "server integration that has nothing to do with the browser " +
+                "session being signed out.",
+            }),
+        }),
+      },
       responses: {
         200: {
           description: "Revoked",
@@ -471,6 +501,9 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
               schema: z.object({
                 ok: z.boolean(),
                 removed: z.number().int().nonnegative(),
+                /** Live API keys the caller owns AFTER this call. */
+                apiKeys: z.number().int().nonnegative(),
+                apiKeysRevoked: z.number().int().nonnegative(),
               }),
             },
           },
@@ -481,13 +514,28 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     /**
      * Revoke every session except the caller's. Useful for "sign out other
      * devices" flows triggered from the auth-settings page.
+     *
+     * **API keys are reported, and only revoked on request.** `api_keys` is
+     * keyed on `user_id` and never on a session, so a key survives every
+     * sign-out — which makes the revocation window (~90s, see
+     * `packages/auth`'s `cookieCache` note) long enough for a stolen session to
+     * mint permanent access. Revoking them by default would be worse than the
+     * hole: the same personal key routinely powers a CI job or a server
+     * integration that has nothing to do with the laptop being signed out, so
+     * "sign out my other devices" would become an outage. Reporting the count
+     * unconditionally turns an invisible gap into a visible one; `?apiKeys=1`
+     * is there for the caller who actually suspects compromise.
      */
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const t = tableFor(ctx.dialect);
+      // `token` as well as `id`: deleting the row is only half of a
+      // revocation, because `middleware/session.ts` answers from a per-isolate
+      // cache keyed on the session's cookie. Without this the revoked device
+      // kept passing for the cache's full TTL on top of better-auth's own.
       const allSessions = await (ctx.db as any)
-        .select({ id: t.sessions.id })
+        .select({ id: t.sessions.id, token: t.sessions.token })
         .from(t.sessions)
         .where(eq(t.sessions.userId, auth.userId!));
       // We only need to keep the caller's current session. Find it from the
@@ -495,11 +543,56 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const current = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
       const keepId = (current as { session?: { id?: string } } | null)?.session?.id ?? null;
       let removed = 0;
-      for (const s of allSessions as { id: string }[]) {
+      for (const s of allSessions as { id: string; token: string | null }[]) {
         if (s.id === keepId) continue;
         await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.id, s.id));
+        // Same isolate only — this is a per-worker cache, so it does not reach
+        // whichever other isolate served that device last. It is the half we
+        // can close from here; see `invalidateSession` for the half we cannot.
+        if (s.token) invalidateSession(s.token);
         removed += 1;
       }
-      return c.json({ ok: true, removed });
+
+      // Scoped to the caller's own keys IN THE ACTIVE WORKSPACE. Both halves
+      // are load-bearing and the second one was added because
+      // `scripts/scan-tenant-scope.ts` refused the query without it — rightly:
+      // `api_keys` carries a `tenant_id` and `sessions` does not, which is this
+      // codebase saying that a key belongs to a workspace while a session
+      // belongs to an account. Dropping the tenant predicate would let a
+      // sign-out on workspace A kill the key a job runs against workspace B.
+      //
+      // The residual, stated rather than left to be discovered: keys the caller
+      // holds in their OTHER workspaces are out of reach from here, so an
+      // account-level compromise still needs this run once per workspace.
+      const keyScope = and(
+        eq(t.apiKeys.tenantId, auth.tenantId!),
+        eq(t.apiKeys.userId, auth.userId!),
+        // Already-revoked keys are not live: neither counted nor revoked twice.
+        isNull(t.apiKeys.revokedAt),
+      );
+      const liveKeys = await (ctx.db as any)
+        .select({ id: t.apiKeys.id })
+        .from(t.apiKeys)
+        .where(keyScope);
+      let apiKeysRevoked = 0;
+      if (c.req.query("apiKeys") === "1") {
+        for (const k of liveKeys as { id: string }[]) {
+          await (ctx.db as any)
+            .update(t.apiKeys)
+            .set({ revokedAt: new Date() })
+            // Re-stating the scope on the write, not just `id`: the scanner
+            // reads each statement on its own, and so does anyone auditing it.
+            .where(and(eq(t.apiKeys.id, k.id), keyScope));
+          apiKeysRevoked += 1;
+        }
+      }
+      return c.json({
+        ok: true,
+        removed,
+        // What still grants access AFTER this call — the number the caller has
+        // to act on, not the number they had a moment ago.
+        apiKeys: (liveKeys as unknown[]).length - apiKeysRevoked,
+        apiKeysRevoked,
+      });
     },
   );

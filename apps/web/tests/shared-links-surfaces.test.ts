@@ -79,7 +79,7 @@ describe("shared links — surfaces", () => {
     otherId = await mk("Private invoice");
   });
 
-  afterAll(() => h.close?.());
+  afterAll(() => h.cleanup());
 
   test("SDK: the token is returned once and never listed", async () => {
     const created = await client.sharedLinks.create({ collection: "invoices", itemId });

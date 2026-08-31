@@ -42,7 +42,7 @@ describe("feature flags — surfaces", () => {
     expect(res.status).toBe(200);
   });
 
-  afterAll(() => h.close?.());
+  afterAll(() => h.cleanup());
 
   test("REST: the admin family holds the rules, the app family holds the verdict", async () => {
     const admin = (await (await h.fetch(ADMIN)).json()) as { data: unknown[] };

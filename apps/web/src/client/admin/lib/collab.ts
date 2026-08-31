@@ -84,7 +84,7 @@ export const collabHandle = (peer: { name: string | null; id: string }): string 
 let transportPromise: Promise<CollabTransportKind> | null = null;
 const collabTransport = (): Promise<CollabTransportKind> => {
   transportPromise ??= fetch("/api/realtime/collab-config", { credentials: "include" })
-    .then((r) => (r.ok ? r.json() : { transport: "off" }))
+    .then((r) => (r.ok ? (r.json() as Promise<{ transport?: CollabTransportKind }>) : { transport: "off" as const }))
     .then((j: { transport?: CollabTransportKind }) => j.transport ?? "off")
     .catch(() => "off" as const);
   return transportPromise;

@@ -312,7 +312,7 @@ describe("payments — connect, receive, reconcile", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       data: { id: string; webhookPath: string; config: Record<string, string> };
-      collections: { created: string[] };
+      collections: { created: string[]; conflicts: string[] };
     };
     providerId = body.data.id;
     webhookPath = body.data.webhookPath;

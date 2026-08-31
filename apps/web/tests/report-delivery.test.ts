@@ -16,6 +16,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { buildReportHtml } from "../../../packages/core/src/report";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const FAKE_PDF = new TextEncoder().encode("%PDF-1.7\n% fake\n");
 const AT = new Date("2026-08-02T09:30:00Z");
@@ -272,7 +273,7 @@ describe("report.deliver flow op", () => {
     expect(created.status).toBe(201);
     const { data: flow } = (await created.json()) as { data: { id: string } };
     const res = await h.fetch(`/api/flows/${flow.id}/run`, json(data));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   const makeDashboard = async (name = "flow-dash") => {

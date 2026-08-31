@@ -576,14 +576,14 @@ describe("what the set replace writes is what the resolver reads", () => {
     expect(bind.status).toBe(200);
 
     bearer = (path, init = {}) =>
-      h.app.request(path, {
+      Promise.resolve(h.app.request(path, {
         ...init,
         headers: {
           ...JSON_HEADERS,
           ...(init.headers ?? {}),
           Authorization: `Bearer ${token}`,
         },
-      });
+      }));
   });
 
   afterAll(() => h.cleanup());

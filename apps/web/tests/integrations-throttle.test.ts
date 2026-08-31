@@ -18,7 +18,7 @@ import {
 
 afterEach(() => resetThrottleState());
 
-const ok = () => new Response("{}", { status: 200 });
+const ok = async () => new Response("{}", { status: 200 });
 
 describe("token bucket", () => {
   test("a burst runs straight through, then pacing kicks in", async () => {

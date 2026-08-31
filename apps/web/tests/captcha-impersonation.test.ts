@@ -285,7 +285,7 @@ describe("impersonation", () => {
     for (const [id, title] of [
       [mine, "belongs to subject"],
       [theirs, "belongs to someone else"],
-    ]) {
+    ] as Array<[string, string]>) {
       client
         .query(
           `insert into "${table}" (id, tenant_id, owner_id, title, created_at, updated_at) values (?,?,?,?,?,?)`,

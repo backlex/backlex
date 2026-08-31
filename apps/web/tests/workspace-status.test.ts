@@ -250,11 +250,12 @@ describe("app_settings global sentinel — migrated sqlite", () => {
     tenantId: string | null,
     key: string,
     updatedAt: number,
-  ): void =>
+  ): void => {
     client.run(
       "INSERT INTO app_settings (id, tenant_id, key, value, updated_at) VALUES (?,?,?,?,?)",
       [id, tenantId, key, JSON.stringify({ from: id }), updatedAt],
     );
+  };
 
   const rows = () =>
     client

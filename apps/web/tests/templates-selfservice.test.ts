@@ -252,14 +252,16 @@ const setupPortalUser = async (
   expect(bind.status).toBe(200);
 
   const bearer = (path: string, init: RequestInit = {}) =>
-    h.app.request(path, {
-      ...init,
-      headers: {
-        ...JSON_HEADERS,
-        ...(init.headers ?? {}),
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    Promise.resolve(
+      h.app.request(path, {
+        ...init,
+        headers: {
+          ...JSON_HEADERS,
+          ...(init.headers ?? {}),
+          Authorization: `Bearer ${token}`,
+        },
+      }),
+    );
   return { h, bearer, appUserId: appUser!.id };
 };
 

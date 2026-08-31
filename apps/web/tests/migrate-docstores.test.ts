@@ -172,3 +172,41 @@ describe("import-db end-to-end (dynamodb-shaped source)", () => {
     expect(one.data.readings).toEqual({ temp: 19.0 });
   });
 });
+
+/**
+ * The shape check must refuse readably, not crash.
+ *
+ * `collectionShapeMismatch` declared `existing.fields` as required and read it
+ * unguarded. The API's own type says it is always there, and twice under load
+ * on the pre-push gate it was not — the import died with
+ * `undefined is not an object (evaluating 'existing.fields.map')` and a stack
+ * trace, in a place that had nothing to do with the operator's plan.
+ *
+ * A TypeError is not something a caller can act on. This is.
+ */
+describe("collectionShapeMismatch refuses rather than throws", () => {
+  const TABLE = {
+    slug: "widgets",
+    pkType: "text",
+    fields: [{ name: "id" }, { name: "title" }],
+  } as never;
+
+  test("a collection with no field list is a readable refusal", async () => {
+    const { collectionShapeMismatch } = await import("../../../packages/migrate/src/plan");
+    // Exactly what the API returned on the runs that crashed.
+    const reason = collectionShapeMismatch(TABLE, { pkType: "text" } as never);
+    expect(`refused: ${typeof reason === "string"}`).toBe("refused: true");
+    // And it must name the collection, or the operator cannot act on it.
+    expect(reason).toContain("widgets");
+  });
+
+  test("the normal paths still behave — the guard did not swallow them", async () => {
+    const { collectionShapeMismatch } = await import("../../../packages/migrate/src/plan");
+    // Liveness: the guard sits FIRST, so a bug there would make every call
+    // return the same refusal and the assertions below would be the only
+    // thing that noticed.
+    expect(collectionShapeMismatch(TABLE, { pkType: "text", fields: [{ name: "id" }, { name: "title" }] })).toBeNull();
+    expect(collectionShapeMismatch(TABLE, { pkType: "text", fields: [{ name: "id" }] })).toContain("missing");
+    expect(collectionShapeMismatch(TABLE, { adopted: true, fields: [] })).toContain("adopted");
+  });
+});

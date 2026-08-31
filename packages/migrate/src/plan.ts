@@ -310,8 +310,20 @@ export const collectionPayloadFor = (t: PlanTable) => ({
  *  callers reject (or rename) upfront instead. */
 export const collectionShapeMismatch = (
   t: PlanTable,
-  existing: { pkType?: string | null; adopted?: boolean; fields: { name: string }[] },
+  existing: { pkType?: string | null; adopted?: boolean; fields?: { name: string }[] },
 ): string | null => {
+  // `fields` is declared required by the API's own response type and is
+  // nevertheless absent sometimes — seen twice under load on the pre-push
+  // gate, where this threw `undefined is not an object (evaluating
+  // 'existing.fields.map')` and took the whole import down with a stack trace
+  // instead of a sentence. A caller cannot act on a TypeError; it can act on
+  // this. The condition is reported honestly rather than treated as an empty
+  // field list, because "the collection exists but we could not read its
+  // shape" is a different situation from "it has no fields", and guessing the
+  // second would let the import proceed into a collection it never checked.
+  if (!Array.isArray(existing.fields)) {
+    return `collection "${t.slug}" already exists but the API did not return its field list — retry, and if it persists inspect ${t.slug} by hand before re-running`;
+  }
   if (existing.adopted) {
     return `collection "${t.slug}" wraps an adopted table — pick a different slug`;
   }

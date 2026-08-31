@@ -26,7 +26,7 @@ export const itemsTransport = (): Promise<ItemsTransportKind> => {
   transportPromise ??= fetch(`${apiBase()}/api/realtime/items-config`, {
     credentials: "include",
   })
-    .then((r) => (r.ok ? r.json() : { transport: "sse" }))
+    .then((r) => (r.ok ? (r.json() as Promise<{ transport?: ItemsTransportKind }>) : { transport: "sse" as const }))
     .then((j: { transport?: ItemsTransportKind }) => j.transport ?? "sse")
     // A failed probe must not take realtime down where SSE works — assume the
     // historical transport and let the EventSource decide.

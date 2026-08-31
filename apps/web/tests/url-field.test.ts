@@ -127,7 +127,7 @@ describe("the host is folded by THIS package, and agrees with the platform", () 
     // addresses land on the same string for the same domain.
     for (const h of HOSTS) {
       expect(parseUrl(h, { form: "host" }).url).toBe(
-        canonicalizeUrl(`https://${h}/`)?.slice("https://".length, -1),
+        canonicalizeUrl(`https://${h}/`)?.slice("https://".length, -1) ?? "",
       );
     }
   });

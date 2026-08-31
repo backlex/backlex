@@ -213,7 +213,9 @@ describe("the guards survive the job queue", () => {
     // a missing one to unrestricted would reopen the hole for every turn queued
     // across a deploy.
     const { runQueuedAgentTurn } = await import("../src/server/services/agents/async-run");
-    const verdict = await runQueuedAgentTurn(h.ctx as never, h.app as never, {
+    // No context is needed: the payload guard refuses before `ctx` is touched,
+    // which is exactly the ordering this test is pinning.
+    const verdict = await runQueuedAgentTurn(undefined as never, h.app as never, {
       runId: "r1",
       threadId: "t1",
       agentId: "a1",

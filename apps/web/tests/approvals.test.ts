@@ -18,6 +18,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { settleOutcome, canDecide, currentTurn, writeBackPatch } from "@backlex/core";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 let h: TestHarness;
 
@@ -481,7 +482,7 @@ describe("the flow pause", () => {
     expect(created.status).toBe(201);
     const { data } = (await created.json()) as { data: { id: string } };
     const res = await h.fetch(`/api/flows/${data.id}/run`, json(input));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   const seedTarget = async () => {

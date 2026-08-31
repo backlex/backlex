@@ -159,7 +159,7 @@ export const buildTwoPlaneCast = async (): Promise<TwoPlaneCast> => {
   const bearerFor =
     (token: string, org?: string): Caller =>
     (path, init = {}) =>
-      h.app.request(path, {
+      Promise.resolve(h.app.request(path, {
         ...init,
         headers: {
           ...JSON_HEADERS,
@@ -167,7 +167,7 @@ export const buildTwoPlaneCast = async (): Promise<TwoPlaneCast> => {
           Authorization: `Bearer ${token}`,
           ...(org ? { "X-Backlex-Org": org } : {}),
         },
-      });
+      }));
 
   /** The signed-in caller's own user id, straight from the route that answers it. */
   const whoami = async (): Promise<string> => {
@@ -303,7 +303,7 @@ export const buildTwoPlaneCast = async (): Promise<TwoPlaneCast> => {
     tenantA,
     tenantB,
     anon: (path, init = {}) =>
-      h.app.request(path, { ...init, headers: { ...JSON_HEADERS, ...(init.headers ?? {}) } }),
+      Promise.resolve(h.app.request(path, { ...init, headers: { ...JSON_HEADERS, ...(init.headers ?? {}) } })),
     cleanup: () => h.cleanup(),
   };
 };

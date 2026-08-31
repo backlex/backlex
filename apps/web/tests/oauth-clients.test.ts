@@ -126,7 +126,7 @@ describe("the registry", () => {
     expect(rows.data[0]!.disabled).toBe(true);
 
     expect((await h.fetch(`${BASE}/${id}`, { method: "DELETE" })).status).toBe(200);
-    rows = (await (await h.fetch(BASE)).json()) as { data: unknown[] };
+    rows = (await (await h.fetch(BASE)).json()) as { data: Array<{ disabled: boolean }> };
     expect(rows.data.length).toBe(0);
   });
 

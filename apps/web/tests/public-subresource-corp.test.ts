@@ -33,11 +33,11 @@ let h: TestHarness;
 let SITE = "";
 
 const anonFetch = (path: string): Promise<Response> =>
-  h.app.fetch(
+  Promise.resolve(h.app.fetch(
     new Request(`${h.env.APP_URL}${path}`, {
       headers: { Origin: "https://customer.example" },
     }),
-  );
+  ));
 
 const corpOf = async (path: string): Promise<string | null> =>
   (await anonFetch(path)).headers.get("cross-origin-resource-policy");

@@ -50,7 +50,7 @@ describe("jobs — surfaces", () => {
     expect(fn.status).toBe(201);
   });
 
-  afterAll(() => h.close?.());
+  afterAll(() => h.cleanup());
 
   test("REST: enqueue, read back, cancel", async () => {
     const res = await h.fetch(BASE, {

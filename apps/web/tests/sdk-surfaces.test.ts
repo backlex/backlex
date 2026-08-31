@@ -33,6 +33,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { OPEN_WAVE } from "./surfaces-wave";
 
 const REPO = join(import.meta.dir, "..", "..", "..");
 const MCP_DIR = join(REPO, "apps", "web", "src", "server", "mcp", "tools");
@@ -242,11 +243,7 @@ const MCP_SURFACES: Record<string, Coverage> = {
   usage: { client: "usage" },
   users: { deferred: ADMIN_PLANE("Administrator user management"), until: "wave-21" },
   vector: { client: "vector" },
-  webhooks: {
-    deferred:
-      "The cheapest four-of-five-to-five-of-five in the repository: REST, MCP and CLI all cover it and only the SDK does not. Sized at roughly seventy lines, and deferred only because wave 19's cut line put depth on the app-plane surfaces first.",
-    until: "wave-19-phase-5",
-  },
+  webhooks: { client: "webhooks" },
 };
 
 // ---------------------------------------------------------------------------
@@ -388,7 +385,7 @@ const ROUTE_FAMILIES: Record<string, Family> = {
   "/api/admin/tag-manager": {
     deferred:
       "The tag manager's admin surface exists but has no SDK client yet: the browser runtime, the compile/publish service and this REST surface landed first because nothing downstream can be written against a container format that is still being proved end-to-end. An SDK client here would freeze the shape of a tag, a trigger and a compiled artifact before the admin has exercised any of them. It lands with the rest of the multi-surface pass, alongside the GraphQL fields, the MCP tools and the CLI verbs, so all four are written against one settled shape rather than four against a moving one.",
-    until: "wave-2",
+    until: OPEN_WAVE,
     // Names the module whose arrival retires this entry, so the tripwire can
     // actually fire. `clients/tag-manager.ts` does not exist yet; the day it
     // does, this deferral fails and has to be replaced by a real client entry.
@@ -614,6 +611,11 @@ describe("SDK parity — every entry is well formed", () => {
         `${key}: ${Math.max(cov.deferred.length, 60)}`,
       );
       expect(`${key}: ${UNTIL.test(cov.until ?? "")}`).toBe(`${key}: true`);
+      // Shape is not enough — see `surfaces-wave.ts`. A wave that has shipped
+      // reads exactly like one that has not.
+      expect(`${key} defers to the open wave: ${cov.until}`).toBe(
+        `${key} defers to the open wave: ${OPEN_WAVE}`,
+      );
     }
   });
 

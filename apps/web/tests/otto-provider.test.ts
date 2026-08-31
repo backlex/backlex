@@ -119,12 +119,12 @@ describe("connecting", () => {
       return new Response(JSON.stringify({ error: "invalid_grant", password: "s3cret" }), { status: 401 });
     };
     await expect(
-      pullFromSource("otto", { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" }, fetchImpl),
+      pullFromSource("otto", { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" }, fetchImpl),
     ).rejects.toThrow(/username and password/i);
     // The one call in this provider whose body holds the partner's password —
     // so the failure names the fields rather than echoing the body.
     await expect(
-      pullFromSource("otto", { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" }, fetchImpl),
+      pullFromSource("otto", { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" }, fetchImpl),
     ).rejects.not.toThrow(/s3cret/);
   });
 });
@@ -206,7 +206,8 @@ describe("publishing", () => {
     const two = product();
     two.variants = [
       two.variants[0]!,
-      { rowId: "v2", reference: "SKU-2", fields: { sku: "SKU-2", ean: "4006381333948", price: 89.9 }, attributes: [] },
+      // No `msrp`: the second unit is deliberately not the same shape as the first.
+      { rowId: "v2", reference: "SKU-2", fields: { sku: "SKU-2", ean: "4006381333948", price: 89.9 }, attributes: [] } as unknown as (typeof two.variants)[number],
     ];
     const { calls, fetchImpl } = recorder([{ status: 202, body: { state: "IN_PROGRESS", total: 2 } }]);
     const batch = await publishListings(
@@ -235,7 +236,11 @@ describe("publishing", () => {
 
   test("a unit missing one of the three required identifiers is refused here", async () => {
     const p = product();
-    p.variants = [{ rowId: "v1", reference: "SKU-1", fields: { sku: "SKU-1", price: 10 }, attributes: [] }];
+    // Deliberately short of the three identifiers otto requires; the refusal
+    // is the assertion, so this cannot be a well-formed variant.
+    p.variants = [
+      { rowId: "v1", reference: "SKU-1", fields: { sku: "SKU-1", price: 10 }, attributes: [] } as unknown as (typeof p.variants)[number],
+    ];
     const { calls, fetchImpl } = recorder([]);
     const batch = await publishListings(
       "otto",
@@ -362,17 +367,17 @@ describe("orders", () => {
     ]);
     const page = await pullFromSource(
       "otto",
-      { config: CONFIG, settings: { lookbackDays: "7" }, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: { lookbackDays: "7" }, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
 
     expect(calls[1]!.url.searchParams.get("fromDate")).toBeTruthy();
     expect(page.records[0]!.data.zipCode).toBe("20095");
-    expect(page.records[0]!.children!.lines[0]!.data.sku).toBe("SKU-1");
-    expect(page.complete).toBe(false);
+    expect(page.records[0]!.children!.lines![0]!.data.sku).toBe("SKU-1");
+    expect(page.cursor).not.toBeNull();
     // `<since>|<opaque cursor>` — Otto pages by a token, not an offset, so the
     // window has to be carried beside it.
     expect(page.cursor).toMatch(/^\d+\|abc123$/);
-    expect(page.resumeAt).toBeUndefined();
+    expect(page.resumeToken).toBeUndefined();
   });
 });

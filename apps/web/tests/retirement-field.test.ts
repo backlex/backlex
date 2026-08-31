@@ -88,9 +88,7 @@ describe("row retirement", () => {
     );
   });
 
-  afterAll(async () => {
-    await h.stop?.();
-  });
+  afterAll(() => h.cleanup());
 
   test("a collection may declare only one retirement flag", async () => {
     const r = await h.fetch(

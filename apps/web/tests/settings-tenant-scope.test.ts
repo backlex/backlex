@@ -187,7 +187,7 @@ describe("settings — instance-global branding is the instance operator's to wr
       ),
     );
     expect(patched.status, "the instance operator writes the instance's copy").toBe(200);
-    expect(await patched.json()).toEqual({ ok: true });
+    expect((await patched.json()) as unknown as { ok: boolean }).toEqual({ ok: true });
 
     const surface = await readPublicSurface();
     expect(surface.branding.signInHeadline).toBe(OPERATOR_HEADLINE);

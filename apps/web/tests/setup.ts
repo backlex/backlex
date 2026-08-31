@@ -20,12 +20,28 @@ import { invalidateAllPermissions } from "../src/server/services/permissions-cac
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
 const MIGRATIONS = resolve(ROOT, "packages/db/drizzle/sqlite");
 
+/**
+ * A `Response` whose `json()` is typed as the API's JSON envelope rather than
+ * `unknown`.
+ *
+ * Every backlex route answers `{ data }`, `{ error }` or `{ status }` — a
+ * shape the specs already know, and one they were asserting through 97
+ * separate `as` casts because `Response.json()` is `Promise<unknown>` under
+ * bun-types. Narrowing it once here is not a loosening: `res.json()` on a
+ * response the harness did NOT produce (a raw `app.request`, an outbound
+ * `fetch` stub) still hands back `unknown`, which is correct, because nothing
+ * guarantees those are backlex envelopes at all.
+ */
+export interface ApiResponse extends Response {
+  json(): Promise<Record<string, any>>;
+}
+
 export interface TestHarness {
   env: Env;
   app: ReturnType<typeof createApp>;
   /** Cookie-tracking fetch wrapper. Pass relative or absolute URLs; only
    *  the path matters since the app is invoked directly. */
-  fetch: (input: string, init?: RequestInit) => Promise<Response>;
+  fetch: (input: string, init?: RequestInit) => Promise<ApiResponse>;
   /** The synthetic client IP this harness presents. Exposed so a spec that
    *  needs the SAME bucket across two paths can say so explicitly. */
   clientIp: string;

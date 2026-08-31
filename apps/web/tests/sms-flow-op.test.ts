@@ -18,6 +18,7 @@ import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { sendSmsToNumbers } from "../src/server/services/sms";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const json = (body: unknown): RequestInit => ({
   method: "POST",
@@ -50,7 +51,7 @@ describe("sms flow op", () => {
     expect(created.status).toBe(201);
     const { data } = (await created.json()) as { data: { id: string } };
     const res = await h.fetch(`/api/flows/${data.id}/run`, json(input));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   describe("addressing by number (the customer case)", () => {

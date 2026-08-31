@@ -30,12 +30,12 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /** A bucket you can look inside. `list`/multipart are unused by these paths. */
 const fakeBucket = (name: string) => {
-  const objects = new Map<string, { body: Uint8Array; contentType?: string }>();
+  const objects = new Map<string, { body: Uint8Array<ArrayBuffer>; contentType?: string }>();
   const adapter: StorageAdapter = {
     async put({ key, body, contentType }) {
       const bytes =
         body instanceof Uint8Array
-          ? body
+          ? (body as Uint8Array<ArrayBuffer>)
           : typeof body === "string"
             ? new TextEncoder().encode(body)
             : body instanceof ArrayBuffer

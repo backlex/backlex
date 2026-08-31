@@ -30,10 +30,10 @@ type Bearer = (path: string, init?: RequestInit) => Promise<Response>;
 
 const bearerFor = (h: TestHarness, token: string): Bearer =>
   (path, init = {}) =>
-    h.app.request(path, {
+    Promise.resolve(h.app.request(path, {
       ...init,
       headers: { ...JSON_HEADERS, ...(init.headers ?? {}), Authorization: `Bearer ${token}` },
-    });
+    }));
 
 /** Admin-invite an end user and accept it, returning their session token. */
 const makeEndUser = async (h: TestHarness, email: string) => {

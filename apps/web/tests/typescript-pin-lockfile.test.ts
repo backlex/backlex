@@ -31,7 +31,7 @@
  * re-reading why it existed.
  */
 import { describe, expect, test } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const repoPath = (rel: string): string =>
@@ -55,12 +55,23 @@ const declaredTypescript = (workspace: string): string | undefined => {
   return pkg.devDependencies?.typescript ?? pkg.dependencies?.typescript;
 };
 
-/** Every workspace directory the root package.json globs in. */
+/**
+ * Every workspace directory the root package.json globs in.
+ *
+ * A workspace is a directory with a `package.json` — the glob's own definition.
+ * Filtering on that rather than on "is a directory" is not cosmetic: switching
+ * away from a branch that carried an example leaves `examples/<name>/` behind
+ * holding nothing but its gitignored `node_modules`, git reports the tree as
+ * clean, and this file then died with a bare
+ * `ENOENT: examples/perfops-react/package.json` — a crash, in a test about
+ * TypeScript versions, caused by a branch checkout. Seen 2026-08-30.
+ */
 const workspaces = (): string[] =>
   ["apps", "packages", "examples"].flatMap((dir) =>
     readdirSync(repoPath(dir), { withFileTypes: true })
       .filter((e) => e.isDirectory())
-      .map((e) => `${dir}/${e.name}`),
+      .map((e) => `${dir}/${e.name}`)
+      .filter((w) => existsSync(repoPath(`${w}/package.json`))),
   );
 
 /** Every distinct version the lockfile resolved for a package. */
@@ -85,6 +96,18 @@ const API_PINNED: ReadonlyArray<readonly [string, string]> = [
 const ROOT = ".";
 
 describe("typescript lockfile resolution", () => {
+  test("the workspace census is not empty, or every rule below is vacuous", () => {
+    // The filter above drops any directory without a package.json, which is
+    // correct and is also exactly how this file could quietly stop checking
+    // anything — a moved `examples/` or a renamed glob root would leave an
+    // empty list and every `offenders` assertion would pass over it. The floor
+    // sits well under the ~20 workspaces here so adding one is not a chore.
+    const found = workspaces();
+    expect(`workspaces found: ${found.length > 10}`).toBe("workspaces found: true");
+    expect(found).toContain("apps/web");
+    expect(found).toContain("packages/client");
+  });
+
   test("the root declares an exact version, not a range", () => {
     // A range is how a transitive copy drifts upward unnoticed; every
     // assertion below rests on the declaration being a single answerable value.

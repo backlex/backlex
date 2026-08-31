@@ -12,6 +12,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { compileGraph, decompileGraph, type Graph } from "../../src/client/admin/pages/automation/flow-graph";
+import type { Operation } from "@backlex/core";
 
 const graphWith = (type: string, config: Record<string, unknown>): Graph => ({
   nodes: [
@@ -75,10 +76,11 @@ describe("sms step — decompile", () => {
   });
 
   test("round-trips both modes without losing config", () => {
-    for (const op of [
+    const cases: Operation[] = [
       { type: "sms", body: "hi", to: "{{ data.phone }}", from: "BACKLEX" },
       { type: "sms", body: "hi", userId: "{{ data.author }}" },
-    ]) {
+    ];
+    for (const op of cases) {
       expect(compileGraph(back([op])).operations[0]).toEqual(op);
     }
   });
@@ -86,7 +88,7 @@ describe("sms step — decompile", () => {
 
 describe("push step", () => {
   test("compiles and round-trips", () => {
-    const op = { type: "push", title: "Booked", body: "See you soon", userId: "{{ data.author }}", url: "/a/{{ data.id }}" };
+    const op: Operation = { type: "push", title: "Booked", body: "See you soon", userId: "{{ data.author }}", url: "/a/{{ data.id }}" };
     const out = compileGraph(graphWith("push", { title: "Booked", body: "See you soon", userId: "{{ data.author }}", url: "/a/{{ data.id }}" }));
     expect(out.warnings).toEqual([]);
     expect(out.operations[0]).toEqual(op);
@@ -105,7 +107,7 @@ describe("push step", () => {
   });
 
   test("a template key stands in for title + body, as the email step's does", () => {
-    const op = { type: "push", templateKey: "order_shipped", userId: "{{ data.author }}" };
+    const op: Operation = { type: "push", templateKey: "order_shipped", userId: "{{ data.author }}" };
     const out = compileGraph(
       graphWith("push", { templateKey: "order_shipped", title: "", body: "", url: "", userId: "{{ data.author }}" }),
     );

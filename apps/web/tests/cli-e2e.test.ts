@@ -577,3 +577,87 @@ describe("cli: unreachable server", () => {
     expectNoStackTrace(r);
   }, T);
 });
+
+// ── gen-types: the first command a developer runs ────────────────────────────
+
+/**
+ * `gen-types.test.ts` covers `renderModule` — the pure half — against a
+ * scripted collection list. What it cannot cover is everything between the
+ * developer's shell and that function: argv parsing, the `--key` header, the
+ * fetch, the file write, and the exit code on a refusal.
+ *
+ * That matters more here than for most commands. `gen-types` is what a
+ * developer runs first, its output is imported by their application code, and
+ * a broken run that still exits 0 produces a plausible-looking file — an empty
+ * `Collections` map compiles perfectly and silently unTypes every query.
+ */
+describe("cli: gen-types", () => {
+  test("emits a module describing the live collections", async () => {
+    const r = await runCli(["gen-types", baseUrl, "--key", apiKey]);
+    expect(r.code).toBe(0);
+    // Named against the collection this suite actually created, not against a
+    // fixture — the point of the end-to-end path is that the fetch reached a
+    // real workspace.
+    expect(r.stdout).toContain(pascalish(SLUG));
+    expect(r.stdout).toContain("export type Collections");
+    expectNoStackTrace(r);
+  }, T);
+
+  test("--out writes the file and reports how much it wrote", async () => {
+    const out = join(tmpDir, "types.ts");
+    const r = await runCli(["gen-types", baseUrl, "--key", apiKey, "--out", out]);
+    expect(r.code).toBe(0);
+    expect(existsSync(out)).toBe(true);
+
+    const written = readFileSync(out, "utf8");
+    expect(written).toContain("export type Collections");
+    // stdout must NOT also carry the module: a command that writes the file
+    // and prints it too breaks `> file` redirection and doubles CI logs.
+    expect(r.stdout).not.toContain("export type Collections");
+    // The count in the confirmation is the only signal a developer gets that
+    // the fetch found anything. `wrote types for 0 collection(s)` is the
+    // silent-failure shape this asserts against.
+    const count = /for (\d+) collection\(s\)/.exec(r.stdout)?.[1];
+    expect(`collections reported: ${Number(count) > 0}`).toBe("collections reported: true");
+  }, T);
+
+  test("--sdk adds the typed client factory, plain does not", async () => {
+    const plain = await runCli(["gen-types", baseUrl, "--key", apiKey]);
+    const sdk = await runCli(["gen-types", baseUrl, "--key", apiKey, "--sdk"]);
+    expect(sdk.code).toBe(0);
+    // Asserted as a DIFFERENCE rather than as "sdk output contains X": a flag
+    // that silently did nothing would satisfy the second and fail this.
+    expect(sdk.stdout).toContain("createTypedClient");
+    expect(plain.stdout).not.toContain("createTypedClient");
+    // Plain output is documented as dependency-free — an import of the SDK
+    // package in it would break every consumer who has not installed it.
+    expect(plain.stdout).not.toContain("@backlex/client");
+    expect(plain.stdout).not.toContain('from "backlex"');
+  }, T);
+
+  test("a bad key fails loudly instead of writing an empty module", async () => {
+    const out = join(tmpDir, "should-not-exist.ts");
+    const r = await runCli(["gen-types", baseUrl, "--key", "pak_not_a_real_key", "--out", out]);
+    expect(r.code).not.toBe(0);
+    // The file must not appear. A run that wrote an empty `Collections = {}`
+    // and exited 0 is worse than one that failed: the developer's build keeps
+    // working and every query loses its types.
+    expect(existsSync(out)).toBe(false);
+  }, T);
+
+  test("no url → exit 1 with the usage line, not a stack trace", async () => {
+    const r = await runCli(["gen-types"], { env: { BACKLEX_URL: undefined } });
+    expect(r.code).toBe(1);
+    expect(r.stderr).toContain("url required");
+    expectNoStackTrace(r);
+  }, T);
+});
+
+/** `cli_notes` → `CliNotes`, matching gen-types' own `pascal()`. */
+function pascalish(slug: string): string {
+  return slug
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((p) => p[0]!.toUpperCase() + p.slice(1))
+    .join("");
+}

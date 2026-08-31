@@ -141,14 +141,14 @@ beforeAll(async () => {
   });
   expect(bind.status).toBe(200);
   bearer = (path: string, init: RequestInit = {}) =>
-    h.app.request(path, {
+    Promise.resolve(h.app.request(path, {
       ...init,
       headers: {
         ...JSON_HEADERS,
         ...(init.headers ?? {}),
         Authorization: `Bearer ${token}`,
       },
-    });
+    }));
 
   // Data: one chain that resolves to the portal user, one that doesn't.
   staffMine = await createItem("staff", { name: "Mine", app_user_id: appUserId });

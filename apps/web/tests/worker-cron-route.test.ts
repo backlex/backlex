@@ -45,7 +45,7 @@ describe("worker HTTP cron route", () => {
     const res = await tick(envWith(SECRET));
 
     expect(res.status).toBe(401);
-    expect(await res.json()).toEqual({ error: "unauthorized" });
+    expect((await res.json()) as unknown as { error: string }).toEqual({ error: "unauthorized" });
   });
 
   test.each([
@@ -63,7 +63,10 @@ describe("worker HTTP cron route", () => {
   });
 
   test("the shared secret drives a tick, via either header", async () => {
-    for (const headers of [{ "x-cron-secret": SECRET }, { authorization: `Bearer ${SECRET}` }]) {
+    for (const headers of [
+      { "x-cron-secret": SECRET },
+      { authorization: `Bearer ${SECRET}` },
+    ] as Array<Record<string, string>>) {
       const res = await tick(envWith(SECRET), headers);
 
       expect(res.status).toBe(200);

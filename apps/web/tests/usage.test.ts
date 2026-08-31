@@ -66,11 +66,11 @@ const mintKey = async (
  *  session cookie would win over the bearer key in sessionMiddleware and the
  *  request would never carry an apiKeyId. */
 const keyFetch = (h: TestHarness, path: string, secret: string): Promise<Response> =>
-  h.app.fetch(
+  Promise.resolve(h.app.fetch(
     new Request(`${h.env.APP_URL}${path}`, {
       headers: { authorization: `Bearer ${secret}`, Origin: h.env.APP_URL },
     }),
-  );
+  ));
 
 describe("usage — request counting through the middleware", () => {
   let h: TestHarness;

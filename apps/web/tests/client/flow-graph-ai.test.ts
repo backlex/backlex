@@ -15,6 +15,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { compileGraph, decompileGraph, type Graph } from "../../src/client/admin/pages/automation/flow-graph";
+import type { Operation } from "@backlex/core";
 
 const graphWith = (type: string, config: Record<string, unknown>): Graph => ({
   nodes: [
@@ -159,12 +160,13 @@ describe("both AI steps — decompile and round-trip", () => {
   });
 
   test("both round-trip without losing config", () => {
-    for (const op of [
+    const cases: Operation[] = [
       { type: "ai.generate", prompt: "hi" },
       { type: "ai.generate", prompt: "hi", system: "terse", model: "m", maxTokens: 256, effort: "high" },
       { type: "ai.classify", input: "x", labels: ["a", "b"] },
       { type: "ai.classify", input: "x", labels: ["a", "b"], instructions: "why", model: "m", fallback: "b" },
-    ]) {
+    ];
+    for (const op of cases) {
       expect(compileGraph(back([op])).operations[0]).toEqual(op);
     }
   });

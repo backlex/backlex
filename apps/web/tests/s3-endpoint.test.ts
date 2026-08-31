@@ -48,7 +48,7 @@ const sha256 = async (data: string | Uint8Array): Promise<string> =>
     ),
   );
 
-const hmac = async (key: Uint8Array, data: string): Promise<Uint8Array> => {
+const hmac = async (key: Uint8Array<ArrayBuffer>, data: string): Promise<Uint8Array<ArrayBuffer>> => {
   const k = await crypto.subtle.importKey(
     "raw",
     key as never,

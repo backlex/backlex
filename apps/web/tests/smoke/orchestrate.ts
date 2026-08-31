@@ -41,6 +41,24 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { runSmokeContract } from "./contract";
 
+/**
+ * The exit half of a `ChildProcess`.
+ *
+ * Nothing in this repo declares `@types/node` directly — it exists only nested
+ * under `bun-types`, in three different versions — so `ChildProcess` and the
+ * `EventEmitter` it extends resolve out of DIFFERENT copies and the class
+ * arrives without `.on`. `child.stdout?.on(...)` above is unaffected because a
+ * `Readable` comes from one copy whole. Narrowing to the single method used
+ * here states that rather than adding a root dependency for it.
+ */
+type ProcessExits = {
+  on(
+    event: "close" | "exit",
+    listener: (code: number | null, signal: string | null) => void,
+  ): unknown;
+};
+
+
 const RUNTIME = process.env.SMOKE_RUNTIME ?? "bun";
 const PORT = Number(process.env.PORT ?? 8787);
 const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "../../../../..");
@@ -338,7 +356,7 @@ const runOnce = (
     });
     child.stdout?.on("data", (b: Buffer) => chunks.push(b.toString()));
     child.stderr?.on("data", (b: Buffer) => chunks.push(b.toString()));
-    child.on("close", (code) =>
+    (child as unknown as ProcessExits).on("close", (code) =>
       resolveStep({ code: code ?? 0, output: chunks.join("") }),
     );
   });
@@ -372,7 +390,7 @@ try {
 
   console.log(`[smoke] spawning server...`);
   server = profile.spawnServer(setup.env);
-  server.on("exit", (code, signal) => {
+  (server as unknown as ProcessExits).on("exit", (code, signal) => {
     if (code !== null && code !== 0) {
       console.error(`[smoke] server exited unexpectedly: code=${code} signal=${signal}`);
     }

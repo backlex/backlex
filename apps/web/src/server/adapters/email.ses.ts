@@ -14,7 +14,14 @@ export const sesEmail = (
   region: string,
   defaultFrom: string,
 ): EmailAdapter => {
-  const aws = new AwsClient({ accessKeyId, secretAccessKey, region, service: "ses" });
+    // `retries` is pinned rather than inherited. aws4fetch defaults to TEN
+    // retries with exponential backoff from 50 ms, so a 5xx or a 429 keeps ONE
+    // call blocked for tens of seconds — measured at 38 s in the conformance
+    // suite. That is most of a Worker's wall budget spent inside a single
+    // send, and it is redundant: the durable job queue owns the long retry and
+    // has the DLQ to show for it. Two absorbs a blip; anything longer belongs
+    // to the queue.
+  const aws = new AwsClient({ accessKeyId, secretAccessKey, region, service: "ses", retries: 2 });
   const endpoint = `https://email.${region}.amazonaws.com/v2/email/outbound-emails`;
   return {
     attachments: true,

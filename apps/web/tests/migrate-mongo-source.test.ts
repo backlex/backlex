@@ -193,12 +193,12 @@ describe("import-db end-to-end (mongodb source via DocumentSource fake)", () => 
   });
 
   test("--since delta pass upserts changed documents", async () => {
-    store.posts[0] = {
-      ...store.posts[0]!,
+    store.posts![0] = {
+      ...store.posts![0]!,
       title: "Hello Mongo (edited)",
       updatedAt: new Date("2031-05-05T00:00:00Z"),
     };
-    store.posts.push({
+    store.posts!.push({
       _id: oid(4),
       title: "Brand new",
       views: 1,

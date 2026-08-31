@@ -17,6 +17,7 @@ import {
 import { createHmac } from "node:crypto";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { processJobsWithEnv } from "../src/server/services/jobs";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 // --- SSE parsing -----------------------------------------------------------
 
@@ -497,7 +498,7 @@ describe("flows engine", () => {
       body: JSON.stringify({ hello: "world" }),
     });
     expect(run.status).toBe(200);
-    const body = (await run.json()) as { ok: boolean; error?: string };
+    const body = (await run.json()) as FlowRunResult;
     expect(body.ok).toBe(true);
     expect(body.error).toBeUndefined();
   });
@@ -691,7 +692,7 @@ describe("outgoing webhooks (HMAC signed)", () => {
     expect([
       expected,
       expected.slice("sha256=".length),
-    ]).toContain(sig);
+    ]).toContain(String(sig));
 
     // Cleanup so the next test only sees its own hook fire.
     await h.fetch(`/api/webhooks/${hookOneId}`, { method: "DELETE" });
@@ -745,7 +746,7 @@ describe("outgoing webhooks (HMAC signed)", () => {
       expect(sig).toBeTruthy();
       const expected =
         "sha256=" + createHmac("sha256", secret).update(req.body).digest("hex");
-      expect([expected, expected.slice("sha256=".length)]).toContain(sig);
+      expect([expected, expected.slice("sha256=".length)]).toContain(String(sig));
     };
     verify(aHit!, secretA);
     verify(bHit!, secretB);

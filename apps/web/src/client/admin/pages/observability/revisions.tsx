@@ -177,7 +177,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
         credentials: "include",
       });
       if (!r.ok) {
-        const body = await r.json().catch(() => null);
+        const body = (await r.json().catch(() => null)) as { error?: { message?: string } } | null;
         throw new Error(body?.error?.message ?? `Revert failed (${r.status})`);
       }
       setConfirmRev(null);

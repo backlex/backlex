@@ -321,9 +321,57 @@ export const createAuth = async (
       expiresIn: 60 * 60 * 24 * 7, // 7d
       updateAge: 60 * 60 * 24, // 1d
       // Sign the session payload into the cookie and skip the DB lookup for
-      // the next 60s. Cuts ~1 D1 round-trip off every authenticated request;
-      // sign-out / session revocation still works because better-auth invalidates
-      // the cache on its own sign-out paths.
+      // the next 60s. Cuts ~1 D1 round-trip off every authenticated request.
+      //
+      // **This is the lever for "sign out my other devices" latency, and the
+      // number is not 60 seconds.** Measured against the shipped config
+      // (`apps/web/tests/auth-admin-sessions.test.ts`): a revoked device still
+      // gets 200 on `/api/me` immediately after `revoke-others`, with nothing
+      // cleared, because this blob answers our routes too — not just
+      // better-auth's own `/api/auth/*`. Worse, a request it answers is written
+      // into `services/permissions-cache`'s 30s per-isolate cache under the
+      // bare-token key, so the two windows COMPOUND: the last warm request at
+      // t=59s keeps the token accepted to roughly t=89s.
+      //
+      // Flipping `enabled` to false was measured too, and the harness result
+      // does NOT transfer to production unchanged. In-process it reads as
+      // immediate (401 on the very next request), because the handler calls
+      // `invalidateSession` and nothing repopulates the cache. But that cache
+      // is a module-level `TtlLru` with no shared store behind it, i.e. PER
+      // ISOLATE — `revoke-others` clears only the isolate that served it (see
+      // the note at `routes/auth-admin.ts`). Any other isolate that had the
+      // session cached keeps serving it until its own 30s TTL lapses.
+      //
+      //   as shipped       ~90s everywhere
+      //   enabled: false   immediate in the revoking isolate, <=30s elsewhere
+      //
+      // So disabling this is 90s -> 30s, not 90s -> 0, and the price is
+      // better-auth's ~2 D1 round-trips on every request that misses the inner
+      // cache.
+      //
+      // **What makes 30s no safer than 90s in practice:** `api_keys` is keyed
+      // on `user_id`, never on a session, and `revoke-others` does not touch
+      // it. So the window is not "extra read access" — it is time to mint a
+      // `pak_` key that outlives the revocation entirely, and 30 seconds is as
+      // sufficient for that as 90. Buying 90->30 with a session read per cold
+      // request therefore buys very little against the threat that matters.
+      //
+      // Left enabled deliberately. The two levers that would actually close it:
+      //
+      //   (1) `revoke-others` accounting for API keys — DONE, and it is the one
+      //       that mattered, because a key minted inside the window outlives
+      //       the revocation entirely.
+      //   (2) a shared revocation signal so the other isolates hear about it —
+      //       measured and deliberately NOT built. It moves a device holding
+      //       `session_data` from 200 to 200 (a signed blob in a browser is
+      //       past the reach of any server-side signal) and only a token-only
+      //       device from 200 to 401, i.e. it buys the tail ~30s of ~90 at the
+      //       price of a shared-store read on a path that makes zero today.
+      //       It is downstream of THIS flag, not independent of it: turn this
+      //       off and the arithmetic inverts. See the `CachedSession` note in
+      //       `apps/web/src/server/services/permissions-cache.ts`.
+      //
+      // Neither is a TTL, which is the thing this line looks like it controls.
       cookieCache: { enabled: true, maxAge: 60 },
     },
     databaseHooks: {

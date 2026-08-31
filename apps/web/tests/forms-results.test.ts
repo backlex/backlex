@@ -127,7 +127,7 @@ describe("form results", () => {
           blocks: {
             name?: string;
             rating: boolean;
-            scale: { min: number; max: number; style: string; minLabel?: string } | null;
+            scale: { min: number; max: number; style: string; minLabel?: string; maxLabel?: string } | null;
           }[];
         };
       }

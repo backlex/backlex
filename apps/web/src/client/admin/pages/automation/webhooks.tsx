@@ -334,6 +334,26 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
   const [draft, setDraft] = useState<any>(hook ? { ...hook, headers: formatHeaderLines(hook.headers), payloadFields: (hook.payloadFields ?? []).join(", ") } : blank);
   const [revealSecret, setRevealSecret] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+
+  // The list no longer carries the signing secret — a list response is what
+  // gets logged and pasted around, so the plaintext lives on the single-record
+  // read instead. Fetch it when the editor opens, so "Show" still hands the
+  // operator the value they need for the receiving endpoint.
+  useEffect(() => {
+    if (mode !== "edit" || !hook?.id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await api<{ data: { secret?: string | null } }>(`/api/webhooks/${hook.id}`);
+        if (!cancelled) setDraft((d: any) => ({ ...d, secret: r.data.secret ?? "" }));
+      } catch {
+        // Leave the field empty rather than showing a stale or wrong value —
+        // an operator who sees a blank secret rotates, which is safe; one who
+        // sees the wrong secret configures a receiver that rejects everything.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mode, hook?.id]);
   const update = (k: string, v: unknown) => { setDraft((d: any) => ({ ...d, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })); };
 
   const toggleEvent = (ev: string) => {

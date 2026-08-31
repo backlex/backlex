@@ -14,7 +14,7 @@ const meta = (key: string, contentType?: string) => {
   if (contentType) parts.push(`contentType ${btoa(contentType)}`);
   return parts.join(",");
 };
-const bytes = (n: number): Uint8Array => {
+const bytes = (n: number): Uint8Array<ArrayBuffer> => {
   const u = new Uint8Array(n);
   for (let i = 0; i < n; i++) u[i] = i % 251;
   return u;
@@ -37,7 +37,7 @@ describe("Resumable uploads (TUS)", () => {
     return res;
   };
 
-  const patch = (location: string, offset: number, body: Uint8Array) =>
+  const patch = (location: string, offset: number, body: Uint8Array<ArrayBuffer>) =>
     h.fetch(location, {
       method: "PATCH",
       headers: { ...TUS, "Upload-Offset": String(offset), "content-type": "application/offset+octet-stream" },

@@ -352,6 +352,12 @@ msgstr "{0} eklendi."
 msgid "{0} all · {1} custom · {2} none"
 msgstr "{0} tümü · {1} özel · {2} yok"
 
+#. placeholder {0}: r.apiKeys
+#. placeholder {1}: r.apiKeys === 1 ? "" : "s"
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "{0} API key{1} still grant access — API keys are not sessions."
+msgstr "{0} API anahtarı hâlâ erişim veriyor — API anahtarları oturum değildir."
+
 #. placeholder {0}: Object.keys(m.attributes).length
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "{0} attributes"
@@ -2671,6 +2677,16 @@ msgstr "Zaten doğrulandı mı?"
 msgid "Also arrives ready to run"
 msgstr "Ayrıca çalışmaya hazır gelir"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Also revoke my API keys"
+msgstr "API anahtarlarımı da iptal et"
+
+#. placeholder {0}: r.apiKeysRevoked
+#. placeholder {1}: r.apiKeysRevoked === 1 ? "" : "s"
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Also revoked {0} API key{1}."
+msgstr "Ayrıca {0} API anahtarı iptal edildi."
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Also show rows that are out of play"
 msgstr "Kullanımdan kaldırılan satırları da göster"
@@ -2938,6 +2954,10 @@ msgstr "API Anahtarları"
 #: src/client/admin/pages/settings/workspace-card.tsx
 msgid "API keys and integrations that address this workspace stop being answered until it is restored."
 msgstr "Bu çalışma alanını adresleyen API anahtarları ve entegrasyonlar, alan geri getirilene kadar yanıtsız kalır."
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "API keys are not sessions and survive a sign-out. Revoking them breaks anything using them — CI jobs, server integrations."
+msgstr "API anahtarları oturum değildir ve oturum kapatmadan sonra da yaşar. İptal etmek onları kullanan her şeyi bozar — CI işleri, sunucu entegrasyonları."
 
 #: src/client/admin/pages/access/permission-tester.tsx
 msgid "app (workspace end-users)"
@@ -8077,6 +8097,10 @@ msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Every occurrence recorded for it goes too, and a crash that happens again arrives as a brand-new group with no history."
 msgstr "Bu grup için kaydedilmiş her oluşum da gider; hata yeniden yaşanırsa geçmişi olmayan yepyeni bir grup olarak gelir."
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Every other session for your account is signed out. This one stays."
+msgstr "Hesabınızdaki diğer tüm oturumlar kapatılır. Bu oturum kalır."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
@@ -17468,6 +17492,14 @@ msgstr "Anahtarı iptal et"
 msgid "Revoke others"
 msgstr "Diğerlerini iptal et"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Revoke sessions"
+msgstr "Oturumları iptal et"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Revoke sessions and keys"
+msgstr "Oturumları ve anahtarları iptal et"
+
 #: src/client/pages/api-keys.tsx
 msgid "Revoke this API key?"
 msgstr "Bu API anahtarı iptal edilsin mi?"
@@ -19383,6 +19415,10 @@ msgstr "Diğer tüm cihazlardan çıkış yap"
 #: src/client/admin/pages/account-page.tsx
 msgid "Sign out other devices"
 msgstr "Diğer cihazlardan çıkış yap"
+
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Sign out other devices?"
+msgstr "Diğer cihazlardan çıkılsın mı?"
 
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx

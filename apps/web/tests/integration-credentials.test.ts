@@ -226,8 +226,23 @@ describe("the chokepoint is the only way in", () => {
     // Allegro all connect over OAuth), so the rule is enforced rather than
     // remembered: `ensureAccessToken` is reached through
     // `integration-credentials.ts` or not at all.
-    const offenders = readdirSync(SERVICES)
-      .filter((f) => f.endsWith(".ts") && f !== "integrations-oauth.ts" && f !== "integration-credentials.ts")
+    // Liveness first. The scan below reports SUCCESS when it matches nothing,
+    // so a rename of `ensureAccessToken` would retire this rule silently and
+    // look identical to a repo that obeys it. Verified 2026-08-30 by renaming
+    // the searched symbol: the whole file stayed green. Pin the two halves the
+    // scan depends on — that the chokepoint still owns the function, and that
+    // the census reaches the service directory at all.
+    const scanned = readdirSync(SERVICES).filter((f) => f.endsWith(".ts"));
+    expect(`services scanned: ${scanned.length > 100}`).toBe("services scanned: true");
+    expect(
+      `integration-credentials.ts still defines ensureAccessToken: ${readFileSync(
+        join(SERVICES, "integration-credentials.ts"),
+        "utf8",
+      ).includes("ensureAccessToken")}`,
+    ).toBe("integration-credentials.ts still defines ensureAccessToken: true");
+
+    const offenders = scanned
+      .filter((f) => f !== "integrations-oauth.ts" && f !== "integration-credentials.ts")
       .filter((f) => readFileSync(join(SERVICES, f), "utf8").includes("ensureAccessToken"));
     expect(offenders).toEqual([]);
   });

@@ -324,21 +324,34 @@ const assertWriteConditions = (
   perm: ResolvedPerm,
   proposed: Record<string, unknown>,
   action: "create" | "update",
+  /**
+   * The default-locale values for the localized columns this permission names,
+   * from {@link localizedJudgeValues}. REQUIRED, not defaulted: a call site
+   * that omitted it would judge a localized key against `undefined`, and
+   * `matchesCondition` answers `_neq` against absence with TRUE — an arm that
+   * allows the write AND skips the warn log. The typechecker names the caller
+   * instead.
+   */
+  localized: { values: Record<string, unknown>; absent: Set<string> } | null,
 ): void => {
   // `null` = at least one matching permission row was unconditional.
   if (perm.conditions === null || perm.conditions.length === 0) return;
 
   const subject = authSubjectOf(env);
-  // Localized columns live in the `_i18n` sidecar, one value per locale, and
-  // `splitLocalized` has already pulled them off `data` by the time we get
-  // here. There is no single value to compare, so a condition keyed on one is
-  // narrowed out rather than judged against `undefined` — which was
-  // fail-closed for `_eq` and fail-OPEN for `_neq` / `_nin` / `_null`, with no
-  // log line either way.
-  const localized = new Set(
-    env.collection.fields.filter((f) => f.localized).map((f) => f.name),
-  );
-  const unjudgeable = localized.size > 0 ? (f: string) => localized.has(f) : undefined;
+  // Localized columns live in the `_i18n` sidecar, so `splitLocalized` has
+  // pulled them off `data` long before this runs and every such key used to be
+  // narrowed out — the rule simply did not apply to writes.
+  //
+  // It applies now, judged against the WORKSPACE DEFAULT locale, which is what
+  // the read filter compiles to. A field with no value in that locale stays
+  // unjudgeable, because `matchesCondition` answers `_neq` against an absent
+  // value with TRUE — the fail-open arm — while SQL answers `NULL != 'x'` with
+  // NULL and drops the row. Rather than adopt either, such a condition is
+  // counted as UNSATISFIED below instead of as "no opinion": the two must not
+  // disagree in the permissive direction.
+  const judged = localized ? { ...proposed, ...localized.values } : proposed;
+  const absent = localized?.absent ?? new Set<string>();
+  const unjudgeable = absent.size > 0 ? (f: string) => absent.has(f) : undefined;
   const skipped: Condition[] = [];
   let matched = false;
   for (const cond of perm.conditions) {
@@ -351,10 +364,14 @@ const assertWriteConditions = (
     // both halves on reads.
     const judgeable = judgeableCondition(cond, unjudgeable) as Condition | null;
     if (judgeable === null) {
-      skipped.push(cond);
+      // A condition emptied by a MISSING localized value is not "no opinion" —
+      // the read filter would drop this row, so the write must not read as
+      // permitted. Left out of `skipped` so it falls through to the refusal.
+      const byAbsence = Object.keys(cond as Record<string, unknown>).some((k) => absent.has(k));
+      if (!byAbsence) skipped.push(cond);
       continue;
     }
-    if (matchesCondition(proposed, judgeable, subject)) {
+    if (matchesCondition(judged, judgeable, subject)) {
       matched = true;
       break;
     }
@@ -412,6 +429,52 @@ const assertNotReadOnlyImpersonation = (env: WriteEnv, action: string): void => 
     `This is a read-only impersonation — "${action}" on "${env.collection.slug}" is refused. ` +
       "Start one with `readOnly: false` if acting on the customer's behalf is intended.",
   );
+};
+
+/**
+ * The DEFAULT-locale value of each localized column a permission condition
+ * names, so the write check can judge the same thing the read filter does.
+ *
+ * The read side compiles such a key to a correlated read of the sidecar at the
+ * workspace default locale (`services/permissions.ts`). This is that rule on
+ * the write path: the value from THIS write if it set the default locale,
+ * otherwise the one already stored.
+ */
+const localizedJudgeValues = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  env: WriteEnv,
+  perm: ResolvedPerm,
+  split: LocaleSplit,
+  rowId: string | null,
+  defaultLocaleHint: string | null,
+): Promise<{ values: Record<string, unknown>; absent: Set<string> } | null> => {
+  if (perm.conditions === null || perm.conditions.length === 0) return null;
+  const named = new Set(perm.conditions.flatMap((c) => Object.keys(c as Record<string, unknown>)));
+  const defs = collection.fields.filter((f) => isLocalized(f) && named.has(f.name));
+  if (defs.length === 0) return null;
+
+  const locale =
+    defaultLocaleHint ??
+    (await loadAppSettings(ctx.db, ctx.dialect, env.tenantId ?? null)).i18nDefaultLocale ??
+    "en";
+  const values: Record<string, unknown> = { ...(split.localePatches.get(locale) ?? {}) };
+  const missing = defs.filter((f) => !(f.name in values) && !split.clearAll.has(f.name));
+  if (rowId && missing.length > 0) {
+    try {
+      for (const r of await loadSidecarForRow(ctx, collection.physicalTable, rowId, missing)) {
+        if (String(r.locale) !== locale) continue;
+        for (const f of missing) if (r[f.name] !== undefined) values[f.name] = r[f.name];
+      }
+    } catch (e) {
+      console.error(`[permissions] sidecar read failed judging ${collection.physicalTable}/${rowId}:`, e);
+    }
+  }
+  const absent = new Set(
+    defs.filter((f) => values[f.name] === undefined || values[f.name] === null).map((f) => f.name),
+  );
+  for (const name of absent) delete values[name];
+  return { values, absent };
 };
 
 /**
@@ -774,6 +837,15 @@ export const performCreate = async (
   // NOT resolved — it is a subquery the database evaluates at insert time, so
   // no value exists to judge, and a rule keyed on a hand-arranged position is
   // not a shape this is for.
+  const judgeLocalized = await localizedJudgeValues(
+    ctx,
+    collection,
+    env,
+    perm,
+    localeSplit,
+    null,
+    adoptedLocale,
+  );
   assertWriteConditions(
     env,
     perm,
@@ -784,6 +856,7 @@ export const performCreate = async (
       ...(collection.tenantScoped ? { tenant_id: env.tenantId } : {}),
     },
     "create",
+    judgeLocalized,
   );
 
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
@@ -1035,7 +1108,13 @@ export const performUpdate = async (
     //
     // Checking on the way in is the fix that does not depend on who applies it
     // later. A patch that could not be written live cannot be staged either.
-    assertWriteConditions(env, perm, { ...beforeRow, ...patch }, "update");
+    assertWriteConditions(
+      env,
+      perm,
+      { ...beforeRow, ...patch },
+      "update",
+      await localizedJudgeValues(ctx, collection, env, perm, localeSplit, id, adoptedLocale),
+    );
 
     // Canonical staged shape: base fields post-hash from `patch`; localized
     // fields as their full `{locale: value}` map (splitLocalized with a null
@@ -1191,7 +1270,13 @@ export const performUpdate = async (
   // `beforeRow` is the deserialized snapshot taken before any change; the patch
   // laid over it is what will exist. Columns the patch does not mention keep
   // their old values, which is exactly what the condition should see.
-  assertWriteConditions(env, perm, { ...beforeRow, ...patch }, "update");
+  assertWriteConditions(
+    env,
+    perm,
+    { ...beforeRow, ...patch },
+    "update",
+    await localizedJudgeValues(ctx, collection, env, perm, localeSplit, id, adoptedLocale),
+  );
 
   if (sets.length > 0) {
     await emit(

@@ -356,10 +356,22 @@ export const createAuth = async (
       // sufficient for that as 90. Buying 90->30 with a session read per cold
       // request therefore buys very little against the threat that matters.
       //
-      // Left enabled deliberately. The levers that would actually close it are
-      // (1) `revoke-others` accounting for API keys, and (2) a shared
-      // revocation signal so the other isolates learn about it at all —
-      // neither of which is a TTL.
+      // Left enabled deliberately. The two levers that would actually close it:
+      //
+      //   (1) `revoke-others` accounting for API keys — DONE, and it is the one
+      //       that mattered, because a key minted inside the window outlives
+      //       the revocation entirely.
+      //   (2) a shared revocation signal so the other isolates hear about it —
+      //       measured and deliberately NOT built. It moves a device holding
+      //       `session_data` from 200 to 200 (a signed blob in a browser is
+      //       past the reach of any server-side signal) and only a token-only
+      //       device from 200 to 401, i.e. it buys the tail ~30s of ~90 at the
+      //       price of a shared-store read on a path that makes zero today.
+      //       It is downstream of THIS flag, not independent of it: turn this
+      //       off and the arithmetic inverts. See the `CachedSession` note in
+      //       `apps/web/src/server/services/permissions-cache.ts`.
+      //
+      // Neither is a TTL, which is the thing this line looks like it controls.
       cookieCache: { enabled: true, maxAge: 60 },
     },
     databaseHooks: {

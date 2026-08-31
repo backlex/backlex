@@ -392,6 +392,32 @@ export const setCachedSession = (token: string, v: CachedSession): void =>
  * windows compound to ~90s rather than nesting inside 60. See
  * `tests/auth-admin-sessions.test.ts`, which pins both halves rather than
  * pretending either is gone.
+ *
+ * **Do not reach for a shared revocation signal to fix this — measure first.**
+ * The obvious next move is to put a revocation epoch in KV or a Durable Object
+ * so isolates OTHER than the one serving `revoke-others` hear about it. It was
+ * measured, by clearing this cache outright (which is exactly what a perfect
+ * shared signal would achieve everywhere) and asking again:
+ *
+ *   device holding `session_data`   200 -> 200   (no change at all)
+ *   device with the token alone     200 -> 401   (closes ~30s)
+ *
+ * The warm case does not move, because `cookieCache` answers above this layer
+ * and a shared signal cannot reach a signed blob sitting in someone's browser.
+ * So the signal would buy the TAIL of the window — roughly the last 30 of ~90
+ * seconds, after the 60s blob has lapsed — at the price of a shared-store read
+ * on a path that today makes ZERO (`tenantResolveCache` was the last D1 call
+ * removed from it, see below).
+ *
+ * That makes it strictly downstream of `cookieCache`, not an independent
+ * option: turn that off and the arithmetic inverts — this cache becomes the
+ * whole window and a shared signal takes 30s to 0 for the same price. Build it
+ * then, not before.
+ *
+ * One more measured fact that bounds all of this: `session_data` is NOT
+ * refreshed by ordinary requests, nor by `/api/auth/get-session`. It expires 60s
+ * after issue no matter how busy the caller is, which is why the window has a
+ * ceiling at all.
  */
 export const invalidateSession = (token: string): void => {
   sessionCache.deleteBy((k) => k === token || k.startsWith(`${token}.`));

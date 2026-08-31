@@ -273,6 +273,56 @@ describe("revoking other sessions", () => {
     expect(sessionCount()).toBe(before);
   });
 
+  test("`session_data` is not refreshed by traffic — the window has a ceiling", async () => {
+    // What bounds the ~90s at all. `cookieCache` answers without a database
+    // read, so if the blob were re-issued on activity the window would have no
+    // ceiling for a caller who keeps making requests — an attacker holding a
+    // stolen session could stay authenticated indefinitely past a revocation,
+    // and nothing anywhere would notice the difference.
+    //
+    // It is asserted on TWO routes because the interesting one is the second:
+    // `/api/auth/get-session` is better-auth's own, the place a refresh would
+    // most plausibly appear if a future version added one.
+    const res = await h.app.request(
+      "/api/auth/sign-in/email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: h.env.APP_URL as string,
+          "x-forwarded-for": ip,
+        },
+        body: JSON.stringify({ email: admin.email, password: PASSWORD }),
+      },
+      h.env,
+    );
+    const cookie = (res.headers.getSetCookie?.() ?? [])
+      .map((c) => c.split(";")[0] ?? "")
+      .filter(Boolean)
+      .join("; ");
+    // Liveness: without a `session_data` to begin with there is nothing to
+    // refresh, and both assertions below would hold vacuously.
+    expect(`sign-in issued session_data: ${cookie.includes("session_data")}`).toBe(
+      "sign-in issued session_data: true",
+    );
+
+    for (const path of ["/api/me", "/api/auth/get-session"]) {
+      const r = await Promise.resolve(
+        h.app.request(
+          path,
+          { headers: { cookie, origin: h.env.APP_URL as string, "x-forwarded-for": ip } },
+          h.env,
+        ),
+      );
+      const reissued = (r.headers.getSetCookie?.() ?? []).some((c) =>
+        c.includes("session_data"),
+      );
+      expect(`${path} re-issued session_data: ${reissued}`).toBe(
+        `${path} re-issued session_data: false`,
+      );
+    }
+  });
+
   test("the two caches COMPOUND rather than nest — the real lag is ~90s, not 60s", async () => {
     // The claim this replaces was that the inner 30s TTL sits "below" the outer
     // 60s one and therefore adds nothing. Three requests, each with the inner

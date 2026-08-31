@@ -417,18 +417,19 @@ describe("API keys outlive a session revocation, and the endpoint says so", () =
   test("an already-revoked key is neither counted nor revoked twice", async () => {
     const keep = await mintKey("still-live");
     const gone = await mintKey("already-gone");
-    void gone;
-    const list = (await (await h.fetch("/api/api-keys")).json()) as {
-      data: { id: string; name: string }[];
-    };
-    const goneId = list.data.find((k) => k.name === "already-gone")!.id;
-    expect((await h.fetch(`/api/api-keys/${goneId}`, { method: "DELETE" })).status).toBe(200);
+    expect((await h.fetch(`/api/api-keys/${gone.id}`, { method: "DELETE" })).status).toBe(200);
+    // Liveness: the surviving key must actually work before the call, or the
+    // 401 below would prove nothing about the revoke.
+    expect(`keep works first: ${(await callWithKey(keep.secret)).status}`).toBe(
+      "keep works first: 200",
+    );
 
     const body = (await (
       await h.fetch(`${BASE}/revoke-others?apiKeys=1`, { method: "POST" })
     ).json()) as { ok: boolean; removed: number; apiKeys: number; apiKeysRevoked: number };
+    // ONE revoked, not two: the already-dead key is neither counted nor touched.
     expect(body).toEqual({ ok: true, removed: 0, apiKeys: 0, apiKeysRevoked: 1 });
-    expect(`the live one is gone too: ${(await callWithKey(keep)).status}`).toBe(
+    expect(`the live one is gone too: ${(await callWithKey(keep.secret)).status}`).toBe(
       "the live one is gone too: 401",
     );
   });

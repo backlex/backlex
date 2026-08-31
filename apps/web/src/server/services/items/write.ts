@@ -20,7 +20,7 @@ import { recordRevision } from "../revisions";
 import { embedAndUpsert, deleteVector } from "../vectorize";
 import { indexFts, deleteFts } from "../fts";
 import type { CollectionRow } from "./collection-loader";
-import { serialize, serializeField, deserialize, deserializeRow, projectFields } from "./serialize";
+import { serialize, serializeColumns, serializeField, deserialize, deserializeRow, projectFields } from "./serialize";
 import {
   collectFieldWarnings,
   enforceFieldConditions,
@@ -821,8 +821,12 @@ export const performCreate = async (
     // already pushed above, and pushing it twice makes the INSERT name one
     // column twice — a syntax error on both dialects.
     if (data[f.name] === undefined || f.onCreate || f.sequence) continue;
-    cols.push(f.name);
-    vals.push(serializeField(data[f.name], f, ctx.dialect));
+    // Two columns for a `text` field: itself and its folded search companion.
+    // See `serializeColumns` for why every write path must go through it.
+    for (const [col, val] of serializeColumns(data[f.name], f, ctx.dialect)) {
+      cols.push(col);
+      vals.push(val);
+    }
   }
 
   // The WITH CHECK, placed HERE and not earlier: everything above may still
@@ -1226,7 +1230,9 @@ export const performUpdate = async (
   }
   for (const f of collection.fields) {
     if (patch[f.name] === undefined) continue;
-    sets.push(sql`${sql.identifier(f.name)} = ${serializeField(patch[f.name], f, ctx.dialect)}`);
+    for (const [col, val] of serializeColumns(patch[f.name], f, ctx.dialect)) {
+      sets.push(sql`${sql.identifier(col)} = ${val}`);
+    }
   }
   // Re-parenting moves the row into a DIFFERENT list, where its old position
   // means nothing and very likely collides with a row already holding it — the

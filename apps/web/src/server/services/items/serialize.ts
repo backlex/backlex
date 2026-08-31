@@ -1,4 +1,4 @@
-import { type FieldDef, type FieldType, isLocalized, parseGeoPoint } from "@backlex/db";
+import { type FieldDef, type FieldType, foldColumn, foldSearch, hasFoldColumn, isLocalized, parseGeoPoint } from "@backlex/db";
 import { moneyValueOf, toStoredMoney } from "./money-fields";
 
 export const serialize = (
@@ -117,6 +117,34 @@ export const serializeField = (
   field.type === "money"
     ? toStoredMoney(value, field)
     : serialize(value, field.type, dialect);
+
+/**
+ * Every column one field writes, and what goes in each.
+ *
+ * A `text` field writes TWO: itself, and the folded companion the
+ * case-insensitive filters compare against. Nothing else about a write path
+ * changes — but a path that keeps calling {@link serializeField} directly will
+ * write the column and leave the companion NULL, and a NULL companion does not
+ * degrade a filter, it makes the row **invisible** to one.
+ *
+ * That is why this exists as one helper rather than two lines repeated at each
+ * INSERT: the failure is silent, it is per-write-path, and this codebase has
+ * already been bitten by exactly that shape — a sidecar value that three of the
+ * four writers maintained.
+ * `apps/web/tests/fold-write-paths.test.ts` walks every path and proves it.
+ */
+export const serializeColumns = (
+  value: unknown,
+  field: FieldDef,
+  dialect: "pg" | "sqlite",
+): Array<[string, unknown]> => {
+  const stored = serializeField(value, field, dialect);
+  if (!hasFoldColumn(field)) return [[field.name, stored]];
+  return [
+    [field.name, stored],
+    [foldColumn(field.name), stored == null ? null : foldSearch(String(stored))],
+  ];
+};
 
 export const deserialize = (
   value: unknown,

@@ -23,6 +23,7 @@
 import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
+import { foldColumn, foldSearch, hasFoldColumn } from "@backlex/db";
 import type { Ctx } from "../context";
 import type { CollectionRow } from "./items/collection-loader";
 import { execute, queryAll } from "./items/sql-helpers";
@@ -245,6 +246,18 @@ export const ingestRows = async (
       column: f.name,
       value: (row) => serializeField(row[f.name], f.type, dialect),
     });
+    // An imported row is indistinguishable from a typed one the moment it
+    // lands, so it needs the same companion — otherwise a migrated catalog is
+    // unsearchable and nothing says why.
+    if (hasFoldColumn(f as unknown as FieldDef)) {
+      plan.push({
+        column: foldColumn(f.name),
+        value: (row) => {
+          const v = row[f.name];
+          return v == null ? null : foldSearch(String(v));
+        },
+      });
+    }
   }
 
   // Structural validation — a typo'd source column must fail its row, not

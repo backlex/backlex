@@ -3,6 +3,9 @@ import { z } from "zod";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import {
+  foldColumn,
+  foldSearch,
+  hasFoldColumn,
   FIELD_TYPES,
   derivePhysicalTable,
   ftsTableName,
@@ -423,6 +426,13 @@ async function seedSamples(
       }
       cols.push(def.name);
       vals.push(serialized);
+      // The folded companion, for the same reason every other write path fills
+      // it: a seeded row whose companion is NULL is INVISIBLE to `_icontains`,
+      // and a template's sample data is the first thing anyone filters.
+      if (hasFoldColumn(def)) {
+        cols.push(foldColumn(def.name));
+        vals.push(serialized == null ? null : foldSearch(String(serialized)));
+      }
     }
 
     // The allocated document numbers, one per sequence field, consumed in

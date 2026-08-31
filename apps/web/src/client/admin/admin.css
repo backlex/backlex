@@ -1228,7 +1228,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   font-family: 'Geist Mono', monospace;
 }
 
-/* ─── Permissions matrix (Directus-style grid) ──────────── */
+/* ─── Permissions matrix (role × collection grid) ───────── */
 .pm-roles {
   display: flex; gap: 4px; flex-wrap: wrap;
   padding: 10px 14px;

@@ -3,7 +3,7 @@ import { AppError } from "@backlex/core";
 import { type FieldDef, i18nTableName, isLocalized, validateValue } from "@backlex/db";
 import type { Ctx } from "../../context";
 import { deserialize, serialize } from "./serialize";
-import { queryAll } from "./sql-helpers";
+import { execute, queryAll } from "./sql-helpers";
 
 /** Alias for the requested-locale sidecar join (single-locale read). */
 export const I18N_REQ_ALIAS = "i18n_req";
@@ -160,6 +160,64 @@ export const sidecarInsert = (
 ): SQL => {
   const { colSql, valSql } = colValSql(rowId, locale, fieldMap, byName, dialect);
   return sql`INSERT INTO ${sql.identifier(i18nTableName(table))} (${colSql}) VALUES (${valSql})`;
+};
+
+/**
+ * Move a column's existing values into the sidecar, the moment it becomes
+ * `localized`.
+ *
+ * Without this, turning `localized: true` on a POPULATED field silently empties
+ * it. Measured: a row reading `name: "Classic Tee"` answered `name: {}` on the
+ * next request — 200, no warning — because `applyCollection` is additive, so it
+ * adds the sidecar column and leaves the base one behind ORPHANED, with every
+ * read now looking somewhere the text is not. Worse, the search index still
+ * held the old string, so the row came back for a query and displayed nothing.
+ *
+ * The same reasoning as the rollup backfill one screen over: the applier gives
+ * a new column its neutral value, and a confidently-wrong answer is worse than
+ * an obviously-missing one.
+ *
+ * The base column is deliberately NOT dropped. Losing a column is what
+ * `dropField` is for — an audited, explicit act — and leaving it means the
+ * toggle is reversible. It is unread from here on.
+ *
+ * Set-based: one statement per field, whatever the row count.
+ *
+ * Scoped to `tenantId` when the collection is tenant-scoped, exactly as
+ * `backfillFts` is — a shared physical table would otherwise have one tenant's
+ * schema change write sidecar rows for every other tenant's rows. A global
+ * table has no `tenant_id` column to filter on.
+ */
+export const backfillNewlyLocalized = async (
+  ctx: Ctx,
+  physicalTable: string,
+  pkColumn: string,
+  defs: FieldDef[],
+  locale: string,
+  opts: { tenantScoped?: boolean; tenantId: string | null },
+): Promise<string[]> => {
+  const done: string[] = [];
+  const tenantWhere =
+    (opts.tenantScoped ?? true) && opts.tenantId
+      ? sql` AND ${sql.identifier("tenant_id")} = ${opts.tenantId}`
+      : sql``;
+  for (const f of defs) {
+    const col = sql.identifier(f.name);
+    try {
+      await execute(
+        ctx,
+        sql`INSERT INTO ${sql.identifier(i18nTableName(physicalTable))} (${sql.identifier("row_id")}, ${sql.identifier("locale")}, ${col})
+          SELECT ${sql.identifier(pkColumn)}, ${locale}, ${col} FROM ${sql.identifier(physicalTable)} WHERE ${col} IS NOT NULL${tenantWhere}
+          ON CONFLICT (${sql.identifier("row_id")}, ${sql.identifier("locale")}) DO UPDATE SET ${col} = excluded.${col}`,
+      );
+      done.push(f.name);
+    } catch (e) {
+      // Reported, never swallowed: a field whose text did not move is a field
+      // that just went blank, and the caller has to be told which one.
+      console.error(`[i18n] localize backfill failed for ${physicalTable}.${f.name}:`, e);
+    }
+  }
+  return done;
 };
 
 /**

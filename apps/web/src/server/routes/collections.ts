@@ -60,6 +60,8 @@ import { seedOwnerScopedPermissions } from "../services/seed";
 import { cloneCollection } from "../services/collections";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 import { backfillFts, ftsIndexSignature, isSearchable } from "../services/fts";
+import { backfillNewlyLocalized } from "../services/items/i18n-sidecar";
+import { loadAppSettings } from "../services/settings";
 import { startLongJob } from "../services/jobs-long-running";
 import { readJson } from "../lib/body";
 
@@ -1912,6 +1914,37 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // nothing" trap. Skipped for adopted tables (FTS is managed-only; the
     // applier never creates index objects for them).
     const before = existing[0] as Record<string, unknown>;
+    // A field that just became `localized` keeps its values on the BASE column,
+    // while every read now looks in the sidecar — so without this the text goes
+    // blank on the next request, with a 200 and no warning. Runs before the FTS
+    // backfill below, which reads the sidecar to build its text.
+    let localizedBackfill: string[] | null = null;
+    if (!merged.adopted) {
+      const wasLocalized = new Set(
+        (before.fields as FieldDef[]).filter((f) => f.localized).map((f) => f.name),
+      );
+      const beforeNames = new Set((before.fields as FieldDef[]).map((f) => f.name));
+      // Only a field that ALREADY EXISTED can have values to move; one added
+      // localized in this same patch has none.
+      const newlyLocalized = (merged.fields as FieldDef[]).filter(
+        (f) => f.localized && !wasLocalized.has(f.name) && beforeNames.has(f.name),
+      );
+      if (newlyLocalized.length > 0) {
+        const loc = (await loadAppSettings(db, dialect, tenantId)).i18nDefaultLocale ?? "en";
+        localizedBackfill = await backfillNewlyLocalized(
+          c.get("ctx"),
+          (merged.physicalTable ?? merged.physical_table) as string,
+          ((merged.pkColumn ?? merged.pk_column) as string | undefined) ?? "id",
+          newlyLocalized,
+          loc,
+          {
+            tenantScoped: Boolean(merged.tenantScoped ?? merged.tenant_scoped ?? true),
+            tenantId,
+          },
+        );
+      }
+    }
+
     const ftsMeta = {
       fts: Boolean(merged.fts),
       physicalTable: (merged.physicalTable ?? merged.physical_table) as string,
@@ -1966,6 +1999,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       slug: nextSlug,
       renamed: renameCounts,
       ftsBackfill,
+      ...(localizedBackfill?.length ? { localizedBackfill } : {}),
       ...(patchRelationWarnings.length ? { warning: patchRelationWarnings.join(" ") } : {}),
       ...(rollupBackfill ? { rollupBackfill } : {}),
       ...(sequenceSync ? { sequenceSync } : {}),

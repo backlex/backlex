@@ -66,7 +66,12 @@ export const ftsIndexSignature = (c: Pick<FtsTarget, "fts" | "fields">): string 
   c.fts
     ? c.fields
         .filter(isFtsField)
-        .map((f) => f.name)
+        // The localized flag is part of the signature because it changes WHERE
+        // the text comes from — base column or sidecar — without changing the
+        // field's name. Toggling it used to leave the signature identical, so
+        // the backfill did not fire and the index kept serving the old
+        // base-column string for a row that now reads as empty.
+        .map((f) => (isLocalized(f) ? `${f.name}:i18n` : f.name))
         .sort()
         .join(",")
     : "";

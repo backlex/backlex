@@ -1,6 +1,6 @@
 /**
  * `localized` collection fields — per-locale values stored in the
- * `<table>__i18n` translations sidecar (the Directus model), one native-typed
+ * `<table>__i18n` translations sidecar (the sidecar model), one native-typed
  * column per localized field. Unlike `i18n_text` (a base-table JSON map), ANY
  * field type can be localized and keeps its native storage type.
  *

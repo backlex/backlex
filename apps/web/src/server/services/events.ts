@@ -39,6 +39,11 @@ export interface SubscriptionMeta {
    *  of the permission conditions so a filtered subscriber receives only the
    *  events whose row matches its query, evaluated server-side. */
   queryFilter?: Condition | null;
+  /** Which store the in-memory predicate is standing in for — see
+   *  {@link RealtimeFilter.dialect}. Frozen with the rest of the gate at
+   *  subscribe time, because the Durable Object that evaluates it has no
+   *  database binding to ask. */
+  dialect?: "pg" | "sqlite";
 }
 
 export interface Subscriber {

@@ -129,6 +129,41 @@ the existence of a hidden column.
 > collection, which reads back as `ownerId`. Your own fields keep their
 > snake_case name on both sides, so this only bites on the system columns.
 
+### Text sorts are byte order, not alphabetical order
+
+`ORDER BY` on a text column uses the **database's** collation, and on
+SQLite/D1 that is byte order over UTF-8. For ASCII text the two agree, so this
+is invisible in English and then wrong everywhere else — every letter outside
+A–Z sorts *after* `Z`, because its UTF-8 encoding starts above `0x7A`.
+
+Measured on a Turkish customer list, `sort=name`:
+
+```
+what you get : Adalar < Işık < Sarı < Zeytin < Çınar < Öztürk < Şahin
+tr-TR        : Adalar < Çınar < Işık < Öztürk < Sarı < Şahin < Zeytin
+```
+
+`Ç`, `Ö` and `Ş` land past `Zeytin`. The same shape hits German `ä/ö/ü`,
+Scandinavian `å/æ/ø`, Polish `ą/ć/ł`, Spanish `ñ`, and every non-Latin script.
+
+There is no per-request knob for this, and the workspace locale does not change
+it: D1 ships without SQLite's ICU extension, so `COLLATE` has no locale-aware
+collation to name. On Postgres the answer is whatever collation the column was
+created with — usually the database's, which a self-host *can* set.
+
+What works today, cheapest first:
+
+1. **Sort one page in the client** with `Intl.Collator(locale)` when the list
+   fits a page (`limit` ≤ 200). Correct, and free.
+2. **Sort by a column that is already ASCII** — a code, a sequence number, a
+   slug — and show the display name beside it. Most operational lists have one.
+3. **Keep a sort-key column** written next to the display value (case folded,
+   diacritics stripped, transliterated) and `sort` by that. The only option
+   that stays correct across pages.
+
+Numbers, timestamps, money and booleans are unaffected — this is text
+collation only.
+
 ## Projections (`fields`)
 
 `fields=a,b,c` becomes a SQL-level `SELECT a, b, c, …`. System columns

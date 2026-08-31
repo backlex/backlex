@@ -74,9 +74,37 @@ const buildSearchText = (row: Record<string, unknown>, fields: FieldDef[]): stri
  * FTS5 operators like `*`, `:`, `-`, `"`, `(`), and ANDs them with spaces —
  * matching `websearch_to_tsquery`'s default space-as-AND semantics. Returns
  * null when the input has no usable tokens (caller skips the search).
+ *
+ * ## Why the case fold is FTS5's and not JavaScript's
+ *
+ * This used to read `needle.toLowerCase()`, and that one call made a row
+ * unfindable by the very string it is named with.
+ *
+ * `toLowerCase()` uses the locale-invariant mapping, where `İ` (U+0130, the
+ * dotted capital I every Turkish proper noun starts with) does not fold to one
+ * character — it EXPANDS to `i` + U+0307 COMBINING DOT ABOVE. The tokenizer
+ * regex below counts letters and numbers, and a combining mark is neither, so
+ * it reads U+0307 as a SEPARATOR: `"İSTANBUL"` came out as the two tokens `i`
+ * and `stanbul`, ANDed. Neither is a word in the index, so a product literally
+ * named "İstanbul Filtre Kahve" returned nothing for `İstanbul` — while the
+ * misspelled ASCII `ISTANBUL` found it, because that one folds to a single `i`.
+ *
+ * The fold was also redundant. FTS5's default `unicode61` tokenizer already
+ * case-folds AND strips diacritics at MATCH time, on both sides — which is why
+ * `cay` has always matched `çay`. Doing it again in JS could only ever
+ * disagree with the tokenizer, never help it, and here it disagreed for every
+ * character whose lowercase is longer than itself: Turkish `İ`, Lithuanian
+ * `Į`/`Ĩ`, and Greek capitals carrying tonos.
+ *
+ * So the tokens now keep the case they arrived in and FTS5 folds them. Only
+ * SQLite came through here — Postgres hands the raw needle to
+ * `websearch_to_tsquery` — so this was a SQLite/D1 bug, which is to say it was
+ * every managed tenant and every default self-host.
+ *
+ * Pinned by `apps/web/tests/fts-turkish-dotted-i.test.ts`.
  */
 export const toFtsMatchExpr = (needle: string): string | null => {
-  const tokens = needle.toLowerCase().match(/[\p{L}\p{N}]+/gu);
+  const tokens = needle.match(/[\p{L}\p{N}]+/gu);
   if (!tokens || tokens.length === 0) return null;
   return tokens.map((t) => `"${t}"`).join(" ");
 };

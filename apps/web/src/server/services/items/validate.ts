@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { AppError, type AuthSubject } from "@backlex/core";
 import {
   checkableRule,
+  collectRuleHops,
   findRetireField,
   isLocalized,
   isRetiredValue,
@@ -13,7 +14,8 @@ import {
 } from "@backlex/db";
 import type { Ctx } from "../../context";
 import { loadCollection, type CollectionRow } from "./collection-loader";
-import { queryAll } from "./sql-helpers";
+import { deserializeField } from "./serialize";
+import { queryAll, tenantFilter } from "./sql-helpers";
 
 /** Treat undefined / null / "" as "no value" for a conditional-required check. */
 const isEmpty = (v: unknown): boolean => v === undefined || v === null || v === "";
@@ -90,6 +92,107 @@ export const enforceValidationRules = (
       );
     }
   }
+};
+
+/**
+ * Resolve the one-relation-hop values a collection's `validation.rule`s
+ * reference and return a COPY of the proposed row carrying them under the
+ * dotted key the row matcher reads (`"zone.warehouse"`).
+ *
+ * This is what makes a cross-ROW invariant expressible at all. Until it landed,
+ * `$field.*` saw only the row being written, so the one rule a warehouse
+ * actually needs — *a bin's zone must belong to the bin's own warehouse* — could
+ * be saved and was then never true: the matcher resolved the hop to `undefined`
+ * and `_eq` refused every write to the column. The rule language did not gain
+ * an operator here; the row simply arrives with the value it always named.
+ *
+ * A COPY, because on a create the caller's payload IS the row that gets
+ * inserted — putting `"zone.warehouse"` on it would try to write a column of
+ * that name. Nothing downstream of the rule check ever sees these keys.
+ *
+ * One SELECT per distinct relation field the rules travel through, however many
+ * of the target's columns they read, and nothing at all when a collection
+ * declares no hops — which is every collection that existed before this.
+ *
+ * Deliberately quiet in three cases, because a louder one would be wrong:
+ *  - the relation is unset on this row → no row to read, and `checkableRule`
+ *    then steps the rule aside rather than refusing (see `isAbsentHop`);
+ *  - the target collection or the referenced id does not resolve →
+ *    {@link validateRelations} refuses those on the same write, with a message
+ *    that names them precisely. Two errors for one mistake helps nobody;
+ *  - the sub-field is not a column of the target → refused at SAVE time by
+ *    `checkRuleHopTargets`, so a stored spec cannot reach here with one.
+ *
+ * Values are read back through {@link deserializeField}, so a money hop
+ * compares in major units against a money field of this row rather than
+ * comparing minor units to major ones and quietly always disagreeing.
+ */
+export const hydrateRuleHops = async (
+  row: Record<string, unknown>,
+  fields: FieldDef[],
+  ctx: Ctx,
+  tenantId: string | null | undefined,
+): Promise<Record<string, unknown>> => {
+  const hops = collectRuleHops(fields);
+  if (hops.length === 0) return row;
+  const byRelation = new Map<string, { id: string | number; subs: Set<string> }>();
+  for (const h of hops) {
+    const raw = row[h.relation];
+    if (raw === undefined || raw === null || raw === "") continue;
+    if (typeof raw !== "string" && typeof raw !== "number") continue;
+    const entry = byRelation.get(h.relation) ?? { id: raw, subs: new Set<string>() };
+    entry.subs.add(h.sub);
+    byRelation.set(h.relation, entry);
+  }
+  if (byRelation.size === 0) return row;
+  const out = { ...row };
+  for (const [relation, { id, subs }] of byRelation) {
+    const via = fields.find((f) => f.name === relation);
+    if (!via?.to) continue;
+    let target: CollectionRow;
+    try {
+      target = await loadCollection(ctx, tenantId, via.to);
+    } catch {
+      continue;
+    }
+    // Only the columns the rules actually read — plus, for a money hop, the
+    // sibling column its currency lives in, which `deserializeField` needs.
+    const cols = new Set<string>();
+    const wanted: FieldDef[] = [];
+    for (const sub of subs) {
+      const sf = target.fields.find((f) => f.name === sub);
+      if (!sf) continue;
+      cols.add(sub);
+      wanted.push(sf);
+      if (sf.money?.currencyField) cols.add(sf.money.currencyField);
+    }
+    if (cols.size === 0) continue;
+    const scope = tenantFilter(target, { tenantId, roles: [] });
+    const found = await queryAll<Record<string, unknown>>(
+      ctx,
+      sql`SELECT ${sql.join(
+        [...cols].map((c) => sql.identifier(c)),
+        sql`, `,
+      )}
+          FROM ${sql.identifier(target.physicalTable)}
+          WHERE ${sql.identifier(target.pkColumn)} = ${id}${
+            scope ? sql` AND ${scope}` : sql``
+          }
+          LIMIT 1`,
+    );
+    const hit = found[0];
+    if (!hit) continue;
+    for (const sf of wanted) {
+      out[`${relation}.${sf.name}`] = deserializeField(
+        hit[sf.name],
+        sf,
+        ctx.dialect,
+        hit,
+        target.fields,
+      );
+    }
+  }
+  return out;
 };
 
 export interface FieldWarning {

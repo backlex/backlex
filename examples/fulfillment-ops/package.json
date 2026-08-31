@@ -1,0 +1,33 @@
+{
+  "name": "@backlex-examples/fulfillment-ops",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React + Vite warehouse & fulfillment console on backlex — customers, multi-bin stock with reservations, campaigns, pick waves, packing, shipments and carrier tracking.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "provision": "bun scripts/provision.ts",
+    "seed": "bun scripts/seed.ts",
+    "operate": "bun scripts/operate.ts",
+    "probe": "bun scripts/probe.ts",
+    "reset": "bun scripts/reset.ts"
+  },
+  "dependencies": {
+    "@backlex-examples/shared": "workspace:*",
+    "backlex": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.2.1"
+  }
+}

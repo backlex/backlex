@@ -10,11 +10,14 @@ import {
   SEQUENCE_RESETS,
   applyCollection,
   assertIdent,
+  collectRuleHops,
   derivePhysicalTable,
   dropCollection,
   dropField,
   type FieldDef,
   type FieldType,
+  isLocalized,
+  isPresentational,
   sqlTypeFor,
   tableExists,
   validateFields,
@@ -457,7 +460,8 @@ const FieldObject = z.object({
       .optional(),
     /**
      * The lifecycle this dropdown may move through — `{ allow: [{from, to,
-     * roles?, requires?, label?}], initial? }`.
+     * roles?, requires?, label?}], initial? }`, where `initial` is the value or
+     * values a NEW row may be created with.
      *
      * Safe over the API for the same reason `rollup` and `sequence` are:
      * nothing here reaches the DDL or any SQL. Every value is checked against
@@ -465,6 +469,15 @@ const FieldObject = z.object({
      * collection's own fields by `validateTransitionSpec`, so the worst a
      * malformed spec can do is fail at save time. The bounds are what stop a
      * caller storing an unbounded graph in the collection metadata.
+     *
+     * All three value slots — `from`, `to` and `initial` — accept a bare string
+     * or a list, and a bare string is normalized to a one-element list here so
+     * everything downstream sees one shape. `initial` used to be the only one
+     * that refused a string, which read as an arbitrary rule rather than a
+     * design: a spec whose other two sides both coerce, written the way they
+     * are written, was answered `expected array, received string` on the third.
+     * Seven collections in a row were refused for it while this example was
+     * being provisioned.
      */
     transitions: z
       .object({
@@ -483,7 +496,10 @@ const FieldObject = z.object({
           )
           .min(1)
           .max(128),
-        initial: z.array(z.string().max(120)).min(1).max(64).optional(),
+        initial: z
+          .union([z.string().max(120), z.array(z.string().max(120)).min(1).max(64)])
+          .transform((v) => (typeof v === "string" ? [v] : v))
+          .optional(),
       })
       .optional(),
 });
@@ -690,6 +706,89 @@ export const checkRelationTargets = async (
     }
   }
   return warnings;
+};
+
+/**
+ * Refuse a `validation.rule` whose one-relation hop reads a column the target
+ * collection does not have.
+ *
+ * `validateFields` checks everything about a hop that is visible from this
+ * field list alone — depth, that the head is a `relation`, that the spelling is
+ * the supported one. The last question needs the collection on the other side,
+ * so it lands here, next to the other two cross-collection checks.
+ *
+ * It REFUSES rather than warning, unlike `checkRelationTargets` next door, and
+ * the asymmetry is the same one described there: a dangling `to` is a forward
+ * reference that resolves later, while a sub-field naming a column that will
+ * never exist is a typo whose only symptom is a rule that never fires again. A
+ * hop the write path cannot resolve is skipped, not failed — that is what makes
+ * "no zone yet" a question rather than a violation — so a misspelled column
+ * would leave the invariant silently unenforced for the life of the collection.
+ *
+ * Two shapes are refused for the same reason a missing name is: the value is
+ * not in the column the hop would read. A presentational block owns no column
+ * at all, and a `localized` field keeps its values in the translations sidecar.
+ *
+ * A target that does not exist YET is left alone: `checkRelationTargets` has
+ * already reported it on this same body, and refusing here would make the
+ * ordinary parent↔child cycle unexpressible all over again.
+ *
+ * A self-reference is judged against the INCOMING field list, not the stored
+ * one — a body that adds both the hop and the column it reads must pass.
+ */
+export const checkRuleHopTargets = async (
+  ctx: Parameters<typeof loadCollection>[0],
+  tenantId: string,
+  selfSlug: string,
+  fields: FieldDef[],
+): Promise<void> => {
+  const hops = collectRuleHops(fields);
+  if (hops.length === 0) return;
+  const cache = new Map<string, FieldDef[] | null>();
+  for (const hop of hops) {
+    const via = fields.find((f) => f.name === hop.relation);
+    // A head that is not a relation was already refused by `validateFields`.
+    if (!via?.to) continue;
+    const slug = via.to;
+    let targetFields = cache.get(slug);
+    if (targetFields === undefined) {
+      if (slug === selfSlug) {
+        targetFields = fields;
+      } else {
+        try {
+          targetFields = (await loadCollection(ctx, tenantId, slug)).fields;
+        } catch {
+          targetFields = null;
+        }
+      }
+      cache.set(slug, targetFields);
+    }
+    if (targetFields === null) continue;
+    const sub = targetFields.find((f) => f.name === hop.sub);
+    const where = `Field "${echo(hop.field)}": validation.rule reads "$field.${echo(hop.path)}"`;
+    if (!sub) {
+      // Layout blocks are not offerable alternatives, so they are left out of
+      // the list AND out of the count that decides whether to trail off.
+      const readable = targetFields.filter((f) => !isPresentational(f)).map((f) => f.name);
+      const near = readable.slice(0, 8).join(", ");
+      throw new AppError(
+        "VALIDATION",
+        `${where}, but "${echo(slug)}" has no field "${echo(hop.sub)}". Its fields are: ${near}${readable.length > 8 ? ", …" : ""}.`,
+      );
+    }
+    if (isPresentational(sub)) {
+      throw new AppError(
+        "VALIDATION",
+        `${where}, but "${echo(hop.sub)}" is a ${sub.type} block on "${echo(slug)}" — it is layout, and owns no column to read.`,
+      );
+    }
+    if (isLocalized(sub)) {
+      throw new AppError(
+        "VALIDATION",
+        `${where}, but "${echo(hop.sub)}" is localized on "${echo(slug)}" — its values live in the translations sidecar, one per locale, so there is no single value to compare. Hop to a non-localized column instead.`,
+      );
+    }
+  }
 };
 
 const FieldSchema = FieldObject.refine(
@@ -1425,6 +1524,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
       body.slug,
       body.fields,
     );
+    // The third cross-collection reference: a validation rule that hops one
+    // relation to read a column over there.
+    await checkRuleHopTargets(c.get("ctx"), tenantId, body.slug, body.fields);
     // Same reason, one table over: a transition rule gated on a role name that
     // does not exist is a move nobody can ever make.
     await validateTransitionRoles(c.get("ctx"), tenantId, body.fields);
@@ -1758,6 +1860,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
         merged.fields as FieldDef[],
       );
       patchRelationWarnings = await checkRelationTargets(
+        c.get("ctx"),
+        tenantId,
+        nextSlug,
+        merged.fields as FieldDef[],
+      );
+      await checkRuleHopTargets(
         c.get("ctx"),
         tenantId,
         nextSlug,

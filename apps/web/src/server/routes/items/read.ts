@@ -45,7 +45,7 @@ import {
   TAGS,
 } from "../../services/items/schemas";
 import { describeTransitions } from "../../services/items/transitions";
-import { auditRead, canSeeDraftsFor } from "./shared";
+import { auditRead, canSeeDraftsFor, itemNotFoundMessage } from "./shared";
 import { getStagedRow, stagedViewOf } from "../../services/items/staged";
 import { defaultHook } from "../../lib/openapi-router";
 
@@ -137,7 +137,7 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           deletedFilter(collection),
         )} LIMIT 1`,
       );
-      if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      if (!rows[0]) throw new AppError("NOT_FOUND", itemNotFoundMessage(c.req.param("id")));
       const row = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);
       return c.json({
         data: describeTransitions(collection.fields, row, auth.roles, perm.fields),
@@ -307,7 +307,7 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ctx,
         sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere, deletedWhere, draftWhere)} LIMIT 1`,
       );
-      if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      if (!rows[0]) throw new AppError("NOT_FOUND", itemNotFoundMessage(c.req.param("id")));
       // Staged-edits: privileged callers get a `_staged` flag when a pending
       // patch exists, and `?staged=1` previews the patch on top of the live
       // row. Loaded before the ETag so the validator moves when the patch

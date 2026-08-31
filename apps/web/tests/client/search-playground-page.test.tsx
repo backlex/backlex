@@ -77,7 +77,7 @@ describe("<SearchPlaygroundPage>", () => {
     expect(screen.getByText("1 result(s)")).toBeTruthy();
     expect(screen.getByText("fts")).toBeTruthy();
     // The search POST went to the preselected collection.
-    const calls = (global.fetch as ReturnType<typeof mock>).mock.calls as unknown as [
+    const calls = (global.fetch as unknown as ReturnType<typeof mock>).mock.calls as unknown as [
       RequestInfo | URL,
       RequestInit?,
     ][];

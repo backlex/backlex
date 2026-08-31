@@ -3,6 +3,21 @@ import type { TokenStore } from "./token-store";
 import type { AggregateQuery, AggregateRow, BatchOperation, BatchResponse, BulkUpdateResponse, ChangesQuery, ChangesResponse, ImportSummary, IngestInput, IngestSummary, ItemQuery, ItemResponse, ListQuery, ListResponse, SearchQuery, SearchResponse } from "./types";
 
 /**
+ * A caller-supplied `fetch`.
+ *
+ * Deliberately NOT `typeof fetch`. On Bun (and on any runtime that hangs
+ * statics off the global) `typeof fetch` demands `preconnect` too, so a
+ * consumer who passes the obvious wrapper —
+ * `fetch: (url, init) => myFetch(url, init)` — is rejected for missing a
+ * method the SDK never calls. The SDK only ever invokes the override as a
+ * function; that is the whole requirement, so that is what the type says.
+ */
+export type FetchLike = (
+  input: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>;
+
+/**
  * The shapes every domain client in `clients/` is written against, and the
  * handle they are all built from.
  *
@@ -65,7 +80,7 @@ export interface ClientOptions {
    */
   origin?: string;
   /** Optional fetch override (testing / Node polyfill). */
-  fetch?: typeof fetch;
+  fetch?: FetchLike;
   /**
    * Keep the app-mode session token across page loads.
    *
@@ -545,7 +560,7 @@ export interface FieldTransitions {
 export interface ClientCore {
   opts: ClientOptions;
   /** The resolved fetch — `opts.fetch` or the global. */
-  fetch: typeof globalThis.fetch;
+  fetch: FetchLike;
   /** `/api/auth` or the workspace-scoped `/api/t/<slug>/auth`. */
   authBase: string;
   request<T>(

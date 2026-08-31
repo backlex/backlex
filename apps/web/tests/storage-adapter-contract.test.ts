@@ -42,7 +42,7 @@ import { r2Storage } from "../src/server/adapters/storage.r2";
 const fakeR2 = () => {
   const store = new Map<
     string,
-    { body: Uint8Array; contentType?: string; etag: string; uploaded: Date }
+    { body: Uint8Array<ArrayBuffer>; contentType?: string; etag: string; uploaded: Date }
   >();
   let seq = 0;
   return {
@@ -51,7 +51,7 @@ const fakeR2 = () => {
         typeof body === "string"
           ? new TextEncoder().encode(body)
           : body instanceof Uint8Array
-            ? body
+            ? (body as Uint8Array<ArrayBuffer>)
             : new Uint8Array(await new Response(body as ReadableStream).arrayBuffer());
       const rec = {
         body: bytes,

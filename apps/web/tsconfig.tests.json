@@ -1,0 +1,34 @@
+{
+  // Typecheck for `tests/`. Deliberately a THIRD project rather than a widened
+  // `include` on either existing one: the suite spans both halves of the app —
+  // server specs import `src/server/**`, `tests/client/**` renders React — so
+  // it needs the client's `jsx` + `@/*` alias AND the server's worker types at
+  // once, which neither project can offer alone.
+  //
+  // The three `.d.ts` files below are the ambient declarations the two real
+  // projects get for free from their own `include` globs: `*.sql` migration
+  // text, `*.po` catalogs and `ImportMetaEnv`, and the Vite `define` constants.
+  // Nothing IMPORTS them, so they only enter a program by being listed —
+  // measured, leaving them out reports 272 "cannot find module '*.sql'" plus 12
+  // "cannot find name '__APP_VERSION__'", none of which the runtime has.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/.tsbuildinfo.tests",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    // No `"node"` here even though the suite uses `node:*` freely: nothing
+    // declares `@types/node` directly, so it only exists nested under
+    // bun-types — in THREE different versions (22, 24, 25). Naming it is a
+    // TS2688, and the split is why `ChildProcess` resolves without the
+    // EventEmitter half in `tests/smoke/orchestrate.ts`.
+    "types": ["@cloudflare/workers-types", "bun", "vite/client"],
+    "paths": { "@/*": ["./src/client/*"] }
+  },
+  "include": [
+    "tests/**/*",
+    "src/server/global.d.ts",
+    "src/server/shims/sql-text.d.ts",
+    "src/client/vite-env.d.ts"
+  ]
+}

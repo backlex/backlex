@@ -11,12 +11,16 @@ import {
   parseOtlpHeaders,
 } from "../src/server/services/otlp";
 import type { SpanInput } from "../src/server/services/traces";
+import { asFetch } from "./helpers/fetch-stub";
 
 const input: SpanInput = {
   trace: {
     traceId: "0af7651916cd43dd8448eb211c80319c",
     spanId: "b7ad6b7169203331",
     parentSpanId: "00f067aa0ba902b7",
+    // Required by `TraceContext`, and true is the only state that reaches an
+    // exporter — an unsampled span is dropped before this point.
+    sampled: true,
   },
   name: "GET /api/items/posts",
   method: "GET",
@@ -80,10 +84,10 @@ describe("OTLP exporter", () => {
 
   test("export POSTs to <endpoint>/v1/traces with parsed headers", async () => {
     const calls: { url: string; init: RequestInit }[] = [];
-    const fakeFetch = (async (url: any, init: any) => {
+    const fakeFetch = asFetch(async (url: any, init: any) => {
       calls.push({ url: String(url), init });
       return new Response("{}", { status: 200 });
-    }) as typeof fetch;
+    });
     await exportSpanOtlp(
       { OTLP_ENDPOINT: "https://otel.example.com", OTLP_HEADERS: "authorization=Bearer abc" },
       input,
@@ -99,22 +103,22 @@ describe("OTLP exporter", () => {
   });
 
   test("never throws: down collector and non-2xx are swallowed; unset endpoint no-ops", async () => {
-    const throwingFetch = (async () => {
+    const throwingFetch = asFetch(async () => {
       throw new Error("ECONNREFUSED");
-    }) as typeof fetch;
+    });
     await expect(
       exportSpanOtlp({ OTLP_ENDPOINT: "https://down.example.com" }, input, throwingFetch),
     ).resolves.toBeUndefined();
-    const rejectingFetch = (async () =>
-      new Response("nope", { status: 503 })) as typeof fetch;
+    const rejectingFetch = asFetch(async () =>
+      new Response("nope", { status: 503 }));
     await expect(
       exportSpanOtlp({ OTLP_ENDPOINT: "https://busy.example.com" }, input, rejectingFetch),
     ).resolves.toBeUndefined();
     let called = 0;
-    const countingFetch = (async () => {
+    const countingFetch = asFetch(async () => {
       called++;
       return new Response("{}");
-    }) as typeof fetch;
+    });
     await exportSpanOtlp({}, input, countingFetch);
     expect(called).toBe(0);
   });

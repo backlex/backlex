@@ -26,6 +26,10 @@
  * Runs anywhere Web Crypto is available (Workers, Node 18+, Bun, Deno).
  */
 
+// Type-only, so `backlex/token` stays a standalone entry with no runtime
+// import of the main client.
+import type { FetchLike } from "./core";
+
 /** Claims carried by a workspace end-user access token. */
 export interface AccessTokenClaims {
   /** app-user id */
@@ -50,7 +54,7 @@ export interface TokenVerifierOptions {
    *  `<url>/.well-known/jwks.json`). */
   url: string;
   /** Custom fetch (test doubles, a pinned agent). Defaults to global `fetch`. */
-  fetch?: typeof fetch;
+  fetch?: FetchLike;
   /** Reject tokens whose `iss` doesn't match. Off by default — set it when the
    *  same verifier could be reached by tokens from more than one instance. */
   issuer?: string;

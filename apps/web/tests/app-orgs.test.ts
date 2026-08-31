@@ -31,7 +31,7 @@ type Bearer = (path: string, init?: RequestInit) => Promise<Response>;
 /** App-plane caller. `org` sets `X-Backlex-Org` on every call. */
 const bearerFor = (h: TestHarness, token: string, org?: string): Bearer =>
   (path, init = {}) =>
-    h.app.request(path, {
+    Promise.resolve(h.app.request(path, {
       ...init,
       headers: {
         ...JSON_HEADERS,
@@ -39,7 +39,7 @@ const bearerFor = (h: TestHarness, token: string, org?: string): Bearer =>
         Authorization: `Bearer ${token}`,
         ...(org ? { "X-Backlex-Org": org } : {}),
       },
-    });
+    }));
 
 /** Admin-invite an end-user and accept it, returning their id + session token. */
 const makeEndUser = async (

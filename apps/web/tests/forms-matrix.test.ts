@@ -21,7 +21,7 @@ interface PublicBlock {
   kind: string;
   name?: string;
   label: string;
-  scale: { min: number; max: number; style: string } | null;
+  scale: { min: number; max: number; style: string; minLabel?: string; maxLabel?: string } | null;
   choices: { value: string; label?: string }[] | null;
   matrix: { id: string; label: string; help: string | null } | null;
 }

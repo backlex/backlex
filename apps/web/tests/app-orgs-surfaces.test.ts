@@ -334,7 +334,9 @@ describe("app-orgs — MCP surface", () => {
       json("POST", { jsonrpc: "2.0", id: rpcId++, method: "tools/list", params: {} }),
     );
     const body = (await res.json()) as {
-      result: { tools: { name: string; annotations?: { readOnlyHint?: boolean } }[] };
+      result: {
+        tools: { name: string; annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean } }[];
+      };
     };
     // The tenant mount publishes wire names (dots → hyphens) so strict clients
     // accept them; `tools/call` translates back, which is why the calls above

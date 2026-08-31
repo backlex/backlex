@@ -92,13 +92,13 @@ describe("variables stay symbolic", () => {
     // `resolveList` yields `[]` for a non-array, which the callers read as
     // "matches nothing" — so without the array branch this policy would deny
     // every row while looking correct.
-    const sql = compileConditionToPolicy({ team: { _in: "$user.orgs" } } as Condition);
+    const sql = compileConditionToPolicy({ team: { _in: "$user.orgs" } } as unknown as Condition);
     expect(sql).toContain("= ANY(backlex.orgs())");
     expect(sql).not.toContain("FALSE");
   });
 
   test("a _nin against a variable array negates the same expression", () => {
-    const sql = compileConditionToPolicy({ team: { _nin: "$user.orgs" } } as Condition);
+    const sql = compileConditionToPolicy({ team: { _nin: "$user.orgs" } } as unknown as Condition);
     expect(sql).toContain("NOT (");
     expect(sql).toContain("= ANY(backlex.orgs())");
   });

@@ -245,7 +245,7 @@ describe("approvals — surface parity", () => {
       "approvals.request",
       "approvals.cancel",
     ]);
-    const client = sdk().approvals as Record<string, unknown>;
+    const client = sdk().approvals as unknown as Record<string, unknown>;
     expect(Object.keys(client).sort()).toEqual(["cancel", "create", "get", "list", "request"]);
     // `request` is an alias of `create` — the verb the CLI and MCP both use.
     // What this test is really guarding is that NO surface grows a way to

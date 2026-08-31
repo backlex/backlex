@@ -47,7 +47,7 @@ describe("comments — surfaces", () => {
     itemId = ((await created.json()) as { data: { id: string } }).data.id;
   });
 
-  afterAll(() => h.close?.());
+  afterAll(() => h.cleanup());
 
   test("REST: post, list, delete — always scoped to one record", async () => {
     const posted = await h.fetch(BASE, {

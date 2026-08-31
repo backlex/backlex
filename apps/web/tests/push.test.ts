@@ -4,7 +4,7 @@ import { importVapidKey, signJwt } from "../src/server/lib/push-crypto";
 
 const b64url = (b: Uint8Array): string =>
   btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const b64urlToBytes = (s: string): Uint8Array => {
+const b64urlToBytes = (s: string): Uint8Array<ArrayBuffer> => {
   const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
   const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));

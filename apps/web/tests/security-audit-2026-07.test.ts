@@ -17,6 +17,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { processJobsWithEnv } from "../src/server/services/jobs";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 const PASSWORD = "correct-horse-battery";
@@ -540,7 +541,7 @@ describe("finding 7: the flow function op stays inside its workspace", () => {
       body: JSON.stringify({}),
     });
     expect(run.status).toBe(200);
-    const result = (await run.json()) as { ok: boolean; error?: string };
+    const result = (await run.json()) as FlowRunResult;
     // The run must fail on a not-found lookup, never execute the victim's code.
     expect(result.ok).toBe(false);
     expect(result.error ?? "").toContain("not found");

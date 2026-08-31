@@ -31,7 +31,7 @@ describe("oauth clients — surfaces", () => {
     client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
   });
 
-  afterAll(() => h.close?.());
+  afterAll(() => h.cleanup());
 
   test("SDK: a confidential client gets its secret exactly once", async () => {
     const created = await client.oauth.register({

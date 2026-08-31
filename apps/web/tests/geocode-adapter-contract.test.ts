@@ -26,6 +26,7 @@ import { googleGeocode } from "../src/server/adapters/geocode.google";
 import { mapboxGeocode } from "../src/server/adapters/geocode.mapbox";
 import { nominatimGeocode } from "../src/server/adapters/geocode.nominatim";
 import { consoleGeocode } from "../src/server/adapters/geocode.console";
+import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -56,7 +57,7 @@ type Wire = {
  * its API sends — the point of the number assertion below is that the adapter
  * converts them, and a fake that sent numbers would prove nothing.
  */
-const BACKENDS: Array<{ label: string; make: () => GeocodeAdapter; wire: Wire }> = [
+const BACKENDS: Array<{ label: GeocodeAdapter["provider"]; make: () => GeocodeAdapter; wire: Wire }> = [
   {
     label: "google",
     make: () => googleGeocode({ apiKey: "k" }),
@@ -94,7 +95,7 @@ const BACKENDS: Array<{ label: string; make: () => GeocodeAdapter; wire: Wire }>
 ];
 
 const stub = (reply: () => Response) => {
-  globalThis.fetch = (async () => reply()) as typeof fetch;
+  globalThis.fetch = asFetch(async () => reply());
 };
 
 for (const { label, make, wire } of BACKENDS) {
@@ -140,9 +141,9 @@ for (const { label, make, wire } of BACKENDS) {
     test("a transport failure throws rather than resolving null", async () => {
       // Same rule, one layer down: DNS or a dropped connection is a provider
       // failure, not a verdict about the address.
-      globalThis.fetch = (async () => {
+      globalThis.fetch = asFetch(async () => {
         throw new Error("ECONNREFUSED");
-      }) as typeof fetch;
+      });
       await expect(make().geocode(ADDRESS)).rejects.toThrow();
     });
   });

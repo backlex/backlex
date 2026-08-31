@@ -16,6 +16,7 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const json = (body: unknown): RequestInit => ({
   method: "POST",
@@ -59,7 +60,7 @@ describe("ics on the email flow op", () => {
     expect(created.status).toBe(201);
     const { data: flow } = (await created.json()) as { data: { id: string } };
     const res = await h.fetch(`/api/flows/${flow.id}/run`, json(data));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   test("attaches invite.ics when the block is present", async () => {

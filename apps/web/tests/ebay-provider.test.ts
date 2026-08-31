@@ -119,7 +119,7 @@ describe("orders", () => {
     const { calls, fetchImpl } = recorder([{ body: { orders: [], total: 0 } }]);
     await pullFromSource(
       "ebay",
-      { config: CONFIG, settings: { lookbackDays: "7" }, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: { lookbackDays: "7" }, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
     const filter = calls[0]!.url.searchParams.get("filter")!;
@@ -158,7 +158,7 @@ describe("orders", () => {
     ]);
     const page = await pullFromSource(
       "ebay",
-      { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
 
@@ -170,9 +170,12 @@ describe("orders", () => {
     expect(rec.data.recipientName).toBe("Anna Muster");
     expect(rec.data.postalCode).toBe("10115");
     expect(rec.children!.lines).toHaveLength(1);
-    expect(rec.children!.lines[0]!.externalId).toBe("li-1");
+    expect(rec.children!.lines![0]!.externalId).toBe("li-1");
     // Nothing more to fetch, so the watermark may move.
-    expect(page.complete).toBe(true);
+    // The engine's only end-of-run signal is `cursor === null` (see
+    // `integration-syncs.ts`). This provider ALSO returns `complete` and
+    // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
+    expect(page.cursor).toBeNull();
   });
 
   test("a page that is not the last keeps the window and does NOT move the watermark", async () => {
@@ -181,14 +184,14 @@ describe("orders", () => {
     ]);
     const page = await pullFromSource(
       "ebay",
-      { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
-    expect(page.complete).toBe(false);
+    expect(page.cursor).not.toBeNull();
     // `<since>:<offset>` — the window start travels with the offset, so a
     // resumed walk cannot silently restart at "now".
     expect(page.cursor).toMatch(/^\d+:1$/);
-    expect(page.resumeAt).toBeUndefined();
+    expect(page.resumeToken).toBeUndefined();
   });
 });
 
@@ -325,7 +328,8 @@ describe("publishing", () => {
     const two = { ...product() };
     two.variants = [
       two.variants[0]!,
-      { rowId: "v2", reference: "SKU-2", fields: { sku: "SKU-2", price: 9.9, quantity: 1 }, attributes: [] },
+      // No `ean`: this unit is the one the batch must settle as failed.
+      { rowId: "v2", reference: "SKU-2", fields: { sku: "SKU-2", price: 9.9, quantity: 1 }, attributes: [] } as unknown as (typeof two.variants)[number],
     ];
     const { fetchImpl } = recorder([
       // SKU-1 fails at the offer, with eBay's own sentence.

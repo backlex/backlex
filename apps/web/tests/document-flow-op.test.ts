@@ -14,6 +14,7 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const FAKE_PDF = new TextEncoder().encode("%PDF-1.7\n% fake\n");
 
@@ -56,7 +57,7 @@ describe("document.render flow op", () => {
     expect(created.status).toBe(201);
     const { data: flow } = (await created.json()) as { data: { id: string } };
     const res = await h.fetch(`/api/flows/${flow.id}/run`, json(data));
-    return (await res.json()) as { ok: boolean; error?: string };
+    return (await res.json()) as FlowRunResult;
   };
 
   describe("saving", () => {

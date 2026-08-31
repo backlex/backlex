@@ -187,7 +187,9 @@ const usePageStyles = () => {
     const style = document.createElement("style");
     style.textContent = CSS;
     document.head.appendChild(style);
-    return () => style.remove();
+    return () => {
+      style.remove();
+    };
   }, []);
 };
 

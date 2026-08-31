@@ -44,7 +44,7 @@ const anonFetch = (path: string, init: RequestInit = {}): Promise<Response> => {
   const headers = new Headers(init.headers ?? {});
   headers.set("Origin", h.env.APP_URL!);
   if (!headers.has("X-Forwarded-For")) headers.set("X-Forwarded-For", "203.0.113.7");
-  return h.app.fetch(new Request(`${h.env.APP_URL}${path}`, { ...init, headers }));
+  return Promise.resolve(h.app.fetch(new Request(`${h.env.APP_URL}${path}`, { ...init, headers })));
 };
 
 /** Read every `{table,row}` line out of a stored backup artifact. */

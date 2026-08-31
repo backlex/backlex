@@ -187,7 +187,7 @@ describe("payments — MCP surface", () => {
 
   test("the connect tool constrains provider to the supported set", () => {
     const tool = allTools.find((t) => t.name === "payments.connect")!;
-    const schema = tool.inputSchema as {
+    const schema = tool.inputSchema as unknown as {
       properties: { provider: { enum: string[] } };
       required: string[];
     };

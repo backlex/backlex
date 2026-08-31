@@ -36,18 +36,18 @@ describe("Feature flags", () => {
     expect((await setFlag("alpha", { enabled: true, value: { x: 1 } })).status).toBe(200);
     expect((await setFlag("beta", { enabled: false, value: "nope" })).status).toBe(200);
     const f = await evalFlags();
-    expect(f.alpha.enabled).toBe(true);
-    expect(f.alpha.value).toEqual({ x: 1 });
-    expect(f.beta.enabled).toBe(false);
-    expect(f.beta.value).toBe(null); // value withheld when off
+    expect(f.alpha!.enabled).toBe(true);
+    expect(f.alpha!.value).toEqual({ x: 1 });
+    expect(f.beta!.enabled).toBe(false);
+    expect(f.beta!.value).toBe(null); // value withheld when off
   });
 
   test("rollout 0 is off, rollout 100 is on", async () => {
     await setFlag("roll0", { enabled: true, rules: { rollout: 0 } });
     await setFlag("roll100", { enabled: true, rules: { rollout: 100 } });
     const f = await evalFlags();
-    expect(f.roll0.enabled).toBe(false);
-    expect(f.roll100.enabled).toBe(true);
+    expect(f.roll0!.enabled).toBe(false);
+    expect(f.roll100!.enabled).toBe(true);
   });
 
   test("condition targeting matches the caller context", async () => {
@@ -56,7 +56,7 @@ describe("Feature flags", () => {
       rules: { condition: { email: { _eq: adminEmail } } },
     });
     // admin matches
-    expect((await evalFlags()).admins_only.enabled).toBe(true);
+    expect((await evalFlags()).admins_only!.enabled).toBe(true);
 
     // a different (authenticated, non-admin) user does not
     await h.fetch("/api/auth/sign-out", { method: "POST" });
@@ -66,8 +66,8 @@ describe("Feature flags", () => {
       body: JSON.stringify({ email: `viewer-${Date.now()}@example.test`, password: "correct-horse-battery", name: "V" }),
     });
     const f = await evalFlags();
-    expect(f.admins_only.enabled).toBe(false);
-    expect(f.alpha.enabled).toBe(true); // unconditional flag still on for everyone
+    expect(f.admins_only!.enabled).toBe(false);
+    expect(f.alpha!.enabled).toBe(true); // unconditional flag still on for everyone
 
     // non-admin cannot manage flags
     const forbidden = await setFlag("hack", { enabled: true });
@@ -86,8 +86,8 @@ describe("Feature flags", () => {
     await setFlag("region", { enabled: false, value: "global" }, "global");
     await setFlag("region", { enabled: true, value: "ws" });
     const f = await evalFlags();
-    expect(f.region.enabled).toBe(true);
-    expect(f.region.value).toBe("ws");
+    expect(f.region!.enabled).toBe(true);
+    expect(f.region!.value).toBe("ws");
   });
 
   test("delete removes a flag from evaluation", async () => {

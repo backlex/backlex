@@ -104,7 +104,7 @@ describe("registration", () => {
 
 describe("reading orders", () => {
   const pull = (fetchImpl: typeof fetch, settings: Record<string, unknown> = {}, cursor: string | null = null) =>
-    pullFromSource("etsy", { config: CONFIG, settings, cursor, connectionKey: "c1" }, fetchImpl);
+    pullFromSource("etsy", { config: CONFIG, settings, cursor, limit: 200, connectionKey: "c1" }, fetchImpl);
 
   test("both credentials go on the request, and one is the client id", async () => {
     // Etsy wants a bearer token AND `x-api-key`, and the key is the app's
@@ -155,12 +155,15 @@ describe("reading orders", () => {
     // Etsy returns the total, so "is there more" is answerable exactly.
     const { fetchImpl } = recorder([{ json: { count: 120, results: [receipt()] } }]);
     const out = await pull(fetchImpl);
-    expect(out.complete).toBe(false);
+    expect(out.cursor).not.toBeNull();
     expect(out.cursor).toMatch(/:1$/);
 
     const last = recorder([{ json: { count: 1, results: [receipt()] } }]);
     const done = await pull(last.fetchImpl);
-    expect(done.complete).toBe(true);
+    // The engine's only end-of-run signal is `cursor === null` (see
+    // `integration-syncs.ts`). This provider ALSO returns `complete` and
+    // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
+    expect(done.cursor).toBeNull();
     expect(done.cursor).toBeNull();
   });
 
@@ -169,7 +172,7 @@ describe("reading orders", () => {
     await expect(
       pullFromSource(
         "etsy",
-        { config: { ...CONFIG, shopId: "my-shop" }, settings: {}, cursor: null, connectionKey: "c1" },
+        { config: { ...CONFIG, shopId: "my-shop" }, settings: {}, cursor: null, limit: 200, connectionKey: "c1" },
         fetchImpl,
       ),
     ).rejects.toThrow(/numeric shop id/);

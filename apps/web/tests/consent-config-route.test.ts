@@ -41,7 +41,7 @@ const anonFetch = (path: string, init: RequestInit = {}): Promise<Response> => {
   // credentialed allowlist, which is the situation being tested.
   if (!headers.has("Origin")) headers.set("Origin", "https://customer.example");
   if (!headers.has("X-Forwarded-For")) headers.set("X-Forwarded-For", "203.0.113.9");
-  return h.app.fetch(new Request(`${h.env.APP_URL}${path}`, { ...init, headers }));
+  return Promise.resolve(h.app.fetch(new Request(`${h.env.APP_URL}${path}`, { ...init, headers })));
 };
 
 const newSite = async (name: string): Promise<string> => {

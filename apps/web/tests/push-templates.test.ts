@@ -14,7 +14,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import type { PushAdapter, PushSend } from "@backlex/core/adapters";
+import type { PushAdapter, PushMessage } from "@backlex/core/adapters";
 import { sendTemplatedPush } from "../src/server/services/push";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
@@ -27,7 +27,7 @@ const json = (body: unknown, method = "POST"): RequestInit => ({
 describe("push templates reach the wire", () => {
   let h: TestHarness;
   let client: Database;
-  let sends: PushSend[];
+  let sends: PushMessage[];
   let ctx: { db: any; dialect: "sqlite"; pushFor: () => Promise<PushAdapter> };
 
   beforeEach(async () => {
@@ -38,7 +38,6 @@ describe("push templates reach the wire", () => {
     // A recording adapter, because the thing under test is what the template
     // rendered TO — a 200 with the wrong title would pass any status check.
     const adapter: PushAdapter = {
-      name: "recording",
       send: async (s) => {
         sends.push(s);
         return { sent: s.tokens.length, failed: 0, invalidTokens: [] };

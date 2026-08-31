@@ -4,7 +4,7 @@
  * compiler / predicate / permission store all speak. Pure function, no harness.
  */
 import { describe, expect, test } from "bun:test";
-import { normalizeCondition } from "@backlex/core";
+import { normalizeCondition, type Condition } from "@backlex/core";
 
 describe("normalizeCondition — logical alias mapping", () => {
   test("_and → $and (recursively)", () => {
@@ -30,7 +30,7 @@ describe("normalizeCondition — logical alias mapping", () => {
   });
 
   test("canonical $and passes through unchanged", () => {
-    const c = { $and: [{ a: { _eq: 1 } }, { b: { _gt: 2 } }] };
+    const c: Condition = { $and: [{ a: { _eq: 1 } }, { b: { _gt: 2 } }] };
     expect(normalizeCondition(c)).toEqual(c);
   });
 });
@@ -85,13 +85,13 @@ describe("normalizeCondition — nested-object relation form (schema-aware)", ()
 
   test("WITHOUT relationFields, a nested object is NOT flattened (json-safe)", () => {
     // Schema-blind path must not mistake a json column for a relation.
-    const c = { customer: { name: { _eq: "Alice" } } };
+    const c = { customer: { name: { _eq: "Alice" } } } as unknown as Condition;
     expect(normalizeCondition(c)).toEqual(c);
   });
 
   test("a non-relation key with a nested object is left untouched", () => {
     // `meta` is not in relationFields → treated as a literal (json) value.
-    const c = { meta: { a: { _eq: 1 } } };
+    const c = { meta: { a: { _eq: 1 } } } as unknown as Condition;
     expect(normalizeCondition(c, { relationFields: rels })).toEqual(c);
   });
 });
@@ -113,7 +113,7 @@ describe("normalizeCondition — idempotency & passthrough", () => {
 
   test("non-object input returns unchanged", () => {
     expect(normalizeCondition(null as unknown)).toBeNull();
-    expect(normalizeCondition("x" as unknown)).toBe("x");
+    expect(normalizeCondition("x" as unknown)).toBe("x" as unknown as Condition);
   });
 
   test("dotted keys already in canonical form pass through", () => {

@@ -25,6 +25,7 @@ import {
   providerFor,
   type IntegrationKind,
 } from "@backlex/integrations";
+import { asFetch } from "./helpers/fetch-stub";
 
 const KINDS = INTEGRATION_KINDS as readonly IntegrationKind[];
 
@@ -162,9 +163,9 @@ describe("provider registry", () => {
 
   test("an unregistered kind fails closed instead of throwing", async () => {
     const evt = { event: "item.created", text: "x", payload: {} };
-    const never: typeof fetch = () => {
+    const never = asFetch(() => {
       throw new Error("must not be called for an unknown kind");
-    };
+    });
     expect(await deliverToIntegration("not-a-provider", { apiKey: "k" }, evt, never)).toEqual({
       ok: false,
       status: 0,
@@ -173,7 +174,7 @@ describe("provider registry", () => {
 
   test("a provider that throws mid-delivery fails closed", async () => {
     const evt = { event: "item.created", text: "x", payload: {} };
-    const boom: typeof fetch = () => Promise.reject(new Error("network down"));
+    const boom = asFetch(() => Promise.reject(new Error("network down")));
     expect(
       await deliverToIntegration("slack", { webhookUrl: "https://hooks.slack.com/services/x" }, evt, boom),
     ).toEqual({ ok: false, status: 0 });

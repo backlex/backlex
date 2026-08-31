@@ -201,10 +201,10 @@ const click = async (el: Element | null | undefined, what: string) => {
   });
 };
 
-const clickTitled = async (scope: ParentNode, title: string) =>
+const clickTitled = async (scope: Element | Document, title: string) =>
   click(scope.querySelector(`[title="${title}"]`), title);
 
-const clickText = async (label: string, scope: ParentNode = document) =>
+const clickText = async (label: string, scope: Element | Document = document) =>
   click(
     [...scope.querySelectorAll("button")].find((b) => b.textContent?.trim() === label),
     `button "${label}"`,

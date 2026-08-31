@@ -591,7 +591,7 @@ describe("multi-surface parity", () => {
             body: JSON.stringify(probe),
           })
         ).json()) as { errors?: { extensions?: { code?: string } }[] };
-        expect(["FORBIDDEN", "UNAUTHORIZED"], probe.query).toContain(res.errors?.[0]?.extensions?.code);
+        expect(["FORBIDDEN", "UNAUTHORIZED"], probe.query).toContain(String(res.errors?.[0]?.extensions?.code));
       }
     } finally {
       anon.cleanup();

@@ -139,7 +139,7 @@ describe("sync hooks — GraphQL is admin-gated", () => {
     ];
     for (const q of probes) {
       const res = await anon(q);
-      expect(["FORBIDDEN", "UNAUTHORIZED"]).toContain(res.errors?.[0]?.extensions?.code);
+      expect(["FORBIDDEN", "UNAUTHORIZED"]).toContain(String(res.errors?.[0]?.extensions?.code));
     }
   });
 });

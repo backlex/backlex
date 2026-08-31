@@ -26,6 +26,7 @@ import { sendgridEmail } from "../src/server/adapters/email.sendgrid";
 import { mailgunEmail } from "../src/server/adapters/email.mailgun";
 import { sesEmail } from "../src/server/adapters/email.ses";
 import { consoleEmail } from "../src/server/adapters/email.console";
+import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -48,7 +49,7 @@ const BACKENDS: Array<{ label: string; make: () => EmailAdapter }> = [
 /** Record every outbound request and answer with `status`. */
 const stub = (status: number, body = "{}") => {
   const seen: { url: string; body: string }[] = [];
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = asFetch(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     let payload = "";
     const b = init?.body ?? (input as Request)?.body;
@@ -58,7 +59,7 @@ const stub = (status: number, body = "{}") => {
     else if (input instanceof Request) payload = await input.clone().text().catch(() => "");
     seen.push({ url, body: payload });
     return new Response(body, { status, headers: { "content-type": "application/json" } });
-  }) as typeof fetch;
+  });
   return seen;
 };
 
@@ -115,9 +116,9 @@ for (const { label, make } of BACKENDS) {
     });
 
     test("a transport failure is not swallowed", async () => {
-      globalThis.fetch = (async () => {
+      globalThis.fetch = asFetch(async () => {
         throw new Error("ECONNREFUSED");
-      }) as typeof fetch;
+      });
       await expect(make().send(MSG)).rejects.toThrow();
     });
 

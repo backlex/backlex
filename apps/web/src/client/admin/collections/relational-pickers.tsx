@@ -369,7 +369,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
         .then(async (r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const body = await r.json().catch(() => null);
-          const finalKey = body?.data?.key ?? key;
+          const finalKey = (body as { data?: { key?: string } } | null)?.data?.key ?? key;
           setFiles((fs) => [
             {
               key: finalKey,

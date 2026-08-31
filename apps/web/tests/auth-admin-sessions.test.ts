@@ -105,10 +105,12 @@ const signInSeparately = async (email: string): Promise<Device> => {
   expect(`session_token cookie issued: ${token.length}`).toBe("session_token cookie issued: 1");
 
   const send = (cookie: string) => (path: string) =>
-    h.app.request(
-      path,
-      { headers: { cookie, origin: h.env.APP_URL as string, "x-forwarded-for": ip } },
-      h.env,
+    Promise.resolve(
+      h.app.request(
+        path,
+        { headers: { cookie, origin: h.env.APP_URL as string, "x-forwarded-for": ip } },
+        h.env,
+      ),
     );
   return { warm: send(pairs.join("; ")), cold: send(token.join("; ")) };
 };

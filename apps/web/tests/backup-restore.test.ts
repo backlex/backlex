@@ -132,7 +132,7 @@ describe("scheduled backups + retention", () => {
       body: JSON.stringify({ schedule: "daily", retain: 1 }),
     });
     expect(put.status).toBe(200);
-    const saved = ((await put.json()) as { data: { schedule: string; retain: number } }).data;
+    const saved = ((await put.json()) as { data: { schedule: string; retain: number; retainDays: number | null } }).data;
     expect(saved).toEqual({ schedule: "daily", retain: 1, retainDays: null });
   });
 

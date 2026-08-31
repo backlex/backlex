@@ -18,6 +18,7 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import type { FlowRunResult } from "../../../packages/client/src/index";
 
 const json = (body: unknown): RequestInit => ({
   method: "POST",
@@ -114,7 +115,7 @@ describe("payment.checkout flow op", () => {
     const { data } = (await created.json()) as { data: { id: string } };
     const out = (await (
       await h.fetch(`/api/flows/${data.id}/run`, json({ id: invoiceId }))
-    ).json()) as { ok: boolean; error?: string };
+    ).json()) as FlowRunResult;
     expect(out.ok).toBe(true);
 
     const row = (await (await h.fetch(`/api/items/bills/${invoiceId}`)).json()) as {

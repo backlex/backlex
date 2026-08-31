@@ -110,7 +110,7 @@ describe("connecting", () => {
     await expect(
       pullFromSource(
         "allegro",
-        { config: { ...CONFIG, _oauthAccessToken: "" }, settings: {}, cursor: null, connectionKey: "c1" },
+        { config: { ...CONFIG, _oauthAccessToken: "" }, settings: {}, cursor: null, limit: 200, connectionKey: "c1" },
         fetchImpl,
       ),
     ).rejects.toThrow(/OAuth consent/i);
@@ -123,7 +123,7 @@ describe("orders", () => {
     const { calls, fetchImpl } = recorder([{ body: { checkoutForms: [], totalCount: 0 } }]);
     await pullFromSource(
       "allegro",
-      { config: CONFIG, settings: { lookbackDays: "7" }, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: { lookbackDays: "7" }, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
 
@@ -140,7 +140,7 @@ describe("orders", () => {
     const { fetchImpl } = recorder([{ body: { checkoutForms: [form()], totalCount: 1 } }]);
     const page = await pullFromSource(
       "allegro",
-      { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
 
@@ -151,28 +151,31 @@ describe("orders", () => {
     expect(rec.data.postCode).toBe("00-001");
     // The seller's OWN code, not Allegro's offer id — it is what a workspace
     // matches its product on.
-    expect(rec.children!.lines[0]!.data.sku).toBe("SKU-1");
-    expect(rec.children!.lines[0]!.data.offerId).toBe("1234");
-    expect(page.complete).toBe(true);
+    expect(rec.children!.lines![0]!.data.sku).toBe("SKU-1");
+    expect(rec.children!.lines![0]!.data.offerId).toBe("1234");
+    // The engine's only end-of-run signal is `cursor === null` (see
+    // `integration-syncs.ts`). This provider ALSO returns `complete` and
+    // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
+    expect(page.cursor).toBeNull();
   });
 
   test("a page that is not the last keeps the window and holds the watermark", async () => {
     const { fetchImpl } = recorder([{ body: { checkoutForms: [form()], totalCount: 250 } }]);
     const page = await pullFromSource(
       "allegro",
-      { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" },
+      { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" },
       fetchImpl,
     );
-    expect(page.complete).toBe(false);
+    expect(page.cursor).not.toBeNull();
     expect(page.cursor).toMatch(/^\d+:1$/);
     // Moving it now would skip every order on the pages not yet read.
-    expect(page.resumeAt).toBeUndefined();
+    expect(page.resumeToken).toBeUndefined();
   });
 
   test("a 406 is reported as the header fault it is, not as an outage", async () => {
     const { fetchImpl } = recorder([{ status: 406, body: {} }]);
     await expect(
-      pullFromSource("allegro", { config: CONFIG, settings: {}, cursor: null, connectionKey: "c1" }, fetchImpl),
+      pullFromSource("allegro", { config: CONFIG, settings: {}, cursor: null, limit: 200, connectionKey: "c1" }, fetchImpl),
     ).rejects.toThrow(/media type/i);
   });
 });

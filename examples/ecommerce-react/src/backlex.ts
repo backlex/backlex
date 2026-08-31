@@ -91,29 +91,132 @@ export type Order = {
 } & Record<string, unknown>;
 
 /** One line of an order — a snapshot of the product at purchase time so later
- *  catalog edits don't rewrite history. `order` / `product` are relation ids.
- *  `line_total` is a **computed** column (`qty * unit_price`) — read-only. */
+ *  catalog edits don't rewrite history. `order` / `product` are relation ids. */
 export type OrderItem = {
   id: string;
   /** Relation: parent `orders` row id. */
   order: string;
   /** Relation: `products` row id. */
   product: string;
+  /** Relation: the stocked unit — `product_variants` row id. A line carries
+   *  BOTH this and its configuration: the variant says which unit leaves the
+   *  shelf, the option rows say what was decided about it. */
+  variant?: string;
   /** Snapshot of the product name at purchase time. */
   title: string;
   sku?: string;
   /**
-   * Unit price captured at checkout — a plain number, NOT a money field.
+   * The base price captured at checkout — a **money** field, like every other
+   * amount in the template.
    *
-   * This is deliberate in the template and worth understanding: a money field
-   * is denominated by a `currency` column on its OWN row, and a line item has
-   * none — its currency belongs to the parent order. So the line stores a bare
-   * amount and the order beside it says what currency the whole thing is in.
+   * It used to be a bare number, on the reasoning that a line has no currency
+   * of its own. It does: `order_items.currency` sits beside this column, and
+   * without it `sum()` over a mixed-currency column adds €85 to $100 and
+   * answers 185.5 of nothing. A READ hands back `{ amount, currency }`; a WRITE
+   * may still send a plain number, which the sibling `currency` qualifies.
    */
-  unit_price: number;
+  unit_price: Money;
+  /** What the configuration added, kept apart from the base so the line can
+   *  always show the breakdown back. Zero on an unconfigured line. */
+  options_total?: Money | null;
+  /** The compact build string — `RAM32GB/SSD1TB/FINBLK`. A summary of the
+   *  `order_item_options` rows, never the source. */
+  config_code?: string | null;
   qty: number;
-  /** Computed server-side as `qty * unit_price` — never written by the client. */
-  line_total?: number;
+  /**
+   * Computed server-side as `qty * (unit_price + COALESCE(options_total, 0))`
+   * — never written by the client. The COALESCE is what keeps an unconfigured
+   * line's total from being NULL.
+   */
+  line_total?: Money | null;
+} & Record<string, unknown>;
+
+/** One configured slot on an order line — what was actually chosen.
+ *
+ *  The label and the adjustment are SNAPSHOTS. Re-reading them off the catalog
+ *  at render time would show today's price for yesterday's purchase, which is
+ *  the whole reason this table exists rather than a list of ids. */
+export type OrderItemOption = {
+  id: string;
+  /** Relation: parent `order_items` row id. */
+  line: string;
+  /** Relation: the slot — a `product_modifiers` row id. */
+  modifier: string;
+  /** Relation: the chosen `modifier_values` row. Empty for a typed answer. */
+  value?: string | null;
+  label?: string | null;
+  /** The answer for a text/number slot, where there is no choice list. */
+  value_text?: string | null;
+  qty?: number;
+  price_adjustment?: Money | null;
+  /** The stocked unit this choice consumed, copied across at checkout so the
+   *  picker is told what to fit. */
+  component_variant?: string | null;
+  position?: number;
+} & Record<string, unknown>;
+
+/** A configurable axis, defined once and shared by every product that has it. */
+export type ModifierSet = {
+  id: string;
+  name: string;
+  code?: string | null;
+  input_type?: "choice" | "multi_choice" | "checkbox" | "text" | "multiline_text" | "number" | "date" | "file";
+  min_select?: number;
+  max_select?: number;
+  help_text?: string | null;
+  active?: boolean;
+} & Record<string, unknown>;
+
+/** One choice on a set, with what picking it does to the price — and, for a
+ *  choice that ships a part, the stocked unit it consumes. */
+export type ModifierValue = {
+  id: string;
+  /** Relation: `modifier_sets` row id. */
+  modifier_set: string;
+  label: string;
+  code?: string | null;
+  adjustment_type?: "fixed_amount" | "percent" | "fixed_price";
+  price_adjustment?: Money | null;
+  adjustment_percent?: number | null;
+  is_default?: boolean;
+  active?: boolean;
+  /** Relation: the `product_variants` row this choice takes off the shelf. */
+  component_variant?: string | null;
+  consumes_qty?: number;
+  position?: number;
+} & Record<string, unknown>;
+
+/** A **slot**: this product carries that set, here, with this label.
+ *
+ *  Deliberately repeatable — a machine with four drive bays is four rows over
+ *  ONE shared set, which is exactly what a per-product option list cannot say. */
+export type ProductModifier = {
+  id: string;
+  /** Relation: `products` row id. */
+  product: string;
+  /** Relation: `modifier_sets` row id. */
+  modifier_set: string;
+  /** Overrides the set's name here — "Drive bay 2". */
+  label?: string | null;
+  is_required?: boolean;
+  /** Relation: the pre-selected `modifier_values` row. */
+  default_value?: string | null;
+  help_text?: string | null;
+  position?: number;
+} & Record<string, unknown>;
+
+/** Which combinations are legal. Data, not branches in this file — a rule
+ *  spelled in a storefront is re-implemented by every other channel. */
+export type ModifierRule = {
+  id: string;
+  rule_type: "requires" | "excludes" | "hides" | "sets_default" | "validation";
+  /** Relation: the `product_modifiers` slot the rule watches. */
+  when_modifier: string;
+  when_value?: string | null;
+  then_modifier?: string | null;
+  then_value?: string | null;
+  message?: string | null;
+  active?: boolean;
 } & Record<string, unknown>;
 
 /** The typed CRUD handle for the `products` collection. */
@@ -127,3 +230,19 @@ export const orders = backlex.from<Order>("orders");
 
 /** The typed CRUD handle for the `order_items` collection (order lines). */
 export const orderItems = backlex.from<OrderItem>("order_items");
+
+/** The configured slots of an order line — the itemisation `config_code`
+ *  summarises, and the only place the build is recorded row by row. */
+export const orderItemOptions = backlex.from<OrderItemOption>("order_item_options");
+
+/** The shared configurable axes (`modifier_sets`). */
+export const modifierSets = backlex.from<ModifierSet>("modifier_sets");
+
+/** The choices on those axes (`modifier_values`). */
+export const modifierValues = backlex.from<ModifierValue>("modifier_values");
+
+/** Which sets a product carries, and in how many slots (`product_modifiers`). */
+export const productModifiers = backlex.from<ProductModifier>("product_modifiers");
+
+/** The compatibility rules (`modifier_rules`). */
+export const modifierRules = backlex.from<ModifierRule>("modifier_rules");

@@ -803,7 +803,7 @@ export const ecommerce: SchemaTemplate = {
         hint("modifier_sets_shared", "Defined once, attached to any number of products. Editing a choice here moves every product that carries the set."),
         ...half(text("name", { required: true }), text("code", { unique: true, label: "Code", description: "Short token this set contributes to a line's configuration code — RAM, SSD1, CASE." })),
         ...half(
-          select("input_type", [ch("choice", C.teal, "Choice list"), ch("multi_choice", C.green, "Multiple choice"), ch("checkbox", C.blue), ch("text", C.gray), ch("multiline_text", C.gray, "Long text"), ch("number", C.purple), ch("date", C.amber), ch("file", C.slate)], { default: "choice", label: "Kind" }),
+          select("input_type", [ch("choice", C.teal, "Choice list"), ch("multi_choice", C.green, "Multiple choice"), ch("checkbox", C.blue, "Checkbox"), ch("text", C.gray, "Short text"), ch("multiline_text", C.gray, "Long text"), ch("number", C.purple, "Number"), ch("date", C.amber, "Date"), ch("file", C.slate, "File")], { default: "choice", label: "Kind" }),
           position(),
         ),
         // How many of its choices one line may hold. `choice` is 0..1 and
@@ -812,7 +812,7 @@ export const ecommerce: SchemaTemplate = {
         // stocks independently.
         ...half(int("min_select", { default: 0, validation: { min: 0 }, label: "Min choices" }), int("max_select", { default: 1, validation: { min: 1 }, label: "Max choices" })),
         notes("help_text", { label: "Help text" }),
-        bool("active", { default: true }),
+        flag("active"),
       ],
       samples: [
         { name: "Gift message", code: "GIFT", input_type: "multiline_text", min_select: 0, max_select: 1, position: 1, active: true, help_text: "Printed on a card and placed in the parcel." },
@@ -837,9 +837,11 @@ export const ecommerce: SchemaTemplate = {
       // and what it consumes, and those are three different conversations.
       fields: tabbed(
         sec("Choice", [
-          ...half(rel("modifier_set", "modifier_sets", { required: true, label: "In set" }), text("label", { required: true })),
+          // Labelled, because a column literally named `label` renders as the
+          // word "label" beside a box and tells an operator nothing.
+          ...half(rel("modifier_set", "modifier_sets", { required: true, label: "In set" }), text("label", { required: true, label: "Choice label" })),
           ...half(text("code", { label: "Code", description: "Contributes to the configuration code — 32GB, 1TB, BLK." }), position("modifier_set")),
-          ...half(bool("is_default", { default: false, label: "Default" }), bool("active", { default: true })),
+          ...half(bool("is_default", { default: false, label: "Default" }), flag("active")),
         ]),
         sec("Price", [
           hint("modifier_values_adjust", "A fixed amount adds to the line's unit price. A percent adds that share of the base. A fixed price replaces the base outright."),
@@ -911,10 +913,13 @@ export const ecommerce: SchemaTemplate = {
         sec("Rule", [
           hint("modifier_rules_shape", "Reads as one sentence: when this choice is picked, then that one is required, blocked, hidden, defaulted, or the build is refused."),
           ...half(
-            select("rule_type", [ch("requires", C.green), ch("excludes", C.red), ch("hides", C.slate), ch("sets_default", C.blue, "Sets default"), ch("validation", C.amber)], { default: "excludes", label: "Effect" }),
+            // All five carry a label or none does — a dropdown that mixes
+            // "Sets default" with a bare `hides` reads as two half-finished
+            // lists, and the filter chips above the table show the same text.
+            select("rule_type", [ch("requires", C.green, "Requires"), ch("excludes", C.red, "Excludes"), ch("hides", C.slate, "Hides"), ch("sets_default", C.blue, "Sets default"), ch("validation", C.amber, "Refuses the build")], { default: "excludes", label: "Effect" }),
             position("when_modifier"),
           ),
-          ...half(bool("active", { default: true }), text("message", { label: "Message", description: "Shown when the rule blocks a build. Say what to change, not that it is invalid." })),
+          ...half(flag("active"), text("message", { label: "Message", description: "Shown when the rule blocks a build. Say what to change, not that it is invalid." })),
         ]),
         sec("When", [
           ...half(rel("when_modifier", "product_modifiers", { required: true, label: "Slot" }), rel("when_value", "modifier_values", { label: "Is choice", description: "Leave empty to mean \"any choice in this slot\"." })),
@@ -945,7 +950,7 @@ export const ecommerce: SchemaTemplate = {
           ...half(rel("product", "products", { required: true, label: "On product" }), rel("addon_product", "products", { required: true, label: "Add-on", uniqueWith: ["product"] })),
           ...half(rel("addon_variant", "product_variants", { label: "Add-on variant", description: "Pin one variant, or leave empty to let the shopper pick." }), text("group_label", { label: "Group", description: "Groups add-ons in the configurator — Accessories, Peripherals." })),
           ...half(int("max_qty", { default: 1, validation: { min: 1 }, label: "Max quantity" }), bool("is_default", { default: false, label: "Pre-selected" })),
-          ...half(bool("active", { default: true }), position("product")),
+          ...half(flag("active"), position("product")),
         ]),
         sec("Price", [
           hint("product_addons_price", "List price sells it at whatever it costs on its own. The other two are what makes it a bundle — a set price, or a share off, only when bought here."),

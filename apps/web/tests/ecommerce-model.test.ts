@@ -317,6 +317,71 @@ describe("ecommerce model", () => {
     expect(dupe.status).toBe(409);
   });
 
+  test("a withdrawn choice cannot be sold again, and the orders that hold it keep it", async () => {
+    // `active` on these collections is `flag()`, not a plain boolean with a
+    // default — and the difference is the whole point. `flag` carries `retire`,
+    // which indexes the column, hides the row from pickers, and REFUSES a new
+    // reference to it. A decorative boolean would have let a discontinued
+    // memory module keep being configured onto new orders, with nothing failing.
+    const orders = await get("orders?limit=5");
+    const products = await get("products?limit=5");
+
+    const setRes = await post("modifier_sets", {
+      name: "Discontinued axis", code: "DISC", input_type: "choice", min_select: 0, max_select: 1,
+    });
+    const { data: set } = (await setRes.json()) as { data: { id: string } };
+    const valueRes = await post("modifier_values", {
+      modifier_set: set.id, label: "Old part", code: "OLD",
+      adjustment_type: "fixed_amount", price_adjustment: 15, currency: "USD", position: 1,
+    });
+    const { data: choice } = (await valueRes.json()) as { data: { id: string } };
+    const slotRes = await post("product_modifiers", {
+      product: products.data[0]!.id, modifier_set: set.id, label: "Discontinued", position: 400,
+    });
+    const { data: slot } = (await slotRes.json()) as { data: { id: string } };
+
+    // `flag()` defaults to in-play, so nothing had to say so on create.
+    expect((await one("modifier_values", choice.id)).active).toBe(true);
+
+    const lineRes = await post("order_items", {
+      order: orders.data[0]!.id, product: products.data[0]!.id,
+      title: "Bought before withdrawal", qty: 1, unit_price: 100, options_total: 15, currency: "USD",
+    });
+    const { data: soldLine } = (await lineRes.json()) as { data: { id: string } };
+    const before = await post("order_item_options", {
+      line: soldLine.id, modifier: slot.id, value: choice.id, label: "Old part",
+      qty: 1, price_adjustment: 15, currency: "USD", position: 1,
+    });
+    expect([200, 201]).toContain(before.status);
+
+    // Withdraw it.
+    expect((await patch("modifier_values", choice.id, { active: false })).status).toBe(200);
+
+    // A NEW line may no longer name it — this is the assertion the plain
+    // boolean could not make.
+    const laterLine = await post("order_items", {
+      order: orders.data[0]!.id, product: products.data[0]!.id,
+      title: "Bought after withdrawal", qty: 1, unit_price: 100, currency: "USD",
+    });
+    const { data: after } = (await laterLine.json()) as { data: { id: string } };
+    const refused = await post("order_item_options", {
+      line: after.id, modifier: slot.id, value: choice.id, label: "Old part",
+      qty: 1, price_adjustment: 15, currency: "USD", position: 1,
+    });
+    // Named rather than "some 4xx": any other validation error would satisfy a
+    // loose assertion while the retire guard quietly did nothing.
+    expect(refused.status).toBe(422);
+    const why = (await refused.json()) as { error: { message: string } };
+    expect(why.error.message).toContain("retired row");
+
+    // And the order placed BEFORE it was withdrawn still says what it was
+    // built with — history is not rewritten by a catalog decision.
+    const kept = await get(`order_item_options?${where({ line: { _eq: soldLine.id } })}&limit=5`);
+    expect(kept.data).toHaveLength(1);
+    expect(kept.data[0]!.value).toBe(choice.id);
+    expect(kept.data[0]!.label).toBe("Old part");
+  });
+
   test("available is generated from on hand minus committed, and NEITHER can be written", async () => {
     // The defect: `available` was a third integer with a hint telling the
     // operator to keep all three consistent by hand. It is a definition, not a

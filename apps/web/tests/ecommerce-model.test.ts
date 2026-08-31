@@ -243,6 +243,80 @@ describe("ecommerce model", () => {
     expect((await one("order_items", soldLine.id)).options_total).toEqual({ amount: sum, currency: "USD" });
   });
 
+  test("a line carries a variant AND a configuration, and the two price independently", async () => {
+    // The two axes are not alternatives, and a catalog that made you choose
+    // would be unusable. A variant is the unit that LEAVES THE SHELF — its own
+    // SKU, its own stock, its own barcode. A modifier is what was decided about
+    // that unit. A laptop is picked as a variant (14" or 16", each stocked
+    // separately) and then configured on top (memory, drives, finish).
+    //
+    // So a line holds both: `variant` says which unit, `order_item_options`
+    // says what was done to it, `unit_price` is the variant's price and
+    // `options_total` is the configuration's. Fold them into one column and the
+    // question "what did the upgrades cost" stops having an answer.
+    const variants = await get("product_variants?limit=20");
+    const orders = await get("orders?limit=5");
+    const stocked = variants.data.find((v) => v.sku === "TEE-001-S-BLK")!;
+    const base = (stocked.price as unknown as { amount: number }).amount;
+    expect(base).toBe(25);
+
+    // The variant half still resolves through its option values — the axes are
+    // genuinely separate systems, and neither one weakens the other.
+    const links = await get(`variant_option_values?${where({ variant: { _eq: stocked.id } })}&limit=10`);
+    expect(links.data.length).toBeGreaterThan(0);
+
+    const set = await post("modifier_sets", {
+      name: "Engraving", code: "ENG", input_type: "choice", min_select: 0, max_select: 1, active: true,
+    });
+    const { data: engraving } = (await set.json()) as { data: { id: string } };
+    const choice = await post("modifier_values", {
+      modifier_set: engraving.id, label: "Serif", code: "SERIF",
+      adjustment_type: "fixed_amount", price_adjustment: 12, currency: "USD",
+      position: 1, active: true, consumes_qty: 0,
+    });
+    const { data: serif } = (await choice.json()) as { data: { id: string } };
+    const slotRes = await post("product_modifiers", {
+      product: stocked.product, modifier_set: engraving.id, label: "Engraving", position: 300,
+    });
+    const { data: slot } = (await slotRes.json()) as { data: { id: string } };
+
+    const line = await post("order_items", {
+      order: orders.data[0]!.id,
+      product: stocked.product,
+      variant: stocked.id,
+      title: "Classic Tee — S / Black, engraved",
+      sku: stocked.sku,
+      qty: 2,
+      unit_price: base,
+      options_total: 12,
+      currency: "USD",
+      config_code: "TEE-001-S-BLK/ENGSERIF",
+    });
+    expect([200, 201]).toContain(line.status);
+    const { data: sold } = (await line.json()) as { data: { id: string } };
+
+    const opt = await post("order_item_options", {
+      line: sold.id, modifier: slot.id, value: serif.id, label: "Serif",
+      qty: 1, price_adjustment: 12, currency: "USD", position: 1,
+    });
+    expect([200, 201]).toContain(opt.status);
+
+    const read = await one("order_items", sold.id);
+    // The stocked unit and the decision about it, both on one line.
+    expect(read.variant).toBe(stocked.id);
+    expect(read.unit_price).toEqual({ amount: base, currency: "USD" });
+    expect(read.options_total).toEqual({ amount: 12, currency: "USD" });
+    expect(read.line_total).toEqual({ amount: 2 * (base + 12), currency: "USD" });
+
+    // The same choice cannot be charged to the same slot twice — the second
+    // row is a double charge, not a second option.
+    const dupe = await post("order_item_options", {
+      line: sold.id, modifier: slot.id, value: serif.id, label: "Serif",
+      qty: 1, price_adjustment: 12, currency: "USD", position: 2,
+    });
+    expect(dupe.status).toBe(409);
+  });
+
   test("available is generated from on hand minus committed, and NEITHER can be written", async () => {
     // The defect: `available` was a third integer with a hint telling the
     // operator to keep all three consistent by hand. It is a definition, not a

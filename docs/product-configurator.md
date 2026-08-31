@@ -50,6 +50,36 @@ so stock moves on the parts while the buyer sees one product.
 cannot be enumerated. A catalog with a few dozen rules per product evaluates
 directly, in under a millisecond. Reach for the algorithm below, not a solver.
 
+## Variants and modifiers, together
+
+They are not alternatives, and a catalog that made you choose between them would
+be unusable. The question each answers is different:
+
+| | `product_variants` | Modifiers |
+|---|---|---|
+| Answers | **which unit leaves the shelf** | **what was decided about it** |
+| Has | its own SKU, barcode, stock, price | a price adjustment, optionally a component |
+| Cost of an axis | one row per combination | one row per choice |
+| Use for | screen size, base model, colourway you stock | memory, drives, engraving, warranty |
+
+A laptop is **picked** as a variant — 14" and 16" are separately stocked units
+with their own SKUs — and then **configured** on top. One line holds both:
+
+```
+order_items          variant → the 16" unit, unit_price 1200
+order_item_options   Memory  = 32 GB   +240
+                     Bay 1   = 1 TB     +90
+                     Finish  = Black     +0
+                     → options_total 330, line_total = qty × 1530
+```
+
+The rule for deciding which axis something belongs on is **stock**: if you count
+it separately in a warehouse, it is a variant. If you don't, it is a modifier —
+even when it consumes a part, because the part is counted, not the choice.
+
+Keep the variant axes few. Three variants × twelve configured slots is fifteen
+rows; twelve variant axes is a catalog nobody can publish.
+
 ## The model
 
 | Collection | What it is |

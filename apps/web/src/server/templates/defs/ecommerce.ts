@@ -849,7 +849,11 @@ export const ecommerce: SchemaTemplate = {
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", conditions: [when("adjustment_type", "_eq", "percent", "hidden")] }),
           ),
           ...half(
-            num("adjustment_percent", { label: "Adjustment (%)", format: { style: "percent100", precision: 2 }, conditions: [when("adjustment_type", "_neq", "percent", "hidden")] }),
+            // Capped at 100 like every other percentage column here. A choice
+            // that more than doubles the base is not an uplift, it is a
+            // different price — `fixed_price` says so without a 250% figure
+            // that prints as "250%" and reads as a typo.
+            num("adjustment_percent", { validation: { min: 0, max: 100 }, label: "Adjustment (%)", format: { style: "percent100", precision: 2 }, conditions: [when("adjustment_type", "_neq", "percent", "hidden")] }),
             num("weight_adjustment", { label: "Weight adjustment" }),
           ),
         ]),
@@ -934,7 +938,11 @@ export const ecommerce: SchemaTemplate = {
       fields: stacked(
         sec("Offer", [
           hint("product_addons_line", "An add-on becomes its own order line pointing back at the line it was bought with, so it keeps its own SKU, stock and return path."),
-          ...half(rel("product", "products", { required: true, label: "On product" }), rel("addon_product", "products", { required: true, label: "Add-on" })),
+          // One offer per (product, add-on). A second row is not a second
+          // offer, it is the same keyboard listed twice in the configurator at
+          // two prices, with no rule for which one wins. A shopper who may pick
+          // among the add-on's variants gets ONE row with `addon_variant` empty.
+          ...half(rel("product", "products", { required: true, label: "On product" }), rel("addon_product", "products", { required: true, label: "Add-on", uniqueWith: ["product"] })),
           ...half(rel("addon_variant", "product_variants", { label: "Add-on variant", description: "Pin one variant, or leave empty to let the shopper pick." }), text("group_label", { label: "Group", description: "Groups add-ons in the configurator — Accessories, Peripherals." })),
           ...half(int("max_qty", { default: 1, validation: { min: 1 }, label: "Max quantity" }), bool("is_default", { default: false, label: "Pre-selected" })),
           ...half(bool("active", { default: true }), position("product")),
@@ -946,7 +954,7 @@ export const ecommerce: SchemaTemplate = {
             moneyIn("price", { validation: {}, label: "Bundle price", conditions: [when("pricing", "_neq", "fixed", "hidden")] }),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", conditions: [when("pricing", "_neq", "fixed", "hidden")] }),
           ),
-          num("discount_percent", { label: "Percent off", format: { style: "percent100", precision: 2 }, conditions: [when("pricing", "_neq", "discount_percent", "hidden")] }),
+          num("discount_percent", { validation: { min: 0, max: 100 }, label: "Percent off", format: { style: "percent100", precision: 2 }, conditions: [when("pricing", "_neq", "discount_percent", "hidden")] }),
         ]),
       ),
       samples: [
@@ -1468,7 +1476,14 @@ export const ecommerce: SchemaTemplate = {
           // Empty for a slot whose kind has no choice list — a gift message, a
           // monogram, a number. `value_text` is the answer in that case, and one
           // of the two is always the thing the picker reads.
-          ...half(rel("value", "modifier_values", { label: "Choice" }), text("label", { label: "Label (snapshot)" })),
+          //
+          // The rule is per (line, slot, CHOICE), not per (line, slot): a
+          // `multi_choice` set legitimately puts several rows on one slot, and
+          // that is what `max_select` is for. What must never happen is the
+          // same choice counted twice, which is a double charge. A slot with no
+          // choice list is unconstrained here — NULLs do not collide in either
+          // dialect — and is bounded by `max_select` in the configurator.
+          ...half(rel("value", "modifier_values", { label: "Choice", uniqueWith: ["line", "modifier"] }), text("label", { label: "Label (snapshot)" })),
           ...half(text("value_text", { label: "Typed value" }), int("qty", { default: 1, validation: { min: 0 } })),
         ]),
         sec("Amount", [
@@ -1589,7 +1604,10 @@ export const ecommerce: SchemaTemplate = {
         sec("Choice", [
           hint("order_item_options_shape", "What this line was configured with, as bought. Snapshots, not lookups — the catalog is free to change afterwards."),
           ...half(rel("line", "order_items", { required: true }), rel("modifier", "product_modifiers", { required: true, label: "Slot" })),
-          ...half(rel("value", "modifier_values", { label: "Choice" }), text("label", { label: "Label (snapshot)" })),
+          // Same rule as the cart row this becomes: one row per (line, slot,
+          // choice), so a multi-choice slot may hold several and none of them
+          // can be charged twice.
+          ...half(rel("value", "modifier_values", { label: "Choice", uniqueWith: ["line", "modifier"] }), text("label", { label: "Label (snapshot)" })),
           ...half(text("value_text", { label: "Typed value" }), int("qty", { default: 1, validation: { min: 0 } })),
         ]),
         sec("Amount", [

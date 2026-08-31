@@ -1,6 +1,7 @@
 import { sql, type SQL } from "drizzle-orm";
 import {
   type FieldDef,
+  isLocalized,
   matchesCondition,
   resolveAutoFill,
   sidecarFields,
@@ -52,16 +53,21 @@ import {
   sameScope,
 } from "./order";
 import { judgeableCondition } from "../permission-relations";
+import { loadAppSettings } from "../settings";
 import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
 import { applySlugs, resolveSlugsForWrite, slugFieldsOf } from "./slug";
 import { assertInitialStates, assertTransitions, transitionEventName } from "./transitions";
 import {
   echoLocalized,
+  type LocaleSplit,
+  loadSidecarForRow,
   sidecarClear,
   sidecarDeleteRow,
   sidecarInsert,
   sidecarUpsert,
   splitIsEmpty,
+  pickLocalizedValues,
+  sidecarByLocale,
   splitLocalized,
   validateLocalePatches,
 } from "./i18n-sidecar";
@@ -408,6 +414,110 @@ const assertNotReadOnlyImpersonation = (env: WriteEnv, action: string): void => 
   );
 };
 
+/**
+ * The write permission's field allowlist, applied to the localized half.
+ *
+ * `validateBody` is the only place `perm.fields` is enforced on a write, and it
+ * walks the payload's own keys — which `splitLocalized` has already emptied of
+ * every localized column. So a role granted `update` on `{title}` could also
+ * write any localized field on the same collection, and the refusal it should
+ * have got never existed. Read-side field permissions were never affected; this
+ * is the write half only.
+ *
+ * Raises the SAME error `validateBody` raises for an ordinary column, so the
+ * two halves of one rule cannot answer a caller differently.
+ */
+const assertLocalizedFieldsWritable = (
+  split: LocaleSplit,
+  allow: Set<string> | null,
+): void => {
+  if (!allow) return;
+  const touched = new Set<string>(split.clearAll);
+  for (const [, fieldMap] of split.localePatches) for (const n of Object.keys(fieldMap)) touched.add(n);
+  for (const n of Object.keys(split.bare)) touched.add(n);
+  for (const name of touched) {
+    if (!allow.has(name)) {
+      throw new AppError("FORBIDDEN", `No permission to write field "${name}"`);
+    }
+  }
+};
+
+/**
+ * File the locale-less values under the workspace default, and answer with the
+ * locale that was.
+ *
+ * Costs one settings read, and only on a write that actually sent a bare value
+ * for a localized column — a caller that states `?locale=` or `{locale: value}`
+ * pays nothing. Returned so the slug fold below can reuse it rather than
+ * reading the same row again.
+ */
+const adoptBareLocalized = async (
+  ctx: Ctx,
+  env: WriteEnv,
+  split: LocaleSplit,
+): Promise<string | null> => {
+  const names = Object.keys(split.bare);
+  if (names.length === 0) return null;
+  const settings = await loadAppSettings(ctx.db, ctx.dialect, env.tenantId ?? null);
+  const loc = settings.i18nDefaultLocale ?? "en";
+  const m = split.localePatches.get(loc) ?? {};
+  for (const name of names) m[name] = split.bare[name];
+  split.localePatches.set(loc, m);
+  return loc;
+};
+
+/**
+ * The single value each localized column contributes to a slug fold.
+ *
+ * Returns `null` — and costs nothing — unless this collection actually has a
+ * slug whose `from` names a localized field, which is the only case that ever
+ * needed this. When it does: the write's own locale wins, then the workspace
+ * default, then the lowest-sorted locale carrying text, so one title cannot
+ * fold to two different handles depending on key order.
+ *
+ * `rowId` is passed on update, where the source usually is NOT part of the
+ * write — the title was set some other day and lives only in the sidecar. On
+ * create there is nothing to read yet, so the split is the whole truth.
+ */
+const localizedSlugSources = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  env: WriteEnv,
+  split: LocaleSplit,
+  rowId: string | null,
+  knownDefaultLocale: string | null,
+): Promise<Record<string, unknown> | null> => {
+  const wanted = new Set<string>();
+  for (const f of slugFieldsOf(collection.fields)) for (const src of f.spec.from ?? []) wanted.add(src);
+  if (wanted.size === 0) return null;
+  const defs = collection.fields.filter((f) => isLocalized(f) && wanted.has(f.name));
+  if (defs.length === 0) return null;
+
+  const byLocale: Array<[string, Record<string, unknown>]> = [];
+  for (const [loc, fieldMap] of split.localePatches) {
+    const kept: Record<string, unknown> = {};
+    for (const f of defs) if (f.name in fieldMap) kept[f.name] = fieldMap[f.name];
+    if (Object.keys(kept).length > 0) byLocale.push([loc, kept]);
+  }
+  // Anything this write did not carry has to come from what is already stored,
+  // or clearing a handle to re-derive it would fold from nothing a second time.
+  if (rowId && defs.some((f) => !byLocale.some(([, m]) => f.name in m))) {
+    try {
+      byLocale.push(
+        ...sidecarByLocale(await loadSidecarForRow(ctx, collection.physicalTable, rowId, defs), defs),
+      );
+    } catch (e) {
+      console.error(`[slug] sidecar read failed for ${collection.physicalTable}/${rowId}:`, e);
+    }
+  }
+  if (byLocale.length === 0) return null;
+
+  const defaultLocale =
+    knownDefaultLocale ??
+    (await loadAppSettings(ctx.db, ctx.dialect, env.tenantId ?? null)).i18nDefaultLocale;
+  return pickLocalizedValues(byLocale, [env.locale, defaultLocale]);
+};
+
 export const performCreate = async (
   env: WriteEnv,
   dataIn: Record<string, unknown>,
@@ -444,6 +554,8 @@ export const performCreate = async (
   // Pull `localized` fields out of `data` up front so the base INSERT never
   // targets a sidecar-only column, and validate each provided per-locale value.
   const localeSplit = splitLocalized(data, collection.fields, env.locale);
+  assertLocalizedFieldsWritable(localeSplit, perm.fields);
+  const adoptedLocale = await adoptBareLocalized(ctx, env, localeSplit);
   validateLocalePatches(localeSplit, collection.fields);
   validateBody(data, collection.fields, false, perm.fields);
   // Canonicalize every accepted point shape into `{ lat, lng }` on the payload
@@ -604,7 +716,14 @@ export const performCreate = async (
   // had to learn. The generic column loop below then picks it up like any other
   // value, so nothing here has to know how a text column is serialized.
   if (slugFieldsOf(collection.fields).length > 0) {
-    applySlugs(data, await resolveSlugsForWrite(ctx, collection, data, { db: env.db }));
+    // A slug folds from sibling columns, and `splitLocalized` has already taken
+    // every localized one off `data` — so a title that lives in the sidecar
+    // read as absent and the handle came out NULL, with a 201 and no warning.
+    // Overlaid for the fold only; `data` itself must stay free of sidecar-only
+    // names or the INSERT would name a column the base table does not have.
+    const sources = await localizedSlugSources(ctx, collection, env, localeSplit, null, adoptedLocale);
+    const foldFrom = sources ? { ...data, ...sources } : data;
+    applySlugs(data, await resolveSlugsForWrite(ctx, collection, foldFrom, { db: env.db }));
   }
   // Order columns — where this row lands in the list it belongs to. A caller
   // that STATES a position keeps it (a CSV import, a restore and a template's
@@ -761,6 +880,8 @@ export const performUpdate = async (
   const table = collection.physicalTable;
   // Split localized fields out before base validation/write (same as create).
   const localeSplit = splitLocalized(patch, collection.fields, env.locale);
+  assertLocalizedFieldsWritable(localeSplit, perm.fields);
+  const adoptedLocale = await adoptBareLocalized(ctx, env, localeSplit);
   validateLocalePatches(localeSplit, collection.fields);
   validateBody(patch, collection.fields, true, perm.fields);
   normalizeGeoFields(patch, collection.fields);
@@ -1006,7 +1127,13 @@ export const performUpdate = async (
   // never be published — the value resolves on the live write that applies it.
   const slugFields = slugFieldsOf(collection.fields);
   if (slugFields.length > 0 && slugFields.some((f) => patch[f.name] !== undefined)) {
-    const merged: Record<string, unknown> = { ...beforeRow, ...patch };
+    // Same overlay as create. `beforeRow` comes from the base table, so a
+    // localized source is missing from it too — and re-deriving a handle by
+    // clearing it would otherwise fold from nothing a second time. Passing `id`
+    // lets the helper read the sidecar when this write did not carry the source
+    // itself, which is the ordinary case: the title was set some other day.
+    const sources = await localizedSlugSources(ctx, collection, env, localeSplit, id, adoptedLocale);
+    const merged: Record<string, unknown> = { ...beforeRow, ...sources, ...patch };
     const outcomes = (
       await resolveSlugsForWrite(ctx, collection, merged, { excludeId: id, db: env.db })
     ).filter((o) => patch[o.field] !== undefined);

@@ -691,12 +691,29 @@ describe("write-condition check — what it actually fences", () => {
     test("BUG: a `_neq` rule on a localized field cannot see the value being written", async () => {
       // Positive control first: `region` really is localized, so this test is not
       // quietly passing against an ordinary column that never violated the rule.
-      const noLocale = await asAlice()(
+      //
+      // This used to be the 422 a bare write earned ("send {locale: value}"),
+      // which was removed so that localizing a column already in use is not a
+      // breaking change for every writer. The proof moved to where the value
+      // LANDS: the sidecar, which a `?locale=*` read renders as a per-locale
+      // map rather than a string.
+      //
+      // AND THAT WIDENS THIS HOLE BY ONE SHAPE. A bare write now reaches the
+      // sidecar too, so a condition keyed on a localized column is unenforceable
+      // against it as well — previously such a write was refused before it got
+      // this far. The hole itself is unchanged and still deliberate (the
+      // condition is narrowed out, not judged against `undefined`), but it is
+      // now reachable without naming a locale.
+      const control = await asAlice()(
         "/api/items/docs",
-        json("POST", { title: "no locale", region: "confidential" }),
+        json("POST", { title: "no locale", region: "public" }),
       );
-      expect(noLocale.status).toBe(422);
-      expect(await noLocale.text()).toContain("localized");
+      expect(control.status).toBe(201);
+      const controlMap = await dataOf(
+        await h.fetch(`/api/items/docs/${String((await dataOf(control)).id)}?locale=*`),
+      );
+      expect(typeof controlMap.region).toBe("object");
+      expect(Object.values(controlMap.region as Record<string, unknown>)).toEqual(["public"]);
 
       const res = await asAlice()(
         "/api/items/docs?locale=en",

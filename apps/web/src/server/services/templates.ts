@@ -6,6 +6,7 @@ import {
   FIELD_TYPES,
   derivePhysicalTable,
   ftsTableName,
+  isLocalized,
   isPresentational,
   validateFields,
   type FieldDef,
@@ -36,6 +37,8 @@ import { createForm } from "./forms";
 import { refreshCollectionRollups, rollupRefreshAllStatements } from "./items/rollup";
 import { allocateSequenceValues, sequenceFieldsOf } from "./items/sequence";
 import { indexFts, isSearchable } from "./fts";
+import { sidecarInsert } from "./items/i18n-sidecar";
+import { loadAppSettings } from "./settings";
 import {
   deleteVectors,
   embedAndUpsertBatch,
@@ -137,6 +140,14 @@ const isSampleRef = (v: unknown): v is { ref: string } =>
  * escaped as `500 Internal server error` — abandoning the apply partway with
  * 39 of 61 collections created and no way for the caller to know which.
  */
+/**
+ * Whether a localized field's sample states a `{locale: value}` map rather than
+ * one language's text. A sample ref is an object too, hence the explicit
+ * exclusion — `{ref: "products:0"}` is a pointer, not two locales named `ref`.
+ */
+const isLocaleMap = (v: unknown): boolean =>
+  typeof v === "object" && v !== null && !Array.isArray(v) && !("ref" in (v as object));
+
 const resolveSample = (
   value: SampleValue,
   seeded: SeededIds,
@@ -289,6 +300,11 @@ async function seedSamples(
   if (rows.length === 0) return { ids: [], rows: [], unresolvedRefs: [] };
   const physicalTable = derivePhysicalTable(tenantId, col.slug);
   const fieldByName = new Map(col.fields.map((f) => [f.name, f]));
+  // One lookup per collection, and only when it can matter: a bare sample value
+  // for a localized field is that locale's text.
+  const defaultLocale = col.fields.some(isLocalized)
+    ? ((await loadAppSettings(ctx.db, ctx.dialect, tenantId)).i18nDefaultLocale ?? "en")
+    : "en";
   const ids: string[] = [];
   const seededRows: Array<{ id: string; row: Record<string, unknown> }> = [];
   // Document numbers are ALLOCATED for the sample block, never written by the
@@ -330,6 +346,8 @@ async function seedSamples(
     }
 
     const raw: Record<string, unknown> = {};
+    /** Localized sample values, per locale — they own no base column. */
+    const localeRows = new Map<string, Record<string, unknown>>();
     /** Refs THIS sample row could not resolve. */
     const rowUnresolved: string[] = [];
     // Money samples are written in major units, like every money value on every
@@ -372,6 +390,23 @@ async function seedSamples(
         continue;
       const resolved =
         def.type === "money" ? moneySample[key] : resolveSample(value, seeded, rowUnresolved);
+      // A `localized` field owns NO base column — its value lives in the
+      // `__i18n` sidecar. Left in `raw` it reached the INSERT as a column the
+      // table does not have, so a template could not carry one at all. A sample
+      // may state a `{locale: value}` map, or a bare value for the workspace
+      // default locale.
+      if (isLocalized(def)) {
+        const perLocale = isLocaleMap(resolved)
+          ? (resolved as Record<string, unknown>)
+          : { [defaultLocale]: resolved };
+        for (const [loc, v] of Object.entries(perLocale)) {
+          if (v === null || v === undefined) continue;
+          const m = localeRows.get(loc) ?? {};
+          m[def.name] = v;
+          localeRows.set(loc, m);
+        }
+        continue;
+      }
       raw[def.name] = resolved;
       let serialized = serializeField(resolved, def, ctx.dialect);
       // JSON-ish columns on Postgres: bind a JSON string, never a raw JS
@@ -417,6 +452,10 @@ async function seedSamples(
       ctx,
       sql`INSERT INTO ${sql.identifier(physicalTable)} (${colSql}) VALUES (${valSql})`,
     );
+    // Before `indexFts`, which now reads the sidecar to build its text.
+    for (const [loc, fieldMap] of localeRows) {
+      await exec(ctx, sidecarInsert(physicalTable, id, loc, fieldMap, fieldByName, ctx.dialect));
+    }
     // indexFts is best-effort by contract (logs, never throws) — a search-index
     // hiccup must not abort the apply.
     if (searchable) await indexFts(ctx as unknown as Ctx, ftsTarget, id, raw);

@@ -21,6 +21,18 @@ export interface RealtimeFilter {
   queryFilter?: Condition | null;
   /** Read field allow-list (`null` = all readable). Applied to the emitted row. */
   fields?: string[] | null;
+  /**
+   * Which store this predicate is standing in for.
+   *
+   * The case-insensitive operators fold, and a fold only means something
+   * relative to an engine: SQLite's `LOWER()` handles `A-Z` and nothing else,
+   * Postgres's is locale-aware. Evaluating them with JavaScript's rules made
+   * this predicate a SUPERSET of the SQL the REST list ran — so a row could be
+   * delivered over a socket that a refetch would not return. Stamped at
+   * subscribe time (`routes/realtime.ts`) and carried in the subscription meta,
+   * because a Durable Object has no database binding to ask.
+   */
+  dialect?: "pg" | "sqlite";
 }
 
 const SYSTEM_FIELDS = new Set(["id", "createdAt", "updatedAt", "ownerId"]);
@@ -47,7 +59,9 @@ const permissionPasses = (
 ): boolean => {
   if (f.conditions === null) return true;
   if (f.conditions.length === 0) return false;
-  return f.conditions.some((c) => matchesCondition(row, c, f.authSubject));
+  return f.conditions.some((c) =>
+    matchesCondition(row, c, f.authSubject, { dialect: f.dialect }),
+  );
 };
 
 /**
@@ -60,7 +74,8 @@ export const rowPasses = (
   f: RealtimeFilter,
 ): boolean =>
   permissionPasses(row, f) &&
-  (f.queryFilter == null || matchesCondition(row, f.queryFilter, f.authSubject));
+  (f.queryFilter == null ||
+    matchesCondition(row, f.queryFilter, f.authSubject, { dialect: f.dialect }));
 
 /**
  * Membership transition for an `updated` event (reactive invalidation Stage 2).

@@ -26,6 +26,32 @@ const TRUE: SQL = sql`(1=1)`;
 export type Dialect = "pg" | "sqlite";
 
 /**
+ * Fold case the way the TARGET STORE folds it — never more, never less.
+ *
+ * Two folds that disagree are worse than no fold at all, and this operator had
+ * exactly that: the needle was folded by JavaScript (full Unicode) and the
+ * column by SQLite's `LOWER()` (ASCII only), so they could never meet for any
+ * character whose fold either engine declines to perform. Measured on a Turkish
+ * catalog, `_icontains: "İşlemci"` returned NOTHING against a row literally
+ * named "İşlemci soğutucu", while `_contains` — the case-SENSITIVE operator —
+ * returned it. The insensitive operator found strictly less than the sensitive
+ * one, which is not a rough edge, it is backwards.
+ *
+ * So: on SQLite, fold ASCII and stop, because that is precisely what its
+ * `LOWER()` does and both sides must agree. On Postgres, `lower()` is
+ * locale-aware and the SQL path lets PG fold BOTH sides, so the JS side folds
+ * fully to stay in step with it.
+ *
+ * What this deliberately does NOT do is make SQLite fold `İ` → `i`. It cannot:
+ * D1 ships no ICU, and inventing a Turkish rule here would break every other
+ * Latin language (`I` → `ı` is correct in Turkish and wrong everywhere else).
+ * The guarantee on offer is agreement, not completeness — see
+ * `docs/querying.md`.
+ */
+export const foldCase = (s: string, dialect: Dialect | undefined): string =>
+  dialect === "sqlite" ? s.replace(/[A-Z]/g, (c) => c.toLowerCase()) : s.toLowerCase();
+
+/**
  * Evaluation context threaded through one compile/match pass. `now` is captured
  * ONCE at the public entry so every relative date in the same condition resolves
  * to the same instant (SQL and the realtime predicate can't drift apart).
@@ -338,16 +364,33 @@ const compileComparison = (
   if (cmp._ends_with !== undefined) {
     parts.push(sql`${id} LIKE ${`%${String(r(cmp._ends_with))}`}`);
   }
-  // Case-insensitive: LOWER() the column and lowercase the JS value so PG and
-  // SQLite agree regardless of column collation.
+  // Case-insensitive: ONE engine folds BOTH sides.
+  //
+  // The comment that used to sit here said the JS fold was "so PG and SQLite
+  // agree regardless of column collation", which is exactly the trap — agreeing
+  // takes one fold, and folding the needle in JS while the column went through
+  // SQL's `LOWER()` is two. See {@link foldCase}.
+  //
+  // On Postgres the needle is handed to `lower()` so the database performs both
+  // folds with its own locale rules. On SQLite the needle is folded in JS to
+  // the ASCII-only standard `LOWER()` itself applies, which is the same thing
+  // by the only means available — `LOWER(?)` there would be a second call to
+  // the same weak function, and D1 has been touchy about what it will accept
+  // inside a LIKE pattern.
+  const ineedle = (v: unknown, wrap: (s: string) => string): SQL => {
+    const raw = String(r(v));
+    return dialect === "pg"
+      ? sql`LOWER(${wrap(raw)})`
+      : sql`${wrap(foldCase(raw, "sqlite"))}`;
+  };
   if (cmp._icontains !== undefined) {
-    parts.push(sql`LOWER(${id}) LIKE ${`%${String(r(cmp._icontains)).toLowerCase()}%`}`);
+    parts.push(sql`LOWER(${id}) LIKE ${ineedle(cmp._icontains, (s) => `%${s}%`)}`);
   }
   if (cmp._istarts_with !== undefined) {
-    parts.push(sql`LOWER(${id}) LIKE ${`${String(r(cmp._istarts_with)).toLowerCase()}%`}`);
+    parts.push(sql`LOWER(${id}) LIKE ${ineedle(cmp._istarts_with, (s) => `${s}%`)}`);
   }
   if (cmp._iends_with !== undefined) {
-    parts.push(sql`LOWER(${id}) LIKE ${`%${String(r(cmp._iends_with)).toLowerCase()}`}`);
+    parts.push(sql`LOWER(${id}) LIKE ${ineedle(cmp._iends_with, (s) => `%${s}`)}`);
   }
   if (cmp._near !== undefined) {
     // A malformed origin or radius is the CALLER's mistake, so it has to leave
@@ -477,10 +520,11 @@ const matchesInner = (
   cond: Condition,
   ctx: AuthSubject,
   now: number,
+  dialect: Dialect | undefined,
 ): boolean => {
-  if (isAnd(cond)) return cond.$and.every((c) => matchesInner(row, c, ctx, now));
-  if (isOr(cond)) return cond.$or.some((c) => matchesInner(row, c, ctx, now));
-  if (isNot(cond)) return !matchesInner(row, cond.$not, ctx, now);
+  if (isAnd(cond)) return cond.$and.every((c) => matchesInner(row, c, ctx, now, dialect));
+  if (isOr(cond)) return cond.$or.some((c) => matchesInner(row, c, ctx, now, dialect));
+  if (isNot(cond)) return !matchesInner(row, cond.$not, ctx, now, dialect);
   // JS predicate is dialect-agnostic: relative dates resolve to epoch-ms so the
   // numeric comparisons below stay comparable. A comparison value of the form
   // `"$field.<name>"` resolves to a sibling row value — this is what powers
@@ -547,21 +591,28 @@ const matchesInner = (
     if (cmp._ends_with !== undefined && !String(left ?? "").endsWith(String(r(cmp._ends_with)))) {
       return false;
     }
+    // Folded with the STORE's rules, not JavaScript's, so this predicate and
+    // the SQL above answer the same question. Left unqualified (no dialect),
+    // it keeps JS semantics — which is what every caller had before, so nothing
+    // silently narrows for one that has not been told which store it stands in
+    // for. `realtime-filter.ts` is told, because that is where a disagreement
+    // becomes a row delivered over a socket that REST would have withheld.
+    const fold = (v: unknown) => foldCase(String(v ?? ""), dialect);
     if (
       cmp._icontains !== undefined &&
-      !String(left ?? "").toLowerCase().includes(String(r(cmp._icontains)).toLowerCase())
+      !fold(left).includes(fold(r(cmp._icontains)))
     ) {
       return false;
     }
     if (
       cmp._istarts_with !== undefined &&
-      !String(left ?? "").toLowerCase().startsWith(String(r(cmp._istarts_with)).toLowerCase())
+      !fold(left).startsWith(fold(r(cmp._istarts_with)))
     ) {
       return false;
     }
     if (
       cmp._iends_with !== undefined &&
-      !String(left ?? "").toLowerCase().endsWith(String(r(cmp._iends_with)).toLowerCase())
+      !fold(left).endsWith(fold(r(cmp._iends_with)))
     ) {
       return false;
     }
@@ -592,7 +643,7 @@ export const matchesCondition = (
   cond: Condition,
   ctx: AuthSubject,
   opts: EvalOpts = {},
-): boolean => matchesInner(row, cond, ctx, opts.now ?? Date.now());
+): boolean => matchesInner(row, cond, ctx, opts.now ?? Date.now(), opts.dialect);
 
 /** Operators that ORDER two values. These are the ones with nothing to say
  *  when either side is missing — an equality still has an answer (`_eq` against

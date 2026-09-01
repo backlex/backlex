@@ -285,6 +285,12 @@ const gateForChannel = async (
         conditions,
         fields: perm.fields ? [...perm.fields] : null,
         queryFilter,
+        // Frozen with the rest of the gate, and for the same reason: the
+        // predicate that decides what this socket sees has to fold case the way
+        // the store does, or it matches a superset of what a REST refetch would
+        // return. A Durable Object has no database binding, so the dialect
+        // travels in the meta rather than being looked up at delivery time.
+        dialect: ctx.dialect,
       },
     };
   }

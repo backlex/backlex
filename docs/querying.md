@@ -47,7 +47,7 @@ GET (`GET /:id`) also accepts. `POST`, `PATCH`, and `DELETE` use
 | `_starts_with` | LIKE `x%`                      |                                          |
 | `_ends_with`   | LIKE `%x`                      |                                          |
 | `_between`     | inclusive range `[lo, hi]`     | `{ "total": { "_between": [10, 20] } }`  |
-| `_icontains` / `_istarts_with` / `_iends_with` | case-insensitive LIKE (LOWER() both sides → PG/SQLite parity) | `{ "name": { "_icontains": "alice" } }` |
+| `_icontains` / `_istarts_with` / `_iends_with` | case-insensitive LIKE — see [how far the fold reaches](#case-insensitive-matching-and-what-it-folds) | `{ "name": { "_icontains": "alice" } }` |
 | `_empty` / `_nempty` | is / is-not (null or empty string) | `{ "note": { "_empty": true } }`   |
 
 ### Logical combinators
@@ -103,6 +103,42 @@ Resolved against the auth subject before the SQL fragment is emitted:
 ```json
 { "placed_at": { "_gte": { "$now": { "sub": { "months": 1 } } } } }
 ```
+
+### Case-insensitive matching, and what it folds
+
+`_icontains` / `_istarts_with` / `_iends_with` fold **both sides with the same
+engine** — the one holding your data. That is the whole rule, and it is worth
+stating because folding one side in the application and the other in SQL is a
+classic way to make a search that cannot find its own data.
+
+| Store | Folds | So |
+|---|---|---|
+| **PostgreSQL** | `lower()`, locale-aware | Full case-insensitivity in every language. |
+| **SQLite / D1** | `LOWER()`, **ASCII only** | ASCII letters fold; a non-ASCII letter has to be typed in the case it is stored in. |
+
+Concretely, on SQLite, against a row named `İşlemci soğutucu`:
+
+```
+_icontains "İşlemci"    ✓ found       — typed as stored
+_icontains "SOğutucu"   ✓ found       — ASCII shouted, `ğ` as stored
+_icontains "işlemci"    ✗ not found   — `İ` typed as `i`
+_icontains "SOĞUTUCU"   ✗ not found   — `ğ` typed as `Ğ`
+```
+
+This is a limit of the database, not a choice: Unicode case folding needs ICU,
+and D1 does not ship it. What backlex guarantees is that the SQL path and the
+in-memory path (realtime, the permission simulator) apply the **same** fold, so
+a filter never means one thing over REST and another over a socket.
+
+:::tip
+**For genuinely multi-language search, use full-text search.** A collection with
+`fts: true` is searched through FTS5's `unicode61` tokenizer, which case-folds
+**and** strips diacritics on both sides — so `istanbul`, `İSTANBUL`, `ISTANBUL`
+and `İstanbul` all find the same row, and `cay` finds `çay`. See
+[full-text search](/docs/full-text-search/). `_icontains` is a substring filter,
+not a search engine; reach for it when you want `LIKE`, and for `q` / `search()`
+when you want to find words.
+:::
 
 ### Free-text search (`q`)
 

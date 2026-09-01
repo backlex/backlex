@@ -14,7 +14,14 @@
  * its own test rather than left as a happy accident.
  */
 import { describe, expect, test } from "bun:test";
-import { FOLD_SUFFIX, foldColumn, foldSearch, isFoldColumn } from "@backlex/db";
+import {
+  FOLD_SUFFIX,
+  foldColumn,
+  foldSearch,
+  foldStored,
+  isFoldColumn,
+  jsonSearchText,
+} from "@backlex/db";
 
 const fold = foldSearch;
 
@@ -120,5 +127,65 @@ describe("foldSearch", () => {
     // A user field cannot be mistaken for one — the suffix is double-underscore
     // prefixed, which the field-name rule already keeps out of user columns.
     expect(isFoldColumn("fold")).toBe(false);
+  });
+
+  test("a JSON attribute bag folds its VALUES, not its keys or punctuation", () => {
+    // The shape a spec filter actually searches. Folding `JSON.stringify(v)`
+    // would put the key names and the braces into the haystack, so filtering
+    // for "cpu" would match a row because its attribute is CALLED cpu.
+    const attrs = {
+      cpu: "AMD Ryzen 9 9950X3D",
+      ram: "32GB 6000MHz CL36",
+      os: "Windows 11 Pro",
+      inStock: true,
+      warranty: null,
+      tags: ["oyun", "İşlemci soğutucu"],
+      nested: { gpu: "RX 9060 XT", bench: 240 },
+    };
+    const hay = fold(jsonSearchText(attrs));
+
+    // Values are there — including nested ones, array members and numbers.
+    for (const needle of ["ryzen", "9950x3d", "32gb", "windows 11", "rx 9060", "240"]) {
+      expect(hay.includes(fold(needle))).toBe(true);
+    }
+    // Turkish inside a JSON value folds like anywhere else.
+    expect(hay.includes(fold("islemci"))).toBe(true);
+    expect(hay.includes(fold("SOĞUTUCU"))).toBe(true);
+
+    // Keys are NOT — this is the whole reason it is not `JSON.stringify`.
+    for (const key of ["cpu", "inStock", "warranty", "nested", "bench"]) {
+      expect(`${key}: ${hay.includes(fold(key))}`).toBe(`${key}: false`);
+    }
+    // Nor are booleans, nulls or JSON punctuation.
+    expect(hay).not.toContain("true");
+    expect(hay).not.toContain("null");
+    expect(hay).not.toContain("{");
+  });
+
+  test("the JSON walk is bounded, so one write cannot become a traversal", () => {
+    // Depth and breadth caps. A hostile — or merely enormous — document must
+    // not turn a single insert into unbounded work on the write path.
+    let deep: unknown = "needle";
+    for (let i = 0; i < 40; i++) deep = { next: deep };
+    expect(jsonSearchText(deep)).toBe("");
+
+    const wide = Array.from({ length: 5000 }, (_, i) => `v${i}`);
+    const out = jsonSearchText(wide).split(" ");
+    expect(out.length).toBeLessThan(2_100);
+    expect(out.length).toBeGreaterThan(100);
+  });
+
+  test("foldStored takes a column as the dialect keeps it, on either dialect", () => {
+    // SQLite hands back JSON as TEXT, Postgres as an object. One answer.
+    const v = { cpu: "İşlemci Öztürk", ram: "32GB" };
+    expect(foldStored("json", JSON.stringify(v))).toBe(foldStored("json", v));
+    expect(foldStored("json", v)).toContain("islemci ozturk");
+    // Plain text is unchanged by the JSON branch.
+    expect(foldStored("text", "Straße")).toBe("strasse");
+    // Absent stays absent — a NULL companion is how "not folded" is recorded.
+    expect(foldStored("json", null)).toBeNull();
+    expect(foldStored("text", undefined)).toBeNull();
+    // An adopted column holding unparseable text is folded as text, not dropped.
+    expect(foldStored("json", "not json İ")).toBe(fold("not json İ"));
   });
 });

@@ -1,4 +1,4 @@
-import { type FieldDef, type FieldType, foldColumn, foldSearch, hasFoldColumn, isLocalized, parseGeoPoint } from "@backlex/db";
+import { type FieldDef, type FieldType, foldColumn, foldSearch, hasFoldColumn, jsonSearchText, isLocalized, parseGeoPoint } from "@backlex/db";
 import { moneyValueOf, toStoredMoney } from "./money-fields";
 
 export const serialize = (
@@ -140,9 +140,21 @@ export const serializeColumns = (
 ): Array<[string, unknown]> => {
   const stored = serializeField(value, field, dialect);
   if (!hasFoldColumn(field)) return [[field.name, stored]];
+  // A JSON column folds its value LEAVES, not its serialized form — see
+  // `jsonSearchText`. Read off the caller's value rather than `stored`, which
+  // is already a string on SQLite and an object on Postgres: one shape in,
+  // one answer out, on both dialects.
+  const searchable =
+    field.type === "json"
+      ? value == null
+        ? null
+        : jsonSearchText(value)
+      : stored == null
+        ? null
+        : String(stored);
   return [
     [field.name, stored],
-    [foldColumn(field.name), stored == null ? null : foldSearch(String(stored))],
+    [foldColumn(field.name), searchable == null ? null : foldSearch(searchable)],
   ];
 };
 

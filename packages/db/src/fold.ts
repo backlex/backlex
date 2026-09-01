@@ -109,3 +109,63 @@ export const foldColumn = (name: string): string => `${name}${FOLD_SUFFIX}`;
 
 /** Whether a column name is a fold companion rather than a user field. */
 export const isFoldColumn = (name: string): boolean => name.endsWith(FOLD_SUFFIX);
+
+/**
+ * The searchable text inside a JSON value — its string and number LEAVES,
+ * joined.
+ *
+ * Not the raw JSON, and the difference matters. Folding `JSON.stringify(v)`
+ * would put the KEYS and the punctuation into the haystack, so `_icontains:
+ * "cpu"` would match a row because the attribute is *called* cpu. What a
+ * person filtering an attribute bag means is the values, which is also exactly
+ * what a hand-rolled spec search concatenates by hand
+ * (`json_extract(attrs,'$.cpu') || ' ' || json_extract(attrs,'$.gpu') || …`).
+ *
+ * Numbers are included because a spec bag is full of them and people type them
+ * (`32`, `9950`). Booleans and nulls are not: nobody searches for "true".
+ */
+export const jsonSearchText = (value: unknown): string => {
+  const out: string[] = [];
+  const walk = (v: unknown, depth: number): void => {
+    // A bounded walk: a hostile or merely enormous document must not turn one
+    // write into an unbounded traversal.
+    if (depth > 12 || out.length > 2_000) return;
+    if (typeof v === "string") out.push(v);
+    else if (typeof v === "number" && Number.isFinite(v)) out.push(String(v));
+    else if (Array.isArray(v)) for (const x of v) walk(x, depth + 1);
+    else if (v && typeof v === "object") {
+      for (const x of Object.values(v as Record<string, unknown>)) walk(x, depth + 1);
+    }
+  };
+  walk(value, 0);
+  return out.join(" ");
+};
+
+/**
+ * The folded search text for a value as it is STORED, whatever shape the
+ * dialect keeps it in.
+ *
+ * The three paths that write a column from a stored value rather than from the
+ * caller's input — the backfill, template seeding and external-DB ingest — all
+ * need the same answer, and a `json` column reaches them as TEXT on SQLite and
+ * as an object on Postgres. One helper so the three cannot drift, which is the
+ * failure this codebase keeps finding: a sidecar value that most of its writers
+ * maintained.
+ *
+ * A JSON string that will not parse is folded as plain text rather than
+ * dropped: an adopted column can hold anything, and half a haystack beats none.
+ */
+export const foldStored = (type: string | undefined, stored: unknown): string | null => {
+  if (stored === null || stored === undefined) return null;
+  if (type !== "json") return foldSearch(String(stored));
+  let value: unknown = stored;
+  if (typeof stored === "string") {
+    try {
+      value = JSON.parse(stored);
+    } catch {
+      return foldSearch(stored);
+    }
+  }
+  return foldSearch(jsonSearchText(value));
+};
+

@@ -2366,7 +2366,8 @@ export const validateValue = (
 /**
  * Whether a field carries a folded companion column (`<name>__fold`).
  *
- * `text` only, and that boundary is the answer to "how much does this cost?".
+ * `text` and `json`, and that boundary is the answer to "how much does this
+ * cost?".
  * A `text` column holds a name, a code, a title — short, and the thing people
  * type into a filter box. `longtext` holds a description or a body, where a
  * second copy is real storage and where whole-word search through the FTS index
@@ -2388,7 +2389,10 @@ export const validateValue = (
  * filters keep working.
  */
 export const hasFoldColumn = (field: FieldDef): boolean =>
-  field.type === "text" && !field.computed && !field.rollup && !isLocalized(field);
+  (field.type === "text" || field.type === "json") &&
+  !field.computed &&
+  !field.rollup &&
+  !isLocalized(field);
 
 /**
  * The `foldable` predicate the condition compiler takes, built from a

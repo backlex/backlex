@@ -18,7 +18,7 @@ import {
   sqlTypeFor,
   validateFields,
 } from "./field-types";
-import { foldColumn, foldSearch } from "./fold";
+import { foldColumn, foldStored } from "./fold";
 import { isRetireFlag } from "./retirement";
 
 type Dialect = "pg" | "sqlite";
@@ -800,8 +800,9 @@ export const backfillFoldColumns = async (
       for (const row of rows) {
         // Bound, never interpolated: a stored value is user text and this is
         // the one place it would reach DDL-adjacent SQL.
-        const q = sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier(fold)} = ${foldSearch(
-          String(row.v ?? ""),
+        const q = sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier(fold)} = ${foldStored(
+          f.type,
+          row.v,
         )} WHERE ${sql.identifier("id")} = ${row.id}`;
         if (dialect === "pg") {
           await (db as PgDb).execute(q);

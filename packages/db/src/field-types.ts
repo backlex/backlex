@@ -2403,9 +2403,27 @@ export const hasFoldColumn = (field: FieldDef): boolean =>
 export const foldablePredicate = (
   fields: FieldDef[],
   adopted?: boolean,
+  /**
+   * The companion columns the physical table ACTUALLY has. Required in
+   * practice, and optional only so a caller with no table to introspect gets
+   * the safe answer: without it nothing folds.
+   *
+   * Inferring this from the field types instead is the trap. A collection
+   * created before folded search existed has `text` fields and no companions
+   * until its schema is next applied — and on SQLite a WHERE naming a column
+   * that is not there does not raise, it quietly matches NOTHING, because an
+   * unresolvable double-quoted identifier is read as a string literal. So the
+   * inferred version returned zero rows with a 200 on every pre-existing
+   * collection. Measured.
+   */
+  present?: ReadonlySet<string>,
 ): ((field: string) => boolean) => {
-  if (adopted) return () => false;
-  const set = new Set(fields.filter(hasFoldColumn).map((f) => f.name));
+  if (adopted || !present || present.size === 0) return () => false;
+  const set = new Set(
+    fields
+      .filter((f) => hasFoldColumn(f) && present.has(foldColumn(f.name)))
+      .map((f) => f.name),
+  );
   return (field) => set.has(field);
 };
 

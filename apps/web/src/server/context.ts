@@ -47,7 +47,6 @@ import { cloudPdf } from "./adapters/pdf.cloud";
 import { gotenbergPdf } from "./adapters/pdf.gotenberg";
 import { sharpImage } from "./adapters/image.sharp";
 import { wasmImage } from "./adapters/image.photon";
-import { fsStorage } from "./adapters/storage.fs";
 import { r2Storage } from "./adapters/storage.r2";
 import { bunS3Storage } from "./adapters/storage.s3.bun";
 import { s3FetchStorage } from "./adapters/storage.s3.fetch";
@@ -865,6 +864,14 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       "This runtime has no persistent filesystem — set an R2 binding (Cloudflare) or S3-compatible config (S3_BUCKET + S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY).",
     );
   } else {
+    // Reached only on a runtime that HAS a durable filesystem — every edge and
+    // ephemeral-serverless target threw in the branch above. Imported through
+    // `import()` so `node:fs` never enters the eager graph: tenant workers are
+    // uploaded with `compatibility_date` 2025-01-01, and `node:fs` is only
+    // provided from 2025-09-15 onward, so a static edge here fails the upload
+    // outright with CF 10021 `No such module "node:fs"` even though the OSS
+    // worker (compat date 2026-08-11) resolves it fine.
+    const { fsStorage } = await import("./adapters/storage.fs");
     storage = fsStorage("./.data/files");
   }
 

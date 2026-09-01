@@ -635,7 +635,11 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // instead of at `LOWER(col)`. Without it the operator still WORKS — it
       // just falls back to the database's own ASCII-only fold, which is what
       // every non-Latin alphabet was quietly losing.
-      const foldable = foldablePredicate(collection.fields, collection.adopted);
+      const foldable = foldablePredicate(
+        collection.fields,
+        collection.adopted,
+        collection.foldColumns,
+      );
       const userWhere = userFilter
         ? compileCondition(userFilter, auth, nestedColRef, relationManyLeaf, {
             dialect: ctx.dialect,

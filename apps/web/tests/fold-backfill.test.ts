@@ -17,6 +17,7 @@
  * is what both cases look like from the table's point of view.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { invalidateTenantCollections } from "../src/server/services/collections-cache";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const json = { "Content-Type": "application/json" };
@@ -130,5 +131,52 @@ describe("the fold backfill", () => {
     // Untouched: the sentinel survived, so the pass skipped a non-NULL companion.
     expect(await foundBy("sentinel")).toEqual(["Straße 12"]);
     expect(await foundBy("strasse")).toEqual([]);
+  });
+
+  test("a table WITHOUT the companion falls back — it does not return silently empty", async () => {
+    // The release blocker this catches. A collection created before folded
+    // search existed has `text` fields and no companion columns until its
+    // schema is next applied. Inferring "foldable" from the field TYPES made
+    // the compiler name a column that is not there — and on SQLite that does
+    // not raise: an unresolvable double-quoted identifier is read as a STRING
+    // LITERAL, so `"name__fold" LIKE '%x%'` is `'name__fold' LIKE '%x%'` and
+    // matches nothing. Every `_icontains` on every pre-existing collection
+    // would have answered 200 with zero rows.
+    //
+    // The predicate reads the table instead, so the column's absence means
+    // "fall back", not "match nothing".
+    const made = await post("/api/collections", {
+      slug: "legacy2",
+      fields: [{ name: "name", type: "text" }],
+    });
+    expect(made.status).toBe(201);
+    const t2 = ((await made.json()) as { data: { physicalTable: string } }).data.physicalTable;
+    const r = await post("/api/items/legacy2", { name: "İşlemci soğutucu" });
+    expect([200, 201]).toContain(r.status);
+
+    // Make it look like a table from before the feature. The cache is dropped
+    // with it: the loader introspects on a cache FILL, so an entry written when
+    // the column still existed would keep answering for it. A real upgrade
+    // never has that entry — the column was never there to cache.
+    const meta = (await (await h.fetch("/api/collections/legacy2")).json()) as {
+      data: { tenantId?: string; tenant_id?: string };
+    };
+    await runSql(`ALTER TABLE "${t2}" DROP COLUMN "name__fold"`);
+    invalidateTenantCollections((meta.data.tenantId ?? meta.data.tenant_id) as string);
+
+    const find = async (needle: string) => {
+      const f = encodeURIComponent(JSON.stringify({ name: { _icontains: needle } }));
+      const res = await h.fetch(`/api/items/legacy2?filter=${f}&limit=10`);
+      expect(res.status).toBe(200);
+      return ((await res.json()) as { data: { name: string }[] }).data.map((x) => x.name);
+    };
+
+    // The fallback is the OLD behaviour: ASCII folds, a non-ASCII letter has to
+    // be typed as stored. Narrower than the companion, and NOT empty.
+    expect(await find("İşlemci")).toEqual(["İşlemci soğutucu"]);
+    expect(await find("SOğutucu")).toEqual(["İşlemci soğutucu"]);
+    // And the thing only a companion can do is simply unavailable here, rather
+    // than taking the whole operator down with it.
+    expect(await find("islemci")).toEqual([]);
   });
 });

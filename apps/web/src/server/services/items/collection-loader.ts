@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { type FieldDef, isLocalized, isPresentational } from "@backlex/db";
+import { type FieldDef, introspectColumns, isFoldColumn, isLocalized, isPresentational } from "@backlex/db";
 import type { Context } from "hono";
 import type { AppBindings } from "../../app";
 import type { Ctx } from "../../context";
@@ -66,6 +66,19 @@ export interface CollectionRow {
    *  to lean on across dialects). External-DB migration is what creates
    *  non-uuid managed collections. */
   pkType: "uuid" | "text" | "integer";
+  /**
+   * Which `<name>__fold` companion columns the physical table ACTUALLY has.
+   *
+   * Read off the table rather than inferred from the field types, and that
+   * distinction is the whole point. A collection created before folded search
+   * existed has `text` fields and no companions until its schema is next
+   * applied — and a WHERE naming a column that is not there does not raise on
+   * SQLite, it QUIETLY matches nothing: an unresolvable double-quoted
+   * identifier is read as a string literal. So `_icontains` would have returned
+   * zero rows, with a 200, on every pre-existing collection. Measured before
+   * this field existed.
+   */
+  foldColumns: Set<string>;
   /** Whether the physical table has these columns. Always true for managed
    *  collections; flexible for adopted ones. Used by POST/PATCH writes,
    *  projection, and the `parseQuery` default-sort fallback. */
@@ -85,6 +98,30 @@ export interface CollectionRow {
 
 export const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
+
+/**
+ * The `<name>__fold` companion columns this physical table actually has.
+ *
+ * One introspection per cache fill, not per request — the collection cache
+ * exists to keep this path off the hot loop. A table that gains its companions
+ * later keeps the fallback until the entry expires, which is correct-but-
+ * limited rather than wrong. An introspection that fails answers "none", so a
+ * database that will not describe itself degrades to the old behaviour instead
+ * of compiling a WHERE against columns nobody has confirmed.
+ */
+const readFoldColumns = async (
+  ctx: Pick<Ctx, "db" | "dialect">,
+  table: string,
+): Promise<Set<string>> => {
+  try {
+    const cols = await introspectColumns(ctx.db as never, ctx.dialect, table);
+    const out = new Set<string>();
+    for (const c of cols) if (isFoldColumn(c)) out.add(c);
+    return out;
+  } catch {
+    return new Set();
+  }
+};
 
 export const loadCollection = async (
   // Only the DB handle + dialect are used, so callers that hold a bare
@@ -121,8 +158,13 @@ export const loadCollection = async (
   if (((r.status ?? "active") as string) !== "active") {
     throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   }
+  // Introspected BEFORE the row is built so the field is set, not patched in —
+  // a `CollectionRow` is handed to the compiler and must never exist in a state
+  // where `foldColumns` is undefined.
+  const foldColumns = await readFoldColumns(ctx, (r.physicalTable ?? r.physical_table) as string);
   const row: CollectionRow = {
     id: r.id as string,
+    foldColumns,
     slug: r.slug as string,
     physicalTable: (r.physicalTable ?? r.physical_table) as string,
     // Presentational blocks (divider/notice) are layout-only — they carry no

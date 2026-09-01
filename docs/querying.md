@@ -152,9 +152,27 @@ schema surface, or in CSV export, and a field may not be named `*__fold`.
 | | Folded | Falls back to `LOWER()` |
 |---|---|---|
 | `text` columns | ✅ | |
+| `json` columns | ✅ its **values** — see below | |
 | `longtext` (descriptions, bodies) | | ⚠️ use [full-text search](/docs/full-text-search/) |
-| Text inside a `json` column | | ⚠️ |
 | Adopted tables | | ⚠️ backlex never DDLs a table it did not create |
+
+A `json` column folds the **string and number leaves** of its value, not the
+serialized document — so an attribute bag matches on what a thing *is*, not on
+what its fields are *called*:
+
+```json
+{ "cpu": "AMD Ryzen 9 9950X3D", "cooler": "İşlemci soğutucu", "ram": "32GB" }
+```
+
+```
+_icontains "ryzen" · "9950" · "32gb"      ✓
+_icontains "islemci" · "İşlemci"          ✓   ← the values, in any spelling
+_icontains "cpu" · "cooler"               ✗   ← keys are not in the haystack
+```
+
+This is also the one column type where the fallback was not merely narrow but
+**broken on Postgres**: `jsonb` has no `lower()`. The companion is `text` on
+both dialects, so the same filter now compiles and answers identically on each.
 
 The fallback is the old behaviour — correct for ASCII, and requiring a
 non-ASCII letter to be typed in the case it is stored in. It is narrower, never

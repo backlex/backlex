@@ -4,7 +4,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import {
   foldColumn,
-  foldSearch,
+  foldStored,
   hasFoldColumn,
   FIELD_TYPES,
   derivePhysicalTable,
@@ -431,7 +431,7 @@ async function seedSamples(
       // and a template's sample data is the first thing anyone filters.
       if (hasFoldColumn(def)) {
         cols.push(foldColumn(def.name));
-        vals.push(serialized == null ? null : foldSearch(String(serialized)));
+        vals.push(foldStored(def.type, serialized));
       }
     }
 

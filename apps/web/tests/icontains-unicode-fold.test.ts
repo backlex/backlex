@@ -227,4 +227,57 @@ describe("_icontains, on text that is not English", () => {
     // has not been told which store it stands in for already had.
     expect(foldCase("İ", undefined)).toBe("İ".toLowerCase());
   });
+
+  test("a JSON spec bag is searchable in every language, and on both dialects", async () => {
+    // Modelled on how a real gaming-PC storefront searches: the specs live in a
+    // JSON attribute bag and the shopper types a component. Before this, that
+    // search was ASCII-only on SQLite and BROKEN on Postgres — `jsonb` has no
+    // `lower()`, so the fallback could not even be compiled there.
+    const made = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug: "machines",
+        fields: [
+          { name: "name", type: "text" },
+          { name: "attrs", type: "json" },
+        ],
+      }),
+    });
+    expect(made.status).toBe(201);
+    const rows = [
+      { name: "TD3 A", attrs: { cpu: "AMD Ryzen 9 9950X3D", cooler: "İşlemci soğutucu", ram: "32GB" } },
+      { name: "TD3 B", attrs: { cpu: "Intel Core i7", cooler: "Hava soğutucu", ram: "16GB" } },
+    ];
+    for (const r of rows) {
+      const res = await h.fetch("/api/items/machines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(r),
+      });
+      expect([200, 201]).toContain(res.status);
+    }
+
+    const find = async (needle: string): Promise<string[]> => {
+      const f = encodeURIComponent(JSON.stringify({ attrs: { _icontains: needle } }));
+      const res = await h.fetch(`/api/items/machines?filter=${f}&limit=10`);
+      expect(res.status).toBe(200);
+      return ((await res.json()) as { data: { name: string }[] }).data
+        .map((x) => x.name)
+        .sort();
+    };
+
+    // What already worked: ASCII spec tokens.
+    expect(await find("ryzen")).toEqual(["TD3 A"]);
+    expect(await find("9950")).toEqual(["TD3 A"]);
+    expect(await find("32GB")).toEqual(["TD3 A"]);
+    // What did not: the Turkish ones, in any spelling.
+    expect(await find("islemci")).toEqual(["TD3 A"]);
+    expect(await find("İşlemci")).toEqual(["TD3 A"]);
+    expect(await find("SOĞUTUCU")).toEqual(["TD3 A", "TD3 B"]);
+    expect(await find("sogutucu")).toEqual(["TD3 A", "TD3 B"]);
+    // The values, not the keys — filtering for an attribute NAME finds nothing.
+    expect(await find("cooler")).toEqual([]);
+    expect(await find("cpu")).toEqual([]);
+  });
 });

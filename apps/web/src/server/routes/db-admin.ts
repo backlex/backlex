@@ -2,7 +2,11 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { sql } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import { MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@backlex/db";
+import { applyCollection, type FieldDef, MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@backlex/db";
+import { eq } from "drizzle-orm";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import { invalidateTenantCollections } from "../services/collections-cache";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import {
@@ -163,6 +167,10 @@ const BackupConfigSchema = z
     }),
   })
   .openapi("BackupConfig");
+
+/** The `collections` metadata table for the active dialect. */
+const collectionsTableFor = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
 export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
@@ -666,5 +674,105 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const body = c.req.valid("json");
       const cfg = await saveBackupConfig(ctx, auth.tenantId ?? null, body);
       return c.json({ data: cfg });
+    },
+  )
+
+  /**
+   * Re-apply every managed collection's schema.
+   *
+   * `applyCollection` is additive and idempotent — it never drops or rewrites a
+   * column — so running it over a whole workspace is safe and is the one thing
+   * that brings an EXISTING workspace forward when a release adds a column to
+   * managed tables.
+   *
+   * It exists because nothing else does that. `applyCollection` runs on create,
+   * patch, restore, provisioning and migrate; nothing re-applies at boot, so a
+   * tenant that upgrades keeps its old physical tables until somebody happens
+   * to edit a schema. Folded search is the first feature to need this — every
+   * `text` column gains a `<name>__fold` companion, and the rows are backfilled
+   * by the same call.
+   *
+   * Reports per collection rather than a single count: a workspace with one
+   * unapplyable table must not read as a failed upgrade, and a backfill that
+   * did not finish has to SAY so instead of being counted as done.
+   */
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/schema/reapply",
+      tags: [TAG],
+      summary: "Re-apply every managed collection's schema",
+      description:
+        "Additive and idempotent: adds any columns a newer release introduced (and backfills them), never drops or rewrites one. Adopted collections are skipped — backlex never DDLs a table it did not create. Run this after upgrading a workspace.",
+      security: SECURITY,
+      middleware: [requireUser, requireOperatorMw],
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  applied: z.number().int().nonnegative(),
+                  skipped: z.number().int().nonnegative(),
+                  failed: z.array(z.object({ slug: z.string(), error: z.string() })),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = auth.tenantId ?? null;
+      if (!tenantId) {
+        throw new AppError("VALIDATION", "Re-apply requires an active workspace");
+      }
+      const t = collectionsTableFor(ctx.dialect);
+      const rows = (await (ctx.db as any)
+        .select()
+        .from(t)
+        .where(eq(t.tenantId, tenantId))) as Record<string, unknown>[];
+
+      let applied = 0;
+      let skipped = 0;
+      const failed: { slug: string; error: string }[] = [];
+      for (const r of rows) {
+        const slug = String(r.slug ?? "");
+        // Adopted tables are somebody else's; an inactive collection is one the
+        // workspace has taken out of service. Neither is ours to DDL.
+        if (r.adopted === true || r.adopted === 1 || (r.status ?? "active") !== "active") {
+          skipped += 1;
+          continue;
+        }
+        try {
+          await applyCollection(ctx.db as any, ctx.dialect, {
+            table: String(r.physicalTable ?? r.physical_table ?? ""),
+            fields: (r.fields ?? []) as FieldDef[],
+            pkType: (r.pkType ?? r.pk_type ?? "uuid") as "uuid" | "text" | "integer",
+            ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
+            tenantScoped: (r.tenantScoped ?? r.tenant_scoped) !== false,
+            versioned: Boolean(r.versioned),
+            hasCreatedAt: (r.hasCreatedAt ?? r.has_created_at) !== false,
+            hasUpdatedAt: (r.hasUpdatedAt ?? r.has_updated_at) !== false,
+            softDelete: Boolean(r.softDelete ?? r.soft_delete),
+            fts: Boolean(r.fts),
+            adopted: false,
+          });
+          applied += 1;
+        } catch (e) {
+          // One unapplyable table must not cost the rest of the workspace its
+          // upgrade — and it must not be silently counted as applied either.
+          failed.push({ slug, error: (e as Error).message.slice(0, 200) });
+        }
+      }
+      // The loader caches which companion columns a table has; a re-apply that
+      // just added some would otherwise keep answering with the old set until
+      // the entry expired.
+      invalidateTenantCollections(tenantId);
+      return c.json({ data: { applied, skipped, failed } });
     },
   );

@@ -179,4 +179,50 @@ describe("the fold backfill", () => {
     // than taking the whole operator down with it.
     expect(await find("islemci")).toEqual([]);
   });
+
+  test("the reapply endpoint upgrades a whole workspace at once", async () => {
+    // The gap this closes: `applyCollection` runs on create, patch, restore,
+    // provisioning and migrate — and nothing re-applies at boot. So a workspace
+    // that upgrades keeps its old physical tables, and the feature stays asleep
+    // on every collection anybody already had, until somebody happens to edit a
+    // schema. One call brings the whole workspace forward.
+    const made = await post("/api/collections", {
+      slug: "bulk1",
+      fields: [{ name: "name", type: "text" }],
+    });
+    expect(made.status).toBe(201);
+    const meta = (await made.json()) as {
+      data: { physicalTable: string; tenantId?: string; tenant_id?: string };
+    };
+    const r = await post("/api/items/bulk1", { name: "Öztürk Şahin" });
+    expect([200, 201]).toContain(r.status);
+
+    // Make it look like a collection from before the release: no companion, and
+    // therefore no folded value either.
+    await runSql(`ALTER TABLE "${meta.data.physicalTable}" DROP COLUMN "name__fold"`);
+    invalidateTenantCollections((meta.data.tenantId ?? meta.data.tenant_id) as string);
+
+    const find = async () => {
+      const f = encodeURIComponent(JSON.stringify({ name: { _icontains: "ozturk" } }));
+      const res = await h.fetch(`/api/items/bulk1?filter=${f}&limit=10`);
+      expect(res.status).toBe(200);
+      return ((await res.json()) as { data: { name: string }[] }).data.map((x) => x.name);
+    };
+
+    // Before: the fallback cannot reach an accented name from the plain one.
+    expect(await find()).toEqual([]);
+
+    const applied = await post("/api/admin/db/schema/reapply", {});
+    expect(applied.status).toBe(200);
+    const body = (await applied.json()) as {
+      data: { applied: number; skipped: number; failed: { slug: string }[] };
+    };
+    expect(body.data.failed).toEqual([]);
+    expect(body.data.applied).toBeGreaterThan(0);
+
+    // After: the column is there, the existing row was backfilled, and the
+    // cache was dropped so the compiler can see it — all three, or this is
+    // still nothing.
+    expect(await find()).toEqual(["Öztürk Şahin"]);
+  });
 });

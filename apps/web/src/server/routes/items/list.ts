@@ -5,6 +5,7 @@ import {
   compileCondition,
   combineConditions,
   type FieldDef,
+  foldablePredicate,
   type ColRefResolver,
   type GeoNearPlan,
   geoDistanceSql,
@@ -630,9 +631,15 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           }
         : undefined;
 
+      // `foldable` is what routes `_icontains` at the folded companion column
+      // instead of at `LOWER(col)`. Without it the operator still WORKS — it
+      // just falls back to the database's own ASCII-only fold, which is what
+      // every non-Latin alphabet was quietly losing.
+      const foldable = foldablePredicate(collection.fields, collection.adopted);
       const userWhere = userFilter
         ? compileCondition(userFilter, auth, nestedColRef, relationManyLeaf, {
             dialect: ctx.dialect,
+            foldable,
           })
         : null;
       // When joins are present, recompile permission conditions so their

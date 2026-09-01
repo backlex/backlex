@@ -21,6 +21,7 @@ export * from "./transitions";
 export * from "./url";
 export * from "./schema-applier";
 export * from "./schema-diff";
+export * from "./fold";
 export * from "./permission";
 export * from "./rls";
 export * from "./migrations-manifest.generated";

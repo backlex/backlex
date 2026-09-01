@@ -7,6 +7,7 @@ import type {
   DurationParts,
   RelativeNow,
 } from "@backlex/core";
+import { foldColumn, foldSearch } from "./fold";
 import { type GeoNearPlan, isNear, planNear, tryParseGeoPoint } from "./geo";
 
 /** {@link planNear}, but a bad operand leaves as the caller's 422 rather than
@@ -77,6 +78,21 @@ export interface EvalOpts {
    * dispatch below is the part that would drift if it were written twice.
    */
   varSql?: (v: string) => SQL | null;
+  /**
+   * Which fields carry a folded search companion (`<name>__fold`).
+   *
+   * The case-insensitive operators compare against that column when it exists,
+   * because it is the only place BOTH sides can be reduced to the same form —
+   * SQLite cannot fold non-ASCII at query time and D1 ships no ICU. Given the
+   * predicate, `_icontains` becomes fully multi-language and, crucially,
+   * IDENTICAL on both dialects: the database is no longer folding anything.
+   *
+   * Omitted (or false for a field) falls back to `LOWER(col) LIKE`, which is
+   * what an adopted table, a `longtext` column or a caller that has no field
+   * list gets. That fallback is correct-but-limited, never wrong — see
+   * {@link foldCase}.
+   */
+  foldable?: (field: string) => boolean;
 }
 
 const isAnd = (c: Condition): c is { $and: Condition[] } =>
@@ -300,6 +316,7 @@ const compileComparison = (
   colRef: ColRefResolver = defaultColRef,
   leaf?: LeafCompiler,
   varSql?: (v: string) => SQL | null,
+  foldable?: (field: string) => boolean,
 ): SQL => {
   if (leaf) {
     const override = leaf(field, cmp, ctx);
@@ -377,20 +394,32 @@ const compileComparison = (
   // by the only means available — `LOWER(?)` there would be a second call to
   // the same weak function, and D1 has been touchy about what it will accept
   // inside a LIKE pattern.
-  const ineedle = (v: unknown, wrap: (s: string) => string): SQL => {
+  //
+  // When the field carries a folded companion the comparison moves there
+  // wholesale, and the shape gets SIMPLER rather than more complex: the fold
+  // already happened in JavaScript on the way in, so the needle is folded by
+  // the very same function and NEITHER dialect folds anything at query time.
+  // That is what makes `_icontains` fully multi-language and byte-identical on
+  // Postgres and SQLite — no `LOWER()`, no locale, no dialect branch.
+  const ilike = (v: unknown, wrap: (s: string) => string): SQL => {
     const raw = String(r(v));
+    if (foldable?.(field)) {
+      return sql`${colRef(foldColumn(field))} LIKE ${wrap(foldSearch(raw))}`;
+    }
+    // No companion — an adopted table, a `longtext` column, or a caller with no
+    // field list. Fall back to the database's own fold on both sides.
     return dialect === "pg"
-      ? sql`LOWER(${wrap(raw)})`
-      : sql`${wrap(foldCase(raw, "sqlite"))}`;
+      ? sql`LOWER(${id}) LIKE LOWER(${wrap(raw)})`
+      : sql`LOWER(${id}) LIKE ${wrap(foldCase(raw, "sqlite"))}`;
   };
   if (cmp._icontains !== undefined) {
-    parts.push(sql`LOWER(${id}) LIKE ${ineedle(cmp._icontains, (s) => `%${s}%`)}`);
+    parts.push(ilike(cmp._icontains, (s) => `%${s}%`));
   }
   if (cmp._istarts_with !== undefined) {
-    parts.push(sql`LOWER(${id}) LIKE ${ineedle(cmp._istarts_with, (s) => `${s}%`)}`);
+    parts.push(ilike(cmp._istarts_with, (s) => `${s}%`));
   }
   if (cmp._iends_with !== undefined) {
-    parts.push(sql`LOWER(${id}) LIKE ${ineedle(cmp._iends_with, (s) => `%${s}`)}`);
+    parts.push(ilike(cmp._iends_with, (s) => `%${s}`));
   }
   if (cmp._near !== undefined) {
     // A malformed origin or radius is the CALLER's mistake, so it has to leave
@@ -412,25 +441,28 @@ const compileInner = (
   colRef: ColRefResolver,
   leaf?: LeafCompiler,
   varSql?: (v: string) => SQL | null,
+  foldable?: (field: string) => boolean,
 ): SQL => {
+  const down = (c: Condition) =>
+    compileInner(c, ctx, now, dialect, colRef, leaf, varSql, foldable);
   if (isAnd(cond)) {
-    const parts = cond.$and.map((c) => compileInner(c, ctx, now, dialect, colRef, leaf, varSql));
+    const parts = cond.$and.map(down);
     if (parts.length === 0) return TRUE;
     return sql`(${sql.join(parts, sql` AND `)})`;
   }
   if (isOr(cond)) {
-    const parts = cond.$or.map((c) => compileInner(c, ctx, now, dialect, colRef, leaf, varSql));
+    const parts = cond.$or.map(down);
     if (parts.length === 0) return FALSE;
     return sql`(${sql.join(parts, sql` OR `)})`;
   }
   if (isNot(cond)) {
-    return sql`NOT (${compileInner(cond.$not, ctx, now, dialect, colRef, leaf, varSql)})`;
+    return sql`NOT (${down(cond.$not)})`;
   }
   const fieldMap = cond as Record<string, ComparisonObj>;
   const keys = Object.keys(fieldMap);
   if (keys.length === 0) return TRUE;
   const parts = keys.map((k) =>
-    compileComparison(k, fieldMap[k]!, ctx, now, dialect, colRef, leaf, varSql),
+    compileComparison(k, fieldMap[k]!, ctx, now, dialect, colRef, leaf, varSql, foldable),
   );
   return sql`(${sql.join(parts, sql` AND `)})`;
 };
@@ -442,7 +474,16 @@ export const compileCondition = (
   leaf?: LeafCompiler,
   opts: EvalOpts = {},
 ): SQL =>
-  compileInner(cond, ctx, opts.now ?? Date.now(), opts.dialect, colRef, leaf, opts.varSql);
+  compileInner(
+    cond,
+    ctx,
+    opts.now ?? Date.now(),
+    opts.dialect,
+    colRef,
+    leaf,
+    opts.varSql,
+    opts.foldable,
+  );
 
 /**
  * Combine multiple conditions with OR (most permissive across roles).
@@ -521,10 +562,12 @@ const matchesInner = (
   ctx: AuthSubject,
   now: number,
   dialect: Dialect | undefined,
+  foldable?: (field: string) => boolean,
 ): boolean => {
-  if (isAnd(cond)) return cond.$and.every((c) => matchesInner(row, c, ctx, now, dialect));
-  if (isOr(cond)) return cond.$or.some((c) => matchesInner(row, c, ctx, now, dialect));
-  if (isNot(cond)) return !matchesInner(row, cond.$not, ctx, now, dialect);
+  const down = (c: Condition) => matchesInner(row, c, ctx, now, dialect, foldable);
+  if (isAnd(cond)) return cond.$and.every(down);
+  if (isOr(cond)) return cond.$or.some(down);
+  if (isNot(cond)) return !down(cond.$not);
   // JS predicate is dialect-agnostic: relative dates resolve to epoch-ms so the
   // numeric comparisons below stay comparable. A comparison value of the form
   // `"$field.<name>"` resolves to a sibling row value — this is what powers
@@ -597,7 +640,15 @@ const matchesInner = (
     // silently narrows for one that has not been told which store it stands in
     // for. `realtime-filter.ts` is told, because that is where a disagreement
     // becomes a row delivered over a socket that REST would have withheld.
-    const fold = (v: unknown) => foldCase(String(v ?? ""), dialect);
+    // Mirrors the SQL exactly. Where a folded companion exists the SQL compares
+    // pre-folded values, and `foldSearch(raw)` is BY CONSTRUCTION the value in
+    // that column — so this predicate and the query agree on every string, in
+    // every language, on both dialects. Where it does not, both sides fall back
+    // to the store's own weaker fold, and they still agree.
+    const fold = (v: unknown) =>
+      foldable?.(field)
+        ? foldSearch(String(v ?? ""))
+        : foldCase(String(v ?? ""), dialect);
     if (
       cmp._icontains !== undefined &&
       !fold(left).includes(fold(r(cmp._icontains)))
@@ -643,7 +694,8 @@ export const matchesCondition = (
   cond: Condition,
   ctx: AuthSubject,
   opts: EvalOpts = {},
-): boolean => matchesInner(row, cond, ctx, opts.now ?? Date.now(), opts.dialect);
+): boolean =>
+  matchesInner(row, cond, ctx, opts.now ?? Date.now(), opts.dialect, opts.foldable);
 
 /** Operators that ORDER two values. These are the ones with nothing to say
  *  when either side is missing — an equality still has an answer (`_eq` against

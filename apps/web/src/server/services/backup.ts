@@ -3,7 +3,7 @@ import { and, desc, eq, isNull, lt } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { applyCollection, tableExists, type FieldDef } from "@backlex/db";
+import { applyCollection, backfillFoldColumns, tableExists, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
@@ -575,6 +575,7 @@ export const restoreBackup = async (
   // Recreate managed physical tables from the dumped collection metadata so the
   // `c_*` row inserts below have somewhere to land. `applyCollection` is
   // additive + idempotent and no-ops on adopted tables.
+  const restoredTables: { table: string; fields: FieldDef[] }[] = [];
   for (const row of buckets.get("collections") ?? []) {
     const cTenant = (row.tenant_id ?? row.tenantId) as string | null | undefined;
     if (options.tenantId && cTenant && cTenant !== options.tenantId) continue;
@@ -610,6 +611,15 @@ export const restoreBackup = async (
         fts: asBool(row.fts),
         adopted: asBool(row.adopted),
       });
+      // Remembered for the fold backfill AFTER the rows land. `applyCollection`
+      // runs its own backfill, but it runs here — against a table that is still
+      // empty, because the restore has not inserted anything yet.
+      if (!asBool(row.adopted)) {
+        restoredTables.push({
+          table,
+          fields: (Array.isArray(fields) ? fields : []) as FieldDef[],
+        });
+      }
     } catch {
       // Best-effort — a table we can't recreate just means its rows get skipped.
     }
@@ -829,6 +839,23 @@ export const restoreBackup = async (
     }
     if (wrote) tableCount += 1;
     if (tableFailed) skipped += 1;
+  }
+
+  // Fold the restored rows.
+  //
+  // A restore writes columns VERBATIM from the dump — that is what makes it a
+  // faithful restore — so a backup taken before folded search existed carries
+  // no `<name>__fold` values, and every row it brings back would be invisible
+  // to `_icontains` with nothing to indicate why. The pass is a no-op for a
+  // newer dump that already carries them: it only touches rows whose companion
+  // is NULL while the source column is not.
+  for (const { table, fields } of restoredTables) {
+    try {
+      await backfillFoldColumns(ctx.db as any, ctx.dialect, table, fields);
+    } catch {
+      // Best-effort, like the rest of restore: a table we cannot fold is a
+      // table whose case-insensitive filters fall back, not a failed restore.
+    }
   }
 
   return { tableCount, rowCount, skipped, overwritten, keptAdditive };

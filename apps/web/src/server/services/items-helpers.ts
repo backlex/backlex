@@ -4,7 +4,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import { rangeOrderError, validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
-import { serializeField } from "./items/serialize";
+import { serializeColumns } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
 import { canonicalizeEmailFields } from "./items/email-fields";
 import { canonicalizeUrlFields } from "./items/url-fields";
@@ -214,8 +214,11 @@ export const createItem = async (
   }
   for (const f of collection.fields) {
     if (input.data[f.name] === undefined) continue;
-    cols.push(f.name);
-    vals.push(serializeField(input.data[f.name], f, ctx.dialect));
+    // Same two-column rule as every other write path — see `serializeColumns`.
+    for (const [col, val] of serializeColumns(input.data[f.name], f, ctx.dialect)) {
+      cols.push(col);
+      vals.push(val);
+    }
   }
 
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
@@ -310,9 +313,9 @@ export const updateItem = async (
   const sets = [sql`${sql.identifier("updated_at")} = ${now}`];
   for (const f of collection.fields) {
     if (input.data[f.name] === undefined) continue;
-    sets.push(
-      sql`${sql.identifier(f.name)} = ${serializeField(input.data[f.name], f, ctx.dialect)}`,
-    );
+    for (const [col, val] of serializeColumns(input.data[f.name], f, ctx.dialect)) {
+      sets.push(sql`${sql.identifier(col)} = ${val}`);
+    }
   }
   if (sets.length === 1) return; // nothing to update beyond the timestamp
 

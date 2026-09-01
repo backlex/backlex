@@ -6,7 +6,9 @@ import {
   type FieldDef,
   columnDefSql,
   compositeUniqueSets,
+  foldColumnDefSql,
   ftsTableName,
+  hasFoldColumn,
   i18nTableName,
   isLocalized,
   isPresentational,
@@ -16,6 +18,7 @@ import {
   sqlTypeFor,
   validateFields,
 } from "./field-types";
+import { foldColumn, foldSearch } from "./fold";
 import { isRetireFlag } from "./retirement";
 
 type Dialect = "pg" | "sqlite";
@@ -543,7 +546,13 @@ export const applyCollection = async (
       // becomes a base column.
       ...def.fields
         .filter((f) => !isLocalized(f) && !isPresentational(f))
-        .map((f) => columnDefSql(f, dialect)),
+        .flatMap((f) =>
+          // A `text` column is followed immediately by its folded companion, so
+          // the two read as one thing in a schema dump. See `hasFoldColumn`.
+          hasFoldColumn(f)
+            ? [columnDefSql(f, dialect), foldColumnDefSql(f, dialect)]
+            : [columnDefSql(f, dialect)],
+        ),
     ];
     await exec(
       db,
@@ -633,12 +642,25 @@ export const applyCollection = async (
     // Localized fields are added to the sidecar by `ensureSidecar`, never here;
     // presentational blocks (divider/notice) have no column at all.
     if (isLocalized(f) || isPresentational(f)) continue;
-    if (existing.has(f.name)) continue;
-    await exec(
-      db,
-      dialect,
-      `ALTER TABLE ${quote(table)} ADD COLUMN ${columnDefSql(f, dialect)}`,
-    );
+    if (!existing.has(f.name)) {
+      await exec(
+        db,
+        dialect,
+        `ALTER TABLE ${quote(table)} ADD COLUMN ${columnDefSql(f, dialect)}`,
+      );
+    }
+    // Checked independently of the source column, not inside the branch above:
+    // every collection that existed before folded search shipped already HAS
+    // its text columns, so an `else` here would leave every one of them without
+    // a companion for ever. The rows still need filling — that is
+    // `backfillFoldColumns`, which runs after this.
+    if (hasFoldColumn(f) && !existing.has(foldColumn(f.name))) {
+      await exec(
+        db,
+        dialect,
+        `ALTER TABLE ${quote(table)} ADD COLUMN ${foldColumnDefSql(f, dialect)}`,
+      );
+    }
   }
   // Run after column adds so a freshly-added indexed field gets its index, and
   // so a field that gained `indexed` on a later update is picked up too.
@@ -656,6 +678,12 @@ export const applyCollection = async (
   // Sidecar is additive too — a collection that gains its first `localized`
   // field (or another one) on a later PATCH gets the table / ADD COLUMN here.
   await ensureSidecar(db, dialect, table, def.fields, def.pkType ?? "uuid");
+  // A companion column added to an EXISTING table is empty, and an empty fold
+  // column does not degrade a filter, it breaks it — every stored row would
+  // stop matching. So the rows are filled here, in the same call that created
+  // the column. Resumable and idempotent; a table too large to finish in one
+  // pass leaves the rest for the next apply (see `backfillFoldColumns`).
+  await backfillFoldColumns(db, dialect, table, def.fields);
 };
 
 export const dropField = async (
@@ -714,4 +742,74 @@ export const dropCollection = async (
   // regardless. On PG the FK is `ON DELETE CASCADE` on rows, but the sidecar
   // table itself must still be dropped explicitly. No-op when never localized.
   await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(i18nTableName(table))}`);
+};
+
+/**
+ * Fill `<name>__fold` for rows that predate the column.
+ *
+ * The fold cannot be computed in SQL — that is the whole reason the column
+ * exists — so a backfill is a read-modify-write in the application, and on a
+ * large table it is not free. Three properties make that safe:
+ *
+ *  - **Resumable by construction.** It only touches rows where the companion is
+ *    NULL and the source is not, so a run that stops halfway leaves the rest
+ *    for the next one. Nothing has to be recorded.
+ *  - **Idempotent.** `foldSearch` is, so a row folded twice is folded once.
+ *  - **Bounded, and it SAYS SO.** A cap keeps one call from running for ever;
+ *    the return value is how many rows are still unfolded, so a caller can
+ *    report "not finished" instead of reporting success over a half-done job.
+ *
+ * Returns the number of rows still needing a fold, per column. An empty object
+ * means every row is folded.
+ */
+export const backfillFoldColumns = async (
+  db: AnyDb,
+  dialect: Dialect,
+  table: string,
+  fields: FieldDef[],
+  opts: { batch?: number; maxBatches?: number } = {},
+): Promise<Record<string, number>> => {
+  const batch = Math.max(1, opts.batch ?? 500);
+  const maxBatches = Math.max(1, opts.maxBatches ?? 200);
+  const remaining: Record<string, number> = {};
+  const existing = await introspectColumns(db, dialect, table);
+
+  for (const f of fields) {
+    if (!hasFoldColumn(f)) continue;
+    const fold = foldColumn(f.name);
+    if (!existing.has(f.name) || !existing.has(fold)) continue;
+
+    for (let n = 0; ; n++) {
+      const rows = await all<{ id: unknown; v: unknown }>(
+        db,
+        dialect,
+        `SELECT ${quote("id")} AS id, ${quote(f.name)} AS v FROM ${quote(table)}` +
+          ` WHERE ${quote(f.name)} IS NOT NULL AND ${quote(fold)} IS NULL LIMIT ${batch}`,
+      );
+      if (rows.length === 0) break;
+      if (n >= maxBatches) {
+        const counted = await all<{ c: number }>(
+          db,
+          dialect,
+          `SELECT COUNT(*) AS c FROM ${quote(table)}` +
+            ` WHERE ${quote(f.name)} IS NOT NULL AND ${quote(fold)} IS NULL`,
+        );
+        remaining[f.name] = Number(counted[0]?.c ?? 0);
+        break;
+      }
+      for (const row of rows) {
+        // Bound, never interpolated: a stored value is user text and this is
+        // the one place it would reach DDL-adjacent SQL.
+        const q = sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier(fold)} = ${foldSearch(
+          String(row.v ?? ""),
+        )} WHERE ${sql.identifier("id")} = ${row.id}`;
+        if (dialect === "pg") {
+          await (db as PgDb).execute(q);
+        } else {
+          await (db as { run: (s: typeof q) => Promise<unknown> }).run(q);
+        }
+      }
+    }
+  }
+  return remaining;
 };

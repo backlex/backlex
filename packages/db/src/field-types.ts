@@ -1,4 +1,5 @@
 import type { Condition, DurationParts, RelativeNow } from "@backlex/core";
+import { FOLD_SUFFIX, foldColumn, isFoldColumn } from "./fold";
 import { type EmailSpec, parseEmailForField, validateEmailSpec } from "./email";
 import { type GeoSpec, parseGeoPoint, validateGeoSpec } from "./geo";
 import {
@@ -1271,6 +1272,15 @@ export const validateFields = (fields: FieldDef[]): void => {
     if (RESERVED.has(f.name)) {
       throw new Error(`Field name "${f.name}" is reserved (system column)`);
     }
+    // A `text` field owns a `<name>__fold` companion, so a field actually
+    // CALLED `<something>__fold` would collide with the companion of
+    // `<something>` — silently, at DDL time, in a way that reads as a duplicate
+    // column error about a name nobody wrote.
+    if (isFoldColumn(f.name)) {
+      throw new Error(
+        `Field name "${f.name}" is reserved — "${FOLD_SUFFIX}" names the folded search companion of another field`,
+      );
+    }
     if (seen.has(f.name)) {
       throw new Error(`Duplicate field name: ${f.name}`);
     }
@@ -2352,6 +2362,58 @@ export const validateValue = (
     }
   }
 };
+
+/**
+ * Whether a field carries a folded companion column (`<name>__fold`).
+ *
+ * `text` only, and that boundary is the answer to "how much does this cost?".
+ * A `text` column holds a name, a code, a title — short, and the thing people
+ * type into a filter box. `longtext` holds a description or a body, where a
+ * second copy is real storage and where whole-word search through the FTS index
+ * is the right tool anyway. So the fold doubles the small half of the table and
+ * leaves the large half alone.
+ *
+ * The exclusions each have a reason:
+ *
+ *  - **computed** — the value is produced by the database on write, so the
+ *    application never holds it and could not fold it. A generated column
+ *    cannot call out to JavaScript either.
+ *  - **rollup** — same, and it is a number wearing a text type at most.
+ *  - **localized** — the text lives in the `<table>__i18n` sidecar, one row per
+ *    locale, not in this column at all.
+ *
+ * `hash` is not `text`, so a secret never gets a readable companion. `private`
+ * DOES get one: the value is already stored in plain beside it, the companion
+ * is hidden from every read surface exactly as the source is, and internal
+ * filters keep working.
+ */
+export const hasFoldColumn = (field: FieldDef): boolean =>
+  field.type === "text" && !field.computed && !field.rollup && !isLocalized(field);
+
+/**
+ * The `foldable` predicate the condition compiler takes, built from a
+ * collection's own fields.
+ *
+ * `adopted` is not a detail: the applier never DDLs somebody else's table, so
+ * an adopted collection HAS no companion columns however its fields are typed.
+ * Naming one in a WHERE clause would be a SQL error about a column nobody
+ * declared — so an adopted collection folds nothing and falls back, which is
+ * exactly what it did before any of this existed.
+ */
+export const foldablePredicate = (
+  fields: FieldDef[],
+  adopted?: boolean,
+): ((field: string) => boolean) => {
+  if (adopted) return () => false;
+  const set = new Set(fields.filter(hasFoldColumn).map((f) => f.name));
+  return (field) => set.has(field);
+};
+
+/** DDL for the folded companion of `field`. Always nullable and never indexed:
+ *  a `LIKE '%x%'` cannot use a B-tree, so an index here would cost writes and
+ *  buy nothing. The column exists for correctness, not for speed. */
+export const foldColumnDefSql = (field: FieldDef, dialect: Dialect): string =>
+  `${quote(foldColumn(field.name))} ${sqlTypeFor("text", dialect)}`;
 
 export const columnDefSql = (field: FieldDef, dialect: Dialect): string => {
   const type = sqlTypeForField(field, dialect);

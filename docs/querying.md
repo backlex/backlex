@@ -106,38 +106,64 @@ Resolved against the auth subject before the SQL fragment is emitted:
 
 ### Case-insensitive matching, and what it folds
 
-`_icontains` / `_istarts_with` / `_iends_with` fold **both sides with the same
-engine** — the one holding your data. That is the whole rule, and it is worth
-stating because folding one side in the application and the other in SQL is a
-classic way to make a search that cannot find its own data.
+`_icontains` / `_istarts_with` / `_iends_with` are **fully case- and
+accent-insensitive, in every language, on both dialects**. Against a row named
+`İşlemci soğutucu`, all of these find it:
 
-| Store | Folds | So |
+```
+İşlemci   işlemci   ISLEMCI   islemci   İŞLEMCİ
+SOĞUTUCU  soğutucu  sogutucu  SOGUTUCU
+şlem      slem      emci so                    ← mid-word, too
+```
+
+And across languages: `ozturk` finds `Öztürk`, `strasse` finds `Straße`,
+`yildirim` finds `Yıldırım`, `koge` finds `Køge`, `nguyen` finds `Nguyễn`,
+`athina` finds `Αθήνα`.
+
+#### How, and why it is not just `LOWER()`
+
+SQLite's `LOWER()` folds `A-Z` and nothing else — by documented design, because
+full Unicode case conversion "would nearly double the size of the SQLite
+library" — and D1 ships neither the ICU extension nor a way to register a
+function. So the fold cannot happen at query time.
+
+It happens at **write** time instead. Every `text` column carries a companion
+`<name>__fold` holding a canonical form of its value: NFKD-decomposed, combining
+marks removed, lowercased, with a short table for the letters that do not
+decompose (`ß→ss`, `æ→ae`, `ø→o`, `ł→l`, `þ→th`, Turkish dotless `ı→i`). The
+needle goes through the very same function, so the comparison is a plain `LIKE`
+between two already-folded strings.
+
+Three properties follow, and they are the reason for the shape:
+
+- **The dialects behave identically.** Neither database folds anything, so
+  Postgres and SQLite cannot disagree.
+- **The SQL path and the in-memory path are one implementation.** Realtime and
+  the permission simulator call the same function, so a filter never means one
+  thing over REST and another over a socket.
+- **It reaches further than ICU would.** ICU folds case but not diacritics, so
+  even an ICU-compiled SQLite would not find `Öztürk` from `ozturk`.
+
+The companion columns are internal: they never appear in a response, in the
+schema surface, or in CSV export, and a field may not be named `*__fold`.
+
+#### Where the fold does not reach
+
+| | Folded | Falls back to `LOWER()` |
 |---|---|---|
-| **PostgreSQL** | `lower()`, locale-aware | Full case-insensitivity in every language. |
-| **SQLite / D1** | `LOWER()`, **ASCII only** | ASCII letters fold; a non-ASCII letter has to be typed in the case it is stored in. |
+| `text` columns | ✅ | |
+| `longtext` (descriptions, bodies) | | ⚠️ use [full-text search](/docs/full-text-search/) |
+| Text inside a `json` column | | ⚠️ |
+| Adopted tables | | ⚠️ backlex never DDLs a table it did not create |
 
-Concretely, on SQLite, against a row named `İşlemci soğutucu`:
+The fallback is the old behaviour — correct for ASCII, and requiring a
+non-ASCII letter to be typed in the case it is stored in. It is narrower, never
+wrong.
 
-```
-_icontains "İşlemci"    ✓ found       — typed as stored
-_icontains "SOğutucu"   ✓ found       — ASCII shouted, `ğ` as stored
-_icontains "işlemci"    ✗ not found   — `İ` typed as `i`
-_icontains "SOĞUTUCU"   ✗ not found   — `ğ` typed as `Ğ`
-```
-
-This is a limit of the database, not a choice: Unicode case folding needs ICU,
-and D1 does not ship it. What backlex guarantees is that the SQL path and the
-in-memory path (realtime, the permission simulator) apply the **same** fold, so
-a filter never means one thing over REST and another over a socket.
-
-:::tip
-**For genuinely multi-language search, use full-text search.** A collection with
-`fts: true` is searched through FTS5's `unicode61` tokenizer, which case-folds
-**and** strips diacritics on both sides — so `istanbul`, `İSTANBUL`, `ISTANBUL`
-and `İstanbul` all find the same row, and `cay` finds `çay`. See
-[full-text search](/docs/full-text-search/). `_icontains` is a substring filter,
-not a search engine; reach for it when you want `LIKE`, and for `q` / `search()`
-when you want to find words.
+:::note
+An existing collection gains its companion columns the next time its schema is
+applied, and the rows are backfilled then. The backfill is resumable and
+idempotent; a table too large to finish in one pass continues on the next apply.
 :::
 
 ### Free-text search (`q`)

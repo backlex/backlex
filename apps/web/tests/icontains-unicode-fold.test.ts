@@ -69,14 +69,23 @@ describe("_icontains, on text that is not English", () => {
     const made = await h.fetch("/api/collections", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: "people", fields: [{ name: "name", type: "text" }] }),
+      body: JSON.stringify({
+        slug: "people",
+        fields: [
+          { name: "name", type: "text" },
+          // No folded companion: `longtext` is where a second copy would be real
+          // storage, and whole-word FTS is the right tool. It is the residual
+          // the last test pins.
+          { name: "bio", type: "longtext" },
+        ],
+      }),
     });
     expect(made.status).toBe(201);
     for (const name of NAMES) {
       const res = await h.fetch("/api/items/people", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, bio: name }),
       });
       expect([200, 201]).toContain(res.status);
       rows.push({ name });
@@ -141,7 +150,15 @@ describe("_icontains, on text that is not English", () => {
         const viaJs = rows
           // The harness runs on SQLite, so the in-memory side is told so — the
           // predicate stands in for THIS store, not for JavaScript.
-          .filter((r) => matchesCondition(r, cond, auth, { dialect: "sqlite" }))
+          .filter((r) =>
+            matchesCondition(r, cond, auth, {
+              dialect: "sqlite",
+              // The predicate has to know the field carries a companion, exactly
+              // as the compiler does — that is what makes the two paths ONE
+              // implementation rather than two that happen to agree.
+              foldable: (f) => f === "name",
+            }),
+          )
           .map((r) => String(r.name))
           .sort();
         if (JSON.stringify(viaSql) !== JSON.stringify(viaJs)) {
@@ -152,23 +169,46 @@ describe("_icontains, on text that is not English", () => {
     expect(disagreements).toEqual([]);
   });
 
-  test("the residual is stated, so it is not reported later as a regression", async () => {
-    // SQLite's `LOWER()` folds `A-Z` and nothing else, and D1 ships no ICU. The
-    // rule that leaves is exact: **a non-ASCII letter has to be typed in the
-    // case it is stored in.** The ASCII letters around it may be shouted.
-    //
-    // So these still find nothing, and that is a LIMIT rather than a bug — the
-    // fold is symmetric now, so it is the same limit on both paths instead of a
-    // disagreement between them.
-    expect(await names({ name: { _icontains: "işlemci" } })).toEqual([]); // İ typed as i
-    expect(await names({ name: { _icontains: "öztürk" } })).toEqual([]); // Ö typed as ö
-    expect(await names({ name: { _icontains: "SOĞUTUCU" } })).toEqual([]); // ğ typed as Ğ
+  test("what SQLite could never do, a folded column now does", async () => {
+    // These are the assertions this whole feature exists for. SQLite's `LOWER()`
+    // folds `A-Z` and nothing else, and D1 ships no ICU — so on the column
+    // itself, none of the following could ever match. Against the folded
+    // companion every one of them does, because the fold happened in JavaScript
+    // on the way IN and the needle goes through the very same function.
+    expect(await names({ name: { _icontains: "işlemci" } })).toEqual(["İşlemci soğutucu"]);
+    expect(await names({ name: { _icontains: "ISLEMCI" } })).toEqual(["İşlemci soğutucu"]);
+    expect(await names({ name: { _icontains: "islemci" } })).toEqual(["İşlemci soğutucu"]);
+    expect(await names({ name: { _icontains: "SOĞUTUCU" } })).toEqual(["İşlemci soğutucu"]);
+    // Diacritics come off too, which even ICU would not have given us.
+    expect(await names({ name: { _icontains: "ozturk" } })).toEqual(["Can Öztürk"]);
+    expect(await names({ name: { _icontains: "OZTURK" } })).toEqual(["Can Öztürk"]);
+    expect(await names({ name: { _icontains: "ayse celik" } })).toEqual(["Ayşe Çelik"]);
+    // German ß and Turkish dotless ı — neither decomposes, both are mapped.
+    expect(await names({ name: { _icontains: "strasse" } })).toEqual(["Straße München"]);
+    expect(await names({ name: { _icontains: "munchen" } })).toEqual(["Straße München"]);
+    expect(await names({ name: { _icontains: "yildirim" } })).toEqual(["Tunç Yıldırım"]);
+    // And mid-word, which no token index can do.
+    expect(await names({ name: { _icontains: "şlem" } })).toEqual(["İşlemci soğutucu"]);
+    expect(await names({ name: { _icontains: "slem" } })).toEqual(["İşlemci soğutucu"]);
+  });
 
-    // What DOES work is what a search box is actually used for: type the word
-    // the way it is written. Every one of these returned nothing before.
-    expect(await names({ name: { _icontains: "İşlemci" } })).toHaveLength(1);
-    expect(await names({ name: { _icontains: "Öztürk" } })).toHaveLength(1);
-    expect(await names({ name: { _icontains: "soğutucu" } })).toHaveLength(1);
+  test("the residual is a COLUMN without a companion, and it is stated", async () => {
+    // `bio` holds the same text as `name` but is `longtext`, so it has no
+    // companion and falls back to the database's own fold. The contrast is the
+    // point: one row, two columns, two different answers — and the difference
+    // is exactly the feature.
+    const bios = async (cond: Condition): Promise<string[]> => {
+      const res = await h.fetch(`/api/items/people?${where(cond)}&limit=50`);
+      const body = (await res.json()) as { data: { name: string }[] };
+      return body.data.map((r) => r.name).sort();
+    };
+    expect(await bios({ bio: { _icontains: "İşlemci" } })).toEqual(["İşlemci soğutucu"]);
+    // Same word, same row, lowercase — the fallback cannot reach it.
+    expect(await bios({ bio: { _icontains: "işlemci" } })).toEqual([]);
+    expect(await bios({ bio: { _icontains: "ozturk" } })).toEqual([]);
+    // While the folded column answers all three.
+    expect(await names({ name: { _icontains: "işlemci" } })).toHaveLength(1);
+    expect(await names({ name: { _icontains: "ozturk" } })).toHaveLength(1);
   });
 
   test("the fold helper folds to the store's standard, not to JavaScript's", () => {

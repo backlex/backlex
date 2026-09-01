@@ -1,1 +1,7 @@
 @import "tailwindcss";
+@import "@backlex-examples/shared/theme.css";
+
+/* Tailwind v4 skips `node_modules` when detecting sources, so the shared
+   workspace package's classes have to be registered by path or they are
+   silently dropped from the generated CSS. */
+@source "../../shared/src";

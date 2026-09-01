@@ -26,7 +26,7 @@ import {
   Td,
   Th,
   inputCls,
-} from "../lib/ui";
+} from "@backlex-examples/shared";
 
 const groups = backlex.from<{ id: string; name: string }>("customer_groups");
 
@@ -64,7 +64,7 @@ export function Pricing() {
           {lists.data == null ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }, (_, i) => (
-                <div key={i} className="h-14 animate-pulse rounded-lg bg-white/10" />
+                <div key={i} className="h-14 animate-pulse rounded-control bg-raised" />
               ))}
             </div>
           ) : lists.data.length === 0 ? (
@@ -79,18 +79,18 @@ export function Pricing() {
                       type="button"
                       onClick={() => setSelected(l.id)}
                       className={
-                        "w-full rounded-lg border px-3 py-2 text-left transition " +
-                        (on ? "border-indigo-400/50 bg-indigo-500/10" : "border-white/10 hover:bg-white/5")
+                        "w-full rounded-control border px-3 py-2 text-left transition " +
+                        (on ? "border-brand bg-brand/10" : "border-line hover:bg-raised")
                       }
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate font-medium">{l.name}</span>
                         <Badge tone={l.list_type === "sale" ? "red" : "blue"}>{l.list_type}</Badge>
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-white/45">
+                      <p className="mt-0.5 truncate text-xs text-ink-dim">
                         {relLabel(l.customer_group) ?? "everyone"} · {relLabel(l.channel) ?? "all channels"} · priority {l.priority ?? 0}
                       </p>
-                      <p className="text-xs text-white/35">
+                      <p className="text-xs text-ink-dim">
                         {l.starts_at ? fmtDate(l.starts_at) : "—"} → {l.ends_at ? fmtDate(l.ends_at) : "open"}
                       </p>
                     </button>
@@ -150,7 +150,7 @@ function PricesPanel({ list, onEdit, onChanged }: { list: PriceList; onEdit: () 
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-medium">
-          {list.name} <span className="text-white/40">prices</span>
+          {list.name} <span className="text-ink-dim">prices</span>
         </h2>
         <div className="ml-auto flex gap-2">
           <Button onClick={onEdit}>Edit list</Button>
@@ -179,9 +179,9 @@ function PricesPanel({ list, onEdit, onChanged }: { list: PriceList; onEdit: () 
               {rows.data.map((p) => {
                 const v = p.variant as { title?: string; sku?: string } | string | null;
                 return (
-                  <tr key={p.id} className="border-t border-white/5">
+                  <tr key={p.id} className="border-t border-line">
                     <Td className="font-medium">{(v && typeof v === "object" && (v.title || v.sku)) || "—"}</Td>
-                    <Td className="text-white/60">
+                    <Td className="text-ink-muted">
                       {p.min_quantity || p.max_quantity
                         ? `${p.min_quantity ?? 1}–${p.max_quantity ?? "∞"}`
                         : "any"}
@@ -278,7 +278,7 @@ function AddPrice({ listId, onClose, onDone }: { listId: string; onClose: () => 
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="Product" className="sm:col-span-2">
           <select
@@ -325,7 +325,7 @@ function AddPrice({ listId, onClose, onDone }: { listId: string; onClose: () => 
         </Field>
       </div>
       {vars.data && productId && vars.data.length === 0 ? (
-        <p className="mt-3 text-sm text-amber-300">This product has no variants — a price is held against a variant, so generate one first.</p>
+        <p className="mt-3 text-sm text-warn">This product has no variants — a price is held against a variant, so generate one first.</p>
       ) : null}
     </Modal>
   );
@@ -391,7 +391,7 @@ function ListEditor({ list, onClose, onDone }: { list: PriceList | null; onClose
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="Name" className="sm:col-span-2">
           <input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Wholesale" />
@@ -443,7 +443,7 @@ function ListEditor({ list, onClose, onDone }: { list: PriceList | null; onClose
         </label>
       </div>
       {list ? (
-        <p className="mt-3 text-xs text-white/40">
+        <p className="mt-3 text-xs text-ink-dim">
           Prices on this list are edited in the panel behind this dialog.
         </p>
       ) : null}

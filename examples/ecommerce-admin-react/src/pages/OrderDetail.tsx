@@ -28,8 +28,7 @@ import {
   Td,
   Th,
   cx,
-  inputCls,
-} from "../lib/ui";
+  inputCls, StatusAxis} from "@backlex-examples/shared";
 import { stateTone } from "./Dashboard";
 import { payTone, shipTone } from "./Orders";
 
@@ -108,14 +107,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
     <>
       <PageHeader
         title={`Order ${o.number ?? o.id.slice(0, 8)}`}
-        subtitle={
-          <span className="flex flex-wrap items-center gap-2">
-            <Badge tone={stateTone(o.state)}>{o.state}</Badge>
-            <Badge tone={payTone(o.status)}>{o.status}</Badge>
-            <Badge tone={shipTone(o.fulfillment_status)}>{o.fulfillment_status}</Badge>
-            <span className="text-white/40">{fmtDateTime(o.placed_at)}</span>
-          </span>
-        }
+        subtitle={<span className="text-ink-dim">Placed {fmtDateTime(o.placed_at)}</span>}
         actions={
           <>
             <Button onClick={() => go("/orders")}>Back</Button>
@@ -136,6 +128,20 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
           </>
         }
       />
+
+      {/* Three fields, three questions — never one "status". Moving any one of
+          these leaves the other two alone, which is the whole point. */}
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatusAxis label="Lifecycle" field="state">
+          <Badge tone={stateTone(o.state)}>{o.state ?? "—"}</Badge>
+        </StatusAxis>
+        <StatusAxis label="Payment" field="status">
+          <Badge tone={payTone(o.status)}>{o.status ?? "—"}</Badge>
+        </StatusAxis>
+        <StatusAxis label="Delivery" field="fulfillment_status">
+          <Badge tone={shipTone(o.fulfillment_status)}>{o.fulfillment_status ?? "—"}</Badge>
+        </StatusAxis>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
@@ -158,12 +164,12 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
                   </thead>
                   <tbody>
                     {items.map((it) => (
-                      <tr key={it.id} className="border-t border-white/5">
+                      <tr key={it.id} className="border-t border-line">
                         <Td className="max-w-[26ch] truncate font-medium">{it.title ?? "—"}</Td>
-                        <Td className="font-mono text-xs text-white/50">{it.sku ?? "—"}</Td>
+                        <Td className="font-mono text-xs text-ink-muted">{it.sku ?? "—"}</Td>
                         <Td className="text-right tabular-nums">{it.qty ?? 0}</Td>
                         <Td className="text-right tabular-nums">{fmtMoney(it.unit_price, o.currency)}</Td>
-                        <Td className="text-right tabular-nums text-white/60">
+                        <Td className="text-right tabular-nums text-ink-muted">
                           {it.tax_rate != null ? `${it.tax_rate}%` : "—"}
                         </Td>
                         <Td className="text-right tabular-nums">{fmtMoney(it.line_total ?? null, o.currency)}</Td>
@@ -178,17 +184,17 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
           <Card>
             <h2 className="mb-3 font-medium">Fulfillments</h2>
             {fuls.length === 0 ? (
-              <p className="text-sm text-white/45">Nothing shipped yet.</p>
+              <p className="text-sm text-ink-dim">Nothing shipped yet.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {fuls.map((f) => (
-                  <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2">
+                  <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-line px-3 py-2">
                     <span className="flex items-center gap-2">
                       <Badge tone={f.status === "success" ? "green" : f.status === "cancelled" ? "red" : "amber"}>{f.status}</Badge>
                       <span className="font-mono text-xs">{f.tracking_number ?? "no tracking"}</span>
-                      <span className="text-white/40">{(f as { tracking_company?: string }).tracking_company ?? ""}</span>
+                      <span className="text-ink-dim">{(f as { tracking_company?: string }).tracking_company ?? ""}</span>
                     </span>
-                    <span className="text-white/40">{fmtDateTime(f.shipped_at)}</span>
+                    <span className="text-ink-dim">{fmtDateTime(f.shipped_at)}</span>
                   </li>
                 ))}
               </ul>
@@ -198,7 +204,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
           <Card>
             <h2 className="mb-3 font-medium">Payment ledger</h2>
             {txs.length === 0 && rfs.length === 0 ? (
-              <p className="text-sm text-white/45">No money has moved on this order.</p>
+              <p className="text-sm text-ink-dim">No money has moved on this order.</p>
             ) : (
               <TableScroll>
                 <Table>
@@ -213,21 +219,21 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
                   </thead>
                   <tbody>
                     {txs.map((t) => (
-                      <tr key={t.id} className="border-t border-white/5">
+                      <tr key={t.id} className="border-t border-line">
                         <Td>{t.kind}</Td>
                         <Td><Badge tone={t.status === "success" ? "green" : "amber"}>{t.status}</Badge></Td>
-                        <Td className="text-white/60">{t.gateway ?? "—"}</Td>
-                        <Td className="whitespace-nowrap text-white/50">{fmtDateTime(t.processed_at)}</Td>
+                        <Td className="text-ink-muted">{t.gateway ?? "—"}</Td>
+                        <Td className="whitespace-nowrap text-ink-muted">{fmtDateTime(t.processed_at)}</Td>
                         <Td className="text-right tabular-nums">{fmtMoney(t.amount, o.currency)}</Td>
                       </tr>
                     ))}
                     {rfs.map((r) => (
-                      <tr key={r.id} className="border-t border-white/5">
+                      <tr key={r.id} className="border-t border-line">
                         <Td>refund</Td>
                         <Td><Badge tone={r.status === "success" ? "green" : "amber"}>{String(r.status ?? "")}</Badge></Td>
-                        <Td className="text-white/60">{r.reason ?? "—"}</Td>
-                        <Td className="whitespace-nowrap text-white/50">{fmtDateTime(r.processed_at)}</Td>
-                        <Td className="text-right tabular-nums text-red-300">−{fmtMoney(r.amount, o.currency)}</Td>
+                        <Td className="text-ink-muted">{r.reason ?? "—"}</Td>
+                        <Td className="whitespace-nowrap text-ink-muted">{fmtDateTime(r.processed_at)}</Td>
+                        <Td className="text-right tabular-nums text-bad">−{fmtMoney(r.amount, o.currency)}</Td>
                       </tr>
                     ))}
                   </tbody>
@@ -245,7 +251,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
               <Line label="Discounts" value={fmtMoney(o.total_discounts, o.currency)} />
               <Line label="Shipping" value={fmtMoney(o.total_shipping, o.currency)} />
               <Line label="Tax" value={fmtMoney(o.total_tax, o.currency)} />
-              <div className="my-2 border-t border-white/10" />
+              <div className="my-2 border-t border-line" />
               <Line label="Total" value={fmtMoney(o.total, o.currency)} strong />
               <Line label="Paid" value={fmtMoney({ amount: paid, currency: o.currency ?? "USD" })} />
               {refunded > 0 ? <Line label="Refunded" value={`−${fmtMoney({ amount: refunded, currency: o.currency ?? "USD" })}`} /> : null}
@@ -265,7 +271,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
           {o.state === "cancelled" ? (
             <Card>
               <h2 className="mb-2 font-medium">Cancelled</h2>
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-ink-muted">
                 {o.cancel_reason ?? "no reason recorded"} · {fmtDateTime(o.cancelled_at)}
               </p>
             </Card>
@@ -312,7 +318,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
 function Line({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className={cx("flex items-baseline justify-between gap-3", strong && "font-semibold")}>
-      <dt className={cx(strong ? "text-white" : "text-white/50")}>{label}</dt>
+      <dt className={cx(strong ? "text-ink" : "text-ink-muted")}>{label}</dt>
       <dd className="tabular-nums">{value}</dd>
     </div>
   );
@@ -326,9 +332,9 @@ function CustomerBlock({ order }: { order: Order }) {
       <p className="font-medium">
         {c && typeof c === "object" ? [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email : "Guest"}
       </p>
-      <p className="text-white/50">{(c && typeof c === "object" ? c.email : null) ?? order.email ?? "—"}</p>
+      <p className="text-ink-muted">{(c && typeof c === "object" ? c.email : null) ?? order.email ?? "—"}</p>
       {addr && typeof addr === "object" ? (
-        <address className="not-italic text-white/50">
+        <address className="not-italic text-ink-muted">
           {[addr.line1, addr.line2, addr.city, addr.province, addr.postal_code, addr.country]
             .filter(Boolean)
             .join(", ")}
@@ -399,7 +405,7 @@ function FulfilDialog({
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
           <Field label="Carrier">
@@ -424,13 +430,13 @@ function FulfilDialog({
           </Field>
         </div>
         <div>
-          <p className="mb-1 text-xs font-medium text-white/60">What is in the box</p>
+          <p className="mb-1 text-xs font-medium text-ink-muted">What is in the box</p>
           <div className="space-y-1.5">
             {items.map((i) => (
-              <div key={i.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-1.5 text-sm">
+              <div key={i.id} className="flex items-center justify-between gap-3 rounded-control border border-line px-3 py-1.5 text-sm">
                 <span className="min-w-0 truncate">{i.title ?? i.sku ?? i.id.slice(0, 8)}</span>
                 <input
-                  className="w-16 rounded-md border border-white/15 bg-black/30 px-2 py-0.5 text-right text-sm tabular-nums"
+                  className="w-16 rounded-md border border-line-strong bg-surface px-2 py-0.5 text-right text-sm tabular-nums"
                   type="number"
                   min="0"
                   max={i.qty ?? 1}
@@ -493,7 +499,7 @@ function RefundDialog({ order, max, onClose, onDone }: { order: Order; max: numb
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="Amount" hint={`At most ${fmtMoney({ amount: max, currency: order.currency ?? "USD" })}`}>
           <input className={inputCls} type="number" step="0.01" min="0" max={max} value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -553,8 +559,8 @@ function CancelDialog({ order, onClose, onDone }: { order: Order; onClose: () =>
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
-      <p className="mb-3 text-sm text-white/60">
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
+      <p className="mb-3 text-sm text-ink-muted">
         A cancelled order leaves every revenue figure — that is what the separate `state` axis is for.
       </p>
       <Field label="Why">

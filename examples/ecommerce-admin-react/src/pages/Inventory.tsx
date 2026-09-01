@@ -25,7 +25,7 @@ import {
   Td,
   Th,
   inputCls,
-} from "../lib/ui";
+} from "@backlex-examples/shared";
 
 export function Inventory() {
   const [locationId, setLocationId] = useState("");
@@ -103,16 +103,16 @@ export function Inventory() {
                   const loc = l.location as { id?: string; name?: string } | string | null;
                   const low = (l.available ?? 0) <= (l.reorder_point ?? 0);
                   return (
-                    <tr key={l.id} className="border-t border-white/5">
+                    <tr key={l.id} className="border-t border-line">
                       <Td className="font-medium">{(v && typeof v === "object" && (v.title || v.sku)) || "—"}</Td>
-                      <Td className="text-white/60">{(loc && typeof loc === "object" && loc.name) || "—"}</Td>
+                      <Td className="text-ink-muted">{(loc && typeof loc === "object" && loc.name) || "—"}</Td>
                       <Td className="text-right tabular-nums">{fmtNumber(l.on_hand)}</Td>
-                      <Td className="text-right tabular-nums text-white/60">{fmtNumber(l.committed)}</Td>
+                      <Td className="text-right tabular-nums text-ink-muted">{fmtNumber(l.committed)}</Td>
                       <Td className="text-right tabular-nums">
                         <Badge tone={low ? ((l.available ?? 0) <= 0 ? "red" : "amber") : "green"}>{l.available ?? 0}</Badge>
                       </Td>
-                      <Td className="text-right tabular-nums text-white/50">{fmtNumber(l.incoming)}</Td>
-                      <Td className="text-right tabular-nums text-white/50">{fmtNumber(l.reorder_point)}</Td>
+                      <Td className="text-right tabular-nums text-ink-muted">{fmtNumber(l.incoming)}</Td>
+                      <Td className="text-right tabular-nums text-ink-muted">{fmtNumber(l.reorder_point)}</Td>
                       <Td className="text-right">
                         <Button
                           onClick={() =>
@@ -141,7 +141,7 @@ export function Inventory() {
         {movements.data == null ? (
           <TableSkeleton rows={5} cols={5} />
         ) : movements.data.length === 0 ? (
-          <p className="text-sm text-white/45">No movements recorded yet.</p>
+          <p className="text-sm text-ink-dim">No movements recorded yet.</p>
         ) : (
           <TableScroll>
             <Table>
@@ -160,15 +160,15 @@ export function Inventory() {
                   const v = m.variant as { title?: string; sku?: string } | string | null;
                   const loc = m.location as { name?: string } | string | null;
                   return (
-                    <tr key={m.id} className="border-t border-white/5">
-                      <Td className="whitespace-nowrap text-white/50">{fmtDateTime(m.occurred_at)}</Td>
+                    <tr key={m.id} className="border-t border-line">
+                      <Td className="whitespace-nowrap text-ink-muted">{fmtDateTime(m.occurred_at)}</Td>
                       <Td>{(v && typeof v === "object" && (v.title || v.sku)) || "—"}</Td>
-                      <Td className="text-white/60">{(loc && typeof loc === "object" && loc.name) || "—"}</Td>
+                      <Td className="text-ink-muted">{(loc && typeof loc === "object" && loc.name) || "—"}</Td>
                       <Td>
                         <Badge tone={(m.qty ?? 0) < 0 ? "amber" : "green"}>{m.movement_type ?? "—"}</Badge>
                       </Td>
-                      <Td className="font-mono text-xs text-white/50">{m.reference ?? "—"}</Td>
-                      <Td className={"text-right tabular-nums " + ((m.qty ?? 0) < 0 ? "text-red-300" : "text-emerald-300")}>
+                      <Td className="font-mono text-xs text-ink-muted">{m.reference ?? "—"}</Td>
+                      <Td className={"text-right tabular-nums " + ((m.qty ?? 0) < 0 ? "text-bad" : "text-ok")}>
                         {(m.qty ?? 0) > 0 ? "+" : ""}
                         {m.qty ?? 0}
                       </Td>
@@ -252,7 +252,7 @@ function AdjustDialog({
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="Change" hint={`${target.onHand} → ${next}`}>
           <input className={inputCls} type="number" value={delta} onChange={(e) => setDelta(e.target.value)} />
@@ -273,7 +273,7 @@ function AdjustDialog({
           <input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </div>
-      {next < 0 ? <p className="mt-3 text-sm text-red-300">On hand cannot go below zero.</p> : null}
+      {next < 0 ? <p className="mt-3 text-sm text-bad">On hand cannot go below zero.</p> : null}
     </Modal>
   );
 }

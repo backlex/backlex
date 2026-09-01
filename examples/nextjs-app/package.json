@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Next.js App Router notes app — Server Components read the data plane, Server Actions write it, and the workspace session lives in an httpOnly cookie.",
+  "description": "Next.js App Router notes app \u2014 Server Components read the data plane, Server Actions write it, and the workspace session lives in an httpOnly cookie.",
   "scripts": {
     "dev": "next dev --port 5179",
     "build": "next build",
@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@backlex-examples/shared": "workspace:*",
     "backlex": "workspace:*",
     "next": "^16.3.1",
     "react": "^19.2.8",

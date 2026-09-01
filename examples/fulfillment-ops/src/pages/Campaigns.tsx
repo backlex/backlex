@@ -9,7 +9,7 @@ import type { TransitionMove } from "backlex";
 import { campaigns, type Campaign } from "../lib/backlex";
 import { CAMPAIGN_STATUS, fmtDate, fmtMoney, fmtNumber } from "../lib/format";
 import { errText, useAsync, useToast } from "../lib/hooks";
-import { Badge, Button, Card, EmptyState, PageHeader, Skeleton, TableSkeleton, cx } from "../lib/ui";
+import { Badge, Button, Card, EmptyState, PageHeader, Skeleton, TableSkeleton, cx } from "@backlex-examples/shared";
 
 export function Campaigns() {
   const toast = useToast();
@@ -89,22 +89,22 @@ export function Campaigns() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h2 className="truncate font-medium">{c.name}</h2>
-                    <p className="mt-0.5 font-mono text-xs text-white/40">{c.code ?? "kodsuz"}</p>
+                    <p className="mt-0.5 font-mono text-xs text-ink-dim">{c.code ?? "kodsuz"}</p>
                   </div>
                   <Badge tone={CAMPAIGN_STATUS[c.status]?.tone}>{CAMPAIGN_STATUS[c.status]?.label ?? c.status}</Badge>
                 </div>
 
                 <dl className="mt-3 grid grid-cols-2 gap-y-1 text-sm">
-                  <dt className="text-white/45">İndirim</dt>
+                  <dt className="text-ink-dim">İndirim</dt>
                   <dd className="text-right">{value(c)}</dd>
-                  <dt className="text-white/45">Min. sepet</dt>
+                  <dt className="text-ink-dim">Min. sepet</dt>
                   <dd className="text-right tabular-nums">{fmtMoney(c.min_basket)}</dd>
-                  <dt className="text-white/45">Dönem</dt>
-                  <dd className="text-right text-white/60">
+                  <dt className="text-ink-dim">Dönem</dt>
+                  <dd className="text-right text-ink-muted">
                     {fmtDate(c.starts_at)} – {fmtDate(c.ends_at)}
                   </dd>
-                  <dt className="text-white/45">Kullanım</dt>
-                  <dd className={cx("text-right tabular-nums", usageFull && "text-amber-300")}>
+                  <dt className="text-ink-dim">Kullanım</dt>
+                  <dd className={cx("text-right tabular-nums", usageFull && "text-warn")}>
                     {fmtNumber(c.redemption_count ?? 0)}
                     {typeof c.usage_limit === "number" ? ` / ${fmtNumber(c.usage_limit)}` : ""}
                   </dd>
@@ -113,18 +113,18 @@ export function Campaigns() {
                 {budget > 0 ? (
                   <div className="mt-3">
                     <div className="flex items-baseline justify-between text-xs">
-                      <span className="text-white/45">Bütçe</span>
-                      <span className={cx("tabular-nums", over ? "text-red-300" : "text-white/60")}>
+                      <span className="text-ink-dim">Bütçe</span>
+                      <span className={cx("tabular-nums", over ? "text-bad" : "text-ink-muted")}>
                         {fmtMoney(c.spent)} / {fmtMoney(c.budget)}
                       </span>
                     </div>
-                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/5">
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-raised">
                       <div
-                        className={cx("h-full rounded-full", over ? "bg-red-400/80" : pct > 80 ? "bg-amber-400/80" : "bg-emerald-400/70")}
+                        className={cx("h-full rounded-full", over ? "bg-bad/80" : pct > 80 ? "bg-warn/80" : "bg-ok/70")}
                         style={{ width: `${Math.max(pct, over ? 100 : 0)}%` }}
                       />
                     </div>
-                    {over ? <p className="mt-1 text-xs text-red-300">Bütçe aşıldı — kampanyayı duraklatmayı düşünün.</p> : null}
+                    {over ? <p className="mt-1 text-xs text-bad">Bütçe aşıldı — kampanyayı duraklatmayı düşünün.</p> : null}
                   </div>
                 ) : null}
 

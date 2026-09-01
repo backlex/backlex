@@ -64,7 +64,7 @@ export default function Flows({ loaderData, actionData }: Route.ComponentProps) 
       {error && <ErrorLine msg={error} />}
       {actionData?.error && <ErrorLine msg={actionData.error} />}
       {actionData?.ok && "ran" in actionData && (
-        <p className="text-sm text-emerald-700">Flow ran successfully.</p>
+        <p className="text-sm text-ok">Flow ran successfully.</p>
       )}
 
       <ul className="space-y-2">
@@ -72,20 +72,20 @@ export default function Flows({ loaderData, actionData }: Route.ComponentProps) 
           <Empty>No flows yet — build one in the admin (Flows), then run it from here.</Empty>
         )}
         {flows.map((f) => (
-          <li key={f.id} className="space-y-3 rounded-lg border border-neutral-200 p-3 text-sm">
+          <li key={f.id} className="space-y-3 rounded-control border border-line p-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="min-w-0 flex-1 truncate font-medium">{f.name}</span>
-              <code className="text-xs text-neutral-500">{f.trigger}</code>
+              <code className="text-xs text-ink-muted">{f.trigger}</code>
               <span
                 className={
                   "rounded-full px-2 py-0.5 text-xs " +
-                  (f.active ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500")
+                  (f.active ? "bg-ok/15 text-ok" : "bg-raised text-ink-muted")
                 }
               >
                 {f.active ? "active" : "paused"}
               </span>
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-ink-muted">
               {f.operations.length} operation{f.operations.length === 1 ? "" : "s"}
             </p>
 
@@ -95,7 +95,7 @@ export default function Flows({ loaderData, actionData }: Route.ComponentProps) 
               <textarea
                 name="input"
                 rows={2}
-                className="w-full rounded-lg border border-neutral-300 px-3 py-2 font-mono text-xs outline-none focus:border-neutral-900"
+                className="w-full rounded-control border border-line-strong px-3 py-2 font-mono text-xs outline-none focus:border-brand"
                 placeholder='{"reason": "manual run"}'
               />
               <div className="flex flex-wrap justify-end gap-2">

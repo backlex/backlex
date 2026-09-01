@@ -28,7 +28,7 @@ import {
   Th,
   cx,
   inputCls,
-} from "../lib/ui";
+} from "@backlex-examples/shared";
 
 const PAGE = 20;
 
@@ -168,7 +168,7 @@ export function Products({ go }: { go: (to: string) => void }) {
                   {list.data.data.map((p) => (
                     <tr
                       key={p.id}
-                      className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+                      className="cursor-pointer border-t border-line hover:bg-raised"
                       onClick={() => go(`/products/${p.id}`)}
                     >
                       <Td className="max-w-[28ch] truncate font-medium">{p.name}</Td>
@@ -177,11 +177,11 @@ export function Products({ go }: { go: (to: string) => void }) {
                           {p.status ?? "—"}
                         </Badge>
                       </Td>
-                      <Td className="text-white/60">{relName(p.category)}</Td>
-                      <Td className="font-mono text-xs text-white/50">{p.sku ?? "—"}</Td>
+                      <Td className="text-ink-muted">{relName(p.category)}</Td>
+                      <Td className="font-mono text-xs text-ink-muted">{p.sku ?? "—"}</Td>
                       <Td className="text-right tabular-nums">{fmtMoney(p.price, p.currency)}</Td>
                       <Td className="text-right tabular-nums">{fmtNumber(p.stock)}</Td>
-                      <Td className="text-right tabular-nums text-white/60">
+                      <Td className="text-right tabular-nums text-ink-muted">
                         {p.rating != null ? `${p.rating.toFixed(1)} (${p.review_count ?? 0})` : "—"}
                       </Td>
                     </tr>
@@ -190,7 +190,7 @@ export function Products({ go }: { go: (to: string) => void }) {
               </Table>
             </TableScroll>
 
-            <div className="mt-3 flex items-center justify-between text-sm text-white/50">
+            <div className="mt-3 flex items-center justify-between text-sm text-ink-muted">
               <span>
                 {offset + 1}–{Math.min(offset + PAGE, total || offset + list.data.data.length)} of {fmtNumber(total)}
               </span>
@@ -291,7 +291,7 @@ function NewProduct({
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="Name" className="sm:col-span-2">
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Merino crew" />

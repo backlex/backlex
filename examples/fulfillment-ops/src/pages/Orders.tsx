@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import { customers, listAll, orders, type Order } from "../lib/backlex";
 import { CHANNEL, ORDER_STATUS, PRIORITY, fmtDateTime, fmtMoney, fmtNumber } from "../lib/format";
 import { useAsync } from "../lib/hooks";
-import { Badge, Button, EmptyState, PageHeader, Table, TableScroll, TableSkeleton, Td, Th, cx, inputCls } from "../lib/ui";
+import { Badge, Button, controlCls, cx, EmptyState, PageHeader, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 const TABS: { key: string; label: string; statuses?: Order["status"][] }[] = [
   { key: "open", label: "Açık", statuses: ["new", "confirmed", "picking"] },
@@ -41,7 +41,7 @@ export function Orders({ go }: { go: (to: string) => void }) {
         subtitle={loading ? undefined : `${fmtNumber(counts)} sipariş`}
         actions={
           <input
-            className={cx(inputCls, "w-40 sm:w-64")}
+            className={cx(controlCls, "w-40 sm:w-64")}
             placeholder="Sipariş no ara…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -88,12 +88,12 @@ export function Orders({ go }: { go: (to: string) => void }) {
               {data?.rows.map((o) => (
                 <tr
                   key={o.id}
-                  className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+                  className="cursor-pointer border-t border-line hover:bg-raised"
                   onClick={() => go(`/orders/${o.id}`)}
                 >
                   <Td className="font-mono text-xs">{o.order_no ?? o.id.slice(0, 8)}</Td>
                   <Td className="max-w-[14rem] truncate">{data.people.get(String(o.customer))?.name ?? "—"}</Td>
-                  <Td className="text-white/60">{CHANNEL[String(o.channel)] ?? o.channel}</Td>
+                  <Td className="text-ink-muted">{CHANNEL[String(o.channel)] ?? o.channel}</Td>
                   <Td>
                     <Badge tone={PRIORITY[String(o.priority)]?.tone}>
                       {PRIORITY[String(o.priority)]?.label ?? o.priority}
@@ -102,9 +102,9 @@ export function Orders({ go }: { go: (to: string) => void }) {
                   <Td>
                     <Badge tone={ORDER_STATUS[o.status]?.tone}>{ORDER_STATUS[o.status]?.label ?? o.status}</Badge>
                   </Td>
-                  <Td className="text-right tabular-nums text-white/60">{fmtNumber(o.line_count)}</Td>
+                  <Td className="text-right tabular-nums text-ink-muted">{fmtNumber(o.line_count)}</Td>
                   <Td className="text-right tabular-nums">{fmtMoney(o.grand_total)}</Td>
-                  <Td className="whitespace-nowrap text-white/50">{fmtDateTime(o.placed_at)}</Td>
+                  <Td className="whitespace-nowrap text-ink-muted">{fmtDateTime(o.placed_at)}</Td>
                 </tr>
               ))}
             </tbody>

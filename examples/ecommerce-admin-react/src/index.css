@@ -1,33 +1,9 @@
 @import "tailwindcss";
+@import "@backlex-examples/shared/theme.css";
 
-:root {
-  color-scheme: dark;
-}
+/* See the note in any storefront example: Tailwind v4 skips `node_modules`, so
+   the shared kit's classes have to be registered by source path. */
+@source "../../shared/src";
 
-html,
-body,
-#root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background: #0a0b0f;
-  color: #e8eaf0;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  /* The page itself must never scroll sideways — wide tables scroll inside
-     their own container instead. */
-  overflow-x: hidden;
-}
-
-input,
-select,
-textarea {
-  color: inherit;
-  font: inherit;
-}
-
-select option {
-  background: #0e1015;
-}
+/* This app runs on the `.cosmos` temperature — the class is set on <html> in
+   `index.html`, and everything else follows from the tokens. */

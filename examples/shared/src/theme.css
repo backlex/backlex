@@ -1,0 +1,183 @@
+/**
+ * The examples' theme layer — one palette, two temperatures.
+ *
+ * Every value below is LIFTED from `packages/ui/src/styles/tokens.css` (and
+ * `apps/site/src/styles/global.css`, which carries the same palette for the
+ * marketing site). It is deliberately a copy rather than an import: an example
+ * is a customer's application, and a customer does not get to `@import` the
+ * admin SPA's design system. What they do get is the same *brand* — the lime
+ * that means "act" and the cosmos dark the operations screens are drawn on.
+ *
+ * Before this file the seven examples ran on Tailwind's `neutral` ramp with
+ * `neutral-900` standing in for a brand, or on a hand-rolled `#0a0b0f` +
+ * `indigo-500` kit duplicated byte-for-byte across two apps. None of them used
+ * a single backlex token, which made the showcase the one surface that did not
+ * look like the product.
+ *
+ *   :root     — storefront / end-user apps. Light, lime primary.
+ *   .cosmos   — back-office / operations. Dark, violet primary.
+ *
+ * Apply `.cosmos` on <html> to flip an app; nothing else changes, because
+ * components only ever name semantic tokens.
+ */
+
+/* Geist is the product's face; the mono stack stays a system one, because a
+   second webfont is not worth a dependency in a demo. */
+@import "@fontsource-variable/geist";
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-dim: var(--ink-dim);
+
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-info: var(--info);
+
+  /* Fulfillment pipeline. Not decorative: these four are checked for
+     deuteranopia/tritanopia separation against BOTH surfaces, so the stacked
+     bar and the badges can share them. Always shipped with a label. */
+  --color-state-todo: var(--state-todo);
+  --color-state-doing: var(--state-doing);
+  --color-state-done: var(--state-done);
+  --color-state-undone: var(--state-undone);
+
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Three steps, one shape language — the same semantic radii the admin SPA
+     uses. Deliberately literal so they never drift with a t-shirt scale. */
+  --radius-control: 0.5625rem; /* 9px  — buttons, inputs, tabs, nav items */
+  --radius-surface: 0.875rem;  /* 14px — cards, panels, dialogs */
+  --radius-pill: 999px;        /* chips, status dots */
+}
+
+:root {
+  color-scheme: light;
+
+  --surface: oklch(1 0 0);
+  --panel: oklch(1 0 0);
+  --raised: oklch(0.967 0.001 286.375);
+  --line: oklch(0.92 0.004 286.32);
+  --line-strong: oklch(0.87 0.005 286.3);
+
+  --ink: oklch(0.141 0.005 285.823);
+  /* Both steps are the upstream hue/chroma with only the LIGHTNESS moved, and
+     the reason is measured rather than taste. Upstream `--muted-foreground`
+     (L .552) is 4.83:1 on white — fine — but 4.39:1 on `--muted`, and that is
+     exactly where a category chip's label sits, so it failed AA in the one
+     place it is used most. `--ring` (L .705) had been borrowed as the tertiary
+     text tone: 2.62:1, unreadable, and it was carrying an email address and a
+     strike-through price. Now 6.0:1 and 4.6:1 on white. */
+  --ink-muted: oklch(0.5 0.016 285.938);
+  --ink-dim: oklch(0.565 0.015 286.067);
+
+  --brand: oklch(0.841 0.238 128.85);
+  --on-brand: oklch(0.32 0.085 131.063);
+  --brand-soft: oklch(0.978 0.04 128);
+  /* The brand as TEXT. `--brand` is a FILL: lime on white is 1.4:1, so a link
+     painted with it is unreadable. Same hue, stepped down until it clears AA
+     (7.1:1 on the page, 6.7:1 on the tint). */
+  --brand-ink: oklch(0.45 0.13 131);
+
+  --ok: oklch(0.55 0.15 145);
+  --warn: oklch(0.6 0.15 65);
+  --bad: oklch(0.577 0.245 27.325);
+  --info: oklch(0.55 0.16 285);
+
+  --state-todo: oklch(0.6 0.11 292.2);
+  --state-doing: oklch(0.663 0.148 65.7);
+  --state-done: oklch(0.666 0.138 165.9);
+  --state-undone: oklch(0.63 0.17 35);
+}
+
+/* "Cosmos" — the zinc ramp shifted violet, primary swapped lime → violet at
+   the SAME chroma so anything derived from it re-tints on its own. */
+.cosmos {
+  color-scheme: dark;
+
+  --surface: oklch(0.122 0.02 290.3);
+  --panel: oklch(0.163 0.025 291);
+  --raised: oklch(0.189 0.028 293.3);
+  --line: oklch(1 0 0 / 8%);
+  --line-strong: oklch(1 0 0 / 14%);
+
+  --ink: oklch(0.972 0.013 295.3);
+  --ink-muted: oklch(0.724 0.048 292.1);
+  --ink-dim: oklch(0.621 0.066 289.5);
+
+  --brand: oklch(0.599 0.23 286.2);
+  --on-brand: oklch(0.985 0 0);
+  --brand-soft: oklch(0.599 0.23 286.2 / 16%);
+  /* Same story the other way: the fill violet is 4.3:1 as text on a card.
+     This is the chart-2 step of the same hue — 7.8:1 on card, 7.0:1 on the
+     `brand/15` wash the active nav item sits on. */
+  --brand-ink: oklch(0.768 0.233 286.2);
+
+  --ok: oklch(0.78 0.16 165);
+  --warn: oklch(0.78 0.16 70);
+  --bad: oklch(0.72 0.17 20);
+  --info: oklch(0.768 0.233 286.2);
+
+  --state-todo: oklch(0.72 0.09 292.2);
+  --state-doing: oklch(0.78 0.16 70);
+  --state-done: oklch(0.78 0.16 165);
+  --state-undone: oklch(0.75 0.15 35);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* The page never scrolls sideways — wide tables scroll inside their own
+       container instead. */
+    overflow-x: hidden;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    color: inherit;
+    font: inherit;
+  }
+
+  select option {
+    background: var(--panel);
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* iOS Safari zooms the page in when a focused field is under 16px, and several
+   of these forms sit at 13.5px. Pin form controls on touch devices. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

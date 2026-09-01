@@ -20,7 +20,7 @@ export function SignInForm() {
     <Centered>
       <form
         action={formAction}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
+        className="w-full max-w-sm space-y-4 rounded-surface border border-line bg-panel p-6 shadow-sm"
       >
         <h1 className="text-lg font-semibold">
           {mode === "sign-up" ? "Create account" : "Sign in"}
@@ -59,7 +59,7 @@ export function SignInForm() {
         </button>
         <button
           type="button"
-          className="w-full text-center text-sm text-neutral-500 hover:text-neutral-800"
+          className="w-full text-center text-sm text-ink-muted hover:text-ink"
           onClick={() => setMode(mode === "sign-up" ? "sign-in" : "sign-up")}
         >
           {mode === "sign-up"

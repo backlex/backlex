@@ -28,7 +28,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className="bg-neutral-50 text-neutral-900">
+      <body className="bg-raised text-ink">
         {children}
         <ScrollRestoration />
         <Scripts />
@@ -43,13 +43,13 @@ export default function App() {
       <header className="space-y-3">
         <div>
           <h1 className="text-xl font-semibold">backlex ops console</h1>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-ink-muted">
             React Router 8 · every read and write runs in a loader/action, so the admin API key
             stays on the server
           </p>
         </div>
         {/* Nav hugs the right edge on mobile, matching the admin's convention. */}
-        <nav className="flex flex-wrap justify-end gap-1 rounded-lg bg-neutral-100 p-1 sm:justify-start">
+        <nav className="flex flex-wrap justify-end gap-1 rounded-control bg-raised p-1 sm:justify-start">
           {NAV.map((n) => (
             <NavLink
               key={n.to}
@@ -57,7 +57,7 @@ export default function App() {
               end={n.end}
               className={({ isActive }) =>
                 "rounded-md px-3 py-1 text-sm " +
-                (isActive ? "bg-white shadow-sm" : "text-neutral-500 hover:text-neutral-800")
+                (isActive ? "bg-panel shadow-sm" : "text-ink-muted hover:text-ink")
               }
             >
               {n.label}
@@ -81,7 +81,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   return (
     <main className="mx-auto max-w-3xl space-y-3 p-6">
       <h1 className="text-lg font-semibold">{title}</h1>
-      <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-white p-3 text-xs">
+      <pre className="overflow-x-auto rounded-control border border-line bg-panel p-3 text-xs">
         {String(detail)}
       </pre>
     </main>

@@ -1,6 +1,12 @@
 import { BacklexError } from "backlex";
 import { useSession } from "backlex/react";
-import { AuthForm, Centered, SetupCheck, type ExampleUser } from "@backlex-examples/shared";
+import {
+  AuthForm,
+  AuthGateSkeleton,
+  controlCls,
+  SetupCheck,
+  type ExampleUser,
+} from "@backlex-examples/shared";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import {
   backlex,
@@ -30,7 +36,7 @@ function AuthGate() {
   // form, another component, a plain `backlex.auth` call — moves it.
   const { status, user } = useSession(backlex);
 
-  if (status === "unknown") return <Centered>Loading…</Centered>;
+  if (status === "unknown") return <AuthGateSkeleton />;
   if (status === "anonymous") return <AuthForm client={backlex} />;
   return <Blog user={user as ExampleUser} />;
 }
@@ -128,18 +134,18 @@ function Blog({ user }: { user: ExampleUser }) {
   }
 
   return (
-    <div className="mx-auto min-h-dvh max-w-3xl space-y-6 p-6 text-neutral-900">
+    <div className="mx-auto min-h-dvh max-w-3xl space-y-6 p-6 text-ink">
       <header className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Your blog</h1>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-ink-muted">
             {user.email} · {stats.published} published · {stats.draft} draft
           </p>
         </div>
         <div className="flex items-center gap-3">
           {/* Locale switcher — re-lists with `locale`, collapsing the
               localized fields to the chosen language. */}
-          <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
+          <div className="flex gap-1 rounded-control bg-raised p-1">
             {LOCALES.map((l) => (
               <button
                 key={l}
@@ -148,7 +154,7 @@ function Blog({ user }: { user: ExampleUser }) {
                 title={LOCALE_LABEL[l]}
                 className={
                   "rounded-md px-2 py-1 text-xs font-medium uppercase " +
-                  (locale === l ? "bg-white shadow-sm" : "text-neutral-500 hover:text-neutral-800")
+                  (locale === l ? "bg-panel shadow-sm" : "text-ink-muted hover:text-ink")
                 }
               >
                 {l}
@@ -158,7 +164,7 @@ function Blog({ user }: { user: ExampleUser }) {
           <button
             type="button"
             onClick={() => void signOut()}
-            className="text-sm text-neutral-500 hover:text-neutral-800"
+            className="text-sm text-ink-muted hover:text-ink"
           >
             Sign out
           </button>
@@ -168,7 +174,7 @@ function Blog({ user }: { user: ExampleUser }) {
       <Composer onCreated={refreshAll} onError={setError} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
+        <div className="flex gap-1 rounded-control bg-raised p-1">
           {(["all", "published", "draft"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -180,8 +186,8 @@ function Blog({ user }: { user: ExampleUser }) {
               className={
                 "rounded-md px-3 py-1 text-sm capitalize " +
                 (tab === t && !searching
-                  ? "bg-white shadow-sm"
-                  : "text-neutral-500 hover:text-neutral-800")
+                  ? "bg-panel shadow-sm"
+                  : "text-ink-muted hover:text-ink")
               }
             >
               {t}
@@ -191,7 +197,7 @@ function Blog({ user }: { user: ExampleUser }) {
 
         <form onSubmit={runSearch} className="flex gap-2">
           <input
-            className={inputCls + " w-56"}
+            className={controlCls + " w-56"}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search posts…"
@@ -203,7 +209,7 @@ function Blog({ user }: { user: ExampleUser }) {
       </div>
 
       {searching && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-ink-muted">
           Full-text results for “{search}”.{" "}
           <button type="button" className="underline" onClick={refresh}>
             Clear
@@ -211,11 +217,11 @@ function Blog({ user }: { user: ExampleUser }) {
         </p>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-bad">{error}</p>}
 
       <ul className="space-y-3">
         {items.length === 0 && (
-          <li className="rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-400">
+          <li className="rounded-surface border border-dashed border-line-strong p-8 text-center text-sm text-ink-dim">
             {searching ? "No matching posts." : "No posts yet — write one above."}
           </li>
         )}
@@ -285,11 +291,11 @@ function Composer({
   return (
     <form
       onSubmit={create}
-      className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+      className="space-y-3 rounded-surface border border-line bg-panel p-4 shadow-sm"
     >
       {LOCALES.map((l) => (
-        <div key={l} className="space-y-2 rounded-lg border border-neutral-100 p-3">
-          <p className="text-xs font-medium uppercase text-neutral-400">{LOCALE_LABEL[l]}</p>
+        <div key={l} className="space-y-2 rounded-control border border-line p-3">
+          <p className="text-xs font-medium uppercase text-ink-dim">{LOCALE_LABEL[l]}</p>
           <input
             className={inputCls + " text-base font-medium"}
             value={title[l]}
@@ -345,7 +351,7 @@ function PostCard({
   }
 
   return (
-    <li className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <li className="rounded-surface border border-line bg-panel p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -354,15 +360,15 @@ function PostCard({
               className={
                 "rounded-full px-2 py-0.5 text-xs " +
                 (isPublished
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-amber-100 text-amber-700")
+                  ? "bg-ok/15 text-ok"
+                  : "bg-warn/15 text-warn")
               }
             >
               {post._status ?? "draft"}
             </span>
           </div>
           {post.excerpt && (
-            <p className="mt-1 line-clamp-2 text-sm text-neutral-500">{post.excerpt}</p>
+            <p className="mt-1 line-clamp-2 text-sm text-ink-muted">{post.excerpt}</p>
           )}
         </div>
       </div>
@@ -410,7 +416,7 @@ function PostCard({
         <button
           type="button"
           disabled={busy}
-          className={ghostBtnCls + " ml-auto text-red-600 hover:bg-red-50"}
+          className={ghostBtnCls + " ml-auto text-bad hover:bg-bad/10"}
           onClick={() => run(() => posts.delete(post.id))}
         >
           Delete
@@ -430,9 +436,8 @@ function slugify(s: string): string {
     .slice(0, 64);
 }
 
-const inputCls =
-  "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
+const inputCls = `w-full ${controlCls}`;
 const primaryBtnCls =
-  "w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50";
+  "w-full rounded-control bg-brand px-3 py-2 text-sm font-medium text-on-brand transition hover:opacity-90 disabled:opacity-50 pointer-coarse:min-h-11";
 const ghostBtnCls =
-  "rounded-lg border border-neutral-300 px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50";
+  "rounded-control border border-line-strong px-3 py-1 text-sm text-ink-muted transition hover:bg-raised hover:text-ink disabled:opacity-50 pointer-coarse:min-h-11";

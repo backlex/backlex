@@ -58,10 +58,10 @@ export function ToastHost({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={
-              "pointer-events-auto max-w-md rounded-lg border px-3 py-2 text-sm shadow-lg " +
+              "pointer-events-auto max-w-md rounded-control border px-3 py-2 text-sm shadow-lg " +
               (t.tone === "ok"
-                ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-100"
-                : "border-red-500/30 bg-red-500/15 text-red-100")
+                ? "border-ok/40 bg-ok/15 text-ok"
+                : "border-bad/40 bg-bad/15 text-bad")
             }
           >
             {t.text}

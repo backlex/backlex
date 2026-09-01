@@ -1,5 +1,6 @@
 import { type FormEvent, type ReactNode, useState } from "react";
 import { BacklexError, type BacklexClient } from "backlex";
+import { Button, Field, inputCls } from "./ui";
 
 /** The signed-in end user, as every example renders them. */
 export interface ExampleUser {
@@ -7,11 +8,6 @@ export interface ExampleUser {
   email: string;
   name?: string | null;
 }
-
-const inputCls =
-  "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
-const primaryBtnCls =
-  "w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50";
 
 /**
  * Sign in or sign up against a workspace's own auth surface.
@@ -62,9 +58,9 @@ export function AuthForm({
     <Centered>
       <form
         onSubmit={submit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
+        className="w-full max-w-sm space-y-4 rounded-surface border border-line bg-panel p-6"
       >
-        <h1 className="text-lg font-semibold">
+        <h1 className="text-lg font-semibold tracking-tight">
           {mode === "sign-up" ? "Create account" : "Sign in"}
         </h1>
         {mode === "sign-up" && (
@@ -98,13 +94,13 @@ export function AuthForm({
             placeholder="••••••••"
           />
         </Field>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={busy} className={primaryBtnCls}>
-          {busy ? "…" : mode === "sign-up" ? "Sign up" : "Sign in"}
-        </button>
+        {error && <p className="text-sm text-bad">{error}</p>}
+        <Button type="submit" variant="primary" disabled={busy} className="w-full py-2">
+          {busy ? (mode === "sign-up" ? "Creating account…" : "Signing in…") : mode === "sign-up" ? "Sign up" : "Sign in"}
+        </Button>
         <button
           type="button"
-          className="w-full text-sm text-neutral-500 underline"
+          className="w-full text-sm text-ink-muted underline-offset-2 hover:text-ink hover:underline"
           onClick={() => {
             setMode(mode === "sign-up" ? "sign-in" : "sign-up");
             setError(null);
@@ -118,18 +114,5 @@ export function AuthForm({
 }
 
 export function Centered({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-dvh items-center justify-center bg-neutral-50 p-6 text-neutral-900">
-      {children}
-    </div>
-  );
-}
-
-export function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium text-neutral-700">{label}</span>
-      {children}
-    </label>
-  );
+  return <div className="flex min-h-dvh items-center justify-center bg-surface p-6 text-ink">{children}</div>;
 }

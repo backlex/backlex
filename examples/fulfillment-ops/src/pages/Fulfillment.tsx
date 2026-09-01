@@ -16,7 +16,7 @@ import {
 } from "../lib/backlex";
 import { WAVE_STATUS, fmtDateTime, fmtNumber } from "../lib/format";
 import { errText, useAsync, useToast } from "../lib/hooks";
-import { Badge, Button, Card, EmptyState, PageHeader, Table, TableScroll, TableSkeleton, Td, Th } from "../lib/ui";
+import { Badge, Button, Card, EmptyState, PageHeader, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 export function Fulfillment({ go }: { go: (to: string) => void }) {
   const toast = useToast();
@@ -176,20 +176,20 @@ export function Fulfillment({ go }: { go: (to: string) => void }) {
               </thead>
               <tbody>
                 {data?.waves.map((w) => (
-                  <tr key={w.id} className="border-t border-white/5 hover:bg-white/5">
+                  <tr key={w.id} className="border-t border-line hover:bg-raised">
                     <Td>
                       <button type="button" className="font-mono text-xs underline-offset-2 hover:underline" onClick={() => go(`/fulfillment/${w.id}`)}>
                         {w.wave_no}
                       </button>
                     </Td>
-                    <Td className="text-white/60">{data.warehouses.get(String(w.warehouse))?.name ?? "—"}</Td>
+                    <Td className="text-ink-muted">{data.warehouses.get(String(w.warehouse))?.name ?? "—"}</Td>
                     <Td>
                       <Badge tone={WAVE_STATUS[w.status]?.tone}>{WAVE_STATUS[w.status]?.label ?? w.status}</Badge>
                     </Td>
-                    <Td className="text-white/60">{w.assigned_to || "—"}</Td>
+                    <Td className="text-ink-muted">{w.assigned_to || "—"}</Td>
                     <Td className="text-right tabular-nums">{fmtNumber(w.task_count)}</Td>
-                    <Td className="text-right tabular-nums text-white/60">{fmtNumber(w.units_picked)}</Td>
-                    <Td className="whitespace-nowrap text-white/50">{fmtDateTime(w.planned_at)}</Td>
+                    <Td className="text-right tabular-nums text-ink-muted">{fmtNumber(w.units_picked)}</Td>
+                    <Td className="whitespace-nowrap text-ink-muted">{fmtDateTime(w.planned_at)}</Td>
                     <Td className="text-right">
                       {NEXT[w.status] ? (
                         <Button onClick={() => move(w, NEXT[w.status]!)}>

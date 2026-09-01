@@ -99,11 +99,11 @@ export default function Permissions({ loaderData, actionData }: Route.ComponentP
             <textarea
               name="sampleRow"
               rows={3}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 font-mono text-xs outline-none focus:border-neutral-900"
+              className="w-full rounded-control border border-line-strong px-3 py-2 font-mono text-xs outline-none focus:border-brand"
               placeholder='{"owner_id": "usr_123", "status": "published"}'
             />
           </Field>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-ink-muted">
             A user id takes precedence over the roles list — roles are then read live from the
             database. A sample row additionally evaluates the compiled condition against concrete
             values, so you get a real row-level verdict.
@@ -126,18 +126,18 @@ export default function Permissions({ loaderData, actionData }: Route.ComponentP
             />
           </div>
 
-          <p className="text-sm text-neutral-700">{sim.reason}</p>
+          <p className="text-sm text-ink-muted">{sim.reason}</p>
 
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-neutral-700">
+            <h3 className="text-sm font-medium text-ink-muted">
               Matched rules ({sim.matchedRules.length})
             </h3>
             {sim.matchedRules.length === 0 ? (
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-ink-dim">
                 None — nothing grants this subject the action.
               </p>
             ) : (
-              <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs">
+              <pre className="overflow-x-auto rounded-control border border-line bg-raised p-3 text-xs">
                 {JSON.stringify(sim.matchedRules, null, 2)}
               </pre>
             )}
@@ -145,8 +145,8 @@ export default function Permissions({ loaderData, actionData }: Route.ComponentP
 
           {sim.whereSql && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-neutral-700">Compiled predicate</h3>
-              <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs">
+              <h3 className="text-sm font-medium text-ink-muted">Compiled predicate</h3>
+              <pre className="overflow-x-auto rounded-control border border-line bg-raised p-3 text-xs">
                 {sim.whereSql.sql}
                 {"\n\n"}
                 {JSON.stringify(sim.whereSql.params)}
@@ -156,14 +156,14 @@ export default function Permissions({ loaderData, actionData }: Route.ComponentP
 
           {sim.fields && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-neutral-700">Field allow-list</h3>
-              <p className="text-sm text-neutral-600">{sim.fields.join(", ") || "(empty)"}</p>
+              <h3 className="text-sm font-medium text-ink-muted">Field allow-list</h3>
+              <p className="text-sm text-ink-muted">{sim.fields.join(", ") || "(empty)"}</p>
             </div>
           )}
 
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-neutral-700">Resolved DSL variables</h3>
-            <pre className="overflow-x-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs">
+            <h3 className="text-sm font-medium text-ink-muted">Resolved DSL variables</h3>
+            <pre className="overflow-x-auto rounded-control border border-line bg-raised p-3 text-xs">
               {JSON.stringify(sim.resolvedVars, null, 2)}
             </pre>
           </div>

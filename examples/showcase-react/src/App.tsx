@@ -10,7 +10,8 @@ import { useSession } from "backlex/react";
 import {
   API_URL,
   AuthForm,
-  Centered,
+  AuthGateSkeleton,
+  controlCls,
   SetupCheck,
   type ExampleUser,
 } from "@backlex-examples/shared";
@@ -38,7 +39,7 @@ function AuthGate() {
   // form, another component, a plain `backlex.auth` call — moves it.
   const { status, user } = useSession(backlex);
 
-  if (status === "unknown") return <Centered>Loading…</Centered>;
+  if (status === "unknown") return <AuthGateSkeleton />;
   if (status === "anonymous") return <AuthForm client={backlex} />;
   return <Showcase user={user as ExampleUser} />;
 }
@@ -67,18 +68,18 @@ function Showcase({ user }: { user: ExampleUser }) {
   const [tab, setTab] = useState<PanelId>("crud");
 
   return (
-    <div className="mx-auto min-h-dvh max-w-3xl space-y-6 p-6 text-neutral-900">
+    <div className="mx-auto min-h-dvh max-w-3xl space-y-6 p-6 text-ink">
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">backlex showcase</h1>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-ink-muted">
             {user.email} · one <code>notes</code> collection, every SDK surface
           </p>
         </div>
         <button
           type="button"
           onClick={() => void signOut()}
-          className="text-sm text-neutral-500 hover:text-neutral-800"
+          className="text-sm text-ink-muted hover:text-ink"
         >
           Sign out
         </button>
@@ -192,7 +193,7 @@ function CrudPanel() {
         </button>
       </form>
 
-      <label className="flex items-center gap-2 text-sm text-neutral-600">
+      <label className="flex items-center gap-2 text-sm text-ink-muted">
         <input
           type="checkbox"
           checked={onlyOpen}
@@ -202,7 +203,7 @@ function CrudPanel() {
       </label>
 
       {count !== null && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-ink-muted">
           <code>filter_count</code>: {count} matching row(s)
         </p>
       )}
@@ -213,19 +214,19 @@ function CrudPanel() {
         {items.map((n) => (
           <li
             key={n.id}
-            className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3"
+            className="flex items-center gap-3 rounded-control border border-line bg-panel p-3"
           >
             <input
               type="checkbox"
               checked={!!n.done}
               onChange={() => toggleDone(n)}
             />
-            <span className={"flex-1 text-sm " + (n.done ? "text-neutral-400 line-through" : "")}>
+            <span className={"flex-1 text-sm " + (n.done ? "text-ink-dim line-through" : "")}>
               {n.title}
             </span>
             <button
               type="button"
-              className="text-sm text-red-600 hover:underline"
+              className="text-sm text-bad hover:underline"
               onClick={() => remove(n.id)}
             >
               Delete
@@ -286,19 +287,19 @@ function AggregatePanel() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-sm font-medium text-neutral-700">count grouped by status</p>
+        <p className="text-sm font-medium text-ink-muted">count grouped by status</p>
         {byStatus.length === 0 ? (
           <Empty>No grouped rows yet.</Empty>
         ) : (
           <ul className="space-y-1">
             {byStatus.map((r) => (
               <li key={r.label} className="flex items-center gap-2 text-sm">
-                <span className="w-20 shrink-0 text-neutral-600">{r.label}</span>
+                <span className="w-20 shrink-0 text-ink-muted">{r.label}</span>
                 <span
-                  className="inline-block h-4 rounded bg-neutral-900"
+                  className="inline-block h-4 rounded bg-brand"
                   style={{ width: `${(r.value / max) * 100}%`, minWidth: "0.25rem" }}
                 />
-                <span className="text-neutral-500">{r.value}</span>
+                <span className="text-ink-muted">{r.value}</span>
               </li>
             ))}
           </ul>
@@ -355,7 +356,7 @@ function SearchPanel() {
         <ul className="space-y-2">
           {results.length === 0 && <Empty>No matches.</Empty>}
           {results.map((n) => (
-            <li key={n.id} className="rounded-lg border border-neutral-200 bg-white p-3 text-sm">
+            <li key={n.id} className="rounded-control border border-line bg-panel p-3 text-sm">
               {n.title}
             </li>
           ))}
@@ -395,7 +396,7 @@ function RealtimePanel() {
       title="Realtime (SSE)"
       desc="backlex.subscribe('items:notes', e => …) — live create/update/delete events"
     >
-      <label className="flex items-center gap-2 text-sm text-neutral-600">
+      <label className="flex items-center gap-2 text-sm text-ink-muted">
         <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
         Subscribed {live ? "(streaming)" : "(paused)"}
       </label>
@@ -404,22 +405,22 @@ function RealtimePanel() {
         {log.map((row, i) => (
           <li
             key={`${row.at}-${i}`}
-            className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+            className="flex items-center gap-3 rounded-control border border-line bg-panel px-3 py-2 text-sm"
           >
-            <span className="text-neutral-400">{row.at}</span>
+            <span className="text-ink-dim">{row.at}</span>
             <span
               className={
                 "rounded-full px-2 py-0.5 text-xs " +
                 (row.event === "deleted"
-                  ? "bg-red-100 text-red-700"
+                  ? "bg-bad/15 text-bad"
                   : row.event === "created"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-amber-100 text-amber-700")
+                    ? "bg-ok/15 text-ok"
+                    : "bg-warn/15 text-warn")
               }
             >
               {row.event}
             </span>
-            <code className="truncate text-neutral-500">{row.id}</code>
+            <code className="truncate text-ink-muted">{row.id}</code>
           </li>
         ))}
       </ul>
@@ -466,7 +467,7 @@ function PublishPanel() {
       title="Draft / publish"
       desc="publish / unpublish / schedulePublish + list({ status }) — needs versioning enabled"
     >
-      <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
+      <div className="flex gap-1 rounded-control bg-raised p-1">
         {(["all", "draft", "published"] as const).map((s) => (
           <button
             key={s}
@@ -474,7 +475,7 @@ function PublishPanel() {
             onClick={() => setStatus(s)}
             className={
               "rounded-md px-3 py-1 text-sm capitalize " +
-              (status === s ? "bg-white shadow-sm" : "text-neutral-500 hover:text-neutral-800")
+              (status === s ? "bg-panel shadow-sm" : "text-ink-muted hover:text-ink")
             }
           >
             {s}
@@ -489,15 +490,15 @@ function PublishPanel() {
           return (
             <li
               key={n.id}
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3"
+              className="flex items-center gap-3 rounded-control border border-line bg-panel p-3"
             >
               <span className="flex-1 truncate text-sm">{n.title}</span>
               <span
                 className={
                   "rounded-full px-2 py-0.5 text-xs " +
                   (published
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-amber-100 text-amber-700")
+                    ? "bg-ok/15 text-ok"
+                    : "bg-warn/15 text-warn")
                 }
               >
                 {n._status ?? "draft"}
@@ -614,8 +615,8 @@ function StoragePanel() {
       title="Storage"
       desc="storage.put / storage.list / storage.download (→ object URL) / storage.delete"
     >
-      <label className="block text-sm text-neutral-600">
-        <span className="mb-1 block font-medium text-neutral-700">Upload a file</span>
+      <label className="block text-sm text-ink-muted">
+        <span className="mb-1 block font-medium text-ink-muted">Upload a file</span>
         <input type="file" disabled={busy} onChange={upload} className="text-sm" />
       </label>
       {error && <ErrorLine msg={error} />}
@@ -624,22 +625,22 @@ function StoragePanel() {
         {objects.map((o) => (
           <li
             key={o.key}
-            className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+            className="flex items-center gap-3 rounded-control border border-line bg-panel p-3 text-sm"
           >
             <span className="flex-1 truncate">{o.key.replace(/^showcase\//, "")}</span>
-            <span className="text-neutral-400">{formatBytes(o.size)}</span>
-            <button type="button" className="text-neutral-600 hover:underline" onClick={() => show(o.key)}>
+            <span className="text-ink-dim">{formatBytes(o.size)}</span>
+            <button type="button" className="text-ink-muted hover:underline" onClick={() => show(o.key)}>
               Preview
             </button>
-            <button type="button" className="text-red-600 hover:underline" onClick={() => remove(o.key)}>
+            <button type="button" className="text-bad hover:underline" onClick={() => remove(o.key)}>
               Delete
             </button>
           </li>
         ))}
       </ul>
       {preview && (
-        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-          <p className="mb-2 text-xs text-neutral-500">Preview · {preview}</p>
+        <div className="rounded-control border border-line bg-raised p-3">
+          <p className="mb-2 text-xs text-ink-muted">Preview · {preview}</p>
           {/* Images render inline, resized by the transform params; everything
               else gets a link to the same URL. */}
           {/\.(png|jpe?g|gif|webp|svg)$/i.test(preview) ? (
@@ -651,7 +652,7 @@ function StoragePanel() {
             />
           ) : (
             <a
-              className="text-sm text-neutral-700 underline"
+              className="text-sm text-ink-muted underline"
               href={backlex.storage.url(preview)}
               download
             >
@@ -753,7 +754,7 @@ function SyncPanel() {
         >
           stop()
         </button>
-        <span className="self-center text-xs text-neutral-400">
+        <span className="self-center text-xs text-ink-dim">
           {running ? "live" : "idle"}
         </span>
       </div>
@@ -781,7 +782,7 @@ function SyncPanel() {
         </button>
       </form>
 
-      {info && <p className="text-sm text-emerald-700">{info}</p>}
+      {info && <p className="text-sm text-ok">{info}</p>}
       {error && <ErrorLine msg={error} />}
 
       <ul className="space-y-2">
@@ -792,24 +793,24 @@ function SyncPanel() {
           return (
             <li
               key={id}
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+              className="flex items-center gap-3 rounded-control border border-line bg-panel p-3 text-sm"
             >
               <span className="flex-1 truncate">{String(r.title ?? "(untitled)")}</span>
               {pending && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                <span className="rounded-full bg-warn/15 px-2 py-0.5 text-xs text-warn">
                   pending
                 </span>
               )}
               <button
                 type="button"
-                className="text-neutral-600 hover:underline"
+                className="text-ink-muted hover:underline"
                 onClick={() => guarded("update", () => ctrl.update(id, { done: true }))}
               >
                 update()
               </button>
               <button
                 type="button"
-                className="text-red-600 hover:underline"
+                className="text-bad hover:underline"
                 onClick={() => guarded("remove", () => ctrl.remove(id))}
               >
                 remove()
@@ -858,7 +859,7 @@ function FlagsPanel() {
       desc="flags.all() + flags.isEnabled('beta') — flags are configured in the admin"
     >
       {betaOn && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
+        <div className="rounded-control border border-ok/40 bg-ok/10 p-3 text-sm text-ok">
           🎉 The <code>beta</code> flag is on — this banner is gated by{" "}
           <code>flags.isEnabled("beta")</code>.
         </div>
@@ -871,21 +872,21 @@ function FlagsPanel() {
         {entries.map(([key, state]) => (
           <li
             key={key}
-            className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+            className="flex items-center gap-3 rounded-control border border-line bg-panel p-3 text-sm"
           >
             <code className="flex-1">{key}</code>
             <span
               className={
                 "rounded-full px-2 py-0.5 text-xs " +
                 (state.enabled
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-neutral-100 text-neutral-500")
+                  ? "bg-ok/15 text-ok"
+                  : "bg-raised text-ink-muted")
               }
             >
               {state.enabled ? "enabled" : "disabled"}
             </span>
             {state.value !== undefined && state.value !== null && (
-              <code className="text-neutral-500">{JSON.stringify(state.value)}</code>
+              <code className="text-ink-muted">{JSON.stringify(state.value)}</code>
             )}
           </li>
         ))}
@@ -1044,7 +1045,7 @@ function MessagingPanel({ user }: { user: ExampleUser }) {
       title="Messaging (push + SMS)"
       desc="messaging.registerDevice / registerPhone / listDevices / listPhones / sendPush / sendSms — an end-user may only target themselves"
     >
-      {note && <p className="text-sm text-emerald-700">{note}</p>}
+      {note && <p className="text-sm text-ok">{note}</p>}
       {error && <ErrorLine msg={error} />}
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -1054,9 +1055,9 @@ function MessagingPanel({ user }: { user: ExampleUser }) {
 
       {/* ── Web Push ── */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-neutral-700">Web Push</h3>
+        <h3 className="text-sm font-medium text-ink-muted">Web Push</h3>
         {!VAPID_PUBLIC_KEY && (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-ink-muted">
             Set <code>VITE_BACKLEX_VAPID_PUBLIC_KEY</code> in <code>.env</code> (admin → Push
             settings) to enable the browser subscription.
           </p>
@@ -1084,17 +1085,17 @@ function MessagingPanel({ user }: { user: ExampleUser }) {
           {devices.map((d) => (
             <li
               key={d.id}
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+              className="flex items-center gap-3 rounded-control border border-line bg-panel p-3 text-sm"
             >
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs">{d.platform}</span>
-              <span className="min-w-0 flex-1 truncate text-neutral-600">
+              <span className="rounded-full bg-raised px-2 py-0.5 text-xs">{d.platform}</span>
+              <span className="min-w-0 flex-1 truncate text-ink-muted">
                 {d.deviceName ?? d.token}
               </span>
-              {!d.isActive && <span className="text-xs text-neutral-400">inactive</span>}
+              {!d.isActive && <span className="text-xs text-ink-dim">inactive</span>}
               <button
                 type="button"
                 onClick={() => unregisterDevice(d.id)}
-                className="text-neutral-400 hover:text-red-600"
+                className="text-ink-dim hover:text-bad"
               >
                 Remove
               </button>
@@ -1105,7 +1106,7 @@ function MessagingPanel({ user }: { user: ExampleUser }) {
 
       {/* ── SMS ── */}
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-neutral-700">SMS</h3>
+        <h3 className="text-sm font-medium text-ink-muted">SMS</h3>
         <form onSubmit={addPhone} className="flex gap-2">
           <input
             className={inputCls}
@@ -1117,7 +1118,7 @@ function MessagingPanel({ user }: { user: ExampleUser }) {
             {busy === "phone" ? "…" : "Register"}
           </button>
         </form>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-ink-muted">
           E.164 format. Delivery needs an SMS provider configured in the admin; registration works
           without one.
         </p>
@@ -1134,14 +1135,14 @@ function MessagingPanel({ user }: { user: ExampleUser }) {
           {phones.map((p) => (
             <li
               key={p.id}
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+              className="flex items-center gap-3 rounded-control border border-line bg-panel p-3 text-sm"
             >
               <code className="flex-1">{p.phoneNumber}</code>
-              {!p.isActive && <span className="text-xs text-neutral-400">inactive</span>}
+              {!p.isActive && <span className="text-xs text-ink-dim">inactive</span>}
               <button
                 type="button"
                 onClick={() => unregisterPhone(p.id)}
-                className="text-neutral-400 hover:text-red-600"
+                className="text-ink-dim hover:text-bad"
               >
                 Remove
               </button>
@@ -1241,10 +1242,10 @@ function RestPanel() {
           POST create
         </button>
       </form>
-      {reqLine && <code className="block text-xs text-neutral-500">{reqLine}</code>}
+      {reqLine && <code className="block text-xs text-ink-muted">{reqLine}</code>}
       {error && <ErrorLine msg={error} />}
       {result && (
-        <pre className="max-h-72 overflow-auto rounded-lg bg-neutral-900 p-3 text-xs text-neutral-100">
+        <pre className="max-h-72 overflow-auto rounded-control bg-brand p-3 text-xs text-on-brand">
           {result}
         </pre>
       )}
@@ -1331,7 +1332,7 @@ function GraphqlPanel() {
       </form>
       {error && <ErrorLine msg={error} />}
       {result && (
-        <pre className="max-h-72 overflow-auto rounded-lg bg-neutral-900 p-3 text-xs text-neutral-100">
+        <pre className="max-h-72 overflow-auto rounded-control bg-brand p-3 text-xs text-on-brand">
           {result}
         </pre>
       )}
@@ -1350,7 +1351,7 @@ function Tabs<T extends { id: string; label: string }>({
   onChange: (id: T["id"]) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-lg bg-neutral-100 p-1">
+    <div className="flex flex-wrap gap-1 rounded-control bg-raised p-1">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -1358,7 +1359,7 @@ function Tabs<T extends { id: string; label: string }>({
           onClick={() => onChange(t.id as T["id"])}
           className={
             "rounded-md px-3 py-1 text-sm " +
-            (active === t.id ? "bg-white shadow-sm" : "text-neutral-500 hover:text-neutral-800")
+            (active === t.id ? "bg-panel shadow-sm" : "text-ink-muted hover:text-ink")
           }
         >
           {t.label}
@@ -1370,10 +1371,10 @@ function Tabs<T extends { id: string; label: string }>({
 
 function Panel({ title, desc, children }: { title: string; desc: string; children: ReactNode }) {
   return (
-    <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <section className="space-y-4 rounded-surface border border-line bg-panel p-4 shadow-sm">
       <div>
         <h2 className="font-semibold">{title}</h2>
-        <p className="text-xs text-neutral-500">{desc}</p>
+        <p className="text-xs text-ink-muted">{desc}</p>
       </div>
       {children}
     </section>
@@ -1382,8 +1383,8 @@ function Panel({ title, desc, children }: { title: string; desc: string; childre
 
 function Stat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-lg border border-neutral-200 p-3">
-      <p className="text-xs text-neutral-500">{label}</p>
+    <div className="rounded-control border border-line p-3">
+      <p className="text-xs text-ink-muted">{label}</p>
       <p className="text-lg font-semibold">{value}</p>
     </div>
   );
@@ -1391,7 +1392,7 @@ function Stat({ label, value }: { label: string; value: ReactNode }) {
 
 function Empty({ children }: { children: ReactNode }) {
   return (
-    <li className="rounded-xl border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-400">
+    <li className="rounded-surface border border-dashed border-line-strong p-6 text-center text-sm text-ink-dim">
       {children}
     </li>
   );
@@ -1400,7 +1401,7 @@ function Empty({ children }: { children: ReactNode }) {
 function ErrorLine({ msg }: { msg: string }) {
   // Capabilities the collection may not have enabled (FTS, versioning, …) fail
   // with a backend error — we show it inline so the rest of the app keeps working.
-  return <p className="text-sm text-red-600">{msg}</p>;
+  return <p className="text-sm text-bad">{msg}</p>;
 }
 
 
@@ -1415,9 +1416,8 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const inputCls =
-  "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
+const inputCls = `w-full ${controlCls}`;
 const primaryBtnCls =
-  "w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50";
+  "w-full rounded-control bg-brand px-3 py-2 text-sm font-medium text-on-brand transition hover:opacity-90 disabled:opacity-50 pointer-coarse:min-h-11";
 const ghostBtnCls =
-  "rounded-lg border border-neutral-300 px-3 py-1 text-sm text-neutral-700 hover:bg-neutral-100 disabled:opacity-50";
+  "rounded-control border border-line-strong px-3 py-1 text-sm text-ink-muted transition hover:bg-raised hover:text-ink disabled:opacity-50 pointer-coarse:min-h-11";

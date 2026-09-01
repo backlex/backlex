@@ -1,6 +1,13 @@
 import { BacklexError } from "backlex";
 import { useLiveQuery, useSession } from "backlex/react";
-import { AuthForm, Centered, SetupCheck, type ExampleUser } from "@backlex-examples/shared";
+import {
+  AuthForm,
+  AuthGateSkeleton,
+  controlCls,
+  SetupCheck,
+  Skeleton,
+  type ExampleUser,
+} from "@backlex-examples/shared";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   backlex,
@@ -49,7 +56,7 @@ function AuthGate() {
   // form, another component, a plain `backlex.auth` call — moves it.
   const { status, user } = useSession(backlex);
 
-  if (status === "unknown") return <Centered>Loading…</Centered>;
+  if (status === "unknown") return <AuthGateSkeleton />;
   if (status === "anonymous") return <AuthForm client={backlex} />;
   return <Store user={user as ExampleUser} />;
 }
@@ -388,29 +395,43 @@ function Store({ user }: { user: ExampleUser }) {
   }
 
   return (
-    <div className="mx-auto min-h-dvh max-w-5xl space-y-6 p-6 text-neutral-900">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Storefront</h1>
-          <p className="text-sm text-neutral-500">
-            {user.email} · {stats.count} products · avg {formatAmount(stats.avg)}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="text-sm text-neutral-500 hover:text-neutral-800"
-        >
-          Sign out
-        </button>
+    <div className="mx-auto min-h-dvh max-w-5xl space-y-6 p-6 text-ink">
+      {/* A shop's header, not a debug readout. The product count and average
+          price this used to print are a seller's figures — they moved into the
+          seller panel at the foot of the page, where the rest of the seller's
+          tools live. */}
+      <header className="flex items-center gap-4 border-b border-line pb-5">
+        <span className="flex items-center gap-2.5">
+          <span className="grid size-8 shrink-0 place-items-center rounded-control bg-brand text-on-brand">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M4 15V5l12 10V5"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span className="text-lg font-semibold tracking-tight">Northwind</span>
+        </span>
+        <span className="hidden text-sm text-ink-muted sm:inline">Everyday basics, made in small runs.</span>
+        {/* Account actions hug the right edge, on mobile too. */}
+        <span className="ml-auto flex shrink-0 items-center gap-3">
+          <span className="hidden max-w-[18ch] truncate text-sm text-ink-dim sm:inline">{user.email}</span>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="text-sm text-ink-muted transition hover:text-ink"
+          >
+            Sign out
+          </button>
+        </span>
       </header>
-
-      {/* Seller area — add a product (with a photo uploaded to backlex storage). */}
-      <ProductComposer cats={cats} onCreated={refreshStats} onError={setError} />
 
       {/* Filter + sort controls feed the query builder above. */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap gap-1 rounded-lg bg-neutral-100 p-1">
+        <div className="flex flex-wrap gap-1 rounded-control bg-raised p-1">
           <CatButton active={category === null} onClick={() => setCategory(null)}>
             All
           </CatButton>
@@ -422,7 +443,7 @@ function Store({ user }: { user: ExampleUser }) {
         </div>
 
         <select
-          className={inputCls + " w-auto"}
+          className={controlCls + " w-auto"}
           value={sort}
           onChange={(e) => setSort(e.target.value as Sort)}
         >
@@ -431,10 +452,10 @@ function Store({ user }: { user: ExampleUser }) {
           <option value="price-desc">Price: high → low</option>
         </select>
 
-        <label className="flex items-center gap-2 text-sm text-neutral-600">
+        <label className="flex items-center gap-2 whitespace-nowrap text-sm text-ink-muted">
           Min $
           <input
-            className={inputCls + " w-24"}
+            className={controlCls + " w-24"}
             type="number"
             min={0}
             value={minPrice}
@@ -443,9 +464,9 @@ function Store({ user }: { user: ExampleUser }) {
         </label>
       </div>
 
-      {shownError && <p className="text-sm text-red-600">{shownError}</p>}
+      {shownError && <p className="text-sm text-bad">{shownError}</p>}
       {confirmation && (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <p className="rounded-control bg-ok/10 px-3 py-2 text-sm text-ok">
           {confirmation}
         </p>
       )}
@@ -454,8 +475,8 @@ function Store({ user }: { user: ExampleUser }) {
         {/* Product grid. */}
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {items.length === 0 && (
-            <li className="col-span-full rounded-xl border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-400">
-              No products match — add one above or relax the filters.
+            <li className="col-span-full rounded-surface border border-dashed border-line-strong p-8 text-center text-sm text-ink-dim">
+              No products match — relax the filters, or add one from Seller tools below.
             </li>
           )}
           {items.map((p) => (
@@ -472,6 +493,24 @@ function Store({ user }: { user: ExampleUser }) {
         {/* Cart sidebar. */}
         <CartPanel lines={cartLines} total={cartTotal} onSetQty={setQty} onCheckout={checkout} />
       </div>
+
+      {/* The seller's half of the same data, kept where a seller's tools belong
+          — under the shop, behind a disclosure, and labelled as such. It used
+          to sit ABOVE the product grid, so the first thing a shopper saw was a
+          form for adding stock. It stays in this example because it is what
+          demonstrates the storage upload + transform path. */}
+      <details className="rounded-surface border border-line bg-panel">
+        <summary className="flex cursor-pointer list-none items-center gap-3 p-4 text-sm font-medium">
+          Seller tools
+          <span className="text-ink-dim">
+            {stats.count} products · avg {formatAmount(stats.avg)}
+          </span>
+          <span className="ml-auto text-xs text-ink-dim">Add a product</span>
+        </summary>
+        <div className="border-t border-line p-4">
+          <ProductComposer cats={cats} onCreated={refreshStats} onError={setError} />
+        </div>
+      </details>
 
       {configuring && (
         <ConfiguratorDialog
@@ -617,41 +656,56 @@ function ConfiguratorDialog({
   return (
     // A plain fixed overlay — the example deliberately has no component kit, so
     // what is worth copying here is the data flow, not the dialog.
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-neutral-900/40 p-0 sm:items-center sm:p-6">
-      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-xl bg-white shadow-xl sm:rounded-xl">
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-200 p-4">
+    <div className="fixed inset-0 z-10 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-6">
+      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-xl bg-panel shadow-xl sm:rounded-surface">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-line p-4">
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold">{product.name}</h2>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-ink-muted">
               {formatMoney(product.price)} base · configure below
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+            className="shrink-0 rounded-control border border-line-strong px-2 py-1 text-xs"
           >
             Close
           </button>
         </header>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {!config && <p className="text-sm text-neutral-400">Loading options…</p>}
+          {/* Option slots resolve into option slots — a label and a row of
+              choices — not into the words "Loading options". */}
+          {!config && (
+            <div className="space-y-4">
+              {[0, 1].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-3 w-28" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-9 w-24" />
+                    <Skeleton className="h-9 w-24" />
+                    <Skeleton className="h-9 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {config?.slots.length === 0 && (
-            <p className="text-sm text-neutral-400">This product has no configurable options.</p>
+            <p className="text-sm text-ink-dim">This product has no configurable options.</p>
           )}
           {config?.slots.map((slot) => {
             if (resolved?.hidden.has(slot.id)) return null;
             const on = selection[slot.id] ?? [];
             return (
               <fieldset key={slot.id} className="space-y-2">
-                <legend className="text-xs font-medium text-neutral-700">
+                <legend className="text-xs font-medium text-ink-muted">
                   {slot.label}
                   {(slot.is_required || resolved?.required.has(slot.id)) && (
-                    <span className="ml-1 text-red-500">*</span>
+                    <span className="ml-1 text-bad">*</span>
                   )}
                   {slot.maxSelect > 1 && (
-                    <span className="ml-1 font-normal text-neutral-400">
+                    <span className="ml-1 font-normal text-ink-dim">
                       (up to {slot.maxSelect})
                     </span>
                   )}
@@ -674,12 +728,12 @@ function ConfiguratorDialog({
                         disabled={blocked}
                         onClick={() => pick(slot, choice.id)}
                         title={blocked ? "Not available with the rest of this build" : undefined}
-                        className={`rounded-lg border px-3 py-1.5 text-xs ${
+                        className={`rounded-control border px-3 py-1.5 text-xs ${
                           blocked
-                            ? "cursor-not-allowed border-neutral-200 text-neutral-300 line-through"
+                            ? "cursor-not-allowed border-line text-ink-dim line-through"
                             : picked
-                              ? "border-neutral-900 bg-neutral-900 text-white"
-                              : "border-neutral-300 text-neutral-700 hover:border-neutral-400"
+                              ? "border-brand bg-brand text-on-brand"
+                              : "border-line-strong text-ink-muted hover:border-line-strong"
                         }`}
                       >
                         {choice.label}
@@ -702,9 +756,9 @@ function ConfiguratorDialog({
           })}
         </div>
 
-        <footer className="shrink-0 space-y-2 border-t border-neutral-200 p-4">
+        <footer className="shrink-0 space-y-2 border-t border-line p-4">
           {resolved && resolved.adjustments.length > 0 && (
-            <ul className="space-y-1 text-xs text-neutral-500">
+            <ul className="space-y-1 text-xs text-ink-muted">
               {resolved.adjustments.map((a) => (
                 <li key={a.choiceId} className="flex justify-between gap-2">
                   <span className="truncate">{a.label}</span>
@@ -719,7 +773,7 @@ function ConfiguratorDialog({
           {/* Every unmet rule, named. A configurator that only disables its
               button leaves the shopper hunting for what is wrong. */}
           {resolved?.violations.map((v) => (
-            <p key={v} className="text-xs text-amber-700">
+            <p key={v} className="text-xs text-warn">
               {v}
             </p>
           ))}
@@ -728,7 +782,7 @@ function ConfiguratorDialog({
             <span>{formatAmount(resolved?.total ?? base)}</span>
           </div>
           {resolved?.code && (
-            <p className="truncate font-mono text-[11px] text-neutral-400">{resolved.code}</p>
+            <p className="truncate font-mono text-[11px] text-ink-dim">{resolved.code}</p>
           )}
           <button
             type="button"
@@ -818,9 +872,9 @@ function ProductComposer({
   return (
     <form
       onSubmit={create}
-      className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+      className="space-y-3 rounded-surface border border-line bg-panel p-4 shadow-sm"
     >
-      <h2 className="text-sm font-medium text-neutral-700">Add a product</h2>
+      <h2 className="text-sm font-medium text-ink-muted">Add a product</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input
           className={inputCls}
@@ -861,7 +915,7 @@ function ProductComposer({
           type="file"
           accept="image/*"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3 file:py-1.5 file:text-sm"
+          className="max-w-full text-sm text-ink-muted file:mr-3 file:rounded-control file:border-0 file:bg-raised file:px-3 file:py-1.5 file:text-sm"
         />
         <button type="submit" disabled={busy} className={primaryBtnCls + " w-auto px-4"}>
           {busy ? "Saving…" : "Add product"}
@@ -895,14 +949,16 @@ function ProductCard({
     product.compare_at_price.currency === product.price.currency &&
     product.compare_at_price.amount > product.price.amount;
   return (
-    <li className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+    <li className="flex flex-col overflow-hidden rounded-surface border border-line bg-panel shadow-sm">
       <ProductImage imageKey={product.featured_image} alt={product.name} />
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="truncate text-sm font-medium">{product.name}</h3>
+        {/* Wraps rather than truncates: at two columns on a 390px screen a
+            truncated name reads "Cla…", which is not a product. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
+          <h3 className="min-w-0 text-sm font-medium">{product.name}</h3>
           <span className="flex shrink-0 items-baseline gap-1 text-sm font-semibold">
             {onSale && (
-              <span className="text-xs font-normal text-neutral-400 line-through">
+              <span className="text-xs font-normal text-ink-dim line-through">
                 {formatMoney(product.compare_at_price)}
               </span>
             )}
@@ -910,12 +966,12 @@ function ProductCard({
           </span>
         </div>
         {categoryName && (
-          <span className="w-fit rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500">
+          <span className="w-fit rounded-full bg-raised px-2 py-0.5 text-xs text-ink-muted">
             {categoryName}
           </span>
         )}
         {product.description && (
-          <p className="line-clamp-2 text-xs text-neutral-500">{product.description}</p>
+          <p className="line-clamp-2 text-xs text-ink-muted">{product.description}</p>
         )}
         <button
           type="button"
@@ -943,7 +999,7 @@ function ProductCard({
 function ProductImage({ imageKey, alt }: { imageKey?: string; alt: string }) {
   if (!imageKey) {
     return (
-      <div className="flex aspect-square w-full items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+      <div className="flex aspect-square w-full items-center justify-center bg-raised text-xs text-ink-dim">
         No image
       </div>
     );
@@ -971,10 +1027,10 @@ function CartPanel({
   onCheckout: () => void;
 }) {
   return (
-    <aside className="h-fit space-y-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-medium text-neutral-700">Cart</h2>
+    <aside className="h-fit space-y-3 rounded-surface border border-line bg-panel p-4 shadow-sm">
+      <h2 className="text-sm font-medium text-ink-muted">Cart</h2>
       {lines.length === 0 ? (
-        <p className="text-sm text-neutral-400">Empty — add a product.</p>
+        <p className="text-sm text-ink-dim">Empty — add a product.</p>
       ) : (
         <ul className="space-y-2">
           {lines.map(({ product, line }) => (
@@ -982,13 +1038,13 @@ function CartPanel({
               <div className="flex items-center justify-between gap-2">
                 <span className="min-w-0 flex-1 truncate">{product.name}</span>
                 <input
-                  className="w-14 rounded border border-neutral-300 px-1 py-0.5 text-right text-xs"
+                  className="w-14 rounded border border-line-strong px-1 py-0.5 text-right text-xs"
                   type="number"
                   min={0}
                   value={line.qty}
                   onChange={(e) => onSetQty(line.key, Number(e.target.value) || 0)}
                 />
-                <span className="w-16 text-right text-neutral-500">
+                <span className="w-16 text-right text-ink-muted">
                   {formatAmount(
                     (line.unitPrice + line.optionsTotal) * line.qty,
                     product.price.currency,
@@ -998,7 +1054,7 @@ function CartPanel({
               {/* The configuration, shown back. A basket that says only "Laptop
                   ×1" cannot be checked by the person buying it. */}
               {line.chosen.length > 0 && (
-                <ul className="pl-2 text-xs text-neutral-400">
+                <ul className="pl-2 text-xs text-ink-dim">
                   {line.chosen.map((c) => (
                     <li key={c.choiceId} className="truncate">
                       {c.label}
@@ -1016,7 +1072,7 @@ function CartPanel({
           ))}
         </ul>
       )}
-      <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-sm font-medium">
+      <div className="flex items-center justify-between border-t border-line pt-3 text-sm font-medium">
         <span>Total</span>
         <span>{formatAmount(total)}</span>
       </div>
@@ -1078,8 +1134,8 @@ function CatButton({
       type="button"
       onClick={onClick}
       className={
-        "rounded-md px-3 py-1 text-sm capitalize " +
-        (active ? "bg-white shadow-sm" : "text-neutral-500 hover:text-neutral-800")
+        "rounded-control px-3 py-1 text-sm capitalize transition pointer-coarse:min-h-11 " +
+        (active ? "bg-panel shadow-sm" : "text-ink-muted hover:text-ink")
       }
     >
       {children}
@@ -1087,7 +1143,6 @@ function CatButton({
   );
 }
 
-const inputCls =
-  "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
+const inputCls = `w-full ${controlCls}`;
 const primaryBtnCls =
-  "w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50";
+  "w-full rounded-control bg-brand px-3 py-2 text-sm font-medium text-on-brand transition hover:opacity-90 disabled:opacity-50 pointer-coarse:min-h-11";

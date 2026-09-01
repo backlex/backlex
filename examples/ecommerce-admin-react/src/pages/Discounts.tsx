@@ -26,7 +26,7 @@ import {
   Td,
   Th,
   inputCls,
-} from "../lib/ui";
+} from "@backlex-examples/shared";
 
 type Rule = {
   id: string;
@@ -93,11 +93,11 @@ export function Discounts() {
               </thead>
               <tbody>
                 {list.data.map((d) => (
-                  <tr key={d.id} className="border-t border-white/5">
+                  <tr key={d.id} className="border-t border-line">
                     <Td className="font-medium">{d.name}</Td>
                     <Td>
                       {d.code ? (
-                        <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">{d.code}</code>
+                        <code className="rounded bg-raised px-1.5 py-0.5 font-mono text-xs">{d.code}</code>
                       ) : (
                         <Badge tone="purple">automatic</Badge>
                       )}
@@ -109,13 +109,13 @@ export function Discounts() {
                           ? "free shipping"
                           : fmtMoney(d.value ?? 0)}
                     </Td>
-                    <Td className="text-white/60">
+                    <Td className="text-ink-muted">
                       {d.target_type} · {d.target_selection}
                     </Td>
                     <Td>
                       <Badge tone={statusTone(d.status)}>{d.status}</Badge>
                     </Td>
-                    <Td className="whitespace-nowrap text-white/50">
+                    <Td className="whitespace-nowrap text-ink-muted">
                       {fmtDate(d.starts_at)} → {d.ends_at ? fmtDate(d.ends_at) : "open"}
                     </Td>
                     <Td className="text-right tabular-nums">
@@ -229,7 +229,7 @@ function DiscountEditor({
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="Name" className="sm:col-span-2">
           <input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Welcome 10%" />
@@ -299,17 +299,17 @@ function DiscountEditor({
       </div>
 
       {discount ? (
-        <div className="mt-5 border-t border-white/10 pt-4">
+        <div className="mt-5 border-t border-line pt-4">
           <h3 className="mb-2 text-sm font-medium">Rules</h3>
           {entitledWithoutTarget ? (
-            <p className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            <p className="mb-2 rounded-control border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
               Scope is “entitled” but no <em>target</em> rule names what is entitled — as written, this discount can match nothing.
             </p>
           ) : null}
           <RulesEditor discountId={discount.id} rules={existingRules.data ?? []} onChanged={existingRules.reload} />
         </div>
       ) : (
-        <p className="mt-4 text-xs text-white/40">Rules can be added once the discount exists.</p>
+        <p className="mt-4 text-xs text-ink-dim">Rules can be added once the discount exists.</p>
       )}
     </Modal>
   );
@@ -354,20 +354,20 @@ function RulesEditor({ discountId, rules: rows, onChanged }: { discountId: strin
   return (
     <div className="space-y-2">
       {rows.length === 0 ? (
-        <p className="text-xs text-white/40">No rules — the discount applies to everything in its scope.</p>
+        <p className="text-xs text-ink-dim">No rules — the discount applies to everything in its scope.</p>
       ) : (
         <ul className="space-y-1.5">
           {rows.map((r) => (
-            <li key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs">
+            <li key={r.id} className="flex items-center justify-between gap-2 rounded-control border border-line px-3 py-1.5 text-xs">
               <span>
                 <Badge tone={r.scope === "target" ? "green" : "blue"}>{r.scope}</Badge>{" "}
-                <span className="text-white/70">
+                <span className="text-ink">
                   {r.attribute} {r.operator} {r.product ?? r.category ?? r.value ?? "—"}
                 </span>
               </span>
               <button
                 type="button"
-                className="text-white/40 hover:text-red-300"
+                className="text-ink-dim hover:text-bad"
                 onClick={async () => {
                   await rules.delete(r.id).catch(() => {});
                   onChanged();

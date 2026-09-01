@@ -5,7 +5,7 @@ import { useState } from "react";
 import { carriers, listAll, orders, shipmentEvents, shipments, type Shipment } from "../lib/backlex";
 import { SERVICE, SHIPMENT_STATUS, fmtDateTime, fmtMoney, fmtWeight } from "../lib/format";
 import { errText, useAsync, useToast } from "../lib/hooks";
-import { Badge, Button, Card, EmptyState, PageHeader, Table, TableScroll, TableSkeleton, Td, Th, cx, inputCls } from "../lib/ui";
+import { Badge, Button, Card, controlCls, cx, EmptyState, PageHeader, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 const TABS: { key: string; label: string; statuses?: Shipment["status"][] }[] = [
   { key: "moving", label: "Yolda", statuses: ["created", "handed_over", "in_transit", "out_for_delivery"] },
@@ -97,7 +97,7 @@ export function Shipments({ go }: { go: (to: string) => void }) {
         subtitle={loading ? undefined : `${data?.rows.length ?? 0} gönderi`}
         actions={
           <input
-            className={cx(inputCls, "w-40 sm:w-64")}
+            className={cx(controlCls, "w-40 sm:w-64")}
             placeholder="Takip / sevkiyat no…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -148,7 +148,7 @@ export function Shipments({ go }: { go: (to: string) => void }) {
                   const url = trackingUrl(s);
                   return (
                     <>
-                      <tr key={s.id} className="border-t border-white/5 hover:bg-white/5">
+                      <tr key={s.id} className="border-t border-line hover:bg-raised">
                         <Td>
                           <button
                             type="button"
@@ -159,12 +159,12 @@ export function Shipments({ go }: { go: (to: string) => void }) {
                             {s.shipment_no}
                           </button>
                         </Td>
-                        <Td className="font-mono text-xs text-white/50">
+                        <Td className="font-mono text-xs text-ink-muted">
                           <button type="button" className="underline-offset-2 hover:underline" onClick={() => go(`/orders/${s.order}`)}>
                             {data.orders.get(String(s.order))?.order_no ?? "—"}
                           </button>
                         </Td>
-                        <Td className="text-white/60">{data.carriers.get(String(s.carrier))?.name ?? "—"}</Td>
+                        <Td className="text-ink-muted">{data.carriers.get(String(s.carrier))?.name ?? "—"}</Td>
                         <Td className="font-mono text-xs">
                           {url ? (
                             <a href={url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
@@ -174,15 +174,15 @@ export function Shipments({ go }: { go: (to: string) => void }) {
                             (s.tracking_no ?? "—")
                           )}
                         </Td>
-                        <Td className="text-white/60">{s.destination_city ?? "—"}</Td>
-                        <Td className="text-white/50">{SERVICE[String(s.service)] ?? s.service}</Td>
+                        <Td className="text-ink-muted">{s.destination_city ?? "—"}</Td>
+                        <Td className="text-ink-muted">{SERVICE[String(s.service)] ?? s.service}</Td>
                         <Td>
                           <Badge tone={SHIPMENT_STATUS[s.status]?.tone}>
                             {SHIPMENT_STATUS[s.status]?.label ?? s.status}
                           </Badge>
                         </Td>
-                        <Td className="text-right tabular-nums text-white/60">{fmtWeight(s.weight_g)}</Td>
-                        <Td className="text-right tabular-nums text-white/60">{fmtMoney(s.cost)}</Td>
+                        <Td className="text-right tabular-nums text-ink-muted">{fmtWeight(s.weight_g)}</Td>
+                        <Td className="text-right tabular-nums text-ink-muted">{fmtMoney(s.cost)}</Td>
                         <Td className="text-right">
                           {NEXT[s.status] ? (
                             <Button onClick={() => move(s)} title={SHIPMENT_STATUS[NEXT[s.status]!]?.label}>
@@ -192,23 +192,23 @@ export function Shipments({ go }: { go: (to: string) => void }) {
                         </Td>
                       </tr>
                       {open === s.id ? (
-                        <tr key={`${s.id}-events`} className="border-t border-white/5 bg-black/20">
+                        <tr key={`${s.id}-events`} className="border-t border-line bg-ink/10">
                           <Td className="p-0" />
                           <td colSpan={9} className="px-3 py-3">
                             {eventsLoading ? (
                               <TableSkeleton rows={3} cols={3} />
                             ) : (events ?? []).length === 0 ? (
-                              <p className="text-sm text-white/40">Bu gönderi için hareket kaydı yok.</p>
+                              <p className="text-sm text-ink-dim">Bu gönderi için hareket kaydı yok.</p>
                             ) : (
                               <ol className="space-y-2">
                                 {(events ?? []).map((e) => (
                                   <li key={e.id} className="flex flex-wrap items-baseline gap-2 text-sm">
-                                    <span className="w-40 shrink-0 text-white/45">{fmtDateTime(e.occurred_at)}</span>
+                                    <span className="w-40 shrink-0 text-ink-dim">{fmtDateTime(e.occurred_at)}</span>
                                     <Badge tone={SHIPMENT_STATUS[String(e.status)]?.tone}>
                                       {SHIPMENT_STATUS[String(e.status)]?.label ?? e.status}
                                     </Badge>
-                                    <span className="text-white/60">{e.location}</span>
-                                    <span className="text-white/40">{e.description}</span>
+                                    <span className="text-ink-muted">{e.location}</span>
+                                    <span className="text-ink-dim">{e.description}</span>
                                   </li>
                                 ))}
                               </ol>

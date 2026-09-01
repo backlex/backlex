@@ -10,22 +10,7 @@ import { useMemo, useState } from "react";
 import { available, bins, listAll, products, stockLevels, stockMovements, warehouses } from "../lib/backlex";
 import { MOVEMENT_REASON, fmtDateTime, fmtMoney, fmtNumber } from "../lib/format";
 import { errText, useAsync, useToast } from "../lib/hooks";
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  Field,
-  Modal,
-  PageHeader,
-  Table,
-  TableScroll,
-  TableSkeleton,
-  Td,
-  Th,
-  cx,
-  inputCls,
-} from "../lib/ui";
+import { Badge, Button, Card, controlCls, cx, EmptyState, Field, inputCls, Modal, PageHeader, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 export function Stock() {
   const toast = useToast();
@@ -112,7 +97,7 @@ export function Stock() {
         actions={
           <>
             <select
-              className={cx(inputCls, "w-36 sm:w-48")}
+              className={cx(controlCls, "w-36 sm:w-48")}
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
               aria-label="Depo"
@@ -133,15 +118,15 @@ export function Stock() {
 
       <div className="mb-4 grid grid-cols-3 gap-3">
         <Card>
-          <p className="text-xs uppercase tracking-wide text-white/40">Elde</p>
+          <p className="text-xs uppercase tracking-wide text-ink-dim">Elde</p>
           <p className="mt-1 text-xl font-semibold tabular-nums">{fmtNumber(totals.onHand)}</p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-wide text-white/40">Rezerve</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums text-amber-300">{fmtNumber(totals.committed)}</p>
+          <p className="text-xs uppercase tracking-wide text-ink-dim">Rezerve</p>
+          <p className="mt-1 text-xl font-semibold tabular-nums text-warn">{fmtNumber(totals.committed)}</p>
         </Card>
         <Card>
-          <p className="text-xs uppercase tracking-wide text-white/40">Liste değeri</p>
+          <p className="text-xs uppercase tracking-wide text-ink-dim">Liste değeri</p>
           <p className="mt-1 text-xl font-semibold tabular-nums">{fmtMoney({ amount: totals.value, currency: "TRY" })}</p>
         </Card>
       </div>
@@ -179,19 +164,19 @@ export function Stock() {
                   const avail = available(l);
                   const low = typeof l.reorder_point === "number" && avail <= l.reorder_point;
                   return (
-                    <tr key={l.id} className="border-t border-white/5 hover:bg-white/5">
+                    <tr key={l.id} className="border-t border-line hover:bg-raised">
                       <Td>
                         <span className="block max-w-[16rem] truncate">{p?.name ?? "—"}</span>
-                        <span className="font-mono text-xs text-white/40">{p?.sku}</span>
+                        <span className="font-mono text-xs text-ink-dim">{p?.sku}</span>
                       </Td>
                       <Td className="font-mono text-xs">{b?.code ?? "—"}</Td>
                       <Td className="text-right tabular-nums">{fmtNumber(l.on_hand)}</Td>
-                      <Td className="text-right tabular-nums text-white/50">{fmtNumber(l.committed ?? 0)}</Td>
-                      <Td className={cx("text-right tabular-nums font-medium", avail < 0 ? "text-red-300" : low ? "text-amber-300" : "")}>
+                      <Td className="text-right tabular-nums text-ink-muted">{fmtNumber(l.committed ?? 0)}</Td>
+                      <Td className={cx("text-right tabular-nums font-medium", avail < 0 ? "text-bad" : low ? "text-warn" : "")}>
                         {fmtNumber(avail)}
                       </Td>
-                      <Td className="text-right tabular-nums text-white/40">{fmtNumber(l.reorder_point)}</Td>
-                      <Td className="whitespace-nowrap text-white/50">{fmtDateTime(l.counted_at)}</Td>
+                      <Td className="text-right tabular-nums text-ink-dim">{fmtNumber(l.reorder_point)}</Td>
+                      <Td className="whitespace-nowrap text-ink-muted">{fmtDateTime(l.counted_at)}</Td>
                       <Td className="text-right">
                         <Button onClick={() => setAdjust({ levelId: l.id, label: `${p?.sku ?? ""} @ ${b?.code ?? ""}` })}>
                           Düzelt
@@ -207,7 +192,7 @@ export function Stock() {
       )}
 
       <Card className="mt-4">
-        <h2 className="mb-3 text-sm font-medium text-white/70">Son hareketler</h2>
+        <h2 className="mb-3 text-sm font-medium text-ink">Son hareketler</h2>
         {loading ? (
           <TableSkeleton rows={5} cols={4} />
         ) : (data?.moves.length ?? 0) === 0 ? (
@@ -227,15 +212,15 @@ export function Stock() {
               </thead>
               <tbody>
                 {data?.moves.map((m) => (
-                  <tr key={m.id} className="border-t border-white/5">
-                    <Td className="whitespace-nowrap text-white/50">{fmtDateTime(m.occurred_at)}</Td>
+                  <tr key={m.id} className="border-t border-line">
+                    <Td className="whitespace-nowrap text-ink-muted">{fmtDateTime(m.occurred_at)}</Td>
                     <Td className="max-w-[14rem] truncate">{data.products.get(String(m.product))?.name ?? "—"}</Td>
                     <Td className="font-mono text-xs">{data.bins.get(String(m.bin))?.code ?? "—"}</Td>
                     <Td>
                       <Badge tone={m.qty < 0 ? "amber" : "green"}>{MOVEMENT_REASON[String(m.reason)] ?? m.reason}</Badge>
                     </Td>
-                    <Td className="font-mono text-xs text-white/40">{m.reference ?? "—"}</Td>
-                    <Td className={cx("text-right tabular-nums", m.qty < 0 ? "text-amber-300" : "text-emerald-300")}>
+                    <Td className="font-mono text-xs text-ink-dim">{m.reference ?? "—"}</Td>
+                    <Td className={cx("text-right tabular-nums", m.qty < 0 ? "text-warn" : "text-ok")}>
                       {m.qty > 0 ? "+" : ""}
                       {fmtNumber(m.qty)}
                     </Td>

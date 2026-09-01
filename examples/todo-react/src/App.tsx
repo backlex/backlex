@@ -1,7 +1,15 @@
 import { BacklexError } from "backlex";
 import { useLiveQuery, useSession } from "backlex/react";
 import { type FormEvent, useState } from "react";
-import { AuthForm, Centered, SetupCheck, type ExampleUser } from "@backlex-examples/shared";
+import {
+  AuthForm,
+  AuthGateSkeleton,
+  Centered,
+  controlCls,
+  ListSkeleton,
+  SetupCheck,
+  type ExampleUser,
+} from "@backlex-examples/shared";
 import { backlex, type Todo, todos } from "./backlex";
 
 export function App() {
@@ -21,7 +29,7 @@ function AuthGate() {
   // this form, another component, a plain `backlex.auth` call — moves it.
   const { status, user } = useSession(backlex);
 
-  if (status === "unknown") return <Centered>Loading…</Centered>;
+  if (status === "unknown") return <AuthGateSkeleton />;
   if (status === "anonymous") return <AuthForm client={backlex} />;
   return <Todos user={user as ExampleUser} />;
 }
@@ -85,12 +93,12 @@ function Todos({ user }: { user: ExampleUser }) {
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold">Todos</h1>
-            <p className="text-sm text-neutral-500">{user.email}</p>
+            <p className="text-sm text-ink-muted">{user.email}</p>
           </div>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="text-sm text-neutral-500 hover:text-neutral-800"
+            className="text-sm text-ink-muted hover:text-ink"
           >
             Sign out
           </button>
@@ -108,10 +116,10 @@ function Todos({ user }: { user: ExampleUser }) {
           </button>
         </form>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-bad">{error}</p>}
 
         <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center gap-2 text-neutral-600">
+          <label className="flex items-center gap-2 text-ink-muted">
             <input
               type="checkbox"
               checked={activeOnly}
@@ -120,54 +128,49 @@ function Todos({ user }: { user: ExampleUser }) {
             />
             Active only
           </label>
-          <span className="text-neutral-400">
+          <span className="text-ink-dim">
             {items.length} {items.length === 1 ? "todo" : "todos"}
           </span>
         </div>
 
-        <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
-          {loading ? (
-            <li className="p-4 text-sm text-neutral-400">Loading…</li>
-          ) : (
-            items.length === 0 && (
-              <li className="p-4 text-sm text-neutral-400">
+        {/* A list resolves into a list. Never a "Loading…" string. */}
+        {loading ? (
+          <ListSkeleton rows={3} />
+        ) : (
+          <ul className="divide-y divide-line rounded-surface border border-line bg-panel">
+            {items.length === 0 && (
+              <li className="p-4 text-sm text-ink-dim">
                 {activeOnly ? "Nothing active — all done!" : "No todos yet."}
               </li>
-            )
-          )}
-          {items.map((t) => (
-            <li key={t.id} className="flex items-center gap-3 p-3">
-              <input
-                type="checkbox"
-                checked={!!t.done}
-                onChange={() => toggle(t)}
-                className="size-4"
-              />
-              <span
-                className={
-                  "flex-1 " +
-                  (t.done ? "text-neutral-400 line-through" : "text-neutral-800")
-                }
-              >
-                {t.title}
-              </span>
-              <button
-                type="button"
-                onClick={() => remove(t)}
-                className="text-sm text-neutral-400 hover:text-red-600"
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+            )}
+            {items.map((t) => (
+              <li key={t.id} className="flex items-center gap-3 p-3">
+                <input
+                  type="checkbox"
+                  checked={!!t.done}
+                  onChange={() => toggle(t)}
+                  className="size-4 accent-brand"
+                />
+                <span className={"flex-1 " + (t.done ? "text-ink-dim line-through" : "text-ink")}>
+                  {t.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => remove(t)}
+                  className="text-sm text-ink-dim transition hover:text-bad"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Centered>
   );
 }
 
 // ── Local styling ───────────────────────────────────────────────────────────
-const inputCls =
-  "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
+const inputCls = `w-full ${controlCls}`;
 const primaryBtnCls =
-  "w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50";
+  "w-full rounded-control bg-brand px-3 py-2 text-sm font-medium text-on-brand transition hover:opacity-90 disabled:opacity-50 pointer-coarse:min-h-11";

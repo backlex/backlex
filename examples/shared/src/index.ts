@@ -13,6 +13,8 @@
  * anything that shows off a feature — each example still writes its own
  * screens, because that is the thing it exists to demonstrate.
  */
-export { AuthForm, Centered, Field, type ExampleUser } from "./AuthForm";
+/** The design layer — one kit, both temperatures. See `theme.css`. */
+export * from "./ui";
+export { AuthForm, Centered, type ExampleUser } from "./AuthForm";
 export { SetupCheck } from "./SetupCheck";
 export { API_URL, ENV, WORKSPACE, missingRequired, type EnvSpec } from "./env";

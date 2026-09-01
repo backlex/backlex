@@ -43,7 +43,7 @@ import {
   Th,
   cx,
   inputCls,
-} from "../lib/ui";
+} from "@backlex-examples/shared";
 
 type Tab = "details" | "variants" | "inventory" | "channels";
 
@@ -142,7 +142,7 @@ export function ProductDetail({ id, go }: { id: string; go: (to: string) => void
         }
       />
 
-      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-white/10">
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
         {(
           [
             ["details", "Details"],
@@ -157,7 +157,7 @@ export function ProductDetail({ id, go }: { id: string; go: (to: string) => void
             onClick={() => setTab(k)}
             className={cx(
               "whitespace-nowrap px-3 py-2 text-sm transition",
-              tab === k ? "border-b-2 border-indigo-400 text-white" : "text-white/50 hover:text-white",
+              tab === k ? "border-b-2 border-brand text-ink" : "text-ink-muted hover:text-ink",
             )}
           >
             {label}
@@ -284,7 +284,7 @@ function Details({ p, onSaved }: { p: Product; onSaved: () => void }) {
           label="Total on hand"
           hint="Totalled from this product's inventory levels — edit it there, per location. On hand, not sellable: units already promised to an order are still counted."
         >
-          <output className={`${inputCls} block tabular-nums text-neutral-500`}>{fmtNumber(p.stock)}</output>
+          <output className={`${inputCls} block tabular-nums text-ink-muted`}>{fmtNumber(p.stock)}</output>
         </Field>
         <Field label="SKU">
           <input className={inputCls} value={form.sku} onChange={(e) => set("sku", e.target.value)} />
@@ -495,12 +495,12 @@ function VariantsTab({ productId }: { productId: string }) {
               </thead>
               <tbody>
                 {data.data.vars.map((v) => (
-                  <tr key={v.id} className="border-t border-white/5">
+                  <tr key={v.id} className="border-t border-line">
                     <Td className="font-medium">
                       {v.title ?? "—"} {v.is_default ? <Badge tone="blue">default</Badge> : null}
                     </Td>
-                    <Td className="text-white/60">{selectionFor(v.id)}</Td>
-                    <Td className="font-mono text-xs text-white/50">{v.sku ?? "—"}</Td>
+                    <Td className="text-ink-muted">{selectionFor(v.id)}</Td>
+                    <Td className="font-mono text-xs text-ink-muted">{v.sku ?? "—"}</Td>
                     <Td className="text-right tabular-nums">{fmtMoney(v.price, v.currency)}</Td>
                     <Td className="text-right tabular-nums">{fmtNumber(v.inventory_quantity)}</Td>
                     <Td className="text-right">
@@ -563,7 +563,7 @@ function OptionRow({ option, values, onChanged }: { option: ProductOption; value
   }
 
   return (
-    <div className="rounded-lg border border-white/10 p-3">
+    <div className="rounded-control border border-line p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="font-medium">{option.name}</span>
         <Button
@@ -582,12 +582,12 @@ function OptionRow({ option, values, onChanged }: { option: ProductOption; value
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {values.map((v) => (
-          <span key={v.id} className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-xs">
+          <span key={v.id} className="inline-flex items-center gap-1 rounded-md bg-raised px-2 py-0.5 text-xs">
             {v.swatch ? <span className="size-2.5 rounded-full" style={{ background: v.swatch }} /> : null}
             {v.value}
             <button
               type="button"
-              className="text-white/40 hover:text-red-300"
+              className="text-ink-dim hover:text-bad"
               onClick={async () => {
                 try {
                   await optionValues.delete(v.id);
@@ -602,7 +602,7 @@ function OptionRow({ option, values, onChanged }: { option: ProductOption; value
           </span>
         ))}
         <input
-          className="w-28 rounded-md border border-white/15 bg-black/30 px-2 py-0.5 text-xs outline-none focus:border-indigo-400/60"
+          className="w-28 rounded-md border border-line-strong bg-surface px-2 py-0.5 text-xs outline-none focus:border-brand"
           placeholder="Add value"
           value={adding}
           disabled={busy}
@@ -664,7 +664,7 @@ function AddOption({
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="space-y-3">
         <Field label="Option name">
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Size" />
@@ -704,7 +704,7 @@ function InventoryTab({ productId }: { productId: string }) {
 
   return (
     <Card>
-      <p className="mb-3 text-sm text-white/45">
+      <p className="mb-3 text-sm text-ink-dim">
         Available is generated as on hand minus committed — the server owns it, so it can never disagree with the two numbers above it.
       </p>
       <TableScroll>
@@ -772,23 +772,23 @@ function LevelRow({
   const [draft, setDraft] = useState(String(level?.on_hand ?? 0));
   const dirty = Number(draft) !== (level?.on_hand ?? 0);
   return (
-    <tr className="border-t border-white/5">
+    <tr className="border-t border-line">
       <Td className="font-medium">{title}</Td>
-      <Td className="text-white/60">{locationName}</Td>
+      <Td className="text-ink-muted">{locationName}</Td>
       <Td className="text-right">
         <input
-          className="w-20 rounded-md border border-white/15 bg-black/30 px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-indigo-400/60"
+          className="w-20 rounded-md border border-line-strong bg-surface px-2 py-1 text-right text-sm tabular-nums outline-none focus:border-brand"
           type="number"
           min="0"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
       </Td>
-      <Td className="text-right tabular-nums text-white/60">{level?.committed ?? 0}</Td>
+      <Td className="text-right tabular-nums text-ink-muted">{level?.committed ?? 0}</Td>
       <Td className="text-right tabular-nums">
         <Badge tone={(level?.available ?? 0) <= 0 ? "red" : "green"}>{level?.available ?? 0}</Badge>
       </Td>
-      <Td className="text-right tabular-nums text-white/50">{level?.reorder_point ?? 0}</Td>
+      <Td className="text-right tabular-nums text-ink-muted">{level?.reorder_point ?? 0}</Td>
       <Td className="text-right">
         <Button disabled={!dirty} onClick={() => onSave(Number(draft))}>
           Save
@@ -824,7 +824,7 @@ function ChannelsTab({ productId }: { productId: string }) {
 
   return (
     <Card>
-      <p className="mb-3 text-sm text-white/45">
+      <p className="mb-3 text-sm text-ink-dim">
         A product that is draft or archived is off everywhere. These rows only narrow one that is otherwise active.
       </p>
       <div className="space-y-2">
@@ -832,10 +832,10 @@ function ChannelsTab({ productId }: { productId: string }) {
           const listing = data.data?.listings.find((l) => l.channel === c.id);
           const on = listing?.is_published ?? false;
           return (
-            <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2">
+            <div key={c.id} className="flex items-center justify-between gap-3 rounded-control border border-line px-3 py-2">
               <div className="min-w-0">
                 <p className="truncate font-medium">{c.name}</p>
-                <p className="text-xs text-white/40">{c.currency ?? "—"}</p>
+                <p className="text-xs text-ink-dim">{c.currency ?? "—"}</p>
               </div>
               <Button
                 variant={on ? "danger" : "primary"}

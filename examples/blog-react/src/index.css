@@ -1,11 +1,11 @@
 @import "tailwindcss";
+@import "@backlex-examples/shared/theme.css";
 
-/* The shared example components (`AuthForm`, `SetupCheck`, `Centered`) live in
+/* The shared example code (the design kit, `AuthForm`, `SetupCheck`) lives in
    the `@backlex-examples/shared` workspace package, which Vite resolves through
    a symlink under `node_modules/`. Tailwind v4's automatic source detection
    deliberately skips `node_modules`, so every utility used ONLY by those files
-   — `max-w-sm`, `p-6`, `min-h-dvh`, the `space-y-*` rhythm, and the whole amber
-   palette the setup-check card is built from — was silently dropped from the
-   generated CSS: the classes stayed in the markup and resolved to nothing.
-   Registering the package's source explicitly is what puts them back. */
+   would be silently dropped from the generated CSS: the classes stay in the
+   markup and resolve to nothing. Registering the package's source explicitly is
+   what puts them back. */
 @source "../../shared/src";

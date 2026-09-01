@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "React Router 8 (framework mode) ops console — server loaders/actions drive backlex's admin plane with an API key that never reaches the browser.",
+  "description": "React Router 8 (framework mode) ops console \u2014 server loaders/actions drive backlex's admin plane with an API key that never reaches the browser.",
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
@@ -11,6 +11,7 @@
     "typecheck": "react-router typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@backlex-examples/shared": "workspace:*",
     "@react-router/node": "^8.3.0",
     "@react-router/serve": "^8.3.0",
     "backlex": "workspace:*",

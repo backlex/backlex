@@ -101,26 +101,26 @@ export default function Agents({ loaderData, actionData }: Route.ComponentProps)
 
           {steps.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-neutral-700">
+              <h3 className="text-sm font-medium text-ink-muted">
                 Tool calls ({steps.length})
               </h3>
               <ol className="space-y-2">
                 {steps.map((s, i) => (
                   <li
                     key={`${s.tool}-${i}`}
-                    className="space-y-1 rounded-lg border border-neutral-200 p-3 text-xs"
+                    className="space-y-1 rounded-control border border-line p-3 text-xs"
                   >
                     <div className="flex items-center gap-2">
                       <code className="font-medium">{s.tool}</code>
-                      {s.isError && <span className="text-red-600">error</span>}
+                      {s.isError && <span className="text-bad">error</span>}
                     </div>
-                    {s.thought && <p className="text-neutral-500">{s.thought}</p>}
+                    {s.thought && <p className="text-ink-muted">{s.thought}</p>}
                     {/* Args and observations can be long — let them scroll
                         inside the card instead of widening the page. */}
-                    <pre className="overflow-x-auto rounded bg-neutral-50 p-2">
+                    <pre className="overflow-x-auto rounded bg-raised p-2">
                       {JSON.stringify(s.args, null, 2)}
                     </pre>
-                    <pre className="overflow-x-auto rounded bg-neutral-50 p-2 text-neutral-600">
+                    <pre className="overflow-x-auto rounded bg-raised p-2 text-ink-muted">
                       {s.observation}
                     </pre>
                   </li>

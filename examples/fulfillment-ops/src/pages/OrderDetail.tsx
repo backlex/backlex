@@ -29,7 +29,7 @@ import {
   fmtWeight,
 } from "../lib/format";
 import { errText, useAsync, useToast } from "../lib/hooks";
-import { Badge, Button, Card, EmptyState, PageHeader, Skeleton, Table, TableScroll, TableSkeleton, Td, Th } from "../lib/ui";
+import { Badge, Button, Card, EmptyState, PageHeader, Skeleton, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }) {
   const toast = useToast();
@@ -107,9 +107,9 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
             <Badge tone={PRIORITY[String(order.priority)]?.tone}>
               {PRIORITY[String(order.priority)]?.label ?? order.priority}
             </Badge>
-            <span className="text-white/45">{CHANNEL[String(order.channel)] ?? order.channel}</span>
-            <span className="text-white/35">·</span>
-            <span className="text-white/45">{fmtDateTime(order.placed_at)}</span>
+            <span className="text-ink-dim">{CHANNEL[String(order.channel)] ?? order.channel}</span>
+            <span className="text-ink-dim">·</span>
+            <span className="text-ink-dim">{fmtDateTime(order.placed_at)}</span>
           </span>
         }
         actions={<Button variant="ghost" onClick={() => go("/orders")}>← Liste</Button>}
@@ -117,7 +117,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
 
       {moves.length > 0 ? (
         <Card className="mb-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-white/40">Sonraki adım</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-dim">Sonraki adım</p>
           <div className="flex flex-wrap gap-2">
             {moves.map((m) => (
               <Button
@@ -136,7 +136,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h2 className="mb-3 text-sm font-medium text-white/70">Satırlar</h2>
+          <h2 className="mb-3 text-sm font-medium text-ink">Satırlar</h2>
           {lines.length === 0 ? (
             <EmptyState title="Satır yok" />
           ) : (
@@ -156,16 +156,16 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
                     const p = data.products.get(String(l.product));
                     const partial = (l.qty_picked ?? 0) < l.qty;
                     return (
-                      <tr key={l.id} className="border-t border-white/5">
+                      <tr key={l.id} className="border-t border-line">
                         <Td>
                           <span className="block max-w-[18rem] truncate">{p?.name ?? "—"}</span>
-                          <span className="font-mono text-xs text-white/40">{p?.sku}</span>
+                          <span className="font-mono text-xs text-ink-dim">{p?.sku}</span>
                         </Td>
                         <Td className="text-right tabular-nums">{fmtNumber(l.qty)}</Td>
-                        <Td className={`text-right tabular-nums ${partial ? "text-amber-300" : "text-white/60"}`}>
+                        <Td className={`text-right tabular-nums ${partial ? "text-warn" : "text-ink-muted"}`}>
                           {fmtNumber(l.qty_picked ?? 0)}
                         </Td>
-                        <Td className="text-right tabular-nums text-white/60">{fmtMoney(l.unit_price)}</Td>
+                        <Td className="text-right tabular-nums text-ink-muted">{fmtMoney(l.unit_price)}</Td>
                         <Td className="text-right tabular-nums">{fmtMoney(l.line_total)}</Td>
                       </tr>
                     );
@@ -175,7 +175,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
             </TableScroll>
           )}
 
-          <dl className="mt-4 space-y-1 border-t border-white/10 pt-3 text-sm">
+          <dl className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
             <Row label="Ürün toplamı" value={fmtMoney(order.items_total)} />
             <Row label="İndirim" value={fmtMoney(order.discount_total)} />
             <Row label="Kargo" value={fmtMoney(order.shipping_fee)} />
@@ -185,20 +185,20 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
 
         <div className="space-y-4">
           <Card>
-            <h2 className="mb-2 text-sm font-medium text-white/70">Müşteri</h2>
+            <h2 className="mb-2 text-sm font-medium text-ink">Müşteri</h2>
             {data.customer ? (
               <div className="space-y-1 text-sm">
                 <p className="font-medium">{data.customer.name}</p>
-                <p className="font-mono text-xs text-white/40">{data.customer.code}</p>
-                {data.customer.phone ? <p className="text-white/60">{data.customer.phone}</p> : null}
-                {data.customer.email ? <p className="break-all text-white/60">{data.customer.email}</p> : null}
+                <p className="font-mono text-xs text-ink-dim">{data.customer.code}</p>
+                {data.customer.phone ? <p className="text-ink-muted">{data.customer.phone}</p> : null}
+                {data.customer.email ? <p className="break-all text-ink-muted">{data.customer.email}</p> : null}
               </div>
             ) : (
-              <p className="text-sm text-white/40">—</p>
+              <p className="text-sm text-ink-dim">—</p>
             )}
             {data.address ? (
-              <div className="mt-3 border-t border-white/10 pt-3 text-sm text-white/60">
-                <p className="text-xs uppercase tracking-wide text-white/40">{data.address.label}</p>
+              <div className="mt-3 border-t border-line pt-3 text-sm text-ink-muted">
+                <p className="text-xs uppercase tracking-wide text-ink-dim">{data.address.label}</p>
                 <p className="mt-1">{data.address.line1}</p>
                 <p>
                   {data.address.district ? `${data.address.district} / ` : ""}
@@ -209,15 +209,15 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-sm font-medium text-white/70">Koliler</h2>
+            <h2 className="mb-2 text-sm font-medium text-ink">Koliler</h2>
             {data.packages.length === 0 ? (
-              <p className="text-sm text-white/40">Henüz paketlenmedi.</p>
+              <p className="text-sm text-ink-dim">Henüz paketlenmedi.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {data.packages.map((p) => (
                   <li key={p.id} className="flex items-center justify-between gap-2">
                     <span className="font-mono text-xs">{p.package_no}</span>
-                    <span className="text-white/50">{fmtWeight(p.weight_g)}</span>
+                    <span className="text-ink-muted">{fmtWeight(p.weight_g)}</span>
                     <Badge tone={PACKAGE_STATUS[String(p.status)]?.tone}>
                       {PACKAGE_STATUS[String(p.status)]?.label ?? p.status}
                     </Badge>
@@ -228,9 +228,9 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
           </Card>
 
           <Card>
-            <h2 className="mb-2 text-sm font-medium text-white/70">Sevkiyat</h2>
+            <h2 className="mb-2 text-sm font-medium text-ink">Sevkiyat</h2>
             {data.shipments.length === 0 ? (
-              <p className="text-sm text-white/40">Henüz kargoya verilmedi.</p>
+              <p className="text-sm text-ink-dim">Henüz kargoya verilmedi.</p>
             ) : (
               <ul className="space-y-2 text-sm">
                 {data.shipments.map((s) => (
@@ -241,7 +241,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
                         {SHIPMENT_STATUS[s.status]?.label ?? s.status}
                       </Badge>
                     </div>
-                    {s.tracking_no ? <p className="font-mono text-xs text-white/45">{s.tracking_no}</p> : null}
+                    {s.tracking_no ? <p className="font-mono text-xs text-ink-dim">{s.tracking_no}</p> : null}
                   </li>
                 ))}
               </ul>
@@ -256,7 +256,7 @@ export function OrderDetail({ id, go }: { id: string; go: (to: string) => void }
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className={`flex items-baseline justify-between gap-4 ${strong ? "pt-1 text-base font-semibold" : ""}`}>
-      <dt className={strong ? "" : "text-white/50"}>{label}</dt>
+      <dt className={strong ? "" : "text-ink-muted"}>{label}</dt>
       <dd className="tabular-nums">{value}</dd>
     </div>
   );

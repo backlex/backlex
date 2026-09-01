@@ -26,7 +26,7 @@ import {
   Th,
   cx,
   inputCls,
-} from "../lib/ui";
+} from "@backlex-examples/shared";
 import { stateTone } from "./Dashboard";
 
 const PAGE = 20;
@@ -43,7 +43,8 @@ export const payTone = (s: string | null | undefined) =>
   })[s ?? ""] ?? "gray";
 
 export const shipTone = (s: string | null | undefined) =>
-  ({ unfulfilled: "gray", partial: "amber", fulfilled: "green", restocked: "slate" })[s ?? ""] ?? "gray";
+  // The pipeline tones, not the neutral ramp — see `Badge` in the shared kit.
+  ({ unfulfilled: "todo", partial: "doing", fulfilled: "done", restocked: "undone" })[s ?? ""] ?? "gray";
 
 export function Orders({ go }: { go: (to: string) => void }) {
   const [state, setState] = useState("");
@@ -145,10 +146,10 @@ export function Orders({ go }: { go: (to: string) => void }) {
                     const c = o.customer as { first_name?: string; last_name?: string; email?: string } | string | null;
                     const who = c && typeof c === "object" ? [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email : o.email;
                     return (
-                      <tr key={o.id} className="cursor-pointer border-t border-white/5 hover:bg-white/5" onClick={() => go(`/orders/${o.id}`)}>
+                      <tr key={o.id} className="cursor-pointer border-t border-line hover:bg-raised" onClick={() => go(`/orders/${o.id}`)}>
                         <Td className="whitespace-nowrap font-medium">{o.number ?? o.id.slice(0, 8)}</Td>
-                        <Td className="whitespace-nowrap text-white/60">{fmtDate(o.placed_at)}</Td>
-                        <Td className="max-w-[20ch] truncate text-white/70">{who || "—"}</Td>
+                        <Td className="whitespace-nowrap text-ink-muted">{fmtDate(o.placed_at)}</Td>
+                        <Td className="max-w-[20ch] truncate text-ink">{who || "—"}</Td>
                         <Td><Badge tone={stateTone(o.state)}>{o.state ?? "—"}</Badge></Td>
                         <Td><Badge tone={payTone(o.status)}>{o.status ?? "—"}</Badge></Td>
                         <Td><Badge tone={shipTone(o.fulfillment_status)}>{o.fulfillment_status ?? "—"}</Badge></Td>
@@ -159,7 +160,7 @@ export function Orders({ go }: { go: (to: string) => void }) {
                 </tbody>
               </Table>
             </TableScroll>
-            <div className="mt-3 flex items-center justify-between text-sm text-white/50">
+            <div className="mt-3 flex items-center justify-between text-sm text-ink-muted">
               <span>
                 {offset + 1}–{Math.min(offset + PAGE, total || offset + list.data.data.length)} of {fmtNumber(total)}
               </span>

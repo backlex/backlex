@@ -5,22 +5,7 @@ import { useState } from "react";
 import { addresses, customers, orders, type Customer } from "../lib/backlex";
 import { ORDER_STATUS, SEGMENT, fmtDateTime, fmtMoney, fmtNumber } from "../lib/format";
 import { errText, useAsync, useToast } from "../lib/hooks";
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  Field,
-  Modal,
-  PageHeader,
-  Table,
-  TableScroll,
-  TableSkeleton,
-  Td,
-  Th,
-  cx,
-  inputCls,
-} from "../lib/ui";
+import { Badge, Button, Card, controlCls, cx, EmptyState, Field, inputCls, Modal, PageHeader, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 export function Customers({ go }: { go: (to: string) => void }) {
   const toast = useToast();
@@ -84,7 +69,7 @@ export function Customers({ go }: { go: (to: string) => void }) {
         actions={
           <>
             <input
-              className={cx(inputCls, "w-36 sm:w-56")}
+              className={cx(controlCls, "w-36 sm:w-56")}
               placeholder="Ünvan ara…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -124,19 +109,19 @@ export function Customers({ go }: { go: (to: string) => void }) {
               </thead>
               <tbody>
                 {data?.map((c) => (
-                  <tr key={c.id} className="cursor-pointer border-t border-white/5 hover:bg-white/5" onClick={() => setOpen(c)}>
-                    <Td className="font-mono text-xs text-white/50">{c.code ?? "—"}</Td>
+                  <tr key={c.id} className="cursor-pointer border-t border-line hover:bg-raised" onClick={() => setOpen(c)}>
+                    <Td className="font-mono text-xs text-ink-muted">{c.code ?? "—"}</Td>
                     <Td className="max-w-[16rem] truncate font-medium">{c.name}</Td>
-                    <Td className="text-white/60">{c.kind === "kurumsal" ? "Kurumsal" : "Bireysel"}</Td>
+                    <Td className="text-ink-muted">{c.kind === "kurumsal" ? "Kurumsal" : "Bireysel"}</Td>
                     <Td>
                       <Badge tone={SEGMENT[String(c.segment)]?.tone}>{SEGMENT[String(c.segment)]?.label ?? c.segment}</Badge>
                     </Td>
-                    <Td className="text-white/55">
+                    <Td className="text-ink-muted">
                       <span className="block truncate">{c.phone ?? "—"}</span>
-                      <span className="block truncate text-xs text-white/35">{c.email ?? ""}</span>
+                      <span className="block truncate text-xs text-ink-dim">{c.email ?? ""}</span>
                     </Td>
                     <Td className="text-right tabular-nums">{fmtNumber(c.orders_count ?? 0)}</Td>
-                    <Td className="text-right tabular-nums text-white/60">{fmtMoney(c.credit_limit)}</Td>
+                    <Td className="text-right tabular-nums text-ink-muted">{fmtMoney(c.credit_limit)}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -151,23 +136,23 @@ export function Customers({ go }: { go: (to: string) => void }) {
         ) : (
           <div className="space-y-5">
             <section>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-white/40">Adresler</h3>
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-dim">Adresler</h3>
               {(detail?.addresses.length ?? 0) === 0 ? (
-                <p className="text-sm text-white/40">Kayıtlı adres yok.</p>
+                <p className="text-sm text-ink-dim">Kayıtlı adres yok.</p>
               ) : (
                 <ul className="space-y-3">
                   {detail?.addresses.map((a) => (
-                    <li key={a.id} className="rounded-lg border border-white/10 p-3 text-sm">
+                    <li key={a.id} className="rounded-control border border-line p-3 text-sm">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{a.label}</span>
                         {a.is_default ? <Badge tone="blue">Varsayılan</Badge> : null}
                       </div>
-                      <p className="mt-1 text-white/60">{a.line1}</p>
-                      <p className="text-white/50">
+                      <p className="mt-1 text-ink-muted">{a.line1}</p>
+                      <p className="text-ink-muted">
                         {a.district ? `${a.district} / ` : ""}
                         {a.city} {a.postcode ?? ""}
                       </p>
-                      {a.phone ? <p className="mt-1 text-white/45">{a.phone}</p> : null}
+                      {a.phone ? <p className="mt-1 text-ink-dim">{a.phone}</p> : null}
                     </li>
                   ))}
                 </ul>
@@ -175,9 +160,9 @@ export function Customers({ go }: { go: (to: string) => void }) {
             </section>
 
             <section>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-white/40">Siparişler</h3>
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-dim">Siparişler</h3>
               {(detail?.orders.length ?? 0) === 0 ? (
-                <p className="text-sm text-white/40">Henüz sipariş yok.</p>
+                <p className="text-sm text-ink-dim">Henüz sipariş yok.</p>
               ) : (
                 <ul className="space-y-1 text-sm">
                   {detail?.orders.map((o) => (
@@ -193,8 +178,8 @@ export function Customers({ go }: { go: (to: string) => void }) {
                         {o.order_no}
                       </button>
                       <Badge tone={ORDER_STATUS[o.status]?.tone}>{ORDER_STATUS[o.status]?.label ?? o.status}</Badge>
-                      <span className="tabular-nums text-white/60">{fmtMoney(o.grand_total)}</span>
-                      <span className="hidden text-white/40 sm:inline">{fmtDateTime(o.placed_at)}</span>
+                      <span className="tabular-nums text-ink-muted">{fmtMoney(o.grand_total)}</span>
+                      <span className="hidden text-ink-dim sm:inline">{fmtDateTime(o.placed_at)}</span>
                     </li>
                   ))}
                 </ul>

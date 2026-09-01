@@ -142,16 +142,16 @@ export default function Jobs({ loaderData, actionData }: Route.ComponentProps) {
         <ul className="space-y-2">
           {jobs.length === 0 && <Empty>No jobs{status ? ` with status "${status}"` : ""}.</Empty>}
           {jobs.map((j) => (
-            <li key={j.id} className="space-y-2 rounded-lg border border-neutral-200 p-3 text-sm">
+            <li key={j.id} className="space-y-2 rounded-control border border-line p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs">{j.status}</span>
+                <span className="rounded-full bg-raised px-2 py-0.5 text-xs">{j.status}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{j.type}</span>
-                <span className="text-xs text-neutral-500">
+                <span className="text-xs text-ink-muted">
                   attempt {j.attempts}/{j.maxAttempts}
                 </span>
               </div>
               {j.lastError && (
-                <p className="break-words text-xs text-red-600">{j.lastError}</p>
+                <p className="break-words text-xs text-bad">{j.lastError}</p>
               )}
               <div className="flex flex-wrap justify-end gap-2">
                 {/* Each button is its own form so a single row action doesn't

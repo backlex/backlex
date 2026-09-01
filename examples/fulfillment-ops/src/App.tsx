@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { backlex } from "./lib/backlex";
 import { ToastHost, errText } from "./lib/hooks";
 import { segments, useRoute } from "./lib/router";
-import { Button, Field, inputCls, cx } from "./lib/ui";
+import { AuthGateSkeleton, Button, cx, Field, Icon, inputCls, type IconName } from "@backlex-examples/shared";
 import { Dashboard } from "./pages/Dashboard";
 import { Orders } from "./pages/Orders";
 import { OrderDetail } from "./pages/OrderDetail";
@@ -16,15 +16,29 @@ import { Shipments } from "./pages/Shipments";
 import { Customers } from "./pages/Customers";
 import { Campaigns } from "./pages/Campaigns";
 
-const NAV = [
-  { to: "/", label: "Panel", icon: "▦" },
-  { to: "/orders", label: "Siparişler", icon: "▤" },
-  { to: "/fulfillment", label: "Hazırlık", icon: "◧" },
-  { to: "/stock", label: "Stok", icon: "▥" },
-  { to: "/shipments", label: "Sevkiyat", icon: "➤" },
-  { to: "/customers", label: "Müşteriler", icon: "◍" },
-  { to: "/campaigns", label: "Kampanyalar", icon: "◆" },
+const NAV: { to: string; label: string; icon: IconName }[] = [
+  { to: "/", label: "Panel", icon: "dashboard" },
+  { to: "/orders", label: "Siparişler", icon: "orders" },
+  { to: "/fulfillment", label: "Hazırlık", icon: "picking" },
+  { to: "/stock", label: "Stok", icon: "inventory" },
+  { to: "/shipments", label: "Sevkiyat", icon: "shipments" },
+  { to: "/customers", label: "Müşteriler", icon: "customers" },
+  { to: "/campaigns", label: "Kampanyalar", icon: "campaigns" },
 ];
+
+/** The warehouse's own mark — drawn, so it tints and scales with the shell. */
+function Brand() {
+  return (
+    <span className="flex items-center gap-2 font-semibold tracking-tight">
+      <span className="grid size-7 shrink-0 place-items-center rounded-control bg-brand text-on-brand">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M4 15V5l12 10V5" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+      Depo &amp; Sevkiyat
+    </span>
+  );
+}
 
 type Me = { id: string; email: string; name?: string | null } | null;
 
@@ -41,11 +55,8 @@ export function App() {
   }, []);
 
   if (!checked) {
-    return (
-      <div className="grid h-full place-items-center">
-        <div className="h-8 w-40 animate-pulse rounded bg-white/10" />
-      </div>
-    );
+    // Takes the shape of the sign-in card, not a lone bar on an empty page.
+    return <AuthGateSkeleton />;
   }
   if (!me) return <SignIn onDone={setMe} />;
   return (
@@ -77,10 +88,10 @@ function SignIn({ onDone }: { onDone: (u: Me) => void }) {
 
   return (
     <div className="grid min-h-full place-items-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-surface border border-line bg-panel p-6">
         <div>
           <h1 className="text-lg font-semibold">Depo & Sevkiyat</h1>
-          <p className="mt-1 text-sm text-white/50">Operasyon konsoluna giriş yapın.</p>
+          <p className="mt-1 text-sm text-ink-muted">Operasyon konsoluna giriş yapın.</p>
         </div>
         <Field label="E-posta">
           <input
@@ -104,7 +115,7 @@ function SignIn({ onDone }: { onDone: (u: Me) => void }) {
             required
           />
         </Field>
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
+        {error ? <p className="text-sm text-bad">{error}</p> : null}
         <Button type="submit" variant="primary" disabled={busy} className="w-full">
           {busy ? "Giriş yapılıyor…" : "Giriş yap"}
         </Button>
@@ -129,26 +140,26 @@ function Shell({ me, onSignOut }: { me: NonNullable<Me>; onSignOut: () => void }
   else if (seg[0] === "shipments") page = <Shipments go={go} />;
   else if (seg[0] === "customers") page = <Customers go={go} />;
   else if (seg[0] === "campaigns") page = <Campaigns />;
-  else page = <div className="text-white/60">Sayfa bulunamadı.</div>;
+  else page = <div className="text-ink-muted">Sayfa bulunamadı.</div>;
 
   return (
     <div className="flex min-h-full flex-col md:flex-row">
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3 md:hidden">
-        <span className="font-semibold">Depo & Sevkiyat</span>
+      <div className="flex items-center gap-2 border-b border-line px-4 py-3 md:hidden">
+        <Brand />
         {/* Nav toggle hugs the right edge on mobile — the house convention. */}
         <Button variant="ghost" className="ml-auto" onClick={() => setNavOpen((v) => !v)} title="Menü">
-          {navOpen ? "✕" : "☰"}
+          <Icon name={navOpen ? "close" : "menu"} />
         </Button>
       </div>
 
       <nav
         className={cx(
-          "shrink-0 border-white/10 md:w-56 md:border-r",
+          "shrink-0 border-line md:w-56 md:border-r",
           navOpen ? "block border-b" : "hidden md:block",
         )}
       >
         <div className="hidden px-4 py-4 md:block">
-          <span className="font-semibold">Depo & Sevkiyat</span>
+          <Brand />
         </div>
         <ul className="px-2 py-2">
           {NAV.map((n) => (
@@ -156,23 +167,21 @@ function Shell({ me, onSignOut }: { me: NonNullable<Me>; onSignOut: () => void }
               <a
                 href={`#${n.to}`}
                 className={cx(
-                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
-                  root === n.to ? "bg-white/10 font-medium" : "text-white/65 hover:bg-white/5 hover:text-white",
+                  "flex items-center gap-2 rounded-control px-3 py-2 text-sm transition",
+                  root === n.to ? "bg-raised font-medium" : "text-ink hover:bg-raised hover:text-ink",
                 )}
               >
-                <span aria-hidden className="text-white/40">
-                  {n.icon}
-                </span>
+                <Icon name={n.icon} className="shrink-0 text-ink-dim" />
                 {n.label}
               </a>
             </li>
           ))}
         </ul>
-        <div className="mt-auto px-4 py-3 text-xs text-white/40">
+        <div className="mt-auto px-4 py-3 text-xs text-ink-dim">
           <p className="truncate">{me.email}</p>
           <button
             type="button"
-            className="mt-1 underline underline-offset-2 hover:text-white/70"
+            className="mt-1 underline underline-offset-2 hover:text-ink"
             onClick={async () => {
               await backlex.auth.signOut().catch(() => {});
               onSignOut();

@@ -48,26 +48,26 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </div>
 
             {usage.over.length > 0 && (
-              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+              <p className="rounded-control border border-warn/40 bg-warn/10 p-3 text-sm text-warn">
                 Over the effective limit on: {usage.over.join(", ")}.
               </p>
             )}
 
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-neutral-700">Traffic by key</h3>
+              <h3 className="text-sm font-medium text-ink-muted">Traffic by key</h3>
               <ul className="space-y-2">
                 {usage.byKey.length === 0 && (
-                  <li className="text-sm text-neutral-400">No traffic recorded yet.</li>
+                  <li className="text-sm text-ink-dim">No traffic recorded yet.</li>
                 )}
                 {usage.byKey.map((k) => (
                   <li
                     key={k.id || "session"}
-                    className="flex items-center gap-3 rounded-lg border border-neutral-200 p-3 text-sm"
+                    className="flex items-center gap-3 rounded-control border border-line p-3 text-sm"
                   >
                     {/* An empty id is the session / no-key bucket. */}
                     <span className="min-w-0 flex-1 truncate">{k.id ? k.name : "sessions"}</span>
-                    {k.revoked && <span className="text-xs text-neutral-400">revoked</span>}
-                    <span className="text-neutral-500">
+                    {k.revoked && <span className="text-xs text-ink-dim">revoked</span>}
+                    <span className="text-ink-muted">
                       {k.monthRequests.toLocaleString()} req
                       {k.monthErrors > 0 && ` · ${k.monthErrors} err`}
                     </span>

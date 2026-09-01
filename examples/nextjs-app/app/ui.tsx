@@ -9,23 +9,23 @@ export function Centered({ children }: { children: ReactNode }) {
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-sm font-medium text-neutral-700">{label}</span>
+      <span className="text-sm font-medium text-ink-muted">{label}</span>
       {children}
     </label>
   );
 }
 
 export function ErrorLine({ msg }: { msg: string }) {
-  return <p className="text-sm text-red-600">{msg}</p>;
+  return <p className="text-sm text-bad">{msg}</p>;
 }
 
 /** Shown when `BACKLEX_WORKSPACE` is unset — the one setup mistake that breaks every page. */
 export function NotConfigured() {
   return (
     <Centered>
-      <div className="w-full max-w-md space-y-3 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+      <div className="w-full max-w-md space-y-3 rounded-surface border border-line bg-panel p-6 shadow-sm">
         <h1 className="text-lg font-semibold">Not configured</h1>
-        <ol className="list-decimal space-y-2 pl-5 text-sm text-neutral-700">
+        <ol className="list-decimal space-y-2 pl-5 text-sm text-ink-muted">
           <li>
             Start the backend from the repo root: <code>bun run dev</code>.
           </li>
@@ -44,6 +44,6 @@ export function NotConfigured() {
 }
 
 export const inputCls =
-  "w-full min-w-0 rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
+  "w-full min-w-0 rounded-control border border-line-strong bg-panel px-3 py-2 text-sm outline-none transition focus:border-brand";
 export const primaryBtnCls =
-  "shrink-0 rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50";
+  "shrink-0 rounded-control bg-brand px-3 py-2 text-sm font-medium text-on-brand transition hover:opacity-90 disabled:opacity-50 pointer-coarse:min-h-11";

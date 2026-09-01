@@ -25,7 +25,7 @@ import {
   Td,
   Th,
   inputCls,
-} from "../lib/ui";
+} from "@backlex-examples/shared";
 
 const PAGE = 20;
 const groups = backlex.from<{ id: string; name: string }>("customer_groups");
@@ -122,17 +122,17 @@ export function Customers({ go }: { go: (to: string) => void }) {
                 </thead>
                 <tbody>
                   {list.data.data.map((c) => (
-                    <tr key={c.id} className="cursor-pointer border-t border-white/5 hover:bg-white/5" onClick={() => setOpen(c)}>
+                    <tr key={c.id} className="cursor-pointer border-t border-line hover:bg-raised" onClick={() => setOpen(c)}>
                       <Td className="font-medium">{[c.first_name, c.last_name].filter(Boolean).join(" ") || "—"}</Td>
-                      <Td className="max-w-[24ch] truncate text-white/60">{c.email ?? "—"}</Td>
+                      <Td className="max-w-[24ch] truncate text-ink-muted">{c.email ?? "—"}</Td>
                       <Td>
                         {c.customer_group && typeof c.customer_group === "object" ? (
                           <Badge tone="blue">{(c.customer_group as { name?: string }).name}</Badge>
                         ) : (
-                          <span className="text-white/30">—</span>
+                          <span className="text-ink-dim">—</span>
                         )}
                       </Td>
-                      <Td className="whitespace-nowrap text-white/50">{fmtDate(c.created_at)}</Td>
+                      <Td className="whitespace-nowrap text-ink-muted">{fmtDate(c.created_at)}</Td>
                       <Td className="text-right tabular-nums">{fmtNumber(c.orders_count ?? 0)}</Td>
                       <Td className="text-right tabular-nums">{fmtMoney(c.total_spent)}</Td>
                     </tr>
@@ -140,7 +140,7 @@ export function Customers({ go }: { go: (to: string) => void }) {
                 </tbody>
               </Table>
             </TableScroll>
-            <div className="mt-3 flex items-center justify-between text-sm text-white/50">
+            <div className="mt-3 flex items-center justify-between text-sm text-ink-muted">
               <span>
                 {offset + 1}–{Math.min(offset + PAGE, total || offset + list.data.data.length)} of {fmtNumber(total)}
               </span>
@@ -191,19 +191,19 @@ function CustomerSheet({ customer, onClose, go }: { customer: Customer; onClose:
     >
       <dl className="mb-4 grid grid-cols-2 gap-3 text-sm">
         <div>
-          <dt className="text-xs text-white/45">Email</dt>
+          <dt className="text-xs text-ink-dim">Email</dt>
           <dd className="truncate">{customer.email ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs text-white/45">Phone</dt>
+          <dt className="text-xs text-ink-dim">Phone</dt>
           <dd>{customer.phone ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-xs text-white/45">Stored total spent</dt>
+          <dt className="text-xs text-ink-dim">Stored total spent</dt>
           <dd className="tabular-nums">{fmtMoney(customer.total_spent)}</dd>
         </div>
         <div>
-          <dt className="text-xs text-white/45">From their orders</dt>
+          <dt className="text-xs text-ink-dim">From their orders</dt>
           <dd className="flex items-center gap-2 tabular-nums">
             {hist.data == null ? "…" : fmtMoney({ amount: realSpend, currency: hist.data[0]?.currency ?? "USD" })}
             {drift ? <Badge tone="amber">drift</Badge> : null}
@@ -213,7 +213,7 @@ function CustomerSheet({ customer, onClose, go }: { customer: Customer; onClose:
       {hist.data == null ? (
         <TableSkeleton rows={3} cols={4} />
       ) : hist.data.length === 0 ? (
-        <p className="text-sm text-white/45">No orders yet.</p>
+        <p className="text-sm text-ink-dim">No orders yet.</p>
       ) : (
         <TableScroll>
           <Table>
@@ -229,14 +229,14 @@ function CustomerSheet({ customer, onClose, go }: { customer: Customer; onClose:
               {hist.data.map((o) => (
                 <tr
                   key={o.id}
-                  className="cursor-pointer border-t border-white/5 hover:bg-white/5"
+                  className="cursor-pointer border-t border-line hover:bg-raised"
                   onClick={() => {
                     onClose();
                     go(`/orders/${o.id}`);
                   }}
                 >
                   <Td className="whitespace-nowrap font-medium">{o.number ?? o.id.slice(0, 8)}</Td>
-                  <Td className="text-white/60">{fmtDate(o.placed_at)}</Td>
+                  <Td className="text-ink-muted">{fmtDate(o.placed_at)}</Td>
                   <Td>{o.state}</Td>
                   <Td className="text-right tabular-nums">{fmtMoney(o.total, o.currency)}</Td>
                 </tr>
@@ -286,7 +286,7 @@ function NewCustomer({ onClose, onDone }: { onClose: () => void; onDone: () => v
         </>
       }
     >
-      {err ? <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+      {err ? <p className="mb-3 rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 [&>*]:min-w-0">
         <Field label="First name">
           <input className={inputCls} value={first} onChange={(e) => setFirst(e.target.value)} />

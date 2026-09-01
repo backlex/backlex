@@ -8,7 +8,7 @@
 import { available, bins, campaigns, listAll, orders, products, shipments, stockLevels } from "../lib/backlex";
 import { CAMPAIGN_STATUS, ORDER_STATUS, SHIPMENT_STATUS, fmtMoney, fmtNumber } from "../lib/format";
 import { useAsync } from "../lib/hooks";
-import { Badge, Card, EmptyState, PageHeader, Skeleton, Table, TableScroll, TableSkeleton, Td, Th } from "../lib/ui";
+import { Badge, Card, EmptyState, PageHeader, Skeleton, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 type Grouped = { label: string; value: number }[];
 
@@ -88,11 +88,11 @@ export function Dashboard({ go }: { go: (to: string) => void }) {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 text-sm font-medium text-white/70">Sipariş durumları</h2>
+          <h2 className="mb-3 text-sm font-medium text-ink">Sipariş durumları</h2>
           {loading ? <TableSkeleton rows={4} cols={2} /> : <Breakdown rows={data?.orderStatus ?? []} vocab={ORDER_STATUS} />}
         </Card>
         <Card>
-          <h2 className="mb-3 text-sm font-medium text-white/70">Kargo durumları</h2>
+          <h2 className="mb-3 text-sm font-medium text-ink">Kargo durumları</h2>
           {loading ? (
             <TableSkeleton rows={4} cols={2} />
           ) : (
@@ -103,7 +103,7 @@ export function Dashboard({ go }: { go: (to: string) => void }) {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 text-sm font-medium text-white/70">Son siparişler</h2>
+          <h2 className="mb-3 text-sm font-medium text-ink">Son siparişler</h2>
           {loading ? (
             <TableSkeleton rows={5} cols={3} />
           ) : (data?.latest.data ?? []).length === 0 ? (
@@ -120,7 +120,7 @@ export function Dashboard({ go }: { go: (to: string) => void }) {
                 </thead>
                 <tbody>
                   {(data?.latest.data ?? []).map((o) => (
-                    <tr key={o.id} className="cursor-pointer border-t border-white/5 hover:bg-white/5" onClick={() => go(`/orders/${o.id}`)}>
+                    <tr key={o.id} className="cursor-pointer border-t border-line hover:bg-raised" onClick={() => go(`/orders/${o.id}`)}>
                       <Td className="font-mono text-xs">{o.order_no ?? o.id.slice(0, 8)}</Td>
                       <Td>
                         <Badge tone={ORDER_STATUS[o.status]?.tone}>{ORDER_STATUS[o.status]?.label ?? o.status}</Badge>
@@ -135,7 +135,7 @@ export function Dashboard({ go }: { go: (to: string) => void }) {
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-sm font-medium text-white/70">Sipariş noktasının altındakiler</h2>
+          <h2 className="mb-3 text-sm font-medium text-ink">Sipariş noktasının altındakiler</h2>
           {loading ? (
             <TableSkeleton rows={5} cols={4} />
           ) : lowStock.length === 0 ? (
@@ -153,11 +153,11 @@ export function Dashboard({ go }: { go: (to: string) => void }) {
                 </thead>
                 <tbody>
                   {lowStock.map((l) => (
-                    <tr key={l.id} className="border-t border-white/5">
+                    <tr key={l.id} className="border-t border-line">
                       <Td className="max-w-[16rem] truncate">{productById.get(String(l.product))?.name ?? "—"}</Td>
                       <Td className="font-mono text-xs">{binById.get(String(l.bin))?.code ?? "—"}</Td>
-                      <Td className="text-right tabular-nums text-amber-300">{fmtNumber(available(l))}</Td>
-                      <Td className="text-right tabular-nums text-white/50">{fmtNumber(l.reorder_point)}</Td>
+                      <Td className="text-right tabular-nums text-warn">{fmtNumber(available(l))}</Td>
+                      <Td className="text-right tabular-nums text-ink-muted">{fmtNumber(l.reorder_point)}</Td>
                     </tr>
                   ))}
                 </tbody>
@@ -168,7 +168,7 @@ export function Dashboard({ go }: { go: (to: string) => void }) {
       </div>
 
       <Card className="mt-4">
-        <h2 className="mb-3 text-sm font-medium text-white/70">Kampanyalar</h2>
+        <h2 className="mb-3 text-sm font-medium text-ink">Kampanyalar</h2>
         {loading ? <TableSkeleton rows={3} cols={2} /> : <Breakdown rows={data?.campaignStatus ?? []} vocab={CAMPAIGN_STATUS} />}
       </Card>
     </>
@@ -178,13 +178,13 @@ export function Dashboard({ go }: { go: (to: string) => void }) {
 function Stat({ label, value, hint, loading }: { label: string; value: number | string; hint?: string; loading: boolean }) {
   return (
     <Card>
-      <p className="text-xs font-medium uppercase tracking-wide text-white/40">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-dim">{label}</p>
       {loading ? (
         <Skeleton className="mt-2 h-7 w-20" />
       ) : (
         <p className="mt-1 text-2xl font-semibold tabular-nums">{typeof value === "number" ? fmtNumber(value) : value}</p>
       )}
-      {hint ? <p className="mt-1 text-xs text-white/35">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs text-ink-dim">{hint}</p> : null}
     </Card>
   );
 }
@@ -199,10 +199,10 @@ function Breakdown({ rows, vocab }: { rows: Grouped; vocab: Record<string, { lab
           <span className="w-32 shrink-0">
             <Badge tone={vocab[r.label]?.tone}>{vocab[r.label]?.label ?? r.label ?? "—"}</Badge>
           </span>
-          <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-white/5">
-            <span className="block h-full rounded-full bg-indigo-400/70" style={{ width: `${(r.value / total) * 100}%` }} />
+          <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-raised">
+            <span className="block h-full rounded-full bg-brand/70" style={{ width: `${(r.value / total) * 100}%` }} />
           </span>
-          <span className="w-10 shrink-0 text-right text-sm tabular-nums text-white/60">{fmtNumber(r.value)}</span>
+          <span className="w-10 shrink-0 text-right text-sm tabular-nums text-ink-muted">{fmtNumber(r.value)}</span>
         </li>
       ))}
     </ul>

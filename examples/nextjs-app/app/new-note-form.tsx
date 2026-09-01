@@ -28,7 +28,7 @@ export function NewNoteForm() {
           {pending ? "…" : "Add"}
         </button>
       </form>
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && <p className="text-sm text-bad">{state.error}</p>}
     </div>
   );
 }

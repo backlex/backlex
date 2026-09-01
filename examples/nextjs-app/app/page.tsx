@@ -39,11 +39,11 @@ export default async function Home() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">Notes</h1>
-          <p className="text-sm text-neutral-500">{session.user?.email ?? "signed in"}</p>
+          <p className="text-sm text-ink-muted">{session.user?.email ?? "signed in"}</p>
         </div>
         {/* A form posting to a Server Action — no client JS involved. */}
         <form action={signOutAction}>
-          <button type="submit" className="text-sm text-neutral-500 hover:text-neutral-800">
+          <button type="submit" className="text-sm text-ink-muted hover:text-ink">
             Sign out
           </button>
         </form>
@@ -51,9 +51,9 @@ export default async function Home() {
 
       <NewNoteForm />
 
-      <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
+      <ul className="divide-y divide-line rounded-surface border border-line bg-panel">
         {notes.length === 0 && (
-          <li className="p-4 text-sm text-neutral-400">No notes yet.</li>
+          <li className="p-4 text-sm text-ink-dim">No notes yet.</li>
         )}
         {notes.map((n) => (
           <li key={n.id} className="flex items-center gap-3 p-3">
@@ -67,21 +67,21 @@ export default async function Home() {
                 aria-label={n.done ? "Mark as not done" : "Mark as done"}
                 className={
                   "size-4 rounded border " +
-                  (n.done ? "border-neutral-900 bg-neutral-900" : "border-neutral-400")
+                  (n.done ? "border-brand bg-brand" : "border-line-strong")
                 }
               />
             </form>
             <span
               className={
                 "min-w-0 flex-1 break-words " +
-                (n.done ? "text-neutral-400 line-through" : "text-neutral-800")
+                (n.done ? "text-ink-dim line-through" : "text-ink")
               }
             >
               {n.title}
             </span>
             <form action={deleteNoteAction}>
               <input type="hidden" name="id" value={n.id} />
-              <button type="submit" className="text-sm text-neutral-400 hover:text-red-600">
+              <button type="submit" className="text-sm text-ink-dim hover:text-bad">
                 Delete
               </button>
             </form>
@@ -89,7 +89,7 @@ export default async function Home() {
         ))}
       </ul>
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-ink-dim">
         Rendered on the server. Every write is a Server Action followed by{" "}
         <code>revalidatePath(&quot;/&quot;)</code>.
       </p>

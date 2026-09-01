@@ -11,7 +11,7 @@ import { useState } from "react";
 import { bins, listAll, orderLines, orders, pickTasks, pickWaves, products, stockLevels, stockMovements, type PickTask } from "../lib/backlex";
 import { TASK_STATUS, WAVE_STATUS, fmtDateTime, fmtNumber } from "../lib/format";
 import { errText, useAsync, useToast } from "../lib/hooks";
-import { Badge, Button, Card, EmptyState, PageHeader, Skeleton, Table, TableScroll, TableSkeleton, Td, Th, cx, inputCls } from "../lib/ui";
+import { Badge, Button, Card, controlCls, cx, EmptyState, PageHeader, Skeleton, Table, TableScroll, TableSkeleton, Td, Th } from "@backlex-examples/shared";
 
 export function WaveDetail({ id, go }: { id: string; go: (to: string) => void }) {
   const toast = useToast();
@@ -93,19 +93,19 @@ export function WaveDetail({ id, go }: { id: string; go: (to: string) => void })
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Badge tone={WAVE_STATUS[wave.status]?.tone}>{WAVE_STATUS[wave.status]?.label ?? wave.status}</Badge>
-            <span className="text-white/45">
+            <span className="text-ink-dim">
               {fmtNumber(done)} / {fmtNumber(tasks.length)} görev tamam
             </span>
-            <span className="text-white/35">·</span>
-            <span className="text-white/45">{fmtDateTime(wave.planned_at)}</span>
+            <span className="text-ink-dim">·</span>
+            <span className="text-ink-dim">{fmtDateTime(wave.planned_at)}</span>
           </span>
         }
         actions={<Button variant="ghost" onClick={() => go("/fulfillment")}>← Dalgalar</Button>}
       />
 
-      <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/5">
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-raised">
         <div
-          className="h-full rounded-full bg-emerald-400/70 transition-[width]"
+          className="h-full rounded-full bg-ok/70 transition-[width]"
           style={{ width: `${tasks.length ? (done / tasks.length) * 100 : 0}%` }}
         />
       </div>
@@ -133,14 +133,14 @@ export function WaveDetail({ id, go }: { id: string; go: (to: string) => void })
                   const p = data.products.get(String(t.product));
                   const settled = t.status === "picked" || t.status === "short";
                   return (
-                    <tr key={t.id} className={cx("border-t border-white/5", settled && "opacity-60")}>
-                      <Td className="text-right tabular-nums text-white/40">{t.sequence}</Td>
+                    <tr key={t.id} className={cx("border-t border-line", settled && "opacity-60")}>
+                      <Td className="text-right tabular-nums text-ink-dim">{t.sequence}</Td>
                       <Td className="font-mono text-xs">{data.bins.get(String(t.bin))?.code ?? "—"}</Td>
                       <Td>
                         <span className="block max-w-[16rem] truncate">{p?.name ?? "—"}</span>
-                        <span className="font-mono text-xs text-white/40">{p?.sku}</span>
+                        <span className="font-mono text-xs text-ink-dim">{p?.sku}</span>
                       </Td>
-                      <Td className="font-mono text-xs text-white/50">
+                      <Td className="font-mono text-xs text-ink-muted">
                         {data.orders.get(String(t.order))?.order_no ?? "—"}
                       </Td>
                       <Td className="text-right tabular-nums">{fmtNumber(t.qty_required)}</Td>
@@ -149,7 +149,7 @@ export function WaveDetail({ id, go }: { id: string; go: (to: string) => void })
                           <span className="tabular-nums">{fmtNumber(t.qty_picked ?? 0)}</span>
                         ) : (
                           <input
-                            className={cx(inputCls, "w-20 text-right tabular-nums")}
+                            className={cx(controlCls, "w-20 text-right tabular-nums")}
                             type="number"
                             min={0}
                             max={t.qty_required}

@@ -66,18 +66,18 @@ export function SetupCheck({
 
   return (
     <Center>
-      <div className="w-full max-w-lg space-y-4 rounded-xl border border-amber-300 bg-amber-50 p-6">
-        <h1 className="text-lg font-semibold text-amber-900">
+      <div className="w-full max-w-lg space-y-4 rounded-surface border border-warn/40 bg-warn/10 p-6">
+        <h1 className="text-lg font-semibold tracking-tight text-ink">
           {phase.kind === "env-missing" ? "Finish the setup" : "Can't reach the backend"}
         </h1>
 
         {phase.kind === "unreachable" && (
-          <p className="text-sm text-amber-800">
+          <p className="text-sm text-ink-muted">
             The API didn't answer for workspace{" "}
-            <code className="rounded bg-amber-100 px-1">{WORKSPACE || "(unset)"}</code>. Is{" "}
-            <code className="rounded bg-amber-100 px-1">bun run dev</code> running at the repo root,
+            <code className="rounded-sm bg-warn/15 px-1 font-mono text-[0.9em]">{WORKSPACE || "(unset)"}</code>. Is{" "}
+            <code className="rounded-sm bg-warn/15 px-1 font-mono text-[0.9em]">bun run dev</code> running at the repo root,
             and does that workspace exist? <br />
-            <span className="text-amber-700">({phase.detail})</span>
+            <span className="text-warn">({phase.detail})</span>
           </p>
         )}
 
@@ -91,15 +91,15 @@ export function SetupCheck({
                   <span
                     className={
                       "inline-block size-2 rounded-full " +
-                      (ok ? "bg-emerald-500" : e.required ? "bg-red-500" : "bg-neutral-300")
+                      (ok ? "bg-ok" : e.required ? "bg-bad" : "bg-ink-dim")
                     }
                   />
                   <code className="font-medium">{e.key}</code>
-                  <span className="text-neutral-500">{e.required ? "(required)" : "(optional)"}</span>
-                  {blocking && <span className="text-red-600">— not set</span>}
+                  <span className="text-ink-dim">{e.required ? "(required)" : "(optional)"}</span>
+                  {blocking && <span className="text-bad">— not set</span>}
                 </div>
-                <p className="ml-4 text-neutral-600">{e.description}</p>
-                <p className="ml-4 text-neutral-400">
+                <p className="ml-4 text-ink-muted">{e.description}</p>
+                <p className="ml-4 text-ink-dim">
                   e.g. <code>{e.example}</code>
                 </p>
               </li>
@@ -107,10 +107,10 @@ export function SetupCheck({
           })}
         </ul>
 
-        <p className="text-sm text-amber-800">
-          Set these in <code className="rounded bg-amber-100 px-1">.env</code> (copy{" "}
-          <code className="rounded bg-amber-100 px-1">.env.example</code>), then restart{" "}
-          <code className="rounded bg-amber-100 px-1">bun run dev</code>. Full steps are in this
+        <p className="text-sm text-ink-muted">
+          Set these in <code className="rounded-sm bg-warn/15 px-1 font-mono text-[0.9em]">.env</code> (copy{" "}
+          <code className="rounded-sm bg-warn/15 px-1 font-mono text-[0.9em]">.env.example</code>), then restart{" "}
+          <code className="rounded-sm bg-warn/15 px-1 font-mono text-[0.9em]">bun run dev</code>. Full steps are in this
           folder's <code>README.md</code>.
         </p>
       </div>
@@ -120,7 +120,7 @@ export function SetupCheck({
 
 function Center({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-neutral-50 p-6 text-neutral-900">
+    <div className="flex min-h-dvh items-center justify-center bg-surface p-6 text-ink">
       {children}
     </div>
   );

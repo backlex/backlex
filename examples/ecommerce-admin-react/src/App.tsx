@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { backlex } from "./lib/backlex";
 import { ToastHost, errText } from "./lib/hooks";
 import { segments, useRoute } from "./lib/router";
-import { Button, Field, inputCls, cx } from "./lib/ui";
+import { AuthGateSkeleton, Button, cx, Field, Icon, inputCls, type IconName } from "@backlex-examples/shared";
 import { Dashboard } from "./pages/Dashboard";
 import { Products } from "./pages/Products";
 import { ProductDetail } from "./pages/ProductDetail";
@@ -16,15 +16,29 @@ import { Inventory } from "./pages/Inventory";
 import { Discounts } from "./pages/Discounts";
 import { Pricing } from "./pages/Pricing";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: "▦" },
-  { to: "/products", label: "Products", icon: "◫" },
-  { to: "/orders", label: "Orders", icon: "▤" },
-  { to: "/customers", label: "Customers", icon: "◍" },
-  { to: "/inventory", label: "Inventory", icon: "▥" },
-  { to: "/pricing", label: "Pricing", icon: "◈" },
-  { to: "/discounts", label: "Discounts", icon: "◆" },
+const NAV: { to: string; label: string; icon: IconName }[] = [
+  { to: "/", label: "Dashboard", icon: "dashboard" },
+  { to: "/products", label: "Products", icon: "products" },
+  { to: "/orders", label: "Orders", icon: "orders" },
+  { to: "/customers", label: "Customers", icon: "customers" },
+  { to: "/inventory", label: "Inventory", icon: "inventory" },
+  { to: "/pricing", label: "Pricing", icon: "pricing" },
+  { to: "/discounts", label: "Discounts", icon: "discounts" },
 ];
+
+/** The shop's own mark — drawn, so it tints and scales with the shell. */
+function Brand({ className }: { className?: string }) {
+  return (
+    <span className={cx("flex items-center gap-2 text-sm font-semibold tracking-tight", className)}>
+      <span className="grid size-7 shrink-0 place-items-center rounded-control bg-brand text-on-brand">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M4 15V5l12 10V5" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+      Storefront
+    </span>
+  );
+}
 
 type Me = { id: string; email: string; name?: string | null } | null;
 
@@ -41,11 +55,10 @@ export function App() {
   }, []);
 
   if (!checked) {
-    return (
-      <div className="grid h-full place-items-center">
-        <div className="h-8 w-40 animate-pulse rounded bg-white/10" />
-      </div>
-    );
+    // A lone 8×40 bar floating in the middle of a black page is not a loading
+    // state, it is a glitch. The gate resolves to the sign-in card far more
+    // often than not, so take that shape.
+    return <AuthGateSkeleton />;
   }
   if (!me) return <SignIn onDone={setMe} />;
   return (
@@ -77,10 +90,10 @@ function SignIn({ onDone }: { onDone: (u: Me) => void }) {
 
   return (
     <div className="grid h-full place-items-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-surface border border-line bg-panel p-6">
         <div>
           <h1 className="text-lg font-semibold">Storefront admin</h1>
-          <p className="mt-1 text-sm text-white/45">Signs into the backlex control plane, not the shop's customer pool.</p>
+          <p className="mt-1 text-sm text-ink-dim">Signs into the backlex control plane, not the shop's customer pool.</p>
         </div>
         <Field label="Email">
           <input
@@ -100,7 +113,7 @@ function SignIn({ onDone }: { onDone: (u: Me) => void }) {
             autoComplete="current-password"
           />
         </Field>
-        {err ? <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p> : null}
+        {err ? <p className="rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
         <Button type="submit" variant="primary" disabled={busy} className="w-full">
           {busy ? "Signing in…" : "Sign in"}
         </Button>
@@ -131,12 +144,12 @@ function Shell({ me, onSignOut }: { me: NonNullable<Me>; onSignOut: () => void }
     <div className="flex min-h-full">
       <aside
         className={cx(
-          "fixed inset-y-0 left-0 z-40 w-60 shrink-0 border-r border-white/10 bg-[#0c0d12] p-3 transition-transform lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 w-60 shrink-0 border-r border-line bg-panel p-3 transition-transform lg:static lg:translate-x-0",
           navOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="px-2 py-2 text-sm font-semibold tracking-tight">
-          <span className="text-indigo-400">◈</span> Storefront
+        <div className="px-2 py-2">
+          <Brand />
         </div>
         <nav className="mt-2 space-y-0.5">
           {NAV.map((n) => {
@@ -146,40 +159,39 @@ function Shell({ me, onSignOut }: { me: NonNullable<Me>; onSignOut: () => void }
                 key={n.to}
                 href={`#${n.to}`}
                 className={cx(
-                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition",
-                  active ? "bg-indigo-500/15 text-indigo-200" : "text-white/60 hover:bg-white/5 hover:text-white",
+                  "flex items-center gap-2.5 rounded-control px-2.5 py-2 text-sm transition",
+                  active ? "bg-brand/15 text-brand-ink" : "text-ink-muted hover:bg-raised hover:text-ink",
                 )}
               >
-                <span className="w-4 text-center opacity-70">{n.icon}</span>
+                <Icon name={n.icon} className="shrink-0" />
                 {n.label}
               </a>
             );
           })}
         </nav>
-        <div className="absolute inset-x-3 bottom-3 border-t border-white/10 pt-3 text-xs text-white/40">
+        <div className="absolute inset-x-3 bottom-3 border-t border-line pt-3 text-xs text-ink-dim">
           <p className="truncate">{me.email}</p>
           <button
             type="button"
-            className="mt-1 text-white/60 underline-offset-2 hover:underline"
+            className="mt-1 flex items-center gap-1.5 text-ink-muted transition hover:text-ink"
             onClick={async () => {
               await backlex.auth.signOut().catch(() => {});
               onSignOut();
             }}
           >
+            <Icon name="signOut" size={14} />
             Sign out
           </button>
         </div>
       </aside>
-      {navOpen ? <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setNavOpen(false)} /> : null}
+      {navOpen ? <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setNavOpen(false)} /> : null}
 
       <div className="min-w-0 flex-1">
         {/* Mobile: the nav toggle hugs the right edge. */}
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-2 lg:hidden">
-          <span className="text-sm font-semibold">
-            <span className="text-indigo-400">◈</span> Storefront
-          </span>
-          <Button variant="ghost" onClick={() => setNavOpen((v) => !v)}>
-            ☰
+        <div className="flex items-center justify-between border-b border-line px-4 py-2 lg:hidden">
+          <Brand />
+          <Button variant="ghost" onClick={() => setNavOpen((v) => !v)} title="Menu">
+            <Icon name={navOpen ? "close" : "menu"} />
           </Button>
         </div>
         <main className="mx-auto w-full max-w-7xl p-4 sm:p-6">{page}</main>

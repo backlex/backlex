@@ -59,6 +59,8 @@ const joinShaped = (fields: FieldLike[]): FieldLike[] | null => {
  * anything, the collection belongs above the line, not here.
  */
 const REPEATABLE: Record<string, string> = {
+  "ecommerce/product_modifiers":
+    "a slot, not a link: the second row is the SECOND drive bay. A machine with four M.2 bays carries one shared `M.2 SSD` set four times, each row separately labelled, priced and stocked — uniqueness here would force four duplicated option lists that drift apart on the first price change",
   "ecommerce/stock_movements":
     "an append-only ledger: every receipt, sale, count and transfer is its own row against the same (variant, location), and a transfer is deliberately TWO rows",
   "hr/benefit_enrollments":

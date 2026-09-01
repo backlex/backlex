@@ -7,12 +7,30 @@ import {
   type Category,
   categories,
   type Money,
+  type ModifierRule,
+  modifierRules,
+  type ModifierSet,
+  modifierSets,
+  type ModifierValue,
+  modifierValues,
   type OrderItem,
+  type OrderItemOption,
+  orderItemOptions,
   orderItems,
   orders,
   type Product,
+  type ProductModifier,
+  productModifiers,
   products,
 } from "./backlex";
+import {
+  defaultSelection,
+  resolve,
+  type Resolved,
+  type Rule,
+  type Selection,
+  type Slot,
+} from "./configurator";
 
 export function App() {
   // Gate the whole app behind a config check so a missing/wrong `.env` shows
@@ -51,8 +69,37 @@ const STORE_CURRENCY = "USD";
 // Sort modes map directly onto the query builder's `orderBy` argument.
 type Sort = "newest" | "price-asc" | "price-desc";
 type Stats = { count: number; avg: number };
-// The cart is a plain `Map<productId, qty>` held in React state.
-type Cart = Map<string, number>;
+
+/**
+ * One basket line.
+ *
+ * The cart is keyed by line, NOT by product, and that is forced by the model
+ * rather than a preference: two different configurations of the same machine
+ * are two different things to build, two different prices and two different
+ * pick lists. Keying by product id would silently merge them and charge one
+ * price for both.
+ *
+ * `unitPrice` and `optionsTotal` stay apart all the way to `order_items`,
+ * because a line that folded them together can no longer say what the upgrades
+ * cost — which is the first question anybody asks about a configured order.
+ */
+type CartLine = {
+  key: string;
+  productId: string;
+  qty: number;
+  unitPrice: number;
+  optionsTotal: number;
+  configCode: string;
+  /** Slot id → chosen `modifier_values` ids. Written out as option rows at
+   *  checkout, with the labels and amounts snapshotted. */
+  selection: Selection;
+  /** Snapshot of what each choice added, for the cart summary and the rows. */
+  chosen: { slotId: string; choiceId: string; label: string; amount: number }[];
+};
+type Cart = Map<string, CartLine>;
+
+/** The configurator's data for one product, loaded on demand. */
+type Config = { slots: Slot[]; rules: Rule[] };
 
 function Store({ user }: { user: ExampleUser }) {
   const { signOut } = useSession(backlex);
@@ -64,6 +111,10 @@ function Store({ user }: { user: ExampleUser }) {
   const [cart, setCart] = useState<Cart>(new Map());
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Which products have configurable slots at all — one query, so a card can
+  // say "Configure" instead of "Add" without loading every product's options.
+  const [configurable, setConfigurable] = useState<Set<string>>(new Set());
+  const [configuring, setConfiguring] = useState<Product | null>(null);
 
   // `category` is a relation on the template's products (stores a category id),
   // so we load the `categories` collection once and resolve ids → names. The
@@ -160,20 +211,82 @@ function Store({ user }: { user: ExampleUser }) {
     return off;
   }, [refreshStats]);
 
+  // Which products carry slots. `product_modifiers` is small (a handful of rows
+  // per configurable product), so one unfiltered read is cheaper than asking
+  // per card — and it is only used to pick the button's label.
+  useEffect(() => {
+    let live = true;
+    productModifiers
+      .list({ limit: 200, fields: ["product"] })
+      .then((r) => {
+        if (live) setConfigurable(new Set(r.data.map((m) => m.product)));
+      })
+      .catch(() => {
+        // A workspace seeded before the configurator shipped has no such
+        // collection. That is not an error worth a banner — every product just
+        // stays a plain "Add".
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   // ── Cart actions ──────────────────────────────────────────────────────────
-  function addToCart(id: string) {
+  /** Add an unconfigured product — one line, no options. */
+  function addToCart(product: Product) {
     setCart((cur) => {
       const next = new Map(cur);
-      next.set(id, (next.get(id) ?? 0) + 1);
+      const existing = next.get(product.id);
+      next.set(product.id, {
+        key: product.id,
+        productId: product.id,
+        qty: (existing?.qty ?? 0) + 1,
+        unitPrice: amountOf(product.price),
+        optionsTotal: 0,
+        configCode: "",
+        selection: {},
+        chosen: [],
+      });
       return next;
     });
     setConfirmation(null);
   }
-  function setQty(id: string, qty: number) {
+
+  /** Add a configured build. Two builds of one machine are two lines, so the
+   *  key carries the configuration and not just the product. */
+  function addConfigured(product: Product, selection: Selection, r: Resolved) {
+    const key = `${product.id}|${r.code}`;
     setCart((cur) => {
       const next = new Map(cur);
-      if (qty <= 0) next.delete(id);
-      else next.set(id, qty);
+      const existing = next.get(key);
+      next.set(key, {
+        key,
+        productId: product.id,
+        qty: (existing?.qty ?? 0) + 1,
+        unitPrice: amountOf(product.price),
+        optionsTotal: r.optionsTotal,
+        configCode: r.code,
+        selection,
+        chosen: r.adjustments.map((a) => ({
+          slotId: a.slotId,
+          choiceId: a.choiceId,
+          label: a.label,
+          amount: a.amount,
+        })),
+      });
+      return next;
+    });
+    setConfiguring(null);
+    setConfirmation(null);
+  }
+
+  function setQty(key: string, qty: number) {
+    setCart((cur) => {
+      const next = new Map(cur);
+      const line = next.get(key);
+      if (!line) return cur;
+      if (qty <= 0) next.delete(key);
+      else next.set(key, { ...line, qty });
       return next;
     });
   }
@@ -182,15 +295,18 @@ function Store({ user }: { user: ExampleUser }) {
   // price). A product can leave the catalog between add + checkout — filter
   // those out defensively (`noUncheckedIndexedAccess` makes the lookup `| undefined`).
   const cartLines = useMemo(() => {
-    const lines: { product: Product; qty: number }[] = [];
-    for (const [id, qty] of cart) {
-      const product = items.find((p) => p.id === id);
-      if (product) lines.push({ product, qty });
+    const lines: { product: Product; line: CartLine }[] = [];
+    for (const line of cart.values()) {
+      const product = items.find((p) => p.id === line.productId);
+      if (product) lines.push({ product, line });
     }
     return lines;
   }, [cart, items]);
 
-  const cartTotal = cartLines.reduce((sum, l) => sum + amountOf(l.product.price) * l.qty, 0);
+  const cartTotal = cartLines.reduce(
+    (sum, l) => sum + (l.line.unitPrice + l.line.optionsTotal) * l.line.qty,
+    0,
+  );
 
   async function checkout() {
     if (cartLines.length === 0) return;
@@ -211,18 +327,57 @@ function Store({ user }: { user: ExampleUser }) {
       //    trip, not ten. We snapshot `title` + `sku` + `unit_price` so later
       //    catalog edits don't rewrite this order's history. `line_total` is a
       //    computed column — never sent. `order` / `product` carry relation ids.
-      const rows: Partial<OrderItem>[] = cartLines.map((l) => ({
+      //
+      //    `unit_price` is a money field with a sibling `currency` column, so a
+      //    plain number is accepted on WRITE and qualified by `currency`. The
+      //    base and the configured half stay in separate columns; the database
+      //    folds them into `line_total`.
+      const rows: Partial<OrderItem>[] = cartLines.map(({ product, line }) => ({
         order: order.id,
-        product: l.product.id,
-        title: l.product.name,
-        sku: l.product.sku,
-        // A line item has no currency column of its own — the parent order
-        // carries it — so the template stores a bare amount here. Send the
-        // number, not the money object.
-        unit_price: amountOf(l.product.price),
-        qty: l.qty,
+        product: product.id,
+        title: line.configCode ? `${product.name} — ${line.configCode}` : product.name,
+        sku: product.sku,
+        unit_price: line.unitPrice as unknown as Money,
+        options_total: line.optionsTotal as unknown as Money,
+        config_code: line.configCode || undefined,
+        qty: line.qty,
+        currency: STORE_CURRENCY,
       }));
       const res = await orderItems.createMany(rows);
+
+      // 3. The configuration itself, one row per chosen slot, with the label
+      //    and the amount SNAPSHOTTED. `config_code` on the line is a summary;
+      //    this is the record a picker builds from and a refund is argued over.
+      //
+      //    Each batch result carries the `index` of the row that produced it,
+      //    so a line's options attach by index rather than by re-querying —
+      //    which would have to guess which of two identically-priced lines of
+      //    the same product it had found. A row that FAILED still occupies its
+      //    index with `ok: false` and no id, and its options are dropped with
+      //    it rather than being orphaned onto the wrong line.
+      const idByIndex = new Map<number, string>();
+      for (const r of res.data.results) {
+        if (r.ok && r.id) idByIndex.set(r.index, r.id);
+      }
+      const optionRows: Partial<OrderItemOption>[] = [];
+      cartLines.forEach(({ line }, i) => {
+        const lineId = idByIndex.get(i);
+        if (!lineId) return;
+        line.chosen.forEach((c, position) => {
+          optionRows.push({
+            line: lineId,
+            modifier: c.slotId,
+            value: c.choiceId,
+            label: c.label,
+            qty: 1,
+            price_adjustment: c.amount as unknown as Money,
+            currency: STORE_CURRENCY,
+            position: position + 1,
+          });
+        });
+      });
+      if (optionRows.length > 0) await orderItemOptions.createMany(optionRows);
+
       setCart(new Map());
       setConfirmation(
         `Order ${order.id.slice(0, 8)} placed — ${res.data.succeeded} item(s), ${formatMoney(order.total)}.`,
@@ -308,13 +463,282 @@ function Store({ user }: { user: ExampleUser }) {
               key={p.id}
               product={p}
               categoryName={p.category ? catName.get(p.category) : undefined}
-              onAdd={() => addToCart(p.id)}
+              configurable={configurable.has(p.id)}
+              onAdd={() => (configurable.has(p.id) ? setConfiguring(p) : addToCart(p))}
             />
           ))}
         </ul>
 
         {/* Cart sidebar. */}
         <CartPanel lines={cartLines} total={cartTotal} onSetQty={setQty} onCheckout={checkout} />
+      </div>
+
+      {configuring && (
+        <ConfiguratorDialog
+          product={configuring}
+          onClose={() => setConfiguring(null)}
+          onAdd={addConfigured}
+          onError={setError}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Configurator ────────────────────────────────────────────────────────────
+/**
+ * The screen a configure-to-order product is bought through.
+ *
+ * All it does is render what `resolve()` answers: which choices are blocked,
+ * which slots are hidden, what is still missing, and what the build costs. The
+ * rules are never spelled out here as conditions — they live in
+ * `modifier_rules` as data, so the admin, a second storefront and a
+ * server-side check all read the same ones. A rule written into a form is a
+ * rule the next channel silently does not have.
+ */
+function ConfiguratorDialog({
+  product,
+  onClose,
+  onAdd,
+  onError,
+}: {
+  product: Product;
+  onClose: () => void;
+  onAdd: (product: Product, selection: Selection, resolved: Resolved) => void;
+  onError: (message: string) => void;
+}) {
+  const [config, setConfig] = useState<Config | null>(null);
+  const [selection, setSelection] = useState<Selection>({});
+
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        // Four reads, not one per slot: the slots for this product, then the
+        // sets and choices they name. A configurator that fetched per slot
+        // would issue a request per drive bay.
+        const slotRows = await productModifiers.list({
+          filter: { product: { _eq: product.id } },
+          sort: "position",
+          limit: 100,
+        });
+        const setIds = [...new Set(slotRows.data.map((s) => s.modifier_set))];
+        if (setIds.length === 0) {
+          if (live) setConfig({ slots: [], rules: [] });
+          return;
+        }
+        const [setRows, valueRows, ruleRows] = await Promise.all([
+          modifierSets.list({ filter: { id: { _in: setIds } }, limit: 100 }),
+          modifierValues.list({
+            filter: { modifier_set: { _in: setIds }, active: { _eq: true } },
+            sort: "position",
+            limit: 200,
+          }),
+          modifierRules.list({
+            filter: { when_modifier: { _in: slotRows.data.map((s) => s.id) } },
+            limit: 200,
+          }),
+        ]);
+
+        const setById = new Map<string, ModifierSet>(setRows.data.map((s) => [s.id, s]));
+        const choicesBySet = new Map<string, ModifierValue[]>();
+        for (const v of valueRows.data) {
+          const list = choicesBySet.get(v.modifier_set) ?? [];
+          list.push(v);
+          choicesBySet.set(v.modifier_set, list);
+        }
+
+        const slots: Slot[] = slotRows.data.map((s: ProductModifier) => {
+          const set = setById.get(s.modifier_set);
+          return {
+            id: s.id,
+            // The slot's own label wins — that is what makes four bays over one
+            // set readable as "Drive bay 1…4" rather than "M.2 SSD" four times.
+            label: s.label || set?.name || "Option",
+            is_required: s.is_required === true,
+            maxSelect: set?.max_select ?? 1,
+            setCode: set?.code ?? null,
+            position: s.position ?? null,
+            choices: (choicesBySet.get(s.modifier_set) ?? []).map((v) => ({
+              id: v.id,
+              label: v.label,
+              code: v.code ?? null,
+              adjustment_type: v.adjustment_type ?? "fixed_amount",
+              price_adjustment: v.price_adjustment ?? null,
+              adjustment_percent: v.adjustment_percent ?? null,
+              is_default: v.is_default ?? false,
+              active: v.active ?? true,
+              position: v.position ?? null,
+            })),
+          };
+        });
+        const rules: Rule[] = ruleRows.data.map((r: ModifierRule) => ({
+          id: r.id,
+          rule_type: r.rule_type,
+          when_modifier: r.when_modifier,
+          when_value: r.when_value ?? null,
+          then_modifier: r.then_modifier ?? null,
+          then_value: r.then_value ?? null,
+          message: r.message ?? null,
+          active: r.active ?? true,
+        }));
+
+        if (!live) return;
+        setConfig({ slots, rules });
+        setSelection(defaultSelection(slots));
+      } catch (err) {
+        if (live) onError(err instanceof BacklexError ? err.message : String(err));
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [product.id, onError]);
+
+  const base = amountOf(product.price);
+  const resolved = useMemo(
+    () => (config ? resolve(config.slots, config.rules, selection, base) : null),
+    [config, selection, base],
+  );
+
+  function pick(slot: Slot, choiceId: string) {
+    setSelection((cur) => {
+      const on = cur[slot.id] ?? [];
+      if (slot.maxSelect <= 1) {
+        // Single-choice: clicking the current pick clears it, so a slot that is
+        // not required can be un-answered without a "none" option nobody added.
+        return { ...cur, [slot.id]: on[0] === choiceId ? [] : [choiceId] };
+      }
+      const next = on.includes(choiceId) ? on.filter((c) => c !== choiceId) : [...on, choiceId];
+      return { ...cur, [slot.id]: next };
+    });
+  }
+
+  return (
+    // A plain fixed overlay — the example deliberately has no component kit, so
+    // what is worth copying here is the data flow, not the dialog.
+    <div className="fixed inset-0 z-10 flex items-end justify-center bg-neutral-900/40 p-0 sm:items-center sm:p-6">
+      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-xl bg-white shadow-xl sm:rounded-xl">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-neutral-200 p-4">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold">{product.name}</h2>
+            <p className="text-xs text-neutral-500">
+              {formatMoney(product.price)} base · configure below
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg border border-neutral-300 px-2 py-1 text-xs"
+          >
+            Close
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+          {!config && <p className="text-sm text-neutral-400">Loading options…</p>}
+          {config?.slots.length === 0 && (
+            <p className="text-sm text-neutral-400">This product has no configurable options.</p>
+          )}
+          {config?.slots.map((slot) => {
+            if (resolved?.hidden.has(slot.id)) return null;
+            const on = selection[slot.id] ?? [];
+            return (
+              <fieldset key={slot.id} className="space-y-2">
+                <legend className="text-xs font-medium text-neutral-700">
+                  {slot.label}
+                  {(slot.is_required || resolved?.required.has(slot.id)) && (
+                    <span className="ml-1 text-red-500">*</span>
+                  )}
+                  {slot.maxSelect > 1 && (
+                    <span className="ml-1 font-normal text-neutral-400">
+                      (up to {slot.maxSelect})
+                    </span>
+                  )}
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {slot.choices.map((choice) => {
+                    const blocked = resolved?.blocked.has(choice.id) ?? false;
+                    const picked = on.includes(choice.id);
+                    const delta =
+                      choice.adjustment_type === "percent"
+                        ? (base * (choice.adjustment_percent ?? 0)) / 100
+                        : (choice.price_adjustment?.amount ?? 0);
+                    return (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        // A blocked choice stays VISIBLE and disabled rather
+                        // than disappearing: a shopper who cannot see the
+                        // option they wanted cannot work out what to change.
+                        disabled={blocked}
+                        onClick={() => pick(slot, choice.id)}
+                        title={blocked ? "Not available with the rest of this build" : undefined}
+                        className={`rounded-lg border px-3 py-1.5 text-xs ${
+                          blocked
+                            ? "cursor-not-allowed border-neutral-200 text-neutral-300 line-through"
+                            : picked
+                              ? "border-neutral-900 bg-neutral-900 text-white"
+                              : "border-neutral-300 text-neutral-700 hover:border-neutral-400"
+                        }`}
+                      >
+                        {choice.label}
+                        {choice.adjustment_type === "fixed_price" ? (
+                          <span className="ml-1 opacity-70">
+                            = {formatAmount(choice.price_adjustment?.amount ?? 0)}
+                          </span>
+                        ) : delta !== 0 ? (
+                          <span className="ml-1 opacity-70">
+                            {delta > 0 ? "+" : ""}
+                            {formatAmount(delta)}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+
+        <footer className="shrink-0 space-y-2 border-t border-neutral-200 p-4">
+          {resolved && resolved.adjustments.length > 0 && (
+            <ul className="space-y-1 text-xs text-neutral-500">
+              {resolved.adjustments.map((a) => (
+                <li key={a.choiceId} className="flex justify-between gap-2">
+                  <span className="truncate">{a.label}</span>
+                  <span>
+                    {a.amount > 0 ? "+" : ""}
+                    {formatAmount(a.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* Every unmet rule, named. A configurator that only disables its
+              button leaves the shopper hunting for what is wrong. */}
+          {resolved?.violations.map((v) => (
+            <p key={v} className="text-xs text-amber-700">
+              {v}
+            </p>
+          ))}
+          <div className="flex items-center justify-between text-sm font-medium">
+            <span>Total</span>
+            <span>{formatAmount(resolved?.total ?? base)}</span>
+          </div>
+          {resolved?.code && (
+            <p className="truncate font-mono text-[11px] text-neutral-400">{resolved.code}</p>
+          )}
+          <button
+            type="button"
+            disabled={!resolved?.orderable}
+            onClick={() => resolved && onAdd(product, selection, resolved)}
+            className={primaryBtnCls}
+          >
+            Add to cart
+          </button>
+        </footer>
       </div>
     </div>
   );
@@ -451,10 +875,14 @@ function ProductComposer({
 function ProductCard({
   product,
   categoryName,
+  configurable,
   onAdd,
 }: {
   product: Product;
   categoryName?: string;
+  /** Has configurable slots — the button opens the configurator instead of
+   *  dropping a fixed line into the cart. */
+  configurable?: boolean;
   onAdd: () => void;
 }) {
   // `stock` totals the product's inventory levels, kept by the server — so
@@ -495,7 +923,7 @@ function ProductCard({
           disabled={out}
           className={primaryBtnCls + " mt-auto py-1.5 text-xs"}
         >
-          {out ? "Out of stock" : "Add to cart"}
+          {out ? "Out of stock" : configurable ? "Configure" : "Add to cart"}
         </button>
       </div>
     </li>
@@ -537,9 +965,9 @@ function CartPanel({
   onSetQty,
   onCheckout,
 }: {
-  lines: { product: Product; qty: number }[];
+  lines: { product: Product; line: CartLine }[];
   total: number;
-  onSetQty: (id: string, qty: number) => void;
+  onSetQty: (key: string, qty: number) => void;
   onCheckout: () => void;
 }) {
   return (
@@ -549,19 +977,41 @@ function CartPanel({
         <p className="text-sm text-neutral-400">Empty — add a product.</p>
       ) : (
         <ul className="space-y-2">
-          {lines.map(({ product, qty }) => (
-            <li key={product.id} className="flex items-center justify-between gap-2 text-sm">
-              <span className="min-w-0 flex-1 truncate">{product.name}</span>
-              <input
-                className="w-14 rounded border border-neutral-300 px-1 py-0.5 text-right text-xs"
-                type="number"
-                min={0}
-                value={qty}
-                onChange={(e) => onSetQty(product.id, Number(e.target.value) || 0)}
-              />
-              <span className="w-16 text-right text-neutral-500">
-                {formatAmount(product.price.amount * qty, product.price.currency)}
-              </span>
+          {lines.map(({ product, line }) => (
+            <li key={line.key} className="space-y-1 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 flex-1 truncate">{product.name}</span>
+                <input
+                  className="w-14 rounded border border-neutral-300 px-1 py-0.5 text-right text-xs"
+                  type="number"
+                  min={0}
+                  value={line.qty}
+                  onChange={(e) => onSetQty(line.key, Number(e.target.value) || 0)}
+                />
+                <span className="w-16 text-right text-neutral-500">
+                  {formatAmount(
+                    (line.unitPrice + line.optionsTotal) * line.qty,
+                    product.price.currency,
+                  )}
+                </span>
+              </div>
+              {/* The configuration, shown back. A basket that says only "Laptop
+                  ×1" cannot be checked by the person buying it. */}
+              {line.chosen.length > 0 && (
+                <ul className="pl-2 text-xs text-neutral-400">
+                  {line.chosen.map((c) => (
+                    <li key={c.choiceId} className="truncate">
+                      {c.label}
+                      {c.amount !== 0 && (
+                        <span className="ml-1">
+                          {c.amount > 0 ? "+" : ""}
+                          {formatAmount(c.amount, product.price.currency)}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

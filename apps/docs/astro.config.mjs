@@ -96,6 +96,7 @@ export default defineConfig({
           label: "Data",
           items: [
             { slug: "templates" },
+            { slug: "product-configurator" },
             { slug: "querying" },
             { slug: "permissions" },
             { slug: "hashed-fields" },

@@ -315,6 +315,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Testing (3-layer pyramid + CI gates) | `docs/testing.md` |
 | Service map (route + service inventory) | `docs/service-map.md` |
 | Schema templates (catalog + groups + bundles + extract) | `docs/templates.md` |
+| Product configurator (configure-to-order, option sets, rules) | `docs/product-configurator.md` |
 | Permissions DSL | `docs/permissions.md` |
 | Row-level security (DSL → Postgres policies) | `docs/rls.md` |
 | Audit logs + sensitive-read auditing | `docs/audit-logs.md` |

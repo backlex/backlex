@@ -42,6 +42,10 @@ export type SchemaField = {
   required?: boolean;
   nullable?: boolean;
   unique?: boolean;
+  /** The column's declared default, as the schema API returns it. Typed as
+   *  `unknown` because it is whatever the column holds — a boolean for a
+   *  toggle, a string for a dropdown, a number for an integer. */
+  default?: unknown;
   /** Value is stored per-locale in the translations sidecar — the editor
    *  renders one input per workspace language and sends a `{locale: value}` map. */
   localized?: boolean;
@@ -193,13 +197,34 @@ const NON_LOCALIZABLE_TYPES = new Set(["json", "uuid", "hash", "relation_many"])
 export const canLocalize = (f: { type?: string; interface?: string }): boolean =>
   !!f.type && !NON_LOCALIZABLE_TYPES.has(f.type);
 
+/**
+ * A boolean column's declared default.
+ *
+ * Tolerates the string form because a default survives a round trip through
+ * DDL and back, and `"true"` / `"1"` are what a hand-edited column can hold —
+ * `add-field.tsx` already reads it the same way.
+ */
+const boolDefault = (f: SchemaField): boolean => {
+  const d = f.default;
+  if (typeof d === "boolean") return d;
+  if (typeof d === "string") return d === "true" || d === "1";
+  if (typeof d === "number") return d === 1;
+  return false;
+};
+
 const blankFor = (f: SchemaField): unknown => {
   // Localized fields hold a per-locale `{locale: value}` map regardless of type.
   if (f.localized) return {};
   if (isArrayInterface(f)) return [];
   switch (f.type) {
     case "boolean":
-      return false;
+      // Honour the declared default. A flat `false` here is what made every
+      // `flag()` column arrive switched OFF: the submit path writes a boolean
+      // unconditionally (`payload[f.name] = !!raw`), so an untouched toggle
+      // sent an explicit `false` that overwrote the server's `default: true`.
+      // The row was created with a 201 and was invisible to every picker —
+      // and with `retire` on the column, unreferenceable as well.
+      return boolDefault(f);
     case "json":
       return "";
     case "integer":

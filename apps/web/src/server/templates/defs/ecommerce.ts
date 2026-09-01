@@ -39,13 +39,37 @@ import { bool, C, ch, computedMoneyIn, computedNum, date, email, flag, flow, geo
  * variant costs on a given price list, in a given currency, at a given
  * quantity — the one shape that covers wholesale, sales, and quantity breaks
  * without three mechanisms.
+ *
+ * **A configured product is not a variant, and must not become one.** A machine
+ * with four drive bays, three memory options and six finishes is six figures of
+ * combinations; materialising them as `product_variants` rows is not a large
+ * catalog, it is a broken one. So the axes that change what a unit COSTS and
+ * what goes IN it live on `modifier_sets` (the axis, defined once and shared),
+ * `product_modifiers` (a slot on one product — four bays are four slots over
+ * one set) and `modifier_values` (the choices, with the price and the component
+ * each one consumes). `product_variants` stays what it always was: the few
+ * axes that are genuinely stocked as distinct units.
+ *
+ * That split is what every configure-to-order seller keeps. A Tesla is a
+ * comma-delimited list of option codes against one model, not a pre-built SKU;
+ * an Apple CTO Mac is a base model plus a generated `Z…` part number, while the
+ * handful of shelf configurations are the only materialised ones. SAP calls the
+ * same shape one configurable material with characteristics and a super BOM.
+ *
+ * **The configuration is data on the line, not a lookup.** `cart_item_options`
+ * / `order_item_options` hold one row per configured slot, with the label and
+ * the adjustment SNAPSHOTTED, plus `config_code` as the compact form. Before
+ * these existed the chosen options were free text in a `tags` column, which
+ * meant the price could not be recomputed, "how many bought the upgrade" could
+ * not be answered, and the component a choice consumed could not be taken out
+ * of stock — `modifier_values` was referenced by nothing at all.
  */
 export const ecommerce: SchemaTemplate = {
   id: "ecommerce",
   label: "E-commerce",
   groups: ["Catalog", "Channels & pricing", "Inventory", "Customers", "Orders", "Post-purchase", "Marketing", "Storefront", "Shipping & tax"],
   description:
-    "A full commerce model: products with typed attributes, options, variants and non-stocked modifiers; sales channels with per-channel publication, price lists, quantity breaks and multi-currency; discounts and shipping rates priced and scoped per channel; multi-location inventory with reservations and a movement ledger; carts with lines, orders with a lifecycle separate from payment and delivery, consignments for pickup and split shipments, per-line tax, coded and automatic promotions, gift-card ledgers, returns/exchanges/claims, subscriptions — plus the storefront itself: pages, menus, redirects and content translations.",
+    "A full commerce model: products with typed attributes, options and variants; configure-to-order modifiers with shared option sets, compatibility rules, per-choice price adjustments and the components they consume; add-on products bought alongside; sales channels with per-channel publication, price lists, quantity breaks and multi-currency; discounts and shipping rates priced and scoped per channel; multi-location inventory with reservations and a movement ledger; carts with lines, orders with a lifecycle separate from payment and delivery, consignments for pickup and split shipments, per-line tax, coded and automatic promotions, gift-card ledgers, returns/exchanges/claims, subscriptions — plus the storefront itself: pages, menus, redirects and content translations.",
   collections: [
     {
       slug: "media", group: "Catalog", singular: "Media", plural: "Media",
@@ -768,40 +792,178 @@ export const ecommerce: SchemaTemplate = {
       ],
     },
     {
-      // BigCommerce's modifiers — the only one of the three that models this,
-      // and a real gap in the other two. A modifier changes what happens to the
-      // unit (an engraving, a gift message, an extended warranty) without
-      // changing WHICH unit leaves the shelf, so it must not create a variant
-      // and must not hold stock.
-      slug: "product_modifiers", group: "Catalog", singular: "Modifier", plural: "Modifiers", defaultSort: "position",
+      // The configurable axis itself, defined ONCE and attached to as many
+      // products as carry it. BigCommerce calls this a shared option, SAP a
+      // characteristic; both exist because a per-product option list is the
+      // shape that makes a fifty-model range unmaintainable — "32 GB RAM costs
+      // 8 000 more" would be edited in fifty places, and the fiftieth would be
+      // missed.
+      slug: "modifier_sets", group: "Catalog", singular: "Modifier set", plural: "Modifier sets", defaultSort: "name",
       fields: [
-        hint("product_modifiers_scope", "A modifier never creates a variant and never holds stock — it changes the price, the weight or the instructions attached to a unit."),
-        rel("product", "products", { required: true }),
+        hint("modifier_sets_shared", "Defined once, attached to any number of products. Editing a choice here moves every product that carries the set."),
+        ...half(text("name", { required: true }), text("code", { unique: true, label: "Code", description: "Short token this set contributes to a line's configuration code — RAM, SSD1, CASE." })),
         ...half(
-          text("name", { required: true }),
-          select("modifier_type", [ch("checkbox", C.blue), ch("text", C.gray), ch("multiline_text", C.gray, "Long text"), ch("number", C.purple), ch("date", C.amber), ch("file", C.slate), ch("choice", C.teal, "Choice list")], { default: "choice", label: "Kind" }),
+          select("input_type", [ch("choice", C.teal, "Choice list"), ch("multi_choice", C.green, "Multiple choice"), ch("checkbox", C.blue, "Checkbox"), ch("text", C.gray, "Short text"), ch("multiline_text", C.gray, "Long text"), ch("number", C.purple, "Number"), ch("date", C.amber, "Date"), ch("file", C.slate, "File")], { default: "choice", label: "Kind" }),
+          position(),
         ),
-        ...half(bool("is_required", { default: false, label: "Required" }), position("product")),
+        // How many of its choices one line may hold. `choice` is 0..1 and
+        // `multi_choice` is what these two are for — four M.2 slots are four
+        // SETS, not one set picked four times, because each slot prices and
+        // stocks independently.
+        ...half(int("min_select", { default: 0, validation: { min: 0 }, label: "Min choices" }), int("max_select", { default: 1, validation: { min: 1 }, label: "Max choices" })),
         notes("help_text", { label: "Help text" }),
+        flag("active"),
       ],
       samples: [
-        { product: { ref: "products:0" }, name: "Gift message", modifier_type: "multiline_text", is_required: false, position: 1, help_text: "Printed on a card and placed in the parcel." },
-        { product: { ref: "products:1" }, name: "Monogram", modifier_type: "text", is_required: false, position: 1, help_text: "Up to three letters, embroidered on the front pocket." },
+        { name: "Gift message", code: "GIFT", input_type: "multiline_text", min_select: 0, max_select: 1, position: 1, active: true, help_text: "Printed on a card and placed in the parcel." },
+        { name: "Monogram thread", code: "THRD", input_type: "choice", min_select: 0, max_select: 1, position: 2, active: true, help_text: "Up to three letters, embroidered on the front pocket." },
+        { name: "Extended warranty", code: "WTY", input_type: "choice", min_select: 0, max_select: 1, position: 3, active: true },
       ],
     },
     {
-      // The choices of a `choice` modifier, with BigCommerce's adjusters: what
-      // picking this option does to the price and the weight.
-      slug: "modifier_values", group: "Catalog", singular: "Modifier value", plural: "Modifier values", defaultSort: "position",
+      // The choices of a set, with BigCommerce's adjusters — what picking this
+      // does to the price and the weight — and the one thing BigCommerce's
+      // modifiers deliberately cannot do, which this model needs: point at a
+      // real stocked unit.
+      //
+      // The old comment here said a modifier "must not hold stock". That is
+      // true of an engraving and false of a 64 GB memory module, and the
+      // difference is not the mechanism, it is whether the choice consumes
+      // something somebody has to buy. `component_variant` is how a choice
+      // says so: the configured product still leaves as one line, and the
+      // component's own `inventory_levels` is what runs out.
+      slug: "modifier_values", group: "Catalog", singular: "Modifier choice", plural: "Modifier choices", defaultSort: "position",
+      // Fourteen storage columns — a choice carries what it is, what it costs
+      // and what it consumes, and those are three different conversations.
+      fields: tabbed(
+        sec("Choice", [
+          // Labelled, because a column literally named `label` renders as the
+          // word "label" beside a box and tells an operator nothing.
+          ...half(rel("modifier_set", "modifier_sets", { required: true, label: "In set" }), text("label", { required: true, label: "Choice label" })),
+          ...half(text("code", { label: "Code", description: "Contributes to the configuration code — 32GB, 1TB, BLK." }), position("modifier_set")),
+          ...half(bool("is_default", { default: false, label: "Default" }), flag("active")),
+        ]),
+        sec("Price", [
+          hint("modifier_values_adjust", "A fixed amount adds to the line's unit price. A percent adds that share of the base. A fixed price replaces the base outright."),
+          select("adjustment_type", [ch("fixed_amount", C.green, "Fixed amount"), ch("percent", C.amber, "Percent of base"), ch("fixed_price", C.blue, "Fixed price")], { default: "fixed_amount", label: "Adjustment" }),
+          ...half(
+            moneyIn("price_adjustment", { validation: {}, label: "Price adjustment", conditions: [when("adjustment_type", "_eq", "percent", "hidden")] }),
+            select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", conditions: [when("adjustment_type", "_eq", "percent", "hidden")] }),
+          ),
+          ...half(
+            // Capped at 100 like every other percentage column here. A choice
+            // that more than doubles the base is not an uplift, it is a
+            // different price — `fixed_price` says so without a 250% figure
+            // that prints as "250%" and reads as a typo.
+            num("adjustment_percent", { validation: { min: 0, max: 100 }, label: "Adjustment (%)", format: { style: "percent100", precision: 2 }, conditions: [when("adjustment_type", "_neq", "percent", "hidden")] }),
+            num("weight_adjustment", { label: "Weight adjustment" }),
+          ),
+        ]),
+        sec("Fulfillment", [
+          hint("modifier_values_component", "Leave the component empty for a choice that consumes nothing — an engraving, a gift note. Name one for a choice that ships a part somebody has to have in stock."),
+          ...half(rel("component_variant", "product_variants", { label: "Component" }), int("consumes_qty", { default: 1, validation: { min: 0 }, label: "Consumes" })),
+          text("sku_suffix", { label: "SKU suffix", description: "Appended to the built unit's SKU, the way a configure-to-order part number is assembled." }),
+        ]),
+      ),
+      samples: [
+        { modifier_set: { ref: "modifier_sets:1" }, label: "Gold thread", code: "GOLD", adjustment_type: "fixed_amount", price_adjustment: 5, position: 1, is_default: false, active: true, consumes_qty: 1 },
+        { modifier_set: { ref: "modifier_sets:1" }, label: "White thread", code: "WHT", adjustment_type: "fixed_amount", price_adjustment: 0, position: 2, is_default: true, active: true, consumes_qty: 1 },
+        { modifier_set: { ref: "modifier_sets:2" }, label: "2 years", code: "2Y", adjustment_type: "percent", adjustment_percent: 10, position: 1, is_default: false, active: true, consumes_qty: 0 },
+      ],
+    },
+    {
+      // A product carries a set as a SLOT. Deliberately not unique on
+      // (product, set): a machine with four M.2 bays is four rows pointing at
+      // one "M.2 SSD" set, each with its own label and its own choice, which
+      // is the case a per-product option list cannot express at all without
+      // four duplicated lists.
+      slug: "product_modifiers", group: "Catalog", singular: "Modifier", plural: "Modifiers", defaultSort: "position",
       fields: [
-        ...half(rel("modifier", "product_modifiers", { required: true }), text("label", { required: true })),
-        ...half(moneyIn("price_adjustment", { validation: {}, label: "Price adjustment" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
-        ...half(num("weight_adjustment", { label: "Weight adjustment" }), position("modifier")),
-        bool("is_default", { default: false, label: "Default" }),
+        hint("product_modifiers_scope", "A slot on this product. Attach the same set more than once when the product has more than one of it — four drive bays are four slots over one set."),
+        ...half(rel("product", "products", { required: true }), rel("modifier_set", "modifier_sets", { required: true, label: "Set" })),
+        ...half(text("label", { label: "Label", description: "Overrides the set's name here — \"SSD slot 2\". Leave empty to use the set's own name." }), position("product")),
+        ...half(bool("is_required", { default: false, label: "Required" }), rel("default_value", "modifier_values", { label: "Default choice" })),
+        notes("help_text", { label: "Help text" }),
       ],
       samples: [
-        { modifier: { ref: "product_modifiers:1" }, label: "Gold thread", price_adjustment: 5, position: 1, is_default: false },
-        { modifier: { ref: "product_modifiers:1" }, label: "White thread", price_adjustment: 0, position: 2, is_default: true },
+        { product: { ref: "products:0" }, modifier_set: { ref: "modifier_sets:0" }, is_required: false, position: 1 },
+        { product: { ref: "products:1" }, modifier_set: { ref: "modifier_sets:1" }, is_required: false, position: 1 },
+        { product: { ref: "products:1" }, modifier_set: { ref: "modifier_sets:2" }, is_required: false, position: 2 },
+      ],
+    },
+    {
+      // The constraint layer, and the reason a configurator is not a form.
+      //
+      // Every industrial configurator keeps its rules as DATA and lets an
+      // engine answer "what is still selectable" — Renault's range is ~10^21
+      // configurations and is solved by knowledge compilation, Configit
+      // compiles the whole valid space to a decision diagram so a click is a
+      // lookup rather than a re-solve. At a catalog's scale the same rules
+      // evaluate directly in milliseconds; what does NOT survive is spelling
+      // them as branches in a storefront, where every channel re-implements
+      // them and they drift apart.
+      //
+      // The vocabulary is CPQ's, narrowed to what a store can enforce:
+      // `requires` / `excludes` / `hides` are what grey a choice out,
+      // `sets_default` pre-selects, `validation` refuses the build outright.
+      // The rule's product is `when_modifier`'s product — it is not repeated
+      // here, because a second copy is a second thing that can disagree.
+      slug: "modifier_rules", group: "Catalog", singular: "Modifier rule", plural: "Modifier rules", defaultSort: "position",
+      fields: stacked(
+        sec("Rule", [
+          hint("modifier_rules_shape", "Reads as one sentence: when this choice is picked, then that one is required, blocked, hidden, defaulted, or the build is refused."),
+          ...half(
+            // All five carry a label or none does — a dropdown that mixes
+            // "Sets default" with a bare `hides` reads as two half-finished
+            // lists, and the filter chips above the table show the same text.
+            select("rule_type", [ch("requires", C.green, "Requires"), ch("excludes", C.red, "Excludes"), ch("hides", C.slate, "Hides"), ch("sets_default", C.blue, "Sets default"), ch("validation", C.amber, "Refuses the build")], { default: "excludes", label: "Effect" }),
+            position("when_modifier"),
+          ),
+          ...half(flag("active"), text("message", { label: "Message", description: "Shown when the rule blocks a build. Say what to change, not that it is invalid." })),
+        ]),
+        sec("When", [
+          ...half(rel("when_modifier", "product_modifiers", { required: true, label: "Slot" }), rel("when_value", "modifier_values", { label: "Is choice", description: "Leave empty to mean \"any choice in this slot\"." })),
+        ]),
+        sec("Then", [
+          ...half(rel("then_modifier", "product_modifiers", { label: "Slot" }), rel("then_value", "modifier_values", { label: "Choice", description: "Leave empty to mean the whole slot." })),
+        ]),
+      ),
+      samples: [
+        { rule_type: "excludes", when_modifier: { ref: "product_modifiers:1" }, when_value: { ref: "modifier_values:0" }, then_modifier: { ref: "product_modifiers:2" }, then_value: { ref: "modifier_values:2" }, active: true, position: 1, message: "Gold thread is not covered by the extended warranty." },
+      ],
+    },
+    {
+      // An add-on is a SEPARATE product bought alongside — a keyboard, a mouse,
+      // a bag. It is not a modifier and the difference is not cosmetic: a
+      // modifier changes the unit, an add-on IS a unit, with its own SKU, its
+      // own stock, its own tax class and its own return. Shopify's bundles
+      // settle it the same way — the order's lines are the components, each
+      // carrying a reference back to the parent line.
+      slug: "product_addons", group: "Catalog", singular: "Add-on", plural: "Add-ons", defaultSort: "position",
+      fields: stacked(
+        sec("Offer", [
+          hint("product_addons_line", "An add-on becomes its own order line pointing back at the line it was bought with, so it keeps its own SKU, stock and return path."),
+          // One offer per (product, add-on). A second row is not a second
+          // offer, it is the same keyboard listed twice in the configurator at
+          // two prices, with no rule for which one wins. A shopper who may pick
+          // among the add-on's variants gets ONE row with `addon_variant` empty.
+          ...half(rel("product", "products", { required: true, label: "On product" }), rel("addon_product", "products", { required: true, label: "Add-on", uniqueWith: ["product"] })),
+          ...half(rel("addon_variant", "product_variants", { label: "Add-on variant", description: "Pin one variant, or leave empty to let the shopper pick." }), text("group_label", { label: "Group", description: "Groups add-ons in the configurator — Accessories, Peripherals." })),
+          ...half(int("max_qty", { default: 1, validation: { min: 1 }, label: "Max quantity" }), bool("is_default", { default: false, label: "Pre-selected" })),
+          ...half(flag("active"), position("product")),
+        ]),
+        sec("Price", [
+          hint("product_addons_price", "List price sells it at whatever it costs on its own. The other two are what makes it a bundle — a set price, or a share off, only when bought here."),
+          select("pricing", [ch("list_price", C.gray, "List price"), ch("fixed", C.blue, "Fixed price"), ch("discount_percent", C.green, "Percent off")], { default: "list_price", label: "Priced at" }),
+          ...half(
+            moneyIn("price", { validation: {}, label: "Bundle price", conditions: [when("pricing", "_neq", "fixed", "hidden")] }),
+            select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", conditions: [when("pricing", "_neq", "fixed", "hidden")] }),
+          ),
+          num("discount_percent", { validation: { min: 0, max: 100 }, label: "Percent off", format: { style: "percent100", precision: 2 }, conditions: [when("pricing", "_neq", "discount_percent", "hidden")] }),
+        ]),
+      ),
+      samples: [
+        { product: { ref: "products:0" }, addon_product: { ref: "products:1" }, group_label: "Accessories", pricing: "discount_percent", discount_percent: 20, max_qty: 1, is_default: false, active: true, position: 1 },
       ],
     },
     {
@@ -1282,13 +1444,59 @@ export const ecommerce: SchemaTemplate = {
         ]),
         sec("Amounts", [
           ...half(moneyIn("unit_price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
-          ...half(bool("gift_wrap", { default: false, label: "Gift wrap" }), tags("selected_options", { label: "Selected options", description: "The modifier choices on this line, as name/value pairs." })),
+          // The configured half of the price, kept apart from the base so a
+          // line can always say what the options cost — an add-to-cart that
+          // folded them into `unit_price` leaves no way to show the breakdown
+          // back, or to reprice one option without re-deriving the whole line.
+          ...half(moneyIn("options_total", { validation: {}, label: "Options total" }), bool("gift_wrap", { default: false, label: "Gift wrap" })),
+        ]),
+        sec("Configuration", [
+          // A configured line's identity, in the shape every configure-to-order
+          // seller uses: Tesla stores a vehicle's build as a comma-delimited
+          // list of option codes, Apple mints a `Z…` part number for a CTO Mac.
+          // The codes are the compact record; `cart_item_options` is the
+          // itemisation the codes stand for.
+          ...half(text("config_code", { label: "Configuration code", description: "Composed from the chosen codes — TEE/GOLD/2Y. What the picker and the build sheet read." }), parent("cart_items", { label: "Bought with", description: "Set on an add-on line, naming the line it was added to." })),
         ]),
       ),
       samples: [
-        { cart: { ref: "carts:0" }, product: { ref: "products:0" }, variant: { ref: "product_variants:1" }, title: "Classic Tee — M / Black", sku: "TEE-001-M-BLK", qty: 1, unit_price: 25 },
-        { cart: { ref: "carts:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, title: "Canvas Tote", sku: "TOTE-001-NAT", qty: 2, unit_price: 18 },
+        { cart: { ref: "carts:0" }, product: { ref: "products:0" }, variant: { ref: "product_variants:1" }, title: "Classic Tee — M / Black", sku: "TEE-001-M-BLK", qty: 1, unit_price: 25, options_total: 0 },
+        { cart: { ref: "carts:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, title: "Canvas Tote", sku: "TOTE-001-NAT", qty: 2, unit_price: 18, options_total: 0 },
       ],
+    },
+    {
+      // What the shopper actually picked, one row per slot — and the table
+      // whose absence made the modifier system decorative. A chosen option
+      // used to be free text on the line, which cannot be re-priced, cannot be
+      // counted ("how many took the 64 GB?"), and cannot take a component's
+      // stock down, because none of it referenced anything.
+      slug: "cart_item_options", group: "Orders", singular: "Line option", plural: "Line options", defaultSort: "position",
+      // Sectioned like `order_item_options`, which is the row this one becomes
+      // at checkout — two shapes a person reads side by side should not be laid
+      // out differently.
+      fields: stacked(
+        sec("Choice", [
+          hint("cart_item_options_shape", "One row per configured slot. The label and the adjustment are snapshots — a catalog edit must not silently reprice a basket somebody is looking at."),
+          ...half(rel("line", "cart_items", { required: true }), rel("modifier", "product_modifiers", { required: true, label: "Slot" })),
+          // Empty for a slot whose kind has no choice list — a gift message, a
+          // monogram, a number. `value_text` is the answer in that case, and one
+          // of the two is always the thing the picker reads.
+          //
+          // The rule is per (line, slot, CHOICE), not per (line, slot): a
+          // `multi_choice` set legitimately puts several rows on one slot, and
+          // that is what `max_select` is for. What must never happen is the
+          // same choice counted twice, which is a double charge. A slot with no
+          // choice list is unconstrained here — NULLs do not collide in either
+          // dialect — and is bounded by `max_select` in the configurator.
+          ...half(rel("value", "modifier_values", { label: "Choice", uniqueWith: ["line", "modifier"] }), text("label", { label: "Label (snapshot)" })),
+          ...half(text("value_text", { label: "Typed value" }), int("qty", { default: 1, validation: { min: 0 } })),
+        ]),
+        sec("Amount", [
+          ...half(moneyIn("price_adjustment", { validation: {}, label: "Adjustment (snapshot)" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+          position("line"),
+        ]),
+      ),
+      samples: [],
     },
     {
       slug: "orders", group: "Orders", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
@@ -1362,26 +1570,63 @@ export const ecommerce: SchemaTemplate = {
       // past the point a form fits one screen, so the sections become tabs.
       fields: tabbed(
         sec("Line", [
-          hint("order_items_total", "Line total is generated by the database as qty × unit price — it can't be typed in. Tax is per line because one order routinely mixes rates."),
+          hint("order_items_total", "Line total is generated by the database as qty × (unit price + options) — it can't be typed in. Tax is per line because one order routinely mixes rates."),
           ...half(rel("order", "orders"), rel("product", "products")),
           ...half(rel("variant", "product_variants"), text("title", { label: "Title (snapshot)" })),
           ...half(text("sku", { label: "SKU (snapshot)" }), int("qty", { default: 1, validation: { min: 1 } })),
-          tags("selected_options", { label: "Selected options", description: "The modifier choices this line was bought with." }),
+          // What was configured, frozen. `order_item_options` is the itemised
+          // record and this is its compact form — the string a picker reads off
+          // a build sheet, the way a Tesla's option codes and an Apple CTO part
+          // number both are.
+          ...half(text("config_code", { label: "Configuration code" }), parent("order_items", { label: "Bought with", description: "Set on an add-on line, naming the line it was bought with." })),
         ]),
         sec("Amounts", [
           ...half(moneyIn("unit_price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
-          ...half(moneyIn("total_discount", { label: "Line discount" }), moneyIn("tax_amount", { label: "Tax" })),
-          ...half(
-            num("tax_rate", { validation: { min: 0, max: 100 }, label: "Tax rate (%)", format: { style: "percent100", precision: 2 } }),
-            rel("tax_class", "tax_classes", { label: "Tax class" }),
-          ),
-          computedMoneyIn("line_total", "qty * unit_price", { label: "Line total" }),
+          // Kept apart from `unit_price` for the same reason tax is per line:
+          // the order has to be able to say what the configuration cost, not
+          // just what the line came to. `line_total` folds them back together.
+          ...half(moneyIn("options_total", { validation: {}, label: "Options total" }), moneyIn("total_discount", { label: "Line discount" })),
+          ...half(moneyIn("tax_amount", { label: "Tax" }), rel("tax_class", "tax_classes", { label: "Tax class" })),
+          num("tax_rate", { validation: { min: 0, max: 100 }, label: "Tax rate (%)", format: { style: "percent100", precision: 2 } }),
+          // COALESCE, not a bare add: a generated column over a NULL operand is
+          // NULL, so an un-configured line would have lost its total entirely
+          // the moment this column was added.
+          computedMoneyIn("line_total", "qty * (unit_price + COALESCE(options_total, 0))", { label: "Line total" }),
         ]),
       ),
       samples: [
-        { order: { ref: "orders:0" }, product: { ref: "products:0" }, variant: { ref: "product_variants:0" }, title: "Classic Tee — S / Black", sku: "TEE-001-S-BLK", qty: 1, unit_price: 25, tax_rate: 8.5, tax_amount: 2.13, tax_class: { ref: "tax_classes:0" } },
-        { order: { ref: "orders:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, title: "Canvas Tote", sku: "TOTE-001-NAT", qty: 1, unit_price: 18, tax_rate: 8.5, tax_amount: 1.53, tax_class: { ref: "tax_classes:0" } },
+        { order: { ref: "orders:0" }, product: { ref: "products:0" }, variant: { ref: "product_variants:0" }, title: "Classic Tee — S / Black", sku: "TEE-001-S-BLK", qty: 1, unit_price: 25, options_total: 0, tax_rate: 8.5, tax_amount: 2.13, tax_class: { ref: "tax_classes:0" } },
+        { order: { ref: "orders:0" }, product: { ref: "products:1" }, variant: { ref: "product_variants:2" }, title: "Canvas Tote", sku: "TOTE-001-NAT", qty: 1, unit_price: 18, options_total: 0, tax_rate: 8.5, tax_amount: 1.53, tax_class: { ref: "tax_classes:0" } },
       ],
+    },
+    {
+      // The cart's option rows, frozen at checkout — the build sheet. A
+      // configured unit that ships wrong is settled here and nowhere else, so
+      // the component and the quantity ride along rather than being re-derived
+      // from a catalog that has moved on since.
+      slug: "order_item_options", group: "Orders", singular: "Line option", plural: "Line options", defaultSort: "position",
+      fields: stacked(
+        sec("Choice", [
+          hint("order_item_options_shape", "What this line was configured with, as bought. Snapshots, not lookups — the catalog is free to change afterwards."),
+          ...half(rel("line", "order_items", { required: true }), rel("modifier", "product_modifiers", { required: true, label: "Slot" })),
+          // Same rule as the cart row this becomes: one row per (line, slot,
+          // choice), so a multi-choice slot may hold several and none of them
+          // can be charged twice.
+          ...half(rel("value", "modifier_values", { label: "Choice", uniqueWith: ["line", "modifier"] }), text("label", { label: "Label (snapshot)" })),
+          ...half(text("value_text", { label: "Typed value" }), int("qty", { default: 1, validation: { min: 0 } })),
+        ]),
+        sec("Amount", [
+          ...half(moneyIn("price_adjustment", { validation: {}, label: "Adjustment (snapshot)" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+        ]),
+        sec("Build", [
+          // The unit this choice consumed, copied off the choice at checkout so
+          // the picker is told what to fit and the stock move has something to
+          // point at. Re-reading `modifier_values.component_variant` at pick time
+          // would answer with today's catalog, not the one that was bought.
+          ...half(rel("component_variant", "product_variants", { label: "Component" }), position("line")),
+        ]),
+      ),
+      samples: [],
     },
     {
       // Which discount took how much off what. `orders.total_discounts` is the
@@ -1738,8 +1983,14 @@ export const ecommerce: SchemaTemplate = {
         { collection: "product_options", action: "read" },
         { collection: "product_option_values", action: "read" },
         { collection: "variant_option_values", action: "read" },
-        { collection: "product_modifiers", action: "read" },
+        { collection: "modifier_sets", action: "read" },
         { collection: "modifier_values", action: "read" },
+        { collection: "product_modifiers", action: "read" },
+        { collection: "modifier_rules", action: "read" },
+        { collection: "product_addons", action: "read" },
+        // Read-only like the rest of the catalog, but present: a picker who
+        // cannot see what a line was configured with cannot pack it.
+        { collection: "order_item_options", action: "read" },
         { collection: "product_channel_listings", action: "read" },
         { collection: "price_lists", action: "read" },
         { collection: "prices", action: "read" },

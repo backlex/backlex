@@ -161,9 +161,23 @@ non-ASCII letter to be typed in the case it is stored in. It is narrower, never
 wrong.
 
 :::note
-An existing collection gains its companion columns the next time its schema is
-applied, and the rows are backfilled then. The backfill is resumable and
-idempotent; a table too large to finish in one pass continues on the next apply.
+**Upgrading an existing workspace.** A collection gains its companion columns
+the next time its schema is applied — and nothing applies a schema on its own,
+so a workspace that upgrades keeps the old behaviour until you ask for it:
+
+```
+POST /api/admin/db/schema/reapply
+```
+
+That re-applies every managed collection (additive and idempotent — it never
+drops or rewrites a column) and backfills the rows in the same pass. Adopted
+collections are skipped, because backlex never DDLs a table it did not create.
+It answers with `applied` / `skipped` / `failed` per collection rather than a
+single count, so one unapplyable table does not read as a failed upgrade.
+
+The backfill itself is resumable and idempotent: it only touches a NULL
+companion beside a non-NULL source, so a table too large to finish in one pass
+continues on the next call.
 :::
 
 ### Free-text search (`q`)

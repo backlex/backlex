@@ -130,10 +130,10 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `asn1js@3.0.10`
 - `d3-ease@3.0.1`
 - `diff@8.0.4`
-- `fast-uri@3.1.5`
+- `fast-uri@3.1.6`
 - `js-base64@3.7.8`
 - `moo@0.5.3`
-- `qs@6.15.2`
+- `qs@6.16.0`
 - `smol-toml@1.6.1`
 - `source-map-js@1.2.1`
 - `source-map@0.6.1`
@@ -523,7 +523,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@shikijs/types@4.1.0`
 - `@shikijs/vscode-textmate@10.0.2`
 - `@simplewebauthn/browser@13.3.0`
-- `@simplewebauthn/server@13.3.0`
+- `@simplewebauthn/server@13.3.2`
 - `@sinclair/typebox@0.27.10`
 - `@sindresorhus/is@4.6.0`
 - `@standard-schema/spec@1.1.0`
@@ -608,7 +608,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@whatwg-node/promise-helpers@1.3.2`
 - `@whatwg-node/server@0.11.0`
 - `@xmldom/is-dom-node@1.0.1`
-- `@xmldom/xmldom@0.8.13`
+- `@xmldom/xmldom@0.8.15`
 - `@xyflow/react@12.11.3`
 - `@xyflow/system@0.0.80`
 - `accepts@2.0.0`
@@ -947,7 +947,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `picomatch@4.0.4`
 - `picomatch@4.0.5`
 - `postcss-nested@6.2.0`
-- `postcss-selector-parser@6.1.2`
+- `postcss-selector-parser@6.1.3`
 - `postcss@8.5.23`
 - `postcss@8.5.26`
 - `prettier@3.8.3`
@@ -1031,7 +1031,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `side-channel-list@1.0.1`
 - `side-channel-map@1.0.1`
 - `side-channel-weakmap@1.0.2`
-- `side-channel@1.1.0`
+- `side-channel@1.1.1`
 - `sisteransi@1.0.5`
 - `sitemap@9.0.1`
 - `sonner@2.0.8`

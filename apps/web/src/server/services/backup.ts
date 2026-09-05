@@ -7,6 +7,7 @@ import { applyCollection, backfillFoldColumns, tableExists, type FieldDef } from
 import type { Ctx } from "../context";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
+import { reservedNameReason, unreadableTableReason } from "./system-tables";
 
 /**
  * The set of system tables we always include. Dynamic c_* tables are
@@ -581,6 +582,24 @@ export const restoreBackup = async (
     if (options.tenantId && cTenant && cTenant !== options.tenantId) continue;
     const table = (row.physical_table ?? row.physicalTable) as string | undefined;
     if (!table) continue;
+    // A dump is a file, and `restoreBackup` reads whatever `physical_table` it
+    // finds — so a hand-edited archive is a third way to register a collection
+    // over `sessions`, and this one would run `applyCollection` against it
+    // (additive DDL on an auth table) before the metadata row even landed.
+    // Refused rather than skipped: a dump naming a system table is tampered or
+    // came off a deployment that predates the guard, and neither should be
+    // half-applied. A restore REINSTATES a binding rather than choosing one, so
+    // it uses the read-shaped rule — a legacy prefixless `c_<slug>` from an
+    // upgraded deployment must still restore. `cTenant` is the row's own
+    // workspace; an instance-wide restore has no tenant to compare and checks
+    // the tenant-independent half.
+    const owner = (cTenant ?? options.tenantId) as string | null;
+    const reserved = owner ? unreadableTableReason(table, owner) : reservedNameReason(table);
+    if (reserved) {
+      throw new Error(
+        `Refusing to restore: collection "${String(row.slug ?? "?")}" is registered against a table that must not back one — ${reserved}.`,
+      );
+    }
     let fields = row.fields;
     if (typeof fields === "string") {
       try {

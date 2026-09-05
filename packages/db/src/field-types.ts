@@ -998,11 +998,31 @@ export const quote = (name: string): string => `"${assertIdent(name)}"`;
  * physical_table`. Always read that column rather than recomputing.
  */
 export const derivePhysicalTable = (tenantId: string, slug: string): string => {
-  const prefix = tenantId.replace(/-/g, "").slice(0, 12).toLowerCase();
-  if (!/^[a-f0-9]{12}$/.test(prefix)) {
+  const prefix = tenantTablePrefix(tenantId);
+  if (!prefix) {
     throw new Error(`Invalid tenant id for physical table: ${tenantId}`);
   }
   return `c_${prefix}_${assertIdent(slug)}`;
+};
+
+/**
+ * The 12-hex-char workspace prefix `derivePhysicalTable` stamps into every
+ * managed table name, or `null` for an id that cannot carry one.
+ *
+ * Split out so the "does this table name belong to this workspace?" check and
+ * the name-building have one definition between them. They must agree exactly:
+ * a guard that computed the prefix a different way would either refuse a
+ * workspace its own tables or let it name someone else's.
+ *
+ * Total rather than throwing, because the guard has to answer for whatever
+ * tenant id is actually stored — including one this function rejects. Building
+ * a name is the operation that cannot proceed on a bad id; judging a name is
+ * not, and a guard that threw would turn "unrecognised workspace" into a 500 on
+ * every read.
+ */
+export const tenantTablePrefix = (tenantId: string): string | null => {
+  const prefix = tenantId.replace(/-/g, "").slice(0, 12).toLowerCase();
+  return /^[a-f0-9]{12}$/.test(prefix) ? prefix : null;
 };
 
 /** @deprecated Pre-tenant naming. Used only by the migration backfill. */

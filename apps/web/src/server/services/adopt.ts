@@ -16,6 +16,7 @@ import { sql } from "drizzle-orm";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { FieldType } from "@backlex/db";
+import { reservedNameReason } from "./system-tables";
 
 type Dialect = "pg" | "sqlite";
 type AnyDb = PgDb | SqliteDb;
@@ -24,66 +25,6 @@ interface DbCtx {
   db: AnyDb;
   dialect: Dialect;
 }
-
-/**
- * System tables that must never appear in the adopt picker. We include
- * every backlex-managed table (auth, multi-tenant control plane, items
- * subsystem, etc.) plus the various per-runtime bookkeeping tables that
- * each database engine creates on its own (`__drizzle_migrations`,
- * `_cf_KV`, `d1_migrations`).
- *
- * Managed dynamic collections live in `c_<tenantPrefix>_<slug>` tables,
- * filtered separately by the `c_` prefix check — we don't list them here
- * since the prefix catches every workspace, but `c_*` matching stays
- * authoritative.
- */
-export const SYSTEM_TABLES: ReadonlySet<string> = new Set([
-  "collections",
-  "permissions",
-  "roles",
-  "user_roles",
-  "users",
-  "sessions",
-  "accounts",
-  "verifications",
-  "tenants",
-  "tenant_members",
-  "passkey",
-  "api_keys",
-  "email_config",
-  "email_templates",
-  "auth_config",
-  "saml_providers",
-  "ldap_configs",
-  "app_users",
-  "app_sessions",
-  "app_verifications",
-  "external_identities",
-  "revisions",
-  "comments",
-  "activity_log",
-  "webhooks",
-  "flows",
-  "folders",
-  "files",
-  "scheduled_tasks",
-  "embeddings",
-  "workspace_config",
-  "item_ownership",
-  "activity",
-  "app_accounts",
-  "app_settings",
-  "app_user_roles",
-  "backups",
-  "functions",
-  "i18n_strings",
-  "notifications",
-  "saved_panels",
-  "webhook_deliveries",
-  "__drizzle_migrations",
-  "_cf_KV",
-  "d1_migrations",
-]);
 
 /** Reserved names on the backlex side — adopting a table whose column
  *  collides with one of these will be flagged in the inspect response so
@@ -123,7 +64,8 @@ export interface AdoptableTable {
 /**
  * List every physical table in the active database, minus:
  *   - managed `c_*` collection tables
- *   - backlex system tables (see `SYSTEM_TABLES`)
+ *   - backlex system tables, engine bookkeeping and sidecars
+ *     (`services/system-tables.ts`, shared with every write door)
  *   - tables already adopted (caller passes `excludeTables`)
  *
  * Each row carries a best-effort `rowCount` and a `disabled` reason
@@ -208,13 +150,15 @@ const listAdoptablePg = async (
   for (const r of rows) {
     const name = r.table_name;
     if (!name) continue;
+    // Every workspace's managed tables, this one's included — the wizard
+    // offers only tables backlex did not create.
     if (name.startsWith("c_")) continue;
-    // Cloudflare D1 reserves the `_cf_*` namespace for internal bookkeeping
-    // (`_cf_KV`, `_cf_METADATA`). Probing those triggers a SQLITE_AUTH error,
-    // and they're never anything a user wants to adopt — skip the whole
-    // prefix rather than enumerating each one as it appears.
-    if (name.startsWith("_cf_")) continue;
-    if (SYSTEM_TABLES.has(name)) continue;
+    // backlex system tables, the `_cf_*` / `sqlite_*` / `d1_*` / `__drizzle*`
+    // namespaces each engine keeps for itself (probing `_cf_*` raises
+    // SQLITE_AUTH), and collection sidecars. One predicate, shared with the
+    // guard on every write door, so the picker and the create endpoint cannot
+    // disagree about what is adoptable.
+    if (reservedNameReason(name)) continue;
     if (excludeTables.has(name)) continue;
     let disabled: string | null = null;
     if (r.table_type === "VIEW") {
@@ -250,13 +194,15 @@ const listAdoptableSqlite = async (
   for (const r of rows) {
     const name = r.name;
     if (!name) continue;
+    // Every workspace's managed tables, this one's included — the wizard
+    // offers only tables backlex did not create.
     if (name.startsWith("c_")) continue;
-    // Cloudflare D1 reserves the `_cf_*` namespace for internal bookkeeping
-    // (`_cf_KV`, `_cf_METADATA`). Probing those triggers a SQLITE_AUTH error,
-    // and they're never anything a user wants to adopt — skip the whole
-    // prefix rather than enumerating each one as it appears.
-    if (name.startsWith("_cf_")) continue;
-    if (SYSTEM_TABLES.has(name)) continue;
+    // backlex system tables, the `_cf_*` / `sqlite_*` / `d1_*` / `__drizzle*`
+    // namespaces each engine keeps for itself (probing `_cf_*` raises
+    // SQLITE_AUTH), and collection sidecars. One predicate, shared with the
+    // guard on every write door, so the picker and the create endpoint cannot
+    // disagree about what is adoptable.
+    if (reservedNameReason(name)) continue;
     if (excludeTables.has(name)) continue;
     let disabled: string | null = null;
     if (r.type === "view") {

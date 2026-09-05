@@ -53,6 +53,34 @@ surface in the items API. The table itself can still be adopted.
 uses one of these the column has to match its Backlex role (e.g. `id`
 must be the PK). Conflicts surface as warnings on inspect.
 
+**Reserved *table* names.** A collection may not be pointed at a table
+Backlex owns, and the refusal is a `403 FORBIDDEN` naming the rule it
+hit. Four kinds are off limits:
+
+| Kind | Examples |
+|---|---|
+| Backlex system tables | `users`, `sessions`, `accounts`, `api_keys`, `signing_keys`, `oauth_access_tokens`, `ai_config`, `payment_providers` — every table in the schema |
+| Engine / migration bookkeeping | `__backlex_migrations`, `__drizzle_migrations`, `_cf_*`, `sqlite_*`, `d1_*` |
+| Collection sidecars | `*__fts` (search shadow), `*__i18n` (translations) |
+| Another workspace's collection table | any `c_<otherPrefix>_<slug>` |
+
+The list of system tables is read off the schema itself, so a table
+added by a new feature is covered the day it lands rather than when
+someone remembers to update a list. Your own workspace's
+`c_<yourPrefix>_<slug>` names stay yours.
+
+This applies to every route that can set `physical_table` — `POST
+/api/collections` on both the adopted and the managed-with-custom-table
+path, `POST /api/admin/adopt/inspect`, applying a schema snapshot, and
+restoring a backup — and to the read path, so a collection registered
+by an older build stops serving rows rather than merely stopping being
+creatable. Drop such a collection to clear it; the physical table is
+never touched.
+
+Adopting a table with no `tenant_id` column (`tenantScoped: false`) is
+still ordinary workspace-admin work — that is the normal shape of a
+legacy table, and it is what the wizard defaults to.
+
 ## The 3-step wizard
 
 The admin UI lives at **Collections → Import from database**. Each

@@ -14056,6 +14056,10 @@ msgstr "Tek gün"
 msgid "one extra model call per message"
 msgstr "mesaj başına bir ek model çağrısı"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "One JWKS document and one authorization server serve every workspace on this deployment, so only the instance operator can change them — an admin of the default workspace, or the address in OWNER_EMAIL. Your workspace's own auth settings are on the other tabs."
+msgstr "Bu dağıtımdaki her çalışma alanına tek bir JWKS belgesi ve tek bir yetkilendirme sunucusu hizmet eder; bu yüzden onları yalnızca örnek operatörü değiştirebilir — varsayılan çalışma alanının bir yöneticisi ya da OWNER_EMAIL adresindeki kişi. Kendi çalışma alanınızın kimlik doğrulama ayarları diğer sekmelerde."
+
 #: src/client/components/boot-screen.tsx
 msgid "One moment while we get things ready."
 msgstr "Her şeyi hazırlarken bir saniye."
@@ -15461,6 +15465,10 @@ msgid "Platform SSO"
 msgstr "Platform SSO"
 
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
+msgid "Platform SSO is configured by the instance operator"
+msgstr "Platform SSO'yu örnek operatörü yapılandırır"
+
+#: src/client/admin/pages/settings/platform-auth-settings.tsx
 msgid "Platform SSO is not enabled on this instance. It's available on plans with enterprise SSO, or on self-hosted deployments."
 msgstr "Bu örnekte Platform SSO etkin değil. Kurumsal SSO içeren planlarda veya self-host dağıtımlarda kullanılabilir."
 
@@ -16296,8 +16304,12 @@ msgid "Read-only over MCP"
 msgstr "MCP üzerinde salt okunur"
 
 #: src/client/admin/pages/observability/insights.tsx
-msgid "read-only SELECT against the workspace database"
-msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
+msgid "read-only SELECT — instance operator only"
+msgstr "salt okunur SELECT — yalnızca örnek operatörü"
+
+#: src/client/admin/pages/observability/insights.tsx
+#~ msgid "read-only SELECT against the workspace database"
+#~ msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
 
 #: src/client/admin/pages/access/impersonation-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
@@ -19513,6 +19525,10 @@ msgstr "Giriş yapılıyor…"
 msgid "Signing keys"
 msgstr "İmzalama anahtarları"
 
+#: src/client/admin/pages/settings/auth-settings.tsx
+msgid "Signing keys and OAuth clients are instance-wide"
+msgstr "İmzalama anahtarları ve OAuth istemcileri örnek genelindedir"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Signing order"
 msgstr "İmza sırası"
@@ -21186,6 +21202,10 @@ msgstr "Zamanlama yok: satırlar sağlayıcı gönderdiğinde gelir. Senkronizas
 #: src/client/admin/pages/access/rls-card.tsx
 msgid "These parts of your rules cannot be carried by a policy — a direct database reader sees a coarser view than the API here."
 msgstr "Kurallarınızın bu bölümleri bir politikayla taşınamaz — doğrudan veritabanı okuyan taraf burada API'den daha kaba bir görünüm görür."
+
+#: src/client/admin/pages/settings/platform-auth-settings.tsx
+msgid "These providers decide who can sign in to this dashboard at all, across every workspace, so only the instance operator can change them — an admin of the default workspace, or the address in OWNER_EMAIL. To set up SSO for your own workspace's end-users, use Authentication › SSO."
+msgstr "Bu sağlayıcılar, her çalışma alanı genelinde bu panele kimin giriş yapabileceğine karar verir; bu yüzden onları yalnızca örnek operatörü değiştirebilir — varsayılan çalışma alanının bir yöneticisi ya da OWNER_EMAIL adresindeki kişi. Kendi çalışma alanınızın son kullanıcıları için SSO kurmak isterseniz Kimlik Doğrulama › SSO bölümünü kullanın."
 
 #: src/client/admin/app.tsx
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."

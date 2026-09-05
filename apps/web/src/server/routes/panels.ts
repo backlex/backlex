@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, eq, isNull, or, } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -16,6 +16,7 @@ import {
 // renders identically wherever it's drawn.
 import { runAnalyticsPanel } from "../services/dashboards";
 import { requireKpi, runKpiForCaller } from "../services/kpis";
+import { isInstanceOperator } from "../services/roles/guards";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.savedPanels : sqlite.schema.savedPanels;
@@ -116,9 +117,41 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
 };
 
 /**
+ * The `sql` kind is the SQL console wearing a different hat, so it takes the
+ * SQL console's gate.
+ *
+ * `isReadOnly` below constrains the VERB and says nothing about which TABLES a
+ * statement reads — `SELECT private_key FROM signing_keys` passes it — and the
+ * string reaches `sql.raw` with no tenant predicate and no permission clamp.
+ * That is instance-global power, and `SYSTEM_ROLES.admin` is self-serve:
+ * `POST /api/tenants` grants it to whoever creates a workspace
+ * (routes/tenants.ts:758, `WORKSPACE_CREATION` defaults to `open`). So the
+ * `sql` kind alone escalates to `isInstanceOperator`, matching
+ * routes/db-admin.ts's `/db/sql/run`.
+ *
+ * Per KIND rather than per ROUTE, because these routes serve five kinds and
+ * the other four (`items-aggregate`, `analytics`, `kpi`, `static`) are already
+ * tenant-clamped and stay reachable by a workspace admin. Same shape as
+ * routes/settings.ts's instance-global branding keys.
+ *
+ * Both halves are gated, and that is deliberate: gating authoring alone would
+ * leave every row written before this change still executable by the role that
+ * was never entitled to write it.
+ */
+const assertSqlPanelOperator = async (c: Context<AppBindings>): Promise<void> => {
+  if (await isInstanceOperator(c.get("ctx"), c.get("auth"))) return;
+  throw new AppError(
+    "FORBIDDEN",
+    "`sql` panels run raw SQL against the whole database, so only the instance operator may write or run one — sign in as an admin of the default workspace, or set OWNER_EMAIL to your address. Use an `items-aggregate` or `kpi` panel for workspace data.",
+  );
+};
+
+/**
  * Reject anything that isn't a single SELECT — protects the panel-run
  * endpoint from being abused as a generic SQL gateway. The Database page
  * has its own (more permissive but still gated) editor for that.
+ *
+ * Verb-only: see `assertSqlPanelOperator` for why that is not a clamp.
  */
 const isReadOnly = (s: string): boolean => {
   const trimmed = s.trim().replace(/;$/, "");
@@ -209,6 +242,9 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const body = c.req.valid("json");
+      // Ask about the gate before the shape: a non-operator learns "you may not
+      // author these", not whether their statement would have parsed.
+      if (body.kind === "sql" || body.sql != null) await assertSqlPanelOperator(c);
       if (body.kind === "sql" && body.sql && !isReadOnly(body.sql)) {
         throw new AppError("VALIDATION", "Panel SQL must be a single read-only SELECT.");
       }
@@ -259,6 +295,9 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
+      // `kind` is optional on a patch, so a body of `{sql: "..."}` alone must
+      // trip this too — testing `kind` would miss the rewrite that matters.
+      if (body.kind === "sql" || body.sql != null) await assertSqlPanelOperator(c);
       if (body.sql && !isReadOnly(body.sql)) {
         throw new AppError("VALIDATION", "Panel SQL must be a single read-only SELECT.");
       }
@@ -375,6 +414,7 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           `Preview only supports kind "sql", "items-aggregate", "analytics" or "kpi" (got "${body.kind ?? "unknown"}")`,
         );
       }
+      await assertSqlPanelOperator(c);
       if (!isReadOnly(body.sql)) {
         throw new AppError("FORBIDDEN", "Panel SQL is not read-only.");
       }
@@ -460,6 +500,9 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (panel.kind !== "sql" || !panel.sql) {
         return c.json({ data: [], note: "Non-SQL panel — return static config to the UI." });
       }
+      // A row authored before this gate existed is still a raw-SQL statement,
+      // so the RUN is gated too rather than trusting what is already stored.
+      await assertSqlPanelOperator(c);
       if (!isReadOnly(panel.sql as string)) {
         throw new AppError("FORBIDDEN", "Panel SQL is not read-only.");
       }

@@ -691,7 +691,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
 
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [toastNode, pushToast] = useToasts();
-  const [me, setMe] = useState<{ name: string | null; email: string; image: string | null; isAdmin: boolean; nav?: MeNav } | null>(null);
+  const [me, setMe] = useState<{ name: string | null; email: string; image: string | null; isAdmin: boolean; isOperator?: boolean; nav?: MeNav } | null>(null);
   // Hydrate the header dropdown — name/email/avatar + admin badge. `auth.useSession()`
   // doesn't carry role info, so we hit our own `/api/me` which returns the
   // permission-resolver's view of the current user.
@@ -699,7 +699,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     let cancelled = false;
     void (async () => {
       try {
-        const r = await api<{ data: { name: string | null; email: string; image: string | null; isAdmin: boolean; nav?: MeNav } }>("/api/me");
+        const r = await api<{ data: { name: string | null; email: string; image: string | null; isAdmin: boolean; isOperator?: boolean; nav?: MeNav } }>("/api/me");
         if (!cancelled) setMe(r.data);
       } catch {
         // not signed in or endpoint missing — dropdown falls back gracefully

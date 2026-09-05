@@ -3,12 +3,12 @@
  *
  * Instance-level, like the signing keys: there is one authorization server at
  * one issuer, and a client registered with it is registered with the instance.
+ * The gate is the INSTANCE OPERATOR for exactly that reason — see `adminGate`.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requireOperatorMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import {
   createOAuthClient,
@@ -48,14 +48,18 @@ const GrantView = z
   })
   .openapi("OAuthGrant");
 
-const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
-  const auth = c.get("auth");
-  if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
-    throw new AppError("FORBIDDEN", "Admin role required");
-  }
-  await next();
-};
-const adminGate = [requireUser, requireAdminMiddleware];
+/** Instance operator, not the workspace `admin` role.
+ *
+ *  `oauth_applications` / `oauth_access_tokens` / `oauth_consents` are
+ *  better-auth tables with no tenant column, and the service functions filter
+ *  by `clientId`/`userId` alone — so every row here belongs to the instance,
+ *  not to a workspace. Gated on the self-serve `admin` role (any signed-up
+ *  user gets it in a workspace they create — routes/tenants.ts:758) this let
+ *  one workspace's admin list every client on the instance, disable or delete
+ *  the MCP connector clients other workspaces depend on, and revoke any user's
+ *  grant along with their access tokens. Same gate routes/db-admin.ts puts on
+ *  the SQL console, for the same reason. */
+const adminGate = [requireUser, requireOperatorMw];
 
 const tags = ["oauth-clients"];
 

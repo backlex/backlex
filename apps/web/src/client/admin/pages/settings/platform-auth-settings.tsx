@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { I } from "../../icons";
-import { Badge, Button, PageHeader, Switch } from "../../ui";
+import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
 import { ConfirmDialog } from "../../sheet";
 import {
   platformLdapAdminApi,
@@ -27,6 +27,7 @@ import {
 } from "../../api";
 import { apiOrigin, copyText } from "../_shared";
 import { useAuthSurface } from "@/lib/auth";
+import { useIsOperator } from "../../queries";
 
 export function PlatformSsoSettingsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
@@ -34,6 +35,9 @@ export function PlatformSsoSettingsPage({ pushToast }: { pushToast: PushToast })
   const [providers, setProviders] = useState<ApiPlatformSamlProvider[]>([]);
   const [ldap, setLdap] = useState<ApiPlatformLdapConfig | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  // Tri-state — `null` while `/api/me` is in flight, so the page does not flash
+  // the "operator only" copy at the operator. See `useIsOperator`.
+  const isOperator = useIsOperator();
   const [confirmRemove, setConfirmRemove] = useState<{ id: string } | null>(null);
 
   const loadSaml = async () => {
@@ -73,6 +77,28 @@ export function PlatformSsoSettingsPage({ pushToast }: { pushToast: PushToast })
       pushToast((e as Error).message);
     }
   };
+
+  // Both halves of this page are INSTANCE-global: one SAML provider list and
+  // one LDAP singleton, and what they point at is where CONTROL-plane sign-in
+  // resolves identities — so the routes take `requireOperatorMw`. Answered
+  // before the feature-flag branch below on purpose: whether this deployment
+  // has enterprise SSO is not a question a non-operator gets a reply to.
+  if (isOperator === false) {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title={t`Platform SSO`}
+          description={t`Enterprise SSO for operators signing into this dashboard.`}
+        />
+        <EmptyState
+          icon={I.Shield}
+          size="md"
+          title={t`Platform SSO is configured by the instance operator`}
+          description={t`These providers decide who can sign in to this dashboard at all, across every workspace, so only the instance operator can change them — an admin of the default workspace, or the address in OWNER_EMAIL. To set up SSO for your own workspace's end-users, use Authentication › SSO.`}
+        />
+      </div>
+    );
+  }
 
   if (surface && surface.platformSso === false) {
     return (

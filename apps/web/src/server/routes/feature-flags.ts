@@ -1,8 +1,9 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { isInstanceOperator } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import {
@@ -23,9 +24,29 @@ const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) =
 const adminGate = [requireUser, requireAdminMiddleware];
 
 /** Scope: `?scope=global` targets the `tenantId IS NULL` default row; otherwise
- *  the caller's active workspace. */
-const scopeTenant = (c: { get: (k: string) => any; req: { query: (k: string) => string | undefined } }): string | null => {
-  if (c.req.query("scope") === "global") return null;
+ *  the caller's active workspace.
+ *
+ *  The global row is the default EVERY workspace inherits when it has no row of
+ *  its own (`services/feature-flags.ts`), so writing or deleting it changes
+ *  behaviour across the whole instance. `SYSTEM_ROLES.admin` cannot authorize
+ *  that: `POST /api/tenants` grants it to whoever creates a workspace
+ *  (routes/tenants.ts:758, `WORKSPACE_CREATION` defaults to `open`), so the
+ *  self-serve role would have let any signed-up user flip a flag every other
+ *  workspace reads. The workspace-scoped branch is unchanged.
+ *
+ *  Async because the operator check reads roles; both writers await it, and a
+ *  third writer added later inherits the gate by calling this rather than
+ *  re-deriving the scope. */
+const scopeTenant = async (c: Context<AppBindings>): Promise<string | null> => {
+  if (c.req.query("scope") === "global") {
+    if (!(await isInstanceOperator(c.get("ctx"), c.get("auth")))) {
+      throw new AppError(
+        "FORBIDDEN",
+        "`?scope=global` writes the default every workspace inherits, so only the instance operator may set it — sign in as an admin of the default workspace, or set OWNER_EMAIL to your address. Omit `scope` to set the flag for your own workspace.",
+      );
+    }
+    return null;
+  }
   const tid = c.get("auth")?.tenantId as string | undefined;
   if (!tid) throw new AppError("UNAUTHORIZED", "Active tenant required");
   return tid;
@@ -156,7 +177,7 @@ export const flagsAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      const tenantId = scopeTenant(c);
+      const tenantId = await scopeTenant(c);
       const key = c.req.valid("param").key;
       const body = c.req.valid("json");
       const data = await upsertFlag(ctx, {
@@ -197,7 +218,7 @@ export const flagsAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      const tenantId = scopeTenant(c);
+      const tenantId = await scopeTenant(c);
       await deleteFlag(ctx, tenantId, c.req.valid("param").key);
       return c.json({ ok: true });
     },

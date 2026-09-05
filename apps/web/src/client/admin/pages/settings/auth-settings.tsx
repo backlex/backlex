@@ -8,8 +8,9 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { I } from "../../icons";
-import { Badge, Button, IconButton, PageHeader, Switch } from "../../ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "../../ui";
 import { useUrlTab } from "../../use-url-tab";
+import { useIsOperator } from "../../queries";
 import { Select } from "../../select";
 import {
   Dialog,
@@ -46,7 +47,7 @@ import { SigningKeysCard } from "./signing-keys-card";
 import { OAuthClientsCard } from "./oauth-clients-card";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
-import { AuthSessionsTabSkeleton, AuthSettingsSkeleton, AuthSsoTabSkeleton } from "../../page-skeletons";
+import { AuthSessionsTabSkeleton, AuthSettingsSkeleton, AuthSsoTabSkeleton, AuthTokensTabSkeleton } from "../../page-skeletons";
 
 type AuthProviderRow = {
   id: string;
@@ -130,6 +131,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
   // `/authentication/:tab`. An unknown segment lands on the first panel rather
   // than an empty page — see `useUrlTab`.
   const [active, setTab] = useUrlTab(AUTH_TABS, "sign-in");
+  // Tri-state — `null` while `/api/me` is in flight. See `useIsOperator`.
+  const isOperator = useIsOperator();
   const [providers, setProviders] = useState<AuthProviderRow[]>([]);
   const [policy, setPolicy] = useState<Record<string, boolean>>({});
   const [sessionLifetime, setSessionLifetime] = useState("30d");
@@ -750,10 +753,28 @@ export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
       </>) : <AuthSsoTabSkeleton />)}
 
       {active === "tokens" && (<>
-      {/* What signs the tokens the auth endpoints hand out. */}
-      <SigningKeysCard pushToast={pushToast} />
-      {/* Who those tokens are minted FOR. */}
-      <OAuthClientsCard pushToast={pushToast} />
+      {/* The keyring and the client registry are INSTANCE-wide — one JWKS at
+          one URL, one authorization server at one issuer — so both are gated on
+          the instance operator server-side. Drawn conditionally rather than
+          left to 403: a card that lists nothing and errors on every button is a
+          worse answer than saying who may use it. `null` = /api/me has not
+          answered; show the tab's skeleton rather than flash this copy at the
+          operator. `ThirdPartyAuthCard` is workspace-scoped and stays. */}
+      {isOperator === null ? (
+        <AuthTokensTabSkeleton />
+      ) : isOperator ? (<>
+        {/* What signs the tokens the auth endpoints hand out. */}
+        <SigningKeysCard pushToast={pushToast} />
+        {/* Who those tokens are minted FOR. */}
+        <OAuthClientsCard pushToast={pushToast} />
+      </>) : (
+        <EmptyState
+          icon={I.Key}
+          size="md"
+          title={t`Signing keys and OAuth clients are instance-wide`}
+          description={t`One JWKS document and one authorization server serve every workspace on this deployment, so only the instance operator can change them — an admin of the default workspace, or the address in OWNER_EMAIL. Your workspace's own auth settings are on the other tabs.`}
+        />
+      )}
       {/* And whose tokens we accept without having minted them. */}
       <ThirdPartyAuthCard availableRoles={availableRoles} pushToast={pushToast} />
       </>)}

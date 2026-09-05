@@ -298,11 +298,24 @@ export const jwtKeyMaterial = async (env: JwtKeyEnv): Promise<KeyMaterial> => {
 const mergeEnvVerifiers = (stored: KeyMaterial, env: KeyMaterial): KeyMaterial => {
   const verify = new Map(stored.verify);
   const jwks = [...stored.jwks];
+  // The two sets are deduped SEPARATELY, because since standby keys stopped
+  // entering `verify` (services/signing-keys.ts) a kid can legitimately be in
+  // `stored.jwks` and absent from `stored.verify` — which is exactly the state
+  // the documented migration produces: import the PEM currently in
+  // `AUTH_JWT_PRIVATE_KEY` and the same kid is now a standby row AND an env
+  // key. Deduping the jwks push against `verify` would then publish that kid
+  // twice in `/.well-known/jwks.json`.
+  const publishedKids = new Set(jwks.map((j) => j.kid));
   for (const [kid, entry] of env.verify) {
-    if (verify.has(kid)) continue;
-    verify.set(kid, entry);
+    // Still correct to trust the env half: those tokens are live, and the row
+    // being standby is a statement about the ROW, not about the env key.
+    if (!verify.has(kid)) verify.set(kid, entry);
+    if (publishedKids.has(kid)) continue;
     const jwk = env.jwks.find((j) => j.kid === kid);
-    if (jwk) jwks.push(jwk);
+    if (jwk) {
+      jwks.push(jwk);
+      publishedKids.add(kid);
+    }
   }
   return { signing: stored.signing, verify, jwks };
 };

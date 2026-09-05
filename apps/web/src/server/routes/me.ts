@@ -6,6 +6,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { listReadableCollections } from "../services/permissions";
+import { isInstanceOperator } from "../services/roles/guards";
 import { FILES_COLLECTION } from "./storage";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -17,6 +18,13 @@ const MeRow = z
     image: z.string().nullable(),
     roles: z.array(z.string()),
     isAdmin: z.boolean(),
+    /** Instance operator — see `services/roles/guards.ts::isInstanceOperator`.
+     *  A STRICT subset of `isAdmin`: `admin` is self-serve (whoever creates a
+     *  workspace gets it there), so the instance-global surfaces — the JWT
+     *  keyring, the OAuth registry, control-plane SSO, `sql` panels, the SQL
+     *  console — are gated on this instead. The SPA reads it to hide those
+     *  rather than render them into a 403. */
+    isOperator: z.boolean(),
     tenantId: z.string().nullable(),
     nav: z.object({
       collections: z.boolean(),
@@ -69,6 +77,12 @@ export const meRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
     const user = rows[0];
     if (!user) throw new AppError("NOT_FOUND", "User not found");
     const isAdmin = auth.roles.includes(SYSTEM_ROLES.admin);
+    // Only asked when the answer can matter: a non-admin is never an operator
+    // (operator = `admin` in the default workspace), so the lookup is skipped
+    // for exactly the callers who make up the bulk of this route's traffic.
+    // For an admin it is a cached role read — the same cache tenantMiddleware
+    // fills — so this costs a map hit on the warm path.
+    const isOperator = isAdmin ? await isInstanceOperator(ctx, auth) : false;
     // Per-permission nav visibility for the SPA sidebar/palette. One bulk
     // read-grant query answers all three: `storage` needs a read grant on the
     // system files collection, `collections`/`revisions` need at least one
@@ -97,6 +111,7 @@ export const meRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
         image: user.image,
         roles: auth.roles,
         isAdmin,
+        isOperator,
         tenantId: auth.tenantId ?? null,
         nav,
       },

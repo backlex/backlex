@@ -38,6 +38,7 @@ import {
 import { PanelBody, panelSubtitle } from "./panel-render";
 import { detectSeries, MAX_SERIES } from "./panel-series";
 import { InsightsSkeleton } from "../../page-skeletons";
+import { useIsOperator } from "../../queries";
 
 /**
  * 12-column drag/resize grid for the Insights dashboard. Pure DOM (no
@@ -714,6 +715,9 @@ function PanelEditorDialog({
   const [name, setName] = useState(panel?.name ?? "");
   const [description, setDescription] = useState(panel?.description ?? "");
   const [kind, setKind] = useState<PanelKind>((panel?.kind as PanelKind) ?? "items-aggregate");
+  // Tri-state — `null` while `/api/me` is in flight. Gates the `sql` kind; see
+  // the Kind dropdown's options below.
+  const isOperator = useIsOperator();
   const [viz, setViz] = useState<PanelViz>((panel?.viz as PanelViz) ?? "counter");
   const [sqlText, setSqlText] = useState<string>(panel?.sql ?? SAMPLE_PANEL_SQL);
   // `kpi` panels store only a slug + a window; the formula stays in the KPI.
@@ -1088,7 +1092,18 @@ function PanelEditorDialog({
                   { value: "items-aggregate", label: "collection", hint: t`count / sum / average over a collection — no SQL` },
                   { value: "kpi", label: "kpi", hint: t`show a defined KPI — same number as Ask AI and reports` },
                   { value: "analytics", label: "analytics", hint: t`website metrics — visitors, sessions, channels, revenue` },
-                  { value: "sql", label: "sql", hint: t`read-only SELECT against the workspace database` },
+                  // Instance-operator only, and the option is dropped rather
+                  // than disabled: an `sql` panel is not clamped to the
+                  // workspace — the statement names its own tables and reaches
+                  // the driver verbatim — so the server gates writing AND
+                  // running one on `isInstanceOperator`, the same gate the SQL
+                  // console takes. Offering the choice to someone who would be
+                  // refused on save is worse than not offering it. Kept while
+                  // `/api/me` is still in flight (`null`) so the operator's own
+                  // dropdown does not change under them.
+                  ...(isOperator !== false
+                    ? [{ value: "sql", label: "sql", hint: t`read-only SELECT — instance operator only` }]
+                    : []),
                   { value: "static", label: "static", hint: t`config-only panel rendered from props` },
                 ]}
               />

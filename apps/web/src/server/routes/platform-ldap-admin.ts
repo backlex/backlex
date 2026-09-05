@@ -12,11 +12,12 @@
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requireOperatorMw } from "../services/roles/guards";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { isEdgeRuntime } from "../lib/runtime";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
@@ -57,12 +58,12 @@ const DEFAULT_ATTRIBUTE_MAP = {
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.platformLdapConfig : sqlite.schema.platformLdapConfig;
 
+/** Feature flag only — authorization is `requireOperatorMw`, ahead of it in
+ *  `GATE`. The order is deliberate: a caller who may not configure control-plane
+ *  SSO is refused before the response can tell them whether it is switched on. */
 const gate: MiddlewareHandler<AppBindings> = async (c, next) => {
   if (!isPlatformSsoEnabled(c.get("ctx").env)) {
     throw new AppError("NOT_FOUND", "Platform SSO is not enabled");
-  }
-  if (!c.get("auth").roles.includes(SYSTEM_ROLES.admin)) {
-    throw new AppError("FORBIDDEN", "Admin role required");
   }
   await next();
 };
@@ -114,7 +115,13 @@ const TestInput = z
   .openapi("PlatformLdapTestInput");
 
 const TAG = ["platform-ldap-admin"];
-const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, gate];
+/** One row for the whole INSTANCE, and what it points at is where control-plane
+ *  sign-in resolves identities. The workspace `admin` role is self-serve
+ *  (`POST /api/tenants` grants it to whoever creates a workspace —
+ *  routes/tenants.ts:758), so gating on it let any signed-up user re-point
+ *  operator sign-in at a directory they run — and, short of that, overwrite the
+ *  single row a real organisation's LDAP SSO depends on. */
+const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, requireOperatorMw, gate];
 
 /**
  * Enabling LDAP on a runtime that cannot open a TCP socket.

@@ -33,6 +33,7 @@ import { runItemsAggregate } from "./items/aggregate";
 import { requireKpi, runKpiForCaller } from "./kpis";
 import { queryAll } from "./items/sql-helpers";
 import { resolvePermission } from "./permissions";
+import { isInstanceOperator } from "./roles/guards";
 import { hashToken } from "./shared-links";
 
 const dashTable = (dialect: "pg" | "sqlite") =>
@@ -478,6 +479,14 @@ export const runAnalyticsPanel = async (
  * Run a single panel and shape the result. `scope` (when supplied) carries the
  * embed role's resolved read permission so items-aggregate panels never expose
  * rows/fields the embed role can't read.
+ *
+ * `allowRawSql` gates the `sql` kind, and it DEFAULTS TO FALSE because most of
+ * this function's reachable callers have no business running raw SQL: the
+ * public embed (no session at all), a cron tick (`SYSTEM_AUTH`, `roles: []`)
+ * and a webhook-triggered flow (unauthenticated by design — the flow id is the
+ * secret) all arrive here with a synthetic subject. A default of "permit"
+ * would hand each of them `sql.raw` against the whole database. Only
+ * `runDashboard` sets it, and only after `isInstanceOperator`.
  */
 const runPanel = async (
   ctx: Ctx,
@@ -485,6 +494,7 @@ const runPanel = async (
   tenantId: string,
   panel: any,
   scope: { embedRoleName: string | null } | null,
+  allowRawSql = false,
 ): Promise<PanelResult> => {
   const base: Omit<PanelResult, "data"> = {
     panelId: panel.id,
@@ -544,6 +554,19 @@ const runPanel = async (
       return { ...base, data };
     }
     if (panel.kind === "sql" && panel.sql) {
+      // Unlike `items-aggregate` and `kpi` above, this branch has no clamp to
+      // apply: the stored string names its own tables and reaches `sql.raw`
+      // verbatim, so `scope` cannot narrow it. Identity is the only control
+      // available, and it is checked before the statement is looked at.
+      // Reported as a panel-level `error` rather than thrown, so one tile the
+      // caller may not run does not blank the whole dashboard.
+      if (!allowRawSql)
+        return {
+          ...base,
+          data: [],
+          error:
+            "`sql` panels run raw SQL against the whole database and are restricted to the instance operator.",
+        };
       if (!isReadOnlySelect(panel.sql as string))
         return { ...base, data: [], error: "Panel SQL is not read-only." };
       const data = await queryAll<Record<string, unknown>>(
@@ -566,9 +589,17 @@ export const runDashboard = async (
   id: string,
 ): Promise<PanelResult[]> => {
   const panels = await panelsOf(ctx, tenantId, id);
+  // Resolved once per dashboard rather than per panel, and only when a panel
+  // actually needs it — a dashboard of `items-aggregate` tiles pays nothing.
+  // Every caller that reaches here hands us the request's real auth (REST and
+  // GraphQL both pass `c.get("auth")`), so an API-key identity is refused by
+  // `isInstanceOperator` the same way it is on the SQL console.
+  const allowRawSql = panels.some((p: any) => p.kind === "sql" && p.sql)
+    ? await isInstanceOperator(ctx, auth)
+    : false;
   const out: PanelResult[] = [];
   for (const panel of panels)
-    out.push(await runPanel(ctx, auth, tenantId, panel, null));
+    out.push(await runPanel(ctx, auth, tenantId, panel, null, allowRawSql));
   return out;
 };
 

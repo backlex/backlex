@@ -364,6 +364,12 @@ export interface ApiMe {
   image: string | null;
   roles: string[];
   isAdmin: boolean;
+  /** Instance operator — a STRICT subset of `isAdmin`. The `admin` role is
+   *  self-serve (creating a workspace grants it there), so instance-global
+   *  surfaces — the JWT keyring, the OAuth client registry, control-plane SSO,
+   *  `sql` panels, the SQL console — are gated on this one instead. Optional
+   *  so an older server (no field) reads as "not proven", never as `true`. */
+  isOperator?: boolean;
   tenantId: string | null;
 }
 

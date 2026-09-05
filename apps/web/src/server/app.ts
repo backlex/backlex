@@ -25,6 +25,7 @@ import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
+import { credentialScopeGate } from "./middleware/credential-scope";
 import { planeFirewall } from "./middleware/plane-firewall";
 import { impersonationReadOnlyGate } from "./middleware/impersonation-readonly";
 import { accountRoutes } from "./routes/account";
@@ -70,6 +71,7 @@ import { integrationsRoutes } from "./routes/integrations";
 import { itemsRoutes } from "./routes/items";
 import { ldapAdminRoutes } from "./routes/ldap-admin";
 import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
+import { MCP_ADMIN_MOUNT, MCP_TENANT_MOUNT } from "./mcp/mounts";
 import { jwksRoutes } from "./routes/jwks";
 import { mcpAuthorizeConsentGate, mcpOAuthWellKnownRoutes } from "./routes/mcp-oauth";
 import { meRoutes } from "./routes/me";
@@ -229,6 +231,17 @@ export type AppBindings = {
        *  Carries the OAuth client id for auditing; guard behavior rides the
        *  `apiKeyMcp*` fields (readOnly derives from the token's scopes). */
       oauthClientId?: string | null;
+      /** The scopes that grant actually carries, split from
+       *  `oauth_access_tokens.scopes`. Read by
+       *  `middleware/credential-scope.ts`, which is what makes them mean
+       *  anything outside the MCP dispatcher. */
+      oauthScopes?: string[] | null;
+      /** Which credential SHAPE resolved this identity, when the answer bounds
+       *  where the identity may be used. `"mcp-oauth"` is a resource
+       *  credential for `<APP_URL>/mcp` (RFC 9728) and is refused on every
+       *  other surface; every other shape leaves this null and is unbounded by
+       *  path. See `middleware/credential-scope.ts`. */
+      credential?: "mcp-oauth" | null;
       /** Set by sessionMiddleware when the request is an operator ACTING AS one
        *  of the workspace's end-users. The identity is genuinely the subject's;
        *  these fields carry who is behind it so the audit trail names both, and
@@ -934,6 +947,12 @@ export const createApp = (env: Env) => {
       PROBE_PATHS.includes(c.req.path) ? next() : mw(c, next);
 
   app.use("*", timed("session", skipOnProbe(sessionMiddleware)));
+  // Immediately behind session, because it needs nothing else and the cheapest
+  // refusal is the one that happens before tenant resolution does any work.
+  // Unlike `planeFirewall` below this one fails CLOSED — it is not a new table
+  // being trialled, it is a credential that the server's own RFC 9728 metadata
+  // already says belongs to one resource.
+  app.use("*", timed("credscope", skipOnProbe(credentialScopeGate)));
   app.use("*", timed("tenant", skipOnProbe(tenantMiddleware)));
   // Immediately after tenant resolution, because it needs `auth.plane` (set by
   // session) and reports `auth.tenantId` (set by tenant) — and before any route
@@ -1361,8 +1380,8 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   // surface. Two mounts: `/mcp` is open to any authenticated identity
   // (permissions are enforced by the per-tool sub-fetch); `/api/admin/mcp`
   // additionally requires the system `admin` role.
-  app.route("/mcp", tenantMcpRoutes(app, env));
-  app.route("/api/admin/mcp", adminMcpRoutes(app, env));
+  app.route(MCP_TENANT_MOUNT, tenantMcpRoutes(app, env));
+  app.route(MCP_ADMIN_MOUNT, adminMcpRoutes(app, env));
   // Admin "Ask AI" page — splits the design's `planForPrompt` mock into
   // /plan (Claude → tool + args) and /run (executes one MCP tool, logs to
   // the activity table). Mounted after MCP because /run reuses the same

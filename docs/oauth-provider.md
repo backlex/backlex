@@ -77,6 +77,50 @@ the consent would be a revocation that does not revoke: the access token keeps
 working until it expires and the refresh token keeps minting more. The person
 pressing "remove access" means both.
 
+## A token from this server only works on the MCP endpoint
+
+**This is a behaviour change.** A token minted here is a credential for one
+resource, and using it anywhere else is refused with `403 FORBIDDEN`:
+
+```
+This access token is scoped to the MCP endpoint.
+Use an API key (`pak_…`) for the REST and GraphQL API.
+```
+
+`/.well-known/oauth-protected-resource/mcp` has always advertised
+`resource: <APP_URL>/mcp` — RFC 9728, the identifier a strict client compares
+against the server URL it was pointed at — and the consent screen says "MCP
+connector". The server now enforces what it publishes.
+
+Before, it did not. The grant's scopes were read exactly once, to decide
+read-only *inside* the MCP dispatcher, so a token granted `openid mcp:read`
+was refused a write over `/mcp` and in the same breath created collections,
+inserted rows and ran arbitrary SQL through `/api/…`. Anything the consenting
+user could do, the token could do, on every surface, with none of the controls
+an API key carries — no per-key revocation, no tenant pin, no role scoping, no
+rate limit, no quota.
+
+Two consequences worth knowing before you upgrade:
+
+- **A grant carrying neither `mcp:read` nor `mcp:write` no longer reaches
+  `/mcp` at all.** It used to get full MCP read — the advertised scopes were
+  optional decoration on the way in. Re-authorize such a client asking for one.
+- **Scripts that reused an MCP token against the REST API must move to an API
+  key.** `backlex apikeys create` mints one; that is the credential the REST
+  and GraphQL surfaces are designed around.
+
+The discovery documents under `/.well-known/` are exempt, deliberately: they
+answer anonymous callers anyway, so refusing them would guard nothing while
+breaking a client that re-reads its metadata with the bearer still attached.
+
+Nothing else changes. `mcp:write` still decides writes at the resource, the
+`openid` / `profile` / `email` / `offline_access` scopes are still consumed by
+this server's own `/api/auth/*` endpoints, and every other credential shape —
+cookie session, `pak_` API key, app-plane access token, third-party JWT — is
+untouched. MCP tools themselves keep working: they do their work by re-entering
+this same app on `/api/…` paths, and those calls are recognised by object
+identity rather than by anything a caller can send.
+
 ## What this deliberately is not
 
 **A per-workspace identity provider over your end-users** — "sign in with *your*

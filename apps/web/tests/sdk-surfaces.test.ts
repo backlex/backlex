@@ -507,9 +507,40 @@ const mcpModules = readdirSync(MCP_DIR)
   .filter((m) => /^\s*name: "/m.test(m.src))
   .map((m) => m.name);
 
+/**
+ * Mount paths `app.ts` names through a constant instead of a literal.
+ *
+ * The two MCP routers are mounted via `mcp/mounts.ts` so that the router and
+ * the credential-scope gate read ONE list — `middleware/credential-scope.ts`
+ * refuses an MCP OAuth token anywhere that is not on it, and
+ * `security-audit-2026-09-token-scope.test.ts` re-derives the list from this
+ * same file to keep a third mount from landing outside it.
+ *
+ * A literal-only scan goes blind on that indirection, and blind here is
+ * expensive in both directions: the two families read as "no longer mounted"
+ * AND a genuinely new surface behind a constant would need no registry entry.
+ * `rawMountCount` below is what caught it.
+ */
+const MOUNT_CONSTANTS = (() => {
+  const src = read(join(REPO, "apps", "web", "src", "server", "mcp", "mounts.ts"));
+  const out = new Map<string, string>();
+  for (const m of src.matchAll(/export const ([A-Z][A-Z0-9_]*)\s*=\s*"([^"]+)"/g)) {
+    out.set(m[1]!, m[2]!);
+  }
+  return out;
+})();
+
 const routeMounts = [
-  ...read(APP_TS).matchAll(/app\.route\("([^"]+)",\s*([A-Za-z_$][\w$]*)/g),
-].map((m) => ({ path: m[1]!, router: m[2]! }));
+  ...read(APP_TS).matchAll(
+    /app\.route\(\s*(?:"([^"]+)"|([A-Za-z_$][\w$]*))\s*,\s*([A-Za-z_$][\w$]*)/g,
+  ),
+].map((m) => ({
+  // An unresolvable constant falls back to its own NAME, which then fails the
+  // "every mounted route family has an entry" test by name. Failing loudly
+  // beats dropping the mount and calling the gap coverage.
+  path: m[1] ?? MOUNT_CONSTANTS.get(m[2]!) ?? m[2]!,
+  router: m[3]!,
+}));
 
 /** Every `app.route(` in the file, however it is written — compared against
  *  `routeMounts` in the sanity test. A mount the stricter regex failed to parse

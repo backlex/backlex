@@ -490,6 +490,9 @@ curl -X POST https://your-backlex.example.com/mcp \
 - Permissions DSL `whereSql` + `fields` are evaluated on every read; an agent cannot read rows or fields it has no permission for.
 - `functions.invoke` stays admin-only in MVP because the underlying `/api/functions/{name}/invoke` endpoint is admin-only — the MCP layer doesn't loosen that.
 - Storage writes are tenant-prefixed at the physical-key layer; cross-tenant access isn't reachable from the tool surface.
+- **An OAuth token from the [connector flow](/docs/oauth-provider) works HERE and nowhere else.** It is a credential for the `<APP_URL>/mcp` resource — which is what `/.well-known/oauth-protected-resource/mcp` has always advertised — so presenting it to `/api/…` or `/api/graphql` returns `403`. This is a change: the grant's scopes used to be read only inside this dispatcher, so an `mcp:read` token refused a write here could create collections and run arbitrary SQL over REST. A grant naming neither `mcp:read` nor `mcp:write` now reaches nothing at all, where it previously got full MCP read. Use a `pak_…` API key for the REST and GraphQL surfaces.
+
+  Tools are unaffected. They do their work by re-entering this same app on `/api/…` paths carrying the caller's identity, and those sub-requests are recognised by object identity on the `Request` — nothing a caller can put on the wire.
 
 ### MCP guards
 

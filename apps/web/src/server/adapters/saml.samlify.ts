@@ -131,6 +131,103 @@ const toStringArray = (v: string | string[] | undefined): string[] => {
   return [];
 };
 
+/**
+ * The fields a replay guard is allowed to trust, read from the assertion node
+ * the SIGNATURE covered rather than from the document that carried it.
+ *
+ * samlify already re-roots most of its extractor at the verified assertion
+ * (`Extractor.loginResponseFields` passes it as `shortcut`), but its catalog
+ * has no Assertion-ID entry at all: the only `ID` it reads sits under
+ * `localPath: ['Response']` with no shortcut, i.e. it comes from the whole
+ * document. Under the default `wantSignedAssertions: true` that envelope is
+ * unsigned, so anything keyed on it can be changed by whoever holds the
+ * captured response — which is exactly how the replay guard was bypassed.
+ *
+ * `SamlLib.verifySignature` hands back `sig.getSignedReferences()[0]`, narrowed
+ * to the `<Assertion>` — samlify's own words for it are "the cryptographically
+ * authenticated assertion node". Extracting from that string is the whole
+ * difference between a signed and an unsigned identifier. The price is one
+ * extra signature verification per SSO login; a login is not a hot path, and
+ * the alternative is reading `@ID` off the raw document, which is the
+ * signature-wrapping hole this closes.
+ *
+ * Two shapes are queried because `verifySignature` returns the `<Assertion>`
+ * fragment in the ordinary case and the enclosing `<Response>` when the
+ * assertion arrived encrypted. Whichever matched is the one that was signed.
+ */
+const SIGNED_SCOPE_FIELDS: Array<{
+  key: string;
+  localPath: string[];
+  attributes: string[];
+}> = [
+  { key: "idDirect", localPath: ["Assertion"], attributes: ["ID"] },
+  { key: "idNested", localPath: ["Response", "Assertion"], attributes: ["ID"] },
+  {
+    key: "recipientDirect",
+    localPath: [
+      "Assertion",
+      "Subject",
+      "SubjectConfirmation",
+      "SubjectConfirmationData",
+    ],
+    attributes: ["Recipient"],
+  },
+  {
+    key: "recipientNested",
+    localPath: [
+      "Response",
+      "Assertion",
+      "Subject",
+      "SubjectConfirmation",
+      "SubjectConfirmationData",
+    ],
+    attributes: ["Recipient"],
+  },
+];
+
+const firstString = (...vals: unknown[]): string | undefined => {
+  for (const v of vals) {
+    if (typeof v === "string" && v.length > 0) return v;
+    if (Array.isArray(v) && typeof v[0] === "string" && v[0].length > 0) return v[0];
+  }
+  return undefined;
+};
+
+/**
+ * Re-derive the signed assertion's own identity.
+ *
+ * Throws rather than returning a placeholder when the id cannot be
+ * established. The implementation this replaces defaulted to
+ * `` `${Date.now()}_${Math.random()}` ``, and a per-request unique replay key
+ * is a replay guard that matches nothing while reporting success on every
+ * call — the failure mode that is invisible until someone replays an
+ * assertion.
+ */
+const readSignedScope = (
+  idp: ReturnType<typeof buildIdp>,
+  samlContent: string,
+): { assertionId: string; recipient?: string } => {
+  const [verified, signedNode] = samlify.SamlLib.verifySignature(samlContent, {
+    metadata: idp.entityMeta,
+    signatureAlgorithm: idp.entitySetting.requestSignatureAlgorithm,
+  });
+  if (!verified || !signedNode) {
+    // Unreachable in practice: `parseLoginResponse` has already rejected an
+    // unverifiable response. Kept because "the guard could not read the thing
+    // it guards" must fail closed, not silently degrade.
+    throw new Error("SAML signature did not yield an authenticated assertion");
+  }
+  const ex = samlify.Extractor.extract(signedNode, SIGNED_SCOPE_FIELDS);
+  const assertionId = firstString(ex.idDirect, ex.idNested);
+  if (!assertionId) {
+    throw new Error("SAML assertion has no ID inside the signed scope");
+  }
+  return {
+    assertionId,
+    recipient: firstString(ex.recipientDirect, ex.recipientNested),
+  };
+};
+
 const parseConditionsNotOnOrAfter = (
   cond: Record<string, string | string[]> | undefined,
 ): Date => {
@@ -205,17 +302,27 @@ export const samlifySamlAdapter = (): SamlAdapter => {
       const inResponseTo = Array.isArray(responseInfo.inResponseTo)
         ? responseInfo.inResponseTo[0]
         : responseInfo.inResponseTo;
+      // `response` is extracted from the whole document with no `shortcut`, so
+      // every field on it is OUTSIDE the signature when only the assertion is
+      // signed. Both are reported, neither is trusted — see `SamlAssertion`.
       const responseId = Array.isArray(responseInfo.id)
         ? responseInfo.id[0]
         : responseInfo.id;
+      const destination = Array.isArray(responseInfo.destination)
+        ? responseInfo.destination[0]
+        : responseInfo.destination;
       const sessionIndexRaw = ex.sessionIndex?.sessionIndex ?? ex.sessionIndex?.SessionIndex;
       const sessionIndex = Array.isArray(sessionIndexRaw)
         ? sessionIndexRaw[0]
         : sessionIndexRaw;
       const authnRaw = ex.authnContextClassRef;
       const authnContext = Array.isArray(authnRaw) ? authnRaw[0] : authnRaw;
+      const signed = readSignedScope(idp, flow.samlContent);
       return {
-        id: responseId ?? `${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        assertionId: signed.assertionId,
+        responseId: responseId ?? undefined,
+        recipient: signed.recipient,
+        destination: destination ?? undefined,
         issuer,
         nameId,
         nameIdFormat: cfg.nameIdFormat,

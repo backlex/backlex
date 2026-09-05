@@ -174,6 +174,23 @@ Admin CRUD lives in `apps/web/src/server/routes/tenants.ts`:
 | `DELETE /api/tenants/{id}/members/{memberId}` | Remove a membership                              |
 | `POST   /api/tenants/accept`        | Consume an invite token, bind to caller, seed RBAC role  |
 
+**Nobody may hand out a standing they do not hold.** `owner` > `admin` >
+`member` is a ladder, and every route that accepts a `role` — invite, member
+update, ownership transfer, and the MCP, CLI and SDK twins that re-enter them —
+refuses to grant a rung above the caller's own. An `admin` inviting an `owner`
+gets `403 A "admin" can't grant "owner"`.
+
+This is a fix, not a restatement. The invite route above used to check only
+that the caller could manage the membership list, so an `admin` could POST
+`role: "owner"`, the invitee accepted as an owner, and — because acting on an
+EQUAL rank is deliberately allowed, co-owners being peers — the manufactured
+owner could then remove the founder. The sibling `PATCH /{id}/members/{id}` and
+the other invite route (`POST /api/users/invite`) had always checked.
+
+The instance operator is outside the ladder on purpose: reaching into a
+workspace they hold no membership row in, they may seat an owner. There is
+nobody above them to be protected from.
+
 `/switch` is the only endpoint that mutates the *active* workspace —
 everything else respects whatever `tenantMiddleware` resolved (see
 `apps/web/src/server/middleware/tenant.ts:165`). Resolution order:
@@ -443,6 +460,21 @@ The TTL is hardcoded because access-token revocation latency is a
 property of the design — making it env-tunable invites someone to set
 it to "24 hours" and accidentally turn revocation off. If you need a
 different window, edit the constant.
+
+**All three identity claims are bound to the session row.** The JWT carries
+`sub` (the app-user), `tid` (the workspace) and `sid` (the `app_sessions` row),
+and the middleware refuses the token unless the row `sid` names is live *and*
+belongs to `sub` in `tid`.
+
+Only `sid` used to be checked, and only for liveness — `sub` and `tid` were
+then assigned straight from the claims, and `tenantMiddleware` pins an
+app-plane request to that tenant without re-deriving it. So a token whose `sid`
+named the holder's OWN live session while its `sub`/`tid` named somebody in
+another workspace was accepted as that somebody, in their workspace; revoking
+the victim's sessions did nothing, because the token rode a session the
+attacker still owned. That turns any token-forging primitive — a leaked or
+maliciously imported signing key — into arbitrary cross-tenant impersonation
+rather than into impersonation of one account.
 
 ### Key-pair signing + JWKS
 

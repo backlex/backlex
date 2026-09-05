@@ -110,9 +110,39 @@ only ever decrypt it inside `resolveSamlProvider`, never return it.
   makes a hostile IdP an account-takeover vector for any local account
   sharing an email; only enable it for IdPs you actually trust.
 - **`wantSignedAssertions`** (on by default): rejects unsigned Assertions.
-- **Replay protection**: every AssertionID lands in `app_verifications`
-  until `NotOnOrAfter`. A second POST of the same Assertion before then
-  is rejected with 401.
+  Note what this does *not* cover: with it on, the signature protects the
+  `<saml:Assertion>` and **not** the `<samlp:Response>` envelope around it.
+  Anything the SP decides on the envelope's say-so is decided on unsigned
+  input.
+- **Replay protection**: the `<saml:Assertion>` `@ID` — read from inside the
+  signed scope — lands in `app_verifications` until `NotOnOrAfter`. A second
+  POST of the same Assertion before then is rejected with 401, whatever the
+  envelope around it says.
+
+  **This changed, and the old behaviour was a full authentication replay.** The
+  row used to be keyed on the `<samlp:Response>` `@ID`, which is unsigned:
+  re-POSTing a captured assertion with one byte changed in that attribute
+  presented a replay key the guard had never seen and minted a second session.
+  Anyone able to observe one assertion in flight — a proxy, a browser
+  extension, a referrer leak, a shared terminal — could sign in as its subject
+  repeatedly until `NotOnOrAfter`. Both Assertion Consumer Services were
+  affected, the workspace one and the platform (instance-admin) one.
+
+  An IdP that omits the `<Assertion>` `@ID` is now refused rather than given a
+  random key. The implementation used to fall back to a per-request unique
+  value, which is a replay guard that matches nothing while reporting success.
+- **ACS binding**: `SubjectConfirmationData/@Recipient` must name this
+  provider's ACS URL, so an assertion captured at one service provider cannot
+  be posted to another. It sits inside the signed scope, so an attacker cannot
+  edit or strip it. The unsigned `Response/@Destination` is checked too, as
+  defence in depth — a mismatch there means a misconfigured IdP, not an attack.
+
+  Both are enforced only when the IdP sends them, and both compare URLs the way
+  RFC 3986 does: scheme and host case-insensitively, a trailing slash ignored,
+  the path otherwise exact. If your IdP is configured with an ACS URL that is
+  genuinely a different endpoint from the one in the provider's metadata,
+  logins will now fail — fix the IdP-side ACS URL to match the one
+  `/api/t/<slug>/auth/saml/<provider>/metadata` publishes.
 - **`InResponseTo`**: SP-initiated logins persist the AuthnRequest id in
   `app_verifications`; the ACS handler rejects responses whose
   `InResponseTo` doesn't match a known request.

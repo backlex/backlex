@@ -14,6 +14,10 @@ import {
 } from "../services/auth-config";
 import { loadPasswordLoginMode } from "../services/settings";
 import { resolveSamlProvider } from "../services/saml-providers";
+import {
+  assertAssertionBoundToAcs,
+  samlReplayIdentity,
+} from "../services/saml-binding";
 import { resolveLdapAdapter } from "../services/ldap-config";
 import { provisionAppUser } from "../services/sso-provisioning";
 import { consumeAppUserInvite, findAppUserInvite } from "../services/app-user-invites";
@@ -431,9 +435,16 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       );
     }
 
+    // 1b. The assertion has to have been minted for THIS endpoint. `Recipient`
+    //     is inside the signed scope, so this is the half that an attacker
+    //     cannot edit away.
+    assertAssertionBoundToAcs(assertion, resolved.cfg.acsUrl);
+
     // 2. Replay protection. We keep the row until NotOnOrAfter — if the same
-    //    AssertionID is seen again before then, reject.
-    const replayKey = `saml-assertion:${assertion.id}`;
+    //    assertion is seen again before then, reject. The identity is the
+    //    SIGNED `<Assertion>` `@ID`; keying it on the unsigned envelope's `@ID`
+    //    meant one edited byte produced a fresh key and replayed the login.
+    const replayKey = `saml-assertion:${samlReplayIdentity(assertion)}`;
     const replayHit = await findVerification(
       { db: ctx.db, dialect: ctx.dialect },
       tenant.id,

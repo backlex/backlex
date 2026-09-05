@@ -34,6 +34,10 @@ import {
 } from "../services/platform-saml-providers";
 import { resolvePlatformLdapAdapter } from "../services/platform-ldap-config";
 import { provisionPlatformUser } from "../services/platform-sso-provisioning";
+import {
+  assertAssertionBoundToAcs,
+  samlReplayIdentity,
+} from "../services/saml-binding";
 import { readJsonOr } from "../lib/body";
 
 type DbCtx = { db: unknown; dialect: "pg" | "sqlite" };
@@ -210,8 +214,14 @@ export const platformAuthRoutes = new Hono<AppBindings>()
       );
     }
 
-    // 2. Replay protection — keep the row until NotOnOrAfter.
-    const replayKey = `psaml-assertion:${assertion.id}`;
+    // 1b. Minted for THIS ACS, checked against the signed `Recipient`. Same
+    //     rule and the same helper as the workspace plane — this handler is a
+    //     copy of that one and inherited its defect verbatim.
+    assertAssertionBoundToAcs(assertion, resolved.cfg.acsUrl);
+
+    // 2. Replay protection — keep the row until NotOnOrAfter, keyed on the
+    //    SIGNED `<Assertion>` `@ID` rather than the unsigned envelope's.
+    const replayKey = `psaml-assertion:${samlReplayIdentity(assertion)}`;
     if (await findVerification({ db: ctx.db, dialect: ctx.dialect }, replayKey)) {
       throw new AppError("UNAUTHORIZED", "SAML assertion replay detected");
     }

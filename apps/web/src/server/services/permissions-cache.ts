@@ -213,28 +213,35 @@ const membershipCache = new TtlLru<MembershipKey, boolean>(
 );
 
 /**
- * Is the `app_sessions` row an access token names still live?
+ * WHO the `app_sessions` row an access token names belongs to — or `null` when
+ * it is no longer live.
  *
  * The app-plane access JWT verifies with zero database reads, so before this
  * cache existed there was nothing to invalidate: suspending an end-user
  * deleted their session rows and the token kept working for its full TTL.
- * `middleware/session.ts::appSessionLive` now asks the row, and this keeps that
- * question off the hot path.
+ * `middleware/session.ts::appSessionOwner` now asks the row, and this keeps
+ * that question off the hot path.
  *
- * Keyed by session id alone — the id is already the credential's identity, and
- * a deleted row and a suspended owner are the same answer here.
+ * It caches the `(userId, tenantId)` tuple rather than a bare boolean because
+ * the caller has to BIND the token's `sub`/`tid` claims to the session its
+ * `sid` names — a live session belonging to somebody else is not an answer of
+ * "yes". Keyed by session id alone: the id is the credential's identity, and a
+ * deleted row, an expired row and a suspended owner are all the same `null`.
  */
-const appSessionLiveCache = new TtlLru<string, boolean>(
-  MAX_ENTRIES,
-  TTL_MS,
-  (k) => k,
-);
+const appSessionOwnerCache = new TtlLru<
+  string,
+  { userId: string; tenantId: string } | null
+>(MAX_ENTRIES, TTL_MS, (k) => k);
 
-export const getCachedAppSessionLive = (sessionId: string): boolean | undefined =>
-  appSessionLiveCache.get(sessionId);
+export const getCachedAppSessionOwner = (
+  sessionId: string,
+): { userId: string; tenantId: string } | null | undefined =>
+  appSessionOwnerCache.get(sessionId);
 
-export const setCachedAppSessionLive = (sessionId: string, live: boolean): void =>
-  appSessionLiveCache.set(sessionId, live);
+export const setCachedAppSessionOwner = (
+  sessionId: string,
+  owner: { userId: string; tenantId: string } | null,
+): void => appSessionOwnerCache.set(sessionId, owner);
 
 /**
  * Cut an app-plane session's access tokens NOW on this isolate.
@@ -247,7 +254,7 @@ export const setCachedAppSessionLive = (sessionId: string, live: boolean): void 
 export const invalidateAppSessions = (sessionIds: readonly string[]): void => {
   if (sessionIds.length === 0) return;
   const gone = new Set(sessionIds);
-  appSessionLiveCache.deleteBy((k) => gone.has(k));
+  appSessionOwnerCache.deleteBy((k) => gone.has(k));
 };
 
 export const getCachedMembership = (k: MembershipKey): boolean | undefined =>

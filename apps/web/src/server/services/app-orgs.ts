@@ -705,6 +705,13 @@ export const addMember = async (
   const org = await requireOrg(ctx, tenantId, orgId);
   const user = await requireAppUser(ctx, tenantId, input.appUserId);
   const role: OrgRole = input.role ?? "member";
+  // No caller reaches this with a non-null actor today — both the REST route
+  // and the GraphQL mutation are control-plane and pass `null`. The rule is
+  // written anyway because "unreachable" is a property of the callers, not of
+  // this function, and the two siblings that DO take an actor
+  // (`updateMember`, `createOrgInvite`) both enforce it.
+  if (actor && role === "owner" && actor.role !== "owner")
+    throw new AppError("FORBIDDEN", "Only an owner can grant ownership");
   const t = tablesFor(ctx.dialect);
 
   const existing = await memberRole(ctx, org.id, user.id);
@@ -1024,6 +1031,15 @@ export const createOrgInvite = async (
   const email = input.email.trim().toLowerCase();
   if (!email) throw new AppError("VALIDATION", "Email is required");
   const role: OrgRole = input.role ?? "member";
+  // Same rule as `updateMember`, and here for the same stated reason: an admin
+  // must not be able to mint an owner. It used to live in `app-orgs-public.ts`
+  // alone, so the ONE surface that happened to call it was the only one the
+  // rule applied to — and `addMember` below shows how easily the next caller
+  // arrives without it. A null actor is the operator, deliberately outside the
+  // ladder: staging a role the org's own admin could not have picked is the
+  // control plane's job.
+  if (actor && role === "owner" && actor.role !== "owner")
+    throw new AppError("FORBIDDEN", "Only an owner can invite another owner");
   const t = tablesFor(ctx.dialect);
 
   // Validate the org-scoped roles up front so a bad request leaves no invite

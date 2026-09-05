@@ -1216,6 +1216,16 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         manageOnly: true,
         message: "Only owners/admins may invite",
       });
+      // May they hand out THIS standing? Being allowed to manage a membership
+      // list is not the same question as being allowed to seat a peer above
+      // yourself, and this route used to ask only the first one: an `admin`
+      // POSTed `role: "owner"`, the invite was minted, and `bindInvite` seated
+      // the acceptor as an owner on accept. `assertMayActOn` then permits
+      // EQUAL rank, so the manufactured owner could remove the founder. The
+      // same two lines already guard the sibling PATCH below, and
+      // `routes/roles/users.ts`'s own invite route — this was the one member
+      // of the family that skipped them.
+      assertMayGrant(await loadActor(c, id), body.role, WORKSPACE_RANK);
       const { id: memberId, token } = await createMemberInvite(ctx, {
         tenantId: id,
         email: body.email,

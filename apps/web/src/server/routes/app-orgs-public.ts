@@ -315,8 +315,9 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
     const role = asRole(input.role);
     if (input.role !== undefined && !role)
       throw new AppError("VALIDATION", "role must be one of: owner, admin, member");
-    if (role === "owner" && actorRole !== "owner")
-      throw new AppError("FORBIDDEN", "Only an owner can invite another owner");
+    // The "only an owner invites an owner" rule now lives in
+    // `services/app-orgs.ts::createOrgInvite`, alongside the identical rule in
+    // `updateMember`, so every surface inherits it instead of this one.
     const roleIds = asStringArray(input.roleIds);
     if (input.roleIds !== undefined && !roleIds)
       throw new AppError("VALIDATION", "roleIds must be an array of role ids");

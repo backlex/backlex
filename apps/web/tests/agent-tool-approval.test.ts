@@ -81,16 +81,70 @@ describe("approval gate — pure", () => {
     expect(requiresApproval("collections.delete", undefined)).toBe(false);
   });
 
-  test("the fingerprint ignores argument ORDER but not argument VALUES", () => {
+  test("the fingerprint ignores argument ORDER but not argument VALUES", async () => {
     // Otherwise the same approved call would look new every time a model
     // happened to serialise its arguments differently.
-    const a = callFingerprint("t1", "collections.delete", { id: "1", collection: "posts" });
-    const b = callFingerprint("t1", "collections.delete", { collection: "posts", id: "1" });
+    const a = await callFingerprint("t1", "collections.delete", { id: "1", collection: "posts" });
+    const b = await callFingerprint("t1", "collections.delete", { collection: "posts", id: "1" });
     expect(a).toBe(b);
     // A different row is a different decision.
-    expect(callFingerprint("t1", "collections.delete", { id: "2", collection: "posts" })).not.toBe(a);
+    expect(await callFingerprint("t1", "collections.delete", { id: "2", collection: "posts" })).not.toBe(a);
     // And so is the same call in another conversation.
-    expect(callFingerprint("t2", "collections.delete", { id: "1", collection: "posts" })).not.toBe(a);
+    expect(await callFingerprint("t2", "collections.delete", { id: "1", collection: "posts" })).not.toBe(a);
+  });
+
+  test("a value NESTED inside the arguments is part of the identity", async () => {
+    // The regression this pins: `JSON.stringify(args, keys)` takes a REPLACER
+    // ARRAY, which filters at every level, so both of these used to serialise
+    // to {"collection":"orders","operations":[{}]} — approving a create
+    // approved a delete of any row, in the same thread, with no second ask.
+    const create = await callFingerprint("t1", "collections.batch", {
+      collection: "orders",
+      operations: [{ op: "create", data: { title: "x" } }],
+    });
+    const del = await callFingerprint("t1", "collections.batch", {
+      collection: "orders",
+      operations: [{ op: "delete", id: "any-row" }],
+    });
+    expect(create).not.toBe(del);
+
+    // Same shape one level down: the approved update said `paid`, the second
+    // one voids the order and zeroes it.
+    const paid = await callFingerprint("t1", "collections.bulk_update", {
+      collection: "orders",
+      keys: ["k1"],
+      data: { status: "paid" },
+    });
+    const voided = await callFingerprint("t1", "collections.bulk_update", {
+      collection: "orders",
+      keys: ["k1"],
+      data: { status: "void", total: 0 },
+    });
+    expect(paid).not.toBe(voided);
+
+    // Nested key ORDER still must not matter — the sort has to reach down too,
+    // or the fix would trade one bug for the one it was guarding against.
+    const one = await callFingerprint("t1", "collections.batch", {
+      operations: [{ data: { a: 1, b: 2 }, op: "create" }],
+      collection: "orders",
+    });
+    const two = await callFingerprint("t1", "collections.batch", {
+      collection: "orders",
+      operations: [{ op: "create", data: { b: 2, a: 1 } }],
+    });
+    expect(one).toBe(two);
+  });
+
+  test("the fingerprint stays short enough to index, whatever the payload", async () => {
+    // It lands in `approval_requests.subject_id`, which is indexed — and
+    // Postgres refuses a btree entry over ~2704 bytes. A canonical form written
+    // straight into the column would make a big tool call throw on PG while
+    // passing on SQLite.
+    const huge = await callFingerprint("t1", "collections.bulk_insert", {
+      collection: "orders",
+      rows: Array.from({ length: 500 }, (_, i) => ({ title: `row ${i}`, note: "x".repeat(200) })),
+    });
+    expect(huge.length).toBeLessThan(200);
   });
 });
 
@@ -216,7 +270,7 @@ describe("approval gate — through a real turn", () => {
       body: JSON.stringify({}),
     });
     const threadId = ((await t.json()) as { data: { id: string } }).data.id;
-    const fingerprint = callFingerprint(threadId, "schema.list_collections", {});
+    const fingerprint = await callFingerprint(threadId, "schema.list_collections", {});
 
     const created = await h.fetch("/api/admin/approvals", {
       method: "POST",

@@ -36,20 +36,28 @@
  */
 import { matchesPattern } from "../../mcp/guards";
 import { createApprovalRequest, listApprovalRequests } from "../approvals";
+import { argsDigest } from "./canonical-args";
 import type { Ctx } from "../../context";
 
 /** The `subject.collection` every agent tool-call request is filed under, so
  *  the lookup is one indexed read rather than a scan of open requests. */
 export const APPROVAL_SUBJECT = "agent.tool_call";
 
-/** Stable identity of one call. Keys are sorted so argument order cannot make
- *  the same call look like a new one — the same reason the runner's per-turn
- *  duplicate guard sorts them. */
-export const callFingerprint = (
+/**
+ * Stable identity of one call: thread, tool, and a digest of the arguments
+ * canonicalised at every depth.
+ *
+ * Keys are sorted so argument order cannot make the same call look like a new
+ * one — the same reason the runner's per-turn duplicate guard sorts them — and
+ * the sorting reaches nested objects, which is what the previous
+ * replacer-array version could not do. See `canonical-args.ts`; approving one
+ * `collections.batch` used to approve any other.
+ */
+export const callFingerprint = async (
   threadId: string,
   toolName: string,
   args: Record<string, unknown>,
-): string => `${threadId}:${toolName}:${JSON.stringify(args, Object.keys(args).sort())}`;
+): Promise<string> => `${threadId}:${toolName}:${await argsDigest(args)}`;
 
 /** Does this tool need a yes? Same glob grammar as an MCP allowlist, matched by
  *  the same function, so `collections.*` means the same thing in both places. */
@@ -77,7 +85,10 @@ export const approvalGate = async (input: ApprovalGateInput): Promise<GateResult
   const { ctx, tenantId, threadId, toolName, args } = input;
   if (!requiresApproval(toolName, input.approvalTools)) return null;
 
-  const subject = { collection: APPROVAL_SUBJECT, id: callFingerprint(threadId, toolName, args) };
+  const subject = {
+    collection: APPROVAL_SUBJECT,
+    id: await callFingerprint(threadId, toolName, args),
+  };
 
   // Already said yes to this exact call in this conversation.
   const approved = await listApprovalRequests(ctx, tenantId, { status: "approved", subject, limit: 1 });

@@ -78,7 +78,10 @@ describe("ctx.ai.generate", () => {
   let h: TestHarness;
 
   beforeEach(async () => {
-    h = makeHarness();
+    // Named, not inherited: `runFunction` only reaches the bun-worker host
+    // bridge when the operator has opted in. The QuickJS half below calls the
+    // provider directly and needs no flag.
+    h = makeHarness({ FUNCTIONS_SANDBOX: "bun-worker" });
     await seedAdmin(h);
   });
   afterEach(() => h.cleanup());

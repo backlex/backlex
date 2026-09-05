@@ -1,8 +1,15 @@
+import { signSandboxGrant } from "../../../lib/crypto";
 import type {
   SandboxBindings,
   SandboxProvider,
   SandboxResult,
 } from "../types";
+
+/** How long past the guest's own deadline a grant stays valid. The executor
+ *  makes its LAST callback while the guest is still running, so the grant only
+ *  has to outlive the run — plus enough slack for clock skew between the two
+ *  hosts and the callback in flight when the timeout fires. */
+const GRANT_SLACK_MS = 30_000;
 
 /**
  * Generic out-of-isolate sandbox provider.
@@ -13,12 +20,17 @@ import type {
  * any compatible endpoint). The executor runs user code in a real runtime
  * where `eval` / `new Function` are allowed, so `ctx.fetch / ctx.db /
  * ctx.email` work — those calls round-trip back to the main app via
- * `${mainOrigin}/api/_internal/sandbox-rpc`, Bearer-authenticated with
- * `env.SANDBOX_RPC_TOKEN`.
+ * `${mainOrigin}/api/_internal/sandbox-rpc`, Bearer-authenticated with the
+ * per-invocation grant this provider mints below.
  *
  * Wire format:
  *   POST /run  { code, data, user, timeoutMs, mainOrigin, rpcToken }
  *   ->         { ok, value?, logs, error? }
+ *
+ * `user` is still sent because the guest reads it as `ctx.user`. It is NOT
+ * what the callback authenticates against — the executor runs user code and
+ * anything it echoes back is attacker-controlled, so the callback reads its
+ * subject out of `rpcToken`'s signature instead.
  *
  * This lets the API stay on an edge runtime (CF Workers / Vercel Edge /
  * Netlify Edge) while still offering DB-aware functions.
@@ -45,8 +57,27 @@ export const remoteHttpProvider: SandboxProvider = {
     const limit = Math.max(50, Math.min(60_000, timeoutMs));
     const mainOrigin =
       bindings.selfOrigin ?? bindings.ctx.env.SELF_URL ?? null;
-    const rpcToken = bindings.ctx.env.SANDBOX_RPC_TOKEN ?? null;
     const url = `${base.replace(/\/$/, "")}/run`;
+
+    // What goes over the wire as `rpcToken` is a per-invocation GRANT, not
+    // `SANDBOX_RPC_TOKEN` itself. The executor treats the field as opaque and
+    // echoes it back as its bearer, so the wire format is unchanged and the
+    // shipped template needs no edit — but the deployment secret now stays in
+    // this process, and the callback derives its subject from the signature
+    // instead of from the executor's request body. See `signSandboxGrant`.
+    const secret = bindings.ctx.env.SANDBOX_RPC_TOKEN ?? null;
+    const rpcToken = secret
+      ? await signSandboxGrant(
+          {
+            u: bindings.auth.userId ?? null,
+            e: bindings.auth.email ?? null,
+            r: bindings.auth.roles ?? [],
+            t: bindings.auth.tenantId ?? null,
+            exp: Math.floor((Date.now() + limit + GRANT_SLACK_MS) / 1000),
+          },
+          secret,
+        )
+      : null;
 
     let res: Response;
     try {

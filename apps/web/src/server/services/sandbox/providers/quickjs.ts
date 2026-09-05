@@ -81,7 +81,7 @@ const fromQuick = (vm: QuickJSContext, handle: QuickJSHandle): unknown => {
 
 /** The one message every unreachable `ctx.*` host call answers with. */
 export const HOST_IO_UNAVAILABLE =
-  "host I/O is not available on the in-isolate QuickJS runtime (no ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai) — set FUNCTIONS_EXEC_URL to an out-of-isolate executor, or self-host on Bun";
+  "host I/O is not available on the in-isolate QuickJS runtime (no ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai) — set FUNCTIONS_EXEC_URL to an out-of-isolate executor, or, on a Bun self-host where function authors are the operator, FUNCTIONS_SANDBOX=bun-worker";
 
 /**
  * Install every host call as a function that REFUSES, rather than leaving it
@@ -124,10 +124,10 @@ const installRefusingHostIo = (vm: QuickJSContext, ctxHandle: QuickJSHandle): vo
 /**
  * QuickJS-WASM sandbox — sync only, no host I/O bridge. True isolation
  * (WASM sandbox) but cannot do `ctx.fetch` / `ctx.db` / `ctx.email`. This is
- * the cross-runtime fallback that runs in-isolate everywhere (Cloudflare
- * Workers, Vercel Edge, Netlify Edge, Bun, Node). For functions that need
- * `ctx.*` host I/O, point `FUNCTIONS_EXEC_URL` at an out-of-isolate executor
- * instead.
+ * the DEFAULT everywhere, and the only in-isolate provider that is actually an
+ * isolate: it runs on Cloudflare Workers, Vercel Edge, Netlify Edge, Node AND
+ * Bun. For functions that need `ctx.*` host I/O, point `FUNCTIONS_EXEC_URL` at
+ * an out-of-isolate executor instead.
  */
 export const quickjsProvider: SandboxProvider = {
   name: "quickjs",

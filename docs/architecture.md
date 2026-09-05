@@ -78,18 +78,27 @@ combinators. A filter that works in one place works in the others.
 
 ## Sandbox provider selection
 
-Three providers, one selector:
+Three providers, one selector. The default picks the strongest isolation the
+deployment can offer, and `env.FUNCTIONS_SANDBOX` overrides it:
 
 ```
-priority 1: remote-http  → env.FUNCTIONS_EXEC_URL set (out-of-isolate executor)
-priority 2: bun-worker   → Bun runtime
-priority 3: quickjs      → anywhere else (Workers, Vercel, Netlify, Node)
+remote-http  → env.FUNCTIONS_EXEC_URL set (out-of-isolate executor)
+quickjs      → otherwise, everywhere (Workers, Vercel, Netlify, Node, Bun)
+bun-worker   → only on env.FUNCTIONS_SANDBOX=bun-worker
 ```
+
+bun-worker is opt-in because it is not isolation at all: user code reaches
+`node:fs`, `node:process` and `Bun.spawnSync`, and none of that can be closed
+from inside the worker. It used to be chosen automatically on any Bun host,
+which made "author a function" and "run commands on the API host" the same
+permission on a multi-tenant self-host. See `docs/sandbox.md`.
 
 The host bridge (`apps/web/src/server/services/sandbox/host-bridge.ts`) is the
 single dispatcher for `ctx.fetch / ctx.db / ctx.email / ctx.push / ctx.ai`.
 bun-worker calls it in-process; remote-http calls it over HTTP at
-`/api/_internal/sandbox-rpc` with a Bearer token. Both paths funnel
+`/api/_internal/sandbox-rpc`, authenticated by a per-invocation signed grant
+that carries the (userId, tenantId) the run belongs to — the executor runs user
+code, so the subject cannot come from its request body. Both paths funnel
 through the same permission pipeline. quickjs reaches it not at all — the
 bundled WASM is sync-only, so that provider installs each host call as a
 function that refuses by name rather than leaving it undefined.

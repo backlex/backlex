@@ -104,10 +104,30 @@ const isAllowedFetch = (rawUrl: string, allowlist: string[]): boolean => {
 };
 
 /**
+ * The workspace an op is acting on, or a refusal.
+ *
+ * Every tenant-scoped op on this bridge answers "no workspace" the same way,
+ * in the service rather than at one door, because the route is not the only
+ * caller: `providers/bun-worker.ts` reaches `dispatchRpc` in-process and never
+ * passes through `routes/sandbox-rpc.ts` at all. A clamp that lived on the
+ * route would be exactly as wide as one of the two callers.
+ */
+const requireWorkspace = (bindings: SandboxBindings, op: string): string => {
+  const tenantId = bindings.auth.tenantId ?? null;
+  if (!tenantId) throw new Error(`${op} requires a workspace-scoped run`);
+  return tenantId;
+};
+
+/**
  * Single dispatcher used by every provider's host-side RPC handler. Translates
  * an `RpcOp` from the sandbox into a permission-checked operation on the live
  * Ctx. Callers (provider implementations) are responsible for serializing
  * arguments and the return value.
+ *
+ * `bindings.auth` is the subject the invocation runs as, and every caller is
+ * responsible for it being real: the in-process providers pass the live
+ * request's subject, and `routes/sandbox-rpc.ts` derives it from a signed
+ * grant rather than from the executor's request body.
  */
 export const dispatchRpc = async (
   bindings: SandboxBindings,
@@ -217,7 +237,14 @@ export const dispatchRpc = async (
   }
 
   if (op === "email.send") {
-    const transport = await bindings.ctx.emailFor(bindings.auth.tenantId);
+    // Same clamp `ai.generate` has carried since it shipped, and for the same
+    // reason: a workspace-less subject must not fall through to the
+    // DEPLOYMENT's transport. `emailFor(null)` resolves the operator's own
+    // configured sender, so without this an invocation that named no workspace
+    // sent mail from the instance itself — arbitrary content, over the
+    // operator's verified domain and reputation.
+    const tenantId = requireWorkspace(bindings, "ctx.email.send");
+    const transport = await bindings.ctx.emailFor(tenantId);
     await transport.send(
       args as { to: string; subject: string; text: string; html?: string },
     );
@@ -233,8 +260,9 @@ export const dispatchRpc = async (
       url?: string;
       data?: Record<string, string>;
     };
+    const tenantId = requireWorkspace(bindings, "ctx.push.send");
     const userIds = a.userIds ?? (a.userId ? [a.userId] : []);
-    return sendPushToUsers(bindings.ctx, bindings.auth.tenantId, {
+    return sendPushToUsers(bindings.ctx, tenantId, {
       userIds,
       title: a.title,
       body: a.body,
@@ -259,14 +287,10 @@ export const dispatchRpc = async (
     const prompt = typeof a.prompt === "string" ? a.prompt.trim() : "";
     if (!prompt) throw new Error("ctx.ai.generate needs a non-empty prompt");
 
-    const tenantId = bindings.auth.tenantId ?? null;
-    if (!tenantId) {
-      // Fail closed exactly like the db ops do on this bridge. A remote
-      // executor's `auth` body is trusted wholesale behind a shared secret, and
-      // `tenantId` is optional there for back-compat with older executors — so
-      // "no workspace" must never fall back to the deployment's own key.
-      throw new Error("ctx.ai.generate requires a workspace-scoped run");
-    }
+    // Fail closed exactly like the db ops do on this bridge: "no workspace"
+    // must never fall back to the deployment's own key. This was the only op
+    // that did it; `email.send` and `push.send` now share the helper.
+    const tenantId = requireWorkspace(bindings, "ctx.ai.generate");
     // The workspace's Settings · AI key, overlaid onto the deployment env. Using
     // `bindings.ctx.env` directly would bill the operator for a tenant that
     // brought its own key, and ignore the model that tenant chose.

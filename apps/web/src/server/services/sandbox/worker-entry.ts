@@ -7,9 +7,26 @@
  * `ctx` proxy that round-trips db/fetch/email through host RPC, runs the
  * user code, and posts back logs + the final result.
  *
- * Security note: the worker still has access to Bun globals (fs, process,
- * Bun, …) even after deletion — this is a SOFT sandbox. For hard isolation
- * run an out-of-isolate executor (the `remote-http` provider) instead.
+ * ## This is NOT a sandbox, and the delete-loop below cannot make it one
+ *
+ * Measured against a real Bun Worker running exactly this construction:
+ *
+ *   await import("node:process")  -> the API host's whole env
+ *   await import("node:fs")       -> any file the process can read
+ *   globalThis.Bun.spawnSync(…)   -> arbitrary commands
+ *
+ * `fetch`, `process` and `WebSocket` really do delete. `Bun` does not, and
+ * cannot be shadowed either: it is defined `configurable: false, writable:
+ * false`, so `Object.defineProperty(globalThis, "Bun", …)` throws rather than
+ * hiding it. Dynamic `import()` is a keyword, so no parameter shadows it and no
+ * module resolver is reachable from here. The parameter shadows below stop a
+ * bare `process` identifier and nothing else.
+ *
+ * So this provider is only ever selected when the operator has opted in with
+ * `FUNCTIONS_SANDBOX=bun-worker`, which says "the people authoring functions
+ * here are the people running this deployment". Everywhere else the default is
+ * the QuickJS-WASM isolate, and hard isolation with host I/O is the
+ * `remote-http` provider's job. See `services/sandbox/index.ts`.
  */
 
 import type {
@@ -114,10 +131,12 @@ self.addEventListener("message", async (event: MessageEvent<unknown>) => {
 
   const run = msg as WorkerRunMessage;
 
-  // Strip dangerous globals (best-effort). Some don't actually delete under
-  // Bun (`Bun` itself survives the delete), so they're ALSO shadowed as
-  // undefined parameters on the user function below — direct identifier
-  // references resolve to the shadow, not the global.
+  // Strip what CAN be stripped. `fetch`, `process` and `WebSocket` delete;
+  // `Bun` does not (non-configurable) and `require` / `module` were never
+  // defined here in the first place. They are also shadowed as undefined
+  // parameters on the user function below, which catches a bare identifier
+  // reference but not `globalThis.Bun`. Defence in depth, not a boundary —
+  // read the header before treating this list as one.
   const drop = ["fetch", "process", "Bun", "require", "module", "WebSocket"];
   for (const k of drop) {
     try {
@@ -134,9 +153,9 @@ self.addEventListener("message", async (event: MessageEvent<unknown>) => {
     // The user body sees `ctx`, `console` as parameters — we use `new Function`
     // so the source is parsed in a controlled env (no closure capture from
     // this entry's scope). The trailing parameters shadow the globals the
-    // delete-loop above can't remove; they're invoked as undefined. This stays
-    // a SOFT sandbox (globalThis.* escapes remain) — hard isolation is the
-    // remote-http provider's job.
+    // delete-loop above can't remove; they're invoked as undefined. This is
+    // NOT isolation — see the header — it is what an operator who has opted
+    // into `FUNCTIONS_SANDBOX=bun-worker` gets.
     const fn = new Function(
       "ctx",
       "console",

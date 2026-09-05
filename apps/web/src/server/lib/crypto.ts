@@ -101,10 +101,20 @@ const b64urlDecode = (s: string): Uint8Array => {
   return b64decode(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
 };
 
-const deriveHmacKey = async (secret: string): Promise<CryptoKey> => {
+/**
+ * Derive an HMAC key from a shared secret, domain-separated by `purpose`.
+ *
+ * The purpose string is part of the digested material, so a signature minted
+ * for one purpose can never verify as another even though both derive from the
+ * same deployment secret — a storage URL is not a sandbox grant.
+ */
+const deriveHmacKey = async (
+  secret: string,
+  purpose = "storage-url-sign",
+): Promise<CryptoKey> => {
   const material = await crypto.subtle.digest(
     "SHA-256",
-    buf(new TextEncoder().encode(`backlex:storage-url-sign:v1:${secret}`)),
+    buf(new TextEncoder().encode(`backlex:${purpose}:v1:${secret}`)),
   );
   return crypto.subtle.importKey(
     "raw",
@@ -174,6 +184,96 @@ export const verifyStorageUrl = async (
     ) return null;
     if (payload.exp * 1000 < Date.now()) return null;
     return payload;
+  } catch {
+    return null;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Sandbox RPC grants (the out-of-isolate function executor's callback identity)
+// ---------------------------------------------------------------------------
+
+const GRANT_PURPOSE = "sandbox-rpc-grant";
+
+/**
+ * Who a sandboxed function is running as, stated by the main app rather than
+ * by the executor.
+ *
+ * The executor is a SOFT sandbox running user-authored code (its own header
+ * says so), so anything it hands back is attacker-controlled: before this
+ * existed, `/api/_internal/sandbox-rpc` read the subject out of the request
+ * BODY and the shared bearer token was the only thing standing behind it. A
+ * function author who reached the token — trivial in-process, e.g. by wrapping
+ * `globalThis.fetch` and reading the Authorization header off the executor's
+ * own next callback — could then name any workspace.
+ *
+ * So the claim travels signed. The main app mints one of these per invocation
+ * and puts it in the `/run` body's `rpcToken`, which the executor already
+ * echoes back verbatim as its bearer; the callback derives the subject from
+ * the verified token and ignores the body's `auth` entirely. The executor never
+ * receives `SANDBOX_RPC_TOKEN` itself, so it cannot leak what it does not hold,
+ * and a stolen grant is worth only the invocation it was minted for.
+ */
+export interface SandboxGrantPayload {
+  /** Subject user id. `null` for a trigger with nobody signed in (cron). */
+  u: string | null;
+  /** Subject email, for `ctx.user`. */
+  e: string | null;
+  /** Role names the subject held when the invocation started. */
+  r: string[];
+  /** Workspace the invocation belongs to. `null` outside a workspace. */
+  t: string | null;
+  /** Expiry, epoch seconds. */
+  exp: number;
+}
+
+/** Mint a grant for one invocation. Same `<payload>.<sig>` shape as the
+ *  storage URL token, keyed by `SANDBOX_RPC_TOKEN`. */
+export const signSandboxGrant = async (
+  payload: SandboxGrantPayload,
+  secret: string,
+): Promise<string> => {
+  const key = await deriveHmacKey(secret, GRANT_PURPOSE);
+  const body = b64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, buf(new TextEncoder().encode(body))),
+  );
+  return `${body}.${b64urlEncode(sig)}`;
+};
+
+/**
+ * Validate a grant produced by {@link signSandboxGrant}. Returns the claims
+ * when the signature is intact AND the grant hasn't expired; `null` on any
+ * failure. Never throws — the callback route gates on the return value and
+ * falls back to the legacy shared-secret comparison when this answers null.
+ */
+export const verifySandboxGrant = async (
+  token: string,
+  secret: string,
+): Promise<SandboxGrantPayload | null> => {
+  const dot = token.indexOf(".");
+  if (dot <= 0 || dot === token.length - 1) return null;
+  const body = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  try {
+    const key = await deriveHmacKey(secret, GRANT_PURPOSE);
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      buf(b64urlDecode(sig)),
+      buf(new TextEncoder().encode(body)),
+    );
+    if (!ok) return null;
+    const p = JSON.parse(
+      new TextDecoder().decode(b64urlDecode(body)),
+    ) as SandboxGrantPayload;
+    if (typeof p.exp !== "number" || !Array.isArray(p.r)) return null;
+    if (p.u !== null && typeof p.u !== "string") return null;
+    if (p.e !== null && typeof p.e !== "string") return null;
+    if (p.t !== null && typeof p.t !== "string") return null;
+    if (p.r.some((role) => typeof role !== "string")) return null;
+    if (p.exp * 1000 < Date.now()) return null;
+    return p;
   } catch {
     return null;
   }

@@ -24,6 +24,7 @@ import { skillsForAgent, type SkillRow } from "./skills";
 import type { McpTool, ToolCtx } from "../../mcp/types";
 import { checkToolCall, filterByAllowlist, type KeyGuards } from "../../mcp/guards";
 import { approvalGate } from "./approval-gate";
+import { stableStringify } from "./canonical-args";
 import { resolveKind } from "../../mcp/kind";
 import type { ModelMessage } from "ai";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai-config";
@@ -234,9 +235,12 @@ const buildSpeakerLabeller = async (
   };
 };
 
-/** Stable key for the per-turn duplicate-call guard. */
-const argsKey = (args: Record<string, unknown>): string =>
-  JSON.stringify(args, Object.keys(args).sort());
+/** Stable key for the per-turn duplicate-call guard. Canonical at every depth
+ *  — the replacer-array version this replaced collapsed nested objects to `{}`,
+ *  so two different batch calls in one turn read as a repeat and the second was
+ *  refused. This key is in-memory only, so it keeps the full canonical form
+ *  rather than a digest. See `canonical-args.ts`. */
+const argsKey = (args: Record<string, unknown>): string => stableStringify(args);
 
 /** Pull a plain-text rendering out of an MCP ToolResult for the observation the
  *  model reads back. Prefers `structuredContent` (machine shape) but falls back

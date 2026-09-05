@@ -525,6 +525,17 @@ export interface Env {
    *  Workers / Vercel Edge / Netlify Edge) while still offering DB-aware
    *  functions. Pairs with `SANDBOX_RPC_TOKEN` + `SELF_URL` for `ctx.*`. */
   FUNCTIONS_EXEC_URL?: string;
+  /** Which sandbox runs user functions. Unset (or `auto`) picks the strongest
+   *  isolation available: `remote-http` when `FUNCTIONS_EXEC_URL` is set,
+   *  otherwise the in-isolate QuickJS-WASM sandbox.
+   *
+   *  `bun-worker` opts INTO the in-process Bun worker, which is a soft sandbox:
+   *  user code reaches `node:*`, the filesystem and `Bun.spawnSync`, so a
+   *  function author gets the API host's env and shell. Set it only where the
+   *  people who author functions are the people who run the deployment — a
+   *  single-tenant self-host or a dev box — never where `POST /api/tenants` is
+   *  open. `quickjs` pins the safe in-isolate sandbox explicitly. */
+  FUNCTIONS_SANDBOX?: string;
   /** npm registry base URL extension installs resolve against. Defaults to
    *  https://registry.npmjs.org; point at a private registry mirror to gate
    *  which packages `POST /api/extensions/install` may pull. */
@@ -875,6 +886,7 @@ export const STRING_ENV_KEYS = [
   "EXTRA_TRUSTED_ORIGINS",
   "FUNCTIONS_FETCH_ALLOW",
   "FUNCTIONS_EXEC_URL",
+  "FUNCTIONS_SANDBOX",
   "EXTENSIONS_NPM_REGISTRY",
   "GRAPHQL_MAX_DEPTH",
   "GRAPHQL_MAX_COST",

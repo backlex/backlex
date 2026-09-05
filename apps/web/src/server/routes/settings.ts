@@ -431,6 +431,9 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         { key: "S3_BUCKET", set: present("S3_BUCKET"), source: "env", secret: false },
         { key: "FUNCTIONS_FETCH_ALLOW", set: present("FUNCTIONS_FETCH_ALLOW"), source: "env", secret: false },
         { key: "FUNCTIONS_EXEC_URL", set: present("FUNCTIONS_EXEC_URL"), source: "env", secret: false },
+        // Worth reading off this panel rather than off a shell: it decides
+        // whether user-authored functions run in an isolate or in this process.
+        { key: "FUNCTIONS_SANDBOX", set: present("FUNCTIONS_SANDBOX"), source: "env", secret: false },
         { key: "SANDBOX_RPC_TOKEN", set: present("SANDBOX_RPC_TOKEN"), source: "env", secret: true },
       ];
       // Report the actual host runtime, not a DB-presence heuristic. Order

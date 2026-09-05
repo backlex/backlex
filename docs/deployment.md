@@ -449,10 +449,16 @@ Then point the Worker at it:
 
 ```bash
 wrangler secret put FUNCTIONS_EXEC_URL  # https://your-exec-host (base URL, no /run)
-wrangler secret put SANDBOX_RPC_TOKEN   # generate with `openssl rand -hex 32` (same on both)
+wrangler secret put SANDBOX_RPC_TOKEN   # generate with `openssl rand -hex 32` (Worker only)
 wrangler secret put SELF_URL            # https://api.your.app
 wrangler deploy
 ```
+
+`SANDBOX_RPC_TOKEN` goes on the Worker and **not** on the executor: the Worker
+signs a short-lived per-invocation grant and passes it in the `/run` body's
+`rpcToken`, which the executor echoes back as its bearer. The executor runs
+user-authored code in-process, so it must never hold a secret that outlives one
+run.
 
 The selector falls back to QuickJS when `FUNCTIONS_EXEC_URL` is unset, so
 Workers users still get a sandbox — sync only.
@@ -825,7 +831,8 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `AUTH_PLUGINS`               | no        | Comma-separated: `passkey,magic-link,email-otp,anonymous`. TOTP two-factor is always on (not listed here) |
 | `FUNCTIONS_FETCH_ALLOW`      | no        | Comma-separated host allow-list for ctx.fetch |
 | `FUNCTIONS_EXEC_URL`         | no        | Base URL of a remote-http function executor  |
-| `SANDBOX_RPC_TOKEN`          | no        | remote-http only — shared secret for ctx.* RPC |
+| `FUNCTIONS_SANDBOX`          | no        | Pin the provider: `quickjs` \| `remote-http` \| `bun-worker`. Unset = remote-http if `FUNCTIONS_EXEC_URL`, else quickjs. `bun-worker` is **not** a sandbox — only where function authors are the operator |
+| `SANDBOX_RPC_TOKEN`          | no        | remote-http only — signing key for ctx.* RPC grants. Main app only, never on the executor |
 | `SELF_URL`                   | no        | Required for cron-triggered remote-http RPC  |
 | `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel / Netlify Functions (no local fs in a Lambda zip); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |

@@ -611,7 +611,7 @@ const runHandler = async (
 
   const auth = c.get("auth");
   const ctx = c.get("ctx");
-  const meta = requestMeta(c.req.raw);
+  const meta = requestMeta(c.req.raw, c.get("ctx").env);
   // Action carries the dot prefix so the activity service's category-mapper
   // short-circuits and stores `mcp.<tool>` verbatim — the Recent Runs panel
   // filters via `?action=mcp.` so the namespacing has to be stable.

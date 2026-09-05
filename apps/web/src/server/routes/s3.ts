@@ -48,7 +48,12 @@ import {
   withinPrefix,
   type S3CredentialRow,
 } from "../services/s3/credentials";
-import { guardLogicalKey, physicalKey, stripTenantPrefix } from "../services/storage/keys";
+import {
+  guardLogicalKey,
+  guardLogicalPrefix,
+  physicalKey,
+  stripTenantPrefix,
+} from "../services/storage/keys";
 import { bucketFor, deleteEverywhere } from "../services/storage/bucket-for";
 import { aclForKey } from "../services/storage/files";
 import { assertStorageWithinLimit } from "../services/usage";
@@ -131,10 +136,10 @@ const authenticate = async (
   | { ok: false; response: Response }
 > => {
   const req = c.req.raw;
-  const ip =
-    req.headers.get("cf-connecting-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "local";
+  // Keyed on the address only where the deployment has one it can believe;
+  // otherwise every caller shares the "local" penalty bucket, which is a real
+  // (blunt) brake where a forged header was none at all.
+  const ip = clientAddress(req, env as unknown as ClientAddressEnv) ?? "local";
   const now = Date.now();
   if (inPenalty(ip, now)) {
     return {
@@ -384,6 +389,15 @@ s3Routes.all("/*", async (c) => {
   }
   const outOfScope = keyAllowed(credential, key);
   if (outOfScope) return outOfScope;
+  // The multipart upload id rides the query string on four of these operations
+  // and reaches a storage adapter untouched — where, on the fs backend, it
+  // becomes part of a filename. Judged once here rather than at each of the
+  // four call sites, because four sites judging the same value independently is
+  // how one of them ends up not judging it at all.
+  const uploadId = qs.get("uploadId");
+  if (uploadId !== null && !isPlausibleUploadId(uploadId)) {
+    return xmlError("InvalidArgument", "The uploadId is not acceptable", 400);
+  }
   const physical = physicalKey(tenantId, key);
   // Which bucket this object lives in, on a deployment that keeps public files
   // in their own. The REST surface routes on the row's ACL; this endpoint is its
@@ -393,7 +407,7 @@ s3Routes.all("/*", async (c) => {
   const acl = await aclForKey(ctx, physical);
 
   if (method === "GET" || method === "HEAD") {
-    if (qs.has("uploadId")) return listParts(qs);
+    if (uploadId !== null) return listParts(qs);
     const got = await bucketFor(ctx, acl).get(physical);
     if (!got) return xmlError("NoSuchKey", "The specified key does not exist", 404);
     const headers = new Headers({
@@ -416,7 +430,6 @@ s3Routes.all("/*", async (c) => {
     const denied = mutationAllowed(credential);
     if (denied) return denied;
     const partNumber = qs.get("partNumber");
-    const uploadId = qs.get("uploadId");
     if (partNumber && uploadId) {
       await assertStorageWithinLimit(ctx, ctx.env, tenantId, authed.body?.length ?? 0);
       return uploadPart(ctx, physical, uploadId, Number(partNumber), authed.body);
@@ -441,7 +454,6 @@ s3Routes.all("/*", async (c) => {
     if (qs.has("uploads")) {
       return createMultipart(ctx, tenantSlug, key, physical, c.req.raw);
     }
-    const uploadId = qs.get("uploadId");
     if (uploadId) {
       return completeMultipart(ctx, tenantId, tenantSlug, key, physical, uploadId, authed.body, url);
     }
@@ -451,7 +463,6 @@ s3Routes.all("/*", async (c) => {
   if (method === "DELETE") {
     const denied = mutationAllowed(credential);
     if (denied) return denied;
-    const uploadId = qs.get("uploadId");
     if (uploadId) {
       await ctx.storage.abortMultipart?.(physical, uploadId);
       return new Response(null, { status: 204 });
@@ -470,6 +481,32 @@ s3Routes.all("/*", async (c) => {
 });
 
 // --- operations -------------------------------------------------------------
+
+/**
+ * Is this a multipart upload id a real backend could have issued?
+ *
+ * The id is opaque to this endpoint — it was minted by whichever storage
+ * backend is configured and is handed straight back to it — so the rule is a
+ * DENY list of what no backend ever produces, not an allow list of one
+ * backend's charset. R2 and S3 ids are base64url-ish and can be long; the fs
+ * adapter's are UUIDs. None of them contains a separator, a parent-directory
+ * hop, a NUL or a control character, and that is exactly the set that turns the
+ * id into something other than an identifier on the way to an adapter.
+ *
+ * The fs adapter applies its own, stricter allow list before the value reaches
+ * a filename — this check exists so a hostile id is refused as a 400 by the
+ * endpoint that accepted it, rather than as a 500 from inside the adapter.
+ */
+import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+const UPLOAD_ID_MAX = 1024;
+const isPlausibleUploadId = (id: string): boolean =>
+  id.length > 0 &&
+  id.length <= UPLOAD_ID_MAX &&
+  !id.includes("/") &&
+  !id.includes("\\") &&
+  !id.includes("..") &&
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
+  !/[\u0000-\u001f\u007f]/.test(id);
 
 const listObjects = async (
   ctx: Ctx,
@@ -491,6 +528,15 @@ const listObjects = async (
   // its view, never widen it.
   const scope = credential.prefix ?? "";
   const effective = prefix.startsWith(scope) ? prefix : scope;
+  // `?prefix=` reaches the storage adapter without a key ever being built from
+  // it, so it never met `guardLogicalKey` — and the fs adapter resolves it
+  // against the storage root, where a traversal prefix threw a bare Error and
+  // surfaced as a 500. Refuse it here, in the S3 error shape a client expects.
+  try {
+    guardLogicalPrefix(effective);
+  } catch {
+    return xmlError("InvalidArgument", "The prefix is not acceptable", 400);
+  }
 
   const objects = await ctx.storage.list(physicalKey(tenantId, effective));
   const logical = objects

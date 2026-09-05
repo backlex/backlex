@@ -829,6 +829,7 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `RESEND_API_KEY` \| `SENDGRID_API_KEY` \| `MAILGUN_API_KEY`+`MAILGUN_DOMAIN` \| `SES_REGION`+`SES_ACCESS_KEY_ID`+`SES_SECRET_ACCESS_KEY` \| `SMTP_HOST`+`SMTP_PORT`+`SMTP_USER`+`SMTP_PASSWORD` | no | Credentials for the chosen email provider |
 | `OAUTH_{GOOGLE,GITHUB,APPLE}_CLIENT_{ID,SECRET}` | no | enable each provider when both set; Apple's `_CLIENT_ID` is the Service ID, `_CLIENT_SECRET` is the signed JWT |
 | `AUTH_PLUGINS`               | no        | Comma-separated: `passkey,magic-link,email-otp,anonymous`. TOTP two-factor is always on (not listed here) |
+| `TRUSTED_PROXY_HEADER`       | no¹       | ¹ **Set this on a self-host behind a reverse proxy.** Names the header your proxy writes the client address to — `x-real-ip` for nginx/Caddy defaults, `x-forwarded-for` for a plain proxy. Unset means no header is believed and every IP-keyed limit falls back to one shared bucket. Not needed on Cloudflare, Vercel or Netlify, which set their own. See "Client address and rate limits" below. |
 | `FUNCTIONS_FETCH_ALLOW`      | no        | Comma-separated host allow-list for ctx.fetch |
 | `FUNCTIONS_EXEC_URL`         | no        | Base URL of a remote-http function executor  |
 | `FUNCTIONS_SANDBOX`          | no        | Pin the provider: `quickjs` \| `remote-http` \| `bun-worker`. Unset = remote-http if `FUNCTIONS_EXEC_URL`, else quickjs. `bun-worker` is **not** a sandbox — only where function authors are the operator |
@@ -841,6 +842,37 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | no | Durable realtime transport for serverless (Vercel/Netlify), where the in-process pub/sub map doesn't survive between invocations. When both are set, realtime publish/subscribe fan out through an Upstash Redis stream per channel. Unset on Bun (in-proc) / Workers (Durable Object). |
 | `ABLY_API_KEY`               | no        | Collaboration transport for serverless (`keyName:keySecret`). The server only mints channel-scoped token requests (`POST /api/realtime/collab-token`); the browser talks to Ably directly, so presence/field-awareness costs zero function invocations. Preferred over the Redis fallback on Vercel/Netlify; ignored where a Durable Object or long-lived process exists. See `docs/realtime.md`. |
 | `CLOUD_REPORT_URL` + `CLOUD_REPORT_SECRET` + `CLOUD_PROJECT_ID` | no | **Managed-cloud only.** Set automatically by the backlex cloud provisioner so a tenant can opt-in report 5xx errors + AI token usage to the control plane. Self-hosted installs leave all three unset and never phone home — the reporting path is a no-op (`server/lib/cloud-report.ts`). |
+
+## Client address and rate limits
+
+Every per-IP limit in the app — the auth caps, the global `/api/*` limiter, and
+the unauthenticated public routes (forms, booking, analytics, inbound hooks,
+payments, public dashboards, webhook triggers, consent, realtime, MCP) — keys on
+one derivation, `server/lib/client-address.ts`. It reads a header **only where
+something you control wrote it**:
+
+| Runtime | Header read | Configuration |
+|---|---|---|
+| Cloudflare Workers | `cf-connecting-ip` | none — the edge overwrites the inbound value |
+| Vercel | `x-vercel-forwarded-for`, then `x-real-ip` | none — Vercel strips inbound `x-vercel-*` |
+| Netlify | `x-nf-client-connection-ip`, then `x-real-ip` | none |
+| Bun / Node self-host | whatever `TRUSTED_PROXY_HEADER` names | **required if you are behind a proxy** |
+
+**On a self-host, an unset `TRUSTED_PROXY_HEADER` is a working configuration,
+not a broken one** — it just means no caller can be told apart, so every
+anonymous request shares one limiter bucket. That is blunt but real. Setting the
+variable is what buys per-client limits.
+
+Set it **only if your proxy is the only way in**. If the app is also reachable
+directly, a caller sends the header themselves and each request lands in its own
+bucket again — which is no limit at all, and was the behaviour before this
+derivation existed. A comma-separated value is read from the **right** (the hop
+your proxy appended); the left end is what the original client claimed, so it is
+never used. That assumes exactly one trusted proxy in front of the app.
+
+The same value is what gets recorded as the request address in the activity log
+and in consent proofs, so an unset variable also means those rows carry no
+address rather than an unverifiable one.
 
 ## Verifying a deploy
 

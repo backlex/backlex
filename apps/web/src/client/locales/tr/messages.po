@@ -7495,6 +7495,10 @@ msgstr "E-posta tek zorunlu alandır. Roller kayıt sonrası atanır — ilk kul
 msgid "email magic link"
 msgstr "e-posta sihirli bağlantısı"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Email preview"
+msgstr "E-posta önizlemesi"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Email report"
 msgstr "Raporu e-postala"
@@ -15659,6 +15663,11 @@ msgstr "Bir satıra karşı önizle"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Preview error"
 msgstr "Önizleme hatası"
+
+#. placeholder {0}: fieldLabel(f, i18n.locale)
+#: src/client/admin/collections/item-form.tsx
+msgid "Preview of {0}"
+msgstr "{0} önizlemesi"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Preview URL"

@@ -79,7 +79,7 @@ export const itemsBatchRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         collection,
         operations: body.operations,
         atomic: body.atomic === true,
-        meta: requestMeta(c.req.raw),
+        meta: requestMeta(c.req.raw, c.get("ctx").env),
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,
       });
@@ -128,7 +128,7 @@ export const itemsBatchRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           const r = await resolvePermission(ctx, auth, collection.slug, "read", getRequestPermCache(c));
           return r.allowed ? r.fields : new Set<string>();
         })(),
-        meta: requestMeta(c.req.raw),
+        meta: requestMeta(c.req.raw, c.get("ctx").env),
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,
       });

@@ -495,7 +495,7 @@ export const analyticsCollectRoutes = new Hono<AppBindings>()
   .post("/collect", async (c) => {
     const ctx = c.get("ctx");
     const db = { db: ctx.db, dialect: ctx.dialect };
-    const meta = requestMeta(c.req.raw);
+    const meta = requestMeta(c.req.raw, c.get("ctx").env);
     const ip = meta.ip ?? "unknown";
 
     // Refuse on the declared length BEFORE reading. `c.req.text()` buffers the

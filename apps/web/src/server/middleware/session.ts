@@ -16,23 +16,17 @@ import {
   setCachedSession,
 } from "../services/permissions-cache";
 
-const extractIp = (req: Request): string | null => {
-  const h = req.headers;
-  return (
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    null
-  );
-};
+import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+const extractIp = (req: Request, env: ClientAddressEnv): string | null =>
+  clientAddress(req, env);
 
 const stampSessionMeta = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: ClientAddressEnv },
   sessionId: string,
   req: Request,
 ): Promise<void> => {
   const t = ctx.dialect === "pg" ? pg.schema.sessions : sqlite.schema.sessions;
-  const ip = extractIp(req);
+  const ip = extractIp(req, ctx.env);
   const ua = req.headers.get("user-agent");
   // Only patch when the existing row is missing data — keeps writes off the
   // hot path for repeat requests in the same session.
@@ -69,7 +63,7 @@ const STAMPED_CAP = 10_000;
  *  falls back to a dangling promise where no ExecutionContext exists. */
 const stampOnce = (
   c: { executionCtx: { waitUntil(p: Promise<unknown>): void } },
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: ClientAddressEnv },
   sessionId: string,
   req: Request,
 ): void => {
@@ -438,7 +432,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     userId = cached.userId;
     email = cached.email;
     if (cached.sessionId) {
-      stampOnce(c, { db: ctx.db, dialect: ctx.dialect }, cached.sessionId, c.req.raw);
+      stampOnce(c, { db: ctx.db, dialect: ctx.dialect, env: ctx.env }, cached.sessionId, c.req.raw);
     }
   } else {
     const session = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
@@ -448,7 +442,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
       const sessId =
         (session as { session?: { id?: string } }).session?.id ?? null;
       if (sessId) {
-        stampOnce(c, { db: ctx.db, dialect: ctx.dialect }, sessId, c.req.raw);
+        stampOnce(c, { db: ctx.db, dialect: ctx.dialect, env: ctx.env }, sessId, c.req.raw);
       }
       if (sessionToken) {
         setCachedSession(sessionToken, { userId, email, sessionId: sessId });
@@ -617,7 +611,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
                 const resolved = await resolveThirdPartyUser(
                   { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
                   identity,
-                  extractIp(c.req.raw) ?? undefined,
+                  extractIp(c.req.raw, c.get("ctx").env) ?? undefined,
                 );
                 if (resolved) {
                   plane = "app";

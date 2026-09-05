@@ -26,17 +26,11 @@ import {
 } from "./auth-lockout";
 import { recordActivity } from "../services/activity";
 
+import { type ClientAddressEnv, clientAddressKey } from "./client-address";
 const WINDOW_MS = 60_000;
 
-const ipFromHeaders = (req: Request): string => {
-  const h = req.headers;
-  return (
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
-};
+const ipFromHeaders = (req: Request, env: ClientAddressEnv): string =>
+  clientAddressKey(req, env);
 
 const userAgentOf = (req: Request): string | null => req.headers.get("user-agent");
 
@@ -123,7 +117,7 @@ export const authRateLimitMiddleware: MiddlewareHandler = async (c, next) => {
     await next();
     return;
   }
-  const ip = ipFromHeaders(c.req.raw);
+  const ip = ipFromHeaders(c.req.raw, c.get("ctx").env);
   const key = `auth:${rule.label}:${ip}`;
   // The runtime Env hangs off the per-request Ctx (built by app.ts before
   // any middleware runs). Reading it via `c.get("ctx")` keeps the limiter
@@ -203,7 +197,7 @@ export const authLockoutMiddleware: MiddlewareHandler = async (c, next) => {
 
   const key = `signin:${planeScope(path)}:${email}`;
   const audit = ctx?.db && ctx?.dialect ? ({ db: ctx.db, dialect: ctx.dialect } as AuditCtx) : null;
-  const ip = ipFromHeaders(c.req.raw);
+  const ip = ipFromHeaders(c.req.raw, c.get("ctx").env);
 
   const locked = await checkLocked(env, key);
   if (locked.locked) {
@@ -252,10 +246,13 @@ export const enforceIpRateLimit = async (
   max: number,
   windowMs: number = WINDOW_MS,
 ): Promise<void> => {
-  const ip = ipFromHeaders(c.req.raw);
-  const key = `${label}:${ip}`;
   const ctx = c.get("ctx") as { env?: Env } | undefined;
   const env = ctx?.env;
+  // Derived from the same env the limiter backend is chosen with, so a route
+  // that reaches this helper cannot end up keyed differently from the
+  // middleware above.
+  const ip = ipFromHeaders(c.req.raw, env ?? {});
+  const key = `${label}:${ip}`;
   if (!env) {
     // Should be unreachable — the ctx middleware runs first in app.ts. Fail
     // open rather than crash route handlers for a misconfigured runtime.

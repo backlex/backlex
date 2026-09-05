@@ -173,7 +173,7 @@ export const auditMcp = (
       // surfaces in the admin filter without colliding with a user slug.
       collection: "system_mcp",
       itemId: entry.tool,
-      ...requestMeta(c.req.raw),
+      ...requestMeta(c.req.raw, env),
       payload: {
         tool: entry.tool,
         kind: entry.kind,

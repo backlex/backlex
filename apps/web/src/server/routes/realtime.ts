@@ -141,10 +141,9 @@ interface Gate {
   broadcast?: ResolvedChannel;
 }
 
-const clientIp = (c: { req: { header: (n: string) => string | undefined } }): string =>
-  c.req.header("cf-connecting-ip") ??
-  c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-  "local";
+import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+const clientIp = (c: { req: { raw: Request } }, env: ClientAddressEnv): string =>
+  clientAddress(c.req.raw, env) ?? "local";
 
 /** System columns a realtime filter may always reference (they're always
  *  projected to the subscriber, so filtering on them leaks nothing). */
@@ -904,7 +903,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const { channel } = c.req.valid("param");
       const gate = await gateForChannel(ctx, auth, channel, true);
 
-      if (!(await rateLimitOk(ctx.env, `pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS))) {
+      if (!(await rateLimitOk(ctx.env, `pub:${channel}:${clientIp(c, ctx.env)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS))) {
         throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
       }
       let payload = await readJson(c.req);

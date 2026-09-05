@@ -63,20 +63,17 @@ export const apiRateLimitConfig = (env: Env): ApiRateLimitConfig => {
   };
 };
 
-const ipFromHeaders = (req: Request): string => {
-  const h = req.headers;
-  return (
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
-};
+import { type ClientAddressEnv, clientAddressKey } from "./client-address";
+const ipFromHeaders = (req: Request, env: ClientAddressEnv): string =>
+  clientAddressKey(req, env);
 
 /** Limiter key: per-API-key when present (machine clients each get their own
  *  budget), else per-(tenant,user) for an admin session, else per-IP for
  *  unauthenticated traffic. Keeps one tenant/key from spending another's. */
-const keyForRequest = (c: Parameters<MiddlewareHandler<AppBindings>>[0]): string => {
+const keyForRequest = (
+  c: Parameters<MiddlewareHandler<AppBindings>>[0],
+  env: ClientAddressEnv,
+): string => {
   let auth: AppBindings["Variables"]["auth"] | undefined;
   try {
     auth = c.get("auth");
@@ -85,7 +82,7 @@ const keyForRequest = (c: Parameters<MiddlewareHandler<AppBindings>>[0]): string
   }
   if (auth?.apiKeyId) return `api:key:${auth.apiKeyId}`;
   if (auth?.userId) return `api:user:${auth.tenantId ?? "_"}:${auth.userId}`;
-  return `api:ip:${ipFromHeaders(c.req.raw)}`;
+  return `api:ip:${ipFromHeaders(c.req.raw, env)}`;
 };
 
 // The auth surface has its own dedicated, tighter limiter — don't double-count
@@ -138,7 +135,7 @@ export const apiRateLimitMiddleware: MiddlewareHandler<AppBindings> = async (
   // fire-and-forget, same pattern as the span persist in app.ts.
   const r = rateLimitCheckDeferred(
     env,
-    keyForRequest(c),
+    keyForRequest(c, env),
     max,
     windowMs,
     (work) => {

@@ -41,11 +41,9 @@ const TARGET_BY_SUFFIX: Array<[RegExp, CaptchaTarget]> = [
 
 const TENANT_AUTH = /^\/api\/t\/([^/]+)\/auth\/(.+)$/i;
 
-const ipOf = (req: Request): string | null =>
-  req.headers.get("cf-connecting-ip") ||
-  req.headers.get("x-real-ip") ||
-  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-  null;
+import { type ClientAddressEnv, clientAddress } from "./client-address";
+const ipOf = (req: Request, env: ClientAddressEnv): string | null =>
+  clientAddress(req, env);
 
 export const captchaMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   if (c.req.method !== "POST") return next();
@@ -84,7 +82,7 @@ export const captchaMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   }
 
   try {
-    await enforceCaptcha(ctx, tenant.id, entry[1], token, ipOf(c.req.raw));
+    await enforceCaptcha(ctx, tenant.id, entry[1], token, ipOf(c.req.raw, ctx.env));
   } catch (e) {
     if (isAppError(e)) throw e;
     // A bug in the gate must not become an open door.

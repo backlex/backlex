@@ -34,6 +34,39 @@ export const DEFAULT_MAX_COST = 50_000;
 export const DEFAULT_MAX_ALIASES = 40;
 
 /**
+ * Hard ceiling on selection nodes visited while measuring ONE document, and the
+ * reason this module has a budget of its own rather than only enforcing one.
+ *
+ * `walk` follows a fragment spread every time it meets one, cutting off only a
+ * spread already on the CURRENT path — which is the right rule for a cycle and
+ * the wrong one for a DAG. A document where each of N fragments spreads the
+ * next one twice is legal GraphQL, contains no cycle, and is walked 2^N times.
+ * Measured against this module: N=16 is 53 ms, N=20 is 1.2 s, N=22 is 4.9 s
+ * from an 815-byte body, and every further fragment doubles it. Depth stays 2
+ * and aliases stay 0 throughout, so neither of the other two budgets can save
+ * it — and the verdict only exists once the walk finishes, so the guard meant
+ * to refuse an unaffordable document WAS the expense.
+ *
+ * A visit budget is the bound that does not depend on the shape of the abuse:
+ * whatever a document does, measuring it costs at most this many steps. It is
+ * deliberately far above anything a real query reaches — the whole GraphiQL
+ * introspection document is ~1,300 visits — so a legitimate caller never meets
+ * it, and a document that does is refused rather than measured.
+ */
+export const MAX_MEASURE_NODES = 200_000;
+
+/**
+ * Largest single GraphQL document accepted, in UTF-16 code units.
+ *
+ * `parse` runs before `measure` and is linear in the source, so a multi-megabyte
+ * body still builds a multi-megabyte AST before any budget is consulted. This
+ * bounds that, and it is checked per DOCUMENT rather than per request body, so
+ * a batched payload cannot smuggle one large operation past it. Two orders of
+ * magnitude above any hand-written or client-generated query.
+ */
+export const MAX_DOCUMENT_CHARS = 128_000;
+
+/**
  * Rows assumed for a list field that does not carry an explicit `limit`. The
  * items resolvers apply their own default page size; this only has to be the
  * same order of magnitude for the estimate to be useful.
@@ -50,6 +83,11 @@ export interface CostReport {
   depth: number;
   cost: number;
   aliases: number;
+  /** The walk hit {@link MAX_MEASURE_NODES} and stopped early, so `depth`,
+   *  `cost` and `aliases` are partial and describe only what was measured
+   *  before the budget ran out. `overBudget` refuses such a document outright:
+   *  a figure that is only a lower bound cannot clear a ceiling. */
+  truncated: boolean;
 }
 
 /**
@@ -110,9 +148,14 @@ const isIntrospectionOnly = (set: SelectionSetNode): boolean => {
  * Walk the document and return its depth, estimated row cost, and the largest
  * number of aliases pointing at one field name.
  *
- * Fragment spreads are followed through `fragments`; a cyclic spread (illegal
- * GraphQL that `validate` would reject later, but which reaches us first) is
- * cut off by `seen` so measuring cannot hang.
+ * Fragment spreads are followed through `fragments`; a spread already on the
+ * CURRENT path (a cycle — illegal GraphQL that `validate` would reject later,
+ * but which reaches us first) is cut off by `path` so measuring cannot hang.
+ *
+ * A cycle is not the only way a spread multiplies, which is why the walk also
+ * carries a visit budget: see {@link MAX_MEASURE_NODES}. When it runs out the
+ * walk stops where it is and reports `truncated`, so a document that is
+ * expensive to MEASURE is refused for that reason rather than measured.
  */
 export const measure = (doc: DocumentNode): CostReport => {
   const fragments = new Map<string, FragmentDefinitionNode>();
@@ -122,11 +165,24 @@ export const measure = (doc: DocumentNode): CostReport => {
 
   let depth = 0;
   let cost = 0;
+  let visits = 0;
+  let truncated = false;
   const aliasCounts = new Map<string, number>();
 
-  const walk = (set: SelectionSetNode, level: number, multiplier: number, seen: Set<string>) => {
+  // One mutable set for the whole walk, added to on the way down a spread and
+  // removed on the way back up. Same "is this fragment on the current path"
+  // question the per-call copy answered, without allocating a fresh set — which
+  // was O(path length) per spread on top of the fan-out it failed to bound.
+  const path = new Set<string>();
+
+  const walk = (set: SelectionSetNode, level: number, multiplier: number) => {
+    if (truncated) return;
     if (level > depth) depth = level;
     for (const sel of set.selections) {
+      if (++visits > MAX_MEASURE_NODES) {
+        truncated = true;
+        return;
+      }
       if (sel.kind === Kind.FIELD) {
         if (sel.alias) {
           const key = sel.name.value;
@@ -137,28 +193,32 @@ export const measure = (doc: DocumentNode): CostReport => {
         const rows = literalRowCount(sel.arguments ?? []);
         const next = rows === null ? multiplier : multiplier * rows;
         cost += next;
-        if (sel.selectionSet) walk(sel.selectionSet, level + 1, next, seen);
+        if (sel.selectionSet) walk(sel.selectionSet, level + 1, next);
       } else if (sel.kind === Kind.INLINE_FRAGMENT) {
-        walk(sel.selectionSet, level, multiplier, seen);
+        walk(sel.selectionSet, level, multiplier);
       } else {
         const name = sel.name.value;
-        if (seen.has(name)) continue;
+        if (path.has(name)) continue;
         const frag = fragments.get(name);
         if (!frag) continue;
-        walk(frag.selectionSet, level, multiplier, new Set([...seen, name]));
+        path.add(name);
+        walk(frag.selectionSet, level, multiplier);
+        path.delete(name);
       }
+      if (truncated) return;
     }
   };
 
   for (const def of doc.definitions as readonly DefinitionNode[]) {
+    if (truncated) break;
     if (def.kind !== Kind.OPERATION_DEFINITION) continue;
     if (isIntrospectionOnly(def.selectionSet)) continue;
-    walk(def.selectionSet, 1, 1, new Set());
+    walk(def.selectionSet, 1, 1);
   }
 
   let aliases = 0;
   for (const n of aliasCounts.values()) if (n > aliases) aliases = n;
-  return { depth, cost, aliases };
+  return { depth, cost, aliases, truncated };
 };
 
 /**
@@ -168,6 +228,12 @@ export const measure = (doc: DocumentNode): CostReport => {
  */
 export const overBudget = (doc: DocumentNode, budget: CostBudget): string | null => {
   const r = measure(doc);
+  // First, because the other three figures are only lower bounds once the walk
+  // has been cut short — a partial cost that happens to sit under the ceiling
+  // is not evidence the document fits.
+  if (r.truncated) {
+    return "Query is too complex to measure — reduce the number of fragment spreads or inline them";
+  }
   if (r.depth > budget.maxDepth) {
     return `Query is too deeply nested (${r.depth} levels, max ${budget.maxDepth})`;
   }

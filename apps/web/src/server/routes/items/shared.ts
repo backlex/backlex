@@ -34,7 +34,7 @@ export const auditRead = (
       tenantId: auth.tenantId ?? null,
       itemId,
       payload,
-      ...requestMeta(c.req.raw),
+      ...requestMeta(c.req.raw, c.get("ctx").env),
       durationMs: elapsedMs(c),
     }),
   );

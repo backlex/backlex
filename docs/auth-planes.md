@@ -235,6 +235,14 @@ Two layers guard both planes' auth surfaces (`lib/auth-rate-limit.ts`):
    `auth:<rule>:<ip>`. Backed by a Durable Object on Workers (authoritative
    across isolates) and an in-memory map elsewhere. A trip is recorded to the
    audit log as `auth.rate_limited`.
+
+   `<ip>` comes from `lib/client-address.ts`, which believes a header only where
+   the platform set it (`cf-connecting-ip` on Workers, the Vercel/Netlify
+   equivalents there) or where `TRUSTED_PROXY_HEADER` names one. **On a
+   self-host with that variable unset there is no per-client address, so this
+   cap applies to all anonymous traffic together** — see "Client address and
+   rate limits" in `docs/deployment.md`. That is why layer 2 exists and is not
+   optional: it is keyed on the account, so it holds regardless.
 2. **Per-account lockout** — the complement that catches a *distributed* brute
    force rotating IPs against one account. `authLockoutMiddleware` tracks failed
    password sign-ins (`/sign-in/email`, HTTP 401) per identifier across all IPs;

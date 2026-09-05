@@ -526,6 +526,14 @@ describe("admin UI conventions", () => {
       "ui.tsx",
       // Shared infrastructure with no single owning page.
       "extension-frame.tsx",
+      // The rule that no stored value is handed to `dangerouslySetInnerHTML`,
+      // in the one component that holds it. Three owners — the item form's
+      // richtext/markdown toggle, the email-template preview and the
+      // document-template preview — which is no owner, same bucket as the
+      // extension frame below it. It lives here rather than in one of them
+      // because the three previews drifting apart is exactly what put an
+      // anonymous submitter's markup in an operator's session.
+      "html-preview.tsx",
       // Mounted by the items list, the record editor and the overview page —
       // three owners is no owner, same bucket as the frame it renders.
       "extension-widgets.tsx",

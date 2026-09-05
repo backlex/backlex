@@ -648,7 +648,7 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         // PayTR hashes the payer's IP. When an admin opens a link on a
         // customer's behalf the request IP is the best available answer, and
         // it beats refusing outright — but an explicit value always wins.
-        customerIp: body.customerIp ?? requestMeta(c.req.raw).ip ?? undefined,
+        customerIp: body.customerIp ?? requestMeta(c.req.raw, c.get("ctx").env).ip ?? undefined,
         // A preview or staging deploy must not send customers to production,
         // and its settlement callback has to come back to itself.
         baseUrl: new URL(c.req.url).origin,
@@ -699,7 +699,7 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...body,
         // iyzico records an IP against a refund. The admin raising it is the
         // best answer available, and it beats sending nothing.
-        customerIp: requestMeta(c.req.raw).ip ?? undefined,
+        customerIp: requestMeta(c.req.raw, c.get("ctx").env).ip ?? undefined,
       });
       await logActivity(c, {
         action: "payments.refund",

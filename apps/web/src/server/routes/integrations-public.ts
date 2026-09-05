@@ -43,7 +43,7 @@ export const integrationsPublicRoutes = new Hono<AppBindings>().post("/hooks/:to
   const ctx = c.get("ctx");
   const token = c.req.param("token");
 
-  const ip = requestMeta(c.req.raw).ip ?? "unknown";
+  const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
   const withinIpBudget = await rateLimitOk(ctx.env, `hook-ip:${ip}`, MAX_PER_IP_PER_MINUTE, MINUTE_MS);
   const withinTokenBudget =
     withinIpBudget && (await rateLimitOk(ctx.env, `hook:${token}`, MAX_PER_TOKEN_PER_MINUTE, MINUTE_MS));

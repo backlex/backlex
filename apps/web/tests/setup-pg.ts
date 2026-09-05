@@ -112,6 +112,14 @@ export const makeHarnessPg = async (
     APP_URL: DEFAULT_APP_URL,
     AUTH_SECRET: "test-secret-not-for-prod-but-stable-across-calls",
     DATABASE_URL: "postgres://pglite-in-memory",
+    // The harness IS a trusted proxy: it wraps every request and sets
+    // `X-Forwarded-For` to a per-harness address so specs do not share a rate
+    // limiter bucket (see `nextSyntheticIp`). Saying so out loud is what makes
+    // `lib/client-address.ts` read that header — it believes no client-supplied
+    // header unless the deployment names one, which is the whole point of the
+    // derivation. A spec that wants the production default (nothing trusted)
+    // overrides this key to `undefined`.
+    TRUSTED_PROXY_HEADER: "x-forwarded-for",
     ...overrides,
   };
   __setDbOverrideForTests(env, db as unknown as Parameters<typeof __setDbOverrideForTests>[1], "pg");

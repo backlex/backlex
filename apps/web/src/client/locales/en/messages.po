@@ -7495,6 +7495,10 @@ msgstr "Email is the only required field. Roles assigned post-signup — first u
 msgid "email magic link"
 msgstr "email magic link"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Email preview"
+msgstr "Email preview"
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Email report"
 msgstr "Email report"
@@ -15659,6 +15663,11 @@ msgstr "Preview against a row"
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Preview error"
 msgstr "Preview error"
+
+#. placeholder {0}: fieldLabel(f, i18n.locale)
+#: src/client/admin/collections/item-form.tsx
+msgid "Preview of {0}"
+msgstr "Preview of {0}"
 
 #: src/client/admin/collections/collection-settings.tsx
 msgid "Preview URL"

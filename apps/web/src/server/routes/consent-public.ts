@@ -156,7 +156,7 @@ const asStr = (v: unknown, max: number): string | null => {
 
 export const consentPublicRoutes = new Hono<AppBindings>().get("/config", async (c) => {
   const ctx = c.get("ctx");
-  const ip = requestMeta(c.req.raw).ip ?? "unknown";
+  const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
 
   // Before the site is even looked at, so an unauthenticated caller cannot
   // drive one database read per request by sending random ids. Returned rather
@@ -243,7 +243,7 @@ export const consentPublicRoutes = new Hono<AppBindings>().get("/config", async 
    */
   .post("/record", async (c) => {
     const ctx = c.get("ctx");
-    const ip = requestMeta(c.req.raw).ip ?? "unknown";
+    const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
 
     // Refuse on the DECLARED length before reading. `c.req.text()` buffers the
     // whole body, so checking afterwards still lets an unauthenticated caller
@@ -406,7 +406,7 @@ export const consentPublicRoutes = new Hono<AppBindings>().get("/config", async 
    */
   .delete("/record", async (c) => {
     const ctx = c.get("ctx");
-    const ip = requestMeta(c.req.raw).ip ?? "unknown";
+    const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
     if (
       !(await rateLimitOk(
         ctx.env,

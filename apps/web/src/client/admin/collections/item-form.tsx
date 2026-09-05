@@ -23,6 +23,7 @@ import { UrlInput } from "../fields/field-url-input";
 import { PhoneInput } from "../fields/field-phone-input";
 import { SlugInput } from "../fields/field-slug-input";
 import { useEnabledExtensions, useMe, useSettings } from "../queries";
+import { HtmlPreview } from "../html-preview";
 import { slugify } from "@backlex/db/slug";
 import { allowedMoves } from "@backlex/db/transitions";
 import { ExtensionFrame } from "../extension-frame";
@@ -255,10 +256,21 @@ const isPresentational = (f: SchemaField): boolean =>
 
 /** Minimal, escaped Markdown → HTML for the inline preview. Intentionally
  *  small: headings, bold/italic, inline code, links, and line breaks. Input is
- *  HTML-escaped first so raw markdown can't inject markup. */
+ *  HTML-escaped first so raw markdown can't inject markup.
+ *
+ *  The quote characters are escaped too, and that is not cosmetic: the link
+ *  rule below interpolates the captured URL into `href="…"`, so a source URL
+ *  carrying a quote closed the attribute and opened a new one — an event
+ *  handler on a link the author never wrote. Escaping `<` and `>` alone stops
+ *  new ELEMENTS, not new ATTRIBUTES on an element this function is building. */
 function renderMarkdown(src: string): string {
   const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   return esc(src)
     .replace(/^###### (.*)$/gm, "<h6>$1</h6>")
     .replace(/^##### (.*)$/gm, "<h5>$1</h5>")
@@ -1847,12 +1859,15 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
         <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           {showPreview ? (
-            <div
-              className="prose-preview min-h-[8rem] rounded-control border border-border bg-card px-3.5 py-3 text-[13px] text-foreground"
-              // richtext is authored HTML; markdown is escaped then formatted.
-              dangerouslySetInnerHTML={{
-                __html: iface === "richtext" ? raw : renderMarkdown(raw),
-              }}
+            // The stored value is rendered in a sandboxed frame, never injected
+            // into the admin document. `richtext` is authored HTML that reaches
+            // the column from anywhere the collection is writable — including
+            // an ANONYMOUS public-form submission — and this toggle is a normal
+            // review action performed with a full admin session.
+            <HtmlPreview
+              title={t`Preview of ${fieldLabel(f, i18n.locale)}`}
+              html={iface === "richtext" ? raw : renderMarkdown(raw)}
+              className="h-[14rem] rounded-control border border-border"
             />
           ) : (
             <Textarea

@@ -243,7 +243,7 @@ export const advisorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const { id, days } = c.req.valid("json");
-      const meta = requestMeta(c.req.raw);
+      const meta = requestMeta(c.req.raw, c.get("ctx").env);
       // The shared service re-derives the finding and executes its OWN
       // statement — the client only names which finding to fix.
       const { applied } = await applyAdvisorFix(

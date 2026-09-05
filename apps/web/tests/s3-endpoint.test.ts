@@ -482,3 +482,96 @@ describe("multipart", () => {
     expect(await get.text()).toBe("part-one-part-two");
   });
 });
+
+/**
+ * Pre-prod audit 2026-09, Faz 7. These live here rather than in
+ * `security-audit-2026-09-input-limits.test.ts` because reaching the guards at
+ * all needs the independently-written SigV4 signer above; that spec covers the
+ * same two values as units, and the fs adapter clamp they ultimately protect.
+ *
+ * `?uploadId=` and `?prefix=` are the two caller-supplied fragments this
+ * endpoint hands to a storage adapter without ever building a key from them, so
+ * neither met `guardLogicalKey`. On the fs backend both are resolved against
+ * the storage root.
+ */
+describe("caller-supplied fragments that reach a storage adapter", () => {
+  test("an upload id carrying a separator is refused, in the S3 error shape", async () => {
+    const res = await call(
+      await signed({
+        method: "PUT",
+        path: `/s3/${bucket}/x`,
+        query: { partNumber: "1", uploadId: "a/b" },
+        body: "OWNED",
+      }),
+    );
+    expect(res.status).toBe(400);
+    // A 500 here would be the adapter's bare Error escaping, which is what the
+    // unguarded version did — and which reads to a client as "the server is
+    // broken", not "your request is not acceptable".
+    expect(await res.text()).toContain("<Code>InvalidArgument</Code>");
+  });
+
+  test("a traversal upload id is refused on complete and abort too", async () => {
+    const id = "..%2F..%2Fevil";
+    for (const method of ["POST", "DELETE"] as const) {
+      const res = await call(
+        await signed({
+          method,
+          path: `/s3/${bucket}/x`,
+          query: { uploadId: id },
+          ...(method === "POST" ? { body: "<CompleteMultipartUpload></CompleteMultipartUpload>" } : {}),
+        }),
+      );
+      expect(res.status).toBe(400);
+    }
+  });
+
+  test("a traversal LIST prefix is a refusal, not an unhandled 500", async () => {
+    const res = await call(
+      await signed({
+        method: "GET",
+        path: `/s3/${bucket}/`,
+        query: { "list-type": "2", prefix: "a/../../../etc" },
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("<Code>InvalidArgument</Code>");
+  });
+
+  test("an ordinary partial prefix still lists — including a trailing dot", async () => {
+    // The other direction. `report.` is a legitimate string prefix, and a
+    // prefix guard that borrowed the whole-key rules would refuse it.
+    await call(
+      await signed({ method: "PUT", path: `/s3/${bucket}/report.pdf`, body: "x" }),
+    );
+    for (const prefix of ["", "rep", "report."]) {
+      const res = await call(
+        await signed({
+          method: "GET",
+          path: `/s3/${bucket}/`,
+          query: { "list-type": "2", prefix },
+        }),
+      );
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain("report.pdf");
+    }
+  });
+
+  test("a server-issued upload id is unaffected", async () => {
+    const started = await call(
+      await signed({ method: "POST", path: `/s3/${bucket}/ok.txt`, query: { uploads: "" } }),
+    );
+    expect(started.status).toBe(200);
+    const uploadId = (await started.text()).match(/<UploadId>([^<]+)<\/UploadId>/)?.[1] ?? "";
+    expect(uploadId).not.toBe("");
+    const part = await call(
+      await signed({
+        method: "PUT",
+        path: `/s3/${bucket}/ok.txt`,
+        query: { partNumber: "1", uploadId },
+        body: "hello",
+      }),
+    );
+    expect(part.status).toBe(200);
+  });
+});

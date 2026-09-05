@@ -58,7 +58,7 @@ export const webhookTriggerRoutes = new Hono<AppBindings>().post("/:flowId", asy
   // The flow row is what tells us which workspace owns this unauthenticated
   // request, so throttling + metering can only start here. Mirrors the
   // per-form/IP guard in routes/forms-public.ts.
-  const ip = requestMeta(c.req.raw).ip ?? "unknown";
+  const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
   const withinIpBudget = await rateLimitOk(
     ctx.env,
     `flow-trigger:${flow.id}:${ip}`,

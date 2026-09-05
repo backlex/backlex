@@ -22,16 +22,10 @@
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 
-/** First client IP from the usual proxy headers (mirrors tenant-auth). */
-export const extractIp = (req: Request): string | null => {
-  const h = req.headers;
-  return (
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    null
-  );
-};
+import { type ClientAddressEnv, clientAddress } from "./client-address";
+/** The client address, where this deployment has one it can believe. */
+export const extractIp = (req: Request, env: ClientAddressEnv): string | null =>
+  clientAddress(req, env);
 
 /** base64(HMAC-SHA256(value, secret)) — better-call's `makeSignature`. */
 const makeSignature = async (value: string, secret: string): Promise<string> => {
@@ -110,7 +104,7 @@ export const mintPlatformSession = async (
     };
   };
 
-  const ip = extractIp(c.req.raw);
+  const ip = extractIp(c.req.raw, c.get("ctx").env);
   const ua = c.req.raw.headers.get("user-agent");
   const session = await authCtx.internalAdapter.createSession(userId, false, {
     ipAddress: ip ?? "",

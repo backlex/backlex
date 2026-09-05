@@ -124,7 +124,7 @@ const resolveIngestTenant = async (
   // workspace is what attributes this request for usage metering.
   setMeterTenant(c, tenantId);
 
-  const ip = requestMeta(c.req.raw).ip ?? "unknown";
+  const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
   const ok = await rateLimitOk(
     ctx.env,
     `analytics-ingest:${tenantId ?? "_default"}:${ip}`,

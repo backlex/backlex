@@ -160,14 +160,24 @@ export const pruneOldActivityByPrefix = async (
   }
 };
 
-export const requestMeta = (req: Request): { ip: string | null; userAgent: string | null } => {
-  const ua = req.headers.get("user-agent");
-  const ip =
-    req.headers.get("cf-connecting-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    null;
-  return { ip, userAgent: ua };
-};
+/**
+ * The address and user-agent to record for a request — and, for the public
+ * routes that key a limiter on it, the address that limiter buckets by.
+ *
+ * `env` is required rather than optional on purpose. Only the deployment knows
+ * which header is entitled to state a client address (see
+ * `lib/client-address.ts`), and making it a parameter is what forced every one
+ * of the fifty call sites to be re-read rather than inheriting a default that
+ * happens to be wrong on three of the four runtimes.
+ */
+import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+export const requestMeta = (
+  req: Request,
+  env: ClientAddressEnv,
+): { ip: string | null; userAgent: string | null } => ({
+  ip: clientAddress(req, env),
+  userAgent: req.headers.get("user-agent"),
+});
 
 /**
  * Tries to register the promise with the Worker's ExecutionContext so the
@@ -223,7 +233,7 @@ export const logActivity = async (
 ): Promise<void> => {
   const ctx = c.get("ctx");
   const auth = c.get("auth");
-  const meta = requestMeta(c.req.raw);
+  const meta = requestMeta(c.req.raw, ctx.env);
   await recordActivity(
     { db: ctx.db, dialect: ctx.dialect },
     {

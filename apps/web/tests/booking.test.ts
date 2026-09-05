@@ -1012,9 +1012,19 @@ describe("what a stranger may not reach", () => {
     // handlers through `dispatchEventHandlers`, never `publishEvent`.
     const { subscribeLocal } = await import("../src/server/services/events");
     const seen: unknown[] = [];
-    const stop = subscribeLocal("booking", { send: (data: string) => seen.push(data) } as never);
 
     const created = await makeResource();
+    // BOTH addresses. A room is keyed on (workspace, channel) since realtime
+    // namespacing landed, so listening on only one of them would make this
+    // assertion vacuous the moment a publish used the other — one carrying the
+    // resource's workspace, or one that forgot to and landed on the
+    // instance-global room. See [[negative-assertions-need-the-loaded-state]].
+    // The resource is created first because the workspace is read off its row.
+    const stops = [tenantId(), null].map((tid) =>
+      subscribeLocal({ tenantId: tid, channel: "booking" }, {
+        send: (data: string) => seen.push(data),
+      } as never),
+    );
     await ok("POST", `${PUBLIC}/${created.token}`, {
       start: MONDAY_0900,
       name: "Ada",
@@ -1022,7 +1032,7 @@ describe("what a stranger may not reach", () => {
       phone: "+15551234",
     });
     await new Promise((r) => setTimeout(r, 50));
-    stop();
+    for (const stop of stops) stop();
 
     expect(seen).toHaveLength(0);
   });

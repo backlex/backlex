@@ -5,7 +5,7 @@ import type { AppBindings } from "../../app";
 import { requirePermission } from "../../middleware/permission";
 import { validateExpandEntry } from "../../lib/query";
 import { ifNoneMatch, weakETag } from "../../lib/etag";
-import { listRevisions, } from "../../services/revisions";
+import { listRevisionsForCaller } from "../../services/revisions";
 import { loadAppSettings } from "../../services/settings";
 import { SECURITY, errorResponses } from "../../lib/openapi";
 import {
@@ -26,6 +26,7 @@ import {
 import {
   resolveExpands,
   applyExpandToRow,
+  clampExpandedRows,
   resolveManyExpands,
   applyManyExpandsToRows,
 } from "../../services/items/expand";
@@ -45,7 +46,8 @@ import {
   TAGS,
 } from "../../services/items/schemas";
 import { describeTransitions } from "../../services/items/transitions";
-import { auditRead, canSeeDraftsFor, itemNotFoundMessage } from "./shared";
+import { auditRead, itemNotFoundMessage } from "./shared";
+import { canSeeDraftsFor } from "../../services/items/row-access";
 import { getStagedRow, stagedViewOf } from "../../services/items/staged";
 import { defaultHook } from "../../lib/openapi-router";
 
@@ -68,13 +70,18 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const perm = c.get("permission");
       const slug = c.req.param("slug");
-      await loadCollection(ctx, auth.tenantId, slug); // 404s unknown collection
-      const data = await listRevisions(
-        { db: ctx.db, dialect: ctx.dialect },
-        slug,
+      const collection = await loadCollection(ctx, auth.tenantId, slug); // 404s unknown collection
+      // Row condition + field allow-list, applied by the service — see
+      // `listRevisionsForCaller`. The middleware above only settles whether the
+      // caller may read the COLLECTION.
+      const data = await listRevisionsForCaller(
+        ctx,
+        auth,
+        collection,
         c.req.param("id"),
-        auth.tenantId ?? null,
+        perm,
       );
       return c.json({ data });
     },
@@ -380,6 +387,10 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // above rejects that case first.
       if (expandPlans.length > 0) {
         applyExpandToRow(projected, rows[0], expandPlans, ctx.dialect);
+        // The JOIN carries the target's tenant id and nothing else — the row
+        // condition, soft-delete and draft visibility are applied here. See
+        // `clampExpandedRows`.
+        await clampExpandedRows(ctx, auth, [projected], expandPlans);
       }
       if (manyPlans.length > 0) {
         await applyManyExpandsToRows(ctx, auth, [projected], manyPlans);

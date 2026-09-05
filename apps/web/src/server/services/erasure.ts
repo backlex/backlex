@@ -26,10 +26,15 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
+import { isLocalized, sidecarFields } from "@backlex/db";
 import { deleteEverywhere } from "./storage/bucket-for";
 import type { Ctx } from "../context";
-import { loadCollection } from "./items/collection-loader";
+import { loadCollection, type CollectionRow } from "./items/collection-loader";
 import { execute, queryAll } from "./items/sql-helpers";
+import { deserializeRow } from "./items/serialize";
+import { sidecarClear, sidecarDeleteRow } from "./items/i18n-sidecar";
+import { deleteFts, indexFts } from "./fts";
+import { deleteVector, embedAndUpsert } from "./vectorize";
 import { removeAppUserFromAllOrgs } from "./app-orgs";
 
 type AnyDb = any;
@@ -548,6 +553,39 @@ export async function runErasure(
 const pseudonymFor = (appUserId: string | null, id: string): string =>
   `erased-${(appUserId ?? id).slice(0, 8)}`;
 
+/**
+ * Re-index the rows an `anonymize` pass just rewrote.
+ *
+ * Both indexes are DERIVED from field values, so scrubbing the base column
+ * without restating them leaves the original address searchable through
+ * `?q=` and semantically retrievable through vector search — the row reads as
+ * anonymized and answers to the person's name.
+ *
+ * One read per id rather than a batch: the write path's own re-index takes the
+ * row it just wrote, and an erasure run is a rare operator action over a small
+ * set. Failures inside `indexFts` / `embedAndUpsert` are already swallowed and
+ * logged by those functions (a search index is never a reason to fail a write),
+ * which is the right contract here too — the base row is already scrubbed.
+ */
+const reindexAfterScrub = async (
+  ctx: Ctx,
+  tenantId: string,
+  c: CollectionRow,
+  ids: readonly string[],
+): Promise<void> => {
+  for (const id of ids) {
+    const rows = await queryAll<Record<string, unknown>>(
+      ctx,
+      sql`SELECT * FROM ${sql.identifier(c.physicalTable)} WHERE ${sql.identifier(c.pkColumn)} = ${id} LIMIT 1`,
+    );
+    const raw = rows[0];
+    if (!raw) continue;
+    const row = deserializeRow(raw, c.fields, ctx.dialect, c.ownerScoped);
+    await indexFts(ctx, c, id, row);
+    await embedAndUpsert(ctx, c, tenantId, id, row);
+  }
+};
+
 async function eraseEverywhere(
   ctx: Ctx,
   tenantId: string,
@@ -561,6 +599,16 @@ async function eraseEverywhere(
 
   // 1. Collection rows. Anonymize scrubs the identifying fields in place;
   //    delete removes the row. Either way the revisions go next.
+  //
+  //    **A row is not one place.** The same value that sits in the base column
+  //    also sits in the full-text shadow table, in the embedding store, and —
+  //    for a `localized` field — in the `__i18n` sidecar, because the write
+  //    path put it in all four. This sweep wrote raw SQL against the base
+  //    table alone and then reported `status: "completed"`: the row was gone
+  //    from `c_…_customers` while `SELECT content FROM c_…_customers__fts`
+  //    still returned `victim@example.com`, verbatim and searchable. So each
+  //    id goes through the same index maintenance `performDelete` /
+  //    `performUpdate` run, and the report stops overstating what it did.
   let touched = 0;
   for (const hit of loc.items) {
     const c = await loadCollection(ctx, tenantId, hit.slug);
@@ -571,14 +619,27 @@ async function eraseEverywhere(
     const where = sql`${sql.identifier(c.pkColumn)} IN (${idIn})`;
     if (mode === "delete") {
       await execute(ctx, sql`DELETE FROM ${sql.identifier(c.physicalTable)} WHERE ${where}`);
+      // The sidecar has no FK cascade on SQLite/D1, so its rows outlive the
+      // base row unless they are named. Guarded on the collection actually
+      // having a sidecar table — otherwise the statement targets nothing.
+      if (sidecarFields(c.fields).length > 0) {
+        for (const id of hit.ids) {
+          await execute(ctx, sidecarDeleteRow(c.physicalTable, id));
+        }
+      }
+      for (const id of hit.ids) {
+        await deleteFts(ctx, c, id);
+        await deleteVector(ctx, c, tenantId, id);
+      }
     } else {
-      const sets = c.fields
-        .filter((f) => isEmailField(f) || f.interface === "phone" || f.name.toLowerCase() === "name")
-        .map((f) =>
-          isEmailField(f)
-            ? sql`${sql.identifier(f.name)} = ${`${pseudonymFor(loc.appUserId, hit.slug)}@erased.invalid`}`
-            : sql`${sql.identifier(f.name)} = ${null}`,
-        );
+      const scrubbed = c.fields.filter(
+        (f) => isEmailField(f) || f.interface === "phone" || f.name.toLowerCase() === "name",
+      );
+      const sets = scrubbed.map((f) =>
+        isEmailField(f)
+          ? sql`${sql.identifier(f.name)} = ${`${pseudonymFor(loc.appUserId, hit.slug)}@erased.invalid`}`
+          : sql`${sql.identifier(f.name)} = ${null}`,
+      );
       if (c.ownerScoped) sets.push(sql`${sql.identifier(c.ownerIdColumn ?? "owner_id")} = ${null}`);
       if (sets.length > 0) {
         let assign = sets[0]!;
@@ -588,6 +649,19 @@ async function eraseEverywhere(
           sql`UPDATE ${sql.identifier(c.physicalTable)} SET ${assign} WHERE ${where}`,
         );
       }
+      // A `localized` field's value never lived in the base column this just
+      // scrubbed — it lives one per locale in the sidecar, so an anonymize
+      // that touched only the base table left every translation of the name
+      // and the address exactly where they were.
+      for (const f of scrubbed.filter((x) => isLocalized(x))) {
+        for (const id of hit.ids) {
+          await execute(ctx, sidecarClear(c.physicalTable, id, f.name));
+        }
+      }
+      // Re-index from the SCRUBBED row. Both indexes are built from field
+      // values, so leaving them alone would keep the pre-anonymization text
+      // searchable and semantically retrievable under the pseudonymized row.
+      await reindexAfterScrub(ctx, tenantId, c, hit.ids);
     }
     touched += hit.ids.length;
   }

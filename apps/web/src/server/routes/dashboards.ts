@@ -225,10 +225,11 @@ export const dashboardsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      await updateDashboard(ctx, tenantId, id, body);
+      await updateDashboard(ctx, auth, tenantId, id, body);
       return c.json({ ok: true });
     },
   )
@@ -249,9 +250,10 @@ export const dashboardsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      await deleteDashboard(ctx, tenantId, id);
+      await deleteDashboard(ctx, auth, tenantId, id);
       return c.json({ ok: true });
     },
   )
@@ -277,10 +279,11 @@ export const dashboardsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
       const body = (c.req.valid("json") ?? {}) as { roleId?: string | null };
-      const out = await shareDashboard(ctx, tenantId, id, { roleId: body.roleId ?? null });
+      const out = await shareDashboard(ctx, auth, tenantId, id, { roleId: body.roleId ?? null });
       return c.json(out);
     },
   )
@@ -301,9 +304,10 @@ export const dashboardsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      await revokeDashboardEmbed(ctx, tenantId, id);
+      await revokeDashboardEmbed(ctx, auth, tenantId, id);
       return c.json({ ok: true });
     },
   )

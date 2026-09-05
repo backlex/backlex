@@ -128,6 +128,51 @@ export const requireOperatorMw: MiddlewareHandler<AppBindings> = async (
   await next();
 };
 
+/**
+ * Refuse a WRITE aimed at a row that belongs to the deployment, not to a
+ * workspace.
+ *
+ * Several tables carry `tenant_id NULL` for system-seeded rows that every
+ * workspace can see — dashboards and saved panels are the ones this guards.
+ * Reading them from any workspace is the point. Writing them is not: the row
+ * a workspace admin edits is the row every OTHER workspace then renders, and
+ * for a dashboard they can also mint an unauthenticated embed token for it.
+ *
+ * The doors that let this through all had the shape
+ * `where(id = ?, or(tenant_id = ?, tenant_id IS NULL))`, with a comment saying
+ * the admin role was already required. It was — and per
+ * `db-admin.ts`/`services/roles/guards.ts` that role is self-serve, granted to
+ * whoever creates a workspace, so it says nothing about instance-wide state.
+ * Same substitution Faz 1 made on five route groups, applied per-ROW here
+ * because the same endpoint legitimately serves workspace-owned rows.
+ *
+ * `null` row → no refusal: a missing row is the caller's own 404 to raise, and
+ * answering FORBIDDEN here would tell them an id exists.
+ */
+export const assertWritableScope = async (
+  ctx: {
+    db: unknown;
+    dialect: "pg" | "sqlite";
+    env: { OWNER_EMAIL?: string | undefined };
+  },
+  auth: {
+    plane?: string;
+    userId?: string | null;
+    email?: string | null;
+    apiKeyId?: string | null;
+  },
+  row: { tenantId?: string | null } | null | undefined,
+  what: string,
+): Promise<void> => {
+  if (!row) return;
+  if (row.tenantId != null) return;
+  if (await isInstanceOperator(ctx, auth)) return;
+  throw new AppError(
+    "FORBIDDEN",
+    `${what} belongs to the whole deployment, not to this workspace — only the instance operator can change it`,
+  );
+};
+
 /** Gate user-targeted routes on workspace membership: a tenant admin can
  *  only suspend / activate / revoke / remove users who belong to the
  *  active workspace, even though `users` and `sessions` are global. */

@@ -221,6 +221,14 @@ describe("worker startup budget", () => {
     // files. Nothing new became REACHABLE — the eager module count is unchanged
     // but for the one addition — so a dynamic import has nothing to bite on
     // here; this is the ordinary growth the headroom is for.
-    expect(kib).toBeLessThan(8250);
+    //
+    // Raised 8250 → 8300 on 2026-09-05, measured at 8252 across 627 modules.
+    // Row-level permission on the read paths added two modules — 6.0 KiB
+    // `services/items/row-access.ts` and 5.5 KiB `services/vector-access.ts` —
+    // and the rest is comment on the sites they clamp. Both import only what
+    // the graph already reached (`permissions`, `collection-loader`,
+    // `sql-helpers`, `vectorize`), so nothing new became REACHABLE and there
+    // is again no seam a dynamic import would help.
+    expect(kib).toBeLessThan(8300);
   });
 });

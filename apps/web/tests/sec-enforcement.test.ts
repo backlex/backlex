@@ -146,17 +146,37 @@ describe("phase-1 enforcement gaps", () => {
     expect(notifs.status).toBe(401);
   });
 
-  test("a member can create and read back a comment on a readable collection", async () => {
+  test("a member can create and read back a comment on a readable ROW", async () => {
     expect((await signIn(memberEmail)).status).toBe(200);
+    // A row they own. This used to pass `itemId: "item-1"`, an id no row ever
+    // had, and got a 201 — because the endpoint checked `read` on the
+    // COLLECTION and never looked at the row. A thread now hangs off a row the
+    // caller can actually read, so an id that names nothing is a 404 like any
+    // other unreadable row (see `comments-rest.test.ts` for the leak itself).
+    const ins = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ title: "mine" }),
+    });
+    expect(ins.status).toBe(201);
+    const itemId = ((await ins.json()) as { data: { id: string } }).data.id;
     const created = await h.fetch("/api/comments", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ collection: slug, itemId, body: "hello" }),
+    });
+    expect(created.status).toBe(201);
+    const list = await h.fetch(`/api/comments?collection=${slug}&itemId=${itemId}`);
+    expect(list.status).toBe(200);
+    const body = (await list.json()) as { data: Array<{ body: string }> };
+    expect(body.data.some((r) => r.body === "hello")).toBe(true);
+
+    // And an id that names no row is refused, not answered.
+    const ghost = await h.fetch("/api/comments", {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify({ collection: slug, itemId: "item-1", body: "hello" }),
     });
-    expect(created.status).toBe(201);
-    const list = await h.fetch(`/api/comments?collection=${slug}&itemId=item-1`);
-    expect(list.status).toBe(200);
-    const body = (await list.json()) as { data: Array<{ body: string }> };
-    expect(body.data.some((r) => r.body === "hello")).toBe(true);
+    expect(ghost.status).toBe(404);
   });
 });

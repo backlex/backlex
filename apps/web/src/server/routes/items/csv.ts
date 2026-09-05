@@ -40,7 +40,8 @@ import {
 import {
   TAGS,
 } from "../../services/items/schemas";
-import { auditRead, canSeeDraftsFor } from "./shared";
+import { auditRead } from "./shared";
+import { canSeeDraftsFor } from "../../services/items/row-access";
 import { defaultHook } from "../../lib/openapi-router";
 
 

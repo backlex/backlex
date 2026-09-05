@@ -16,7 +16,7 @@ import {
 // renders identically wherever it's drawn.
 import { runAnalyticsPanel } from "../services/dashboards";
 import { requireKpi, runKpiForCaller } from "../services/kpis";
-import { isInstanceOperator } from "../services/roles/guards";
+import { assertWritableScope, isInstanceOperator } from "../services/roles/guards";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.savedPanels : sqlite.schema.savedPanels;
@@ -114,6 +114,26 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
   const tenantId = c.get("auth")?.tenantId as string | undefined;
   if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
   return tenantId;
+};
+
+/**
+ * One panel row as the active workspace can see it — its own, or a
+ * system-seeded global. Reading a global is intended; `assertWritableScope`
+ * is what decides whether the caller may also CHANGE it.
+ */
+const panelById = async (
+  c: Context<AppBindings>,
+  id: string,
+): Promise<{ tenantId: string | null } | null> => {
+  const ctx = c.get("ctx");
+  const t = tableFor(ctx.dialect);
+  const tenantId = c.get("auth")?.tenantId ?? "";
+  const rows = (await (ctx.db as any)
+    .select({ tenantId: t.tenantId })
+    .from(t)
+    .where(and(eq(t.id, id), or(eq(t.tenantId, tenantId), isNull(t.tenantId))))
+    .limit(1)) as { tenantId: string | null }[];
+  return rows[0] ?? null;
 };
 
 /**
@@ -302,15 +322,17 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         throw new AppError("VALIDATION", "Panel SQL must be a single read-only SELECT.");
       }
       const t = tableFor(ctx.dialect);
+      // A global (`tenant_id IS NULL`) panel is system-seeded and rendered by
+      // EVERY workspace, so editing one is an instance-wide act. This used to
+      // read "admin role is already required above" — true, and beside the
+      // point: that role is granted to whoever creates a workspace.
+      await assertWritableScope(ctx, c.get("auth"), await panelById(c, id), "This panel");
       await (ctx.db as any)
         .update(t)
         .set({
           ...body,
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
-        // Allow editing global (tenantId NULL) panels too — system-seeded
-        // dashboards belong to no workspace but should still be editable by
-        // admins; admin role is already required above.
         .where(
           and(
             eq(t.id, id),
@@ -343,6 +365,7 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
       const t = tableFor(ctx.dialect);
+      await assertWritableScope(ctx, c.get("auth"), await panelById(c, id), "This panel");
       await (ctx.db as any)
         .delete(t)
         .where(

@@ -1,8 +1,13 @@
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, lt, type SQL } from "drizzle-orm";
+import { AppError, type AuthSubject } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import type { Ctx } from "../context";
 import type { DbCtx } from "./seed";
 import { recordActivity } from "./activity";
+import type { CollectionRow } from "./items/collection-loader";
+import { readableRow } from "./items/row-access";
+import { projectFields } from "./items/serialize";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.revisions : sqlite.schema.revisions;
@@ -109,7 +114,20 @@ export const pruneOldRevisions = async (
   }
 };
 
-export const listRevisions = async (
+/**
+ * Every snapshot recorded for `(collection, itemId)` in this workspace, raw.
+ *
+ * **Not the function a route wants.** It answers with the row's whole history
+ * — every value every column ever held — for a caller it has never been told
+ * anything about. The name it used to have was `listRevisions`, and both REST
+ * handlers reached for it, which is exactly how an app-plane end-user came to
+ * read other organisations' full row snapshots (fields their allow-list
+ * excludes included) through a history endpoint, while the GET of the same row
+ * answered 404. It is renamed rather than deleted because a system caller with
+ * no identity to check — a pre-drop snapshot, a restore — is a real shape;
+ * `listRevisionsForCaller` is what anything holding an `auth` must call.
+ */
+export const listRevisionRows = async (
   ctx: DbCtx,
   collection: string,
   itemId: string,
@@ -128,6 +146,52 @@ export const listRevisions = async (
     .from(t)
     .where(where)
     .orderBy(desc(t.createdAt))) as RevisionRow[];
+};
+
+/**
+ * The revision history of one row, as THIS identity is allowed to see it.
+ *
+ * Two things the raw read does not do, both of which the item's own `GET`
+ * does:
+ *
+ *  1. **The row is checked before its history is.** Collection-level `read`
+ *     was already required by the route middleware; it is not the question. A
+ *     grant conditioned on `{org_id: {_eq: "$org.id"}}` passes that gate for
+ *     every row in the table, and the row condition is what separates the
+ *     caller's rows from everyone else's. Refused the same way the item is —
+ *     `NOT_FOUND`, not `FORBIDDEN`, so the history cannot be used to probe
+ *     which ids exist.
+ *  2. **Each snapshot is projected through the field allow-list.** A snapshot
+ *     is a whole row as it stood, so a role restricted to `["title"]` was
+ *     reading the `ssn` column out of the history of a row whose live read
+ *     omits it.
+ *
+ * Both REST handlers call this; the MCP tool and the SDK reach the same
+ * handlers over HTTP, so there is one implementation of the rule.
+ */
+export const listRevisionsForCaller = async (
+  ctx: Ctx,
+  auth: AuthSubject & { tenantId?: string | null },
+  collection: CollectionRow,
+  itemId: string,
+  perm: { whereSql: SQL | null; isAdmin?: boolean; fields: Set<string> | null },
+): Promise<RevisionRow[]> => {
+  const row = await readableRow(ctx, auth, collection, itemId, perm);
+  if (!row) throw new AppError("NOT_FOUND", "Item not found");
+  const rows = await listRevisionRows(
+    { db: ctx.db, dialect: ctx.dialect },
+    collection.slug,
+    itemId,
+    auth.tenantId ?? null,
+  );
+  if (!perm.fields) return rows;
+  return rows.map((r) => ({
+    ...r,
+    snapshot: projectFields(
+      (r.snapshot ?? {}) as Record<string, unknown>,
+      perm.fields,
+    ),
+  }));
 };
 
 export const getRevision = async (

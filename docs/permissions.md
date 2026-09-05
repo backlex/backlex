@@ -122,6 +122,27 @@ Each row in `permissions` binds a role to a (collection, action) pair:
 The compiled `whereSql` is AND'd with any user-supplied `filter` from
 the request, so users can never widen their access via filter.
 
+### Resolving is not applying — the condition belongs at the ROW
+
+Steps 1–4 answer a question about the **collection**. For a grant that carries
+a condition, that question passes for every row in the table: the condition is
+what separates the caller's rows from everyone else's, and it only does that
+work when step 5's `whereSql` actually reaches a `WHERE`. Anything that hangs
+off a row id has to ask the row too, not just the collection it lives in —
+
+| Surface | What it applies |
+| --- | --- |
+| `?expand=` (to-one, to-many, every hop of a chain) | the target's `whereSql`, soft-delete and draft filters; an unreadable target inlines as `null` |
+| revision history (both endpoints) | the row's readability (`404`, like the item), then `fields` over each snapshot |
+| `/api/comments` (list and create) | the row's readability — a thread is as visible as the row it is attached to, and no more |
+| `/api/vector/*` on a collection namespace | `read`/`update` on that collection, then hydration back through the table |
+| keyset `next_cursor` | refuses to sort by a `private` field or one outside `fields` |
+| dashboard embeds, KPIs, aggregates | the embed role's `whereSql` + `fields` |
+
+`services/items/row-access.ts` is the one place that asks it — `readableRow`
+for a single id, `readableIds` for a set — so a new surface has a function to
+call rather than a filter to remember.
+
 ## `ownerScoped: true` shortcut
 
 When a collection is created with `ownerScoped: true`, the API auto-seeds

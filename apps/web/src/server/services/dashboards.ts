@@ -29,11 +29,11 @@ import {
   analyticsSessions,
   analyticsRetention,
 } from "./analytics";
-import { runItemsAggregate } from "./items/aggregate";
+import { type AggregateOpts, runItemsAggregate } from "./items/aggregate";
 import { requireKpi, runKpiForCaller } from "./kpis";
 import { queryAll } from "./items/sql-helpers";
 import { resolvePermission } from "./permissions";
-import { isInstanceOperator } from "./roles/guards";
+import { assertWritableScope, isInstanceOperator } from "./roles/guards";
 import { hashToken } from "./shared-links";
 
 const dashTable = (dialect: "pg" | "sqlite") =>
@@ -174,10 +174,12 @@ export const createDashboard = async (
 
 export const updateDashboard = async (
   ctx: Ctx,
+  auth: AuthSubject,
   tenantId: string,
   id: string,
   patch: Partial<DashboardInput>,
 ): Promise<void> => {
+  await assertWritableScope(ctx, auth, await getDashboard(ctx, tenantId, id), "This dashboard");
   const t = dashTable(ctx.dialect);
   const set: Record<string, unknown> = {
     updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
@@ -191,12 +193,28 @@ export const updateDashboard = async (
     .where(and(eq(t.id, id), or(eq(t.tenantId, tenantId), isNull(t.tenantId))));
 };
 
-/** Delete a dashboard and un-group (don't delete) its panels. */
+/**
+ * Delete a dashboard and un-group (don't delete) its panels.
+ *
+ * The early return is load-bearing, not tidiness. The panel detach filters on
+ * `dashboard_id` ALONE, and it used to run before — and regardless of — the
+ * tenant-scoped delete below it, so a request naming another workspace's
+ * dashboard id detached that workspace's panels while deleting nothing. The
+ * allowlist entry excusing the unscoped detach said it acted on "the dashboard
+ * the scoped delete just removed"; it acted first, on any id. Reading the row
+ * under the workspace scope and stopping on a miss is what makes that sentence
+ * true. Still silent rather than 404 on a miss: deleting what is not there has
+ * always answered `ok`.
+ */
 export const deleteDashboard = async (
   ctx: Ctx,
+  auth: AuthSubject,
   tenantId: string,
   id: string,
 ): Promise<void> => {
+  const existing = await getDashboard(ctx, tenantId, id);
+  if (!existing) return;
+  await assertWritableScope(ctx, auth, existing, "This dashboard");
   const t = dashTable(ctx.dialect);
   const p = panelTable(ctx.dialect);
   await (ctx.db as any)
@@ -214,6 +232,7 @@ export const deleteDashboard = async (
  */
 export const shareDashboard = async (
   ctx: Ctx,
+  auth: AuthSubject,
   tenantId: string,
   id: string,
   opts: { roleId?: string | null } = {},
@@ -221,6 +240,10 @@ export const shareDashboard = async (
   const t = dashTable(ctx.dialect);
   const existing = await getDashboard(ctx, tenantId, id);
   if (!existing) throw new AppError("NOT_FOUND", "Dashboard not found");
+  // Publishing a deployment-wide dashboard to an unauthenticated URL is the
+  // sharpest edge of the whole `tenant_id IS NULL` write hole: the token is
+  // minted by one workspace and serves a dashboard every workspace shares.
+  await assertWritableScope(ctx, auth, existing, "This dashboard");
   const token = `${EMBED_TOKEN_PREFIX}_${randomHex(EMBED_TOKEN_BYTES)}`;
   const tokenHash = await hashToken(token);
   await (ctx.db as any)
@@ -238,9 +261,11 @@ export const shareDashboard = async (
 /** Disable the public embed and forget the token (idempotent). */
 export const revokeDashboardEmbed = async (
   ctx: Ctx,
+  auth: AuthSubject,
   tenantId: string,
   id: string,
 ): Promise<void> => {
+  await assertWritableScope(ctx, auth, await getDashboard(ctx, tenantId, id), "This dashboard");
   const t = dashTable(ctx.dialect);
   await (ctx.db as any)
     .update(t)
@@ -505,23 +530,45 @@ const runPanel = async (
   };
   try {
     if (panel.kind === "items-aggregate") {
-      // For the public embed, resolve the embed role's read permission against
-      // the aggregate's target collection and clamp the query to it.
-      let opts = {};
+      // On the embed path, clamp the aggregate to what the viewer may read.
+      //
+      // `runItemsAggregate` applies NO permission of its own — `permWhere` and
+      // `allowedFields` are the whole control — and this branch used to skip
+      // resolving them whenever the dashboard carried no embed role. That is
+      // the default `shareDashboard` writes (`embedRoleId: null`), so the
+      // ordinary way of sharing a dashboard produced an unauthenticated URL
+      // that aggregated any collection in the workspace: `groupBy: "email"`
+      // returns one label per distinct value, which is a full column read
+      // wearing a chart's clothes.
+      //
+      // So the clamp is unconditional on this path now, exactly as the `kpi`
+      // branch below has always been. A dashboard shared with no embed role
+      // resolves the `public` role and gets what the workspace granted it —
+      // for most workspaces that is nothing, and such a panel now answers
+      // "Not permitted for this embed." That is a deliberate behaviour change
+      // and the point of the fix: sharing a link was never meant to be a
+      // grant.
+      let opts: AggregateOpts = {};
       if (scope) {
         const coll = (panel.config as any)?.collection;
         if (typeof coll === "string" && coll) {
-          const embedAuth: AuthSubject = {
-            plane: "platform",
-            userId: null,
-            email: null,
-            roles: scope.embedRoleName ? [scope.embedRoleName] : ["public"],
-            tenantId,
-          };
-          const perm = await resolvePermission(ctx, embedAuth, coll, "read");
+          // `auth` IS the embed subject on this path — the caller built it
+          // from the same `embedRoleName`. Resolving off a second, locally
+          // rebuilt copy is how the two would drift.
+          const perm = await resolvePermission(ctx, auth, coll, "read");
           if (!perm.allowed)
             return { ...base, data: [], error: "Not permitted for this embed." };
-          opts = { permWhere: perm.whereSql, allowedFields: perm.fields };
+          // Soft-deleted rows and unpublished drafts are excluded for the same
+          // reason `runKpiForCaller` excludes them: a count is a read, and a
+          // viewer who cannot see the row must not learn it exists from the
+          // total. The admin path (scope === null) deliberately keeps them —
+          // "rows grouped by `deleted_at`" is a real dashboard question.
+          opts = {
+            permWhere: perm.whereSql,
+            allowedFields: perm.fields,
+            excludeSoftDeleted: true,
+            excludeDrafts: !perm.isAdmin,
+          };
         }
       }
       const data = await runItemsAggregate(ctx, auth, tenantId, panel.config, opts);
@@ -636,7 +683,12 @@ export const runDashboardPublic = async (
     roles: embedRoleName ? [embedRoleName] : ["public"],
     tenantId,
   };
-  const scope = dashboard.embedRoleId ? { embedRoleName } : null;
+  // ALWAYS a scope on the public path. `dashboard.embedRoleId ? … : null` was
+  // the bug: `shareDashboard` defaults that column to null, so the ordinary
+  // share turned the clamp off entirely rather than narrowing it to `public`.
+  // A null `embedRoleName` means "the public role", which is what
+  // `resolvePermission` resolves for a subject with no user id anyway.
+  const scope = { embedRoleName };
   const panels = await panelsOf(ctx, tenantId, dashboard.id);
   const results: PanelResult[] = [];
   for (const panel of panels)

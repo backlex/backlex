@@ -102,6 +102,19 @@ to file.
 | `identity` | Sessions, accounts, roles, org memberships, external identities and phone numbers deleted; the user record deleted or tombstoned per mode |
 | `consent` | Every recorded cookie-consent decision for the subject, **deleted in both modes** — the `subject_id` *is* the identifier, so scrubbing it would leave a row carrying a user agent, an IP hash and a timestamp that identifies nobody and proves nothing. Reachable **only** with `subject.type = "consent_id"` — see [a cookie-consent visitor is a subject you cannot look up](#a-cookie-consent-visitor-is-a-subject-you-cannot-look-up) |
 
+### The derived indexes go with the row
+
+A value does not live in one place. The write path puts a searchable field into
+the full-text shadow table, a `vectorize` field into the embedding store, and a
+`localized` field into the `__i18n` sidecar — so a sweep that only touched the
+base table left the address searchable through `?q=` and retrievable through
+vector search while reporting `completed`. Erasure therefore runs the same index
+maintenance an ordinary delete or update runs: `delete` drops the FTS row, the
+vectors and the sidecar rows per id; `anonymize` clears the scrubbed fields'
+sidecar values and **re-indexes from the scrubbed row**, because both indexes
+are built from field values and leaving them alone keeps the old text findable
+under the pseudonymized row.
+
 ## What it cannot reach
 
 Returned on every request as `limits`, because a tool that ignored them while

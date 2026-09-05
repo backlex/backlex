@@ -11,7 +11,7 @@ import {
   ItemRow,
   TAGS,
 } from "../../services/items/schemas";
-import { canSeeDraftsFor } from "./shared";
+import { canSeeDraftsFor } from "../../services/items/row-access";
 import { defaultHook } from "../../lib/openapi-router";
 
 export const itemsChangesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })

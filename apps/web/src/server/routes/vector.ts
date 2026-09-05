@@ -12,7 +12,12 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { reportToCloud } from "../lib/cloud-report";
 import { defaultHook } from "../lib/openapi-router";
-import { vectorNamespace } from "../services/vectorize";
+import { itemIdOf, vectorNamespace } from "../services/vectorize";
+import {
+  clampMatchesToReadable,
+  readableItemIds,
+  requireNamespacePermission,
+} from "../services/vector-access";
 
 /**
  * Tenant-scope the caller-supplied namespace. In a single-worker multi-tenant
@@ -38,6 +43,27 @@ const scopeNs = (c: Context<AppBindings>, ns: string | undefined): string => {
   if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
   return ns ? vectorNamespace(ns, tenantId) : tenantId;
 };
+
+/**
+ * Gate a raw-vector call on the collection its namespace addresses.
+ *
+ * The workspace prefix `scopeNs` adds keeps one tenant out of another's
+ * vectors, and that is all it ever did — WITHIN a workspace the namespace was
+ * a free-for-all. `{"namespace":"employees"}` is byte-for-byte the namespace
+ * `embedAndUpsert` wrote that collection into, so every one of these endpoints
+ * was a second, ungated door onto the collection's contents: `search` returned
+ * `metadata.content` (the verbatim indexed text) to identities whose
+ * `GET /api/items/employees` is 403, and `delete` erased the index behind
+ * every `mode: "vector"` search on it.
+ *
+ * Returns `null` for a namespace that names no collection — those stay a
+ * per-workspace scratch space, as they have always been.
+ */
+const gateNs = async (
+  c: Context<AppBindings>,
+  ns: string | undefined,
+  action: "read" | "update",
+) => requireNamespacePermission(c.get("ctx"), c.get("auth"), ns, action);
 
 // Build the model enum from the registry so adding a model in
 // embedding-models.ts is the only change required to expose it via the API.
@@ -206,8 +232,24 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     async (c) => {
-      const { vector } = c.get("ctx");
+      const ctx = c.get("ctx");
+      const { vector } = ctx;
       const body = c.req.valid("json");
+      // Per record: each one carries its own namespace, so each one is gated.
+      for (const r of body.records) {
+        const gate = await gateNs(c, r.namespace, "update");
+        if (!gate) continue;
+        const readable = await readableItemIds(
+          ctx,
+          c.get("auth"),
+          gate.collection,
+          gate.perm,
+          [r.id],
+        );
+        if (readable.size === 0) {
+          throw new AppError("NOT_FOUND", `Item not found for vector "${r.id}"`);
+        }
+      }
       const records = body.records.map((r) => ({
         ...r,
         namespace: scopeNs(c, r.namespace),
@@ -241,8 +283,10 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     async (c) => {
-      const { vector, env } = c.get("ctx");
+      const ctx = c.get("ctx");
+      const { vector, env } = ctx;
       const body = c.req.valid("json");
+      const gate = await gateNs(c, body.namespace, "read");
       const matches = await vector.query(body.model, {
         values: body.values,
         topK: body.topK,
@@ -253,7 +297,16 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // query analytics). waitUntil so it survives the response return.
       const report = reportToCloud(env, { kind: "vector_query", queries: 1 });
       if (report) c.executionCtx?.waitUntil?.(report);
-      return c.json({ data: matches, model: body.model });
+      const data = gate
+        ? await clampMatchesToReadable(
+            ctx,
+            c.get("auth"),
+            gate.collection,
+            gate.perm,
+            matches,
+          )
+        : matches;
+      return c.json({ data, model: body.model });
     },
   )
   .openapi(
@@ -281,9 +334,29 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     async (c) => {
-      const { vector } = c.get("ctx");
+      const ctx = c.get("ctx");
+      const { vector } = ctx;
       const body = c.req.valid("json");
-      await vector.delete(body.model, body.ids, scopeNs(c, body.namespace));
+      const gate = await gateNs(c, body.namespace, "update");
+      // Only the ids whose row this caller may update. Silently narrowing
+      // rather than refusing the batch: the caller learns nothing about which
+      // ids exist, and a partial delete is what a partial `update` grant
+      // means everywhere else.
+      const ids = gate
+        ? await (async () => {
+            const readable = await readableItemIds(
+              ctx,
+              c.get("auth"),
+              gate.collection,
+              gate.perm,
+              body.ids,
+            );
+            return body.ids.filter((id) => readable.has(itemIdOf(id)));
+          })()
+        : body.ids;
+      if (ids.length > 0) {
+        await vector.delete(body.model, ids, scopeNs(c, body.namespace));
+      }
       return c.json({ ok: true, model: body.model });
     },
   )
@@ -318,8 +391,23 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     async (c) => {
-      const { vector, embedding } = c.get("ctx");
+      const ctx = c.get("ctx");
+      const { vector, embedding } = ctx;
       const body = c.req.valid("json");
+      for (const r of body.records) {
+        const gate = await gateNs(c, r.namespace, "update");
+        if (!gate) continue;
+        const readable = await readableItemIds(
+          ctx,
+          c.get("auth"),
+          gate.collection,
+          gate.perm,
+          [r.id],
+        );
+        if (readable.size === 0) {
+          throw new AppError("NOT_FOUND", `Item not found for vector "${r.id}"`);
+        }
+      }
       const { values } = await embedding.embed({
         model: body.model,
         texts: body.records.map((r) => r.text),
@@ -362,8 +450,10 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     async (c) => {
-      const { vector, embedding, env } = c.get("ctx");
+      const ctx = c.get("ctx");
+      const { vector, embedding, env } = ctx;
       const body = c.req.valid("json");
+      const gate = await gateNs(c, body.namespace, "read");
       const { values } = await embedding.embed({
         model: body.model,
         texts: [body.text],
@@ -379,6 +469,15 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // query analytics). waitUntil so it survives the response return.
       const report = reportToCloud(env, { kind: "vector_query", queries: 1 });
       if (report) c.executionCtx?.waitUntil?.(report);
-      return c.json({ data: matches, model: body.model });
+      const data = gate
+        ? await clampMatchesToReadable(
+            ctx,
+            c.get("auth"),
+            gate.collection,
+            gate.perm,
+            matches,
+          )
+        : matches;
+      return c.json({ data, model: body.model });
     },
   );

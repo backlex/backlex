@@ -5,7 +5,8 @@ import type { Ctx } from "../../context";
 import { resolvePermission } from "../permissions";
 import { loadCollection, type CollectionRow } from "./collection-loader";
 import { deserialize, deserializeField } from "./serialize";
-import { queryAll } from "./sql-helpers";
+import { canSeeDraftsFor, readableIds } from "./row-access";
+import { draftFilter, queryAll } from "./sql-helpers";
 
 /**
  * Postgres truncates any identifier past 63 bytes — silently, with only a
@@ -87,6 +88,31 @@ export const buildExpandSelect = (
   sql`${buildExpandObject(dialect, baseFkRef, cols)} AS ${sql.identifier(outputCol)}`;
 
 /**
+ * The caller's read permission on ONE expand target.
+ *
+ * `fields` was carried from the start (it trims the SELECT). `whereSql` and
+ * `isAdmin` are here because they were not, and that is the whole of the
+ * defect: an expand resolved the target's permission, used the field
+ * allow-list, and threw the row condition away. A `customer-rep` whose grant
+ * on `customers` reads `{owner_id: {_eq: "$user.id"}}` got every field of
+ * every customer any order referenced — including other reps' — while
+ * `GET /api/items/customers` returned only their own.
+ */
+export interface ExpandPerm {
+  whereSql: SQL | null;
+  isAdmin: boolean;
+  /** Allowed fields on the target after permission projection (null = all). */
+  fields: Set<string> | null;
+}
+
+/** The three fields of a `ResolvedPermission` an expand plan has to carry. */
+const permOf = (p: {
+  whereSql: SQL | null;
+  isAdmin: boolean;
+  fields: Set<string> | null;
+}): ExpandPerm => ({ whereSql: p.whereSql, isAdmin: p.isAdmin, fields: p.fields });
+
+/**
  * One expanded relation, and anything expanded THROUGH it.
  *
  * `?expand=order_id.customer_id` inlines the customer inside the order, so the
@@ -99,8 +125,8 @@ export interface ExpandNode {
   key: string;
   /** Target collection, for deserializing nested values back to JS types. */
   target: CollectionRow;
-  /** Allowed fields on the target after permission projection (null = all). */
-  allowedFields: Set<string> | null;
+  /** The caller's read permission on `target`. */
+  perm: ExpandPerm;
   children: ExpandNode[];
 }
 
@@ -111,8 +137,8 @@ export interface ExpandPlan {
   outputCol: string;
   /** Target collection, for deserializing nested values back to JS types. */
   target: CollectionRow;
-  /** Allowed fields on the target after permission projection (null = all). */
-  allowedFields: Set<string> | null;
+  /** The caller's read permission on `target`. */
+  perm: ExpandPerm;
   /** Relations expanded THROUGH this one (`?expand=a.b`). Empty for a plain
    *  single-hop expand, which is what every caller sent before chaining. */
   children: ExpandNode[];
@@ -291,7 +317,7 @@ export const resolveExpands = async (
     selects.push(
       buildExpandSelect(ctx.dialect, baseFkRef, alias, outputCol, cols),
     );
-    plans.push({ head, outputCol, target, allowedFields: targetPerm.fields, children });
+    plans.push({ head, outputCol, target, perm: permOf(targetPerm), children });
   }
   return { extraJoins, selects, plans };
 };
@@ -427,7 +453,7 @@ const resolveExpandChildren = async (
         childCols,
       ),
     });
-    nodes.push({ key: seg, target, allowedFields: perm.fields, children: grandchildren });
+    nodes.push({ key: seg, target, perm: permOf(perm), children: grandchildren });
   }
   return nodes;
 };
@@ -443,6 +469,13 @@ const resolveExpandChildren = async (
  * If the raw column is null (LEFT JOIN miss OR FK was null), the nested
  * value stays null — the CASE wrapper in the SELECT already guarantees
  * we never emit `{id: null, …}`.
+ *
+ * **Not sufficient on its own.** Follow it with {@link clampExpandedRows}
+ * over the whole page: the JOIN this parses carries the target's tenant scope
+ * and nothing else, so what it inlines still has to be checked against the
+ * caller's row condition. Both REST call sites do; `applyManyExpandsToRows`
+ * is its to-many counterpart and carries the clamp inside itself, because a
+ * batch fetch can put the condition in its own WHERE.
  */
 export const applyExpandToRow = (
   out: Record<string, unknown>,
@@ -476,6 +509,107 @@ export const applyExpandToRow = (
     out[plan.head] = shapeExpanded(obj, plan.target, plan.children, dialect);
   }
 };
+
+/**
+ * Drop every inlined to-one object whose row the caller may not read.
+ *
+ * The LEFT JOIN that produced these objects carries the target's tenant id in
+ * its ON clause and nothing else — no row condition, no soft-delete, no draft
+ * visibility. So `GET /api/items/orders?expand=customer_id` handed back the
+ * whole customer row for every customer any order referenced, including the
+ * ones `GET /api/items/customers` correctly hides. Every hop of a chain
+ * (`expand=order_id.customer_id`) had the same gap, at every level.
+ *
+ * This runs AFTER the page is materialized, one query per distinct target
+ * across the whole page, and nulls out what does not survive — the same value
+ * a JOIN miss produces, which every consumer already handles. Post-hoc rather
+ * than in the ON clause on purpose: `perm.whereSql` is compiled with bare
+ * column names, and a bare `owner_id` inside a JOIN's ON is ambiguous the
+ * moment the base table has one too. Re-compiling the target's conditions
+ * against the join alias is possible (`combineConditions` takes a col-ref
+ * resolver) but drags the localized-sidecar and dotted-relation lowerings
+ * along with it, each of which reference the target's own primary key
+ * unqualified. One extra indexed `IN (…)` is the cheaper correct answer, and
+ * it is the same shape `applyManyExpandsToRows` and the GraphQL relation
+ * loader already use.
+ *
+ * Callers whose permission on a target is unconditional pay nothing: the node
+ * is skipped when there is no clamp to apply.
+ */
+export const clampExpandedRows = async (
+  ctx: Ctx,
+  auth: AuthSubject,
+  rows: Record<string, unknown>[],
+  plans: ExpandPlan[],
+): Promise<void> => {
+  if (plans.length === 0 || rows.length === 0) return;
+  /** Every place one target's object is inlined, across the whole page. */
+  type Site = { holder: Record<string, unknown>; key: string; id: string };
+  const byTarget = new Map<
+    string,
+    { target: CollectionRow; perm: ExpandPerm; sites: Site[] }
+  >();
+
+  const visit = (
+    holder: Record<string, unknown>,
+    key: string,
+    target: CollectionRow,
+    perm: ExpandPerm,
+    children: ExpandNode[],
+  ): void => {
+    const obj = holder[key];
+    if (!obj || typeof obj !== "object") return;
+    const rec = obj as Record<string, unknown>;
+    // Nothing to clamp is not the same as nothing to walk: an unconditional
+    // grant on THIS target can still sit above a conditional one below it.
+    if (needsClamp(target, perm)) {
+      const id = rec.id;
+      if (id == null) {
+        // No id means no way to check it — refuse rather than pass it on.
+        holder[key] = null;
+        return;
+      }
+      const entry = byTarget.get(target.slug) ?? { target, perm, sites: [] };
+      entry.sites.push({ holder, key, id: String(id) });
+      byTarget.set(target.slug, entry);
+    }
+    for (const child of children) {
+      visit(rec, child.key, child.target, child.perm, child.children);
+    }
+  };
+
+  for (const row of rows) {
+    for (const plan of plans) {
+      visit(row, plan.head, plan.target, plan.perm, plan.children);
+    }
+  }
+
+  for (const { target, perm, sites } of byTarget.values()) {
+    const readable = await readableIds(
+      ctx,
+      auth,
+      target,
+      perm,
+      sites.map((s) => s.id),
+    );
+    for (const s of sites) {
+      if (!readable.has(s.id)) s.holder[s.key] = null;
+    }
+  }
+};
+
+/**
+ * Whether an inlined target needs the second query at all.
+ *
+ * `whereSql` is the row condition. The other two are filters a direct read
+ * applies and the JOIN does not: a soft-deleted row is still joinable, and a
+ * versioned collection's drafts are visible to a caller who could not fetch
+ * one by id. An admin on the target skips the draft half but not the others.
+ */
+const needsClamp = (target: CollectionRow, perm: ExpandPerm): boolean =>
+  perm.whereSql !== null ||
+  target.softDelete ||
+  (Boolean(target.versioned) && !perm.isAdmin);
 
 /**
  * Turn one raw JSON object from the database into the row shape the API emits,
@@ -541,8 +675,12 @@ const shapeExpanded = (
 // ordered array of inlined target rows. Missing ids (deleted / cross-tenant /
 // no longer present) are dropped, so the array only carries live, readable
 // rows. Permission gate matches the to-one path: action-level read on the
-// target collection + the target role's `fields` allow-list (row-level
-// conditions are not applied to expanded targets, same as the JOIN path).
+// target collection, the target role's `fields` allow-list, AND the target's
+// row condition + draft visibility — the same five filters a direct read of
+// that collection applies, and the same five the GraphQL relation loader has
+// always applied. The parenthetical that used to close this paragraph said
+// row-level conditions were "not applied to expanded targets, same as the
+// JOIN path"; that was the defect, written down as if it were a design.
 // ---------------------------------------------------------------------------
 
 export interface ManyExpandPlan {
@@ -550,8 +688,8 @@ export interface ManyExpandPlan {
   head: string;
   /** Target collection, for the fetch + value deserialization. */
   target: CollectionRow;
-  /** Allowed fields on the target after permission projection (null = all). */
-  allowedFields: Set<string> | null;
+  /** The caller's read permission on `target`. */
+  perm: ExpandPerm;
   /** Sub-field trim (from `fields=tags.name`); null ⇒ whole readable row. */
   subs: Set<string> | null;
 }
@@ -609,7 +747,7 @@ export const resolveManyExpands = async (
         }
       }
     }
-    plans.push({ head, target, allowedFields: targetPerm.fields, subs });
+    plans.push({ head, target, perm: permOf(targetPerm), subs });
   }
   return plans;
 };
@@ -627,7 +765,7 @@ export const applyManyExpandsToRows = async (
   plans: ManyExpandPlan[],
 ): Promise<void> => {
   for (const plan of plans) {
-    const { head, target, allowedFields, subs } = plan;
+    const { head, target, perm, subs } = plan;
     // Collect every referenced id across the page (deduped).
     const idSet = new Set<string>();
     for (const row of rows) {
@@ -661,7 +799,7 @@ export const applyManyExpandsToRows = async (
       cols.push({ key: "owner_id", phys: target.ownerIdColumn ?? "owner_id" });
     }
     for (const f of target.fields) {
-      if (allowedFields && !allowedFields.has(f.name)) continue;
+      if (perm.fields && !perm.fields.has(f.name)) continue;
       if (!wants(f.name)) continue;
       cols.push({ key: f.name, phys: f.name });
     }
@@ -684,6 +822,17 @@ export const applyManyExpandsToRows = async (
     if (target.softDelete) {
       whereParts.push(sql`${sql.identifier("deleted_at")} IS NULL`);
     }
+    // The row-level clamp. This is a single-table fetch, so the compiled
+    // condition's bare column references bind exactly as they do on a direct
+    // read of the target — no alias to qualify against, which is why the
+    // to-many path can carry it here while the to-one path (a JOIN) has to
+    // clamp after the fact.
+    if (perm.whereSql) whereParts.push(perm.whereSql);
+    const draftWhere = draftFilter(
+      target,
+      await canSeeDraftsFor(ctx, auth, target, perm),
+    );
+    if (draftWhere) whereParts.push(draftWhere);
     const fetched = await queryAll<Record<string, unknown>>(
       ctx,
       sql`SELECT ${sql.join(selectParts, sql`, `)} FROM ${sql.identifier(

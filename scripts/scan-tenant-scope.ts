@@ -298,7 +298,6 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "getStagedRow", reason: "Reached by (collection.id, itemId); the collection row was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "stagedIdsFor", reason: "Reached by (collection.id, ids), same contract as getStagedRow." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "deleteStagedRow", reason: "Reached by (collection.id, itemId), same contract as getStagedRow." },
-  { file: "apps/web/src/server/services/dashboards.ts", symbol: "deleteDashboard", reason: "Detaches the panels of the dashboard the scoped delete just removed, by dashboardId." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "loadBusy", reason: "Reads the occupying bookings of one resource, by resource.id; the resource row was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "releaseLapsedHolds", reason: "Releases lapsed holds on one resource, by resourceId." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "insertIntoSeat", reason: "Inserts the booking row whose values the scoped caller assembled (tenantId included in `values`)." },

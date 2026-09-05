@@ -419,7 +419,7 @@ export const recordAndRunBackup = async (
       if (args.tenantId) {
         await publishEvent(
           ctx.env,
-          "system",
+          { tenantId: args.tenantId, channel: "system" },
           {
             event: "backup.failed",
             data: {
@@ -430,7 +430,7 @@ export const recordAndRunBackup = async (
               error,
             },
           },
-          { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: args.tenantId },
+          { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx },
         );
       }
     } catch {

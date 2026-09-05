@@ -334,6 +334,22 @@ describe("ably-token endpoint", () => {
       body: JSON.stringify({ channels }),
     });
 
+  /** The workspace-scoped Ably room a channel is minted for.
+   *
+   *  Read from `items-config` rather than rebuilt here, because the client
+   *  learns it the same way — a test that computed the prefix independently
+   *  would keep passing if the endpoint stopped handing one out, and the
+   *  client would then attach to a room nothing publishes into. */
+  const room = async (channel: string) => {
+    const cfg = (await (await h.fetch("/api/realtime/items-config")).json()) as {
+      ablyPrefix: string;
+    };
+    expect(cfg.ablyPrefix, "the config endpoint must hand the client its room prefix").toMatch(
+      /^t\.[0-9a-f-]{36}:$/,
+    );
+    return `${cfg.ablyPrefix}${channel}`;
+  };
+
   test("signal channels are subscribe-ONLY", async () => {
     const res = await mint([signalChannel(slug)]);
     expect(res.status).toBe(200);
@@ -343,8 +359,14 @@ describe("ably-token endpoint", () => {
     expect(tokenRequest.clientId).toBe(adminId);
     // A client that could publish signals could make every other reader
     // refetch rows that never changed — or miss ones that did.
+    //
+    // The capability names the WORKSPACE'S room, not the bare channel. Ably is
+    // the one plane where the client connects to the broker directly, so this
+    // capability is the entire tenant boundary on it: without the prefix, two
+    // workspaces owning a collection of the same name are minted tokens for one
+    // room and each sees the other's change ids and timing.
     expect(JSON.parse(tokenRequest.capability)).toEqual({
-      [signalChannel(slug)]: ["subscribe"],
+      [await room(signalChannel(slug))]: ["subscribe"],
     });
   });
 
@@ -353,8 +375,8 @@ describe("ably-token endpoint", () => {
     expect(res.status).toBe(200);
     const { tokenRequest } = (await res.json()) as { tokenRequest: { capability: string } };
     expect(JSON.parse(tokenRequest.capability)).toEqual({
-      [signalChannel(slug)]: ["subscribe"],
-      [`collab:list:${slug}`]: ["publish", "subscribe"],
+      [await room(signalChannel(slug))]: ["subscribe"],
+      [await room(`collab:list:${slug}`)]: ["publish", "subscribe"],
     });
   });
 
@@ -384,7 +406,52 @@ describe("ably-token endpoint", () => {
     const res = await mint(["anything"]);
     expect(res.status).toBe(200);
     const { tokenRequest } = (await res.json()) as { tokenRequest: { capability: string } };
-    expect(JSON.parse(tokenRequest.capability)).toEqual({ anything: ["subscribe"] });
+    expect(JSON.parse(tokenRequest.capability)).toEqual({
+      [await room("anything")]: ["subscribe"],
+    });
+  });
+
+  test("an ALREADY-prefixed signal channel is refused, so a client cannot double-prefix", async () => {
+    // The contract is "ask for the bare channel, attach to the prefixed room".
+    // A client that sends the room name instead does not get a wider token — it
+    // gets a 403, because `t.<id>:signal:items:x` no longer matches the
+    // `signal:` gate and falls through to the broadcast branch, which is
+    // default-deny. Pinned because the published SDK got this backwards once:
+    // its hub mints the token from the same set it attaches with, so prefixing
+    // at the attach site silently sent the prefixed name to this endpoint and
+    // killed signal-plane realtime for every SDK consumer.
+    const prefixed = await room(signalChannel(slug));
+    const res = await mint([prefixed]);
+    expect(res.status).toBe(403);
+    // The bare name is what works — without this the block would pass on an
+    // endpoint that refused everything.
+    expect((await mint([signalChannel(slug)])).status).toBe(200);
+  });
+
+  test("a caller naming ANOTHER workspace's room is scoped inside their own", async () => {
+    // The prefix is derived from `auth.tenantId`, never taken from the channel
+    // the caller sent — so naming `t.<someone-else>:signal:items:x` mints a
+    // capability for `t.<mine>:t.<someone-else>:signal:items:x`, a room nothing
+    // publishes into. There is no spelling that reaches another workspace.
+    const foreign = "t.00000000-0000-4000-8000-000000000000:signal:items:secrets";
+    const made = await h.fetch("/api/admin/realtime-channels", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        name: "Foreign lookalike",
+        pattern: foreign,
+        subscribe: { access: "authenticated" },
+        publish: { access: "none" },
+      }),
+    });
+    expect(made.status).toBe(201);
+
+    const res = await mint([foreign]);
+    expect(res.status).toBe(200);
+    const { tokenRequest } = (await res.json()) as { tokenRequest: { capability: string } };
+    const capability = JSON.parse(tokenRequest.capability) as Record<string, string[]>;
+    expect(capability).toEqual({ [await room(foreign)]: ["subscribe"] });
+    expect(Object.keys(capability)).not.toContain(foreign);
   });
 
   test("the legacy collab-token endpoint still refuses signal channels", async () => {
@@ -408,6 +475,59 @@ describe("items-config endpoint", () => {
   test("reports the SSE transport on a long-lived process", async () => {
     const res = await h.fetch("/api/realtime/items-config");
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ transport: "sse" });
+    // `ablyPrefix` rides along on every transport, not just `ably-signal`.
+    // The endpoint answers before the client knows which plane it is on, and
+    // sending it conditionally would mean the one client that needs it is the
+    // one that has to ask twice.
+    expect(await res.json()).toEqual({
+      transport: "sse",
+      ablyPrefix: expect.stringMatching(/^t\.[0-9a-f-]{36}:$/),
+    });
+  });
+
+  test("a signed-out caller is told the transport but not the workspace id", async () => {
+    // Both config endpoints are open — they answer a capability question a
+    // client asks before doing anything — and `auth.tenantId` resolves for an
+    // anonymous caller too, so an unconditional prefix would turn a workspace
+    // SLUG into its UUID for anyone. Nothing anonymous can use it: a `signal:`
+    // or `collab:` subscribe without a session is refused, so no token is ever
+    // minted.
+    for (const path of ["/api/realtime/items-config", "/api/realtime/collab-config"]) {
+      const res = await h.app.request(path);
+      expect(res.status, path).toBe(200);
+      const body = (await res.json()) as { transport: string; ablyPrefix: string };
+      expect(body.transport, path).toBeTruthy();
+      expect(body.ablyPrefix, path).toBe("");
+    }
+    // The signed-in neighbour still gets one, or the assertion above would hold
+    // on an endpoint that had simply stopped sending the field.
+    const signedIn = (await (await h.fetch("/api/realtime/items-config")).json()) as {
+      ablyPrefix: string;
+    };
+    expect(signedIn.ablyPrefix).toMatch(/^t\.[0-9a-f-]{36}:$/);
+  });
+
+  test("the prefix follows the ACTIVE workspace, so two of them never share a room", async () => {
+    const prefixIn = async (tenant?: string) => {
+      const res = await h.fetch(
+        "/api/realtime/items-config",
+        tenant ? { headers: { "X-Backlex-Tenant": tenant } } : undefined,
+      );
+      expect(res.status).toBe(200);
+      return ((await res.json()) as { ablyPrefix: string }).ablyPrefix;
+    };
+
+    const made = await h.fetch("/api/tenants", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ name: `Signal room split ${Date.now()}` }),
+    });
+    expect(made.status).toBe(201);
+    const other = ((await made.json()) as { data: { slug: string } }).data.slug;
+
+    // Same caller, same collection slug, two workspaces — two rooms. This is
+    // the property the whole namespacing exists for; asserting only that a
+    // prefix EXISTS would pass on a constant one.
+    expect(await prefixIn("default")).not.toBe(await prefixIn(other));
   });
 });

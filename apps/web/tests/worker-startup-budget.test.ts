@@ -214,6 +214,13 @@ describe("worker startup budget", () => {
     // Headroom is for ordinary growth. A jump means something large became
     // reachable eagerly, and the fix is a dynamic import at the seam — not a
     // bigger number here. Re-record deliberately, in the commit that earns it.
-    expect(kib).toBeLessThan(8200);
+    //
+    // Raised 8200 → 8250 on 2026-09-05, measured at 8214. What crossed the line
+    // was realtime workspace namespacing: one new ~2.5 KiB module
+    // (`services/realtime-topic.ts`) and ~11 KiB of comment across the transport
+    // files. Nothing new became REACHABLE — the eager module count is unchanged
+    // but for the one addition — so a dynamic import has nothing to bite on
+    // here; this is the ordinary growth the headroom is for.
+    expect(kib).toBeLessThan(8250);
   });
 });

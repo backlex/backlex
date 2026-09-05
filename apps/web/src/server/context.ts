@@ -797,9 +797,9 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
           try {
             await publishEvent(
               env,
-              "auth",
+              { tenantId, channel: "auth" },
               { event: "signup", data: { id: user.id, email: user.email, tenantId } },
-              { db, dialect, email: fullCtx.email, fullCtx, tenantId },
+              { db, dialect, email: fullCtx.email, fullCtx },
             );
           } catch (e) {
             console.error("[auth] signup event publish failed", (e as Error).message);

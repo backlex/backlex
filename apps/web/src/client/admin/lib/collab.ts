@@ -80,13 +80,25 @@ export const collabHandle = (peer: { name: string | null; id: string }): string 
   return peer.id.slice(0, 6);
 };
 
-/** One capability probe per SPA session — the answer is deployment-static. */
-let transportPromise: Promise<CollabTransportKind> | null = null;
-const collabTransport = (): Promise<CollabTransportKind> => {
+/** One capability probe per SPA session — the answer is deployment-static.
+ *  `ablyPrefix` is per WORKSPACE rather than per deployment; see the same note
+ *  on `lib/signal.ts::itemsTransport`. */
+let transportPromise: Promise<{
+  transport: CollabTransportKind;
+  ablyPrefix: string;
+}> | null = null;
+const collabTransport = () => {
   transportPromise ??= fetch("/api/realtime/collab-config", { credentials: "include" })
-    .then((r) => (r.ok ? (r.json() as Promise<{ transport?: CollabTransportKind }>) : { transport: "off" as const }))
-    .then((j: { transport?: CollabTransportKind }) => j.transport ?? "off")
-    .catch(() => "off" as const);
+    .then((r) =>
+      r.ok
+        ? (r.json() as Promise<{ transport?: CollabTransportKind; ablyPrefix?: string }>)
+        : { transport: "off" as const },
+    )
+    .then((j: { transport?: CollabTransportKind; ablyPrefix?: string }) => ({
+      transport: j.transport ?? ("off" as const),
+      ablyPrefix: j.ablyPrefix ?? "",
+    }))
+    .catch(() => ({ transport: "off" as const, ablyPrefix: "" }));
   return transportPromise;
 };
 
@@ -149,6 +161,10 @@ const openAblyPipe = async (
   channel: string,
   self: { id: string; name: string | null },
   onMessage: (msg: CollabMessage) => void,
+  /** Workspace room prefix from `collab-config`. The token is requested for the
+   *  LOGICAL channel (the server namespaces it); the attach must name the room,
+   *  because Ably matches the capability against the channel actually opened. */
+  ablyPrefix: string,
 ): Promise<CollabPipe | null> => {
   try {
     const Ably = await import("ably");
@@ -171,7 +187,7 @@ const openAblyPipe = async (
       echoMessages: false,
       closeOnUnload: true,
     });
-    const ch = client.channels.get(channel);
+    const ch = client.channels.get(`${ablyPrefix}${channel}`);
     await ch.subscribe("collab", (msg) => {
       const data = (msg.data ?? {}) as CollabMessage;
       // Ably verified the publisher's clientId against its token — trust it
@@ -208,10 +224,10 @@ const openCollabPipe = async (
   self: { id: string; name: string | null },
   onMessage: (msg: CollabMessage) => void,
 ): Promise<CollabPipe | null> => {
-  const kind = await collabTransport();
-  if (kind === "off") return null;
-  return kind === "ably"
-    ? openAblyPipe(channel, self, onMessage)
+  const { transport, ablyPrefix } = await collabTransport();
+  if (transport === "off") return null;
+  return transport === "ably"
+    ? openAblyPipe(channel, self, onMessage, ablyPrefix)
     : openNativePipe(channel, onMessage);
 };
 

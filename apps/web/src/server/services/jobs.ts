@@ -645,7 +645,7 @@ export const runJob = async (
       try {
         await publishEvent(
           ctx.env,
-          "system",
+          { tenantId: job.tenantId, channel: "system" },
           {
             event: "job.dead_letter",
             data: {
@@ -657,7 +657,7 @@ export const runJob = async (
               error: message,
             },
           },
-          { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: job.tenantId },
+          { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx },
         );
       } catch {
         /* alert is best-effort — the dead_letter activity row is the record */

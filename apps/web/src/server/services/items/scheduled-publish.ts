@@ -38,6 +38,7 @@ export const publishDueItems = async (ctx: Ctx): Promise<void> => {
     const slug = r.slug as string;
     const fields = (r.fields as FieldDef[]) ?? [];
     const ownerScoped = Boolean(r.ownerScoped ?? r.owner_scoped);
+    const collectionTenantId = (r.tenantId ?? r.tenant_id ?? null) as string | null;
 
     const dueWhere = sql`${sql.identifier("_status")} = 'draft' AND ${sql.identifier("_publish_at")} IS NOT NULL AND ${sql.identifier("_publish_at")} <= ${now}`;
     let due: Record<string, unknown>[];
@@ -65,13 +66,21 @@ export const publishDueItems = async (ctx: Ctx): Promise<void> => {
       row._published_at = now;
       row._publish_at = null;
       const after = deserializeRow(row, fields, ctx.dialect, ownerScoped);
-      const tenantId = (row.tenant_id ?? null) as string | null;
+      // The row's own `tenant_id` first, because a collection that predates
+      // per-workspace naming still lives in a PREFIXLESS `c_<slug>` table that
+      // several workspaces' metadata rows can point at (the 2026-05 migration
+      // renamed the rows, not the tables — see `services/system-tables.ts`), so
+      // one scan returns more than one workspace's rows. A collection whose
+      // table has no `tenant_id` column at all (`tenantScoped: false`) has no
+      // per-row answer, and there the owning workspace on the metadata row is
+      // the right one — it is the workspace whose subscribers are listening.
+      const tenantId = (row.tenant_id ?? collectionTenantId) as string | null;
       try {
         await publishEvent(
           ctx.env,
-          `items:${slug}`,
+          { tenantId, channel: `items:${slug}` },
           { event: "published", data: after },
-          { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId },
+          { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
         );
       } catch (e) {
         console.error(`[scheduled-publish] event emit failed for ${slug}`, e);
@@ -101,6 +110,7 @@ export const unpublishDueItems = async (ctx: Ctx): Promise<void> => {
     const slug = r.slug as string;
     const fields = (r.fields as FieldDef[]) ?? [];
     const ownerScoped = Boolean(r.ownerScoped ?? r.owner_scoped);
+    const collectionTenantId = (r.tenantId ?? r.tenant_id ?? null) as string | null;
 
     const dueWhere = sql`${sql.identifier("_status")} = 'published' AND ${sql.identifier("_unpublish_at")} IS NOT NULL AND ${sql.identifier("_unpublish_at")} <= ${now}`;
     let due: Record<string, unknown>[];
@@ -127,13 +137,21 @@ export const unpublishDueItems = async (ctx: Ctx): Promise<void> => {
       row._published_at = null;
       row._unpublish_at = null;
       const after = deserializeRow(row, fields, ctx.dialect, ownerScoped);
-      const tenantId = (row.tenant_id ?? null) as string | null;
+      // The row's own `tenant_id` first, because a collection that predates
+      // per-workspace naming still lives in a PREFIXLESS `c_<slug>` table that
+      // several workspaces' metadata rows can point at (the 2026-05 migration
+      // renamed the rows, not the tables — see `services/system-tables.ts`), so
+      // one scan returns more than one workspace's rows. A collection whose
+      // table has no `tenant_id` column at all (`tenantScoped: false`) has no
+      // per-row answer, and there the owning workspace on the metadata row is
+      // the right one — it is the workspace whose subscribers are listening.
+      const tenantId = (row.tenant_id ?? collectionTenantId) as string | null;
       try {
         await publishEvent(
           ctx.env,
-          `items:${slug}`,
+          { tenantId, channel: `items:${slug}` },
           { event: "unpublished", data: after },
-          { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId },
+          { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
         );
       } catch (e) {
         console.error(`[scheduled-unpublish] event emit failed for ${slug}`, e);

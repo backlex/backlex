@@ -37,6 +37,33 @@ export interface RealtimeFilter {
 
 const SYSTEM_FIELDS = new Set(["id", "createdAt", "updatedAt", "ownerId"]);
 
+/**
+ * Whether an event published by workspace `eventTenant` may be delivered to a
+ * subscriber gated in workspace `subscriberTenant`.
+ *
+ * Called by BOTH transports before anything is rendered, and keyed on the
+ * SUBSCRIPTION rather than on the permission filter — `collab:` and
+ * application-owned channels are gated without a `SubscriptionMeta` at all, so
+ * a check that lived on the filter would have skipped exactly the channels
+ * whose payloads are forwarded raw.
+ *
+ * `undefined` on either side means "published, or subscribed, by a build that
+ * did not stamp a workspace" — a frame already in a Durable Object's replay log
+ * or a socket whose attachment predates this field, both of which can only
+ * exist for the length of one deploy. It is treated as a MISMATCH, not as a
+ * wildcard: the routing key already isolated those events, so the cost of
+ * dropping them is a reconnect (EventSource does that on its own, and the SSE
+ * bridge re-gates every 60s), while the cost of passing them is the leak this
+ * function exists to close.
+ */
+export const eventIsForSubscriber = (
+  eventTenant: string | null | undefined,
+  subscriberTenant: string | null | undefined,
+): boolean => {
+  if (eventTenant === undefined || subscriberTenant === undefined) return false;
+  return eventTenant === subscriberTenant;
+};
+
 /** Project a row down to the caller's readable fields (system fields always
  *  survive). `null` fields = no projection. */
 export const projectRow = (

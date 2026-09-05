@@ -1157,7 +1157,7 @@ export function useLiveCollection(collection: string | null): { live: boolean } 
     };
 
     void (async () => {
-      const transport = await itemsTransport();
+      const { transport } = await itemsTransport();
       if (disposed) return;
       if (transport === "ably-signal") {
         const close = await openSignalPipe(collection, bump);

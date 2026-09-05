@@ -59,6 +59,50 @@ const ITEMS_PREFIX = "items:";
 /** `signal:items:<slug>` for a collection. */
 export const signalChannel = (slug: string): string => `${SIGNAL_PREFIX}${slug}`;
 
+/**
+ * The Ably room a workspace's `channel` lives in — signal AND collab, which is
+ * why it is not named for either.
+ *
+ * Ably is the one transport where the room name is chosen by the CLIENT: the
+ * browser connects to Ably directly and attaches to whatever name it holds, so
+ * the name has to be STATED on the wire rather than derived independently on
+ * each side. The server mints the token capability for this exact name and
+ * hands the prefix back on `GET /api/realtime/items-config` and
+ * `/collab-config`, so a client that never learns its workspace cannot
+ * construct another's, and one that names another's anyway is minted a
+ * capability for that name nested inside its own — a room nobody publishes to.
+ *
+ * Deliberately not `topicFor`: that is an internal routing key and uses a
+ * separator no channel name may contain. This string is a public identifier
+ * held by a third-party SDK and by Ably itself, so it stays inside the
+ * `[A-Za-z0-9_.@-]` / `:` charset both Ably and `splitChannel` accept. It is
+ * not relied on for unforgeability — the token capability is.
+ */
+export const ablyRoomPrefix = (tenantId: string | null): string =>
+  `t.${tenantId ?? "_"}:`;
+
+/**
+ * The prefix to hand a caller on the config endpoints, or `""` when there is
+ * nobody to hand it to.
+ *
+ * Both config endpoints are open (they answer a capability question a client
+ * asks before it has done anything), and `auth.tenantId` resolves to a
+ * workspace for an anonymous caller too — so returning the prefix
+ * unconditionally would turn a workspace SLUG into its UUID for anyone who
+ * asks. No privilege attaches to that id, but nothing anonymous can use the
+ * prefix either: `gateForChannel` refuses a `signal:` or `collab:` subscribe
+ * without a session, so no token is ever minted. Answering `""` costs a
+ * signed-out caller nothing and stops publishing an identifier gratuitously.
+ */
+export const ablyRoomPrefixFor = (auth: {
+  userId: string | null;
+  tenantId?: string | null;
+}): string => (auth.userId ? ablyRoomPrefix(auth.tenantId ?? null) : "");
+
+/** Namespace an Ably channel for the workspace that owns it. */
+export const ablyRoom = (tenantId: string | null, channel: string): string =>
+  `${ablyRoomPrefix(tenantId)}${channel}`;
+
 /** Parse `signal:items:<slug>` → the slug, or null when malformed. Rejecting
  *  malformed shapes matters: an unrecognised `signal:*` channel must NOT fall
  *  through to the free-form (unauthenticated) channel branch of the gate. */
@@ -144,9 +188,10 @@ const ablyAuthHeader = (apiKey: string): string => {
  */
 export const ablyPublishSignal = async (
   apiKey: string,
+  tenantId: string | null,
   signal: ItemSignal,
 ): Promise<void> => {
-  const channel = signalChannel(signal.collection);
+  const channel = ablyRoom(tenantId, signalChannel(signal.collection));
   const res = await fetch(
     `${ABLY_REST_BASE}/channels/${encodeURIComponent(channel)}/messages`,
     {

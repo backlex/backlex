@@ -442,9 +442,9 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const after = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);
       await publishEvent(
         ctx.env,
-        `items:${collection.slug}`,
+        { tenantId: auth.tenantId ?? null, channel: `items:${collection.slug}` },
         { event, data: after },
-        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
       );
       return c.json({ data: after });
     },

@@ -85,6 +85,21 @@ export interface SignalHubDeps {
   /** Mint a signed Ably TokenRequest covering `channels`
    *  (`POST /api/realtime/ably-token`). */
   token: (channels: string[]) => Promise<unknown>;
+  /**
+   * The Ably ROOM a logical channel lives in for the active workspace —
+   * `ablyPrefix` from `GET /api/realtime/items-config`, prepended.
+   *
+   * Deliberately applied HERE and not by the caller, because the two names go
+   * to two different places and getting that backwards is silent: the token is
+   * minted for the LOGICAL name (the server namespaces it, and a
+   * `t.<id>:signal:…` name does not even match its `signal:` gate), while the
+   * ATTACH must name the room, because Ably matches the capability against the
+   * channel the client actually opens. Every other map in this hub —
+   * `wanted`, `handlers`, `channels` — stays keyed on the logical name.
+   *
+   * Defaults to identity for an older server that sends no prefix.
+   */
+  room?: (channel: string) => string;
 }
 
 export interface SignalHub {
@@ -154,7 +169,7 @@ export const createSignalHub = (deps: SignalHubDeps): SignalHub => {
         // An existing connection holds a token scoped to the OLD channel set —
         // widen it before subscribing, or Ably refuses with 40160.
         if (!fresh) await c.auth.authorize();
-        const ch = c.channels.get(channel);
+        const ch = c.channels.get(deps.room ? deps.room(channel) : channel);
         await ch.subscribe(SIGNAL_MESSAGE_NAME, (msg) => {
           const data = msg.data as ItemSignal | undefined;
           if (!data || typeof data !== "object" || typeof data.id !== "string") return;

@@ -97,7 +97,12 @@ describe("collab channels", () => {
   test("collab-config reports the native transport on a long-lived process", async () => {
     const res = await h.fetch("/api/realtime/collab-config");
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ transport: "native" });
+    // `ablyPrefix` rides along even on the native transport, which never uses
+    // it — the endpoint answers before the client knows which plane it is on.
+    expect(await res.json()).toEqual({
+      transport: "native",
+      ablyPrefix: expect.stringMatching(/^t\.[0-9a-f-]{36}:$/),
+    });
   });
 
   test("subscribe requires a session", async () => {
@@ -373,8 +378,16 @@ describe("collab-token endpoint", () => {
       tokenRequest: { clientId: string; capability: string; mac: string };
     };
     expect(tokenRequest.clientId).toBe(adminId);
+    // Scoped to the caller's WORKSPACE room, not the bare channel name — the
+    // capability is the whole tenant boundary on the Ably plane, where the
+    // client connects to the broker directly. The prefix is read back from
+    // `items-config`, which is also where the client learns it.
+    const { ablyPrefix } = (await (
+      await h.fetch("/api/realtime/items-config")
+    ).json()) as { ablyPrefix: string };
+    expect(ablyPrefix).toMatch(/^t\.[0-9a-f-]{36}:$/);
     expect(JSON.parse(tokenRequest.capability)).toEqual({
-      [`collab:item:${slug}:row1`]: ["publish", "subscribe"],
+      [`${ablyPrefix}collab:item:${slug}:row1`]: ["publish", "subscribe"],
     });
     expect(tokenRequest.mac.length).toBeGreaterThan(0);
   });

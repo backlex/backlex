@@ -297,6 +297,12 @@ const authSubjectOf = (env: WriteEnv): AuthSubject => ({
   orgIds: env.orgIds ?? [],
 });
 
+/** How many failed checks one request buffers for the span. Well above the 8
+ *  DISTINCT triples `foldWriteChecks` keeps, and far below the row count of a
+ *  bulk import — the buffer must not become a per-request allocation that
+ *  scales with the payload. */
+const WRITE_CHECK_BUFFER = 64;
+
 /**
  * Does the row a write PROPOSES satisfy the permission's own condition?
  *
@@ -407,6 +413,27 @@ const assertWriteConditions = (
     skippedRelationConditions: skipped.length,
     mode,
   };
+  // Recorded whichever way the mode falls. Under `warn` this is the only
+  // DURABLE trace that the write would have been refused — the log line below
+  // answers nobody's question a week later, and "would flipping to `enforce`
+  // break my tenants?" is the entire reason `warn` exists. Under `enforce` it
+  // is how an operator sees what the flip costs. The span middleware folds it
+  // into `spans.attributes` and the advisor's `permission-write-check` rule
+  // counts it over the window; see `Ctx.permissionWriteChecks` and issue #334.
+  //
+  // Push only, never create: the array is made per request in `app.ts`, and
+  // its absence (a cron tick, a queue consumer, a test driving this service
+  // directly) means there is no span for it to ride on anyway. Creating one
+  // here would put it on the isolate-memoized base Ctx, i.e. on every
+  // concurrent request at once.
+  // Capped, because one request can be a 100,000-row CSV import and every row
+  // can miss the same condition. The span attribute keeps 8 DISTINCT triples
+  // (`foldWriteChecks`), so a bounded buffer loses nothing an operator would
+  // have seen and cannot grow into the request's memory.
+  const checks = env.ctx.permissionWriteChecks;
+  if (checks && checks.length < WRITE_CHECK_BUFFER) {
+    checks.push({ collection: env.collection.slug, action, mode });
+  }
   if (mode !== "enforce") {
     console.warn(JSON.stringify({ level: "warn", ...detail, action_taken: "allowed" }));
     return;

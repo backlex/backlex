@@ -38,7 +38,30 @@ export interface SpanInput {
    *  runtime rules can aggregate which columns real traffic needs indexed.
    *  Column names only — filter values are never recorded. */
   queryShape?: { collection: string; filters: string[]; sorts: string[] };
+  /** Writes in this request that fell outside their `write` permission's
+   *  conditions. Persisted so the advisor's `permission-write-check` rule can
+   *  answer the only question `PERMISSION_WRITE_CHECK=warn` exists to answer:
+   *  would turning it to `enforce` refuse anything this workspace actually
+   *  does. Collection + action + mode only — no row values. */
+  permissionWriteChecks?: { collection: string; action: string; mode: string }[];
 }
+
+/** Distinct `collection:action:mode` triples, capped. One span row is written
+ *  per sampled request, so a bulk import of 5,000 rows that each miss the same
+ *  condition must not write 5,000 entries — the advisor needs to know WHICH
+ *  collection and action, and the request count is the span count. */
+export const foldWriteChecks = (
+  checks: { collection: string; action: string; mode: string }[] | undefined,
+  cap = 8,
+): string[] => {
+  if (!checks?.length) return [];
+  const seen = new Set<string>();
+  for (const c of checks) {
+    seen.add(`${c.collection}:${c.action}:${c.mode}`);
+    if (seen.size >= cap) break;
+  }
+  return [...seen];
+};
 
 /** Build the span's `attributes` JSON, or null when there is nothing to store.
  *  Kept small on purpose: one row is written per sampled request. */
@@ -53,6 +76,8 @@ const spanAttributes = (
     if (shape.filters.length) attrs.filters = shape.filters;
     if (shape.sorts.length) attrs.sorts = shape.sorts;
   }
+  const writeChecks = foldWriteChecks(input.permissionWriteChecks);
+  if (writeChecks.length) attrs.permissionWriteChecks = writeChecks;
   return Object.keys(attrs).length ? attrs : null;
 };
 

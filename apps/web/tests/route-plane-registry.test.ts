@@ -1,14 +1,19 @@
 /**
  * Every mounted `/api` route declares which auth plane it belongs to.
  *
- * This spec does not assert that the declarations are ENFORCED — nothing
- * enforces them yet, deliberately. It asserts they are COMPLETE, which is the
- * property that decays silently: a new route file gets mounted, nobody thinks
- * about the plane, and the boundary quietly acquires another hole. Today
- * `requirePlatformMw` sits on a handful of route files out of ~110 mounts, and
- * the plane boundary everywhere else rests on `tenantMiddleware` leaving
- * `auth.roles` empty for `plane === "app"` — an accident one line from being
- * undone.
+ * This spec asserts the declarations are COMPLETE — not that they are right,
+ * and not that they are obeyed. Completeness is what makes the enforcement real
+ * rather than decorative. `middleware/plane-firewall.ts` does enforce the table
+ * (`PLANE_GUARD` defaults to `enforce`), but an UNKNOWN path is admitted in
+ * BOTH modes, deliberately: a typo in the registry must not take the site down.
+ * So a mount nobody declared is a hole in an ENFORCING guard that raises no 403
+ * and writes no log line to find it by. There is nothing to notice — which is
+ * the property that decays silently: a new route file gets mounted, nobody
+ * thinks about the plane, and the boundary quietly acquires another hole.
+ *
+ * The per-route gates (`requirePlatformMw`) stay as the second, narrow layer;
+ * the firewall's own docblock argues why two layers are deliberate. This file
+ * guards only the broad one.
  *
  * The registry is built from the real app, not from a hand-written list of
  * paths, so it cannot drift from what is actually served.
@@ -16,6 +21,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { makeHarness, type TestHarness } from "./setup";
 import { ROUTE_PLANES, planeFor, type RoutePlane } from "../src/server/lib/route-planes";
+import { requirePermission } from "../src/server/middleware/permission";
 
 /** Paths served by the app that are deliberately outside the /api surface. */
 const NON_API = (path: string): boolean =>
@@ -156,5 +162,62 @@ describe("route-plane registry: every /api mount declares a plane", () => {
       seen.add(e.prefix);
     }
     expect(dupes).toEqual([]);
+  });
+});
+
+/**
+ * A gate the route table cannot see is a gate no audit can count.
+ *
+ * Hono records every registered handler in `app.routes`, and the only thing it
+ * carries about one is the function's NAME. `requireUser`, `requireAdmin` and
+ * `requirePlatformMw` are plain top-level consts and show up by name;
+ * `requirePermission` is a FACTORY, and the handler it returned used to be
+ * anonymous — so the most-applied authorization gate in the product read as
+ * `(anonymous)`, and every `/api/items/*` route looked ungated to anything
+ * reading the router. Measured before the fix: 470 of 672 `/api` route entries
+ * carried a recognisable gate. After: 515.
+ *
+ * The name is fragile in a way nothing else would report. Under Bun 1.4.2 a
+ * top-level `const f: T = () => …` keeps its name while the SAME declaration
+ * nested inside a function comes out as `""`; only an explicit
+ * function-expression name survives both. A future tidy-up that turns it back
+ * into an arrow blinds the router table and breaks nothing visible.
+ */
+describe("an authorization gate is visible from the route table", () => {
+  let hh: TestHarness;
+
+  beforeAll(() => {
+    hh = makeHarness();
+  });
+  afterAll(() => hh.cleanup());
+
+  const handlerNames = (): (string | undefined)[] =>
+    (hh.app as unknown as { routes: { handler: { name?: string } }[] }).routes.map(
+      (r) => r.handler?.name,
+    );
+
+  test("the factory returns a NAMED handler, not an anonymous closure", () => {
+    const mw = requirePermission("posts", "read");
+    expect(typeof mw).toBe("function");
+    expect(
+      mw.name,
+      "a nested `const mw: MiddlewareHandler = async (c, next) => …` loses its name under Bun — use a named function expression",
+    ).toBe("requirePermissionMw");
+  });
+
+  test("and the app's own route table carries that name", () => {
+    // The unit assertion above passes even if nothing mounts it. This is the
+    // half that proves the router really records what an audit would read.
+    expect(handlerNames().filter((n) => n === "requirePermissionMw").length).toBeGreaterThan(20);
+  });
+
+  test("the gates that were already visible still are", () => {
+    // If Hono ever stops recording middleware entries at all, the assertion
+    // above fails for a reason that has nothing to do with the factory. This
+    // one tells the two apart.
+    const names = new Set(handlerNames());
+    for (const gate of ["requireUser", "requireAdminMw", "requirePlatformMw", "requireOperatorMw"]) {
+      expect(names.has(gate), `${gate} vanished from the route table`).toBe(true);
+    }
   });
 });

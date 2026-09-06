@@ -61,9 +61,17 @@ interface CollectionStat {
   sorts: { column: string; requests: number; share: number }[];
 }
 
+interface PermissionWriteCheckStat {
+  collection: string;
+  action: string;
+  requests: number;
+  refused: boolean;
+}
+
 interface AdvisorInsights {
   endpoints: EndpointStat[];
   collections: CollectionStat[];
+  permissionWriteChecks: PermissionWriteCheckStat[];
   window: {
     days: number;
     spanCount: number;
@@ -84,8 +92,10 @@ backlex advisor --apply <finding-id> [--days N]
               the server re-runs the advisor and executes its own statement.
 
   insights    Print the runtime aggregation behind those rules: slowest
-              endpoints (p50/p95/p99, error rate) and per-collection list
-              traffic with the columns it filters / sorts on.
+              endpoints (p50/p95/p99, error rate), per-collection list traffic
+              with the columns it filters / sorts on, and the writes that
+              landed outside their role's write conditions — read that last
+              section before setting PERMISSION_WRITE_CHECK=enforce.
 `;
 
 // Higher = more severe. A --fail-on threshold trips on anything >= its rank.
@@ -172,6 +182,26 @@ const runInsights = async (args: string[]): Promise<void> => {
             .slice(0, 3)
             .map((s) => `${s.column} (${pct(s.share)})`)
             .join(", ") || "—",
+      })),
+    );
+  }
+
+  // Printed even when empty, and that is the point: "none" here is the answer
+  // to "is PERMISSION_WRITE_CHECK=enforce safe on this deployment?", and an
+  // operator running this in a terminal before a flip needs to SEE the zero.
+  // A section that appears only when something is wrong cannot say "nothing is".
+  process.stdout.write("\nWrites outside their permission's conditions\n");
+  if (insights.permissionWriteChecks.length === 0) {
+    process.stdout.write(
+      "  none — no recorded write in this window would be refused by PERMISSION_WRITE_CHECK=enforce\n",
+    );
+  } else {
+    printTable(
+      insights.permissionWriteChecks.map((w) => ({
+        collection: w.collection,
+        action: w.action,
+        requests: w.requests,
+        outcome: w.refused ? "refused (enforce)" : "allowed (warn)",
       })),
     );
   }

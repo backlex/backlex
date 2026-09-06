@@ -465,6 +465,7 @@ export const createApp = (env: Env) => {
           userId: auth?.userId ?? null,
           errorCode: code,
           queryShape: shape,
+          permissionWriteChecks: ctx.permissionWriteChecks,
         };
         // Same sampled span feeds the local table AND (when OTLP_ENDPOINT is
         // set) the external OpenTelemetry collector. Both never throw.
@@ -694,7 +695,17 @@ export const createApp = (env: Env) => {
     // `Ctx.waitUntil`. `executionCtx` is a getter that THROWS on runtimes
     // without one (Bun-native, Node, tests), so the probe has to be a try, not
     // a truthiness check.
-    ctx = { ...ctx, waitUntil: (p: Promise<unknown>) => keepAlive(c, p) };
+    // `permissionWriteChecks` is a FRESH array per request, created here for
+    // the same reason `waitUntil` is: `buildContext` is memoized per isolate,
+    // so anything mutable that defaults itself on the base Ctx is shared by
+    // every concurrent request on that isolate. The write path appends only
+    // when it finds the array, which is what keeps a cron tick or a direct
+    // service call from writing into somebody's request.
+    ctx = {
+      ...ctx,
+      waitUntil: (p: Promise<unknown>) => keepAlive(c, p),
+      permissionWriteChecks: [],
+    };
     c.set("ctx", ctx);
     if (!rolesSeeded) {
       // Set optimistically so a burst of concurrent first-requests on a cold

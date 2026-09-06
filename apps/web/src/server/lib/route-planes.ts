@@ -4,20 +4,28 @@
  * WHY THIS FILE EXISTS
  *
  * backlex has two auth planes — `"platform"` (operators running the dashboard)
- * and `"app"` (a workspace's own end-users) — and today the boundary between
- * them is upheld almost everywhere by an ACCIDENT rather than a check:
+ * and `"app"` (a workspace's own end-users). The boundary between them used to
+ * be upheld almost everywhere by an ACCIDENT rather than a check:
  * `tenantMiddleware` leaves `auth.roles` empty for `plane === "app"`, so
- * `requireAdminMw` denies. `requireUser` alone checks only `auth.userId`, which
- * an `app_users` id satisfies just as well as a `users` id. `requirePlatformMw`
- * — the gate written for exactly this — is applied to a handful of route files
- * out of the ~110 prefixes below.
+ * `requireAdminMw` denies, while `requireUser` alone checks only `auth.userId`
+ * — which an `app_users` id satisfies just as well as a `users` id. The gate
+ * written for exactly this, `requirePlatformMw`, sat on a handful of route
+ * files out of the ~110 prefixes below.
  *
  * The highest-value invariant in a two-plane product should not rest on an
- * empty array one line away from being populated. This table is the first half
- * of fixing that: a single declared answer per prefix, checked for completeness
- * by `apps/web/tests/route-plane-registry.test.ts` so a new mount cannot land
- * without one. The second half — a middleware that ENFORCES the declaration —
- * is deliberately not here. This file changes no runtime behaviour at all.
+ * empty array one line away from being populated. So this table is a single
+ * declared answer per prefix, and TWO things read it: the middleware in
+ * `middleware/plane-firewall.ts`, which refuses a violation (`PLANE_GUARD`
+ * defaults to `enforce`), and `apps/web/tests/route-plane-registry.test.ts`,
+ * which refuses a new mount that declares nothing.
+ *
+ * The test half is not the lesser half. An UNKNOWN path is admitted in BOTH
+ * modes on purpose — a typo in this table must not take the site down — so a
+ * prefix nobody declared is a hole in an enforcing guard that raises no 403 and
+ * writes no log line. Completeness is what makes the enforcement mean anything.
+ *
+ * This FILE still changes no runtime behaviour by itself; it is data. What
+ * reads it does.
  *
  * THE FOUR VALUES
  *

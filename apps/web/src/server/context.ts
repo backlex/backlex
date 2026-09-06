@@ -200,6 +200,38 @@ export interface Ctx {
    * did anyway, so nothing narrows for a caller that has not been told.
    */
   waitUntil?: (p: Promise<unknown>) => void;
+  /**
+   * Writes this request made that a `write` permission condition did not
+   * allow — recorded whether `PERMISSION_WRITE_CHECK` let them through
+   * (`warn`, the default) or refused them (`enforce`).
+   *
+   * The advisor is the reason this exists. `warn` mode's whole value is
+   * telling an operator whether flipping to `enforce` would break their
+   * tenants, and a `console.warn` cannot answer that — nobody can query last
+   * week's logs from the Advisor page. So the write path appends here, the
+   * span middleware folds it into the span's `attributes`, and the
+   * `permission-write-check` rule counts them over the window. See
+   * `services/advisor.ts` and issue #334.
+   *
+   * Set by the request middleware (`app.ts`) as a FRESH array per request.
+   * `buildContext` is memoized per isolate, so a collector that defaulted
+   * itself would be shared by every concurrent request on that isolate —
+   * which is why the write path appends only when the array is already
+   * there, and records nothing on a cron tick, a queue consumer or a test
+   * calling the service directly. Same contract as {@link Ctx.waitUntil}:
+   * absent means the caller was not told, not that there is nothing to say.
+   */
+  permissionWriteChecks?: PermissionWriteCheck[];
+}
+
+/** One write that fell outside its `write` permission's conditions. Column
+ *  NAMES only, never their values — the row is the caller's own payload and
+ *  this rides into a span that operators and support can read. */
+export interface PermissionWriteCheck {
+  collection: string;
+  action: string;
+  /** `enforce` refused the write; `warn` allowed it and recorded it. */
+  mode: string;
 }
 
 /**

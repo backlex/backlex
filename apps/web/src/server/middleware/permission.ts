@@ -27,9 +27,29 @@ export const getRequestPermCache = (
   return cache;
 };
 
-export const requirePermission =
-  (collection: CollectionResolver, action: Action): MiddlewareHandler<AppBindings> =>
-  async (c, next) => {
+/**
+ * The returned handler is a NAMED FUNCTION EXPRESSION, and both halves of that
+ * matter.
+ *
+ * Hono's `app.routes` records every registered handler, and the only thing it
+ * carries about one is its function name — so an anonymous middleware is a gate
+ * no registry can see. This factory used to return a bare arrow, which made the
+ * most-applied authorization gate in the product read as `(anonymous)` from the
+ * route table: every `/api/items/*` route looked ungated to anything auditing
+ * the router, while `requireUser` and `requireAdmin` (plain top-level consts)
+ * showed up by name.
+ *
+ * `const mw: MiddlewareHandler = async (c, next) => …` is NOT enough here.
+ * Measured under Bun 1.4.2: a top-level const arrow keeps its name, and a const
+ * arrow declared INSIDE a function comes out as `""`. Only an explicit function
+ * expression name survives both. Name any future gate factory this way, and
+ * check it — a registry keyed on names fails silent when one goes missing.
+ */
+export const requirePermission = (
+  collection: CollectionResolver,
+  action: Action,
+): MiddlewareHandler<AppBindings> => {
+  const mw: MiddlewareHandler<AppBindings> = async function requirePermissionMw(c, next) {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const slug =
@@ -65,3 +85,5 @@ export const requirePermission =
     c.set("permission", result);
     await next();
   };
+  return mw;
+};

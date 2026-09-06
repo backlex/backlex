@@ -244,6 +244,23 @@ describe("worker startup budget", () => {
     // against its own branch, and each was green. 8306 exists only in the
     // merge. A per-branch budget check does not compose, so a stack of green
     // branches still owes one gate on the tree that actually ships.
-    expect(kib).toBeLessThan(8350);
+    //
+    // Raised 8350 → 8450 on 2026-09-06, measured at 8402. Phase 10 — the audit's
+    // medium/low sweep — added THREE modules totalling 11.4 KiB:
+    // `lib/security-headers.ts` (7.4 KiB, the CSP/XFO/HSTS constants the Hono
+    // middleware, `public/_headers` and the Vercel build config now all read
+    // from one place), `services/storage/limit-stream.ts` (2.4 KiB) and
+    // `services/integrations-fetch.ts` (1.6 KiB). The remaining ~40 KiB is
+    // comment: 1,803 net lines across the eager files the sweep touched, and
+    // this walk counts source bytes, so a paragraph explaining a fail-open
+    // compiler weighs the same as the code that closed it.
+    //
+    // Nothing new became REACHABLE. All three import only what the graph already
+    // reached (`@backlex/core`, `services/storage/hosts`, `../env`), so there is
+    // no seam a dynamic import would bite on — this is the ordinary growth the
+    // headroom is for. The one thing that WOULD move the number materially is
+    // `security-headers.ts` growing a runtime dependency; it deliberately has
+    // none.
+    expect(kib).toBeLessThan(8450);
   });
 });

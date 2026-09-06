@@ -535,3 +535,67 @@ describe("a platform cookie is not an app-plane credential", () => {
     });
   });
 });
+
+/**
+ * The guard's own safety net, which did not exist.
+ *
+ * `plane-firewall.ts`'s docblock claimed `route-planes.test.ts` "asserts a
+ * violation is observable rather than trusting that it would be". That file
+ * has never existed, and until this block the string `plane-violation` appeared
+ * exactly ONCE in the repository — in the middleware that emits it. Nothing
+ * read it back.
+ *
+ * That is the failure the sentence one line above the claim warns about: a
+ * guard that matches nothing reports success. The log line is the ENTIRE value
+ * of `PLANE_GUARD=warn` — an operator who sets it is buying observability and
+ * nothing else — so a silent regression there converts the opt-out into a
+ * plain hole with no signal.
+ *
+ * Found by reading the docblock during phase 10's live pass and checking that
+ * the test it named was real.
+ */
+describe("a plane violation is observable, not merely refused", () => {
+  test("the refusal emits a WARN line carrying path, planes, identity and mode", async () => {
+    const lines: string[] = [];
+    const original = console.warn;
+    console.warn = (...args: unknown[]) => {
+      lines.push(args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "));
+    };
+
+    let res: Response;
+    try {
+      // `/api/users` is declared `platform`; an app-plane bearer has no
+      // business there. The 403 is asserted elsewhere in this file — what is
+      // asserted here is that the refusal SAYS something.
+      res = await cast.endUserA.fetch("/api/users");
+    } finally {
+      console.warn = original;
+    }
+    expect(res.status).toBe(403);
+
+    const violation = lines
+      .map((l) => {
+        try {
+          return JSON.parse(l) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      })
+      .find((o) => o?.msg === "plane-violation");
+
+    // Every field here is one a responder needs to triage the line without
+    // reproducing it, which is why they are asserted individually rather than
+    // by checking the line is non-empty.
+    expect(violation).toBeDefined();
+    expect(violation).toMatchObject({
+      msg: "plane-violation",
+      path: "/api/users",
+      declared: "platform",
+      caller: "app",
+      action: "refused",
+      mode: "enforce",
+    });
+    // The identity has to be nameable, or the line cannot be chased to a user.
+    expect(typeof violation?.userId).toBe("string");
+  });
+});

@@ -1371,6 +1371,24 @@ export const collectionsRoutes = new Hono<AppBindings>()
             ? "uuid"
             : "text";
       const colNames = new Set(inspection.columns.map((col) => col.name));
+      // A tenant-scoped collection over a table with no `tenant_id` cannot
+      // match a single row — and, worse, it does not fail while not matching.
+      // `tenantFilter` emits the column via `sql.identifier()`, i.e.
+      // DOUBLE-QUOTED, and SQLite re-reads a double-quoted identifier that
+      // resolves to no column as a string literal. The predicate degrades to
+      // `'tenant_id' = '<uuid>'`, which is false for every row: HTTP 200, empty
+      // page, no error anywhere, over a table the operator knows has data.
+      //
+      // Refused at the door rather than warned about, because `tenantScoped`
+      // DEFAULTS TRUE — so this is what adopting a plain legacy table does
+      // unless the caller says otherwise, and "it succeeded and returns
+      // nothing" is the least debuggable answer available. #339.
+      if (body.tenantScoped && !colNames.has("tenant_id")) {
+        throw new AppError(
+          "VALIDATION",
+          `Table "${physicalTable}" has no "tenant_id" column, so a tenant-scoped collection over it would match no rows. Adopt it with "tenantScoped": false, or add the column first.`,
+        );
+      }
       for (const f of body.fields) {
         if (!colNames.has(f.name)) {
           throw new AppError(

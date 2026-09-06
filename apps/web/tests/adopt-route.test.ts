@@ -118,6 +118,11 @@ describe("admin adopt helpers", () => {
       createdAt: true,
       updatedAt: false,
       ownerId: false,
+      // Reported since #339: without it a tenant-scoped collection over this
+      // table matches nothing, silently, because `sql.identifier()` emits the
+      // column double-quoted and SQLite re-reads an unresolvable double-quoted
+      // identifier as a string literal.
+      tenantId: false,
     });
     expect(data.foreignKeys).toEqual([]);
   });

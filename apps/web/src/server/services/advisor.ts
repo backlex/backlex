@@ -900,6 +900,74 @@ export const runAdvisorChecks = async (
       // Skip silently.
     }
 
+    // Would flipping `PERMISSION_WRITE_CHECK` to `enforce` refuse anything this
+    // workspace actually does?
+    //
+    // That question is the whole reason the `warn` default exists, and until
+    // this rule nothing could answer it. A tenant's integrations may have been
+    // writing rows outside their role's `write` conditions for months, against
+    // a rule that only ever filtered READS; turning that into a 403 on upgrade
+    // breaks a working application for somebody who changed nothing. So the
+    // check counted and allowed — into a `console.warn` nobody can query a week
+    // later, which made the operator's decision a guess about their own data.
+    //
+    // Now the write path records each one on the request span and this counts
+    // them over the window. Zero is the green light; anything else names the
+    // collection and action to look at first. Issue #334.
+    try {
+      const writeCheckMode = (ctx.env.PERMISSION_WRITE_CHECK ?? "").trim() || "warn";
+      const enforcing = writeCheckMode === "enforce";
+      const observed = insights.permissionWriteChecks;
+      // Relation-path conditions cannot be judged in memory and are allowed
+      // under EITHER setting, so they are absent from this count either way —
+      // said out loud, because "zero" has to mean what the reader thinks.
+      const unjudged =
+        " Conditions that reach through a relation are not judged in memory and are allowed under either setting, so they are outside this count.";
+      if (observed.length === 0 && !enforcing) {
+        out.push({
+          id: "sec-permission-write-check-clear",
+          kind: "security",
+          level: "info",
+          rule: "permission-write-check",
+          groupTitle: "Write-permission conditions",
+          title: `No recorded write in the last ${windowDays} day(s) would have been refused`,
+          body:
+            `PERMISSION_WRITE_CHECK is "${writeCheckMode}", so a write landing outside its role's write conditions is counted and allowed. ` +
+            `Across ${insights.window.spanCount} recorded request(s) in the last ${windowDays} day(s), none did.${sampleNote}${unjudged}`,
+          fix: `Set PERMISSION_WRITE_CHECK=enforce so such a write is refused with a 403 instead of logged. The reading covers the recorded window only — re-run this after an integration changes, not once.`,
+          resource: "permissions · write conditions",
+          link: "/permissions",
+          evidence: { requests: 0, windowDays },
+        });
+      }
+      for (const stat of observed.slice(0, RUNTIME.maxFindingsPerRule)) {
+        out.push({
+          id: `sec-permission-write-check-${stat.collection}-${stat.action}`,
+          kind: "security",
+          level: enforcing ? "warn" : "error",
+          rule: "permission-write-check",
+          groupTitle: "Writes landing outside their permission's conditions",
+          title: enforcing
+            ? `${stat.requests} ${stat.action} request(s) on ${stat.collection} were refused`
+            : `${stat.requests} ${stat.action} request(s) on ${stat.collection} would be refused under enforce`,
+          body:
+            `${stat.requests} recorded request(s) in the last ${windowDays} day(s) wrote rows to ${stat.collection} that its role's \`${stat.action}\` conditions do not allow. ` +
+            (enforcing
+              ? `PERMISSION_WRITE_CHECK is "enforce", so each was refused with a 403.`
+              : `PERMISSION_WRITE_CHECK is "${writeCheckMode}", so each was allowed and counted — the rows are in the collection. Setting it to "enforce" would start refusing them.`) +
+            `${sampleNote} One request counts once however many rows it wrote.`,
+          fix: enforcing
+            ? `Either widen the \`${stat.action}\` condition on ${stat.collection} for the role making these calls, or fix the caller. The Traces panel filtered to ${stat.collection} shows which requests they were.`
+            : `Decide before flipping: if these writes are legitimate, widen the \`${stat.action}\` condition on ${stat.collection} to cover them; if not, fix the caller and check what the existing rows contain. Do NOT set PERMISSION_WRITE_CHECK=enforce while this finding stands — it turns each into a 403 for a caller that changed nothing.`,
+          resource: `permissions · ${stat.collection}`,
+          link: `/collections/${stat.collection}`,
+          evidence: { requests: stat.requests, windowDays },
+        });
+      }
+    } catch {
+      // Aggregation shape unexpected — skip rather than emit a bad finding.
+    }
+
     // Traffic-derived missing indexes: columns real list traffic filters or
     // sorts on that have no covering index on the physical table.
     try {

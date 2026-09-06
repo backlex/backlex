@@ -59,7 +59,7 @@ export const advisorQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlC
   advisorInsights: {
     type: new GraphQLNonNull(JSONScalar),
     description:
-      "Runtime query insights aggregated from recorded spans: per-endpoint latency percentiles and error rates, plus per-collection list traffic and the columns it filters / sorts on. `window.sampleRate` below 1 means the numbers describe a sample (admin-only).",
+      "Runtime query insights aggregated from recorded spans: per-endpoint latency percentiles and error rates, per-collection list traffic and the columns it filters / sorts on, and `permissionWriteChecks` — the writes that landed outside their role's `write` conditions, which is what says whether `PERMISSION_WRITE_CHECK=enforce` would refuse anything. `window.sampleRate` below 1 means the numbers describe a sample (admin-only).",
     args: { days: { type: GraphQLInt }, limit: { type: GraphQLInt } },
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireAdvisorAdmin(gqlCtx);

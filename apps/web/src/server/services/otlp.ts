@@ -1,5 +1,5 @@
 import type { Env } from "../env";
-import type { SpanInput } from "./traces";
+import { foldWriteChecks, type SpanInput } from "./traces";
 
 /**
  * OTLP/HTTP trace exporter (#15, the #4 follow-up). When `OTLP_ENDPOINT` is
@@ -64,6 +64,12 @@ export const buildOtlpPayload = (input: SpanInput): Record<string, unknown> => {
     if (shape.sorts.length)
       attributes.push(strAttr("backlex.query.sorts", shape.sorts.join(",")));
   }
+  // Writes that fell outside their `write` permission's conditions — same
+  // folding the local span uses, so an operator watching an external collector
+  // sees the `PERMISSION_WRITE_CHECK` picture without opening the Advisor.
+  const writeChecks = foldWriteChecks(input.permissionWriteChecks);
+  if (writeChecks.length)
+    attributes.push(strAttr("backlex.permission_write_checks", writeChecks.join(",")));
   return {
     resourceSpans: [
       {

@@ -87,10 +87,24 @@ const CollectionStatSchema = z
   })
   .openapi("AdvisorCollectionStat");
 
+/** Writes that landed outside their role's `write` conditions. Empty means no
+ *  recorded write in the window would be refused by
+ *  `PERMISSION_WRITE_CHECK=enforce` — the reading the `warn` default exists to
+ *  produce, and only as strong as `window.sampleRate`. */
+const PermissionWriteCheckStatSchema = z
+  .object({
+    collection: z.string(),
+    action: z.string(),
+    requests: z.number(),
+    refused: z.boolean(),
+  })
+  .openapi("AdvisorPermissionWriteCheckStat");
+
 const InsightsSchema = z
   .object({
     endpoints: z.array(EndpointStatSchema),
     collections: z.array(CollectionStatSchema),
+    permissionWriteChecks: z.array(PermissionWriteCheckStatSchema),
     window: z.object({
       from: z.number(),
       to: z.number(),
@@ -172,7 +186,7 @@ export const advisorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: TAGS,
       summary: "Runtime query insights",
       description:
-        "Per-endpoint latency percentiles and error rates, plus per-collection list traffic and which columns it filters / sorts on, aggregated from recorded spans. `window.sampleRate` below 1 means the numbers describe a sample (`TRACES_SAMPLE_RATE`); counts are spans seen and are never extrapolated. Admin-only.",
+        "Per-endpoint latency percentiles and error rates, per-collection list traffic and which columns it filters / sorts on, and the writes that landed outside their role's write conditions — all aggregated from recorded spans. `window.sampleRate` below 1 means the numbers describe a sample (`TRACES_SAMPLE_RATE`); counts are spans seen and are never extrapolated. Admin-only.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
       request: {

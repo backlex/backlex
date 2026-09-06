@@ -86,11 +86,29 @@ export interface CollectionStat {
   sorts: CollectionColumnUse[];
 }
 
+export interface PermissionWriteCheckStat {
+  collection: string;
+  /** `create` / `update` / … — the permission action the write was judged on. */
+  action: string;
+  /** Requests in the window carrying at least one such write. One per REQUEST,
+   *  not per row: a 5,000-row import that misses the same condition every time
+   *  is one span and therefore one here. */
+  requests: number;
+  /** True when at least one was recorded under `PERMISSION_WRITE_CHECK=enforce`
+   *  — i.e. actually refused, not merely counted. */
+  refused: boolean;
+}
+
 export interface RuntimeInsights {
   /** Endpoints ordered by p95 desc — the slow ones first. */
   endpoints: EndpointStat[];
   /** Collections ordered by list traffic desc. */
   collections: CollectionStat[];
+  /** Writes that fell outside a `write` permission's conditions, busiest first.
+   *  Empty means no recorded write in the window would have been refused —
+   *  which is the reading `PERMISSION_WRITE_CHECK=warn` exists to produce, and
+   *  is only as strong as `window.sampleRate`. */
+  permissionWriteChecks: PermissionWriteCheckStat[];
   window: {
     /** Inclusive lower bound of the window (epoch ms). */
     from: number;
@@ -233,6 +251,7 @@ export const loadRuntimeInsights = async (
   const empty: RuntimeInsights = {
     endpoints: [],
     collections: [],
+    permissionWriteChecks: [],
     window: {
       from,
       to,
@@ -283,6 +302,7 @@ export const loadRuntimeInsights = async (
 
   const byEndpoint = new Map<string, EndpointAcc>();
   const byCollection = new Map<string, CollectionAcc>();
+  const byWriteCheck = new Map<string, PermissionWriteCheckStat>();
   let oldestSpanAt = Number.POSITIVE_INFINITY;
 
   for (const row of rows) {
@@ -317,9 +337,27 @@ export const loadRuntimeInsights = async (
     if (status >= 500) acc.serverErrors++;
     else if (status >= 400) acc.clientErrors++;
 
+    const attrs = row.attributes;
+
+    // Writes that fell outside a `write` permission's conditions, recorded as
+    // `collection:action:mode`. These ride on POST/PATCH spans, which carry no
+    // `queryShape` — so this has to be read BEFORE the per-collection rollup's
+    // `continue`, or the rule would see nothing and read as a clean bill.
+    for (const entry of attrStrings(attrs?.permissionWriteChecks)) {
+      const [col, action, mode] = entry.split(":");
+      if (!col || !action) continue;
+      const key = `${col}:${action}`;
+      let wacc = byWriteCheck.get(key);
+      if (!wacc) {
+        wacc = { collection: col, action, requests: 0, refused: false };
+        byWriteCheck.set(key, wacc);
+      }
+      wacc.requests++;
+      if (mode === "enforce") wacc.refused = true;
+    }
+
     // Per-collection rollup — only list requests carry a `queryShape`, which is
     // exactly the traffic the index rules reason about.
-    const attrs = row.attributes;
     const collection =
       typeof attrs?.collection === "string" ? attrs.collection : null;
     if (!collection) continue;
@@ -389,9 +427,17 @@ export const loadRuntimeInsights = async (
       b.listRequests - a.listRequests || a.collection.localeCompare(b.collection),
   );
 
+  const permissionWriteChecks = [...byWriteCheck.values()].sort(
+    (a, b) =>
+      b.requests - a.requests ||
+      a.collection.localeCompare(b.collection) ||
+      a.action.localeCompare(b.action),
+  );
+
   return {
     endpoints: endpoints.slice(0, limit),
     collections,
+    permissionWriteChecks,
     window: {
       from,
       to,

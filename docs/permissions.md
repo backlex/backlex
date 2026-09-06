@@ -143,6 +143,40 @@ off a row id has to ask the row too, not just the collection it lives in —
 for a single id, `readableIds` for a set — so a new surface has a function to
 call rather than a filter to remember.
 
+### The write side, and why it defaults to `warn`
+
+`whereSql` answers "which rows that ALREADY EXIST may I touch". That is the
+whole question for read and delete, and half of it for create and update: the
+canonical B2B rule `{ org_id: { _eq: "$org.id" } }` filters reads, updates and
+deletes, and does not by itself stop an INSERT carrying somebody else's
+`org_id`. Postgres RLS projects the same condition as `WITH CHECK` on INSERT,
+so the database was stricter than the API in front of it.
+
+`services/items/write.ts::assertWriteConditions` closes that, on every path
+that reaches a row write — REST, GraphQL, batch, bulk and CSV import. It judges
+the PROPOSED row against the same conditions, in memory.
+
+```bash
+PERMISSION_WRITE_CHECK=warn     # default — count it, allow it
+PERMISSION_WRITE_CHECK=enforce  # refuse it with a 403
+```
+
+**The permissive default is deliberate.** A tenant's integrations may have been
+writing cross-scope rows for months against a rule that only ever filtered
+reads; turning that into a 403 on upgrade breaks a working application for
+somebody who changed nothing.
+
+**Do not flip it blind — measure first.** The Advisor's
+`permission-write-check` rule reports whether any recorded write in the window
+would have been refused, per collection and action. Zero is the green light;
+anything else names what to look at. See [Advisor](/docs/advisor/).
+
+One case is judged by neither setting: a condition reaching through a
+**relation** (`author.department`) cannot be evaluated against a proposed row
+in memory, while the SQL compiler lowers it to a correlated EXISTS on reads.
+Such a condition is skipped rather than denied — refusing there would be an
+outage, not a fix — and is therefore outside the Advisor's count too.
+
 ## `ownerScoped: true` shortcut
 
 When a collection is created with `ownerScoped: true`, the API auto-seeds

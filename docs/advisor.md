@@ -101,6 +101,7 @@ change it.
 | `email-console-fallback` | `info`  | no workspace `email_config` and no env email credentials — mail logs to stdout instead of sending       |
 | `sms-console-fallback`   | `warn`  | no workspace `sms_config` and no env SMS credentials — the console adapter reports every recipient as sent |
 | `push-console-fallback`  | `warn`  | no workspace `push_config` and no env FCM/APNs/Web Push credentials — same, and it returns no invalid tokens |
+| `permission-write-check` | `error`/`warn`/`info` | a write landed outside its role's `write` conditions — see below, this one is traffic-derived            |
 | `no-admin`               | `warn`  | no user in the tenant holds the `admin` role — admin surfaces have no operator                          |
 
 **Why SMS and push are `warn` where email is `info`.** All three console
@@ -120,6 +121,30 @@ this is a *different* judgement from `backups-off`, which deliberately does not
 skip on tenancy alone — a managed plan can exclude backups, so that rule keys on
 `CLOUD_MANAGED_BACKUPS` (whether the platform really takes them) rather than on
 who the tenant is. Ask what the platform does, not who is asking.
+
+**`permission-write-check` is the one security rule that reads traffic**, so
+unlike its neighbours it stays silent on a workspace with no recorded spans.
+It answers the single question `PERMISSION_WRITE_CHECK` exists to raise:
+
+| what it saw | level | what it means |
+|---|---|---|
+| the mode is `warn` and nothing was recorded | `info` | no recorded write in the window would be refused — this is the green light to set `PERMISSION_WRITE_CHECK=enforce` |
+| the mode is `warn` and something was | `error` | flipping to `enforce` would start refusing a caller that changed nothing. Decide first: widen the condition, or fix the caller |
+| the mode is `enforce` and something was | `warn` | writes are being refused right now. The caller is broken, but no row landed where it should not have |
+
+The default is `warn`: a write outside its role's `write` conditions is
+counted and allowed. That default is deliberate and not an oversight — a
+tenant's integrations may have been writing cross-scope rows for months against
+a rule that only ever filtered READS, and turning that into a 403 on upgrade
+breaks a working application for somebody who changed nothing. This rule is
+what makes the flip a measurement instead of a guess.
+
+Two things the count deliberately does not include, both because "zero" has to
+mean what an operator reads it as. Conditions that reach through a **relation**
+(`author.department`) cannot be judged in memory and are allowed under either
+setting, so they are outside the count either way. And one **request** counts
+once however many rows it wrote — a 5,000-row import that misses the same
+condition every time is one span and one finding.
 
 ### Performance
 

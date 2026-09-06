@@ -87,11 +87,33 @@ export interface AdvisorCollectionStat {
   sorts: AdvisorColumnUse[];
 }
 
+export interface AdvisorPermissionWriteCheckStat {
+  collection: string;
+  /** `create` / `update` / … — the permission action the write was judged on. */
+  action: string;
+  /** Requests in the window carrying at least one such write. One per REQUEST:
+   *  a 5,000-row import that misses the same condition every time counts once. */
+  requests: number;
+  /** True when at least one was recorded under `PERMISSION_WRITE_CHECK=enforce`
+   *  — i.e. actually refused, not merely counted. */
+  refused: boolean;
+}
+
 export interface AdvisorInsights {
   /** Slowest first (p95 desc, ties broken by traffic). */
   endpoints: AdvisorEndpointStat[];
   /** Busiest first. */
   collections: AdvisorCollectionStat[];
+  /**
+   * Writes that landed outside their role's `write` conditions, busiest first.
+   *
+   * Empty means no recorded write in the window would be refused by
+   * `PERMISSION_WRITE_CHECK=enforce` — which is the reading its `warn` default
+   * exists to produce, and is only as strong as `window.sampleRate`.
+   * Conditions reaching through a relation are not judged in memory and are
+   * outside this count either way.
+   */
+  permissionWriteChecks: AdvisorPermissionWriteCheckStat[];
   window: {
     from: number;
     to: number;

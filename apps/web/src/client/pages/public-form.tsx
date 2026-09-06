@@ -1023,6 +1023,29 @@ const condPasses = (
 
 /* ── page ──────────────────────────────────────────────────────────── */
 
+/**
+ * A stored URL, only if it is one this page may navigate to or link.
+ *
+ * The write door now refuses `javascript:` / `data:` / `vbscript:` / `file:`
+ * (`httpUrl` in `server/lib/openapi.ts`), but rows written BEFORE that are not
+ * revalidated — and this is where they land. `window.location.assign` on a
+ * `javascript:` URL executes in the CURRENT document's origin, which is this
+ * app, for every anonymous visitor who submits the form. An `href` is the same
+ * hole one click further away.
+ *
+ * Returns `null` for anything else so the caller can drop the navigation and
+ * the link rather than render a live one.
+ */
+const safeHttpUrl = (raw: string | null | undefined): string | null => {
+  if (!raw) return null;
+  try {
+    const p = new URL(raw, window.location.origin).protocol;
+    return p === "http:" || p === "https:" ? raw : null;
+  } catch {
+    return null;
+  }
+};
+
 export function PublicForm({ embed = false }: { embed?: boolean }) {
   const { token } = useParams<{ token: string }>();
   const [params, setParams] = useSearchParams();
@@ -1232,8 +1255,9 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
         },
         def.locale,
       );
-      if (res.data.redirectUrl) {
-        window.location.assign(res.data.redirectUrl);
+      const redirect = safeHttpUrl(res.data.redirectUrl);
+      if (redirect) {
+        window.location.assign(redirect);
         return;
       }
       setSubmitted(true);
@@ -1553,11 +1577,11 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
                         <path d="M12 22s8-3 8-10V5l-8-3-8 3v7c0 7 8 10 8 10z" />
                       </svg>
                       <Trans>must be accepted to submit</Trans>
-                      {b.policyUrl && (
+                      {safeHttpUrl(b.policyUrl) && (
                         <>
                           <span>·</span>
                           <a
-                            href={b.policyUrl}
+                            href={safeHttpUrl(b.policyUrl)!}
                             target="_blank"
                             rel="noreferrer noopener"
                             onClick={(e) => e.stopPropagation()}

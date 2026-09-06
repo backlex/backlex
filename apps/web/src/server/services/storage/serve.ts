@@ -1,7 +1,7 @@
 import { and, eq, inArray, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../../app";
-import { safeServeHeaders } from "./content-type";
+import { safeServeContentType, safeServeHeaders } from "./content-type";
 import { filesTable } from "./folders";
 import { keyCandidates } from "./keys";
 import { bucketFor, type FileAcl } from "./bucket-for";
@@ -10,7 +10,7 @@ import {
   computeEtag,
   isImageContentType,
   parseTransform,
-  TRANSFORM_CACHE_HEADERS,
+  transformCacheHeaders,
 } from "./transforms";
 import type { FileRow } from "./schemas";
 
@@ -67,7 +67,9 @@ export async function serveObject(
       obj.meta.contentType ?? row.contentType ?? "application/octet-stream";
     return new Response(obj.body, {
       headers: {
-        "content-type": contentType,
+        // …but never as a type the browser will EXECUTE as a subresource on
+        // this origin. See `safeServeContentType`.
+        "content-type": safeServeContentType(contentType),
         "content-length": String(obj.meta.size),
         // User-supplied bytes on the app origin — never let them execute as a
         // document. See services/storage/content-type.ts.
@@ -110,7 +112,8 @@ export async function serveObject(
     // A redirect (Netlify CDN) is cached by the CDN itself; only decorate
     // byte-carrying responses with our transform cache policy.
     if (resp.status !== 302) {
-      for (const [k, v] of Object.entries(TRANSFORM_CACHE_HEADERS)) headers.set(k, v);
+      const cache = transformCacheHeaders(row.acl, skipPermissionFilter);
+      for (const [k, v] of Object.entries(cache)) headers.set(k, v);
     }
     return new Response(resp.body, { status: resp.status, headers });
   }
@@ -160,7 +163,9 @@ export async function serveObject(
       "content-type": transformed.contentType,
       ...(bytes ? { "content-length": String(bytes.byteLength) } : {}),
       etag,
-      ...TRANSFORM_CACHE_HEADERS,
+      // `skipPermissionFilter` is the token path — the caller proved access for
+      // this one key, not for every cache between here and them.
+      ...transformCacheHeaders(row.acl, skipPermissionFilter),
       ...safeServeHeaders(transformed.contentType),
     },
   });

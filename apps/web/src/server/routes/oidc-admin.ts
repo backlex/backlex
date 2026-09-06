@@ -20,7 +20,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import {
   createOidcProvider,
   deleteOidcProvider,
@@ -66,12 +66,12 @@ const ProviderInput = z
       .openapi({ description: "URL-safe id; also the better-auth providerId." }),
     clientId: z.string().min(1),
     clientSecret: z.string().min(1).openapi({ description: "Encrypted at rest; never returned." }),
-    discoveryUrl: z.string().url().nullish().openapi({
+    discoveryUrl: httpUrl().nullish().openapi({
       description: "`.well-known/openid-configuration` URL, or the issuer origin.",
     }),
-    authorizationUrl: z.string().url().nullish(),
-    tokenUrl: z.string().url().nullish(),
-    userInfoUrl: z.string().url().nullish(),
+    authorizationUrl: httpUrl().nullish(),
+    tokenUrl: httpUrl().nullish(),
+    userInfoUrl: httpUrl().nullish(),
     scopes: z.array(z.string().min(1)).optional(),
     pkce: z.boolean().optional(),
     emailClaim: z.string().nullish(),

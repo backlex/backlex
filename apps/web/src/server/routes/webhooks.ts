@@ -14,13 +14,13 @@ import {
 } from "../services/webhooks";
 import { logActivity } from "../services/activity";
 import { parsePagination } from "../lib/pagination";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 
 const WebhookInput = z
   .object({
     name: z.string().min(1),
-    url: z.string().url(),
+    url: httpUrl(),
     events: z.array(z.string().min(1)).min(1).openapi({
       description: "Event patterns this hook subscribes to (e.g. `items.posts.created`).",
     }),

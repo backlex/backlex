@@ -10,6 +10,8 @@
 import { z } from "zod";
 import { AppError, type AuthSubject } from "@backlex/core";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
+import { assertNotDemo } from "./demo";
+import { httpUrl } from "../lib/openapi";
 import { sendTemplatedPush } from "./push";
 import { sendSmsToUsers } from "./sms";
 import type { Ctx } from "../context";
@@ -28,7 +30,7 @@ export const PushDispatchInput = z
     vars: z.record(z.string(), z.unknown()).optional(),
     title: z.string().min(1).max(200).optional(),
     body: z.string().min(1).max(2000).optional(),
-    url: z.string().url().optional(),
+    url: httpUrl().optional(),
     data: z.record(z.string(), z.string()).optional(),
   })
   // `title`/`body` were required before templates had a send path, and every
@@ -103,6 +105,10 @@ export const dispatchSms = async (
   auth: AuthSubject,
   raw: unknown,
 ): Promise<DispatchResult> => {
+  // Blocked in the playground wherever it is reached from — the route
+  // prefix list is one layer and GraphQL does not pass through it.
+  // See `services/demo.ts::assertNotDemo`.
+  assertNotDemo(ctx.env);
   await enforceIpRateLimit(rateCtx, "sms-send", SMS_SEND_RATE_MAX);
   const input = parseOrThrow(SmsDispatchInput, raw);
   assertMayTarget(auth, input.userId);

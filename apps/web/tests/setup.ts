@@ -96,33 +96,67 @@ export const nextSyntheticIp = (): string => {
  * and disappears when that file is run on its own. Adding specs anywhere in the
  * suite reshuffles it.
  *
- * Wrapping `fetch` here fixes all of them at the shared resource rather than in
+ * Wrapping the app here fixes all of them at the shared resource rather than in
  * 43 copies, which is also the only version that stays fixed as specs are added.
  * An explicit `X-Forwarded-For` still wins, so the specs that deliberately
  * exercise the limiter are unaffected.
+ *
+ * ── `request` HAS TO BE WRAPPED TOO, AND FOR A WHILE IT WAS NOT ─────────────
+ *
+ * This trap originally covered `fetch` only, and returned every other property
+ * untouched. But the ~43 specs described above reach the app through
+ * `h.app.request(...)` — that is what "hand-roll their own `request()` helper"
+ * means — and a `get` trap cannot help there: it hands back the REAL `request`,
+ * whose internal `this.fetch` resolves against the target, not the proxy. So
+ * the mitigation was inert for precisely the population its own docblock named,
+ * and those specs kept sharing the `"unknown"` bucket.
+ *
+ * The symptom was a 429 on a VALID credential in whichever spec lost the race —
+ * `app-user-invites.test.ts:185` expecting 200, in a full run only, passing
+ * alone and passing on retry. `harness-synthetic-ip.test.ts` pins it
+ * deterministically: exhaust one harness's signup budget, then assert a second
+ * harness is unaffected.
  */
 export const withSyntheticIp = <T extends { fetch: (req: Request) => Response | Promise<Response> }>(
   app: T,
   ip: string,
-): T =>
-  new Proxy(app, {
+): T => {
+  const withHeader = (headers: HeadersInit | undefined): Headers => {
+    const h = new Headers(headers ?? {});
+    if (!h.has("X-Forwarded-For")) h.set("X-Forwarded-For", ip);
+    return h;
+  };
+  const stamp = (req: Request): Request =>
+    req.headers.has("X-Forwarded-For")
+      ? req
+      // Re-wrapping preserves method and body; the original is discarded.
+      : new Request(req, { headers: withHeader(req.headers) });
+
+  return new Proxy(app, {
     get(target, prop, receiver) {
-      if (prop !== "fetch") return Reflect.get(target, prop, receiver);
-      return (req: Request, ...rest: unknown[]) => {
-        let out = req;
-        if (!req.headers.has("X-Forwarded-For")) {
-          const headers = new Headers(req.headers);
-          headers.set("X-Forwarded-For", ip);
-          // Re-wrapping preserves method and body; the original is discarded.
-          out = new Request(req, { headers });
-        }
-        return (target.fetch as (r: Request, ...a: unknown[]) => Response | Promise<Response>)(
-          out,
-          ...rest,
-        );
-      };
+      if (prop === "fetch") {
+        return (req: Request, ...rest: unknown[]) =>
+          (target.fetch as (r: Request, ...a: unknown[]) => Response | Promise<Response>)(
+            stamp(req),
+            ...rest,
+          );
+      }
+      if (prop === "request") {
+        const real = Reflect.get(target, prop, receiver) as (
+          input: RequestInfo | URL,
+          init?: RequestInit,
+          ...rest: unknown[]
+        ) => Response | Promise<Response>;
+        if (typeof real !== "function") return real;
+        return (input: RequestInfo | URL, init?: RequestInit, ...rest: unknown[]) =>
+          input instanceof Request
+            ? real.call(target, stamp(input), init, ...rest)
+            : real.call(target, input, { ...init, headers: withHeader(init?.headers) }, ...rest);
+      }
+      return Reflect.get(target, prop, receiver);
     },
   }) as T;
+};
 
 /**
  * Hook budget for a spec that boots PGlite.

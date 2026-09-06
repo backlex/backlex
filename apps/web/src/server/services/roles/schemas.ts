@@ -1,5 +1,37 @@
 import { z } from "@hono/zod-openapi";
-import { SYSTEM_ROLES } from "@backlex/core";
+import { SYSTEM_ROLES, unknownOperators } from "@backlex/core";
+
+/**
+ * A stored permission condition, refused at the door if it names an operator
+ * nothing implements.
+ *
+ * The shape stays `unknown` — the condition grammar is recursive, dialect-aware
+ * and shared with the filter parser, and re-declaring it in zod would be a
+ * second definition to drift. What this DOES check is the one thing that used
+ * to fail silently and OPEN: a misspelled operator matched no branch in the
+ * compiler and fell through as `(1=1)`, so a rule reading "only your own rows"
+ * granted every row. The evaluators now fail closed on it either way; refusing
+ * it here is what turns "this rule mysteriously denies everything" into
+ * "`_equals` is not an operator".
+ */
+export const ConditionInput = z.unknown().superRefine((value, ctx) => {
+  if (value === null || value === undefined) return;
+  let bad: string[];
+  try {
+    bad = unknownOperators(value);
+  } catch (e) {
+    // Over-deep nesting — refused here rather than at read time, where it would
+    // throw inside the permission resolver on somebody else's request.
+    ctx.addIssue({ code: "custom", message: (e as Error).message });
+    return;
+  }
+  if (bad.length > 0) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Unknown operator(s) in condition: ${bad.join(", ")}`,
+    });
+  }
+});
 
 export const SYSTEM_ROLE_NAMES = new Set<string>([
   SYSTEM_ROLES.admin,
@@ -56,7 +88,7 @@ export const PermissionInput = z
     collection: z.string().min(1),
     action: z.enum(["read", "create", "update", "delete", "publish"]),
     fields: z.array(z.string()).nullable().optional(),
-    condition: z.unknown().nullable().optional(),
+    condition: ConditionInput.nullable().optional(),
   })
   .openapi("PermissionInput");
 
@@ -93,7 +125,7 @@ export const PermissionSetEntry = z
     collection: z.string().min(1),
     action: z.enum(["read", "create", "update", "delete", "publish"]),
     fields: z.array(z.string()).nullable().optional(),
-    condition: z.unknown().nullable().optional(),
+    condition: ConditionInput.nullable().optional(),
   })
   .openapi("PermissionSetEntry");
 
@@ -149,7 +181,7 @@ export const PermissionSetResult = z
 export const PermissionPatchInput = z
   .object({
     fields: z.array(z.string()).nullable().optional(),
-    condition: z.unknown().nullable().optional(),
+    condition: ConditionInput.nullable().optional(),
   })
   .openapi("PermissionPatchInput");
 

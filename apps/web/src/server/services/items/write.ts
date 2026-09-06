@@ -850,7 +850,12 @@ export const performCreate = async (
     if (data[f.name] === undefined || f.onCreate || f.sequence) continue;
     // Two columns for a `text` field: itself and its folded search companion.
     // See `serializeColumns` for why every write path must go through it.
-    for (const [col, val] of serializeColumns(data[f.name], f, ctx.dialect)) {
+    for (const [col, val] of serializeColumns(
+      data[f.name],
+      f,
+      ctx.dialect,
+      collection.foldColumns,
+    )) {
       cols.push(col);
       vals.push(val);
     }
@@ -1257,7 +1262,12 @@ export const performUpdate = async (
   }
   for (const f of collection.fields) {
     if (patch[f.name] === undefined) continue;
-    for (const [col, val] of serializeColumns(patch[f.name], f, ctx.dialect)) {
+    for (const [col, val] of serializeColumns(
+      patch[f.name],
+      f,
+      ctx.dialect,
+      collection.foldColumns,
+    )) {
       sets.push(sql`${sql.identifier(col)} = ${val}`);
     }
   }

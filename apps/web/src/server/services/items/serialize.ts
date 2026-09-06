@@ -132,14 +132,34 @@ export const serializeField = (
  * already been bitten by exactly that shape — a sidecar value that three of the
  * four writers maintained.
  * `apps/web/tests/fold-write-paths.test.ts` walks every path and proves it.
+ *
+ * `present` is the companion columns the physical table ACTUALLY has, and it is
+ * REQUIRED rather than optional on purpose. The field type says which columns a
+ * table *should* have; it does not say which it *does*. A collection created
+ * before folded search has `text` fields and no companions until its schema is
+ * next applied, and naming a column that is not there is not a degraded write,
+ * it is a hard `no column named <name>__fold` on every INSERT and UPDATE — the
+ * collection reads fine and 500s on every write until somebody happens to edit
+ * its schema (#324).
+ *
+ * Optional-with-a-default would make this exactly as easy to get wrong as the
+ * bug it replaces: defaulting to "write it" keeps the 500, and defaulting to
+ * "skip it" hands a forgetful caller the silent-invisible-row failure this
+ * helper exists to prevent. Required means a new write path cannot compile
+ * without answering the question — which is the only version of this that stays
+ * true as paths are added. `readFoldColumns` on either collection loader is
+ * where the answer comes from.
  */
 export const serializeColumns = (
   value: unknown,
   field: FieldDef,
   dialect: "pg" | "sqlite",
+  present: ReadonlySet<string>,
 ): Array<[string, unknown]> => {
   const stored = serializeField(value, field, dialect);
-  if (!hasFoldColumn(field)) return [[field.name, stored]];
+  if (!hasFoldColumn(field) || !present.has(foldColumn(field.name))) {
+    return [[field.name, stored]];
+  }
   // A JSON column folds its value LEAVES, not its serialized form — see
   // `jsonSearchText`. Read off the caller's value rather than `stored`, which
   // is already a string on SQLite and an object on Postgres: one shape in,

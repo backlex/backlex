@@ -109,8 +109,12 @@ export const collectionsTable = (dialect: "pg" | "sqlite") =>
  * limited rather than wrong. An introspection that fails answers "none", so a
  * database that will not describe itself degrades to the old behaviour instead
  * of compiling a WHERE against columns nobody has confirmed.
+ *
+ * Exported because the slim admin-trust loader in `items-helpers.ts` needs the
+ * same answer for its own writes, and a second copy of this is how the two
+ * loaders would drift back apart.
  */
-const readFoldColumns = async (
+export const readFoldColumns = async (
   ctx: Pick<Ctx, "db" | "dialect">,
   table: string,
 ): Promise<Set<string>> => {

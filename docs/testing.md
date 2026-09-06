@@ -248,6 +248,33 @@ migrations just ran against).
 | New deploy target | new entry in `scripts/build-targets.ts` (Layer 2) |
 | Runtime-specific behavior (cookie, cron, adapter) | new step in `apps/web/tests/smoke/contract.ts` (Layer 3) |
 
+### A `*-surfaces` spec: what it proves, and what it does not
+
+There are ~70 `apps/web/tests/*-surfaces.test.ts` files and they carry the
+multi-surface rule — a feature reachable over REST is also reachable over the
+SDK, GraphQL, MCP and the CLI. They are good at that. They prove the five
+surfaces have the same SHAPE.
+
+Shape agreement is not behaviour agreement, and the gap has a measurement: 17 of
+those 70 files mention `FORBIDDEN` or `403` at all. The other 53 answer "does
+this route exist, does the SDK point at it, does MCP expose a tool" and never
+ask whether the four non-REST surfaces REFUSE what REST refuses. That is the
+exact shape of the 2026-09 audit's largest cluster: a control implemented on one
+surface, absent on the others, with every existing test green because every
+existing test was allowed through.
+
+**So a new `*-surfaces` spec carries at least one refusal per surface**, driven
+by an identity that should not get in — not by an anonymous caller, which proves
+almost nothing in a multi-tenant product. `tests/fixtures/two-plane-cast.ts`
+builds the cast (operator / ownerA / ownerB / app-plane end-users); the idiom is
+in `security-audit-2026-09-faz10-surface-parity.test.ts`, whose best case is the
+one asserting the wrapper covers the WHOLE resolver map, so a mutation added
+tomorrow inherits the control instead of needing to be remembered.
+
+Prefer that shape over listing surfaces: **derive the set, do not enumerate it.**
+A hand-written list of what to check covers what its author thought of, and a
+new entry joins the product without joining the list.
+
 ## CI gates
 
 | Workflow | Jobs | Triggered by |

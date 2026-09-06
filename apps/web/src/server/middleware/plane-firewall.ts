@@ -22,20 +22,25 @@
  * does. The audit's lesson was that ONE layer being right is what let four
  * layers be wrong.
  *
- * FAIL-OPEN, ON PURPOSE, FOR ONE RELEASE
+ * FAIL-CLOSED BY DEFAULT — the warn window is OVER
  *
- * `PLANE_GUARD` defaults to `"warn"`: a violation is logged with everything
- * needed to identify it and the request proceeds. That is not timidity about
- * the rule — it is that the rule is new and the table is a first draft, and an
- * `enforce` default would turn any mistake in it into an outage for a paying
- * tenant on the release that ships it. The warn window is where the mistakes
- * surface. Set `PLANE_GUARD=enforce` to close it.
+ * `PLANE_GUARD` defaults to `"enforce"`: a violation is refused with a 403.
+ * It shipped defaulting to `"warn"` for exactly one release, because a
+ * first-draft route table must not take a paying tenant down on the release
+ * that introduces it. That release has shipped, the table has run under
+ * `enforce` in production since, and `route-plane-registry.test.ts` refuses a
+ * new `/api` mount that declares no plane. See the comment at `mode` below for
+ * the argument, which is worth reading before changing this back.
+ *
+ * `PLANE_GUARD=warn` is kept as the operator's opt-out, and an UNKNOWN path is
+ * admitted in EITHER mode — a typo in the registry must not take the site down.
  *
  * The one thing `warn` must never do is stay quiet. A guard that matches
  * nothing reports success, and this repo has shipped that failure before — so
- * the log line is emitted at WARN with the path, the plane it declared, the
- * plane the caller actually holds, and the identity, and `route-planes.test.ts`
- * asserts a violation is observable rather than trusting that it would be.
+ * in both modes the line is emitted at WARN with the path, the plane it
+ * declared, the plane the caller actually holds, the identity, and which
+ * credential shape got there, and `route-planes.test.ts` asserts a violation is
+ * observable rather than trusting that it would be.
  */
 import type { MiddlewareHandler } from "hono";
 import { AppError } from "@backlex/core";

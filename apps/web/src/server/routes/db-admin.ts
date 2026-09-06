@@ -96,6 +96,11 @@ const MigrationRow = z
     created_at: z.union([z.string(), z.number()]),
     tag: z.string().nullable(),
     applied: z.boolean(),
+    /** Which ledger recorded it: the CLI's `__drizzle_migrations`, the boot
+     *  runner's `__backlex_migrations`, or both. `null` = neither, i.e. this
+     *  build ships the migration and nothing has applied it. On Vercel and
+     *  Netlify no CLI ever runs, so `runtime` is the normal answer there. */
+    source: z.enum(["cli", "runtime", "cli+runtime"]).nullable(),
   })
   .openapi("MigrationRow");
 
@@ -400,31 +405,141 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     /**
-     * Lists migrations recorded in the dialect-specific drizzle table. Joins
-     * each row with the build-time manifest so the UI can show the human-
-     * readable folder tag (`20260510150000_folders_tenant_id`) instead of
-     * the raw sha256 hash that drizzle persists.
+     * Lists every migration this build knows about, and which of the two
+     * ledgers has recorded it.
+     *
+     * There ARE two (see docs/deployment.md): the CLI writes
+     * `__drizzle_migrations` — `drizzle.__drizzle_migrations` on Postgres —
+     * and the boot runner `ensureMigrations` writes `__backlex_migrations`.
+     * This used to read only the first, so on a Vercel or Netlify deploy, where
+     * no CLI ever runs and the boot runner does all the work, the page reported
+     * "not present yet" over a fully current schema. Blind exactly on the
+     * targets whose operator is least able to check by hand (#326).
+     *
+     * Keyed on the folder TAG rather than the hash, because that is the one
+     * identity both ledgers share: the CLI stores a sha256 and the boot runner
+     * stores the migration NAME, which IS the tag. A row present in both is one
+     * row with `source: "cli+runtime"`, not two.
+     *
+     * The manifest seeds the list, so a migration this build ships and NEITHER
+     * ledger has appears as `applied: false`. `applied` used to be hardcoded
+     * true on every returned row, which made it the one thing the page could
+     * not tell you.
      */
     async (c) => {
       const ctx = c.get("ctx");
       const tags = ctx.dialect === "pg" ? MIGRATION_TAGS_PG : MIGRATION_TAGS_SQLITE;
-      const tableExpr =
+      const hashOfTag = new Map(Object.entries(tags).map(([hash, tag]) => [tag, hash]));
+      const cliTable =
         ctx.dialect === "pg" ? "drizzle.__drizzle_migrations" : "__drizzle_migrations";
-      try {
-        const rows = await queryAll<{ id: number | string; hash: string; created_at: number | string }>(
-          { db: ctx.db, dialect: ctx.dialect },
-          `SELECT id, hash, created_at FROM ${tableExpr} ORDER BY id DESC LIMIT 200`,
-        );
-        return c.json({
-          data: rows.map((r) => ({
-            ...r,
-            tag: tags[r.hash] ?? null,
-            applied: true,
-          })),
-        });
-      } catch {
-        return c.json({ data: [], note: "Drizzle migrations table not present yet." });
+
+      interface Row {
+        id: string | number;
+        hash: string;
+        created_at: string | number;
+        tag: string | null;
+        applied: boolean;
+        source: "cli" | "runtime" | "cli+runtime" | null;
       }
+      // Keyed by tag where there is one, else by hash — a CLI row whose hash the
+      // manifest does not know still has to appear, and it is the row that says
+      // the manifest is out of sync.
+      const byKey = new Map<string, Row>();
+      for (const [hash, tag] of Object.entries(tags)) {
+        byKey.set(tag, { id: tag, hash, created_at: "", tag, applied: false, source: null });
+      }
+
+      /**
+       * "This ledger is not in use on this deploy target" and "this ledger
+       * would not answer" are DIFFERENT facts, and the old bare catch reported
+       * both as "not present yet".
+       *
+       * Absence is ordinary and expected: a Cloudflare/D1 deploy migrates
+       * through the CLI and has no `__backlex_migrations`; a Vercel/Netlify
+       * deploy boots the runner and has no `__drizzle_migrations`. Neither is
+       * worth a word on screen. A permission error or a malformed query is,
+       * and it is what the old catch hid.
+       */
+      const missingTable = (msg: string) =>
+        /no such table|does not exist|doesn't exist|unknown table|relation .* does not exist/i.test(
+          msg,
+        );
+      const problems: string[] = [];
+      let readable = 0;
+      const read = async <T>(what: string, sql: string): Promise<T[] | null> => {
+        try {
+          const rows = await queryAll<T>({ db: ctx.db, dialect: ctx.dialect }, sql);
+          readable++;
+          return rows;
+        } catch (e) {
+          // The driver's own message is the specific one; drizzle's wrapper
+          // restates the whole statement, which is noise on an admin page.
+          const err = e as { message?: string; cause?: { message?: string } };
+          const msg = err.cause?.message ?? err.message ?? String(e);
+          if (!missingTable(msg)) problems.push(`${what}: ${msg}`);
+          return null;
+        }
+      };
+
+      // Derived from the manifest, never a round number. A ledger holds one row
+      // per migration this build ships, so a fixed cap becomes wrong the release
+      // it is crossed — and it would go wrong SILENTLY, reporting applied
+      // migrations as `pending` because the row that proves otherwise fell off
+      // the end. The margin covers rows a newer deployment wrote against an
+      // older build.
+      const limit = Object.keys(tags).length + 200;
+      const cli = await read<{ id: number | string; hash: string; created_at: number | string }>(
+        cliTable,
+        `SELECT id, hash, created_at FROM ${cliTable} ORDER BY id DESC LIMIT ${limit}`,
+      );
+      for (const r of cli ?? []) {
+        const tag = tags[r.hash] ?? null;
+        const key = tag ?? r.hash;
+        byKey.set(key, {
+          id: r.id,
+          hash: r.hash,
+          created_at: r.created_at,
+          tag,
+          applied: true,
+          source: "cli",
+        });
+      }
+
+      const runtime = await read<{ name: string; applied_at: number | string }>(
+        "__backlex_migrations",
+        `SELECT name, applied_at FROM __backlex_migrations ORDER BY applied_at DESC LIMIT ${limit}`,
+      );
+      for (const r of runtime ?? []) {
+        const existing = byKey.get(r.name);
+        byKey.set(r.name, {
+          id: existing?.applied ? existing.id : r.name,
+          hash: existing?.hash ?? hashOfTag.get(r.name) ?? r.name,
+          // The CLI's timestamp wins when both have one: it is when the schema
+          // actually changed, where the runtime row may only record the moment
+          // the ledger was adopted.
+          created_at: existing?.applied ? existing.created_at : r.applied_at,
+          tag: r.name,
+          applied: true,
+          source: existing?.source === "cli" ? "cli+runtime" : "runtime",
+        });
+      }
+
+      const data = [...byKey.values()].sort((a, b) => {
+        if (a.applied !== b.applied) return a.applied ? -1 : 1;
+        return String(b.tag ?? b.hash).localeCompare(String(a.tag ?? a.hash));
+      });
+      // A note is for something the operator can act on. One ledger being
+      // absent is not — it is what every deploy target that uses the other one
+      // looks like, and calling it "not present yet" is what made this page
+      // report a healthy Vercel deployment as un-migrated. NEITHER ledger being
+      // readable is worth saying, because then the page genuinely knows
+      // nothing.
+      if (readable === 0 && problems.length === 0) {
+        problems.push(
+          "Neither migration ledger exists yet — nothing has migrated this database.",
+        );
+      }
+      return c.json(problems.length > 0 ? { data, note: problems.join("; ") } : { data });
     },
   )
   .openapi(

@@ -615,7 +615,20 @@ export const dbAdminApi = {
     ),
   tables: () => api<Envelope<{ name: string; rows: number }[]>>(`/api/admin/db/tables`),
   migrations: () =>
-    api<Envelope<{ id: string | number; hash: string; created_at: string | number; tag: string | null; applied: boolean }[]>>(`/api/admin/db/migrations`),
+    api<
+      Envelope<
+        {
+          id: string | number;
+          hash: string;
+          created_at: string | number;
+          tag: string | null;
+          applied: boolean;
+          /** Which ledger recorded it — `null` means neither, i.e. this build
+           *  ships the migration and nothing has applied it. */
+          source: "cli" | "runtime" | "cli+runtime" | null;
+        }[]
+      > & { note?: string }
+    >(`/api/admin/db/migrations`),
   backups: () => api<Envelope<ApiBackup[]>>(`/api/admin/db/backups`),
   /** `async` queues the dump as a durable job: the tracking row is written
    *  before this returns (so the list shows it straight away) and the response

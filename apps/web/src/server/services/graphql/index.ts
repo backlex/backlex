@@ -20,6 +20,7 @@ import {
   updateResolver,
   verifyResolver,
   JSONScalar,
+  guardMutationFields,
   type CollectionRow,
   type GqlCtx,
 } from "./core";
@@ -125,7 +126,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       }),
       mutation: new GraphQLObjectType({
         name: "Mutation",
-        fields: {
+        fields: guardMutationFields({
           ...flowMutationFields,
           ...paymentMutationFields,
           ...extensionMutationFields,
@@ -159,7 +160,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...orderMutationFields,
           ...retirementMutationFields,
           ...slugMutationFields,
-        },
+        }),
       }),
     });
   }
@@ -484,7 +485,10 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
 
   return new GraphQLSchema({
     query: new GraphQLObjectType({ name: "Query", fields: queryFields }),
-    mutation: new GraphQLObjectType({ name: "Mutation", fields: mutationFields }),
+    mutation: new GraphQLObjectType({
+      name: "Mutation",
+      fields: guardMutationFields(mutationFields),
+    }),
   });
 };
 

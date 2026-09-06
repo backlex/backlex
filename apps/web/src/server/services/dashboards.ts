@@ -624,7 +624,22 @@ const runPanel = async (
     }
     return { ...base, data: [], note: "Static panel — render from config." };
   } catch (e) {
-    return { ...base, data: [], error: (e as Error).message };
+    const message = (e as Error).message;
+    // A public embed gets a fixed sentence; the authenticated path gets the
+    // real one.
+    //
+    // A panel whose query fails at the driver had its exception copied straight
+    // into the response, and drizzle wraps a driver failure as
+    // `Failed query: <sql>` with the bound parameters appended. So an anonymous
+    // `GET /api/public/dashboards/{token}` returned the physical table name
+    // (`c_<tenantPrefix12>_<slug>`), the column list and the values of a query
+    // the caller never authored — and an `AppError` such as
+    // `Collection "orders" not found` confirmed which slugs the workspace has.
+    if (scope) {
+      console.error(`[dashboard] panel ${panel.id} failed:`, message);
+      return { ...base, data: [], error: "This panel could not be rendered." };
+    }
+    return { ...base, data: [], error: message };
   }
 };
 

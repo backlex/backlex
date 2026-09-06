@@ -12,7 +12,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import {
   AUTH_HOOK_EVENTS,
   MAX_AUTH_HOOK_TIMEOUT_MS,
@@ -60,7 +60,7 @@ const HookInput = z
         "`url` — an HTTPS endpoint, called with Standard Webhooks headers. `function` — a backlex " +
         "function run in the sandbox, with no network hop.",
     }),
-    url: z.string().url().nullish().openapi({ description: "Required when `targetType` is `url`." }),
+    url: httpUrl().nullish().openapi({ description: "Required when `targetType` is `url`." }),
     functionName: z.string().min(1).nullish().openapi({
       description: "Required when `targetType` is `function`. The function must already exist.",
     }),

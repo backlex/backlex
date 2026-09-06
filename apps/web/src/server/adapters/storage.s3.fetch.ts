@@ -197,7 +197,33 @@ export const s3FetchStorage = (cfg: S3FetchConfig): StorageAdapter => {
         throw new Error(`s3 complete-multipart error: ${text.slice(0, 200)}`);
       }
       const etag = text.match(/<ETag>([\s\S]*?)<\/ETag>/)?.[1]?.replace(/^"|"$/g, "");
-      return { key, size: 0, etag, uploadedAt: new Date() };
+      // HEAD the assembled object for its real byte count.
+      //
+      // This used to return `size: 0`, unconditionally, on every S3-backed
+      // deployment — and `registerFile` writes exactly what it is given. So a
+      // `files` row for anything uploaded through multipart (aws-cli above 8 MB,
+      // rclone above 5, restic, mc, and every TUS client) recorded ZERO bytes.
+      // `assertStorageWithinLimit` sums `files.size`, so a workspace on a hard
+      // `maxStorageBytes` cap could store unlimited data by always going
+      // multipart, while the file browser, the usage gauges and any billing
+      // derived from them all agreed it had stored nothing.
+      //
+      // The completion response carries no size of its own, and summing the
+      // parts is not available here either — `uploadPart` is handed a body, not
+      // always a length. One HEAD per completed upload is the honest answer and
+      // is negligible beside the transfer it follows. A HEAD that fails leaves
+      // `size: 0` rather than failing the upload: the bytes ARE stored, and
+      // losing the object over a bookkeeping request would be worse than an
+      // under-count that the next `applyCollection`-style reconciliation can
+      // repair.
+      let size = 0;
+      try {
+        const head = await aws.fetch(objectUrl(cfg, key), { method: "HEAD" });
+        if (head.ok) size = Number(head.headers.get("content-length") ?? 0) || 0;
+      } catch {
+        /* leave 0 — see above */
+      }
+      return { key, size, etag, uploadedAt: new Date() };
     },
     async abortMultipart(key, uploadId) {
       const url = `${objectUrl(cfg, key)}?uploadId=${encodeURIComponent(uploadId)}`;

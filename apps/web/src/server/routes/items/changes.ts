@@ -13,6 +13,7 @@ import {
 } from "../../services/items/schemas";
 import { canSeeDraftsFor } from "../../services/items/row-access";
 import { defaultHook } from "../../lib/openapi-router";
+import { auditRead } from "./shared";
 
 export const itemsChangesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
@@ -69,6 +70,12 @@ export const itemsChangesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         fields: q.fields,
         status: c.req.query("status"),
       });
+      // The changefeed returns WHOLE ROWS and is cursor-paginated, so it pages
+      // an `auditReads` collection end to end while the compliance log shows
+      // nothing was read. Measured: `GET /api/items/patients/<id>` wrote an
+      // `access.read` row and `GET /api/items/patients/changes` — which handed
+      // back the same row's body — wrote none.
+      auditRead(c, collection, null, { changes: page.data.length, since: q.since ?? null });
       return c.json(page);
     },
   )

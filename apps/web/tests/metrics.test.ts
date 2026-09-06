@@ -158,6 +158,17 @@ describe("metrics overview: recentErrors respects the range window", () => {
  */
 describe("metrics overview: totals.requests respects the range window", () => {
   let h: TestHarness;
+  /**
+   * How many rows the SEEDING itself added, at `now`.
+   *
+   * `insertActivityRow` writes through `POST /api/admin/db/sql/run`, and that
+   * endpoint now writes its own `db.sql` activity row — running arbitrary SQL
+   * is a privileged act and used to leave no trace, which is what the 2026-09
+   * audit's phase 10 filed. Those rows are stamped `now`, so they land inside
+   * BOTH windows. Counted rather than hardcoded so the intent stays legible: the
+   * assertions below are about the seeded rows, plus whatever the seeding cost.
+   */
+  let seedingRows = 0;
 
   beforeAll(async () => {
     h = makeHarness();
@@ -172,6 +183,7 @@ describe("metrics overview: totals.requests respects the range window", () => {
         createdAt: now - 20 * 60 * 1000,
       });
       expect(r.status).toBe(200);
+      seedingRows++;
     }
     // 4 rows outside the 1h window (~6h ago) — must not leak into range=1h.
     for (let i = 0; i < 4; i++) {
@@ -182,6 +194,7 @@ describe("metrics overview: totals.requests respects the range window", () => {
         createdAt: now - 6 * HOUR,
       });
       expect(r.status).toBe(200);
+      seedingRows++;
     }
   });
 
@@ -191,14 +204,14 @@ describe("metrics overview: totals.requests respects the range window", () => {
     const res = await h.fetch("/api/admin/metrics/overview?range=1h");
     expect(res.status).toBe(200);
     const body = (await res.json()) as OverviewResponse;
-    expect(body.data.totals.requests).toBe(5);
+    expect(body.data.totals.requests).toBe(5 + seedingRows);
   });
 
   test("range=24h includes the older requests", async () => {
     const res = await h.fetch("/api/admin/metrics/overview?range=24h");
     expect(res.status).toBe(200);
     const body = (await res.json()) as OverviewResponse;
-    expect(body.data.totals.requests).toBe(9);
+    expect(body.data.totals.requests).toBe(9 + seedingRows);
   });
 });
 

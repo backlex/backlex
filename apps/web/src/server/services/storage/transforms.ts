@@ -91,7 +91,34 @@ export const canonicalizeTransformQuery = (t: ImageTransform, focal?: { x: numbe
   return parts.join("&");
 };
 
-export const TRANSFORM_CACHE_HEADERS: Record<string, string> = {
-  // Transforms are content-addressed by query, so we can cache aggressively.
-  "cache-control": "public, max-age=31536000, immutable",
-};
+/**
+ * Cache directive for a transform response, decided by what the request
+ * actually PROVED.
+ *
+ * It used to be one constant — `public, max-age=31536000, immutable` — on every
+ * transform, and that quietly undid the point of a signed URL.
+ * `POST /api/storage/_sign/<key>` clamps a token to at most 24 hours precisely
+ * so a handed-out link stops working; open the same link with any transform
+ * parameter (`?token=…&width=800`) and the response told every browser and
+ * intermediary to keep the bytes of a PRIVATE object for a year and treat them
+ * as immutable. The token's expiry then bound only the origin: a shared
+ * corporate proxy, a warm browser profile or a CDN configured to cache `public`
+ * API responses kept serving the image long after the link died.
+ *
+ * The untransformed fast path emitted no `cache-control` at all, so the two
+ * halves of the same handler already disagreed.
+ *
+ * `immutable` is still right for a public object — a transform IS
+ * content-addressed by its query, so the bytes never change under a URL.
+ */
+export const transformCacheHeaders = (
+  acl: string | null | undefined,
+  viaToken: boolean,
+): Record<string, string> =>
+  acl === "public" && !viaToken
+    ? { "cache-control": "public, max-age=31536000, immutable" }
+    : // A private object, or one reached with a bearer token: cacheable only by
+      // the one client that proved access, and only briefly. `private` keeps it
+      // out of every shared cache; the short max-age keeps a reload cheap
+      // without outliving the proof.
+      { "cache-control": "private, max-age=60" };

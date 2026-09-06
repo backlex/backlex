@@ -32,6 +32,7 @@
  */
 import { Hono } from "hono";
 import type { AppBindings } from "../app";
+import { keepAliveCtx } from "../services/activity";
 import type { Ctx } from "../context";
 import { buildContext } from "../context";
 import {
@@ -247,7 +248,7 @@ const authenticate = async (
     return { ok: false, response: xmlError("NoSuchBucket", "Workspace not found", 404) };
   }
 
-  void touchS3Credential(ctx, resolved.row.id);
+  keepAliveCtx(ctx, touchS3Credential(ctx, resolved.row.id), "s3");
   return { ok: true, auth: { ctx, credential: resolved.row, tenantSlug }, body };
 };
 

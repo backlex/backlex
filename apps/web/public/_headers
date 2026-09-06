@@ -4,8 +4,12 @@
 # secureHeaders()/CSP middleware. This file applies the same protections at the
 # asset layer. (GraphiQL lives at /api/graphql — a worker path — and gets its
 # own relaxed CSP from the middleware, so the strict policy here is safe.)
+#
+# GENERATED SHAPE: the values below come from
+# `src/server/lib/security-headers.ts`. Edit that file, not this one —
+# `security-headers-parity.test.ts` compares them.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

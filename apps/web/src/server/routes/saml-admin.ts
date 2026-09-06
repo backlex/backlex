@@ -21,7 +21,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import {
   createSamlProvider,
   deleteSamlProvider,
@@ -70,8 +70,8 @@ const CreateInput = z
       .nullable()
       .optional(),
     entityId: z.string().min(1).url().or(z.string().min(1)),
-    ssoUrl: z.string().url(),
-    sloUrl: z.string().url().nullable().optional(),
+    ssoUrl: httpUrl(),
+    sloUrl: httpUrl().nullable().optional(),
     idpCertPem: z.string().min(20),
     spEntityId: z.string().min(1),
     attributeMap: AttributeMap.optional(),
@@ -96,7 +96,7 @@ const TestAssertionInput = z
 const ImportMetadataInput = z
   .object({
     metadataXml: z.string().min(1).optional(),
-    metadataUrl: z.string().url().optional(),
+    metadataUrl: httpUrl().optional(),
   })
   .openapi("SamlImportMetadataInput");
 

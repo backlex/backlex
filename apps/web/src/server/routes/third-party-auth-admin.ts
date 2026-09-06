@@ -22,7 +22,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { defaultHook } from "../lib/openapi-router";
-import { SECURITY, errorResponses } from "../lib/openapi";
+import { SECURITY, errorResponses, httpUrl } from "../lib/openapi";
 import { verifyThirdPartyToken } from "../lib/third-party-jwt";
 import { requireUser } from "../middleware/session";
 import {
@@ -50,8 +50,8 @@ const CreateInput = z
     slug: z.string().min(1).max(60).optional(),
     /** Exact `iss` value the issuer stamps on its tokens. */
     issuer: z.string().min(1).max(512),
-    jwksUrl: z.string().url().optional(),
-    discoveryUrl: z.string().url().nullable().optional(),
+    jwksUrl: httpUrl().optional(),
+    discoveryUrl: httpUrl().nullable().optional(),
     audience: z.string().min(1).max(512).nullable().optional(),
     subjectClaim: z.string().min(1).max(120).optional(),
     emailClaim: z.string().min(1).max(120).optional(),

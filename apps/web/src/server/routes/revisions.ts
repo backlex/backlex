@@ -10,6 +10,7 @@ import { loadCollection } from "../services/items/collection-loader";
 import { performUpdate, type WriteEnv } from "../services/items/write";
 import { elapsedMs, requestMeta } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";
+import { auditRead } from "./items/shared";
 
 /*
  * `loadCollection` is the shared one from `services/items/collection-loader`.
@@ -78,6 +79,11 @@ export const revisionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // skipped on the other — they were skipped on both.
       const col = await loadCollection(ctx, auth.tenantId, collection);
       const rows = await listRevisionsForCaller(ctx, auth, col, itemId, perm);
+      // A revision is a full pre-change snapshot of the row, so reading the
+      // history of an `auditReads` collection is reading its contents — and it
+      // wrote no `access.read` row. Measured alongside the changefeed: the
+      // by-id GET was audited and both revision routes were not.
+      auditRead(c, col, itemId, { revisions: rows.length });
       return c.json({ data: rows });
     },
   )

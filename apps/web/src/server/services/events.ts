@@ -10,6 +10,7 @@ import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
+import { keepAliveCtx } from "./activity";
 import { dispatchWebhooks } from "./webhooks";
 import { dispatchIntegrations } from "./integrations";
 import { runFlows } from "./flows";
@@ -329,6 +330,20 @@ export interface EventServerCtx {
 }
 
 /**
+ * How a fan-out promise survives the response, given whatever context the
+ * publisher happened to have.
+ *
+ * `Ctx.waitUntil` is set by the request middleware and absent everywhere else
+ * (cron ticks, queue consumers, the test harness), where the promise floats as
+ * it always did. A handler that throws must not take down the write that
+ * announced it, and it never could before either.
+ */
+const keepEventWork = (serverCtx: EventServerCtx): ((p: Promise<unknown>) => void) => {
+  const holder = serverCtx.fullCtx ?? {};
+  return (p: Promise<unknown>) => keepAliveCtx(holder, p, "events");
+};
+
+/**
  * Run every server-side handler for an event, WITHOUT putting it on the
  * realtime bus.
  *
@@ -365,27 +380,40 @@ export const dispatchEventHandlers = (
   // It is the same value that keys the realtime room, so a handler and a
   // subscriber can never disagree about which workspace an event belongs to.
   const { tenantId, channel } = addr;
+  // Every handler below is deliberately NOT awaited — a write must not pay for
+  // its own webhooks — but "not awaited" and "cancelled" are different things.
+  // On Workers the isolate is torn down once the response resolves, so a bare
+  // `void` promise here means the webhook, the flow, the integration sync and
+  // the event function are all silently dropped on the one deploy target this
+  // repo ships to by default. `keep` hands each to `waitUntil` where the
+  // request layer supplied one and floats it where it did not (cron, queues,
+  // tests), which is exactly what every runtime did before.
+  const keep = keepEventWork(serverCtx);
   // Pass the full Ctx when available so dispatch enqueues durable
   // webhook.deliver jobs (retry + dead-letter); otherwise it sends inline.
-  void dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, tenantId, channel, evt);
-  void dispatchIntegrations(env, serverCtx, tenantId, channel, evt);
+  keep(dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, tenantId, channel, evt));
+  keep(dispatchIntegrations(env, serverCtx, tenantId, channel, evt));
   if (serverCtx.fullCtx) {
-    void runFlows(serverCtx.fullCtx, tenantId, channel, evt);
-    void runEventFunctions(
-      serverCtx.fullCtx,
-      tenantId,
-      channel,
-      evt,
-      // Functions triggered by events run with the system principal — admin
-      // can toggle the function active flag for trust gating.
-      { userId: null, email: null, roles: [], tenantId },
+    keep(runFlows(serverCtx.fullCtx, tenantId, channel, evt));
+    keep(
+      runEventFunctions(
+        serverCtx.fullCtx,
+        tenantId,
+        channel,
+        evt,
+        // Functions triggered by events run with the system principal — admin
+        // can toggle the function active flag for trust gating.
+        { userId: null, email: null, roles: [], tenantId },
+      ),
     );
-    void runExtensionEventHooks(serverCtx.fullCtx, tenantId, channel, evt, {
-      userId: null,
-      email: null,
-      roles: [],
-      tenantId,
-    });
+    keep(
+      runExtensionEventHooks(serverCtx.fullCtx, tenantId, channel, evt, {
+        userId: null,
+        email: null,
+        roles: [],
+        tenantId,
+      }),
+    );
   }
 };
 

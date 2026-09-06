@@ -24,6 +24,7 @@ import { consumeAppUserInvite, findAppUserInvite } from "../services/app-user-in
 import { assignAppUserRoleByName, ensureSystemRoles } from "../services/seed";
 import { invalidateUserRoles } from "../services/permissions-cache";
 import { rateLimitOk } from "../lib/rate-limit";
+import { keepAlive } from "../services/activity";
 import { type JwtEnv, signAccessToken } from "../lib/jwt";
 import { runCustomAccessTokenHook } from "../services/auth-hooks";
 import { loadRolesForUser } from "../services/permissions";
@@ -549,10 +550,12 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       },
     );
 
-    // Best-effort: drop expired verification rows.
-    void pruneExpiredVerifications(
-      { db: ctx.db, dialect: ctx.dialect },
-      tenant.id,
+    // Best-effort: drop expired verification rows. `keepAlive` rather than a
+    // bare `void` — best-effort means "the caller does not wait", not "the
+    // runtime may cancel it mid-DELETE".
+    keepAlive(
+      c,
+      pruneExpiredVerifications({ db: ctx.db, dialect: ctx.dialect }, tenant.id),
     );
 
     // 7. Redirect to the validated relayState with the bearer token in the

@@ -20,7 +20,7 @@ import { PAYMENT_CHECKOUT_MODES } from "@backlex/integrations/checkout";
 import { PAYMENT_REFUND_SUPPORT, REFUND_REASONS } from "@backlex/integrations/refunds";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { logActivity, requestMeta } from "../services/activity";
 import { enqueueJob } from "../services/jobs";
@@ -118,8 +118,8 @@ const CheckoutInput = z
           "PayTR and iyzico both require an email address; the rest is optional " +
           "and improves the provider's own fraud scoring.",
       }),
-    successUrl: z.string().url().optional(),
-    cancelUrl: z.string().url().optional(),
+    successUrl: httpUrl().optional(),
+    cancelUrl: httpUrl().optional(),
     reference: z.string().max(48).optional().openapi({
       description:
         "Overrides the reference derived from `writeBack.itemId`. Non-alphanumeric " +

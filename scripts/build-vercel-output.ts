@@ -39,6 +39,7 @@ import {
 } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { vercelHeaderRoutes } from "../apps/web/src/server/lib/security-headers";
 
 /**
  * Copy an npm package + its full runtime dependency closure into a function's
@@ -226,6 +227,23 @@ writeFileSync(
         // here, so routing them in would turn a working SPA fallback into a
         // 404.
         { src: "^/embed/form\\.js$", dest: "/api/index?__rawpath=embed/form.js" },
+        // Security headers for everything Vercel's STATIC layer answers.
+        //
+        // This target reads neither `_headers` (a Cloudflare-Pages/Netlify
+        // format — `cpSync` above copies it into the static tree, where it is
+        // published as a text file at `/_headers` and applied to nothing) nor
+        // `app.ts`'s middleware, which only runs for the paths routed into the
+        // function above. So `GET /`, `/collections`, `/sign-in` and every JS
+        // and CSS asset shipped with NO Content-Security-Policy, no
+        // X-Frame-Options, no nosniff, no Referrer-Policy and no HSTS: the
+        // admin dashboard was framable by any site, and the `script-src 'self'`
+        // that the rest of this codebase names as its stored-XSS mitigation was
+        // simply absent on this target.
+        //
+        // `continue: true` decorates and falls through to `handle: "filesystem"`
+        // rather than terminating the match. Generated from the same constants
+        // `app.ts` and `_headers` use — see `lib/security-headers.ts`.
+        ...vercelHeaderRoutes(),
         // Let static assets + the function resolve directly.
         { handle: "filesystem" },
         // SPA fallback — the React client-side router takes over.

@@ -22,8 +22,25 @@ const json = (body: unknown) => ({
 
 const signOut = (h: TestHarness) => h.fetch("/api/auth/sign-out", { method: "POST" });
 
-const signUp = (h: TestHarness, email: string) =>
-  h.fetch("/api/auth/sign-up/email", json({ email, password: "correct-horse-battery", name: "X" }));
+/**
+ * Sign up, optionally presenting a workspace invite token.
+ *
+ * The token is what BINDS the invite. It used to bind on the address alone, so
+ * anyone who knew an invited email could sign up with it first and arrive
+ * holding whatever standing the invite carried — the 2026-09 audit's phase 10.
+ * Tests that expect a membership pass it; the ones that expect a bare account,
+ * or a refusal, deliberately do not.
+ */
+const signUp = (h: TestHarness, email: string, inviteToken?: string) => {
+  const init: RequestInit = json({ email, password: "correct-horse-battery", name: "X" });
+  if (inviteToken) {
+    init.headers = {
+      ...(init.headers as Record<string, string>),
+      "x-backlex-invite-token": inviteToken,
+    };
+  }
+  return h.fetch("/api/auth/sign-up/email", init);
+};
 
 interface InviteResult {
   id: string;
@@ -77,7 +94,7 @@ describe("users invite: creates a real invite", () => {
 
     // Sign-up is closed for strangers but open for the invited address.
     expect((await signUp(h, "stranger@example.test")).status).toBe(403);
-    expect((await signUp(h, "teammate@example.test")).ok).toBe(true);
+    expect((await signUp(h, "teammate@example.test", inv.token)).ok).toBe(true);
 
     // The default role (`authenticated`) is bound on accept.
     const me = (await (await h.fetch("/api/me")).json()) as {
@@ -95,8 +112,9 @@ describe("users invite: creates a real invite", () => {
       json({ email: "second-admin@example.test", role: "admin" }),
     );
     expect(res.ok).toBe(true);
+    const adminInv = ((await res.json()) as { data: InviteResult }).data;
     await signOut(h);
-    expect((await signUp(h, "second-admin@example.test")).ok).toBe(true);
+    expect((await signUp(h, "second-admin@example.test", adminInv.token)).ok).toBe(true);
     // An admin-only endpoint answers for the new user.
     const users = await h.fetch("/api/users");
     expect(users.ok).toBe(true);
@@ -332,10 +350,13 @@ describe("platform invite accept: the three refusal guards", () => {
     expect((await h.fetch(`/api/tenants/invite/${inv.token}`)).status).toBe(200);
 
     // Sign-up IS the accept path for an address with no account yet: the
-    // `onUserCreated` hook binds the pending invite and NULLs the token, so no
-    // `/accept` call is ever made. That makes the sign-up the consuming event,
-    // and everything below is the replay attempt.
-    expect((await signUp(h, "replay@example.test")).ok).toBe(true);
+    // `onUserCreated` hook binds the invite THE PRESENTED TOKEN NAMES and NULLs
+    // it, so no `/accept` call is ever made. That makes the sign-up the
+    // consuming event, and everything below is the replay attempt.
+    //
+    // The token is required — binding on the address alone let anyone who knew
+    // an invited email claim the standing it carried (2026-09 audit, phase 10).
+    expect((await signUp(h, "replay@example.test", inv.token)).ok).toBe(true);
     const me = (await (await h.fetch("/api/me")).json()) as {
       data?: { roles?: string[] };
       roles?: string[];
@@ -431,7 +452,8 @@ describe("platform invite accept: the three refusal guards", () => {
 
     await signOut(h);
     expect((await signUp(h, "stale@example.test")).status).toBe(403);
-    expect((await signUp(h, "live@example.test")).ok).toBe(true);
+    const live = ((await liveRes.json()) as { data: InviteResult }).data;
+    expect((await signUp(h, "live@example.test", live.token)).ok).toBe(true);
   });
 
   test("the public resolve route is not an existence oracle for unknown tokens", async () => {

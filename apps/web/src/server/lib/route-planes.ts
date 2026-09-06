@@ -149,7 +149,18 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   { prefix: "/api/vector", plane: "either", note: "Permission-gated similarity search." },
   { prefix: "/api/notifications", plane: "either", note: "Both planes receive notifications addressed to them." },
   { prefix: "/api/device-tokens", plane: "either", note: "Push registration. An end-user's phone is the primary case." },
-  { prefix: "/api/geo", plane: "either", note: "Permission-gated geocoding helper used by field editors on both planes." },
+  {
+    prefix: "/api/geo",
+    plane: "either",
+    note:
+      "Field-editor geocoding, on both planes. `/backfill/{slug}` is " +
+      "permission-gated; `/geocode` and `/reverse` are not — they name no " +
+      "collection, so there is no permission to gate on. What they DO spend is " +
+      "the operator's provider quota, so each carries a per-identity rate limit " +
+      "instead (`assertGeoBudget`). This note used to read " +
+      "\"permission-gated geocoding helper\", which described one of the three " +
+      "verbs and would have told an auditor the other two were covered.",
+  },
   { prefix: "/api/phone", plane: "either", note: "Permission-gated E.164 normalisation used by field editors on both planes." },
   { prefix: "/api/email", plane: "either", note: "Permission-gated address normalisation used by field editors on both planes." },
 
@@ -180,9 +191,15 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   },
   {
     prefix: "/api/extensions",
-    plane: "either",
+    plane: "platform",
     revisit:
-      "requireUser-only today. Installing an extension is operator work; invoking an extension HOOK may not be.",
+      "Moved from `either` by the 2026-09 audit's phase 10. `GET /enabled` and " +
+      "`GET /:name/assets/*` now carry `requirePlatformMw`: the first enumerates " +
+      "installed extensions and their manifests (including which admin API paths " +
+      "each is wired to call), and the second serves the complete entry SOURCE of " +
+      "every panel and hook. `requireUser` admitted an app-plane end user to both. " +
+      "If an app-plane surface for INVOKING a hook is ever wanted, it belongs at " +
+      "`/api/t/:slug/…` with its own gate, not here.",
   },
   {
     prefix: "/api/webhooks",

@@ -4,7 +4,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import { getChoices } from "@backlex/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { loadCollection } from "../services/items/collection-loader";
 import {
@@ -76,7 +76,7 @@ const FormBlockSchema = z
       .max(MATRIX_MAX_ROWS)
       .optional(),
     consent: z.boolean().optional(),
-    policyUrl: z.string().url().max(2000).optional(),
+    policyUrl: httpUrl(2000).optional(),
     /** File blocks: MIME allow-list (`image/*`, exact types) + byte cap. The
      *  env ceiling (`FORM_UPLOAD_MAX_BYTES`) clamps `maxBytes` at upload time. */
     accept: z.array(z.string().min(3).max(80)).max(20).optional(),
@@ -109,7 +109,7 @@ const FormSettingsSchema = z
     description: z.string().max(1000).optional(),
     submitLabel: z.string().max(80).optional(),
     successMessage: z.string().max(1000).optional(),
-    redirectUrl: z.string().url().max(2000).optional(),
+    redirectUrl: httpUrl(2000).optional(),
     turnstile: z.boolean().optional(),
     theme: z.enum(["dark", "light"]).optional(),
     accent: z

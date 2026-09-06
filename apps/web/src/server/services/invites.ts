@@ -1,7 +1,7 @@
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { log } from "../lib/log";
 import { invalidateTenantMembership, invalidateUserRoles } from "./permissions-cache";
 import { assignRoleByName, type DbCtx, ensureSystemRoles, getRoleByName } from "./seed";
@@ -102,41 +102,25 @@ export const inviteTokenFields = async (
  */
 const LEGACY_PLAINTEXT_MSG = "[invites] legacy plaintext invite token accepted";
 
-/** Active (pending, unexpired, still-tokened) invite for an email, or null.
- *  Case-insensitive on email — the invite is stored as typed by the inviter, the
- *  sign-up email may differ in case. Reads degrade to null if the table isn't
- *  migrated yet. */
-export const findActiveInviteByEmail = async (
-  ctx: DbCtx,
-  email: string,
-): Promise<InviteRow | null> => {
-  const t = membersFor(ctx.dialect);
-  const wanted = email.trim().toLowerCase();
-  try {
-    // EITHER column proves a token was issued and not yet spent: a legacy row
-    // carries the plaintext, a hashed row carries only the digest, and
-    // `bindInvite` clears both on accept. Filtering on `invite_token` alone —
-    // what this did before hashing — made every NEW invite invisible to the
-    // closed-sign-up bypass and to the sign-up auto-accept, so the invite that
-    // was supposed to let an invitee in would have turned them away at the
-    // door. Silent, and only ever on a fresh invite.
-    const rows = (await (ctx.db as any)
-      .select()
-      .from(t)
-      .where(
-        and(
-          eq(t.status, "invited"),
-          or(isNotNull(t.inviteToken), isNotNull(t.inviteTokenHash)),
-        ),
-      )) as InviteRow[];
-    for (const r of rows) {
-      if (r.email.toLowerCase() === wanted && !isExpired(r.inviteExpiresAt)) return r;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
+/*
+ * `findActiveInviteByEmail` used to live here: an active invite looked up by
+ * EMAIL ALONE.
+ *
+ * Deleted rather than left unused, for the same reason
+ * `middleware/session.ts::loadUnfilteredRoleNames` was: a helper that answers
+ * "is there a pending invite for this address" has no safe caller. Its two
+ * callers were the closed-sign-up bypass and the sign-up auto-accept, and
+ * together they were a privilege escalation — an invite to `cfo@victim.test` at
+ * standing `admin` could be claimed by whoever signed up with that address
+ * first, holding a password they chose and having presented no token. Knowing
+ * an address is not proof of controlling it.
+ *
+ * The question both callers were really asking is "does the presented token
+ * name a live invite for this address", and `resolveInviteFor` is the function
+ * that answers it. Leaving the email-only one exported is how it comes back:
+ * it reads like a convenience, and its signature does not mention what it
+ * skips.
+ */
 
 /**
  * Resolve a raw invite token to its member row.
@@ -196,10 +180,50 @@ export const findInviteByToken = async (
   };
 };
 
-/** True when a valid invite exists for this email — lets `onBeforeUserCreated`
- *  admit an invited sign-up even while public sign-up is closed. */
-export const hasValidInvite = async (ctx: DbCtx, email: string): Promise<boolean> =>
-  (await findActiveInviteByEmail(ctx, email)) !== null;
+/**
+ * True when the presented TOKEN resolves to a live invite for this email.
+ *
+ * It used to take the email alone, and that was the admission half of a
+ * privilege escalation: an invite to `cfo@victim.test` at standing `admin`
+ * could be claimed by anyone who knew the address, by signing up with it before
+ * the real recipient did. `onBeforeUserCreated` admitted the sign-up (public
+ * sign-up being closed was no obstacle), and `acceptInviteForUser` then matched
+ * the pending row on the address alone and granted the standing it carried.
+ * Nothing in that sequence ever asked for the token.
+ *
+ * Knowing an address is not proof of controlling it. The token is the proof,
+ * `findInviteByToken` is the only reader that requires it, and this is now a
+ * thin wrapper over it — plus the email check, so a token for one invite cannot
+ * admit a sign-up under a different address.
+ */
+export const hasValidInvite = async (
+  ctx: DbCtx,
+  email: string,
+  token: string | undefined,
+): Promise<boolean> => (await resolveInviteFor(ctx, email, token)) !== null;
+
+/**
+ * The live invite the presented token names, when it is for `email`.
+ *
+ * One place, so the admission decision and the binding cannot disagree about
+ * which invite is in play — `onBeforeUserCreated` allowing a sign-up that
+ * `onUserCreated` then binds to a DIFFERENT row is exactly the class of drift
+ * this file's other comments keep warning about.
+ */
+export const resolveInviteFor = async (
+  ctx: DbCtx,
+  email: string,
+  token: string | undefined,
+): Promise<InviteRow | null> => {
+  if (!token) return null;
+  const found = await findInviteByToken(ctx, token);
+  if (!found || found.expired) return null;
+  const invite = found.invite;
+  if (invite.status !== "invited") return null;
+  const wanted = email.trim().toLowerCase();
+  if ((invite.email ?? "").trim().toLowerCase() !== wanted) return null;
+  return invite;
+};
 
 /**
  * Create a pending workspace invite: `tenant_members` row with status
@@ -253,17 +277,26 @@ export const createMemberInvite = async (
   return { id, token, expiresAt };
 };
 
-/** Bind any active invite for `email` to the user: flip the member row to
- *  active, clear the token, ensure system roles, and assign the RBAC role that
- *  mirrors the membership level. Idempotent (no-op when there's no invite).
- *  Returns the tenantId bound, or null. Mirrors `POST /accept` so the two paths
- *  stay in lockstep. */
+/**
+ * Bind the invite the presented TOKEN names to the user: flip the member row to
+ * active, clear the token, ensure system roles, and assign the RBAC role that
+ * mirrors the membership level. No-op when no token was presented, or when it
+ * does not resolve to a live invite for this address. Returns the tenantId
+ * bound, or null. Mirrors `POST /accept` — which has always required the token
+ * — so the two paths now ask for the same proof.
+ *
+ * The token argument is REQUIRED rather than optional so every call site has to
+ * answer the question. A caller with nothing to pass passes `undefined` and
+ * gets `null`, which is the honest outcome: an account was created, and no
+ * membership was granted.
+ */
 export const acceptInviteForUser = async (
   ctx: DbCtx,
   userId: string,
   email: string,
+  token: string | undefined,
 ): Promise<string | null> => {
-  const inv = await findActiveInviteByEmail(ctx, email);
+  const inv = await resolveInviteFor(ctx, email, token);
   if (!inv) return null;
   return bindInvite(ctx, inv, userId);
 };
@@ -281,19 +314,6 @@ export const bindInvite = async (
   userId: string,
 ): Promise<string> => {
   const m = membersFor(ctx.dialect);
-  await (ctx.db as any)
-    .update(m)
-    .set({
-      userId,
-      status: "active",
-      joinedAt: new Date(),
-      // Both forms, not just whichever one this row happened to use — a spent
-      // invite has to stop resolving on either path.
-      inviteToken: null,
-      inviteTokenHash: null,
-      inviteExpiresAt: null,
-    })
-    .where(eq(m.id, inv.id));
   await ensureSystemRoles(ctx, inv.tenantId);
   // `tenant_members.role` carries two vocabularies, so the stored value has to
   // be CLASSIFIED before it can be resolved. The ladder wins: a value the
@@ -318,6 +338,42 @@ export const bindInvite = async (
   await assignRoleByName(ctx, inv.tenantId, userId, rbacRole);
   if (rbacRole !== SYSTEM_ROLES.authenticated)
     await assignRoleByName(ctx, inv.tenantId, userId, SYSTEM_ROLES.authenticated);
+
+  // LAST, deliberately: this statement is what SPENDS the invite.
+  //
+  // It is keyed on the member row's own id and carries no tenant predicate,
+  // and that is correct: `findInviteByToken` resolved this row FROM the
+  // presented token, which is the whole authorization — an invitee has no
+  // workspace until that call answers. Written here rather than in
+  // `scripts/scan-tenant-scope.ts`'s allowlist, because with the statement moved
+  // down the scanner sees the tenant-scoped reads that now precede it and classifies
+  // the statement as guarded on its own; a ledger entry matching nothing has to
+  // go, or the next unscoped query added to this file inherits an exemption
+  // nobody wrote for it.
+  //
+  // It used to be first, and there is no transaction to hide behind — D1 and
+  // every other HTTP-transport driver run these as separate round trips
+  // (`Ctx.txCapable` is false for exactly that reason). So a failure in
+  // `ensureSystemRoles` or either `assignRoleByName` left a member row that was
+  // already `active` with the token already NULL: an accepted invite with no
+  // role, and no way to re-run because nothing could resolve the invite any
+  // more. Spending it last makes the whole sequence retry-safe instead —
+  // `ensureSystemRoles` and `assignRoleByName` are both idempotent, so a
+  // half-finished accept is simply re-clicked and completes.
+  await (ctx.db as any)
+    .update(m)
+    .set({
+      userId,
+      status: "active",
+      joinedAt: new Date(),
+      // Both forms, not just whichever one this row happened to use — a spent
+      // invite has to stop resolving on either path.
+      inviteToken: null,
+      inviteTokenHash: null,
+      inviteExpiresAt: null,
+    })
+    .where(eq(m.id, inv.id));
+
   // Membership row + RBAC role both just changed for this tenant. Drop the
   // per-user roles entry too — the requesting session may have already cached
   // a pre-invite role set (e.g. just `authenticated`), which would otherwise

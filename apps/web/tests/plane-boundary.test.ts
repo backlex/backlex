@@ -7,23 +7,32 @@
  * until this file nothing in the suite ever pointed the second at the first.
  * The boundary was asserted in prose and executed by nobody.
  *
- * It matters because almost nothing actually CHECKS the plane. `requireUser`
+ * It mattered because almost nothing actually CHECKED the plane. `requireUser`
  * only asks whether `auth.userId` is set, and an `app_users` id satisfies that
- * exactly as well as a `users` id does. What denies an app-plane caller on most
- * routes is `requireAdminMw`, and it denies for a reason that is one line from
- * evaporating: `tenantMiddleware` deliberately leaves `auth.roles` EMPTY for
- * `plane === "app"` (middleware/tenant.ts, "App-plane identities don't
- * participate in control-plane RBAC"), so the admin check fails by absence. The
- * two routes carrying `requirePlatformMw` / `isInstanceOperator` are the only
- * ones denying on the plane itself.
+ * exactly as well as a `users` id does. What denied an app-plane caller on most
+ * routes was `requireAdminMw`, failing by absence on an empty `auth.roles`.
+ * `middleware/plane-firewall.ts` now denies on the plane itself, before any
+ * route middleware runs, on every deploy target.
  *
- * PHASE 0 IS TEST-ONLY. Everything below records the CURRENT answer, including
- * the answers that are wrong. Three surfaces answer 2xx to a caller who has no
- * business on the control plane at all, and one answers 500 *after* committing
- * part of its write. Each of those is pinned with a comment naming the value it
- * takes once Phase 2 mounts the plane firewall that enforces
- * `lib/route-planes.ts`, so that fix reads as a one-line expectation change with
- * its reason already written down — not as a silent test edit.
+ * PHASE 0 WAS TEST-ONLY, and this file recorded the current answers including
+ * the wrong ones — three surfaces answering 2xx to a caller with no business on
+ * the control plane, and one answering 500 after committing part of its write.
+ * Each was pinned with the value it would take "once Phase 2 mounts the plane
+ * firewall that enforces `lib/route-planes.ts`".
+ *
+ * PHASE 10 IS WHEN THAT LANDED EVERYWHERE. The firewall existed from phase 2,
+ * but `PLANE_GUARD` defaulted to `warn` and was set to `enforce` only in the two
+ * wrangler configs — so it was real on Cloudflare and a log line on every
+ * self-host, Vercel, Netlify and Node deploy, which is the inverse of where the
+ * risk lives. The default is now `enforce`, and this file is the record of what
+ * that changed: every denial below that used to read "Admin role required" now
+ * reads "Operator access required", because the reason moved from an empty
+ * `auth.roles` array to the plane itself.
+ *
+ * That distinction is the whole point and is worth restating: the old 403s were
+ * the right answer for the wrong reason. `tenantMiddleware` leaves `auth.roles`
+ * empty for `plane === "app"`, so `requireAdminMw` failed by ABSENCE — one
+ * populated array away from opening every one of them at once.
  *
  * Nothing here asserts a bare absence. Every denial is paired with the caller
  * who is allowed through the same door (`ownerA`, workspace admin) and with the
@@ -56,14 +65,15 @@ afterAll(() => cast.cleanup());
 // The mechanism: the bearer IS authenticated; it just carries no roles.
 // ---------------------------------------------------------------------------
 
-describe("the mechanism every control-plane denial currently rests on", () => {
+describe("what every control-plane denial rests on", () => {
   test("the bearer passes requireUser — anon does not", async () => {
     // The interesting failure would be a token that is simply not recognised:
     // then every 403 below would be an accident of an unauthenticated request
     // and this whole file would be vacuous. It is not. `anon` earns 401 "Sign
     // in required" from `requireUser`; the same request with endUserA's bearer
-    // gets all the way to the ROLE check and earns 403 instead. `requireUser`
-    // accepted an `app_users` id as a control-plane principal.
+    // authenticates and is then refused on the PLANE. `requireUser` accepts an
+    // `app_users` id as a control-plane principal — which is why something
+    // downstream has to say no.
     const anon = await cast.anon("/api/users");
     expect(anon.status).toBe(401);
     expect((await errorOf(anon)).code).toBe("UNAUTHORIZED");
@@ -72,16 +82,18 @@ describe("the mechanism every control-plane denial currently rests on", () => {
     expect(bearer.status).toBe(403);
     expect(await errorOf(bearer)).toMatchObject({
       code: "FORBIDDEN",
-      message: "Admin role required",
+      // Not "Admin role required" any more. The message IS the finding: the
+      // denial used to come from an empty `auth.roles`, and now comes from the
+      // plane firewall, which cannot be undone by populating an array.
+      message: "Operator access required",
     });
   });
 
-  test("the only difference from a workspace admin is auth.roles", async () => {
+  test("the difference from a workspace admin is the PLANE, not a role array", async () => {
     // Same route, same method, same active workspace. ownerA is `admin` in
     // workspace A and reads the platform user list; endUserA belongs to that
-    // same workspace on the other plane and is refused. Nothing about the
-    // REQUEST differs — only the role array `tenantMiddleware` populated for
-    // one caller and left empty for the other.
+    // same workspace on the other plane and is refused before the route's own
+    // middleware runs at all.
     const admin = await cast.ownerA.fetch("/api/users");
     expect(admin.status).toBe(200);
     const listed = (await admin.json()) as { data: unknown[] };
@@ -167,48 +179,54 @@ describe("control-plane surfaces that deny an app-plane bearer", () => {
       });
     });
 
-    test("GET /api/admin/db/tables is refused by isInstanceOperator", async () => {
-      // Stronger than the plane gate: the SQL console demands `admin` in the
-      // DEFAULT workspace. Pinned here because it is the one surface a
-      // workspace admin cannot reach either — ownerA gets the identical 403,
-      // which is the proof that this denial is not plane-shaped and Phase 2
-      // must leave it alone.
+    test("GET /api/admin/db/tables refuses BOTH, for two different reasons", async () => {
+      // The SQL console demands `admin` in the DEFAULT workspace — stronger
+      // than the plane gate, and the one surface a workspace admin cannot reach
+      // either. Both facts still hold; what changed is the ORDER.
+      //
+      // An app-plane caller is now stopped by the firewall first, so the
+      // message it sees is the plane's. `isInstanceOperator` is what still
+      // stops ownerA, and that denial is not plane-shaped — asserting both in
+      // one test is what keeps the two from being confused for each other.
       const res = await cast.endUserA.fetch("/api/admin/db/tables");
       expect(res.status).toBe(403);
-      const err = await errorOf(res);
-      expect(err.code).toBe("FORBIDDEN");
-      expect(err.message ?? "").toStartWith("Instance operator access required");
+      expect(await errorOf(res)).toMatchObject({
+        code: "FORBIDDEN",
+        message: "Operator access required",
+      });
 
       const workspaceAdmin = await cast.ownerA.fetch("/api/admin/db/tables");
       expect(workspaceAdmin.status).toBe(403);
+      expect((await errorOf(workspaceAdmin)).message ?? "").toStartWith(
+        "Instance operator access required",
+      );
     });
   });
 
-  describe("denied only because auth.roles is empty — right answer, accidental reason", () => {
+  describe("denied on the plane — what used to be an accident of an empty role array", () => {
     /**
-     * Every row here answers 403 "Admin role required", i.e. `requireAdminMw`
-     * looked at an empty array. The status is right and the reasoning is not:
-     * the moment anything populates `auth.roles` for the app plane — an org
-     * role, a future RBAC unification, a bug in `tenantMiddleware` — all of
-     * these open at once, with no second line of defence. Phase 2 keeps the
-     * 403 and changes what produces it.
+     * Every row here used to answer 403 "Admin role required", i.e.
+     * `requireAdminMw` looking at an empty array. The status was right and the
+     * reasoning was not: the moment anything populated `auth.roles` for the app
+     * plane — an org role, a future RBAC unification, a bug in
+     * `tenantMiddleware` — all of these would have opened at once, with no
+     * second line of defence.
      *
-     * The message is asserted, not just the status, so the Phase 2 diff has to
-     * come through this file: swapping in a plane check changes the message to
-     * "Operator access required" and every row fails loudly.
+     * They now answer "Operator access required" from the plane firewall. The
+     * message is asserted, not just the status, precisely so that difference
+     * had to come through this file rather than passing unnoticed.
      */
     const ADMIN_GATED: [string, string, RequestInit?][] = [
       ["GET", "/api/users"],
       ["GET", "/api/roles"],
-      // GET stays here; PATCH moved to the plane-checked block above in Phase 2.
-      // The split is the point: the read is still guarded only by an empty
-      // array, the write is guarded by the plane.
+      // GET stays here; PATCH moved to the block above in Phase 2 because it
+      // carries `requirePlatformMw` EXPLICITLY. Both are now refused on the
+      // plane; the split records which ones say so in their own route and which
+      // rely on the firewall — two layers, because the audit's lesson was that
+      // one layer being right is what let four layers be wrong.
       ["GET", "/api/admin/settings"],
       ["GET", "/api/app-users"],
       ["GET", "/api/app-orgs"],
-      ["GET", "/api/webhooks"],
-      ["GET", "/api/flows"],
-      ["GET", "/api/functions"],
       ["GET", "/api/extensions"],
       // The bare `/api/admin/usage` prefix is a mount, not a route; `/overview`
       // is the listing the admin UI actually calls.
@@ -222,8 +240,36 @@ describe("control-plane surfaces that deny an app-plane bearer", () => {
     ];
 
     for (const [method, path, init] of ADMIN_GATED) {
-      test(`${method} ${path} -> 403 Admin role required`, async () => {
+      test(`${method} ${path} -> 403 Operator access required`, async () => {
         const res = await cast.endUserA.fetch(path, init ?? { method });
+        expect(res.status, `${method} ${path}`).toBe(403);
+        expect(await errorOf(res)).toMatchObject({
+          code: "FORBIDDEN",
+          message: "Operator access required",
+        });
+      });
+    }
+
+    /**
+     * Prefixes `route-planes.ts` still declares `either`, so the firewall
+     * admits them and `requireAdminMw` is what refuses — the old message, and
+     * the old accidental reason.
+     *
+     * Kept as a separate table rather than folded in, because the difference is
+     * the finding: these three are the ones where a populated `auth.roles` for
+     * the app plane WOULD still open the door. Each carries a `revisit` note in
+     * the registry saying so; when one is narrowed to `platform` its row moves
+     * up and its message changes with it.
+     */
+    const ROLE_GATED: [string, string][] = [
+      ["GET", "/api/webhooks"],
+      ["GET", "/api/flows"],
+      ["GET", "/api/functions"],
+    ];
+
+    for (const [method, path] of ROLE_GATED) {
+      test(`${method} ${path} -> 403, still only because auth.roles is empty`, async () => {
+        const res = await cast.endUserA.fetch(path, { method });
         expect(res.status, `${method} ${path}`).toBe(403);
         expect(await errorOf(res)).toMatchObject({
           code: "FORBIDDEN",
@@ -253,14 +299,22 @@ describe("control-plane surfaces that deny an app-plane bearer", () => {
       }
     });
 
-    test("GET /api/permissions is a 404 because no such route exists", async () => {
-      // Recorded so nobody later reads this 404 as a plane denial and deletes
-      // the DELETE probe above. It is Hono saying "no handler", not the app
-      // saying "no". Phase 2 does not change it.
+    test("GET /api/permissions has no handler — proven on the plane that reaches it", async () => {
+      // Recorded so nobody later reads a 404 here as a plane denial and deletes
+      // the DELETE probe above: `/api/permissions` exposes only `DELETE /{id}`,
+      // and the 404 is Hono saying "no handler", not the app saying "no".
+      //
+      // The app-plane caller can no longer demonstrate that — the firewall
+      // refuses the prefix before routing — so the 404 is asserted on the plane
+      // that DOES reach the router, and the end-user's 403 is asserted as the
+      // plane denial it now is. Two callers, two different sentences, which is
+      // exactly the pair that was being conflated.
       const res = await cast.endUserA.fetch("/api/permissions");
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(403);
+      expect((await errorOf(res)).message).toBe("Operator access required");
+
       const admin = await cast.ownerA.fetch("/api/permissions");
-      expect(admin.status, "…and it is 404 for a platform admin too").toBe(404);
+      expect(admin.status, "no such route, for the caller who may reach it").toBe(404);
     });
   });
 });
@@ -270,66 +324,58 @@ describe("control-plane surfaces that deny an app-plane bearer", () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Control-plane surfaces an APP-plane bearer reaches TODAY, with a 2xx.
+ * The three control-plane READS an app-plane bearer used to reach with a 2xx.
  *
- * Each of these is declared `plane: "platform"` in `lib/route-planes.ts` and
- * carries `requireUser` alone, so an `app_users` id walks straight through.
- * They are grouped apart from the block above because these expectations are
- * WRONG ON PURPOSE: they pin the hole so the fix is visible.
+ * Each is declared `plane: "platform"` in `lib/route-planes.ts` and carries
+ * `requireUser` alone, so an `app_users` id walked straight through. This block
+ * pinned the hole with the value each would take "once Phase 2 mounts the
+ * middleware that enforces route-planes.ts" — and this is that value. The
+ * firewall existed from phase 2; what phase 10 changed is that it now enforces
+ * on every deploy target rather than only where a wrangler file said so.
  *
- * PHASE 2 mounts the middleware that enforces `route-planes.ts`. When it lands,
- * every expectation in this block becomes 403 FORBIDDEN "Operator access
- * required" and the accompanying body assertions are deleted.
+ * Each test keeps a note of what the 200 USED to hand over, because that is the
+ * thing the expectation is protecting and a bare `expect(403)` would not say it.
  */
-describe("KNOWN GAP — control-plane reads an app-plane bearer reaches (Phase 2 closes)", () => {
-  test("GET /api/tenants answers, and leaks the active workspace id", async () => {
-    // Phase 2: 403 FORBIDDEN "Operator access required".
-    //
-    // The `data` array is empty only because an `app_users` id matches no
-    // `tenant_members.user_id` row — the ROUTE ran to completion and would have
-    // listed whatever it found. `active` is the real damage: the workspace's
-    // internal UUID handed to one of its own customers, from a route the
-    // registry marks "platform".
+describe("control-plane reads are refused on the plane", () => {
+  test("GET /api/tenants no longer leaks the active workspace id", async () => {
+    // It answered 200 with `active` set to the workspace's internal UUID —
+    // handed to one of its own customers, from a route the registry marks
+    // "platform". The `data` array was empty only because an `app_users` id
+    // matches no `tenant_members.user_id` row; the ROUTE ran to completion.
     const res = await cast.endUserA.fetch("/api/tenants");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: unknown[]; active: string };
-    expect(Array.isArray(body.data)).toBe(true);
-    expect(body.active).toBe(cast.tenantA.id);
+    expect(res.status).toBe(403);
+    expect(await errorOf(res)).toMatchObject({
+      code: "FORBIDDEN",
+      message: "Operator access required",
+    });
 
-    // The two end-users are pinned to their own workspaces, so the leak is not
-    // a constant that happens to match — it tracks the caller's session.
-    const other = await cast.endUserB.fetch("/api/tenants");
-    expect(other.status).toBe(200);
-    expect(((await other.json()) as { active: string }).active).toBe(cast.tenantB.id);
+    // Both end-users, so this is a property of the plane and not of one session.
+    expect((await cast.endUserB.fetch("/api/tenants")).status).toBe(403);
+
+    // …and the door still opens for the caller it is for.
+    expect((await cast.ownerA.fetch("/api/tenants")).status).toBe(200);
   });
 
-  test("GET /api/api-keys answers", async () => {
-    // Phase 2: 403 FORBIDDEN "Operator access required".
-    //
-    // `/api/api-keys` mints `pak_` keys, which `session.ts` resolves on the
-    // PLATFORM plane — so a caller who can reach this mount is one working POST
-    // away from laundering itself across the boundary permanently. The list is
-    // empty here because the cast mints no keys; the status is the finding.
+  test("GET /api/api-keys is refused", async () => {
+    // The sharpest of the three: `/api/api-keys` mints `pak_` keys, which
+    // `session.ts` resolves on the PLATFORM plane — so a caller who could reach
+    // this mount was one working POST away from laundering itself across the
+    // boundary permanently.
     const res = await cast.endUserA.fetch("/api/api-keys");
-    expect(res.status).toBe(200);
-    expect(Array.isArray(((await res.json()) as { data: unknown[] }).data)).toBe(true);
+    expect(res.status).toBe(403);
+    expect((await errorOf(res)).message).toBe("Operator access required");
+    expect((await cast.ownerA.fetch("/api/api-keys")).status).toBe(200);
   });
 
-  test("GET /api/activity answers — the audit log", async () => {
-    // Phase 2: 403 FORBIDDEN "Operator access required".
-    //
-    // The blast radius is smaller than it looks and still wrong: the handler
+  test("GET /api/activity is refused — the audit log", async () => {
+    // The blast radius was smaller than it looked and still wrong: the handler
     // shows non-admins only rows whose `user_id` is theirs, and no platform row
-    // carries an `app_users` id, so no operator's history leaks today. But the
-    // paging envelope proves the HANDLER ran rather than a gate short-circuiting
-    // — the filter is the only thing between an end-user and the workspace's
-    // audit trail, and it is a WHERE clause, not an authorization decision.
+    // carries an `app_users` id. But the filter was a WHERE clause, not an
+    // authorization decision, and the paging envelope proved the HANDLER ran.
     const res = await cast.endUserA.fetch("/api/activity");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: unknown[]; limit: number; offset: number };
-    expect(Array.isArray(body.data)).toBe(true);
-    expect(body.limit).toBeGreaterThan(0);
-    expect(body.offset).toBe(0);
+    expect(res.status).toBe(403);
+    expect((await errorOf(res)).message).toBe("Operator access required");
+    expect((await cast.ownerA.fetch("/api/activity")).status).toBe(200);
   });
 });
 
@@ -346,11 +392,12 @@ describe("KNOWN GAP — control-plane reads an app-plane bearer reaches (Phase 2
  * foreign key on the RBAC binding, so the request "fails" having already given
  * a workspace's own customer a workspace of their own, owned outright.
  *
- * PHASE 2: both become 403 FORBIDDEN "Operator access required", and the
- * partial-write assertions below invert into assertions that nothing was
- * written.
+ * Both are now 403 FORBIDDEN "Operator access required", and the partial-write
+ * assertions have inverted into assertions that nothing was written — which is
+ * the half worth keeping, because "it 500s" was never by itself evidence that
+ * nothing happened.
  */
-describe("KNOWN GAP — control-plane writes an app-plane bearer reaches (Phase 2 closes)", () => {
+describe("control-plane writes are refused on the plane, and write nothing", () => {
   let wcast: TwoPlaneCast;
   beforeAll(async () => {
     wcast = await buildTwoPlaneCast();
@@ -373,19 +420,15 @@ describe("KNOWN GAP — control-plane writes an app-plane bearer reaches (Phase 
     expect(err.code).toBe("FORBIDDEN");
     expect(err.message).toContain("Operator access required");
 
-    // Nothing was committed. This assertion is the one that used to fail: the
-    // end-user's workspace list held a workspace they owned, minted by a
-    // request that reported failure.
-    const listed = await wcast.endUserA.fetch("/api/tenants");
-    expect(listed.status).toBe(200);
-    const body = (await listed.json()) as {
-      data: { slug: string; name: string; role: string }[];
-    };
-    expect(body.data.find((t) => t.slug === "plane-boundary-squat")).toBeUndefined();
-
-    // And the slug stays in the platform's namespace: a real operator can still
-    // claim it. Without this the absence above would also be satisfied by a
-    // tenants row that merely failed to appear in one list.
+    // Nothing was committed, and the CLAIM is what proves it.
+    //
+    // This used to read the end-user's own workspace list back — the assertion
+    // that failed before the fix, because it held a workspace they owned minted
+    // by a request that reported failure. That read is itself refused now (the
+    // whole prefix is), so the absence is proven the stronger way instead: a
+    // workspace slug is globally unique, so a real operator being able to claim
+    // it means nothing holds it. An absence-from-one-list would also have been
+    // satisfied by a `tenants` row that merely failed to appear in that list.
     const claimed = await wcast.ownerB.fetch(
       "/api/tenants",
       json("POST", { name: "Plane Boundary Squat" }),
@@ -445,15 +488,21 @@ describe("declared `either` — an app-plane 200 here is the intended contract",
 describe("a platform cookie is not an app-plane credential", () => {
   test("GET /api/t/:slug/orgs rejects a platform session", async () => {
     // `app-orgs-public.ts::requireAppUser` tests `auth.plane !== "app"`
-    // explicitly, which is the check the control plane is missing in the other
-    // direction — the app plane got the gate the platform plane did not. Both a
-    // workspace admin and the INSTANCE OPERATOR are refused: privilege on the
-    // control plane buys nothing here, which is the property worth pinning.
+    // explicitly — the app plane always had the gate the platform plane did
+    // not. It is now reached SECOND: the firewall refuses a platform caller on
+    // an `app`-declared prefix first, so the status moved from 401
+    // UNAUTHORIZED to 403 FORBIDDEN. Both are refusals and the second is the
+    // more honest one — the caller IS signed in, just on the wrong plane, which
+    // is what 403 means and 401 does not.
+    //
+    // Both a workspace admin and the INSTANCE OPERATOR are refused: privilege
+    // on the control plane buys nothing here, which is the property worth
+    // pinning.
     for (const who of [cast.ownerA, cast.operator] as const) {
       const res = await who.fetch(`/api/t/${cast.tenantA.slug}/orgs`);
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(403);
       expect(await errorOf(res)).toMatchObject({
-        code: "UNAUTHORIZED",
+        code: "FORBIDDEN",
         message: "Workspace end-user sign-in required",
       });
     }
@@ -463,7 +512,7 @@ describe("a platform cookie is not an app-plane credential", () => {
       `/api/t/${cast.tenantA.slug}/orgs`,
       json("POST", { name: "Operator Org" }),
     );
-    expect(write.status).toBe(401);
+    expect(write.status).toBe(403);
 
     // The door is real: the credential the route DOES want opens it.
     const endUser = await cast.endUserA.fetch(`/api/t/${cast.tenantA.slug}/orgs`);

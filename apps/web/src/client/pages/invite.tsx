@@ -15,6 +15,7 @@ import {
   type AuthShellCopy,
 } from "@backlex/auth-ui";
 import { api, ApiError } from "@/lib/api";
+import { INVITE_TOKEN_HEADER } from "@backlex/auth/client";
 import { auth, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { notifyError } from "@/lib/error";
 import { useWorkspaceBranding } from "@/lib/branding";
@@ -157,11 +158,23 @@ export const Invite = () => {
     setBusy(true);
     const email = state.meta.email;
     try {
-      const res = await auth.signUp.email({
-        email,
-        password,
-        name: name.trim() || email.split("@")[0] || "member",
-      });
+      const res = await auth.signUp.email(
+        {
+          email,
+          password,
+          name: name.trim() || email.split("@")[0] || "member",
+        },
+        // Proof of possession, carried on the sign-up itself.
+        //
+        // The membership used to be bound by EMAIL: `onUserCreated` matched the
+        // pending invite on the address alone, so anyone who knew an invited
+        // address could sign up with it first and arrive holding whatever
+        // standing the invite carried. The token is what proves the person
+        // opening this screen is the person the invite was sent to, and it is
+        // now required on the server side too — without it the account is
+        // created with no workspace membership at all.
+        { headers: { [INVITE_TOKEN_HEADER]: token } },
+      );
       if (res.error) {
         // The invited address already has a backlex account (e.g. a member of
         // another workspace). That's not a dead end — sign them in with the

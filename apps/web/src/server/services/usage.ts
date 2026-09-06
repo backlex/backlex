@@ -20,6 +20,7 @@
  * row — they answer "how big is this workspace right now", not "how much did
  * it grow today".
  */
+import { assertIdent } from "@backlex/db";
 import { and, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -1044,8 +1045,16 @@ export const sweepUsageGauges = async (
       );
       const counts = await Promise.all(
         colls.map(async (cRow) => {
-          const safeTable = (cRow.physical_table ?? "").replace(/"/g, "");
-          if (!safeTable) return 0;
+          // Same correction as `routes/metrics.ts`: stripping double quotes
+          // sanitizes for ONE context and this value has been spliced into two.
+          // A name the grammar refuses counts as zero rather than failing the
+          // whole usage rollup.
+          let safeTable: string;
+          try {
+            safeTable = assertIdent(cRow.physical_table ?? "");
+          } catch {
+            return 0;
+          }
           try {
             const r = await queryAll<{ n: number | string }>(
               ctx,

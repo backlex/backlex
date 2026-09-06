@@ -6,7 +6,7 @@ import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { isInstanceOperator, requirePlatformMw } from "../services/roles/guards";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import { isCloudflareWorkers, isDenoDeploy, isNetlify } from "../lib/runtime";
 import {
   GLOBAL_SETTINGS_TENANT_ID,
@@ -68,8 +68,8 @@ const SettingsInput = z
     signInTagline: z.string().max(280).optional(),
     /** Sign-up consent links. Empty string clears (hides) the link; otherwise
      *  must be a valid absolute URL. Also instance-global (the `_global` row). */
-    termsUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
-    privacyUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
+    termsUrl: z.union([z.literal(""), httpUrl(2048)]).optional(),
+    privacyUrl: z.union([z.literal(""), httpUrl(2048)]).optional(),
     /** Whether an email + password may be exchanged for a session, and on which
      *  plane. Instance-global (the `_global` row). Leaving `enabled` is gated
      *  on another way in existing — see the lock-out check in the handler. */

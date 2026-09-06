@@ -9,7 +9,7 @@ import { requireUser } from "../middleware/session";
 import { invalidateSession } from "../services/permissions-cache";
 import { encryptSecret } from "../lib/crypto";
 import { invalidateTenantAuth } from "../services/tenant-auth";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { assertTenantMember, requireTenant } from "../services/roles/guards";
 
@@ -44,7 +44,7 @@ const ConfigInput = z
     providers: z.record(z.string(), z.unknown()).optional(),
     policy: z.record(z.string(), z.unknown()).optional(),
     sessionLifetime: z.string().optional(),
-    redirectUrls: z.array(z.string().url()).optional(),
+    redirectUrls: z.array(httpUrl()).optional(),
   })
   .openapi("AuthConfigInput");
 

@@ -92,15 +92,38 @@ const renderRow = (
   return out;
 };
 
-const isAllowedFetch = (rawUrl: string, allowlist: string[]): boolean => {
+/**
+ * Is a sandboxed function allowed to fetch this URL?
+ *
+ * The SCHEME is checked first, and before the `*` short-circuit, because the
+ * allow-list is about hosts and a scheme is not a host. `new URL(
+ * "file://api.example.com/etc/passwd").host` is `api.example.com`, so an
+ * operator who set the documented `FUNCTIONS_FETCH_ALLOW=api.example.com` was
+ * one four-letter scheme away from handing a workspace admin `.env`,
+ * `/proc/self/environ` and `./.data/backlex.sqlite` — the whole multi-tenant
+ * database — as `{status, ok, text}` in their own function's return value. Bun
+ * ignores the host on a `file:` URL and reads the path.
+ *
+ * The guarded path already refused this (`assertPublicHttpUrl` rejects
+ * non-http(s)), which is exactly why it had to move here: it must not depend on
+ * `ssrfGuardEnabled`, and `ssrfGuardEnabled` is FALSE on the self-host default
+ * this option is documented for.
+ *
+ * Exported only so a spec can assert it directly. A guard reachable solely
+ * through a live sandbox invocation is a guard nobody writes the negative case
+ * for, which is how the scheme hole survived.
+ */
+export const isAllowedFetch = (rawUrl: string, allowlist: string[]): boolean => {
   if (allowlist.length === 0) return false;
-  if (allowlist.includes("*")) return true;
+  let u: URL;
   try {
-    const u = new URL(rawUrl);
-    return allowlist.some((host) => u.host === host || u.host.endsWith(`.${host}`));
+    u = new URL(rawUrl);
   } catch {
     return false;
   }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+  if (allowlist.includes("*")) return true;
+  return allowlist.some((host) => u.host === host || u.host.endsWith(`.${host}`));
 };
 
 /**
@@ -157,9 +180,10 @@ export const dispatchRpc = async (
     // Route through the SSRF guard: when enabled (managed cloud /
     // BLOCK_PRIVATE_FETCH_HOSTS) this follows redirects MANUALLY and re-checks
     // the host on every hop, so an allow-listed external host can't 30x-redirect
-    // into 169.254.169.254 / localhost / RFC1918. On self-host (guard off) it's
-    // a plain fetch, preserving the prior behavior. The host allow-list above
-    // still bounds the initial target.
+    // into localhost / RFC1918. On self-host (guard off) it still walks the
+    // chain and refuses the cloud metadata endpoints at every hop, which is the
+    // one refusal that is not the operator's to configure away. The host
+    // allow-list above still bounds the initial target, and now the scheme too.
     const res = await fetchOutbound(bindings.ctx.env, url, fetchInit);
     const text = await res.text();
     return { status: res.status, ok: res.ok, text };

@@ -1,6 +1,6 @@
 import { and, eq, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
-import { AppError, normalizeCondition } from "@backlex/core";
+import { AppError, COMPARISON_OPERATORS, normalizeCondition } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
 import {
   compileCondition,
@@ -79,6 +79,23 @@ const assertKnownFilterColumns = (
         "VALIDATION",
         `Filter field "${key}" is not in collection "${collection}". Valid columns: ${columnHint()}`,
       );
+    }
+    // …and the operators it carries must be ones something implements. Same
+    // reason as the list door (`lib/query.ts`): an unrecognised operator used
+    // to compile to `(1=1)`, which on an AGGREGATE means the tile shows the
+    // unfiltered total and reads exactly like a correct number.
+    const cmp = node[key];
+    if (cmp && typeof cmp === "object" && !Array.isArray(cmp)) {
+      const ops = Object.keys(cmp as Record<string, unknown>);
+      if (ops.length > 0 && ops.every((op) => op.startsWith("_"))) {
+        const unknownOps = ops.filter((op) => !COMPARISON_OPERATORS.has(op));
+        if (unknownOps.length > 0) {
+          throw new AppError(
+            "VALIDATION",
+            `Unknown filter operator(s) on "${key}": ${unknownOps.join(", ")}`,
+          );
+        }
+      }
     }
     // …and it must be a column this caller may READ.
     //

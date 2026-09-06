@@ -381,9 +381,18 @@ const firstUserTenant = async (
 // Keys are random ids; a stale entry left over from a prior test harness can
 // only cause a harmless *skip*, never an FK error, so no cross-harness reset
 // is needed (unlike the id-bearing permission caches).
+//
+// Both are capped. A throttle map keyed by user id grows with the number of
+// DISTINCT callers an isolate has served, not with concurrency, so on a
+// long-lived Workers isolate it only ever grows — every sibling per-isolate map
+// in this layer (`lastUsedWrite` in `middleware/session.ts`, `localWindows` in
+// `lib/rate-limit.ts`, the permission `TtlLru`) is bounded and these two were
+// the exception. Clearing wholesale is the same trade `lastUsedWrite` makes:
+// the only cost of a miss is one extra DB write that was already throttled.
 const lastActiveTenant = new Map<string, string>();
 const lastSeenWrite = new Map<string, number>();
 const LAST_SEEN_DEBOUNCE_MS = 60_000;
+const THROTTLE_CAP = 10_000;
 
 /** Run a best-effort write off the request's critical path. `waitUntil` keeps
  *  the isolate alive until it resolves so the row reliably persists — a bare
@@ -589,6 +598,25 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
         // If the workspace was the caller's own explicit choice, say so rather
         // than quietly running the request somewhere else.
         if (tenantFromHeader && headerWanted) refuseHeaderWorkspace();
+        // A PINNED API key never falls through to another workspace.
+        //
+        // `findApiKey` checks only `revokedAt` and `expiresAt` — never the
+        // owner's membership — so a key issued "for workspace A only" kept
+        // authenticating after A was archived, or after its owner was suspended
+        // in A. `resolveTenantAccess(A)` then answered `roles: null`, this line
+        // nulled the tenant, and the fallback below substituted whatever OTHER
+        // active workspace the owner belonged to — loading the owner's FULL
+        // role set there, because a key with no `apiKeyRoleId` inherits it. A
+        // contractor's "A only" credential silently became a credential for B.
+        //
+        // The pin is a promise about scope, so losing the pinned workspace has
+        // to be a refusal, not a redirection.
+        if (auth.apiKeyId && auth.apiKeyTenantId) {
+          throw new AppError(
+            "FORBIDDEN",
+            "This API key is pinned to a workspace its owner can no longer access.",
+          );
+        }
         tenantId = null;
       }
     }
@@ -642,6 +670,7 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     // Persist the active tenant only when it changed for this user (this
     // isolate) — skips a primary-DB write on virtually every steady request.
     if (lastActiveTenant.get(uid) !== tenantId) {
+      if (lastActiveTenant.size >= THROTTLE_CAP) lastActiveTenant.clear();
       lastActiveTenant.set(uid, tenantId);
       deferWrite(c, () => persistActive(db, dialect, uid, tenantId));
     }
@@ -650,6 +679,7 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     const seenKey = `${tenantId}:${uid}`;
     const now = Date.now();
     if (now - (lastSeenWrite.get(seenKey) ?? 0) >= LAST_SEEN_DEBOUNCE_MS) {
+      if (lastSeenWrite.size >= THROTTLE_CAP) lastSeenWrite.clear();
       lastSeenWrite.set(seenKey, now);
       deferWrite(c, () => touchMember(db, dialect, tenantId, uid));
     }

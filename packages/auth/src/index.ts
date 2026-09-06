@@ -14,17 +14,49 @@ import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
+// The invite-token header lives in `./client` so the SPA can name it without
+// importing better-auth's server graph. Re-exported so server callers keep one
+// import path.
+export { INVITE_TOKEN_HEADER } from "./client";
+import { INVITE_TOKEN_HEADER } from "./client";
+
 export interface AuthHooks {
   /** Runs before a user row is created (any sign-up path: email/password,
    *  social, magic-link, anonymous). Receives the pending user's email/name so
    *  the host can make admission decisions (e.g. allow an invited address even
-   *  when public sign-up is closed). Return `{ allow: false }` to reject the
-   *  sign-up — the auth handler turns it into a 403 with `reason` as message. */
-  onBeforeUserCreated?: (user: { email: string; name?: string }) =>
+   *  when public sign-up is closed), plus the invite token the request carried
+   *  in {@link INVITE_TOKEN_HEADER}, if any. Return `{ allow: false }` to reject
+   *  the sign-up — the auth handler turns it into a 403 with `reason` as
+   *  message. */
+  onBeforeUserCreated?: (user: {
+    email: string;
+    name?: string;
+    inviteToken?: string;
+  }) =>
     | Promise<{ allow: boolean; reason?: string }>
     | { allow: boolean; reason?: string };
-  onUserCreated?: (user: { id: string; email: string }) => Promise<void> | void;
+  onUserCreated?: (user: {
+    id: string;
+    email: string;
+    inviteToken?: string;
+  }) => Promise<void> | void;
 }
+
+/**
+ * The invite token on the request that is creating this user, or undefined.
+ *
+ * `databaseHooks` are handed a `GenericEndpointContext` as their second
+ * argument, which is where the request lives. Read defensively — the shape is
+ * better-auth's, the hooks also fire on paths that carry no request at all
+ * (a server-side `createUser`), and a missing token must degrade to "no invite
+ * presented" rather than throwing inside sign-up.
+ */
+export const inviteTokenFrom = (ctx: unknown): string | undefined => {
+  const headers = (ctx as { request?: { headers?: Headers }; headers?: Headers } | undefined);
+  const h = headers?.request?.headers ?? headers?.headers;
+  const raw = typeof h?.get === "function" ? h.get(INVITE_TOKEN_HEADER) : null;
+  return raw?.trim() || undefined;
+};
 
 export interface OAuthProviderConfig {
   clientId: string;
@@ -408,10 +440,14 @@ export const createAuth = async (
               create: {
                 ...(config.hooks?.onBeforeUserCreated
                   ? {
-                      before: async (data: { email?: string; name?: string }) => {
+                      before: async (
+                        data: { email?: string; name?: string },
+                        hookCtx?: unknown,
+                      ) => {
                         const r = await config.hooks!.onBeforeUserCreated!({
                           email: data.email ?? "",
                           name: data.name,
+                          inviteToken: inviteTokenFrom(hookCtx),
                         });
                         if (!r.allow)
                           throw new APIError("FORBIDDEN", {
@@ -423,8 +459,14 @@ export const createAuth = async (
                   : {}),
                 ...(config.hooks?.onUserCreated
                   ? {
-                      after: async (user: { id: string; email: string }) => {
-                        await config.hooks!.onUserCreated!(user);
+                      after: async (
+                        user: { id: string; email: string },
+                        hookCtx?: unknown,
+                      ) => {
+                        await config.hooks!.onUserCreated!({
+                          ...user,
+                          inviteToken: inviteTokenFrom(hookCtx),
+                        });
                       },
                     }
                   : {}),

@@ -22,6 +22,40 @@ const EXECUTABLE_DOCUMENT_TYPES = new Set([
   "text/xml",
 ]);
 
+/**
+ * Types that are not documents but ARE executable as a SUBRESOURCE.
+ *
+ * `sandbox` and `content-disposition` both govern a response as a DOCUMENT.
+ * Neither restricts it as a subresource, and `nosniff` is satisfied when the
+ * declared type genuinely is JavaScript. So an object stored as
+ * `text/javascript` was served same-origin, executable, under the admin app's
+ * own `script-src 'self'` — `<script src="/api/storage/x.js">` injected
+ * anywhere on the admin origin loads and runs with the viewing admin's cookies.
+ *
+ * That is a gadget rather than a vulnerability on its own, but the whole
+ * storage-serving design is written on the premise that uploaded bytes can
+ * never execute on the app origin, and this is the one type CSP explicitly
+ * re-admits. Rewritten to `application/octet-stream` on serve: a `<script src>`
+ * whose response is not a JavaScript MIME is refused by the browser, and no
+ * legitimate consumer of `/api/storage` needs the original label — the download
+ * still carries the filename, and `?download` still works.
+ *
+ * The upload is NOT rejected: what a workspace stores is its business, and
+ * refusing at the door would break every legitimate `.js` asset an operator
+ * keeps in storage. What changes is only how it is handed back on this origin.
+ * Serving user bytes from a separate origin is the durable fix, and would make
+ * this list unnecessary.
+ */
+const EXECUTABLE_SUBRESOURCE_TYPES = new Set([
+  "text/javascript",
+  "application/javascript",
+  "application/x-javascript",
+  "text/ecmascript",
+  "application/ecmascript",
+  "text/jscript",
+  "application/wasm",
+]);
+
 /** Strip parameters (`; charset=…`, `; boundary=…`) and normalize case so the
  *  checks below can't be side-stepped with `text/html ;x=1` or `TEXT/HTML`. */
 export const baseContentType = (ct: string | null | undefined): string =>
@@ -52,4 +86,18 @@ export const safeServeHeaders = (
     headers["content-disposition"] = "attachment";
   }
   return headers;
+};
+
+/**
+ * The `content-type` to actually SEND for a stored object.
+ *
+ * Everything except the executable-subresource family is echoed back as stored.
+ * See {@link EXECUTABLE_SUBRESOURCE_TYPES} for why that family is not.
+ */
+export const safeServeContentType = (
+  contentType: string | null | undefined,
+): string => {
+  const base = baseContentType(contentType);
+  if (!base) return "application/octet-stream";
+  return EXECUTABLE_SUBRESOURCE_TYPES.has(base) ? "application/octet-stream" : (contentType ?? base);
 };

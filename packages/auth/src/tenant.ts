@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
+import { inviteTokenFrom } from "./index";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins/bearer";
 import { magicLink } from "better-auth/plugins/magic-link";
@@ -212,10 +213,14 @@ export const createTenantAuth = (
               create: {
                 ...(config.hooks?.onBeforeUserCreated
                   ? {
-                      before: async (data: { email?: string; name?: string }) => {
+                      before: async (
+                        data: { email?: string; name?: string },
+                        hookCtx?: unknown,
+                      ) => {
                         const r = await config.hooks!.onBeforeUserCreated!({
                           email: data.email ?? "",
                           name: data.name,
+                          inviteToken: inviteTokenFrom(hookCtx),
                         });
                         if (!r.allow)
                           throw new APIError("FORBIDDEN", {
@@ -227,8 +232,14 @@ export const createTenantAuth = (
                   : {}),
                 ...(config.hooks?.onUserCreated
                   ? {
-                      after: async (user: { id: string; email: string }) => {
-                        await config.hooks!.onUserCreated!(user);
+                      after: async (
+                        user: { id: string; email: string },
+                        hookCtx?: unknown,
+                      ) => {
+                        await config.hooks!.onUserCreated!({
+                          ...user,
+                          inviteToken: inviteTokenFrom(hookCtx),
+                        });
                       },
                     }
                   : {}),

@@ -20,6 +20,7 @@ import { recordSpan, traceSampleRate } from "./services/traces";
 import { exportSpanOtlp, otlpEnabled } from "./services/otlp";
 import { flushLogsOtlp } from "./services/otlp-logs";
 import { isDemoMode } from "./services/demo";
+import { keepAlive } from "./services/activity";
 import { demoGuardMiddleware } from "./middleware/demo";
 import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
@@ -39,6 +40,7 @@ import { tagManagerRoutes } from "./routes/tag-manager";
 import { consentRoutes } from "./routes/consent";
 import { consentPublicRoutes } from "./routes/consent-public";
 import { isPerSiteScript, isPublicSubresource } from "./lib/public-paths";
+import { EMBED_CSP, isFramablePage, isFramablePath, STRICT_CSP } from "./lib/security-headers";
 import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics-collect";
 import { analyticsIngestRoutes } from "./routes/analytics-ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
@@ -521,17 +523,20 @@ export const createApp = (env: Env) => {
    * but a surviving `X-Frame-Options: SAMEORIGIN` is still blocked, and the
    * two lists drifted apart the moment the booking pages joined only one.
    *
-   * - `/embed/*` — the dashboard embed and the form's embed variant.
+   * - `/embed/d/:token`, `/embed/f/:token` — the dashboard embed and the
+   *   form's embed variant.
    * - `/api/public/*` — the data those pages fetch once framed.
-   * - `/book/*`, `/b/*` — the booking pages. Unlike a form, whose standalone
-   *   page stays same-origin-only, BOTH of these belong on the operator's own
-   *   site, so there is no separate embed URL for them at all.
+   * - `/book/:token`, `/b/:token` — the booking pages. Unlike a form, whose
+   *   standalone page stays same-origin-only, BOTH of these belong on the
+   *   operator's own site, so there is no separate embed URL for them at all.
+   *
+   * The page shapes are ANCHORED, and moved to `lib/security-headers.ts` so
+   * the Vercel build config can generate the same rule. They used to be bare
+   * `startsWith` prefixes, which made every deploy target clickjackable: an
+   * unmatched sub-path like `/embed/zzz` still got `frame-ancestors *` and
+   * still resolved to the admin shell.
    */
-  const isFramable = (path: string): boolean =>
-    path.startsWith("/embed/") ||
-    path.startsWith("/api/public/") ||
-    path.startsWith("/book/") ||
-    path.startsWith("/b/");
+  const isFramable = isFramablePath;
 
   // `isPublicSubresource` lives in `lib/public-paths.ts` now, because a
   // SECOND caller appeared: `middleware/tenant.ts` must skip the workspace
@@ -564,27 +569,7 @@ export const createApp = (env: Env) => {
   // same-origin API + SSE/WS, cross-origin VITE_API_URL setups). GraphiQL
   // (served at GET /api/graphql) bootstraps from a CDN + inline, so that one
   // route gets a relaxed policy.
-  const STRICT_CSP = [
-    "default-src 'self'",
-    // static.cloudflareinsights.com: Cloudflare Web Analytics (RUM) is
-    // auto-injected at the zone proxy on Cloudflare-fronted deploys (e.g. the
-    // playground + cloud tenants on the backlex.com zone); without the
-    // allowance the beacon is blocked and every page logs CSP errors. The
-    // origin serves only CF's own beacon script, so the stored-XSS posture of
-    // 'self'-only is unchanged. Inert on non-Cloudflare deploys. (CF's inline
-    // iframe-fallback loader stays blocked — per-response hash, harmless.)
-    "script-src 'self' https://static.cloudflareinsights.com",
-    // 'unsafe-inline' for styles: React/Tailwind set style attributes. Google
-    // Fonts stylesheet host is allow-listed (the admin loads Geist from it).
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob: https:",
-    "font-src 'self' data: https://fonts.gstatic.com",
-    "connect-src 'self' https: wss:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'self'",
-  ].join("; ");
+  // STRICT_CSP now lives in `lib/security-headers.ts` — see that file for why.
   const GRAPHIQL_CSP = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
@@ -596,13 +581,6 @@ export const createApp = (env: Env) => {
     "base-uri 'self'",
     "frame-ancestors 'self'",
   ].join("; ");
-  // Embedded BI dashboards are meant to be iframed on third-party sites, so the
-  // public embed page (`/embed/...`) and its data API (`/api/public/...`) must
-  // allow framing from any origin — `frame-ancestors *` plus dropping the
-  // X-Frame-Options secureHeaders() set (XFO has no allow-all value, so its
-  // mere presence as SAMEORIGIN/DENY would block the frame). Everything else
-  // keeps the strict same-origin policy.
-  const EMBED_CSP = STRICT_CSP.replace("frame-ancestors 'self'", "frame-ancestors *");
   // Public form pages (`/f/<token>`, `/embed/f/<token>`) may render the
   // Cloudflare Turnstile widget, which loads a script from and frames
   // challenges.cloudflare.com — both blocked by the strict `'self'` policy.
@@ -710,6 +688,13 @@ export const createApp = (env: Env) => {
       session = s;
       ctx = { ...baseCtx, db: s.db };
     }
+    // The only layer that holds an ExecutionContext, so it is the only one that
+    // can hand `Ctx` a way to outlive the response. Everything downstream that
+    // used to write `void doTheWork()` asks for this instead — see
+    // `Ctx.waitUntil`. `executionCtx` is a getter that THROWS on runtimes
+    // without one (Bun-native, Node, tests), so the probe has to be a try, not
+    // a truthiness check.
+    ctx = { ...ctx, waitUntil: (p: Promise<unknown>) => keepAlive(c, p) };
     c.set("ctx", ctx);
     if (!rolesSeeded) {
       // Set optimistically so a burst of concurrent first-requests on a cold
@@ -720,7 +705,7 @@ export const createApp = (env: Env) => {
       // this same first request — otherwise the first cross-origin call after
       // a cold isolate start would miss the workspace redirect-URL origins.
       // One cheap SELECT; stays on the critical path.
-      await warmAllowedOrigins(dbCtx);
+      await warmAllowedOrigins(dbCtx, env);
       // The rest is idempotent bootstrap seeding. On an already-provisioned
       // instance (every cold isolate after the first ever) it's ~11 no-op
       // SELECTs that needlessly blocked the first request ~110ms — traced on a
@@ -787,7 +772,7 @@ export const createApp = (env: Env) => {
       origin: (origin, c) => {
         if (!origin || origin === env.APP_URL) return env.APP_URL;
         const ctx = c.get("ctx");
-        if (ctx) refreshAllowedOriginsIfStale({ db: ctx.db, dialect: ctx.dialect });
+        if (ctx) refreshAllowedOriginsIfStale({ db: ctx.db, dialect: ctx.dialect }, env);
         return isWorkspaceAllowedOrigin(origin, env) ? origin : env.APP_URL;
       },
       credentials: true,
@@ -1294,6 +1279,19 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     });
   });
 
+  /**
+   * Should this path get the framable SPA shell at all?
+   *
+   * `not_found_handling = "single-page-application"` means `ASSETS.fetch` never
+   * 404s — it answers the ADMIN `index.html` with 200 for anything. Combined
+   * with a prefix-matched framable CSP that made `GET /embed/zzz` a fully
+   * functional, fully framable copy of the admin dashboard on every deploy
+   * target. Refusing the sub-path here is the other half of anchoring
+   * `isFramablePath`: the header is right AND the document is not served.
+   */
+  const servesFramableShell = (c: { req: { url: string } }): boolean =>
+    isFramablePage(new URL(c.req.url).pathname);
+
   if (env.ASSETS) {
     // `/f/*` (standalone public form page) shares the worker-served-shell path
     // with `/embed/*`: both are in `run_worker_first` so the header middleware
@@ -1318,6 +1316,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     // so the link an operator already has is the one they paste into an
     // iframe. A second URL would only be a second thing to rotate.
     app.get("/book/*", async (c) => {
+      if (!servesFramableShell(c)) return c.notFound();
       const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
       if (isDevServer) return res;
       return new Response(res.body, {
@@ -1326,6 +1325,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
       });
     });
     app.get("/b/*", async (c) => {
+      if (!servesFramableShell(c)) return c.notFound();
       const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
       if (isDevServer) return res;
       return new Response(res.body, {
@@ -1334,6 +1334,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
       });
     });
     app.get("/embed/*", async (c) => {
+      if (!servesFramableShell(c)) return c.notFound();
       const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
       // In dev (@cloudflare/vite-plugin) return the upstream response untouched
       // so Vite's HTML transform + React-refresh preamble stay intact; framable

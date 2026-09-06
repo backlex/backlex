@@ -24,7 +24,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { rateLimitOk } from "../lib/rate-limit";
-import { recordActivity, requestMeta } from "../services/activity";
+import { keepAlive, recordActivity, requestMeta } from "../services/activity";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { extractIp, mintPlatformSession } from "../lib/platform-session";
 import { cloudConfigured } from "../lib/cloud-report";
@@ -303,18 +303,21 @@ export const platformAuthRoutes = new Hono<AppBindings>()
 
     // 6. Mint the control-plane cookie session, then land on the dashboard.
     await mintPlatformSession(c, userId);
-    void recordActivity(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        userId,
-        tenantId: null,
-        action: "auth.sso.login",
-        collection: "auth",
-        ...requestMeta(c.req.raw, c.get("ctx").env),
-        payload: { providerType: "saml", providerId: resolved.row.id, isNew, email },
-      },
+    keepAlive(
+      c,
+      recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId,
+          tenantId: null,
+          action: "auth.sso.login",
+          collection: "auth",
+          ...requestMeta(c.req.raw, c.get("ctx").env),
+          payload: { providerType: "saml", providerId: resolved.row.id, isNew, email },
+        },
+      ),
     );
-    void pruneExpiredVerifications({ db: ctx.db, dialect: ctx.dialect });
+    keepAlive(c, pruneExpiredVerifications({ db: ctx.db, dialect: ctx.dialect }));
     return c.redirect(relayState, 302);
   })
   /** Publish the SP's SAML metadata XML for IdP configuration. */
@@ -437,16 +440,19 @@ export const platformAuthRoutes = new Hono<AppBindings>()
     });
 
     await mintPlatformSession(c, userId);
-    void recordActivity(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        userId,
-        tenantId: null,
-        action: "auth.sso.login",
-        collection: "auth",
-        ...requestMeta(c.req.raw, c.get("ctx").env),
-        payload: { providerType: "ldap", providerId: "ldap", isNew, email: attrs.email },
-      },
+    keepAlive(
+      c,
+      recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId,
+          tenantId: null,
+          action: "auth.sso.login",
+          collection: "auth",
+          ...requestMeta(c.req.raw, c.get("ctx").env),
+          payload: { providerType: "ldap", providerId: "ldap", isNew, email: attrs.email },
+        },
+      ),
     );
     return c.json({ ok: true, user: { id: userId, email: attrs.email } });
   })
@@ -509,17 +515,20 @@ export const platformAuthRoutes = new Hono<AppBindings>()
     });
 
     await mintPlatformSession(c, userId);
-    void recordActivity(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        userId,
-        tenantId: null,
-        action: "auth.sso.broker_login",
-        collection: "auth",
-        ...requestMeta(c.req.raw, c.get("ctx").env),
-        payload: { providerType: "cloud", providerId: "cloud-broker", isNew, email: claims.email },
-      },
+    keepAlive(
+      c,
+      recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId,
+          tenantId: null,
+          action: "auth.sso.broker_login",
+          collection: "auth",
+          ...requestMeta(c.req.raw, c.get("ctx").env),
+          payload: { providerType: "cloud", providerId: "cloud-broker", isNew, email: claims.email },
+        },
+      ),
     );
-    void pruneExpiredVerifications({ db: ctx.db, dialect: ctx.dialect });
+    keepAlive(c, pruneExpiredVerifications({ db: ctx.db, dialect: ctx.dialect }));
     return c.redirect(ctx.env.APP_URL, 302);
   });

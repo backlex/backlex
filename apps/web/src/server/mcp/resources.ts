@@ -10,11 +10,18 @@
  *
  * Resources go through the same `fetchInternal` sub-fetch the tools use, so
  * permissions, DSL filters, and tenant isolation are reused verbatim. A key's
- * MCP allowlist also gates `resources/list` (an agent doesn't see resources
- * it could never read).
+ * MCP allowlist also gates `resources/list` AND `resources/read` (an agent
+ * doesn't see, or get, a resource it could never read through a tool).
+ *
+ * That second sentence used to be here and was not true: the allowlist was
+ * applied to `tools/*` and nowhere else, so a key narrowed to one tool still
+ * read every collection's schema and a sample of its rows through this channel.
+ * See {@link RESOURCE_REQUIRES}.
  */
+import { AppError } from "@backlex/core";
 import type { ToolCtx } from "./types";
 import { readJson } from "./internal-fetch";
+import { isToolAllowed, type KeyGuards } from "./guards";
 
 const SAMPLE_ROWS = 5;
 
@@ -93,13 +100,55 @@ const parseUri = (uri: string): ParsedUri | null => {
   return { kind: "collection", slug: m[1]! };
 };
 
+/**
+ * The tool each resource stands in for, so a narrowed key cannot read through
+ * the resource channel what its allowlist refuses through `tools/call`.
+ *
+ * The allowlist was applied to `tools/*` and to nothing else. Reproduced: a key
+ * minted with `mcpTools: ["storage.list"]` got exactly one tool from
+ * `tools/list`, was refused `collections.list` with the allowlist message — and
+ * then `resources/read backlex://collection/secrets` handed back that
+ * collection's fields AND a sample row. `backlex://openapi` likewise returned
+ * the workspace's whole endpoint surface.
+ *
+ * It is not privilege escalation past the credential's own reach — the rows are
+ * still clamped by the identity's permission DSL — but the allowlist is
+ * documented as what narrows an agent, and `db.execute_sql`'s own description
+ * tells operators to "pair with the per-key MCP allowlist". A control that is
+ * documented and half-applied is worse than one that is absent, because it is
+ * the one people rely on.
+ *
+ * `backlex://me` is deliberately ungated: it reports the caller's OWN identity
+ * and its active guards, which is most useful precisely to a key that has been
+ * narrowed and needs to say why it cannot do something.
+ */
+const RESOURCE_REQUIRES: Record<string, readonly string[]> = {
+  schema: ["schema.list_collections"],
+  // The per-collection resource returns metadata AND a sample of rows, so it
+  // needs both the describe tool and the one that reads rows.
+  collection: ["schema.describe_collection", "collections.list"],
+  openapi: ["schema.list_collections"],
+  roles: ["roles.list"],
+};
+
+/** Is this resource kind readable under the caller's active guards? */
+const resourceAllowed = (kind: string, guards: KeyGuards): boolean => {
+  const required = RESOURCE_REQUIRES[kind];
+  if (!required) return true; // `me`, and anything new that carries no data
+  return required.every((tool) => isToolAllowed(tool, guards));
+};
+
 /** Build the `resources/list` response — every collection the active caller
  *  can read, plus the workspace-level schema directory. Empty (just schema)
  *  for tenants with no collections yet. */
 export const listResources = async (ctx: ToolCtx): Promise<{ resources: McpResource[] }> => {
+  // Hidden as well as refused. Advertising a resource the caller cannot read
+  // tells it the collection exists and makes every agent discover the limit by
+  // hitting it.
+  const allowed = (kind: string) => resourceAllowed(kind, ctx.guards);
   const res = await ctx.fetchInternal(`/api/collections`);
   const body = await readJson<{ data: CollectionMeta[] }>(res);
-  const resources: McpResource[] = body.data.map((c) => ({
+  const resources: McpResource[] = (allowed("collection") ? body.data : []).map((c) => ({
     uri: collectionUri(c.slug),
     name: c.plural ?? c.singular ?? c.slug,
     description:
@@ -108,18 +157,27 @@ export const listResources = async (ctx: ToolCtx): Promise<{ resources: McpResou
     mimeType: "application/json",
   }));
   resources.unshift(
-    {
-      uri: SCHEMA_URI,
-      name: "Workspace schema",
-      description: "Every collection in the workspace — slug + field list.",
-      mimeType: "application/json",
-    },
-    {
-      uri: OPENAPI_URI,
-      name: "REST API (OpenAPI)",
-      description: "The workspace's full OpenAPI 3.1 spec — every endpoint, params, and schema.",
-      mimeType: "application/json",
-    },
+    ...(allowed("schema")
+      ? [
+          {
+            uri: SCHEMA_URI,
+            name: "Workspace schema",
+            description: "Every collection in the workspace — slug + field list.",
+            mimeType: "application/json",
+          },
+        ]
+      : []),
+    ...(allowed("openapi")
+      ? [
+          {
+            uri: OPENAPI_URI,
+            name: "REST API (OpenAPI)",
+            description:
+              "The workspace's full OpenAPI 3.1 spec — every endpoint, params, and schema.",
+            mimeType: "application/json",
+          },
+        ]
+      : []),
     {
       uri: ME_URI,
       name: "Who am I",
@@ -130,7 +188,7 @@ export const listResources = async (ctx: ToolCtx): Promise<{ resources: McpResou
   // Roles + their permission rules are admin-only upstream (`/api/roles`), so
   // only surface the resource on the admin mount; a tenant caller wouldn't be
   // able to read it anyway.
-  if (ctx.mode === "admin") {
+  if (ctx.mode === "admin" && allowed("roles")) {
     resources.push({
       uri: ROLES_URI,
       name: "Roles & permissions",
@@ -169,6 +227,14 @@ export const readResource = async (
   const parsed = parseUri(uri);
   if (!parsed) {
     throw new UnknownResourceError(`unknown resource uri: ${uri}`);
+  }
+  // The same allowlist `tools/call` enforces — see `RESOURCE_REQUIRES`.
+  if (!resourceAllowed(parsed.kind, ctx.guards)) {
+    throw new AppError(
+      "FORBIDDEN",
+      `resource "${uri}" needs ${RESOURCE_REQUIRES[parsed.kind]!.join(" + ")}, ` +
+        "which this API key's MCP allowlist does not grant",
+    );
   }
 
   if (parsed.kind === "openapi") {

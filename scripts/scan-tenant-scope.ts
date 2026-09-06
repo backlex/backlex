@@ -276,7 +276,6 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/third-party-auth.ts", symbol: "assertIssuerFree", reason: "Instance-wide uniqueness check on a JWT issuer. It has to see every workspace's rows to be a uniqueness check at all, and it deliberately reports only that the issuer is taken — naming the holder would leak another tenant's configuration to whoever probes issuers." },
   { file: "apps/web/src/server/routes/tenant-auth.ts", symbol: "consumeVerification", reason: "Deletes the verification row the magic-link/OTP path just matched on its own token." },
   { file: "apps/web/src/server/services/app-user-invites.ts", symbol: "consumeAppUserInvite", reason: "Deletes the verification row the invite-accept path just matched on its own token." },
-  { file: "apps/web/src/server/services/invites.ts", symbol: "bindInvite", reason: "Binds the InviteRow findInviteByToken resolved from the presented token, and clears the token in the same write." },
   { file: "apps/web/src/server/services/dashboards.ts", symbol: "runDashboardPublic", reason: "Loads the role a public dashboard embeds AS, by the embedRoleId stored on the dashboard row the embed token resolved to." },
 
   // ── Reached through a parent the caller scoped ──────────────────────────
@@ -363,12 +362,13 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   // These are here so the guard can be green while the question stays open.
   // Each one is a real behaviour somebody has to decide about; none of them is
   // a reason to relax the rule.
-  {
-    file: "apps/web/src/server/services/invites.ts",
-    symbol: "findActiveInviteByEmail",
-    reason:
-      "SUSPECT (by design, but worth naming): reads EVERY pending invite row in the database and matches the email in JavaScript. An invitee has no workspace before this call answers, so a tenant predicate is impossible — but the read is unbounded and grows with the whole deployment.",
-  },
+  // `invites.ts findActiveInviteByEmail` used to sit here as a SUSPECT: it read
+  // every pending invite row in the database and matched the email in
+  // JavaScript. It is GONE — the 2026-09 audit's phase 10 found that binding an
+  // invite by address alone let anyone who knew it claim the standing the
+  // invite carried, so the function has no safe caller and was deleted rather
+  // than deprecated. `findInviteByToken` is what answers now, keyed on the
+  // token's digest, and its entry is a few lines above.
   {
     file: "apps/web/src/server/services/backup.ts",
     symbol: "runBackup",

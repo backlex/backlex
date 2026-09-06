@@ -23,6 +23,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { isEmbeddingModel, type EmbeddingModel } from "@backlex/core";
 import type { Ctx } from "../../context";
+import { keepAliveCtx } from "../activity";
 import { callClaude } from "../../mcp/ai-client";
 import { aiMeterForTenant, assertAiQuota } from "../usage";
 
@@ -297,7 +298,7 @@ export const retrieveSemantic = async (
     }
     // Usage counter — best-effort, and deliberately not awaited into the
     // critical path's error handling: a failed counter must not cost recall.
-    void bumpHits(ctx, hit.map((h) => h.id)).catch(() => {});
+    keepAliveCtx(ctx, bumpHits(ctx, hit.map((h) => h.id)), "agent-memory");
     return hit.map((r) => r.content);
   } catch (e) {
     console.error(`[agent-memory] semantic retrieve failed for ${agentId}:`, e);

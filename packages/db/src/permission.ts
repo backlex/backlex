@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@backlex/core";
+import { AppError, COMPARISON_OPERATORS } from "@backlex/core";
 import type {
   AuthSubject,
   ComparisonObj,
@@ -23,6 +23,27 @@ export const planNearOrThrow = (field: string, raw: unknown): GeoNearPlan => {
 
 const FALSE: SQL = sql`(1=0)`;
 const TRUE: SQL = sql`(1=1)`;
+/**
+ * "There is no answer here", as distinct from "the answer is no".
+ *
+ * SQL already has this and the compiler was throwing it away. `owner = NULL`
+ * is NULL, not FALSE — and the difference only shows up under negation, which
+ * is exactly where it bit: a rule `{$not: {owner_id: {_eq: "$user.id"}}}`
+ * evaluated for a subject with no user id resolved the variable to null,
+ * collapsed the comparison to `(1=0)`, and `NOT (1=0)` is TRUE. A rule written
+ * to hide other people's rows returned EVERY row to the one caller who had not
+ * identified themselves.
+ *
+ * `(NULL = 1)` restores the three-valued reading. In a positive clause it
+ * behaves exactly like FALSE (`WHERE NULL` excludes the row, `x AND NULL` and
+ * `x OR NULL` both come out right), so nothing narrows anywhere except under
+ * `NOT`, where it correctly stays not-true.
+ *
+ * Reserved for an operand that could NOT BE RESOLVED. An explicitly empty
+ * `_in: []` is a real, knowable falsehood — `NOT (_in: [])` matching every row
+ * is correct — and keeps using {@link FALSE}.
+ */
+const UNKNOWN: SQL = sql`(NULL = 1)`;
 
 export type Dialect = "pg" | "sqlite";
 
@@ -319,18 +340,22 @@ export const geoDistanceSql = (
  *     500, which made the array-valued variables unusable in the very operator
  *     they exist for.
  *
- * Anything else (a variable that resolved to null, a scalar) yields `[]`, which
- * the callers turn into FALSE for `_in` and TRUE for `_nin` — the same
- * fail-closed reading an explicitly empty list already had.
+ * Anything else (a variable that resolved to null, a scalar) yields `null`,
+ * which is NOT the same thing as an empty list and is why this returns a union
+ * rather than always an array. An explicit `_in: []` is a knowable falsehood —
+ * nothing is in nothing, and `NOT (_in: [])` is correctly every row. An
+ * UNRESOLVABLE operand is not knowable at all, and collapsing the two let a
+ * negated rule over `$user.orgs` match everything for a subject with no orgs.
+ * See {@link UNKNOWN}.
  */
-const resolveList = (raw: unknown, r: (v: unknown) => unknown): unknown[] => {
+const resolveList = (raw: unknown, r: (v: unknown) => unknown): unknown[] | null => {
   if (Array.isArray(raw)) return raw.map(r);
   if (isVar(raw)) {
     const resolved = r(raw);
     // Already-resolved values are concrete — don't re-resolve the elements.
-    return Array.isArray(resolved) ? resolved : [];
+    return Array.isArray(resolved) ? resolved : null;
   }
-  return [];
+  return null;
 };
 
 const compileComparison = (
@@ -348,6 +373,19 @@ const compileComparison = (
     const override = leaf(field, cmp, ctx);
     if (override) return override;
   }
+  // Fail CLOSED on an operator nothing implements.
+  //
+  // Every operator below is an independent `if`, so a key none of them matched
+  // simply left `parts` empty and fell through to the `TRUE` at the bottom —
+  // `{ owner_id: { _equals: "$user.id" } }`, one letter wrong, compiled to
+  // `(1=1)`. Nothing validated a stored condition, so a rule could sit in the
+  // `permissions` table for as long as anyone liked granting access to every
+  // row it was written to restrict. `UNKNOWN` rather than `FALSE` so the
+  // refusal survives a `$not` too — see {@link UNKNOWN}. Write-time validation
+  // is the other half of this: `unknownOperators` in `@backlex/core` names the
+  // bad key at the door, so nobody has to discover it as an empty page.
+  const unknownOps = Object.keys(cmp).filter((k) => !COMPARISON_OPERATORS.has(k));
+  if (unknownOps.length > 0) return UNKNOWN;
   const id = colRef(field);
   const r = (v: unknown) => resolve(v, ctx, now, dialect, varSql);
   /** A bare variable that maps to a SQL ARRAY expression (`$user.roles` →
@@ -359,12 +397,21 @@ const compileComparison = (
   const parts: SQL[] = [];
   if (cmp._eq !== undefined) {
     const v = r(cmp._eq);
-    if (v === null || v === undefined) return FALSE;
+    // `x = NULL` is NULL in SQL, and that is the honest answer here too: the
+    // operand is a variable that did not resolve (`$user.id` with no user).
+    // It used to be FALSE, which reads the same in a positive clause and
+    // inverts to "every row" under `$not`.
+    if (v === null || v === undefined) return UNKNOWN;
     parts.push(sql`${id} = ${v}`);
   }
   if (cmp._neq !== undefined) {
     const v = r(cmp._neq);
-    parts.push(v === null || v === undefined ? sql`${id} IS NOT NULL` : sql`${id} <> ${v}`);
+    // Same three-valued reading, and this one also NARROWS a case that used to
+    // fall open: `{ owner_id: { _neq: "$user.id" } }` for a subject with no id
+    // compiled to `owner_id IS NOT NULL`, i.e. every owned row, as the answer
+    // to "rows not owned by me" asked by nobody.
+    if (v === null || v === undefined) return UNKNOWN;
+    parts.push(sql`${id} <> ${v}`);
   }
   if (cmp._in !== undefined) {
     const asArray = varArray(cmp._in);
@@ -372,6 +419,9 @@ const compileComparison = (
       parts.push(sql`${id} = ANY(${asArray})`);
     } else {
       const arr = resolveList(cmp._in, r);
+      // `null` = the operand could not be resolved; `[]` = the author wrote an
+      // empty list. The first has no answer, the second answers "no".
+      if (arr === null) return UNKNOWN;
       if (arr.length === 0) return FALSE;
       parts.push(sql`${id} IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
     }
@@ -382,6 +432,7 @@ const compileComparison = (
       parts.push(sql`NOT (${id} = ANY(${asArray}))`);
     } else {
       const arr = resolveList(cmp._nin, r);
+      if (arr === null) return UNKNOWN;
       if (arr.length === 0) return TRUE;
       parts.push(sql`${id} NOT IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
     }
@@ -398,14 +449,28 @@ const compileComparison = (
   if (cmp._null === false) parts.push(sql`${id} IS NOT NULL`);
   if (cmp._empty === true) parts.push(sql`(${id} IS NULL OR ${id} = ${""})`);
   if (cmp._nempty === true) parts.push(sql`(${id} IS NOT NULL AND ${id} <> ${""})`);
+  // A needle that did not resolve is not the four-character string "null".
+  // `String(r(v))` used to make it exactly that, so `{ name: { _contains:
+  // "$user.email" } }` for an anonymous subject searched for rows containing
+  // "null" — and under `$not`, matched every row that did not.
+  const needle = (v: unknown): string | null => {
+    const resolved = r(v);
+    return resolved === null || resolved === undefined ? null : String(resolved);
+  };
   if (cmp._contains !== undefined) {
-    parts.push(sql`${id} LIKE ${`%${String(r(cmp._contains))}%`}`);
+    const n = needle(cmp._contains);
+    if (n === null) return UNKNOWN;
+    parts.push(sql`${id} LIKE ${`%${n}%`}`);
   }
   if (cmp._starts_with !== undefined) {
-    parts.push(sql`${id} LIKE ${`${String(r(cmp._starts_with))}%`}`);
+    const n = needle(cmp._starts_with);
+    if (n === null) return UNKNOWN;
+    parts.push(sql`${id} LIKE ${`${n}%`}`);
   }
   if (cmp._ends_with !== undefined) {
-    parts.push(sql`${id} LIKE ${`%${String(r(cmp._ends_with))}`}`);
+    const n = needle(cmp._ends_with);
+    if (n === null) return UNKNOWN;
+    parts.push(sql`${id} LIKE ${`%${n}`}`);
   }
   // Case-insensitive: ONE engine folds BOTH sides.
   //
@@ -427,8 +492,9 @@ const compileComparison = (
   // the very same function and NEITHER dialect folds anything at query time.
   // That is what makes `_icontains` fully multi-language and byte-identical on
   // Postgres and SQLite — no `LOWER()`, no locale, no dialect branch.
-  const ilike = (v: unknown, wrap: (s: string) => string): SQL => {
-    const raw = String(r(v));
+  const ilike = (v: unknown, wrap: (s: string) => string): SQL | null => {
+    const raw = needle(v);
+    if (raw === null) return null;
     if (foldable?.(field)) {
       return sql`${colRef(foldColumn(field))} LIKE ${wrap(foldSearch(raw))}`;
     }
@@ -439,13 +505,19 @@ const compileComparison = (
       : sql`LOWER(${id}) LIKE ${wrap(foldCase(raw, "sqlite"))}`;
   };
   if (cmp._icontains !== undefined) {
-    parts.push(ilike(cmp._icontains, (s) => `%${s}%`));
+    const q = ilike(cmp._icontains, (s) => `%${s}%`);
+    if (q === null) return UNKNOWN;
+    parts.push(q);
   }
   if (cmp._istarts_with !== undefined) {
-    parts.push(ilike(cmp._istarts_with, (s) => `${s}%`));
+    const q = ilike(cmp._istarts_with, (s) => `${s}%`);
+    if (q === null) return UNKNOWN;
+    parts.push(q);
   }
   if (cmp._iends_with !== undefined) {
-    parts.push(ilike(cmp._iends_with, (s) => `%${s}`));
+    const q = ilike(cmp._iends_with, (s) => `%${s}`);
+    if (q === null) return UNKNOWN;
+    parts.push(q);
   }
   if (cmp._near !== undefined) {
     // A malformed origin or radius is the CALLER's mistake, so it has to leave
@@ -585,6 +657,39 @@ const unwrapMoney = (value: unknown): unknown => {
   return typeof v.amount === "number" && typeof v.currency === "string" ? v.amount : value;
 };
 
+/**
+ * The JS half's answer, with the same three values the SQL half has.
+ *
+ * `null` is UNKNOWN — see {@link UNKNOWN}. It exists here for one reason: this
+ * predicate decides what a realtime subscriber receives, and the SQL compiler
+ * decides what the REST list returns. If one of them collapses "unresolvable"
+ * to "false" and the other does not, a row goes out over a socket that the
+ * list endpoint would have withheld. They now agree by construction.
+ */
+type Verdict = boolean | null;
+
+/** `AND` under three-valued logic: one FALSE settles it; otherwise an UNKNOWN
+ *  makes the whole thing unknown. */
+const andVerdict = (parts: Verdict[]): Verdict => {
+  let unknown = false;
+  for (const p of parts) {
+    if (p === false) return false;
+    if (p === null) unknown = true;
+  }
+  return unknown ? null : true;
+};
+
+/** `OR` under three-valued logic: one TRUE settles it; otherwise an UNKNOWN
+ *  makes the whole thing unknown. */
+const orVerdict = (parts: Verdict[]): Verdict => {
+  let unknown = false;
+  for (const p of parts) {
+    if (p === true) return true;
+    if (p === null) unknown = true;
+  }
+  return unknown ? null : false;
+};
+
 const matchesInner = (
   row: Record<string, unknown>,
   cond: Condition,
@@ -592,14 +697,20 @@ const matchesInner = (
   now: number,
   dialect: Dialect | undefined,
   foldable?: (field: string) => boolean,
-): boolean => {
+): Verdict => {
   const down = (c: Condition) => matchesInner(row, c, ctx, now, dialect, foldable);
   const and = andOf(cond);
-  if (and) return and.every(down);
+  if (and) return andVerdict(and.map(down));
   const or = orOf(cond);
-  if (or) return or.some(down);
+  if (or) return orVerdict(or.map(down));
   const not = notOf(cond);
-  if (not !== undefined) return !down(not);
+  if (not !== undefined) {
+    const inner = down(not);
+    // `NOT UNKNOWN` is UNKNOWN, not TRUE. This one line is the JS side of the
+    // whole finding: it used to be `!down(not)`, so a negated rule whose
+    // operand did not resolve matched every row.
+    return inner === null ? null : !inner;
+  }
   // JS predicate is dialect-agnostic: relative dates resolve to epoch-ms so the
   // numeric comparisons below stay comparable. A comparison value of the form
   // `"$field.<name>"` resolves to a sibling row value — this is what powers
@@ -630,17 +741,33 @@ const matchesInner = (
     // `_nin`, …). The SQL compiler lowers these keys to correlated EXISTS
     // subqueries; realtime + the permission simulator simply never match.
     if (field.includes(".")) return false;
+    // Same refusal the SQL compiler makes, for the same reason: an operator
+    // nothing implements matched no branch below and fell out of the bottom as
+    // `true`. See `unknownOperators` in `@backlex/core`.
+    if (Object.keys(cmp).some((k) => !COMPARISON_OPERATORS.has(k))) return null;
     const left = lookup(row, field);
-    if (cmp._eq !== undefined && left !== r(cmp._eq)) return false;
-    if (cmp._neq !== undefined && left === r(cmp._neq)) return false;
+    // An operand that did not resolve is UNKNOWN, not "not equal" — mirroring
+    // the SQL side's `UNKNOWN`, so realtime and REST answer the same question.
+    if (cmp._eq !== undefined) {
+      const v = r(cmp._eq);
+      if (v === null || v === undefined) return null;
+      if (left !== v) return false;
+    }
+    if (cmp._neq !== undefined) {
+      const v = r(cmp._neq);
+      if (v === null || v === undefined) return null;
+      if (left === v) return false;
+    }
     // Same variable-resolving list handling as the SQL compiler, so realtime
     // and the permission simulator agree with what the query layer produced.
     if (cmp._in !== undefined) {
       const arr = resolveList(cmp._in, r);
+      if (arr === null) return null;
       if (!arr.includes(left)) return false;
     }
     if (cmp._nin !== undefined) {
       const arr = resolveList(cmp._nin, r);
+      if (arr === null) return null;
       if (arr.includes(left)) return false;
     }
     if (cmp._gt !== undefined && !(num(left) > num(r(cmp._gt)))) return false;
@@ -657,14 +784,26 @@ const matchesInner = (
     if (cmp._null === false && left == null) return false;
     if (cmp._empty === true && !(left == null || left === "")) return false;
     if (cmp._nempty === true && (left == null || left === "")) return false;
-    if (cmp._contains !== undefined && !String(left ?? "").includes(String(r(cmp._contains)))) {
-      return false;
+    // A needle that did not resolve is UNKNOWN, not the string "null" — the
+    // same correction the SQL compiler's `needle` makes.
+    const needle = (v: unknown): string | null => {
+      const resolved = r(v);
+      return resolved === null || resolved === undefined ? null : String(resolved);
+    };
+    if (cmp._contains !== undefined) {
+      const n = needle(cmp._contains);
+      if (n === null) return null;
+      if (!String(left ?? "").includes(n)) return false;
     }
-    if (cmp._starts_with !== undefined && !String(left ?? "").startsWith(String(r(cmp._starts_with)))) {
-      return false;
+    if (cmp._starts_with !== undefined) {
+      const n = needle(cmp._starts_with);
+      if (n === null) return null;
+      if (!String(left ?? "").startsWith(n)) return false;
     }
-    if (cmp._ends_with !== undefined && !String(left ?? "").endsWith(String(r(cmp._ends_with)))) {
-      return false;
+    if (cmp._ends_with !== undefined) {
+      const n = needle(cmp._ends_with);
+      if (n === null) return null;
+      if (!String(left ?? "").endsWith(n)) return false;
     }
     // Folded with the STORE's rules, not JavaScript's, so this predicate and
     // the SQL above answer the same question. Left unqualified (no dialect),
@@ -681,23 +820,20 @@ const matchesInner = (
       foldable?.(field)
         ? foldSearch(String(v ?? ""))
         : foldCase(String(v ?? ""), dialect);
-    if (
-      cmp._icontains !== undefined &&
-      !fold(left).includes(fold(r(cmp._icontains)))
-    ) {
-      return false;
+    if (cmp._icontains !== undefined) {
+      const n = needle(cmp._icontains);
+      if (n === null) return null;
+      if (!fold(left).includes(fold(n))) return false;
     }
-    if (
-      cmp._istarts_with !== undefined &&
-      !fold(left).startsWith(fold(r(cmp._istarts_with)))
-    ) {
-      return false;
+    if (cmp._istarts_with !== undefined) {
+      const n = needle(cmp._istarts_with);
+      if (n === null) return null;
+      if (!fold(left).startsWith(fold(n))) return false;
     }
-    if (
-      cmp._iends_with !== undefined &&
-      !fold(left).endsWith(fold(r(cmp._iends_with)))
-    ) {
-      return false;
+    if (cmp._iends_with !== undefined) {
+      const n = needle(cmp._iends_with);
+      if (n === null) return null;
+      if (!fold(left).endsWith(fold(n))) return false;
     }
     if (cmp._near !== undefined) {
       // Same projection, same origin-derived scale factor as the SQL — so a
@@ -727,7 +863,10 @@ export const matchesCondition = (
   ctx: AuthSubject,
   opts: EvalOpts = {},
 ): boolean =>
-  matchesInner(row, cond, ctx, opts.now ?? Date.now(), opts.dialect, opts.foldable);
+  // UNKNOWN reads as "no match", exactly as a NULL predicate excludes a row
+  // from a `WHERE`. Callers get the same boolean they always got; the third
+  // value exists only so `$not` cannot invent a TRUE out of it.
+  matchesInner(row, cond, ctx, opts.now ?? Date.now(), opts.dialect, opts.foldable) === true;
 
 /** Operators that ORDER two values. These are the ones with nothing to say
  *  when either side is missing — an equality still has an answer (`_eq` against

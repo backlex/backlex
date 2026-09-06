@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { httpUrl } from "../../lib/openapi";
 
 export const FileRowSchema = z
   .object({
@@ -23,7 +24,7 @@ export const FileListMeta = z
 
 export const FromUrlInput = z
   .object({
-    url: z.string().url(),
+    url: httpUrl(),
     key: z.string().optional(),
     folderId: z.string().nullable().optional(),
     acl: z.enum(["public", "private"]).optional(),

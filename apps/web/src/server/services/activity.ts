@@ -198,6 +198,30 @@ export const keepAlive = (
 };
 
 /**
+ * {@link keepAlive} for the layers that hold a `Ctx` rather than a Hono
+ * context — services, adapters, the event fan-out.
+ *
+ * `Ctx.waitUntil` is set by the request middleware and absent on cron ticks,
+ * queue consumers and the test harness; there the promise simply floats, which
+ * is what those runtimes did anyway. The rejection is swallowed here rather
+ * than at each call site: this exists for work the caller has already decided
+ * not to wait on, so a failure in it must not surface as an unhandled
+ * rejection on the request that scheduled it. `label` names the subsystem in
+ * that log line, because "something rejected" is not a debuggable sentence.
+ */
+export const keepAliveCtx = (
+  ctx: { waitUntil?: (p: Promise<unknown>) => void },
+  p: Promise<unknown>,
+  label: string,
+): void => {
+  const guarded = p.catch((e) => {
+    console.error(`[${label}] deferred work failed`, e);
+  });
+  if (ctx.waitUntil) ctx.waitUntil(guarded);
+  else void guarded;
+};
+
+/**
  * Reads the per-request timestamp that `tenantMiddleware` stamped onto
  * the Hono context via `c.set("__startedAt", …)` and returns elapsed ms.
  * Pass `c` itself (the Hono Context) — we narrow it to the get method.

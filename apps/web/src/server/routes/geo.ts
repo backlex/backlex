@@ -1,10 +1,12 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import type { Context } from "hono";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { requirePermission } from "../middleware/permission";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
+import { rateLimitOk } from "../lib/rate-limit";
 import { collectionFromParam, loadCollection } from "../services/items/collection-loader";
 import {
   geoFieldOrThrow,
@@ -41,6 +43,47 @@ const PointOut = z
   })
   .openapi("GeocodeResult");
 
+/**
+ * Per-caller budget on the two routes that spend the OPERATOR's geocoding
+ * quota.
+ *
+ * `/geocode` and `/reverse` carry `requireUser` and nothing else, and
+ * `lib/route-planes.ts` described the prefix as a "permission-gated geocoding
+ * helper" — a guard the two provider-calling verbs did not have. The sibling
+ * `/backfill/{slug}` DOES carry `requirePermission`, so the omission reads as
+ * per-verb drift rather than a policy, and anyone auditing from the table would
+ * conclude it was covered.
+ *
+ * A rate limit rather than a plane gate, deliberately. The exposure is BUDGET,
+ * not data: the reply is a public address-to-point lookup, and the note's claim
+ * that field editors on both planes use it is a real product shape that a
+ * `requirePlatformMw` would break. What must not be possible is looping it —
+ * every call reaches a third-party provider on the operator's billing account.
+ *
+ * Keyed on the identity, falling back to the workspace, so one workspace's
+ * end-users cannot spend another's share.
+ */
+const GEO_LOOKUPS_PER_MINUTE = 60;
+const GEO_WINDOW_MS = 60_000;
+
+const assertGeoBudget = async (c: Context<AppBindings>): Promise<void> => {
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  const who = auth?.userId ?? auth?.tenantId ?? "anon";
+  const ok = await rateLimitOk(
+    ctx.env,
+    `geo-lookup:${who}`,
+    GEO_LOOKUPS_PER_MINUTE,
+    GEO_WINDOW_MS,
+  );
+  if (!ok) {
+    throw new AppError(
+      "RATE_LIMITED",
+      `Too many geocoding lookups — the limit is ${GEO_LOOKUPS_PER_MINUTE} per minute.`,
+    );
+  }
+};
+
 export const geoRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
@@ -76,6 +119,7 @@ export const geoRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       requireGeocodeProvider(ctx.geocode.provider);
+      await assertGeoBudget(c);
       const { address } = c.req.valid("json");
       const data = await ctx.geocode.geocode(address);
       return c.json({ data, provider: ctx.geocode.provider });
@@ -124,6 +168,7 @@ export const geoRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           `The ${ctx.geocode.provider} geocoder does not support reverse lookup`,
         );
       }
+      await assertGeoBudget(c);
       const { lat, lng } = c.req.valid("json");
       const data = await ctx.geocode.reverse(lat, lng);
       return c.json({ data, provider: ctx.geocode.provider });

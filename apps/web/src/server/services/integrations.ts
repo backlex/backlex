@@ -26,6 +26,7 @@ import {
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { connectionConfigFor, encryptConfig } from "./integration-credentials";
+import { guardedIntegrationFetch } from "./integrations-fetch";
 import { enqueueJob } from "./jobs";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
@@ -420,7 +421,16 @@ async function deliverOne(
   // Re-applied here because the queue handler reconstructs the message from a
   // stored payload: a job written before this rule existed, or hand-enqueued,
   // must not be able to hand a record to a provider that never asked for one.
-  const out = await deliverToIntegration(row.kind, cfg, messageFor(row.kind, message), fetchImpl, row.id);
+  const out = await deliverToIntegration(
+    row.kind,
+    cfg,
+    messageFor(row.kind, message),
+    // Defaulted at the LEAF, not on the argument: in `dispatchIntegrations` the
+    // presence of `fetchImpl` is what selects inline delivery over the durable
+    // queue, so defaulting it up there would quietly disable retries.
+    fetchImpl ?? guardedIntegrationFetch(env),
+    row.id,
+  );
   const ms = Date.now() - started;
   // status 0 is the adapters' "misconfigured or the request threw" sentinel —
   // there is no response to quote, so say so rather than logging a bare 0.

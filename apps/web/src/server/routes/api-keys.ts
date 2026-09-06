@@ -3,6 +3,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { logActivity } from "../services/activity";
 import { requirePlatformMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
@@ -365,6 +366,25 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           roleNames.set(r.id, r.name);
         }
       }
+      // Minting a durable credential is a privileged act and left no trace.
+      // `roles/permissions.ts` and `roles/users.ts` both log theirs, so an
+      // auditor reading `/api/activity` reasonably concludes no key was issued.
+      // The secret is NEVER in the payload — the id, the target user and the
+      // bound role are what an auditor needs, and the secret is what they must
+      // not find in a table more people can read than can hold the key.
+      await logActivity(c, {
+        action: "apikey.create",
+        collection: "api_keys",
+        itemId: row.id,
+        payload: {
+          name: row.name,
+          userId: targetUserId,
+          roleId: row.roleId ?? null,
+          mcpReadOnly: body.mcpReadOnly ?? false,
+          mcpTools: body.mcpTools ?? null,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        },
+      });
       return c.json(
         {
           data: { ...sanitize(row, roleNames), secret },
@@ -484,6 +504,11 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         throw new AppError("NOT_FOUND", "API key not found");
       }
       await revokeApiKey(ctx, tenantId, id);
+      await logActivity(c, {
+        action: "apikey.revoke",
+        collection: "api_keys",
+        itemId: id,
+      });
       return c.json({ ok: true });
     },
   );

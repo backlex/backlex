@@ -13,7 +13,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
 import {
   MAX_HOOK_TIMEOUT_MS,
   createSyncHook,
@@ -50,7 +50,7 @@ const HookView = z
 const HookInput = z
   .object({
     name: z.string().min(1),
-    url: z.string().url().openapi({ description: "Your service. Receives a POST per matching write." }),
+    url: httpUrl().openapi({ description: "Your service. Receives a POST per matching write." }),
     events: z
       .array(z.string().min(1))
       .min(1)

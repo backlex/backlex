@@ -16,7 +16,7 @@ import {
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { guardLogicalKey } from "../services/storage/keys";
-import { safeServeHeaders } from "../services/storage/content-type";
+import { safeServeContentType, safeServeHeaders } from "../services/storage/content-type";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.workspaceConfig : sqlite.schema.workspaceConfig;
@@ -298,15 +298,33 @@ export const workspaceConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
       if (!obj) throw new AppError("NOT_FOUND", `${kind} file missing`);
       return new Response(obj.body, {
         headers: {
-          "content-type": obj.meta.contentType ?? "application/octet-stream",
+          "content-type": safeServeContentType(obj.meta.contentType),
           "content-length": String(obj.meta.size),
           // Branding assets are tenant-uploaded bytes served on the app origin
           // (and an SVG logo is a document) — same inert-serve headers the
           // storage route uses.
           ...safeServeHeaders(obj.meta.contentType),
-          // Short cache — admins re-upload at low frequency, and the resolved
-          // view appends `?v=<updatedAt>` so a change always busts.
-          "cache-control": "public, max-age=300",
+          // `private`, not `public` — and this is the whole point.
+          //
+          // The URL is IDENTICAL for every workspace: `/api/workspace-config/
+          // asset/logo`. Which tenant's bytes come back is decided by the
+          // `X-Backlex-Tenant` header, the `backlex-tenant` cookie, or the
+          // caller's default — none of which appears in the URL, and none of
+          // which the response named in a `Vary` (the only one the stack adds is
+          // `Origin`, from `cors()`). Declared `public, max-age=300`, any shared
+          // cache that honours it — a Cloudflare Cache Rule extended to API
+          // paths, a corporate proxy, a self-host's reverse proxy — stored
+          // workspace A's logo under that one URL and served it to workspace B's
+          // visitors. A logo is what a person reads to decide which workspace
+          // they are looking at, so a mixup here is also a phishing aid.
+          //
+          // `private` keeps the 300s browser cache (which is what the low
+          // re-upload rate wanted) and keeps it out of every SHARED one. `Vary`
+          // is stated as well, so a cache that ignores `private` still keys on
+          // the selectors. Putting the workspace in the path would be the
+          // version that is genuinely shareable, and would be a URL change.
+          vary: "X-Backlex-Tenant, Cookie",
+          "cache-control": "private, max-age=300",
         },
       });
     },

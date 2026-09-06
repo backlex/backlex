@@ -15,8 +15,20 @@ const json = (body: unknown) => ({
 
 const signOut = (h: TestHarness) => h.fetch("/api/auth/sign-out", { method: "POST" });
 
-const signUp = (h: TestHarness, email: string) =>
-  h.fetch("/api/auth/sign-up/email", json({ email, password: "correct-horse-battery", name: "X" }));
+/** Sign up, optionally presenting a workspace invite token. The token is what
+ *  BINDS the invite — it used to bind on the address alone, so anyone who knew
+ *  an invited email could claim the standing it carried (2026-09 audit, phase
+ *  10). */
+const signUp = (h: TestHarness, email: string, inviteToken?: string) => {
+  const init: RequestInit = json({ email, password: "correct-horse-battery", name: "X" });
+  if (inviteToken) {
+    init.headers = {
+      ...(init.headers as Record<string, string>),
+      "x-backlex-invite-token": inviteToken,
+    };
+  }
+  return h.fetch("/api/auth/sign-up/email", init);
+};
 
 describe("sign-up policy: default-closed + invites", () => {
   let h: TestHarness;
@@ -72,7 +84,7 @@ describe("sign-up policy: default-closed + invites", () => {
     // A non-invited address is still blocked…
     expect((await signUp(h, "stranger@example.test")).status).toBe(403);
     // …but the invited address is admitted and auto-bound as an active member.
-    expect((await signUp(h, "invitee@example.test")).ok).toBe(true);
+    expect((await signUp(h, "invitee@example.test", invData.token)).ok).toBe(true);
     const mine = (await (await h.fetch("/api/tenants")).json()) as { data: { slug: string }[] };
     expect(mine.data.some((t) => t.slug === "default")).toBe(true);
   });

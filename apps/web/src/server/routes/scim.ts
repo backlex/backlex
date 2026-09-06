@@ -16,6 +16,7 @@
 import { Hono } from "hono";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
+import { keepAliveCtx } from "../services/activity";
 import {
   createScimUser,
   deactivateScimUser,
@@ -82,7 +83,7 @@ const withScim = (
       },
     );
   }
-  void touchScimConfig(ctx, resolved.configId);
+  keepAliveCtx(ctx, touchScimConfig(ctx, resolved.configId), "scim");
   try {
     return await handler(c, { tenantId: resolved.tenantId, defaultRoleId: resolved.defaultRoleId });
   } catch (e) {

@@ -40,6 +40,8 @@ import {
   tags,
 } from "../services/storage/schemas";
 import { serveObject } from "../services/storage/serve";
+import { assertDeclaredLengthWithin, limitStream } from "../services/storage/limit-stream";
+import { uploadPolicy } from "../services/uploads";
 import { baseContentType } from "../services/storage/content-type";
 import {
   deleteFileScoped,
@@ -479,6 +481,12 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         throw new AppError("VALIDATION", `source body advertises ${contentLengthHeader} bytes; cap is ${MAX_IMPORT_BYTES}`);
       }
       if (!resp.body) throw new AppError("BAD_REQUEST", "source returned no body");
+      // …and the header above is the ATTACKER's, because the URL is theirs.
+      // Serving the body chunked declared no length at all, which skipped both
+      // `MAX_IMPORT_BYTES` and the quota pre-check below (handed 0), leaving
+      // only `IMPORT_TIMEOUT_MS` — an abort on the fetch, not a byte counter,
+      // and a fast source moves a lot in 30 seconds. Count what arrives.
+      const importBody = limitStream(resp.body, MAX_IMPORT_BYTES, "Imported file");
 
       // Auto folder from key path — same rule as PUT.
       const folderIdQuery = body.folderId;
@@ -510,7 +518,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // cannot leave the old public copy fetchable.
       const obj = await bucketFor(ctx, aclValue).put({
         key,
-        body: resp.body,
+        body: importBody,
         contentType,
       });
       await dropStaleCopy(ctx, key, aclValue);
@@ -635,8 +643,23 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ? await findOrCreateFolderByName(ctx, tenantId, inferredName, auth.userId)
         : null;
     }
-    const body = c.req.raw.body;
-    if (!body) throw new AppError("BAD_REQUEST", "Empty body");
+    const rawBody = c.req.raw.body;
+    if (!rawBody) throw new AppError("BAD_REQUEST", "Empty body");
+    // Ceiling on the REQUEST, not just on the workspace's total.
+    //
+    // There was none. `UPLOAD_MAX_BYTES` (5 GB) was consulted only on the TUS
+    // route, so a principal holding `files:create` could PUT a multi-gigabyte
+    // chunked body here: `content-length` is absent on a chunked request, so
+    // `assertStorageWithinLimit` was handed 0 and the quota did not apply
+    // either. On an fs deployment the adapter then buffered the whole thing in
+    // memory before writing a byte.
+    //
+    // Two checks, deliberately. The header one is free and saves the transfer
+    // when the client is honest; the stream one is what actually holds, because
+    // the header is the caller's to choose.
+    const maxBytes = uploadPolicy(ctx.env).maxBytes;
+    assertDeclaredLengthWithin(c.req.header("content-length"), maxBytes, "Upload");
+    const body = limitStream(rawBody, maxBytes, "Upload");
     // Hard storage cap (#12). Content-Length is advisory (absent on chunked
     // bodies) — the post-upload `files` row still records the true size, so
     // an under-declared body only overshoots by one file.

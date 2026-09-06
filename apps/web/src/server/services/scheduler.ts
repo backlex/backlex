@@ -187,14 +187,29 @@ const dueCronFunctions = (
 
 export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> => {
   const prev = lastTickAt ?? new Date(now.getTime() - 60_000);
+  // Advance the watermark FIRST so two overlapping ticks cannot both claim the
+  // same window — but put it back if this tick fails before it has even read
+  // the function rows. It used to only advance: a throw in `buildContext` (a
+  // cold DB, a transient connect failure) consumed the window and every cron
+  // function due inside it was skipped forever, silently, because the next
+  // tick's `prev` had already moved past it. Restoring on failure turns a lost
+  // window into a retried one; the tick that threw is the one that reports.
+  const previousWatermark = lastTickAt;
   lastTickAt = now;
 
-  const ctx = await buildContext(env);
-  const t = tableFor(ctx.dialect);
-  const rows = (await (ctx.db as any)
-    .select()
-    .from(t)
-    .where(eq(t.trigger, "cron"))) as FunctionRow[];
+  let ctx: Awaited<ReturnType<typeof buildContext>>;
+  let rows: FunctionRow[];
+  try {
+    ctx = await buildContext(env);
+    const t = tableFor(ctx.dialect);
+    rows = (await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(eq(t.trigger, "cron"))) as FunctionRow[];
+  } catch (e) {
+    lastTickAt = previousWatermark;
+    throw e;
+  }
 
   const due = dueCronFunctions(rows, prev, now);
 

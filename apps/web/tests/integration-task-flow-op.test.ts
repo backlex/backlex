@@ -272,10 +272,16 @@ describe("a task step is checked when the flow is SAVED", () => {
     expect(res.status).toBe(201);
   });
 
-  test("GraphQL gets the same refusal, on a payload nothing parsed first", async () => {
-    // Only the REST route runs operations through zod, so this is the surface
-    // where a `kind` that is not a string reaches the check as-is. It has to
-    // come back as a refusal naming the step, not a TypeError.
+  test("GraphQL gets the same refusal, and now from the same zod", async () => {
+    // This test's premise used to be "only the REST route runs operations
+    // through zod", and `assertTaskSteps` was the last line of defence on the
+    // GraphQL side. The 2026-09 audit's phase 10 moved the parse INTO
+    // `assertFlowShape`, the guard both surfaces already call, so a `kind` that
+    // is not a string is now refused by the schema and never reaches the
+    // task-step check at all.
+    //
+    // What must hold either way is the OUTCOME: refused, naming the offending
+    // path, and never a TypeError from an unguarded `.trim()`.
     const res = await post("/api/graphql", {
       query: "mutation ($data: FlowInput!) { createFlow(data: $data) { id } }",
       variables: {
@@ -288,7 +294,9 @@ describe("a task step is checked when the flow is SAVED", () => {
     });
     const body = (await res.json()) as any;
     expect(body.data?.createFlow ?? null).toBeNull();
-    expect(JSON.stringify(body.errors)).toContain("named as text");
+    const errors = JSON.stringify(body.errors);
+    expect(errors).toContain("kind");
+    expect(errors).not.toContain("is not a function");
   });
 
   test("GraphQL refuses a task the provider does not declare", async () => {

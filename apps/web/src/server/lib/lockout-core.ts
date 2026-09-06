@@ -49,6 +49,24 @@ export interface LockResult {
 const cooldownFor = (cycles: number, p: LockPolicy): number =>
   Math.min(p.maxCooldownMs, p.baseCooldownMs * 2 ** Math.max(0, cycles));
 
+/**
+ * How long an account must be QUIET before the exponential backoff relaxes.
+ *
+ * `cycles` only ever went up. It was reset by `clearFailures`, and
+ * `clearFailures` is only reached on a successful sign-in — which the person
+ * being locked out cannot produce while they are locked out. So four cycles
+ * pinned the cooldown at its 15-minute ceiling and it STAYED there: an attacker
+ * who knew an address could hold the account shut indefinitely at eight
+ * requests every fifteen minutes (~0.009 req/s), under every other limit in the
+ * system, with no way for the owner to recover but an operator.
+ *
+ * Decay does not stop a sustained attack on its own — that is what the
+ * per-source lock in `auth-rate-limit.ts` is for. What it fixes is that the
+ * penalty outlived the attack: an hour of quiet now walks the backoff back to
+ * where it started.
+ */
+const CYCLE_DECAY_MS = 60 * 60_000;
+
 /** Read-only: is the account currently locked? Never mutates. */
 export const evalLock = (s: LockState | undefined, now: number): LockResult => {
   if (s && s.lockedUntil > now) {
@@ -72,9 +90,20 @@ export const applyFailure = (
       result: { locked: true, retryAfterMs: s.lockedUntil - now, remaining: 0, justLocked: false },
     };
   }
+  // How long this account has been quiet, measured BEFORE the window is reset.
+  //
+  // Order matters and cost this fix a round: the stale-window branch below sets
+  // `windowStart = now`, so reading it afterwards always answers "no time has
+  // passed" and the decay could never fire. `lockedUntil` is when the last lock
+  // ENDED; `windowStart` covers an account that has never locked.
+  const quietFor = now - Math.max(s.lockedUntil, s.windowStart);
   // Stale window → start a fresh count (cycles persist for backoff escalation).
   if (now - s.windowStart > p.windowMs) {
     s = { ...s, fails: 0, windowStart: now };
+  }
+  // …but the escalation itself decays.
+  if (s.cycles > 0 && quietFor > CYCLE_DECAY_MS) {
+    s = { ...s, cycles: 0 };
   }
   const fails = s.fails + 1;
   if (fails >= p.maxFails) {

@@ -1,4 +1,4 @@
-import { AppError, normalizeCondition } from "@backlex/core";
+import { AppError, COMPARISON_OPERATORS, normalizeCondition } from "@backlex/core";
 import type { Condition } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
 import { normalizeMoneyOperands } from "../services/items/money-fields";
@@ -235,6 +235,21 @@ const validateFilterFields = (
     const isGeo = fieldsByName.get(k)?.type === "geo";
     if (cmp && typeof cmp === "object" && !Array.isArray(cmp)) {
       const ops = Object.keys(cmp as Record<string, unknown>);
+      // An operator nothing implements is a typo, and it used to be an
+      // INVISIBLE one: no branch in the compiler matched it, so the comparison
+      // came out as `(1=1)` and the "filtered" page was the unfiltered table.
+      // The compiler now fails closed on it — this turns that silent empty page
+      // into a message naming the key. Only judged when every key looks like an
+      // operator, so a `json` column compared to a literal object is untouched.
+      if (ops.length > 0 && ops.every((op) => op.startsWith("_"))) {
+        const unknownOps = ops.filter((op) => !COMPARISON_OPERATORS.has(op));
+        if (unknownOps.length > 0) {
+          throw new AppError(
+            "VALIDATION",
+            `Unknown filter operator(s) on "${k}": ${unknownOps.join(", ")}`,
+          );
+        }
+      }
       // `_near` is the only operator that reads its column as a coordinate, so
       // it is the only one a non-geo column can't answer. Compiling it anyway
       // would extract `$.lat` from, say, a `text` city name and quietly match

@@ -176,6 +176,44 @@ export const appendChunk = async (
   }
   const prevParts = (upload.parts ?? []) as { partNumber: number; etag: string; size: number }[];
   const partNumber = prevParts.length + 1;
+
+  // `uploadPolicy` computed both of these and nothing read either, which cost
+  // one silent data-loss bug and one write amplifier.
+  const policy = uploadPolicy(ctx.env);
+
+  // (1) A part count nobody bounded. `parts` is a JSON column rewritten IN FULL
+  // on every PATCH, so N chunks cost O(N²) bytes of database writes: a caller
+  // holding `files:create` could declare a 5 GB length, send it one byte at a
+  // time, and make the server rewrite a growing JSON array ten thousand times.
+  // S3 and R2 both cap a multipart at 10,000 parts anyway, so this refuses at
+  // the same ceiling the backend would — just before the work instead of after.
+  if (partNumber > policy.partMax) {
+    throw new AppError(
+      "VALIDATION",
+      `Upload exceeds the maximum of ${policy.partMax} parts — use larger chunks`,
+    );
+  }
+
+  // (2) A non-final part below the backend's minimum. R2 and S3 both require
+  // every part except the last to be >= 5 MiB, and they only say so at COMPLETE.
+  // So a TUS client configured with 1 MB chunks transferred an entire file
+  // successfully — every PATCH answered 204 with an advancing `Upload-Offset` —
+  // and then the final chunk's `completeMultipart` threw `EntityTooSmall`, the
+  // bytes were gone and no `files` row was written. Refusing the FIRST short
+  // chunk turns a lost upload into a 400 the client can act on. The bundled
+  // admin SPA happens to use 8 MiB, which is why this never bit in-house.
+  //
+  // The number comes from the ADAPTER where it declares one — the constraint is
+  // physical and the backends disagree. The fs adapter appends to a single file
+  // and says `0`; S3 and R2 say nothing and inherit the policy's 5 MiB.
+  const minPart = ctx.storage.minPartBytes ?? policy.minPartBytes;
+  const isFinalChunk = upload.offset + size >= upload.size;
+  if (!isFinalChunk && size < minPart) {
+    throw new AppError(
+      "VALIDATION",
+      `Chunk is ${size} bytes; every part except the last must be at least ${minPart} (the storage backend's multipart minimum)`,
+    );
+  }
   const part = await ctx.storage.uploadPart!(
     upload.physicalKey,
     upload.storageUploadId!,

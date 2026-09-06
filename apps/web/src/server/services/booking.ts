@@ -576,9 +576,18 @@ export const listSlots = async (
   window: { from?: number; to?: number },
   now = Date.now(),
 ): Promise<SlotsResult> => {
-  const from = Math.max(window.from ?? now, now);
-  const requested = window.to ?? from + 14 * 86_400_000;
-  const to = Math.min(requested, from + MAX_RANGE_DAYS * 86_400_000);
+  // Belt and braces: the public route refuses an unparseable date, and this
+  // clamp means a NaN reaching here from any other caller cannot travel into
+  // `new Date(NaN).toISOString()` further down.
+  const requestedFrom = window.from;
+  const from = Math.max(
+    Number.isFinite(requestedFrom) ? (requestedFrom as number) : now,
+    now,
+  );
+  const requestedTo = Number.isFinite(window.to)
+    ? (window.to as number)
+    : from + 14 * 86_400_000;
+  const to = Math.min(requestedTo, from + MAX_RANGE_DAYS * 86_400_000);
 
   const rules = await loadRules(ctx, resource.id);
   const busyRows = await loadBusy(ctx, resource, from, to);

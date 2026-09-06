@@ -29,13 +29,49 @@
  * unmerged ones.
  */
 import { readdirSync, rmSync, statSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // `fileURLToPath`, not `URL.pathname` — the latter leaves the path percent-
 // encoded, so a repo checked out under a directory with a space in its name
 // would resolve to a path that does not exist.
-const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+const SCRIPT_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+/**
+ * The MAIN checkout, even when this script is run from inside one of the
+ * worktrees it collects.
+ *
+ * Deriving the root from `import.meta.url` alone is wrong in exactly the case
+ * that matters. Every worktree carries its own copy of `scripts/`, so running
+ * `bun scripts/cleanup-worktrees.ts` from `.claude/worktrees/foo` resolved the
+ * root to `foo` — and `foo/.claude/worktrees` does not exist, so the
+ * `existsSync(WORKTREES_DIR)` guard below took its early exit and printed
+ * "worktrees: nothing to clean". A sweep that cannot see its subject reported
+ * SUCCESS, which is the failure mode this repo keeps re-finding.
+ *
+ * That path is not hypothetical. CLAUDE.md's publish flow says to run this by
+ * hand when the merge happened elsewhere, and a PR merged on GitHub is exactly
+ * that — so an agent working in a worktree got a clean all-clear while three
+ * collectable trees sat there untouched.
+ *
+ * `--git-common-dir` is the shared `.git` of every worktree of a repo, so its
+ * parent is the main checkout from anywhere inside it. Falls back to the
+ * file-relative root when git cannot answer, which is the old behaviour and
+ * still correct for the main checkout.
+ */
+function resolveRepoRoot(): string {
+  const r = Bun.spawnSync(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], {
+    cwd: SCRIPT_ROOT,
+    stderr: "pipe",
+  });
+  if (!r.success) return SCRIPT_ROOT;
+  const commonDir = r.stdout.toString().trim();
+  // A linked worktree reports the main `.git`; the main checkout reports its
+  // own. Either way the parent directory is the checkout to sweep.
+  return commonDir ? dirname(commonDir) : SCRIPT_ROOT;
+}
+
+const REPO_ROOT = resolveRepoRoot();
 const WORKTREES_DIR = join(REPO_ROOT, ".claude", "worktrees");
 /** How long a merged worktree must sit untouched before it is collectable. */
 const IDLE_MINUTES = 60;

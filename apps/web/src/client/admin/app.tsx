@@ -56,7 +56,7 @@ import { ItemEditorPage } from "./collections/item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./collections/item-views";
 import { ColumnPicker, useListColumns } from "./collections/list-columns";
 import { needsDisplayTemplate } from "./lib/row-label";
-import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
+import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent, type TailStatus } from "./extras";
 import { AddFieldDialog } from "./fields/add-field";
 import { loadAuthors } from "./lib/authors-cache";
 import { liveValueOf, retireFieldOf } from "./lib/retirement";
@@ -690,6 +690,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   }, [activeCollection]);
 
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
+  /** What the realtime tail should SAY it is doing — see `TailStatus`. Starts
+   *  `off` because nothing is subscribed until the effect below runs. */
+  const [tailStatus, setTailStatus] = useState<TailStatus>("off");
   const [toastNode, pushToast] = useToasts();
   const [me, setMe] = useState<{ name: string | null; email: string; image: string | null; isAdmin: boolean; isOperator?: boolean; nav?: MeNav } | null>(null);
   // Hydrate the header dropdown — name/email/avatar + admin badge. `auth.useSession()`
@@ -789,10 +792,25 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // Each incoming event is mapped into the design's RealtimeEvent shape so
   // RealtimeTail keeps rendering identically.
   useEffect(() => {
-    if (!tweaks.showRealtime) return;
-    if (!subscriptionChannel) { setEvents([]); return; }
+    // The `showRealtime` tweak governs the SIDE PANE on the collections page,
+    // which is why it defaults off. It was also gating the dedicated Realtime
+    // page, whose entire purpose is this stream — so a first visit there
+    // subscribed to nothing while the tail said "Subscribed. Waiting for
+    // events…". The channel had already been lifted up here so /realtime could
+    // pick one (see `subscriptionChannel`); the guard above it still refused to
+    // open the connection. #330.
+    if (!tweaks.showRealtime && activeNav !== "realtime") {
+      setTailStatus("off");
+      return;
+    }
+    if (!subscriptionChannel) {
+      setEvents([]);
+      setTailStatus("off");
+      return;
+    }
     const channel = subscriptionChannel;
     let alive = true;
+    setTailStatus("connecting");
     const onMsg = (raw: string) => {
       if (!alive) return;
       try {
@@ -819,8 +837,15 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     try {
       es = new EventSource(`/api/realtime/${encodeURIComponent(channel)}/subscribe`, { withCredentials: true });
       es.addEventListener("message", (ev) => onMsg((ev as MessageEvent).data));
+      // Read the transport's own state rather than assuming the constructor
+      // succeeding means a stream. `open` is the only thing that says the
+      // server accepted the subscription — a 403 from the permission filter
+      // arrives as `error`, and used to leave a green dot over it.
+      es.addEventListener("open", () => { if (alive) setTailStatus("connected"); });
+      es.addEventListener("error", () => { if (alive) setTailStatus("error"); });
     } catch {
       // EventSource unsupported — leave events empty
+      setTailStatus("error");
     }
     // Reset the tail whenever the channel changes so stale events from the
     // previous subscription don't sit on top of the new feed.
@@ -829,7 +854,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       alive = false;
       es?.close();
     };
-  }, [tweaks.showRealtime, subscriptionChannel]);
+  }, [tweaks.showRealtime, subscriptionChannel, activeNav]);
 
   const itemsForView = useMemo(() => {
     let rows = tweaks.populated ? posts : [];
@@ -1282,7 +1307,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "graphql" && <GraphqlPage />}
             {activeNav === "rest-explorer" && <RestExplorerPage />}
             {activeNav === "openapi" && <OpenApiExportPage />}
-            {activeNav === "realtime" && <RealtimePage events={events} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
+            {activeNav === "realtime" && <RealtimePage events={events} tailStatus={tailStatus} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
             {activeNav === "logs" && <LogsPage pushToast={pushToast} />}
             {activeNav === "traces" && <TracesPage pushToast={pushToast} />}
             {activeNav === "usage" && <UsagePage pushToast={pushToast} />}
@@ -1773,7 +1798,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     }}
                   />
                   {tweaks.showRealtime && (
-                    <RealtimeTail events={events} channel={`items:${activeCollection ?? ""}`} connected />
+                    <RealtimeTail events={events} channel={`items:${activeCollection ?? ""}`} status={tailStatus} />
                   )}
                 </div>
               )}

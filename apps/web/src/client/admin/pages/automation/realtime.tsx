@@ -5,7 +5,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { Badge, Button, EmptyState, PageHeader } from "../../ui";
 import { Card } from "@backlex/ui/components/card";
-import { RealtimeTail, type RealtimeEvent } from "../../extras";
+import { RealtimeTail, type RealtimeEvent, type TailStatus } from "../../extras";
 import { RealtimeSkeleton } from "../../page-skeletons";
 import { ChannelsCard } from "./channels-card";
 import { CdcCard } from "./cdc-card";
@@ -14,7 +14,7 @@ import { CdcCard } from "./cdc-card";
  *  map read); on Workers it's one DO fetch per channel — keep it loose. */
 const STATS_REFRESH_MS = 5_000;
 
-export function RealtimePage({ events, active, onActiveChange, pushToast }: { events: RealtimeEvent[]; active: string; onActiveChange: (name: string) => void; pushToast: PushToast }) {
+export function RealtimePage({ events, tailStatus, active, onActiveChange, pushToast }: { events: RealtimeEvent[]; tailStatus: TailStatus; active: string; onActiveChange: (name: string) => void; pushToast: PushToast }) {
   const { t } = useLingui();
   // Channels are derived from real collections — `items:<slug>` per
   // collection plus the system `collections` channel. Subscriber counts
@@ -120,7 +120,7 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
           ))}
         </Card>
 
-        <RealtimeTail events={events} channel={active} connected />
+        <RealtimeTail events={events} channel={active} status={tailStatus} />
       </div>
 
       {/* The list above is DERIVED from collections — every managed channel

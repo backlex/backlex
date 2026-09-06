@@ -249,7 +249,37 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
   );
 }
 
-export function RealtimeTail({ events, channel, connected }: { events: RealtimeEvent[]; channel: string; connected?: boolean }) {
+/**
+ * What the tail is actually doing. NOT optional, and not a boolean.
+ *
+ * Both call sites used to pass a bare `connected` — i.e. the literal `true` —
+ * and the empty state said "Subscribed. Waiting for events…" unconditionally.
+ * On first visit to the Realtime page nothing was subscribed at all, so the
+ * pane reported a state it had not reached and the status dot was green over a
+ * closed connection. An operator debugging a realtime problem reads that as
+ * "the client is connected, so the problem is upstream", and spends their time
+ * in the wrong half of the system (#330).
+ *
+ * A boolean could not have said the honest thing anyway: "not connected"
+ * covers three different situations with three different next actions, and
+ * only one of them is a fault.
+ */
+export type TailStatus =
+  /** The stream is open. An empty tail here means the channel is quiet. */
+  | "connected"
+  /** Opening. Distinct from `error` — a slow open is not a failure. */
+  | "connecting"
+  /** No channel to subscribe to, or the preview is switched off. */
+  | "off"
+  /** The stream was refused or dropped. */
+  | "error";
+
+export function RealtimeTail({
+  events,
+  channel,
+  status,
+}: { events: RealtimeEvent[]; channel: string; status: TailStatus }) {
+  const connected = status === "connected";
   const { t } = useLingui();
   const [openId, setOpenId] = useState<string | null>(null);
   const openEvent = useMemo(
@@ -262,13 +292,32 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
         <I.Zap size={14} />
         <h3 className="m-0 text-[13px] font-semibold"><Trans>Live tail</Trans></h3>
         <span className="ml-auto flex items-center font-mono text-[11px] text-muted-foreground">
-          <span className={`mr-1.5 size-[7px] shrink-0 rounded-full ${connected ? "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" : "bg-destructive shadow-[0_0_0_3px_color-mix(in_oklch,var(--destructive)_25%,transparent)]"}`} />
+          {/* Three states, three colours. `off` is muted rather than red: a
+              preview nobody switched on is not a fault, and painting it as one
+              sends the reader looking for a break that is not there. */}
+          <span
+            className={`mr-1.5 size-[7px] shrink-0 rounded-full ${
+              connected
+                ? "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"
+                : status === "error"
+                  ? "bg-destructive shadow-[0_0_0_3px_color-mix(in_oklch,var(--destructive)_25%,transparent)]"
+                  : "bg-muted-foreground/60"
+            }`}
+          />
           {channel}
         </span>
       </div>
       {events.length === 0 ? (
         <div className="p-7 text-center text-[12.5px] text-muted-foreground">
-          <Trans>Subscribed. Waiting for events…</Trans>
+          {status === "connected" ? (
+            <Trans>Subscribed. Waiting for events…</Trans>
+          ) : status === "connecting" ? (
+            <Trans>Subscribing…</Trans>
+          ) : status === "error" ? (
+            <Trans>Not subscribed — the connection was refused or dropped.</Trans>
+          ) : (
+            <Trans>Not subscribed — no channel is being watched.</Trans>
+          )}
         </div>
       ) : (
         <ScrollArea className="min-h-0 flex-1">

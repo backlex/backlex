@@ -1,5 +1,5 @@
 {
-  "version": "0.4.0",
+  "version": "0.5.0",
   "commands": [
     "advisor",
     "agents",
@@ -49,6 +49,7 @@
     "support",
     "sync-hooks",
     "templates",
+    "tenants",
     "traces",
     "usage",
     "users",

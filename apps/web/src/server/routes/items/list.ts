@@ -39,6 +39,7 @@ import {
 import {
   resolveExpands,
   applyExpandToRow,
+  clampExpandedRows,
   relationAlias,
   resolveManyExpands,
   applyManyExpandsToRows,
@@ -72,7 +73,8 @@ import {
   ListQuery,
   TAGS,
 } from "../../services/items/schemas";
-import { auditRead, canSeeDraftsFor } from "./shared";
+import { auditRead } from "./shared";
+import { canSeeDraftsFor } from "../../services/items/row-access";
 import { stagedIdsFor } from "../../services/items/staged";
 import { defaultHook } from "../../lib/openapi-router";
 
@@ -900,6 +902,45 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // when `?cursor` is absent (orderClause built from q.sort exactly as
       // before, no tiebreaker, no synthetic columns).
       const cursorMode = q.cursor !== null;
+      // A keyset cursor IS the boundary row's sort values, base64'd — nothing
+      // more. So sorting in cursor mode by a column the caller may not read
+      // hands them the value the response body is built to withhold:
+      //
+      //   GET /api/items/leads?sort=secret_note&cursor=&limit=1
+      //   → data[0] correctly omits `secret_note`
+      //     next_cursor decodes to ["TOPSECRET-A", "<id>"]
+      //
+      // and walking the pages enumerates every row's value in order. Two ways
+      // a column can be unreadable and both are checked: `private: true` (the
+      // API never returns it to anyone) and a role `fields` allow-list that
+      // omits it. GraphQL has refused exactly this since keyset paging landed
+      // there (`services/graphql/core.ts`); REST is the surface that did not.
+      // Offset mode is untouched — it mints no cursor, so there is nothing to
+      // read back, and rejecting the sort there would break working callers
+      // for no gain.
+      if (cursorMode) {
+        const localByName = new Map(collection.fields.map((f) => [f.name, f] as const));
+        const unreadableSort = q.sort.find((s) => {
+          if (s.field.includes(".")) {
+            // Nested sort seeks through the relation JOIN, so the value in the
+            // cursor is the TARGET's column. The target's own field list is
+            // what says whether it is private.
+            const segs = s.field.split(".");
+            const leaf = segs[segs.length - 1]!;
+            const j = joinMap.get(segs.slice(0, -1).join("."));
+            return j?.target.fields.find((f) => f.name === leaf)?.private === true;
+          }
+          const f = localByName.get(s.field);
+          if (!f) return false; // a system column (`created_at`, the pk) — readable
+          return f.private === true || (perm.fields != null && !perm.fields.has(s.field));
+        });
+        if (unreadableSort) {
+          throw new AppError(
+            "FORBIDDEN",
+            `Cannot paginate by "${unreadableSort.field}" — the cursor would carry a value you cannot read. Sort by a readable column, or use offset pagination.`,
+          );
+        }
+      }
       const pkRef: SQL = hasJoins
         ? sql`${baseTblId}.${sql.identifier(collection.pkColumn)}`
         : sql`${sql.identifier(collection.pkColumn)}`;
@@ -1067,8 +1108,16 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         }
         return out;
       });
+      // …then drop the ones the caller may not read. The JOIN above carries
+      // the target's tenant id and nothing else, so the row condition, the
+      // soft-delete filter and draft visibility are applied here, once per
+      // target across the whole page. See `clampExpandedRows`.
+      if (expandPlans.length > 0) {
+        await clampExpandedRows(ctx, auth, data, expandPlans);
+      }
       // to-many (`relation_many`) expands: one batch fetch per head over the
       // whole page, then each row's id array becomes an array of inlined rows.
+      // That path carries the clamp in its own WHERE.
       if (manyPlans.length > 0) {
         await applyManyExpandsToRows(ctx, auth, data, manyPlans);
       }

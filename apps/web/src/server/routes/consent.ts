@@ -264,7 +264,7 @@ export const consentRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // The posture is in the payload on purpose: "who changed the site from
       // block to allow, and when" is the first question asked after a
       // complaint, and reconstructing it from the current row is impossible.
-      const meta = requestMeta(c.req.raw);
+      const meta = requestMeta(c.req.raw, c.get("ctx").env);
       await recordActivity(
         { db: ctx.db, dialect: ctx.dialect },
         {
@@ -317,7 +317,7 @@ export const consentRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         auth.tenantId ?? null,
         siteId,
       );
-      const meta = requestMeta(c.req.raw);
+      const meta = requestMeta(c.req.raw, c.get("ctx").env);
       await recordActivity(
         { db: ctx.db, dialect: ctx.dialect },
         {

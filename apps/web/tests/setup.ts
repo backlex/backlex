@@ -176,6 +176,14 @@ export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
     // paths). The middleware still runs (its code path is exercised); only the
     // emit is gated. Genuine 5xx still print at error. Override per-suite to
     // assert on logs.
+    // The harness IS a trusted proxy: it wraps every request and sets
+    // `X-Forwarded-For` to a per-harness address so specs do not share a rate
+    // limiter bucket (see `nextSyntheticIp`). Saying so out loud is what makes
+    // `lib/client-address.ts` read that header — it believes no client-supplied
+    // header unless the deployment names one, which is the whole point of the
+    // derivation. A spec that wants the production default (nothing trusted)
+    // overrides this key to `undefined`.
+    TRUSTED_PROXY_HEADER: "x-forwarded-for",
     LOG_LEVEL: "error",
     ...overrides,
   };

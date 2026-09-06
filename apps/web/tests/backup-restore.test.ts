@@ -390,6 +390,7 @@ describe("restore: overwrite mode", () => {
     skipped: number;
     overwritten: number;
     keptAdditive: string[];
+    unfoldedRows: number;
   }> => {
     const res = await h.fetch(`/api/admin/db/backups/${id}/restore${query}`, {
       method: "POST",
@@ -427,6 +428,14 @@ describe("restore: overwrite mode", () => {
     const additive = await restore(backup.id);
     expect(additive.rowCount).toBeGreaterThan(0);
     expect(additive.overwritten).toBe(0);
+    // The post-restore fold pass finished. It is capped at 100,000 rows per
+    // column and returns what it could not reach — a number that used to be
+    // dropped inside an empty `catch`, so a restore too big to finish folding
+    // reported plain success while `_icontains` stopped matching the remainder.
+    // Asserting 0 here (rather than just "the key exists") is what makes a
+    // build that hard-codes the field fail: see
+    // `security-audit-2026-09-fold-backlog.test.ts` for the capped case.
+    expect(additive.unfoldedRows).toBe(0);
     expect(await readTitle(id)).toBe("Corrupted");
 
     // Overwrite: the backup-era value comes back.

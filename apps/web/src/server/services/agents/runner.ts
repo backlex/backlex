@@ -24,6 +24,7 @@ import { skillsForAgent, type SkillRow } from "./skills";
 import type { McpTool, ToolCtx } from "../../mcp/types";
 import { checkToolCall, filterByAllowlist, type KeyGuards } from "../../mcp/guards";
 import { approvalGate } from "./approval-gate";
+import { stableStringify } from "./canonical-args";
 import { resolveKind } from "../../mcp/kind";
 import type { ModelMessage } from "ai";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai-config";
@@ -234,9 +235,12 @@ const buildSpeakerLabeller = async (
   };
 };
 
-/** Stable key for the per-turn duplicate-call guard. */
-const argsKey = (args: Record<string, unknown>): string =>
-  JSON.stringify(args, Object.keys(args).sort());
+/** Stable key for the per-turn duplicate-call guard. Canonical at every depth
+ *  — the replacer-array version this replaced collapsed nested objects to `{}`,
+ *  so two different batch calls in one turn read as a repeat and the second was
+ *  refused. This key is in-memory only, so it keeps the full canonical form
+ *  rather than a digest. See `canonical-args.ts`. */
+const argsKey = (args: Record<string, unknown>): string => stableStringify(args);
 
 /** Pull a plain-text rendering out of an MCP ToolResult for the observation the
  *  model reads back. Prefers `structuredContent` (machine shape) but falls back
@@ -337,13 +341,15 @@ export const runAgentTurn = async (
   // steps stream in. Best-effort: a publish failure never breaks the turn.
   // Every frame carries `agentId` + `runId`: a room streams several turns at
   // once, so a client has to know which agent a step belongs to.
-  const channel = `agent:thread:${threadId}`;
+  // Addressed with the thread's workspace, matching the gate a subscriber
+  // passes (`gateForChannel` refuses a thread outside `auth.tenantId`).
+  const addr = { tenantId, channel: `agent:thread:${threadId}` };
   const emit = async (
     event: string,
     data: Record<string, unknown>,
   ): Promise<void> => {
     try {
-      await publishEvent(ctx.env, channel, {
+      await publishEvent(ctx.env, addr, {
         event,
         data: { ...data, agentId, runId },
       });

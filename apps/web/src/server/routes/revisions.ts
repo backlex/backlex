@@ -5,7 +5,7 @@ import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { resolvePermission } from "../services/permissions";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { getRevision, listRevisions } from "../services/revisions";
+import { getRevision, listRevisionsForCaller } from "../services/revisions";
 import { loadCollection } from "../services/items/collection-loader";
 import { performUpdate, type WriteEnv } from "../services/items/write";
 import { elapsedMs, requestMeta } from "../services/activity";
@@ -71,8 +71,13 @@ export const revisionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const perm = c.get("permission");
       const { collection, itemId } = c.req.valid("param");
-      const rows = await listRevisions(ctx, collection, itemId, auth.tenantId);
+      // Same service as the `/api/items/{slug}/{id}/revisions` twin, so the row
+      // condition and the field allow-list cannot be applied on one surface and
+      // skipped on the other — they were skipped on both.
+      const col = await loadCollection(ctx, auth.tenantId, collection);
+      const rows = await listRevisionsForCaller(ctx, auth, col, itemId, perm);
       return c.json({ data: rows });
     },
   )
@@ -160,7 +165,7 @@ export const revisionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         orgId: auth.orgId ?? null,
         orgRole: auth.orgRole ?? null,
         orgIds: auth.orgIds ?? [],
-        meta: requestMeta(c.req.raw),
+        meta: requestMeta(c.req.raw, c.get("ctx").env),
         impersonatedBy: auth.impersonatedBy ?? null,
         impersonationReadOnly: auth.impersonationReadOnly ?? false,
         durationMs: () => elapsedMs(c),

@@ -54,8 +54,40 @@ export interface SamlProviderConfig {
  * adapter doesn't touch the database.
  */
 export interface SamlAssertion {
-  /** AssertionID — used for replay protection. */
-  id: string;
+  /**
+   * `<saml:Assertion>` `@ID`, read from INSIDE the signed scope — the identity
+   * a replay is deduplicated on.
+   *
+   * This field exists because the one it replaced did not mean what its name
+   * said. It used to be called `id` and was documented as "AssertionID — used
+   * for replay protection", while the adapter filled it from the
+   * `<samlp:Response>` envelope instead. Under the default
+   * `wantSignedAssertions: true` only the `<Assertion>` is signed, so a
+   * captured assertion re-POSTed with one byte changed in the outer, unsigned
+   * `@ID` presented a brand-new replay key and was accepted — a full
+   * authentication replay against a live signed assertion. Naming the two
+   * apart is most of the fix: an adapter can no longer satisfy the contract by
+   * reaching for whichever id is easiest to extract.
+   *
+   * An adapter MUST source this from the cryptographically authenticated
+   * assertion node, and MUST throw rather than substitute a fallback. The
+   * previous implementation fell back to `Date.now()_random` when the id was
+   * missing, which is a replay key nothing can ever collide with — a guard
+   * that reports success while matching nothing.
+   */
+  assertionId: string;
+  /** `<samlp:Response>` `@ID`. UNSIGNED under `wantSignedAssertions`, so it is
+   *  carried for audit/diagnostics only. Never authorize or deduplicate on it. */
+  responseId?: string;
+  /** `<saml:SubjectConfirmationData>` `@Recipient`, from inside the signed
+   *  scope. When the IdP sends it, it names the exact ACS endpoint the
+   *  assertion was minted for, and the route layer refuses a mismatch — so an
+   *  assertion captured at one SP cannot be posted to another. */
+  recipient?: string;
+  /** `<samlp:Response>` `@Destination`. UNSIGNED, so a mismatch is a
+   *  misconfiguration signal rather than an attack signal: an attacker can
+   *  edit or drop it freely. Checked as defence in depth, never relied upon. */
+  destination?: string;
   /** IdP issuer that signed the assertion (verified). */
   issuer: string;
   /** SAML NameID — the stable IdP-side subject. */

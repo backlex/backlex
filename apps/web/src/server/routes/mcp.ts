@@ -41,11 +41,9 @@ const requireUserWithOAuthChallenge: MiddlewareHandler<AppBindings> = async (
 const MCP_WINDOW_MS = 60_000;
 const MCP_MAX_PER_MIN = 120;
 
-const ipOf = (req: Request): string =>
-  req.headers.get("cf-connecting-ip") ||
-  req.headers.get("x-real-ip") ||
-  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-  "unknown";
+import { type ClientAddressEnv, clientAddressKey } from "../lib/client-address";
+const ipOf = (req: Request, env: ClientAddressEnv): string =>
+  clientAddressKey(req, env);
 
 /** Per-identity (or per-IP) rate limit for the MCP mounts. The REST surface has
  *  its own limiter; without this a single authenticated key could drive
@@ -55,7 +53,7 @@ const ipOf = (req: Request): string =>
 const mcpRateLimit: MiddlewareHandler<AppBindings> = async (c, next) => {
   const env = (c.get("ctx") as { env?: Env } | undefined)?.env;
   if (env) {
-    const id = c.get("auth")?.userId ?? ipOf(c.req.raw);
+    const id = c.get("auth")?.userId ?? ipOf(c.req.raw, env);
     if (!(await rateLimitOk(env, `mcp:${id}`, MCP_MAX_PER_MIN, MCP_WINDOW_MS))) {
       throw new AppError("RATE_LIMITED", "Too many MCP requests — slow down and retry shortly");
     }

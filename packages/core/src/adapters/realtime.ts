@@ -65,7 +65,28 @@ export type CollabTransportKind = "native" | "ably" | "off";
 
 export interface CollabConfig {
   transport: CollabTransportKind;
+  ablyPrefix?: AblyRoomPrefix;
 }
+
+/**
+ * Prefix the calling workspace's Ably rooms are named with, e.g.
+ * `t.<workspace-id>:`.
+ *
+ * Ably is the one transport whose room name the CLIENT constructs — the browser
+ * connects to Ably directly, so both halves have to agree on a string, and the
+ * client knows a workspace slug or header rather than the id the server keys
+ * on. Without it two workspaces that own a collection of the same name attach
+ * to ONE room and see each other's change ids and timing.
+ *
+ * Carried on BOTH config endpoints because the two Ably clients each already
+ * fetch one of them: the signal pipe probes `items-config`, the collab pipe
+ * probes `collab-config`. It is the same value, so neither pays a request it
+ * was not already making.
+ *
+ * Absent means an older server that named rooms without a workspace; the client
+ * falls back to the bare channel name so it keeps working against one.
+ */
+export type AblyRoomPrefix = string;
 
 /**
  * How a client should receive DATA-plane row events (`items:<slug>`).
@@ -86,6 +107,8 @@ export type ItemsTransportKind = "sse" | "ably-signal" | "off";
 
 export interface ItemsConfig {
   transport: ItemsTransportKind;
+  /** See {@link AblyRoomPrefix}. */
+  ablyPrefix?: AblyRoomPrefix;
 }
 
 /**

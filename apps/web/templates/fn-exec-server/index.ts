@@ -7,10 +7,10 @@
  *
  *     bun run index.ts          # listens on PORT (default 8790)
  *
- * Then point the main app at it:
+ * Then point the main app at it. These go on the MAIN APP, not here:
  *
  *     FUNCTIONS_EXEC_URL = https://your-exec-host        # base URL, no /run
- *     SANDBOX_RPC_TOKEN  = <same 32-byte hex as the main app>
+ *     SANDBOX_RPC_TOKEN  = <32-byte hex>                 # main app only
  *     SELF_URL           = https://your-main-app          # for ctx.* callbacks
  *
  * The main app POSTs `{ code, data, user, timeoutMs, mainOrigin, rpcToken }`
@@ -19,6 +19,21 @@
  * `${mainOrigin}/api/_internal/sandbox-rpc` (Bearer-authenticated with
  * `rpcToken`). When `mainOrigin` or `rpcToken` is missing the `ctx.*` proxies
  * throw a clear error instead of silently failing.
+ *
+ * ## `rpcToken` is a per-invocation grant — forward it, never substitute it
+ *
+ * It is NOT `SANDBOX_RPC_TOKEN`. The main app signs a short-lived token
+ * carrying the (userId, tenantId) of this one invocation and the callback
+ * derives its subject from that signature, ignoring whatever `auth` we send in
+ * the body. Treat the field as opaque and echo it back verbatim, which is what
+ * `buildRpc` below does.
+ *
+ * That is deliberate, and this file is the reason: user code runs in THIS
+ * process, so anything this process holds, a function author can read — one
+ * wrapped `globalThis.fetch` captures our own Authorization header. If that
+ * header were the deployment's shared secret, the capture would be a key to
+ * every workspace's mail transport, devices and AI budget. It is a grant
+ * instead, so it is worth only the run it was minted for.
  *
  * Security note: this is a SOFT sandbox — the worker shares the process's
  * globals. Run it as an isolated, least-privilege service (its own host /

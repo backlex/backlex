@@ -1,5 +1,9 @@
 import type { AuthSubject, Condition } from "@backlex/core";
-import { renderItemEvent, stripBefore } from "../services/realtime-filter";
+import {
+  eventIsForSubscriber,
+  renderItemEvent,
+  stripBefore,
+} from "../services/realtime-filter";
 
 interface Meta {
   authSubject: AuthSubject;
@@ -19,12 +23,25 @@ interface PresenceIdentity {
 interface Attachment {
   meta: Meta | null;
   presence: PresenceIdentity | null;
+  /**
+   * The workspace this socket was gated in. A room is already addressed per
+   * workspace (`services/realtime-topic.ts` keys `idFromName`), so this is the
+   * same answer asked a second time at delivery — it is what stops a frame that
+   * somehow reached the wrong room from being fanned out of it.
+   *
+   * `undefined` on an attachment written by an older build. Treated as a
+   * mismatch, not a wildcard — see `eventIsForSubscriber`.
+   */
+  tenant?: string | null;
 }
 
 interface StoredEvent {
   seq: number;
   /** Raw text of the published payload (JSON or plain string). */
   text: string;
+  /** Workspace that published it. `undefined` for entries this room's replay
+   *  log already held before the field existed. */
+  tenant?: string | null;
 }
 
 /** How many recent events to retain for `?since=` replay on reconnect. */
@@ -92,10 +109,20 @@ export class RealtimeRoom {
         url.searchParams.get("presence") === "1" && meta?.authSubject.userId
           ? { userId: meta.authSubject.userId, email: meta.authSubject.email ?? null }
           : null;
+      // Sent as a separate param rather than read out of `meta`, because the
+      // channels forwarded RAW (`collab:`, application-owned) are gated without
+      // a meta at all — a tenant that lived inside it would be absent for
+      // exactly the subscriptions with no other filter.
+      // Absent (rather than empty) means the caller never stated a workspace —
+      // kept distinct from `null`, which states "no active workspace", so a
+      // subscribe path that forgets the param goes SILENT instead of wide.
+      const tenant: string | null | undefined = url.searchParams.has("tenant")
+        ? url.searchParams.get("tenant") || null
+        : undefined;
 
       this.state.acceptWebSocket(server);
       try {
-        server.serializeAttachment({ meta, presence } satisfies Attachment);
+        server.serializeAttachment({ meta, presence, tenant } satisfies Attachment);
       } catch {
         // Attachment too large (>2KB). Falling back to in-memory-only filtering
         // would be unsafe (the socket would see everything after hibernation),
@@ -108,7 +135,7 @@ export class RealtimeRoom {
       if (Number.isSafeInteger(since) && since > 0) {
         for (const ev of this.log) {
           if (ev.seq <= since) continue;
-          this.deliver(server, meta, ev);
+          this.deliver(server, meta, tenant, ev);
         }
       }
       if (presence) this.broadcastPresence();
@@ -135,8 +162,11 @@ export class RealtimeRoom {
 
     if (url.pathname === "/publish" && req.method === "POST") {
       const text = await req.text();
+      const stated = req.headers.get("x-backlex-event-tenant");
+      const tenant: string | null | undefined =
+        stated === null ? undefined : stated || null;
       this.seq += 1;
-      const ev: StoredEvent = { seq: this.seq, text };
+      const ev: StoredEvent = { seq: this.seq, text, tenant };
       this.log.push(ev);
       if (this.log.length > REPLAY_LIMIT) {
         this.log.splice(0, this.log.length - REPLAY_LIMIT);
@@ -144,7 +174,8 @@ export class RealtimeRoom {
       await this.state.storage.put({ seq: this.seq, log: this.log });
 
       for (const ws of this.state.getWebSockets()) {
-        this.deliver(ws, this.attachment(ws).meta, ev);
+        const a = this.attachment(ws);
+        this.deliver(ws, a.meta, a.tenant, ev);
       }
       return new Response("ok");
     }
@@ -185,21 +216,48 @@ export class RealtimeRoom {
     return a ?? { meta: null, presence: null };
   }
 
+  /**
+   * Re-announce the presence roster.
+   *
+   * Rostered PER WORKSPACE rather than per room. A room is already addressed
+   * per workspace, so in practice every socket here shares one — but a roster
+   * names people, and "who else is on this record" is the one payload on this
+   * channel that carries identity with no permission filter in front of it. It
+   * is built from the sockets themselves, so it is the one place the room's own
+   * bookkeeping could leak across a boundary the routing key was supposed to
+   * hold. Grouping costs one pass and removes the question.
+   */
   private broadcastPresence(exclude?: WebSocket): void {
     const sockets = this.state.getWebSockets();
-    const byId = new Map<string, PresenceIdentity>();
+    const key = (t: string | null | undefined) =>
+      // "unstated" is not a tenant id, so it cannot collide with `t:<id>`.
+      t === undefined ? "unstated" : `t:${t}`;
+    const groups = new Map<string, Map<string, PresenceIdentity>>();
     for (const ws of sockets) {
       if (ws === exclude) continue;
-      const p = this.attachment(ws).presence;
-      if (p) byId.set(p.userId, p);
+      const a = this.attachment(ws);
+      if (!a.presence) continue;
+      const k = key(a.tenant);
+      let byId = groups.get(k);
+      if (!byId) {
+        byId = new Map();
+        groups.set(k, byId);
+      }
+      byId.set(a.presence.userId, a.presence);
     }
-    const members = [...byId.values()].sort((a, b) =>
-      (a.email ?? a.userId).localeCompare(b.email ?? b.userId),
-    );
-    const text = JSON.stringify({ event: "presence", data: { members } });
+    const texts = new Map<string, string>();
+    for (const [k, byId] of groups) {
+      const members = [...byId.values()].sort((a, b) =>
+        (a.email ?? a.userId).localeCompare(b.email ?? b.userId),
+      );
+      texts.set(k, JSON.stringify({ event: "presence", data: { members } }));
+    }
     for (const ws of sockets) {
       if (ws === exclude) continue;
-      if (!this.attachment(ws).presence) continue;
+      const a = this.attachment(ws);
+      if (!a.presence) continue;
+      const text = texts.get(key(a.tenant));
+      if (!text) continue;
       try {
         ws.send(frame(PRESENCE_SEQ, text));
       } catch {
@@ -208,7 +266,16 @@ export class RealtimeRoom {
     }
   }
 
-  private deliver(ws: WebSocket, meta: Meta | null, ev: StoredEvent) {
+  private deliver(
+    ws: WebSocket,
+    meta: Meta | null,
+    subscriberTenant: string | null | undefined,
+    ev: StoredEvent,
+  ) {
+    // Ahead of any rendering, because the raw-forward branch below has no
+    // permission filter of its own — `collab:` and application-owned channels
+    // reach it verbatim.
+    if (!eventIsForSubscriber(ev.tenant, subscriberTenant)) return;
     let payload: unknown;
     try {
       payload = JSON.parse(ev.text);

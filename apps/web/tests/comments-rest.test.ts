@@ -48,6 +48,8 @@ describe("comments REST", () => {
   let adminEmail = "";
   const userEmail = `commenter-${Date.now()}@example.test`;
   let itemId = "";
+  /** A row the NON-ADMIN owns — `slug` is owner-scoped, so `itemId` is not. */
+  let ownItemId = "";
   let adminCommentId = "";
   let userCommentId = "";
 
@@ -143,10 +145,21 @@ describe("comments REST", () => {
     const si = await signIn(h, userEmail);
     expect(si.status).toBe(200);
 
+    // Their OWN row. `slug` is owner-scoped, so the admin's `itemId` is not a
+    // row this identity may read — see the row-level test below. Commenting on
+    // a row you can read is the shape this endpoint exists for.
+    const mine = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ title: "my own item" }),
+    });
+    expect(mine.status).toBe(201);
+    ownItemId = ((await mine.json()) as { data: { id: string } }).data.id;
+
     const ok = await h.fetch("/api/comments", {
       method: "POST",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ collection: slug, itemId, body: "me too" }),
+      body: JSON.stringify({ collection: slug, itemId: ownItemId, body: "me too" }),
     });
     expect(ok.status).toBe(201);
     userCommentId = ((await ok.json()) as { data: CommentRow }).data.id;
@@ -162,6 +175,42 @@ describe("comments REST", () => {
     expect(deniedBody.error.code).toBe("FORBIDDEN");
   });
 
+  /**
+   * The row-level clamp, which this endpoint did not have.
+   *
+   * `read` on the COLLECTION is what the middleware settles; for an
+   * owner-scoped grant that is every row in the table. The admin's row is
+   * invisible to this identity through `GET /api/items/<slug>/<id>` (404) and
+   * has to be equally invisible through the thread hanging off it — it was
+   * not: the list answered 200 with the admin's comment on it, and POST let
+   * this caller write onto a record they cannot see.
+   */
+  test("row condition: a readable collection is not a readable row", async () => {
+    // Still the non-admin. Control: the item itself is already invisible.
+    const control = await h.fetch(`/api/items/${slug}/${itemId}`);
+    expect(control.status).toBe(404);
+
+    const list = await h.fetch(
+      `/api/comments?collection=${slug}&itemId=${itemId}`,
+    );
+    expect(list.status).toBe(404);
+
+    const write = await h.fetch("/api/comments", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ collection: slug, itemId, body: "injected" }),
+    });
+    expect(write.status).toBe(404);
+
+    // And their own row still works, so the clamp is a row check and not an
+    // endpoint that stopped answering.
+    const own = await h.fetch(
+      `/api/comments?collection=${slug}&itemId=${ownItemId}`,
+    );
+    expect(own.status).toBe(200);
+    expect(((await own.json()) as { data: CommentRow[] }).data.length).toBe(1);
+  });
+
   test("non-author non-admin cannot delete someone else's comment", async () => {
     // Still signed in as the non-admin user from the previous test.
     const res = await h.fetch(`/api/comments/${adminCommentId}`, {
@@ -172,12 +221,17 @@ describe("comments REST", () => {
     expect(body.error.code).toBe("FORBIDDEN");
     expect(body.error.message).toContain("author or admin");
 
-    // The comment survived.
+    // The comment survived — read back as the admin, who can see the row it
+    // hangs off.
+    await signOut(h);
+    await signIn(h, adminEmail);
     const list = await h.fetch(
       `/api/comments?collection=${slug}&itemId=${itemId}`,
     );
     const rows = ((await list.json()) as { data: CommentRow[] }).data;
     expect(rows.some((r) => r.id === adminCommentId)).toBe(true);
+    await signOut(h);
+    await signIn(h, userEmail);
   });
 
   test("author deletes their own comment", async () => {
@@ -197,12 +251,13 @@ describe("comments REST", () => {
     // Recreate a comment authored by... the admin deleting the non-admin's
     // is already impossible (author deleted their own above), so assert the
     // admin path on the remaining admin comment via a fresh non-admin one.
+    // It goes on the non-admin's OWN row — the only one they can reach.
     await signOut(h);
     await signIn(h, userEmail);
     const mk = await h.fetch("/api/comments", {
       method: "POST",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ collection: slug, itemId, body: "delete me" }),
+      body: JSON.stringify({ collection: slug, itemId: ownItemId, body: "delete me" }),
     });
     expect(mk.status).toBe(201);
     const otherId = ((await mk.json()) as { data: CommentRow }).data.id;
@@ -213,12 +268,16 @@ describe("comments REST", () => {
     expect(del.status).toBe(200);
     expect(((await del.json()) as { ok: boolean }).ok).toBe(true);
 
+    const gone = await h.fetch(
+      `/api/comments?collection=${slug}&itemId=${ownItemId}`,
+    );
+    const goneRows = ((await gone.json()) as { data: CommentRow[] }).data;
+    expect(goneRows.some((r) => r.id === otherId)).toBe(false);
+    // Only the admin's original comment remains, on the admin's own row.
     const list = await h.fetch(
       `/api/comments?collection=${slug}&itemId=${itemId}`,
     );
     const rows = ((await list.json()) as { data: CommentRow[] }).data;
-    expect(rows.some((r) => r.id === otherId)).toBe(false);
-    // Only the admin's original comment remains.
     expect(rows.map((r) => r.id)).toEqual([adminCommentId]);
   });
 

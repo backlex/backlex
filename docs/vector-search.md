@@ -287,7 +287,39 @@ Under `/api/vector` (see also the `vector.search` MCP tool):
 | `POST /delete` | delete by id (namespace-scoped) |
 
 Vectors are isolated per collection via a `namespace` (the collection slug), so
-one index safely holds many collections.
+one index safely holds many collections. Every namespace is additionally
+prefixed with the active workspace before it reaches the store, so two
+workspaces owning a same-slug collection never share vectors.
+
+### A namespace that names a collection takes that collection's permission
+
+`embedAndUpsert` writes a collection's chunks under its slug, so
+`{"namespace": "employees"}` on the raw endpoints addresses the `employees`
+collection's index exactly. These endpoints therefore resolve the collection
+and require the same verb an equivalent items call would:
+
+| Endpoint | Requires on the named collection |
+| --- | --- |
+| `POST /search`, `POST /query` | `read` |
+| `POST /upsert`, `POST /embed-upsert`, `POST /delete` | `update` |
+
+Matches are then hydrated back through the physical table with the caller's own
+row condition, workspace, soft-delete and draft filters re-applied — the vector
+store has no permission model of its own, so an id that comes out of it is not
+yet an answer. A caller whose permission carries a **field allow-list** gets the
+match without `metadata.content`: a chunk is built from every `vectorize` field
+at once and chunk boundaries do not follow field boundaries, so it cannot be
+censored field by field (the same rule `POST /items/{slug}/search` applies to
+`_passages`).
+
+A namespace that names **no** collection is a free-form per-workspace scratch
+space and stays open to any member of that workspace, as it has always been.
+
+> **Changed in the 2026-09 hardening.** All six endpoints were previously
+> session-only, so any signed-in identity — including a workspace's own
+> app-plane end-users — could read back `metadata.content`, the verbatim indexed
+> text of a collection whose `GET /api/items/<slug>` answered 403, and `delete`
+> could silently destroy the index every `mode: "vector"` search depends on.
 
 **MCP:** agents get the same surface — `vector.search`, `vector.upsert`,
 `vector.capabilities` (readiness check), plus `schema.update_collection`

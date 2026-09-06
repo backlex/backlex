@@ -14,6 +14,10 @@ import {
 } from "../services/auth-config";
 import { loadPasswordLoginMode } from "../services/settings";
 import { resolveSamlProvider } from "../services/saml-providers";
+import {
+  assertAssertionBoundToAcs,
+  samlReplayIdentity,
+} from "../services/saml-binding";
 import { resolveLdapAdapter } from "../services/ldap-config";
 import { provisionAppUser } from "../services/sso-provisioning";
 import { consumeAppUserInvite, findAppUserInvite } from "../services/app-user-invites";
@@ -70,15 +74,9 @@ const parseLifetime = (v: string | null | undefined): number | null => {
   return n * mult;
 };
 
-const extractIp = (req: Request): string | null => {
-  const h = req.headers;
-  return (
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    null
-  );
-};
+import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+const extractIp = (req: Request, env: ClientAddressEnv): string | null =>
+  clientAddress(req, env);
 
 /**
  * Validate a `relayState` value against the workspace's redirect-URL
@@ -431,9 +429,16 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       );
     }
 
+    // 1b. The assertion has to have been minted for THIS endpoint. `Recipient`
+    //     is inside the signed scope, so this is the half that an attacker
+    //     cannot edit away.
+    assertAssertionBoundToAcs(assertion, resolved.cfg.acsUrl);
+
     // 2. Replay protection. We keep the row until NotOnOrAfter — if the same
-    //    AssertionID is seen again before then, reject.
-    const replayKey = `saml-assertion:${assertion.id}`;
+    //    assertion is seen again before then, reject. The identity is the
+    //    SIGNED `<Assertion>` `@ID`; keying it on the unsigned envelope's `@ID`
+    //    meant one edited byte produced a fresh key and replayed the login.
+    const replayKey = `saml-assertion:${samlReplayIdentity(assertion)}`;
     const replayHit = await findVerification(
       { db: ctx.db, dialect: ctx.dialect },
       tenant.id,
@@ -521,7 +526,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       defaultRoleId: resolved.row.defaultRoleId ?? null,
       groupsToRoles: resolved.row.groupsToRoles ?? null,
       linkByVerifiedEmail: resolved.row.linkByVerifiedEmail,
-      ipAddress: extractIp(c.req.raw) ?? undefined,
+      ipAddress: extractIp(c.req.raw, c.get("ctx").env) ?? undefined,
       authnContext: assertion.authnContext,
     });
 
@@ -538,7 +543,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       {
         tenantId: tenant.id,
         userId: appUserId,
-        ipAddress: extractIp(c.req.raw),
+        ipAddress: extractIp(c.req.raw, c.get("ctx").env),
         userAgent: c.req.raw.headers.get("user-agent"),
         lifetimeSeconds: lifetime,
       },
@@ -658,8 +663,10 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
     // Per-(tenant, username, ip) rate limit. Both successes and failures count
     // — directory brute-force attempts shouldn't get a clean window from
     // throwing the right password somewhere along the way.
-    const ip =
-      extractIp(c.req.raw) ?? c.req.raw.headers.get("x-real-ip") ?? "unknown";
+    // No `x-real-ip` fallback: off a trusted proxy that header is whatever the
+    // caller typed, so falling back to it hands the limiter a fresh bucket per
+    // request — which is the defect this derivation exists to close.
+    const ip = extractIp(c.req.raw, c.get("ctx").env) ?? "unknown";
     const rlKey = `ldap:${tenant.id}:${username.toLowerCase()}:${ip}`;
     if (!(await rateLimitOk(ctx.env, rlKey, config.rateLimitPerMinute, 60_000))) {
       throw new AppError(
@@ -715,7 +722,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       defaultRoleId: config.defaultRoleId ?? null,
       groupsToRoles: config.groupsToRoles ?? null,
       linkByVerifiedEmail: false,
-      ipAddress: extractIp(c.req.raw) ?? undefined,
+      ipAddress: extractIp(c.req.raw, c.get("ctx").env) ?? undefined,
       authnContext: "ldap-simple-bind",
     });
 
@@ -732,7 +739,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
         tenantId: tenant.id,
         userId: appUserId,
         email: attrs.email,
-        ipAddress: extractIp(c.req.raw),
+        ipAddress: extractIp(c.req.raw, c.get("ctx").env),
         userAgent: c.req.raw.headers.get("user-agent"),
         lifetimeSeconds: lifetime,
       },
@@ -1033,7 +1040,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
         tenantId: tenant.id,
         userId: user.id,
         email: user.email,
-        ipAddress: extractIp(c.req.raw),
+        ipAddress: extractIp(c.req.raw, c.get("ctx").env),
         userAgent: c.req.raw.headers.get("user-agent"),
         lifetimeSeconds: lifetime,
       },

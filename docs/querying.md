@@ -369,6 +369,14 @@ is a `422`, not a `500`. Keyset assumes the leading sort columns are non-null
 (the default `created_at` + `id` tiebreaker always are); sorting a cursor page
 on a nullable column is the caller's risk.
 
+**A cursor is the boundary row's sort values**, base64'd — nothing more. So
+cursor mode refuses (`403`) a sort on a column the caller may not read: a field
+declared `private`, or one outside their role's `fields` allow-list. Handing the
+cursor over would otherwise hand over the value the response body is built to
+withhold, and walking the pages would enumerate every row's. Offset mode is
+unaffected — it mints no cursor — and GraphQL has refused the same sort since
+keyset paging landed there.
+
 ## Metadata (`meta`)
 
 `meta=filter_count` adds `meta.filter_count` (rows matching `filter` +

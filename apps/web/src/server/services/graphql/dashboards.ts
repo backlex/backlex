@@ -192,7 +192,7 @@ export const dashboardMutationFields: Record<string, GraphQLFieldConfig<unknown,
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireDashboardAdmin(gqlCtx);
       const a = args as { id: string; data: Record<string, unknown> };
-      await updateDashboard(gqlCtx.ctx, tenantId, a.id, a.data);
+      await updateDashboard(gqlCtx.ctx, gqlCtx.auth, tenantId, a.id, a.data);
       const row = await getDashboard(gqlCtx.ctx, tenantId, a.id);
       return row ? normalizeDashboardRow(row) : null;
     },
@@ -203,7 +203,7 @@ export const dashboardMutationFields: Record<string, GraphQLFieldConfig<unknown,
     args: { id: { type: new GraphQLNonNull(GraphQLID) } },
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireDashboardAdmin(gqlCtx);
-      await deleteDashboard(gqlCtx.ctx, tenantId, (args as { id: string }).id);
+      await deleteDashboard(gqlCtx.ctx, gqlCtx.auth, tenantId, (args as { id: string }).id);
       return true;
     },
   },
@@ -230,7 +230,7 @@ export const dashboardMutationFields: Record<string, GraphQLFieldConfig<unknown,
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireDashboardAdmin(gqlCtx);
       const a = args as { id: string; roleId?: string | null };
-      return shareDashboard(gqlCtx.ctx, tenantId, a.id, { roleId: a.roleId ?? null });
+      return shareDashboard(gqlCtx.ctx, gqlCtx.auth, tenantId, a.id, { roleId: a.roleId ?? null });
     },
   },
   deliverDashboardReport: {
@@ -267,7 +267,7 @@ export const dashboardMutationFields: Record<string, GraphQLFieldConfig<unknown,
     args: { id: { type: new GraphQLNonNull(GraphQLID) } },
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireDashboardAdmin(gqlCtx);
-      await revokeDashboardEmbed(gqlCtx.ctx, tenantId, (args as { id: string }).id);
+      await revokeDashboardEmbed(gqlCtx.ctx, gqlCtx.auth, tenantId, (args as { id: string }).id);
       return true;
     },
   },

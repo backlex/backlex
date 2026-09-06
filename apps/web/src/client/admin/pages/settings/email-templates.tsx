@@ -8,6 +8,7 @@ import { I } from "../../icons";
 import { Button, EmptyState, PageHeader } from "../../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../../api";
 import { EmailTemplatesSkeleton } from "../../page-skeletons";
+import { HtmlPreview } from "../../html-preview";
 
 const userEmailExample = "{{ user.email }}";
 
@@ -194,7 +195,18 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
         <Card className="py-0 gap-0">
           <div className="border-b border-border px-4 py-3.5"><span className="text-xs font-medium"><Trans>Preview</Trans></span></div>
           <div className="min-h-[280px] bg-[oklch(0.97_0.005_130)] p-6">
-            <div className="mx-auto max-w-[480px] rounded-surface bg-white p-7 text-[#1a1a1a] shadow-[0_1px_4px_oklch(0_0_0/0.06)]" dangerouslySetInnerHTML={{ __html: preview.replace(/<a /g, '<a style="display:inline-block;margin-top:8px;padding:10px 16px;background:oklch(0.85 0.18 125);color:#1a1a1a;border-radius:999px;text-decoration:none;font-weight:500;font-family:Geist,sans-serif" ') }} />
+            {/* Same reasoning as the document-template preview next door: an
+                email body is a COMPLETE html document, so injecting it into a
+                div discarded its own head and showed something the mailer will
+                never send; and a template authored by one workspace admin is
+                still somebody else's markup running in another one's session.
+                `sandbox=""` grants nothing. */}
+            <HtmlPreview
+              title={t`Email preview`}
+              complete
+              html={preview.replace(/<a /g, '<a style="display:inline-block;margin-top:8px;padding:10px 16px;background:oklch(0.85 0.18 125);color:#1a1a1a;border-radius:999px;text-decoration:none;font-weight:500;font-family:Geist,sans-serif" ')}
+              className="mx-auto h-[420px] max-w-[480px] rounded-surface shadow-[0_1px_4px_oklch(0_0_0/0.06)]"
+            />
           </div>
         </Card>
       </div>

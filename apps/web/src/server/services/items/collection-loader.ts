@@ -10,6 +10,7 @@ import {
   getCachedCollection,
   setCachedCollection,
 } from "../collections-cache";
+import { unreadableTableReason } from "../system-tables";
 
 export interface CollectionRow {
   /** Collections.id — primary key in the metadata table. Needed for the
@@ -158,15 +159,34 @@ export const loadCollection = async (
   if (((r.status ?? "active") as string) !== "active") {
     throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   }
+  const physicalTable = (r.physicalTable ?? r.physical_table) as string;
+  // The write doors that can set `physical_table` all refuse a reserved name
+  // now, but a guard on the writers is only as wide as the writers
+  // ([[a-guarantee-is-only-as-wide-as-its-callers]]) — and rows written before
+  // those guards existed are still rows. Every items read/write, GraphQL
+  // resolver, realtime filter, CSV export and permission resolution funnels
+  // through this loader, so refusing here is what actually makes the table
+  // unreachable rather than merely un-registerable.
+  //
+  // The refusal names the table on purpose: only a workspace admin who wrote
+  // the row gets here, and a bare 404 would send them hunting a missing
+  // collection instead of an invalid one.
+  const reserved = unreadableTableReason(physicalTable, tenantId);
+  if (reserved) {
+    throw new AppError(
+      "FORBIDDEN",
+      `Collection "${slug}" is registered against a table that must not back one — ${reserved}. Drop the collection; the table itself is untouched.`,
+    );
+  }
   // Introspected BEFORE the row is built so the field is set, not patched in —
   // a `CollectionRow` is handed to the compiler and must never exist in a state
   // where `foldColumns` is undefined.
-  const foldColumns = await readFoldColumns(ctx, (r.physicalTable ?? r.physical_table) as string);
+  const foldColumns = await readFoldColumns(ctx, physicalTable);
   const row: CollectionRow = {
     id: r.id as string,
     foldColumns,
     slug: r.slug as string,
-    physicalTable: (r.physicalTable ?? r.physical_table) as string,
+    physicalTable,
     // Presentational blocks (divider/notice) are layout-only — they carry no
     // column and no value. Strip them here, at the single loader every items
     // path (read/write/validate/CSV/GraphQL/expand/FTS/vectorize) funnels

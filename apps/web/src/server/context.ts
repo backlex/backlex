@@ -524,6 +524,17 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         db as Parameters<typeof ensureMigrations>[0],
         dialect,
       );
+      // Adopting the CLI's ledger is a one-time, once-per-database event that
+      // decides whether the whole bundle replays — so it says so. A run that
+      // recorded 138 migrations without executing one is exactly the shape
+      // that hides a problem when it goes wrong, and an operator reading a
+      // boot log should be able to tell "recognised as already migrated" from
+      // "nothing happened".
+      if (outcome.adopted.length > 0) {
+        console.log(
+          `[auto-migrate] adopted ${outcome.adopted.length} migration(s) already recorded by the ${dialect} CLI ledger — none replayed.`,
+        );
+      }
       // A migration that hit an *unrecognised* error (not the idempotent
       // "already exists" cases) leaves the schema partially applied while the
       // app still boots green. That used to be a buried console.warn; surface
@@ -797,9 +808,9 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
           try {
             await publishEvent(
               env,
-              "auth",
+              { tenantId, channel: "auth" },
               { event: "signup", data: { id: user.id, email: user.email, tenantId } },
-              { db, dialect, email: fullCtx.email, fullCtx, tenantId },
+              { db, dialect, email: fullCtx.email, fullCtx },
             );
           } catch (e) {
             console.error("[auth] signup event publish failed", (e as Error).message);

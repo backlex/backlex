@@ -251,7 +251,29 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/s3/credentials.ts", symbol: "touchS3Credential", reason: "Stamps lastUsedAt on the credential row resolveS3Credential just resolved." },
   { file: "apps/web/src/server/services/sso-provisioning.ts", symbol: "touchExternalIdentity", reason: "Stamps last-seen data on the external identity row the SSO callback just matched." },
   { file: "apps/web/src/server/services/impersonation.ts", symbol: "resolveImpersonation", reason: "Reads an impersonation grant by the id carried in the impersonation cookie; the row's own tenantId is what the session then adopts." },
-  { file: "apps/web/src/server/middleware/session.ts", symbol: "appSessionLive", reason: "Liveness check on the app session id the bearer token already resolved to, joined to its user." },
+  { file: "apps/web/src/server/middleware/session.ts", symbol: "appSessionOwner", reason: "Reads the app session row the bearer token's own `sid` names, joined to its user. Deliberately unscoped: it is what TELLS the caller which tenant this credential belongs to, and the caller refuses the token unless the row's userId/tenantId match the token's `sub`/`tid`. Scoping it by the claimed tenant would make the claim check itself." },
+  // ---------------------------------------------------------------------
+  // Queries that RESOLVE a tenant rather than being scoped by one.
+  //
+  // All seven arrived at once, when the scan stopped reading a `tenantId` in a
+  // `.select({ … })` projection as a tenant predicate (see `stripProjections`
+  // and the builder names in `DRIZZLE_OPS`). They were never scoped; the scan
+  // was looking at the output shape and calling it a filter, so each of these
+  // has been an unexamined query for as long as the scanner has existed.
+  //
+  // Every one of them turns out to be deliberate, and the shape is the same in
+  // each: the caller holds a PUBLIC identifier — a bearer token, an ingest
+  // key, a site id, an issuer — and this query is what says which workspace it
+  // belongs to. Scoping them by the tenant would be circular, because the
+  // tenant is the answer.
+  // ---------------------------------------------------------------------
+  { file: "apps/web/src/server/middleware/session.ts", symbol: "findAppSession", reason: "Resolves the opaque app-session bearer to its row by token, joined to its user. The row's own tenantId is what the request then adopts; there is no tenant to filter by until this has answered." },
+  { file: "apps/web/src/server/services/analytics.ts", symbol: "resolveIngestKey", reason: "Answers which workspace owns a public analytics ingest key. Reads the one settings row per workspace and compares hashes in JS; the tenant is the RESULT, so filtering by it would be circular." },
+  { file: "apps/web/src/server/services/consent.ts", symbol: "getPublishedConsentConfig", reason: "Public cookie-banner config for a site id that is itself the public identifier, joined to the site so a deleted site stops answering. The tenantId is projected for metering, not for filtering." },
+  { file: "apps/web/src/server/services/consent.ts", symbol: "getTagConsentSettings", reason: "Same public site-id lookup as getPublishedConsentConfig. Its own comment explains the projected tenantId: the container route meters the workspace that OWNS the site rather than whichever one tenant middleware resolved." },
+  { file: "apps/web/src/server/services/schema-versions.ts", symbol: "runScheduledSnapshots", reason: "A cron that sweeps every workspace which opted into a snapshot cadence. Scanning all tenants is the job; each row's own tenantId is then used to load and act on that workspace alone." },
+  { file: "apps/web/src/server/services/tag-manager.ts", symbol: "getPublishedArtifact", reason: "Serves the published tag container for a public site id, joined to the site so a deleted site stops answering. The tenantId comes back so the public route can meter the owning workspace." },
+  { file: "apps/web/src/server/services/third-party-auth.ts", symbol: "assertIssuerFree", reason: "Instance-wide uniqueness check on a JWT issuer. It has to see every workspace's rows to be a uniqueness check at all, and it deliberately reports only that the issuer is taken — naming the holder would leak another tenant's configuration to whoever probes issuers." },
   { file: "apps/web/src/server/routes/tenant-auth.ts", symbol: "consumeVerification", reason: "Deletes the verification row the magic-link/OTP path just matched on its own token." },
   { file: "apps/web/src/server/services/app-user-invites.ts", symbol: "consumeAppUserInvite", reason: "Deletes the verification row the invite-accept path just matched on its own token." },
   { file: "apps/web/src/server/services/invites.ts", symbol: "bindInvite", reason: "Binds the InviteRow findInviteByToken resolved from the presented token, and clears the token in the same write." },
@@ -298,7 +320,6 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "getStagedRow", reason: "Reached by (collection.id, itemId); the collection row was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "stagedIdsFor", reason: "Reached by (collection.id, ids), same contract as getStagedRow." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "deleteStagedRow", reason: "Reached by (collection.id, itemId), same contract as getStagedRow." },
-  { file: "apps/web/src/server/services/dashboards.ts", symbol: "deleteDashboard", reason: "Detaches the panels of the dashboard the scoped delete just removed, by dashboardId." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "loadBusy", reason: "Reads the occupying bookings of one resource, by resource.id; the resource row was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "releaseLapsedHolds", reason: "Releases lapsed holds on one resource, by resourceId." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "insertIntoSeat", reason: "Inserts the booking row whose values the scoped caller assembled (tenantId included in `values`)." },
@@ -972,6 +993,46 @@ const TENANT_TYPE_NOISE =
 const stripTypeNoise = (text: string): string => text.replace(TENANT_TYPE_NOISE, "");
 
 /**
+ * A PROJECTION that mentions `tenantId` is not a tenant predicate either.
+ *
+ * `.select({ status: t.users.status, tenantId: t.sessions.tenantId })
+ *    .from(t.sessions).where(eq(t.sessions.id, sessionId))`
+ *
+ * — the query READS the column and filters on something else entirely, so the
+ * rows it returns still span every workspace. This is the same mistake
+ * `TENANT_TYPE_NOISE` above exists for, in a different syntactic dress, and it
+ * is a worse one: a type annotation is a claim about the result, a projection
+ * is code, so it survives every "is this really a predicate?" reading.
+ *
+ * Found because `middleware/session.ts::appSessionOwner` started selecting
+ * `tenantId` (it has to — binding a token's `tid` claim to the session row is
+ * the whole point of the 2026-09 phase-6 fix) and its allowlist entry
+ * immediately went stale: the scan had decided the query scoped itself. It
+ * does not. Any query that merely names the column in its output shape would
+ * have been waved through the same way.
+ *
+ * `.select()` and `.returning()` only. `.values()` and `.set()` stay, because
+ * `tenantId` inside those is a real write of the scope, not a read of it.
+ */
+const PROJECTION_CALL = /\.(select|returning)\s*\(/g;
+
+const stripProjections = (text: string): string => {
+  let out = "";
+  let cursor = 0;
+  PROJECTION_CALL.lastIndex = 0;
+  let m: RegExpExecArray | null = PROJECTION_CALL.exec(text);
+  while (m) {
+    const open = m.index + m[0].length - 1;
+    const args = callArgs(text, open);
+    out += text.slice(cursor, open + 1);
+    cursor = open + 1 + args.length;
+    PROJECTION_CALL.lastIndex = cursor;
+    m = PROJECTION_CALL.exec(text);
+  }
+  return out + text.slice(cursor);
+};
+
+/**
  * Does this statement carry a tenant predicate?
  *
  * The direct case is a `tenantId` / `tenant_id` token anywhere in the statement
@@ -997,7 +1058,8 @@ export const hasTenantPredicate = (
   const statement = stripTypeNoise(rawStatement);
   const block = stripTypeNoise(rawBlock);
   const tail = stripTypeNoise(rawTail);
-  if (TENANT_TOKEN.test(statement)) return { scoped: true, via: "inline" };
+  if (TENANT_TOKEN.test(stripProjections(statement)))
+    return { scoped: true, via: "inline" };
 
   const identsIn = (text: string): string[] => {
     const out: string[] = [];
@@ -1205,6 +1267,13 @@ const DRIZZLE_OPS = new Set([
   "desc", "asc", "count", "sum", "avg", "min", "max", "arrayContains",
   "if", "for", "while", "switch", "catch", "return", "await", "typeof",
   "String", "Number", "Boolean", "Array", "Object", "Date", "JSON", "Math",
+  // The query builder's OWN methods. `READ_VERB` matches `select`, so without
+  // these a query's own `.select({ …, tenantId: t.tenantId })` counted as "an
+  // earlier read that looked this row up with the tenant" — the query vouching
+  // for itself, out of its projection. `appSessionOwner` in
+  // `middleware/session.ts` is where that showed: it filters on a session id
+  // alone and the scan called it `guard:select`.
+  "select", "selectDistinct", "selectDistinctOn", "returning",
 ]);
 
 // ---------------------------------------------------------------------------

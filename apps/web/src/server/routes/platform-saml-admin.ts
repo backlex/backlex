@@ -14,10 +14,11 @@
  * row fresh on every SSO request.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { AppError } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requireOperatorMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { parseMetadataXml } from "./saml-admin";
@@ -34,13 +35,12 @@ import {
   updatePlatformSamlProvider,
 } from "../services/platform-saml-providers";
 
-/** Admin gate + feature flag. No active-workspace requirement (instance-global). */
+/** Feature flag only — authorization is `requireOperatorMw`, ahead of it in
+ *  `GATE`. The order is deliberate: a caller who may not configure control-plane
+ *  SSO is refused before the response can tell them whether it is switched on. */
 const gate: MiddlewareHandler<AppBindings> = async (c, next) => {
   if (!isPlatformSsoEnabled(c.get("ctx").env)) {
     throw new AppError("NOT_FOUND", "Platform SSO is not enabled");
-  }
-  if (!c.get("auth").roles.includes(SYSTEM_ROLES.admin)) {
-    throw new AppError("FORBIDDEN", "Admin role required");
   }
   await next();
 };
@@ -97,7 +97,13 @@ const ImportMetadataInput = z
   .openapi("PlatformSamlImportMetadataInput");
 
 const TAG = "platform-saml-admin";
-const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, gate];
+/** These rows are INSTANCE-global: a provider here is a trust anchor for the
+ *  CONTROL plane, and `groupsToRoles` can name any workspace's role. The
+ *  workspace `admin` role is self-serve (`POST /api/tenants` grants it to
+ *  whoever creates a workspace — routes/tenants.ts:758), so gating on it let
+ *  any signed-up user register an IdP they control and then assert themselves
+ *  into an existing operator's account through `linkByVerifiedEmail`. */
+const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, requireOperatorMw, gate];
 
 const pickMapped = (attrs: Record<string, string[]>, key: string): string | null =>
   attrs[key]?.[0] ?? null;

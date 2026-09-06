@@ -10,9 +10,15 @@ import type {
 } from "../types";
 
 /**
- * Bun worker thread sandbox. Each invocation spawns a fresh Worker, posts the
+ * Bun worker thread executor. Each invocation spawns a fresh Worker, posts the
  * user code, and pumps RPC traffic between the worker and the host until the
  * worker returns a result or the timeout terminates it.
+ *
+ * Opt-in only (`FUNCTIONS_SANDBOX=bun-worker`) because the worker shares the
+ * process's capabilities — `node:fs`, `node:process` and `Bun.spawnSync` are
+ * all reachable from user code and cannot be taken away from inside. See
+ * `../worker-entry.ts` for the measurements and `../index.ts` for why the
+ * default moved off it.
  */
 export const bunWorkerProvider: SandboxProvider = {
   name: "bun-worker",

@@ -62,7 +62,7 @@ const requireBooking = async (ctx: any, token: string): Promise<ResolvedBooking>
 };
 
 const limit = async (c: any, bucket: string, max: number): Promise<void> => {
-  const meta = requestMeta(c.req.raw);
+  const meta = requestMeta(c.req.raw, c.get("ctx").env);
   const ok = await rateLimitOk(c.get("ctx").env, `${bucket}:${meta.ip ?? "unknown"}`, max, WINDOW_MS);
   if (!ok) throw new AppError("RATE_LIMITED", "Too many requests — please wait a moment");
 };

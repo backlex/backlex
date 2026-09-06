@@ -1,6 +1,34 @@
 import type { Hono } from "hono";
 import type { Env } from "../env";
 
+/**
+ * The `Request` objects this module hands to `app.fetch`.
+ *
+ * A sub-request re-enters the whole middleware stack on a path like
+ * `/api/items/<slug>`, so a guard that asks "is this path an MCP mount?" would
+ * answer NO for the very calls the MCP dispatcher makes on a caller's behalf —
+ * and refusing those breaks MCP for the credential the guard exists to bound
+ * (`middleware/credential-scope.ts`). This set is how such a guard tells "the
+ * MCP layer already vetted this call" from "someone posted a bearer at REST".
+ *
+ * It is a `WeakSet` keyed on object IDENTITY, and that is the whole security
+ * argument: an external caller can send any header they like, but they cannot
+ * hand us a `Request` instance that we ourselves already put in this set.
+ * Entries disappear with the request object, so nothing accumulates.
+ */
+const internalRequests = new WeakSet<Request>();
+
+/** Mark a request as one this process issued against its own router. */
+const markInternal = (req: Request): Request => {
+  internalRequests.add(req);
+  return req;
+};
+
+/** Did this process issue the request against its own router? Unforgeable from
+ *  the wire — see {@link internalRequests}. */
+export const isInternalRequest = (req: Request): boolean =>
+  internalRequests.has(req);
+
 /** Build a forwarder that calls the Hono `app` with the original MCP
  *  request's identity (Authorization, Cookie, X-Backlex-Tenant). Every
  *  layer of middleware re-runs against the sub-request, so permissions,
@@ -28,7 +56,7 @@ export const makeInternalFetch = (
     if (xff && !headers.has("x-forwarded-for")) headers.set("x-forwarded-for", xff);
     if (ip && !headers.has("cf-connecting-ip"))
       headers.set("cf-connecting-ip", ip);
-    const req = new Request(subUrl.toString(), { ...init, headers });
+    const req = markInternal(new Request(subUrl.toString(), { ...init, headers }));
     return app.fetch(req, env);
   };
 };
@@ -55,7 +83,7 @@ export const makeDetachedFetch = (
       headers.set("authorization", `Bearer ${opts.token}`);
     if (!headers.has("x-backlex-tenant"))
       headers.set("x-backlex-tenant", opts.tenantId);
-    const req = new Request(subUrl.toString(), { ...init, headers });
+    const req = markInternal(new Request(subUrl.toString(), { ...init, headers }));
     return app.fetch(req, env);
   };
 };

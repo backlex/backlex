@@ -911,9 +911,9 @@ export const performCreate = async (
     () =>
       publishEvent(
         ctx.env,
-        `items:${collection.slug}`,
+        { tenantId: env.tenantId ?? null, channel: `items:${collection.slug}` },
         { event: "created", data: out },
-        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: env.tenantId ?? null },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
       ),
     () =>
       recordActivity(
@@ -1339,12 +1339,12 @@ export const performUpdate = async (
     () =>
       publishEvent(
         ctx.env,
-        `items:${collection.slug}`,
+        { tenantId: env.tenantId ?? null, channel: `items:${collection.slug}` },
         // `before` is server-only (reactive Stage 2): the emit chokepoint uses
         // it to compute each filtered subscriber's membership transition, then
         // strips it — it never reaches a client.
         { event: "updated", data: refreshedRow, before: beforeRow },
-        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: env.tenantId ?? null },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
       ),
     () =>
       recordActivity(
@@ -1387,14 +1387,13 @@ export const performUpdate = async (
     sideEffects.push(async () => {
       dispatchEventHandlers(
         ctx.env,
-        `items:${collection.slug}`,
+        { tenantId: env.tenantId ?? null, channel: `items:${collection.slug}` },
         { event: transitionEventName(t), data: refreshedRow, before: beforeRow },
         {
           db: ctx.db,
           dialect: ctx.dialect,
           email: ctx.email,
           fullCtx: ctx,
-          tenantId: env.tenantId ?? null,
         },
       );
     });
@@ -1499,9 +1498,9 @@ export const performDelete = async (
     () =>
       publishEvent(
         ctx.env,
-        `items:${collection.slug}`,
+        { tenantId: env.tenantId ?? null, channel: `items:${collection.slug}` },
         { event: "deleted", data: oldRow },
-        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: env.tenantId ?? null },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
       ),
     () =>
       recordActivity(

@@ -869,6 +869,18 @@ function AuthSsoTabSkeletonImpl() {
   );
 }
 
+/** Authentication › Tokens — the signing-key and OAuth-client cards, which the
+ *  tab only knows whether to draw once `/api/me` says whether this admin is the
+ *  instance operator. Two list cards, matching what an operator sees. */
+function AuthTokensTabSkeletonImpl() {
+  return (
+    <>
+      <ListCardSkeleton rows={3} />
+      <ListCardSkeleton rows={3} />
+    </>
+  );
+}
+
 /** Authentication › Sessions — the one signed-in-right-now table. */
 function AuthSessionsTabSkeletonImpl() {
   return <TableCardSkeleton rows={8} cols={6} />;
@@ -1191,6 +1203,7 @@ export const SignaturesSkeleton = withSkeletonDelay(SignaturesSkeletonImpl);
 export const BookingSkeleton = withSkeletonDelay(BookingSkeletonImpl);
 export const AuthSettingsSkeleton = withSkeletonDelay(AuthSettingsSkeletonImpl);
 export const AuthSsoTabSkeleton = withSkeletonDelay(AuthSsoTabSkeletonImpl);
+export const AuthTokensTabSkeleton = withSkeletonDelay(AuthTokensTabSkeletonImpl);
 export const AuthSessionsTabSkeleton = withSkeletonDelay(AuthSessionsTabSkeletonImpl);
 export const UsersSkeleton = withSkeletonDelay(UsersSkeletonImpl);
 export const AppUsersSkeleton = withSkeletonDelay(AppUsersSkeletonImpl);

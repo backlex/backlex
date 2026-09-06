@@ -142,10 +142,13 @@ export const sendMessage = async (
     userId: auth.userId,
   });
   await ensureThreadTitle(ctx, threadId);
-  const channel = `agent:thread:${threadId}`;
+  // `gateForChannel` admits an agent-thread subscriber only after checking the
+  // thread belongs to their active workspace, so the room must be addressed
+  // with the SAME workspace or the stream is gated open and delivered empty.
+  const addr = { tenantId, channel: `agent:thread:${threadId}` };
   const emit = async (event: string, data: Record<string, unknown>) => {
     try {
-      await publishEvent(env, channel, { event, data });
+      await publishEvent(env, addr, { event, data });
     } catch {
       /* realtime is best-effort */
     }

@@ -5,7 +5,7 @@ import type { Context, Hono } from "hono";
 import type { AppBindings } from "../app";
 import { getRequestPermCache } from "../middleware/permission";
 import { getSchema } from "../services/graphql";
-import { budgetFromEnv, overBudget } from "../services/graphql/cost";
+import { MAX_DOCUMENT_CHARS, budgetFromEnv, overBudget } from "../services/graphql/cost";
 import { loadCollection } from "../services/items/collection-loader";
 import { openRealtimeSubscribe } from "./realtime";
 import { keepAlive } from "../services/activity";
@@ -85,6 +85,14 @@ export const handleGraphql = async (
   // schema generation. See services/graphql/cost.ts.
   const budget = budgetFromEnv(ctx.env);
   for (const query of await queriesOf(c.req.raw)) {
+    // Ahead of `parse`, which is linear in the source and would otherwise build
+    // an AST proportional to the body before any budget is consulted.
+    if (query.length > MAX_DOCUMENT_CHARS) {
+      throw new AppError(
+        "VALIDATION",
+        `GraphQL document is too large (${query.length} characters, max ${MAX_DOCUMENT_CHARS})`,
+      );
+    }
     let doc;
     try {
       doc = parse(query);

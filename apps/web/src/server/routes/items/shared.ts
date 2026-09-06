@@ -1,9 +1,7 @@
 import type { Context } from "hono";
-import type { AuthSubject } from "@backlex/core";
 import type { AppBindings } from "../../app";
 import { elapsedMs, keepAlive, requestMeta } from "../../services/activity";
 import { recordSensitiveRead } from "../../services/items/read-audit";
-import { resolvePermission } from "../../services/permissions";
 import type { CollectionRow } from "../../services/items/collection-loader";
 
 /**
@@ -36,29 +34,10 @@ export const auditRead = (
       tenantId: auth.tenantId ?? null,
       itemId,
       payload,
-      ...requestMeta(c.req.raw),
+      ...requestMeta(c.req.raw, c.get("ctx").env),
       durationMs: elapsedMs(c),
     }),
   );
-};
-
-/**
- * Whether the caller may see drafts of a versioned collection. Admins and
- * holders of `publish` or `update` permission on the collection do; everyone
- * else gets published-only reads. Returns false for non-versioned collections
- * (no status filter is applied to them).
- */
-export const canSeeDraftsFor = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  auth: AuthSubject & { tenantId?: string | null },
-  collection: CollectionRow,
-  perm: { isAdmin?: boolean },
-): Promise<boolean> => {
-  if (!collection.versioned) return false;
-  if (perm.isAdmin) return true;
-  const dbctx = { db: ctx.db as any, dialect: ctx.dialect };
-  if ((await resolvePermission(dbctx, auth, collection.slug, "publish")).allowed) return true;
-  return (await resolvePermission(dbctx, auth, collection.slug, "update")).allowed;
 };
 
 /**

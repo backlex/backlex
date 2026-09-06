@@ -20,17 +20,38 @@ export type ItemsTransportKind = "sse" | "ably-signal" | "off";
 
 const apiBase = (): string => import.meta.env.VITE_API_URL ?? "";
 
-/** One capability probe per SPA session — the answer is deployment-static. */
-let transportPromise: Promise<ItemsTransportKind> | null = null;
-export const itemsTransport = (): Promise<ItemsTransportKind> => {
+interface ItemsProbe {
+  transport: ItemsTransportKind;
+  /** Prefix this workspace's Ably rooms are named with (`t.<id>:`). Empty
+   *  against a server that sends none — that deployment names rooms without a
+   *  workspace, and the bare channel is what it publishes to. */
+  ablyPrefix: string;
+}
+
+/** One capability probe per SPA session — the answer is deployment-static.
+ *
+ *  NOT static per WORKSPACE, though: `ablyPrefix` is. Switching workspace
+ *  reloads the SPA (`tenants-switch`), so one probe per session still answers
+ *  for one workspace — if that ever stops being true this cache has to be
+ *  keyed on the active workspace, or a signal pipe attaches to the room of
+ *  whichever workspace happened to load first. */
+let transportPromise: Promise<ItemsProbe> | null = null;
+export const itemsTransport = (): Promise<ItemsProbe> => {
   transportPromise ??= fetch(`${apiBase()}/api/realtime/items-config`, {
     credentials: "include",
   })
-    .then((r) => (r.ok ? (r.json() as Promise<{ transport?: ItemsTransportKind }>) : { transport: "sse" as const }))
-    .then((j: { transport?: ItemsTransportKind }) => j.transport ?? "sse")
+    .then((r) =>
+      r.ok
+        ? (r.json() as Promise<{ transport?: ItemsTransportKind; ablyPrefix?: string }>)
+        : { transport: "sse" as const },
+    )
+    .then((j: { transport?: ItemsTransportKind; ablyPrefix?: string }) => ({
+      transport: j.transport ?? ("sse" as const),
+      ablyPrefix: j.ablyPrefix ?? "",
+    }))
     // A failed probe must not take realtime down where SSE works — assume the
     // historical transport and let the EventSource decide.
-    .catch(() => "sse" as const);
+    .catch(() => ({ transport: "sse" as const, ablyPrefix: "" }));
   return transportPromise;
 };
 
@@ -47,6 +68,11 @@ export const openSignalPipe = async (
 ): Promise<(() => void) | null> => {
   const channel = `signal:items:${slug}`;
   try {
+    // The token is requested for the LOGICAL channel (the server namespaces it
+    // and mints the capability for the room), but the attach has to name the
+    // room itself — Ably matches the capability against the channel the client
+    // opens, so the two must be the same string.
+    const { ablyPrefix } = await itemsTransport();
     const Ably = await import("ably");
     const client = new Ably.Realtime({
       authCallback: (_params, cb) => {
@@ -65,7 +91,7 @@ export const openSignalPipe = async (
       },
       closeOnUnload: true,
     });
-    const ch = client.channels.get(channel);
+    const ch = client.channels.get(`${ablyPrefix}${channel}`);
     await ch.subscribe("signal", () => onSignal());
     return () => client.close();
   } catch {

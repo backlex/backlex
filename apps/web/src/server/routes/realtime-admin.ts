@@ -12,6 +12,7 @@ import {
   type ChannelStats,
   getLocalChannelStats,
 } from "../services/events";
+import { topicFor } from "../services/realtime-topic";
 import { isStatelessEdge } from "../lib/runtime";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -80,11 +81,13 @@ const ChannelRowSchema = z
  *  rather render the channel as "0 connected" than crash on a stale DO. */
 const fetchStats = async (
   env: Env,
+  tenantId: string,
   channel: string,
 ): Promise<ChannelStats> => {
+  const addr = { tenantId, channel };
   if (env.REALTIME) {
     try {
-      const stub = env.REALTIME.get(env.REALTIME.idFromName(channel));
+      const stub = env.REALTIME.get(env.REALTIME.idFromName(topicFor(addr)));
       const res = await stub.fetch("https://do/stats");
       if (!res.ok) return ZERO_STATS;
       return (await res.json()) as ChannelStats;
@@ -92,7 +95,7 @@ const fetchStats = async (
       return ZERO_STATS;
     }
   }
-  return getLocalChannelStats(channel);
+  return getLocalChannelStats(addr);
 };
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
@@ -147,7 +150,7 @@ export const realtimeAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const data = await Promise.all(
         channels.map(async (channel) => ({
           channel,
-          stats: await fetchStats(env, channel),
+          stats: await fetchStats(env, tenantId, channel),
         })),
       );
 
@@ -186,7 +189,10 @@ export const realtimeAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       refuseOnStatelessEdge();
       const { channel } = c.req.valid("param");
-      const stats = await fetchStats(c.get("ctx").env, channel);
+      // Probing by name now answers about the CALLER's room. Without the
+      // workspace this endpoint reported another workspace's socket and
+      // presence counts for any channel name an admin could guess.
+      const stats = await fetchStats(c.get("ctx").env, requireTenant(c), channel);
       return c.json({ data: { channel, stats } });
     },
   );

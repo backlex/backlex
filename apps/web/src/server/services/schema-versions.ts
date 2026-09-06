@@ -23,6 +23,7 @@
 import { AppError } from "@backlex/core";
 import {
   applyCollection,
+  assertIdent,
   canonicalizeDocument,
   derivePhysicalTable,
   diffDocument,
@@ -44,6 +45,7 @@ import { CONFIG_RESOURCES, configResource, loadLiveConfig } from "./config-resou
 import { invalidateTenantPermissions } from "./permissions-cache";
 import { seedOwnerScopedPermissions } from "./seed";
 import { snapshotBeforeDrop } from "./backup";
+import { reservedTableReason, unreadableTableReason } from "./system-tables";
 import type { Ctx } from "../context";
 import { loadAppSettings } from "./settings";
 
@@ -607,6 +609,38 @@ const upsertMetadata = async (
   const physicalTable =
     (managed ? existing?.physicalTable : tc.physicalTable ?? existing?.physicalTable) ??
     derivePhysicalTable(tenantId, tc.slug);
+  // `POST /snapshots/import` parses collections with `.passthrough()` — by
+  // design, so an export this service produced imports back unchanged — which
+  // means `adopted: true` + `physicalTable: "sessions"` survives into here and
+  // gets written verbatim. Same door as `POST /api/collections`, different
+  // handle.
+  //
+  // Two checks, because two different things arrive here. `tc.physicalTable` is
+  // the document's, i.e. caller-supplied, and gets the strict rule the create
+  // endpoint uses. The RESOLVED name may instead be an existing row's, which on
+  // an upgraded deployment is a legacy prefixless `c_<slug>` — strict there
+  // would refuse to apply any schema to a collection older than per-workspace
+  // naming.
+  if (!managed && tc.physicalTable) {
+    // `POST /api/collections` runs this before its own guard; the snapshot path
+    // never did, so a document could carry an identifier the create endpoint
+    // would have refused outright. Restated here rather than relied upon: it
+    // keeps the charset the same on both doors, which is what makes the
+    // case-fold in `system-tables.ts` a second line rather than the only one.
+    try {
+      assertIdent(tc.physicalTable);
+    } catch (e) {
+      throw new AppError("VALIDATION", `${tc.slug}: ${(e as Error).message}`);
+    }
+    const chosen = reservedTableReason(tc.physicalTable, tenantId);
+    if (chosen) {
+      throw new AppError("FORBIDDEN", `${tc.slug}: ${chosen} and cannot back a collection.`);
+    }
+  }
+  const reserved = unreadableTableReason(physicalTable, tenantId);
+  if (reserved) {
+    throw new AppError("FORBIDDEN", `${tc.slug}: ${reserved} and cannot back a collection.`);
+  }
   // Soft-delete needs a physical column → managed-only (mirrors create).
   const softDelete = managed ? Boolean(tc.softDelete) : false;
   const common = {

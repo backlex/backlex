@@ -164,7 +164,7 @@ const auditGqlRead = (
 ): void => {
   if (!collection.auditReads) return;
   const { ctx, auth, rawRequest, defer } = gqlCtx;
-  const meta = rawRequest ? requestMeta(rawRequest) : { ip: null, userAgent: null };
+  const meta = rawRequest ? requestMeta(rawRequest, ctx.env) : { ip: null, userAgent: null };
   const p = recordSensitiveRead(
     { db: ctx.db, dialect: ctx.dialect },
     collection,

@@ -465,7 +465,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!form.tenantId)
         throw new AppError("VALIDATION", "This form does not accept file uploads");
 
-      const meta = requestMeta(c.req.raw);
+      const meta = requestMeta(c.req.raw, c.get("ctx").env);
       const ip = meta.ip ?? "unknown";
       const policy = formUploadPolicy(ctx.env);
       const minuteOk = await rateLimitOk(
@@ -606,7 +606,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         throw new AppError("GONE", availability.message ?? "This form is closed");
       }
 
-      const ip = requestMeta(c.req.raw).ip ?? "unknown";
+      const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
       const allowed = await rateLimitOk(
         ctx.env,
         `form-draft:${form.id}:${ip}`,
@@ -757,7 +757,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         throw new AppError("GONE", availability.message ?? "This form is closed");
       }
 
-      const meta = requestMeta(c.req.raw);
+      const meta = requestMeta(c.req.raw, c.get("ctx").env);
       const ip = meta.ip ?? "unknown";
       const allowed = await rateLimitOk(
         ctx.env,

@@ -38,6 +38,7 @@ import {
   redisRealtimeEnabled,
   redisReadSince,
 } from "../services/realtime-redis";
+import { type ChannelAddress, topicFor } from "../services/realtime-topic";
 import { rateLimitOk } from "../lib/rate-limit";
 import { isStatelessEdge } from "../lib/runtime";
 import { defaultHook } from "../lib/openapi-router";
@@ -72,6 +73,8 @@ import {
   itemsTransportKind,
   parseSignalChannel,
   signalChannel,
+  ablyRoom,
+  ablyRoomPrefixFor,
   signalScopeAllowsConditional,
 } from "../services/realtime-signal";
 import { readJson } from "../lib/body";
@@ -138,10 +141,9 @@ interface Gate {
   broadcast?: ResolvedChannel;
 }
 
-const clientIp = (c: { req: { header: (n: string) => string | undefined } }): string =>
-  c.req.header("cf-connecting-ip") ??
-  c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-  "local";
+import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+const clientIp = (c: { req: { raw: Request } }, env: ClientAddressEnv): string =>
+  clientAddress(c.req.raw, env) ?? "local";
 
 /** System columns a realtime filter may always reference (they're always
  *  projected to the subscriber, so filtering on them leaks nothing). */
@@ -264,9 +266,16 @@ const gateForChannel = async (
         (await resolvePermission(ctx, auth, slug, "update")).allowed;
       if (!canSeeDrafts) {
         const pub: Condition = { _status: { _eq: "published" } } as Condition;
+        // `$and`, not `_and`. The underscore spelling is an INPUT alias that
+        // only `normalizeCondition` understands, and this condition is handed
+        // straight to the in-memory evaluator, which does not normalize. It
+        // read `_and` as a FIELD NAME, found no such column on the row, matched
+        // vacuously — and so the whole clause, the caller's own row conditions
+        // included, collapsed to always-true. A restricted subscriber on a
+        // versioned collection therefore received every row and every draft.
         conditions =
           conditions && conditions.length
-            ? conditions.map((c) => ({ _and: [c, pub] }) as Condition)
+            ? conditions.map((c) => ({ $and: [c, pub] }) as Condition)
             : [pub];
       }
     }
@@ -689,6 +698,12 @@ const gateAndMintAblyToken = async (
     throw new AppError("UNAVAILABLE", "Ably is not configured on this deployment");
   }
   const capabilities: Record<string, string[]> = {};
+  // Every capability is minted for the CALLER's room, so a caller who names a
+  // bare channel gets their own workspace's and a caller who names another
+  // workspace's room name gets it nested inside their own — reachable by
+  // neither. Ably enforces the capability, so this is the whole boundary on a
+  // transport where the client connects to Ably rather than to us.
+  const room = (channel: string) => ablyRoom(auth.tenantId ?? null, channel);
   for (const channel of channels) {
     const isSignal = channel.startsWith(SIGNAL_ROOT);
     const isCollab = channel.startsWith(COLLAB_PREFIX);
@@ -710,9 +725,9 @@ const gateAndMintAblyToken = async (
     if (isSignal) {
       // Server-emitted: a client able to publish these could fabricate change
       // notifications that make other readers refetch (or miss) rows.
-      capabilities[channel] = ["subscribe"];
+      capabilities[room(channel)] = ["subscribe"];
     } else if (isCollab) {
-      capabilities[channel] = ["publish", "subscribe"];
+      capabilities[room(channel)] = ["publish", "subscribe"];
     } else {
       // Application-owned: the token's capability mirrors the rule, so Ably
       // enforces the same split the REST publish endpoint does. Asking the
@@ -721,7 +736,7 @@ const gateAndMintAblyToken = async (
       const canPublish =
         gate.broadcast !== undefined &&
         satisfiesAccess(gate.broadcast.rule.publish, auth, gate.broadcast.params);
-      capabilities[channel] = canPublish ? ["publish", "subscribe"] : ["subscribe"];
+      capabilities[room(channel)] = canPublish ? ["publish", "subscribe"] : ["subscribe"];
     }
   }
   return mintAblyTokenRequest(ctx.env.ABLY_API_KEY, auth.userId!, capabilities);
@@ -809,19 +824,21 @@ const pumpSSE = async (
 
 const publishToChannel = async (
   env: Env,
-  channel: string,
+  addr: ChannelAddress,
   payload: unknown,
 ): Promise<void> => {
+  const topic = topicFor(addr);
   if (env.REALTIME) {
-    const stub = env.REALTIME.get(env.REALTIME.idFromName(channel));
+    const stub = env.REALTIME.get(env.REALTIME.idFromName(topic));
     await stub.fetch("https://do/publish", {
       method: "POST",
+      headers: { "x-backlex-event-tenant": addr.tenantId ?? "" },
       body: JSON.stringify(payload),
     });
   } else if (redisRealtimeEnabled(env)) {
     // Stateless serverless (Vercel / Netlify) with Upstash configured: fan out
     // through a Redis Stream so subscribers on other invocations see it.
-    await redisPublish(env, channel, payload);
+    await redisPublish(env, topic, payload);
   } else if (isStatelessEdge()) {
     // Vercel Edge / Netlify Edge: every invocation is a fresh isolate, so
     // module-level subscribers from `publishLocal` would never see the
@@ -832,7 +849,7 @@ const publishToChannel = async (
       "Realtime is not available on Vercel Edge / Netlify Edge — deploy to Cloudflare Workers (with REALTIME Durable Object binding) or Bun.",
     );
   } else {
-    publishLocal(channel, payload);
+    publishLocal(addr, payload);
   }
 };
 
@@ -886,7 +903,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const { channel } = c.req.valid("param");
       const gate = await gateForChannel(ctx, auth, channel, true);
 
-      if (!(await rateLimitOk(ctx.env, `pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS))) {
+      if (!(await rateLimitOk(ctx.env, `pub:${channel}:${clientIp(c, ctx.env)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS))) {
         throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
       }
       let payload = await readJson(c.req);
@@ -937,7 +954,9 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           await recordBroadcast(ctx, auth.tenantId, channel, frame);
         }
       }
-      await publishToChannel(ctx.env, channel, payload);
+      // Same workspace the gate ran in, so a client publish lands in exactly
+      // the room a client subscribe would have joined.
+      await publishToChannel(ctx.env, { tenantId: auth.tenantId ?? null, channel }, payload);
       return c.json({ ok: true });
     },
   )
@@ -1093,7 +1112,10 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           content: {
             "application/json": {
               schema: z
-                .object({ transport: z.enum(["native", "ably", "off"]) })
+                .object({
+                  transport: z.enum(["native", "ably", "off"]),
+                  ablyPrefix: z.string(),
+                })
                 .openapi("CollabConfig"),
             },
           },
@@ -1101,7 +1123,11 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...errorResponses,
       },
     }),
-    (c) => c.json(collabConfig(c.get("ctx").env)),
+    (c) =>
+      c.json({
+        ...collabConfig(c.get("ctx").env),
+        ablyPrefix: ablyRoomPrefixFor(c.get("auth") ?? { userId: null }),
+      }),
   )
   // How a client should receive DATA-plane row events on this deployment:
   // `sse` (the held `items:*` stream, full server-side filtering), `ably-signal`
@@ -1120,7 +1146,10 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           content: {
             "application/json": {
               schema: z
-                .object({ transport: z.enum(["sse", "ably-signal", "off"]) })
+                .object({
+                  transport: z.enum(["sse", "ably-signal", "off"]),
+                  ablyPrefix: z.string(),
+                })
                 .openapi("ItemsConfig"),
             },
           },
@@ -1128,7 +1157,17 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...errorResponses,
       },
     }),
-    (c) => c.json(itemsConfig(c.get("ctx").env)),
+    (c) =>
+      c.json({
+        ...itemsConfig(c.get("ctx").env),
+        // The Ably room prefix for THIS caller's workspace — see
+        // `ablyRoomPrefixFor`, which answers `""` to a signed-out caller.
+        // Sent on every TRANSPORT, not only `ably-signal`: this endpoint
+        // answers before the client knows which plane it is on, and sending it
+        // conditionally would mean the one client that needs it has to ask
+        // twice.
+        ablyPrefix: ablyRoomPrefixFor(c.get("auth") ?? { userId: null }),
+      }),
   )
   // Ably token auth for collab channels: the browser's ably-js authCallback
   // POSTs the channels it wants; each one passes the same permission gate as a
@@ -1274,7 +1313,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (body.data == null || typeof body.data !== "object" || Array.isArray(body.data)) {
         throw new AppError("VALIDATION", "data must be an object");
       }
-      await publishToChannel(ctx.env, channel, {
+      await publishToChannel(ctx.env, { tenantId: auth.tenantId ?? null, channel }, {
         event: body.event,
         data: body.data,
       } satisfies ItemEventPayload);
@@ -1313,6 +1352,12 @@ export const openRealtimeSubscribe = async (
     // delivered (reactive invalidation Stage 1).
     const gate = await gateForChannel(ctx, auth, channel, false, filterRaw);
     const since = parseSince(c.req.header("Last-Event-ID"));
+    // The room this subscription joins. Derived from the workspace the gate was
+    // resolved in — the SAME `auth.tenantId` `resolvePermission` used — and
+    // never from the path, or a caller would name someone else's room and be
+    // admitted to it by a permission check that ran against their own.
+    const addr: ChannelAddress = { tenantId: auth.tenantId ?? null, channel };
+    const topic = topicFor(addr);
 
     // Signal-plane deployment: there is no cross-instance `items:*` fan-out to
     // stream. Without this the request would fall through to the in-process bus
@@ -1332,7 +1377,11 @@ export const openRealtimeSubscribe = async (
       if (gate.meta) url.searchParams.set("meta", btoa(JSON.stringify(gate.meta)));
       if (since > 0) url.searchParams.set("since", String(since));
       if (gate.presence) url.searchParams.set("presence", "1");
-      const id = ctx.env.REALTIME.idFromName(channel);
+      // Always set, empty for "no active workspace" — the DO treats an ABSENT
+      // param as "this build never stated one" and delivers nothing, so
+      // forgetting it fails closed rather than wide.
+      url.searchParams.set("tenant", addr.tenantId ?? "");
+      const id = ctx.env.REALTIME.idFromName(topic);
       const stub = ctx.env.REALTIME.get(id);
       const upstream = await stub.fetch(url.toString(), {
         headers: { upgrade: "websocket" },
@@ -1472,7 +1521,7 @@ export const openRealtimeSubscribe = async (
         let cursor =
           lastHeader && lastHeader.length > 0
             ? lastHeader
-            : await redisLatestId(ctx.env, channel);
+            : await redisLatestId(ctx.env, topic);
         await stream.writeSSE({ event: "ready", data: channel, retry: RECONNECT_HINT_MS });
         let aborted = false;
         c.req.raw.signal.addEventListener("abort", () => {
@@ -1489,14 +1538,21 @@ export const openRealtimeSubscribe = async (
         while (!aborted && Date.now() - startedAt < REDIS_HOLD_MS) {
           let entries: Awaited<ReturnType<typeof redisReadSince>> = [];
           try {
-            entries = await redisReadSince(ctx.env, channel, cursor);
+            entries = await redisReadSince(ctx.env, topic, cursor);
           } catch {
             // transient REST hiccup — retry next tick
           }
           for (const entry of entries) {
             cursor = entry.id;
             // Same permission filter + field projection as the in-process path.
-            const rendered = renderEventForMeta(gate.meta, entry.payload);
+            // The stream key IS the topic, so every entry it holds was
+            // published in this address's workspace.
+            const rendered = renderEventForMeta(
+              gate.meta,
+              entry.payload,
+              addr.tenantId,
+              addr.tenantId,
+            );
             if (rendered === null) continue;
             await stream.writeSSE({ event: "message", data: rendered, id: entry.id });
             delivered = true;
@@ -1542,12 +1598,13 @@ export const openRealtimeSubscribe = async (
           enqueue({ kind: "msg", id, data: msg });
         },
         meta: gate.meta,
+        tenantId: addr.tenantId,
       };
-      const unsub = subscribeLocal(channel, sub);
+      const unsub = subscribeLocal(addr, sub);
       // Snapshot the sequence at subscribe time: events with id <= this were
       // recorded before we joined the fan-out set, so replay [since, snapshot]
       // exactly fills the gap without duplicating anything delivered live.
-      const snapshot = currentSeq(channel);
+      const snapshot = currentSeq(addr);
       c.req.raw.signal.addEventListener("abort", () => {
         aborted = true;
         wakeUp();
@@ -1581,10 +1638,10 @@ export const openRealtimeSubscribe = async (
             refreshing = false;
           });
       }, heartbeatMs);
-      if (since > 0 && since < snapshot) replayLocal(channel, sub, since, snapshot);
+      if (since > 0 && since < snapshot) replayLocal(addr, sub, since, snapshot);
       const leavePresence =
         gate.presence && gate.meta?.authSubject.userId
-          ? joinPresence(channel, sub, {
+          ? joinPresence(addr, sub, {
               userId: gate.meta.authSubject.userId,
               email: gate.meta.authSubject.email ?? null,
             })

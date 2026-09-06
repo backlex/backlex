@@ -38,11 +38,9 @@ import { loadAuthHook, runPasswordVerificationHook } from "../services/auth-hook
 
 const TENANT_SIGNIN_EMAIL = /^\/api\/t\/([^/]+)\/auth\/sign-in\/email(\/|$)/i;
 
-const ipOf = (req: Request): string | null =>
-  req.headers.get("cf-connecting-ip") ||
-  req.headers.get("x-real-ip") ||
-  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-  null;
+import { type ClientAddressEnv, clientAddress } from "./client-address";
+const ipOf = (req: Request, env: ClientAddressEnv): string | null =>
+  clientAddress(req, env);
 
 /** Delete the `app_sessions` row a refused sign-in just created. Best-effort by
  *  necessity — but a failure here must not turn into a 200, so the caller
@@ -133,7 +131,7 @@ export const passwordVerificationHookMiddleware: MiddlewareHandler = async (c, n
     verdict = await runPasswordVerificationHook(hookCtx, tenant.id, {
       email,
       valid: status === 200,
-      ip: ipOf(c.req.raw),
+      ip: ipOf(c.req.raw, c.get("ctx").env),
       userAgent: c.req.raw.headers.get("user-agent"),
     });
   } catch (e) {

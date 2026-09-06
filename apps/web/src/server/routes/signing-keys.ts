@@ -2,8 +2,9 @@
  * Signing keys — admin routes. Mounted at `/api/admin/signing-keys`.
  *
  * Instance-level, not per workspace: the JWKS is one document at one URL and a
- * token's `iss` names the instance. The admin gate is therefore the platform
- * admin role, and no tenant is required.
+ * token's `iss` names the instance. The gate is therefore the INSTANCE
+ * OPERATOR, and no tenant is required. It is deliberately not the workspace
+ * `admin` role — see the comment on `adminGate` below.
  *
  * Nothing here returns a private key. `generate` does not return one either —
  * unlike an API key or an S3 secret, nobody ever needs to hold it: it exists to
@@ -11,10 +12,9 @@
  * row.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requireOperatorMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import {
   deleteSigningKey,
@@ -43,14 +43,17 @@ const View = z
   })
   .openapi("SigningKey");
 
-const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
-  const auth = c.get("auth");
-  if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
-    throw new AppError("FORBIDDEN", "Admin role required");
-  }
-  await next();
-};
-const adminGate = [requireUser, requireAdminMiddleware];
+/** Instance operator, not the workspace `admin` role.
+ *
+ *  The keyring is one list for the whole instance — `services/signing-keys.ts`
+ *  never reads `tenantId`, `dbKeyMaterial` loads every row, and the `in_use`
+ *  row signs the access token of every workspace's end-users. The `admin` role
+ *  is self-serve (`POST /api/tenants` grants it to whoever creates a
+ *  workspace — routes/tenants.ts:758, and `WORKSPACE_CREATION` defaults to
+ *  `open`), so gating on it let any signed-up user import a private key they
+ *  hold and then mint app-plane tokens for every OTHER workspace. Same gate
+ *  routes/db-admin.ts puts on the SQL console, for the same reason. */
+const adminGate = [requireUser, requireOperatorMw];
 
 const tags = ["signing-keys"];
 

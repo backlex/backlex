@@ -7,6 +7,7 @@ import { reportToCloud } from "../lib/cloud-report";
 import { log } from "../lib/log";
 import type { Env } from "../env";
 import type { DbCtx } from "../services/seed";
+import type { ClientAddressEnv } from "../lib/client-address";
 
 /** Read the request correlation id set by the outermost middleware. Wrapped
  *  because errors that fire before that middleware ran (or in a bare context)
@@ -65,7 +66,10 @@ const logServerError = (
   if (rep) keepAlive(c, rep);
 
   // Local audit row needs the tenant DB context; skip it when unavailable.
-  let ctx: DbCtx | undefined;
+  // `env` is not on DbCtx but is on the object `c.get("ctx")` actually returns.
+  // Widened here so the address derivation can consult it; absent, it reads as
+  // "no header on this deployment is trusted", which is the safe direction.
+  let ctx: (DbCtx & { env?: ClientAddressEnv }) | undefined;
   try {
     ctx = c.get("ctx") as DbCtx | undefined;
   } catch {
@@ -78,7 +82,7 @@ const logServerError = (
   } catch {
     auth = undefined;
   }
-  const meta = requestMeta(c.req.raw);
+  const meta = requestMeta(c.req.raw, ctx.env ?? {});
   keepAlive(
     c,
     recordActivity(

@@ -19,6 +19,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { invalidateTenantCollections } from "../src/server/services/collections-cache";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { buildContext } from "../src/server/context";
+import { restoreBackupById } from "../src/server/services/backup";
 
 const json = { "Content-Type": "application/json" };
 
@@ -84,6 +86,62 @@ describe("the fold backfill", () => {
     expect(await foundBy("sule")).toEqual([]);
     expect(await foundBy("ozturk")).toEqual([]);
     expect(await foundBy("strasse")).toEqual([]);
+  });
+
+  test("a restore that cannot finish folding says how many rows it left", async () => {
+    // The second case this file's header names: a dump taken before folded
+    // search existed brings its rows back unfolded, and `restoreBackup` runs
+    // the pass afterwards for exactly that reason.
+    //
+    // The pass is CAPPED, and what it could not reach used to be discarded
+    // inside an empty `catch` — so a restore too large to finish folding
+    // reported plain success while `_icontains` matched nothing past the cap.
+    // Driven here at `batch: 1, maxBatches: 1` because the real cap is 100,000
+    // rows and a branch you cannot reach is a branch nobody tests.
+    const made = await h.fetch("/api/admin/db/backups/now", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({}),
+    });
+    expect([200, 201]).toContain(made.status);
+    const backupId = ((await made.json()) as { data: { id: string } }).data.id;
+
+    // Rows that predate the companion column, and an ADDITIVE restore — the
+    // rows still exist, so `ON CONFLICT DO NOTHING` leaves them exactly as they
+    // are and the fold pass is the only thing with work to do.
+    await runSql(`UPDATE "${table}" SET "name__fold" = NULL`);
+    expect(await foundBy("sule")).toEqual([]);
+
+    // The workspace the harness's admin is in — the same value the route reads
+    // off `auth`. Asked for rather than assumed: `Ctx` carries no tenant, and a
+    // `null` here would ask for an INSTANCE-WIDE restore, which is a different
+    // operation that would not find this workspace's backup.
+    const meRes = await h.fetch("/api/me");
+    expect(meRes.status).toBe(200);
+    const tenantId = ((await meRes.json()) as { data: { tenantId: string | null } }).data
+      .tenantId;
+    expect(tenantId).toBeTruthy();
+
+    const ctx = await buildContext(h.env);
+    const result = await restoreBackupById(ctx, tenantId, backupId, {
+      fold: { batch: 1, maxBatches: 1 },
+    });
+
+    // TWO fold passes run over a restore and both are capped here: the
+    // `applyCollection` the collections loop performs (one row) and the pass
+    // after the inserts (one more). Three rows minus two folded leaves one, and
+    // that one is what the caller is told about.
+    //
+    // The NUMBER is the assertion. A build that merely carries the field
+    // reports 0, which is indistinguishable from "the restore finished" — and
+    // being indistinguishable from success is the entire defect.
+    expect(result.unfoldedRows).toBe(1);
+    // The report is true of the data: exactly two of the three are findable.
+    const found =
+      (await foundBy("sule")).length +
+      (await foundBy("ozturk")).length +
+      (await foundBy("strasse")).length;
+    expect(found).toBe(2);
   });
 
   test("applying the schema fills them, and they come back", async () => {

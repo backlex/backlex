@@ -70,7 +70,7 @@ export const dashboardsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook
   async (c) => {
     const ctx = c.get("ctx");
     const { token } = c.req.valid("param");
-    const ip = requestMeta(c.req.raw).ip ?? "unknown";
+    const ip = requestMeta(c.req.raw, c.get("ctx").env).ip ?? "unknown";
     const withinIpBudget = await rateLimitOk(
       ctx.env,
       `dash-embed:${token}:${ip}`,

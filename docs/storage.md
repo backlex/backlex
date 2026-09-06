@@ -37,6 +37,30 @@ in `files.key` (which is the row's primary key).
 Logical keys starting with `tenants/` are rejected with `VALIDATION` so
 clients can't sneak into another workspace.
 
+### What a logical key may contain
+
+`guardLogicalKey` is the one rule, applied by every door that accepts a key
+(REST, the S3 endpoint, TUS, form uploads, CDC, workspace config, item ingest).
+A key is refused when it:
+
+- is empty, or starts with `tenants/`;
+- contains a null byte, a backslash, `?` or `#`, or starts with `/`;
+- contains a `.` or `..` segment — checked again on the percent-decoded form,
+  because the S3 adapter's URL builder leaves an already-encoded one intact and
+  WHATWG parsing collapses it back;
+- has any segment **ending in a dot or a space**. Not a traversal hop by itself,
+  but it is a directory a hop can be taken from once created, and Windows/NTFS
+  strips trailing dots and spaces when opening a file — so `report.` and
+  `report` would name the same object there;
+- ends in `.uploading`, which is reserved for the fs adapter's in-progress
+  multipart temp files. Such an object would be skipped by listings (and so by
+  storage accounting) and could collide with an upload in flight.
+
+Dots elsewhere are fine: `a/b/c.tar.gz` and `2026.01.02/report.pdf` are ordinary
+keys. A LIST **prefix** is judged by a smaller rule — it may be empty, and its
+last segment is a partial name, so `report.` is a legitimate prefix even though
+it is not a legitimate key.
+
 ## Endpoints
 
 All routes are under `/api/storage` and require a session cookie or a

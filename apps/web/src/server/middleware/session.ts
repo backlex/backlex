@@ -10,29 +10,23 @@ import { verifyThirdPartyToken } from "../lib/third-party-jwt";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
 import { resolveThirdPartyUser } from "../services/third-party-auth";
 import {
-  getCachedAppSessionLive,
+  getCachedAppSessionOwner,
   getCachedSession,
-  setCachedAppSessionLive,
+  setCachedAppSessionOwner,
   setCachedSession,
 } from "../services/permissions-cache";
 
-const extractIp = (req: Request): string | null => {
-  const h = req.headers;
-  return (
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    null
-  );
-};
+import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+const extractIp = (req: Request, env: ClientAddressEnv): string | null =>
+  clientAddress(req, env);
 
 const stampSessionMeta = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: ClientAddressEnv },
   sessionId: string,
   req: Request,
 ): Promise<void> => {
   const t = ctx.dialect === "pg" ? pg.schema.sessions : sqlite.schema.sessions;
-  const ip = extractIp(req);
+  const ip = extractIp(req, ctx.env);
   const ua = req.headers.get("user-agent");
   // Only patch when the existing row is missing data — keeps writes off the
   // hot path for repeat requests in the same session.
@@ -69,7 +63,7 @@ const STAMPED_CAP = 10_000;
  *  falls back to a dangling promise where no ExecutionContext exists. */
 const stampOnce = (
   c: { executionCtx: { waitUntil(p: Promise<unknown>): void } },
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: ClientAddressEnv },
   sessionId: string,
   req: Request,
 ): void => {
@@ -193,9 +187,32 @@ const findAppSession = async (
   };
 };
 
+/** Who an `app_sessions` row belongs to. `null` from {@link appSessionOwner}
+ *  means the row is gone, expired, or its owner is suspended. */
+export interface AppSessionOwner {
+  userId: string;
+  tenantId: string;
+}
+
 /**
- * Is the session an app-plane ACCESS TOKEN names still live, and its owner
- * still active?
+ * WHO the session an app-plane ACCESS TOKEN names belongs to — or `null` when
+ * that session is no longer live.
+ *
+ * This used to answer a bare boolean, and the boolean was the bug. The access
+ * JWT carries `sub`, `tid` and `sid`; only `sid` was checked, and only for
+ * liveness. So a token whose `sid` named the ATTACKER'S OWN live session while
+ * its `sub`/`tid` named a user in another workspace passed every check on this
+ * path: `plane`, `userId` and `appSessionTenantId` were then assigned straight
+ * from the claims, and `tenantMiddleware` pins the app-plane request to
+ * `auth.appSessionTenantId` without re-deriving it. Any token-forging primitive
+ * — a compromised or maliciously imported signing key, the Faz 1 finding —
+ * therefore became arbitrary cross-tenant impersonation, and revoking the
+ * VICTIM'S sessions did nothing, because the token rode a session the attacker
+ * still owned. Returning the tuple lets the caller bind the three claims
+ * together, which is what the impersonation branch two blocks down had always
+ * done with its own row.
+ *
+ * The rest of the rationale is unchanged, and still load-bearing:
  *
  * `verifyAccessToken` performs zero database reads by design — it checks a
  * signature and some claims and returns. That is what makes the access token
@@ -215,31 +232,42 @@ const findAppSession = async (
  * revoked token can still work on an isolate that had already seen it; the
  * isolate serving the suspend evicts immediately.
  *
- * EXPORTED for `routes/realtime.ts`, which re-asks it on the heartbeat of a
- * held SSE stream. It has to be this function and not a copy: the read path and
- * the stream disagreeing about whether a session is live is the same
- * two-paths-drift that `services/realtime-filter.ts` exists to prevent for
- * conditions. Note that `getCachedAppSessionLive` is NOT a substitute for a
- * long-lived stream — nothing repopulates that entry after the request
- * middleware's one call, and `invalidateAppSessions` DELETES rather than
- * setting `false`, so it cannot tell "not cached" from "live".
+ * EXPORTED (with its liveness-only wrapper {@link appSessionLive}) for
+ * `routes/realtime.ts`, which re-asks it on the heartbeat of a held SSE stream.
+ * It has to be this function and not a copy: the read path and the stream
+ * disagreeing about whether a session is live is the same two-paths-drift that
+ * `services/realtime-filter.ts` exists to prevent for conditions. Note that
+ * `getCachedAppSessionOwner` is NOT a substitute for a long-lived stream —
+ * nothing repopulates that entry after the request middleware's one call, and
+ * `invalidateAppSessions` DELETES rather than caching `null`, so it cannot tell
+ * "not cached" from "live".
  */
-export const appSessionLive = async (
+export const appSessionOwner = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
   sessionId: string,
-): Promise<boolean> => {
-  const cached = getCachedAppSessionLive(sessionId);
+): Promise<AppSessionOwner | null> => {
+  const cached = getCachedAppSessionOwner(sessionId);
   if (cached !== undefined) return cached;
   const t =
     ctx.dialect === "pg"
       ? { sessions: pg.schema.appSessions, users: pg.schema.appUsers }
       : { sessions: sqlite.schema.appSessions, users: sqlite.schema.appUsers };
   const rows = (await (ctx.db as any)
-    .select({ status: t.users.status, expiresAt: t.sessions.expiresAt })
+    .select({
+      status: t.users.status,
+      expiresAt: t.sessions.expiresAt,
+      userId: t.sessions.userId,
+      tenantId: t.sessions.tenantId,
+    })
     .from(t.sessions)
     .innerJoin(t.users, eq(t.sessions.userId, t.users.id))
     .where(eq(t.sessions.id, sessionId))
-    .limit(1)) as Array<{ status: string; expiresAt: Date | number }>;
+    .limit(1)) as Array<{
+      status: string;
+      expiresAt: Date | number;
+      userId: string;
+      tenantId: string;
+    }>;
   const row = rows[0];
   // Deleted session, suspended owner, or a refresh row that has itself expired
   // all mean the same thing: the access token minted from it is spent. The
@@ -249,10 +277,21 @@ export const appSessionLive = async (
       ? row.expiresAt.getTime()
       : Number(row.expiresAt)
     : 0;
-  const live = Boolean(row) && row!.status === "active" && exp > Date.now();
-  setCachedAppSessionLive(sessionId, live);
-  return live;
+  const owner =
+    row && row.status === "active" && exp > Date.now()
+      ? { userId: row.userId, tenantId: row.tenantId }
+      : null;
+  setCachedAppSessionOwner(sessionId, owner);
+  return owner;
 };
+
+/** Liveness alone, for callers that already hold a verified identity and only
+ *  need to know whether the sign-in behind it still stands (the SSE
+ *  heartbeat). Delegates so the two can never answer differently. */
+export const appSessionLive = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  sessionId: string,
+): Promise<boolean> => (await appSessionOwner(ctx, sessionId)) !== null;
 
 /** Resolve an MCP OAuth access token (better-auth `mcp` plugin) to its user.
  *  One indexed lookup on the unique access_token column + a user join for the
@@ -341,6 +380,13 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // MCP OAuth access tokens (better-auth `mcp` plugin — hosted Claude custom
   // connectors). Platform-plane: the token's userId is a control-plane user.
   let oauthClientId: string | null = null;
+  // The scopes the grant actually carries, and a name for the credential SHAPE
+  // that resolved this request. `credential` exists because "which door did
+  // this identity come through" is a different question from "who is it", and
+  // only the first one can answer "is this token allowed to be here at all" —
+  // see `middleware/credential-scope.ts`.
+  let oauthScopes: string[] | null = null;
+  let credential: "mcp-oauth" | null = null;
 
   // Cookie session resolution, with a per-isolate cache keyed on the signed
   // `*.session_token` cookie. better-auth's getSession costs ~2 D1 round-trips,
@@ -386,7 +432,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     userId = cached.userId;
     email = cached.email;
     if (cached.sessionId) {
-      stampOnce(c, { db: ctx.db, dialect: ctx.dialect }, cached.sessionId, c.req.raw);
+      stampOnce(c, { db: ctx.db, dialect: ctx.dialect, env: ctx.env }, cached.sessionId, c.req.raw);
     }
   } else {
     const session = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
@@ -396,7 +442,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
       const sessId =
         (session as { session?: { id?: string } }).session?.id ?? null;
       if (sessId) {
-        stampOnce(c, { db: ctx.db, dialect: ctx.dialect }, sessId, c.req.raw);
+        stampOnce(c, { db: ctx.db, dialect: ctx.dialect, env: ctx.env }, sessId, c.req.raw);
       }
       if (sessionToken) {
         setCachedSession(sessionToken, { userId, email, sessionId: sessId });
@@ -456,12 +502,28 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         // below, and that is a stricter guarantee than this one: ended,
         // expired or deleted all stop the token on the next call with no cache
         // window at all.
+        //
+        // For every other access token the session row is asked WHO it belongs
+        // to, and all three identity claims have to agree with it. Checking
+        // only that `sid` is alive left the other two claims self-asserted: a
+        // token naming the attacker's own live session but somebody else's
+        // `sub`/`tid` was accepted as that somebody, in their workspace, and
+        // revoking the victim's sessions did not touch it. The impersonation
+        // branch below has always compared `subjectUserId`/`tenantId` against
+        // the claims for exactly this reason; the ordinary branch now does the
+        // same against `app_sessions`.
         const impersonating = claims !== null && typeof claims.imp === "string";
+        const owner =
+          claims === null || impersonating
+            ? null
+            : await appSessionOwner({ db: ctx.db, dialect: ctx.dialect }, claims.sid);
         const sessionStillLive =
           claims === null
             ? false
             : impersonating ||
-              (await appSessionLive({ db: ctx.db, dialect: ctx.dialect }, claims.sid));
+              (owner !== null &&
+                owner.userId === claims.sub &&
+                owner.tenantId === claims.tid);
         if (claims && sessionStillLive) {
           const impId = typeof claims.imp === "string" ? claims.imp : null;
           if (impId) {
@@ -496,10 +558,11 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
             appSessionId = claims.sid ?? null;
           }
         } else if (claims) {
-          // Verified as ours, but the session behind it is gone or its owner is
-          // suspended. Deliberately assigns nothing and probes nothing further:
-          // a revoked token must not get a second chance at the opaque-session
-          // or third-party paths below.
+          // Verified as ours, but the session behind it is gone, its owner is
+          // suspended, or the row names a different user or workspace than the
+          // claims do. Deliberately assigns nothing and probes nothing further:
+          // a revoked or mis-bound token must not get a second chance at the
+          // opaque-session or third-party paths below.
         } else {
           const appSess = await findAppSession(
             { db: ctx.db, dialect: ctx.dialect },
@@ -517,11 +580,21 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
             //    endpoint skips the expiry check, so it happens here. Tokens
             //    without the `mcp:write` scope run the MCP surface read-only
             //    (rides the same guard fields as read-only API keys).
+            //
+            //    `credential` and `oauthScopes` are what make the grant mean
+            //    something OUTSIDE this file: the token is issued for the
+            //    `<APP_URL>/mcp` resource and `middleware/credential-scope.ts`
+            //    refuses it anywhere else. Before that gate existed the scope
+            //    lived only in `mcp/guards.ts`, so an `mcp:read` bearer that
+            //    the MCP dispatcher refused a write to was still creating
+            //    collections and running arbitrary SQL over REST.
             const oauthTok = await findOauthToken(ctx, token);
             if (oauthTok) {
               userId = oauthTok.userId;
               email = oauthTok.email;
               oauthClientId = oauthTok.clientId;
+              oauthScopes = oauthTok.scopes;
+              credential = "mcp-oauth";
               apiKeyMcpReadOnly = !oauthTok.scopes.includes("mcp:write");
             } else {
               // 4. a JWT minted by a **third-party issuer** this instance has
@@ -538,7 +611,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
                 const resolved = await resolveThirdPartyUser(
                   { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
                   identity,
-                  extractIp(c.req.raw) ?? undefined,
+                  extractIp(c.req.raw, c.get("ctx").env) ?? undefined,
                 );
                 if (resolved) {
                   plane = "app";
@@ -607,6 +680,8 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     appSessionTenantId,
     appSessionId,
     oauthClientId,
+    oauthScopes,
+    credential,
     impersonatedBy,
     impersonationId,
     impersonationReadOnly,

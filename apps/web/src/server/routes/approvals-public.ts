@@ -102,7 +102,7 @@ export const approvalsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
     async (c) => {
       const ctx = c.get("ctx");
       const { token } = c.req.valid("param");
-      const meta = requestMeta(c.req.raw);
+      const meta = requestMeta(c.req.raw, c.get("ctx").env);
       const ok = await rateLimitOk(
         ctx.env,
         `approve-view:${meta.ip ?? "unknown"}`,
@@ -150,7 +150,7 @@ export const approvalsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
       const ctx = c.get("ctx");
       const { token } = c.req.valid("param");
       const body = c.req.valid("json");
-      const meta = requestMeta(c.req.raw);
+      const meta = requestMeta(c.req.raw, c.get("ctx").env);
       const resolved = await requireApprover(ctx, token);
       setMeterTenant(c, resolved.request.tenantId);
       // Keyed on the approver, not the IP: two people deciding from one office

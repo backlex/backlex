@@ -95,12 +95,38 @@ export interface EvalOpts {
   foldable?: (field: string) => boolean;
 }
 
-const isAnd = (c: Condition): c is { $and: Condition[] } =>
-  Array.isArray((c as { $and?: unknown }).$and);
-const isOr = (c: Condition): c is { $or: Condition[] } =>
-  Array.isArray((c as { $or?: unknown }).$or);
-const isNot = (c: Condition): c is { $not: Condition } =>
-  (c as { $not?: unknown }).$not !== undefined;
+/**
+ * The logical combinators, accepting BOTH spellings — `$and` and the `_and`
+ * alias `normalizeCondition` (`@backlex/core`) takes as input.
+ *
+ * These used to read `$and` only, and the mismatch was not academic. Anything
+ * that reached an evaluator without being normalized first fell through to the
+ * field-map loop below, where `_and` was treated as a COLUMN NAME: no such
+ * column exists on the row, every comparison against `undefined` was skipped,
+ * and the condition returned TRUE. A guard expressed as `{_and: [caller's own
+ * conditions, {_status: 'published'}]}` therefore did not narrow anything — it
+ * erased the caller's conditions as well as its own clause. Failing OPEN is the
+ * one outcome a permission predicate must not have, so the two evaluators now
+ * accept exactly what the normalizer accepts rather than a subset of it.
+ *
+ * `_status` / `_publish_at` and friends stay ordinary field keys: only these
+ * three names are combinators, and none of them is a column.
+ */
+const andOf = (c: Condition): Condition[] | null => {
+  const v = (c as { $and?: unknown; _and?: unknown }).$and
+    ?? (c as { _and?: unknown })._and;
+  return Array.isArray(v) ? (v as Condition[]) : null;
+};
+const orOf = (c: Condition): Condition[] | null => {
+  const v = (c as { $or?: unknown; _or?: unknown }).$or
+    ?? (c as { _or?: unknown })._or;
+  return Array.isArray(v) ? (v as Condition[]) : null;
+};
+const notOf = (c: Condition): Condition | undefined => {
+  const v = (c as { $not?: unknown; _not?: unknown }).$not
+    ?? (c as { _not?: unknown })._not;
+  return v === undefined ? undefined : (v as Condition);
+};
 
 const isVar = (v: unknown): v is string =>
   typeof v === "string" && v.startsWith("$");
@@ -445,18 +471,21 @@ const compileInner = (
 ): SQL => {
   const down = (c: Condition) =>
     compileInner(c, ctx, now, dialect, colRef, leaf, varSql, foldable);
-  if (isAnd(cond)) {
-    const parts = cond.$and.map(down);
+  const and = andOf(cond);
+  if (and) {
+    const parts = and.map(down);
     if (parts.length === 0) return TRUE;
     return sql`(${sql.join(parts, sql` AND `)})`;
   }
-  if (isOr(cond)) {
-    const parts = cond.$or.map(down);
+  const or = orOf(cond);
+  if (or) {
+    const parts = or.map(down);
     if (parts.length === 0) return FALSE;
     return sql`(${sql.join(parts, sql` OR `)})`;
   }
-  if (isNot(cond)) {
-    return sql`NOT (${down(cond.$not)})`;
+  const not = notOf(cond);
+  if (not !== undefined) {
+    return sql`NOT (${down(not)})`;
   }
   const fieldMap = cond as Record<string, ComparisonObj>;
   const keys = Object.keys(fieldMap);
@@ -565,9 +594,12 @@ const matchesInner = (
   foldable?: (field: string) => boolean,
 ): boolean => {
   const down = (c: Condition) => matchesInner(row, c, ctx, now, dialect, foldable);
-  if (isAnd(cond)) return cond.$and.every(down);
-  if (isOr(cond)) return cond.$or.some(down);
-  if (isNot(cond)) return !down(cond.$not);
+  const and = andOf(cond);
+  if (and) return and.every(down);
+  const or = orOf(cond);
+  if (or) return or.some(down);
+  const not = notOf(cond);
+  if (not !== undefined) return !down(not);
   // JS predicate is dialect-agnostic: relative dates resolve to epoch-ms so the
   // numeric comparisons below stay comparable. A comparison value of the form
   // `"$field.<name>"` resolves to a sibling row value — this is what powers
@@ -765,19 +797,26 @@ export const checkableRule = (
   const walk = (node: unknown): unknown => {
     if (node === null || node === undefined || typeof node !== "object") return node;
     const c = node as Record<string, unknown>;
-    if (Array.isArray(c.$and)) {
-      const kept = (c.$and as unknown[]).map(walk).filter((x) => x !== null);
+    // Both spellings, and the output is always canonical — this walker feeds
+    // `matchesCondition`, and the two must agree on what a combinator is or a
+    // rule written with the `_` alias would be rebuilt as a field map here and
+    // then read as a combinator there. See `andOf` above.
+    const and = andOf(c as Condition);
+    if (and) {
+      const kept = (and as unknown[]).map(walk).filter((x) => x !== null);
       if (kept.length === 0) return null;
       return kept.length === 1 ? kept[0] : { $and: kept };
     }
-    if (Array.isArray(c.$or)) {
-      const parts = (c.$or as unknown[]).map(walk);
+    const or = orOf(c as Condition);
+    if (or) {
+      const parts = (or as unknown[]).map(walk);
       // One unjudgeable branch makes the whole disjunction unjudgeable.
       if (parts.some((x) => x === null)) return null;
       return { $or: parts };
     }
-    if (c.$not !== undefined) {
-      const inner = walk(c.$not);
+    const not = notOf(c as Condition);
+    if (not !== undefined) {
+      const inner = walk(not);
       return inner === null ? null : { $not: inner };
     }
     const out: Record<string, unknown> = {};

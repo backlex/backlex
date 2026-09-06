@@ -421,6 +421,28 @@ export function useMe() {
   });
 }
 
+/**
+ * Is the signed-in user the INSTANCE operator? Tri-state, and the states are
+ * not interchangeable:
+ *
+ *   `null`  — `/api/me` has not answered yet. Render a skeleton; do not render
+ *             the "you are not the operator" copy, which would flash at the
+ *             one person entitled to the panel.
+ *   `false` — answered, and they are not. Includes an older server that does
+ *             not send the field: unproven reads as not-operator, never as
+ *             operator, so a stale client cannot draw a control the server
+ *             will refuse.
+ *   `true`  — answered, and they are.
+ *
+ * Cosmetic, like every other nav/visibility check here — `requireOperatorMw`
+ * and `isInstanceOperator` are what actually refuse the request.
+ */
+export function useIsOperator(): boolean | null {
+  const { data, isPending } = useMe();
+  if (isPending && !data) return null;
+  return data?.data?.isOperator === true;
+}
+
 /** In-app notification list for the header bell. */
 export function useNotifications() {
   return useQuery({
@@ -1135,7 +1157,7 @@ export function useLiveCollection(collection: string | null): { live: boolean } 
     };
 
     void (async () => {
-      const transport = await itemsTransport();
+      const { transport } = await itemsTransport();
       if (disposed) return;
       if (transport === "ably-signal") {
         const close = await openSignalPipe(collection, bump);

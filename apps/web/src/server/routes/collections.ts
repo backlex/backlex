@@ -33,6 +33,7 @@ import { requireAdminMw, requirePlatformMw } from "../services/roles/guards";
 import { listReadableCollections } from "../services/permissions";
 import { keepAlive, logActivity } from "../services/activity";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";
+import { reservedTableReason } from "../services/system-tables";
 import { cascadeSlugRename } from "../services/collection-rename";
 import {
   getCachedCollections,
@@ -1327,6 +1328,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
         throw new AppError("VALIDATION", (e as Error).message);
       }
       physicalTable = body.physicalTable;
+      // BEFORE tableExists, so a refusal never doubles as a probe for whether
+      // a given system table is present on this deployment.
+      const reserved = reservedTableReason(physicalTable, tenantId);
+      if (reserved) {
+        throw new AppError(
+          "FORBIDDEN",
+          `${reserved} and cannot be adopted as a collection.`,
+        );
+      }
       if (!(await tableExists(db, dialect, physicalTable))) {
         throw new AppError("NOT_FOUND", `Table "${physicalTable}" not found`);
       }
@@ -1479,6 +1489,19 @@ export const collectionsRoutes = new Hono<AppBindings>()
           assertIdent(body.physicalTable);
         } catch (e) {
           throw new AppError("VALIDATION", (e as Error).message);
+        }
+        // The managed path CREATEs the table, so a system name here would not
+        // read anyone's data — but it would squat a name a future migration
+        // needs, and a foreign `c_<prefix>_<slug>` claims the exact name that
+        // workspace's next create derives, blocking it with a CONFLICT it
+        // cannot clear. Same rule as adoption; the difference is only which
+        // half of the damage lands first.
+        const reserved = reservedTableReason(body.physicalTable, tenantId);
+        if (reserved) {
+          throw new AppError(
+            "FORBIDDEN",
+            `${reserved} and cannot back a collection.`,
+          );
         }
         physicalTable = body.physicalTable;
       } else {

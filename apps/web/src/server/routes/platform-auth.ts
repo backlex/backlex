@@ -34,6 +34,10 @@ import {
 } from "../services/platform-saml-providers";
 import { resolvePlatformLdapAdapter } from "../services/platform-ldap-config";
 import { provisionPlatformUser } from "../services/platform-sso-provisioning";
+import {
+  assertAssertionBoundToAcs,
+  samlReplayIdentity,
+} from "../services/saml-binding";
 import { readJsonOr } from "../lib/body";
 
 type DbCtx = { db: unknown; dialect: "pg" | "sqlite" };
@@ -210,8 +214,14 @@ export const platformAuthRoutes = new Hono<AppBindings>()
       );
     }
 
-    // 2. Replay protection — keep the row until NotOnOrAfter.
-    const replayKey = `psaml-assertion:${assertion.id}`;
+    // 1b. Minted for THIS ACS, checked against the signed `Recipient`. Same
+    //     rule and the same helper as the workspace plane — this handler is a
+    //     copy of that one and inherited its defect verbatim.
+    assertAssertionBoundToAcs(assertion, resolved.cfg.acsUrl);
+
+    // 2. Replay protection — keep the row until NotOnOrAfter, keyed on the
+    //    SIGNED `<Assertion>` `@ID` rather than the unsigned envelope's.
+    const replayKey = `psaml-assertion:${samlReplayIdentity(assertion)}`;
     if (await findVerification({ db: ctx.db, dialect: ctx.dialect }, replayKey)) {
       throw new AppError("UNAUTHORIZED", "SAML assertion replay detected");
     }
@@ -287,7 +297,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
       defaultRoleId: resolved.row.defaultRoleId ?? null,
       groupsToRoles: resolved.row.groupsToRoles ?? null,
       linkByVerifiedEmail: resolved.row.linkByVerifiedEmail,
-      ipAddress: extractIp(c.req.raw) ?? undefined,
+      ipAddress: extractIp(c.req.raw, c.get("ctx").env) ?? undefined,
       authnContext: assertion.authnContext,
     });
 
@@ -300,7 +310,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
         tenantId: null,
         action: "auth.sso.login",
         collection: "auth",
-        ...requestMeta(c.req.raw),
+        ...requestMeta(c.req.raw, c.get("ctx").env),
         payload: { providerType: "saml", providerId: resolved.row.id, isNew, email },
       },
     );
@@ -377,7 +387,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
     }
     const { adapter, config } = resolved;
 
-    const ip = extractIp(c.req.raw) ?? "unknown";
+    const ip = extractIp(c.req.raw, c.get("ctx").env) ?? "unknown";
     const rlKey = `pldap:${username.toLowerCase()}:${ip}`;
     if (!(await rateLimitOk(ctx.env, rlKey, config.rateLimitPerMinute, 60_000))) {
       throw new AppError(
@@ -422,7 +432,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
       defaultRoleId: config.defaultRoleId ?? null,
       groupsToRoles: config.groupsToRoles ?? null,
       linkByVerifiedEmail: false,
-      ipAddress: extractIp(c.req.raw) ?? undefined,
+      ipAddress: extractIp(c.req.raw, c.get("ctx").env) ?? undefined,
       authnContext: "ldap-simple-bind",
     });
 
@@ -434,7 +444,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
         tenantId: null,
         action: "auth.sso.login",
         collection: "auth",
-        ...requestMeta(c.req.raw),
+        ...requestMeta(c.req.raw, c.get("ctx").env),
         payload: { providerType: "ldap", providerId: "ldap", isNew, email: attrs.email },
       },
     );
@@ -494,7 +504,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
       defaultRoleId: null,
       groupsToRoles: null,
       linkByVerifiedEmail: false,
-      ipAddress: extractIp(c.req.raw) ?? undefined,
+      ipAddress: extractIp(c.req.raw, c.get("ctx").env) ?? undefined,
       authnContext: "cloud-broker",
     });
 
@@ -506,7 +516,7 @@ export const platformAuthRoutes = new Hono<AppBindings>()
         tenantId: null,
         action: "auth.sso.broker_login",
         collection: "auth",
-        ...requestMeta(c.req.raw),
+        ...requestMeta(c.req.raw, c.get("ctx").env),
         payload: { providerType: "cloud", providerId: "cloud-broker", isNew, email: claims.email },
       },
     );

@@ -9,6 +9,7 @@ import { Select } from "../../select";
 import { Button, EmptyState, PageHeader } from "../../ui";
 import { documentsApi, type ApiDocumentTemplate } from "../../api";
 import { DocumentsSkeleton } from "../../page-skeletons";
+import { HtmlPreview } from "../../html-preview";
 
 /**
  * Document templates — the HTML a contract, quote or invoice is rendered from.
@@ -439,12 +440,16 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
                 grants nothing: no scripts, no forms, no same-origin. A
                 template is authored by an admin, but in a workspace with more
                 than one admin it is still somebody else's markup running in
-                this one's session. */}
-            <iframe
+                this one's session.
+
+                This reasoning is now `admin/html-preview.tsx`, shared with the
+                item-form and email-template previews — it was right here first
+                and wrong in both of those. */}
+            <HtmlPreview
               title={t`Document preview`}
-              sandbox=""
-              srcDoc={preview}
-              className="mx-auto block h-[420px] w-full max-w-[560px] rounded-surface border-0 bg-white shadow-[0_1px_4px_oklch(0_0_0/0.06)]"
+              complete
+              html={preview}
+              className="mx-auto h-[420px] max-w-[560px] rounded-surface shadow-[0_1px_4px_oklch(0_0_0/0.06)]"
             />
           </div>
         </Card>

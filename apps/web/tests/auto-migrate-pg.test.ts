@@ -88,6 +88,11 @@ const makeMockApplier = (opts: {
       if (/select\s+name\s+from\s+__backlex_migrations/i.test(text)) {
         return { rows: ledgerInserts.map((n) => ({ name: n })) };
       }
+      // `SELECT hash FROM drizzle.__drizzle_migrations` falls through to the
+      // empty result below, which is the right answer here: this mock stands
+      // for a database the RUNNER provisioned, with no CLI ledger to adopt. A
+      // mock that answered hashes would make every spec in this file adopt the
+      // whole bundle and execute nothing.
       const ins = /__backlex_migrations.*values\s*\(\s*['"]?([^'")]+)/i.exec(text);
       if (ins?.[1]) ledgerInserts.push(ins[1]);
       return { rows: [] };
@@ -118,7 +123,12 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
       let thrown = false;
       const { db } = makeMockApplier({
         throwOn: (text) => {
-          if (/__backlex_migrations/.test(text)) return null;
+          // Both ledgers: this runner's own, and the CLI ledger it now reads to
+          // adopt (`adoptCliLedger`). Letting the injected error land on the
+          // adoption SELECT would consume it before any migration statement
+          // ran, and the classifier specs would pass against a build with the
+          // tolerance regex removed.
+          if (/__backlex_migrations|__drizzle_migrations/.test(text)) return null;
           if (!thrown) {
             thrown = true;
             return drizzleErr(msg);
@@ -144,7 +154,12 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
     let thrown = false;
     const { db, ledgerInserts } = makeMockApplier({
       throwOn: (text) => {
-        if (/__backlex_migrations/.test(text)) return null;
+        // Both ledgers: this runner's own, and the CLI ledger it now reads to
+        // adopt (`adoptCliLedger`). Letting the injected error land on the
+        // adoption SELECT would consume it before any migration statement
+        // ran, and the classifier specs would pass against a build with the
+        // tolerance regex removed.
+        if (/__backlex_migrations|__drizzle_migrations/.test(text)) return null;
         if (!thrown) {
           thrown = true;
           return drizzleErr("syntax error at or near 'banana'");
@@ -176,7 +191,12 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
     let thrown = false;
     const { db } = makeMockApplier({
       throwOn: (text) => {
-        if (/__backlex_migrations/.test(text)) return null;
+        // Both ledgers: this runner's own, and the CLI ledger it now reads to
+        // adopt (`adoptCliLedger`). Letting the injected error land on the
+        // adoption SELECT would consume it before any migration statement
+        // ran, and the classifier specs would pass against a build with the
+        // tolerance regex removed.
+        if (/__backlex_migrations|__drizzle_migrations/.test(text)) return null;
         if (!thrown) {
           thrown = true;
           return drizzleErr(

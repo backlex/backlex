@@ -132,6 +132,18 @@ In-progress and finished sessions are listable for ops/automation:
 - MCP: `uploads.list`, `uploads.get`, `uploads.abort`. (The byte transfer itself
   is not exposed over MCP — use the SDK or a TUS client.)
 
+## Upload ids are server-issued
+
+The `uploadId` a TUS session uses is never taken from the client: it is what the
+storage backend returned from `createMultipart`, stored on the upload row as
+`storage_upload_id` and read back from there on every `PATCH`. The client
+addresses its session by the upload's own id, not by the backend's.
+
+That matters because on the fs backend the backend's id becomes part of a
+filename. The S3-compatible endpoint (`docs/s3.md`) *does* accept an upload id
+from the caller, and validates it; TUS never had to, and this note exists so a
+future change does not quietly start.
+
 ## Limits & follow-ups
 
 - Object backends require ≥ 5 MiB non-final chunks; sub-5 MiB chunk buffering is

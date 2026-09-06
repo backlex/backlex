@@ -424,13 +424,15 @@ express that shape; GraphQL can, so the endpoint measures every document
 **before execution** — before the tenant schema is even built — and refuses one
 it can't afford with `422`.
 
-Three axes, each reported with the limit that rejected it:
+Four axes, each reported with the limit that rejected it:
 
 | Axis | Default | What it counts |
 |---|---|---|
 | Depth | 12 | Selection-set nesting, fragments included |
 | Cost | 50 000 | Estimated rows: each field costs its enclosing `limit` chain, multiplied |
 | Aliases | 40 | Aliases pointing at one field name |
+| Measuring effort | 200 000 nodes | Selections visited while measuring. Not tunable |
+| Document size | 128 000 chars | Checked per document, ahead of parsing. Not tunable |
 
 ```
 {"error":{"code":"VALIDATION","message":"Query cost 1000000 exceeds the maximum of 50000 — lower a \"limit\" or select fewer nested fields"}}
@@ -452,6 +454,28 @@ Notes on the estimate:
   `application/graphql` body, form-url-encoded, and multipart with an
   `operations` field. A shape the budget didn't recognise would be the way
   around it, so each has its own test.
+- **Measuring is itself bounded**, which is the fourth axis above and the one
+  worth explaining. Fragment spreads are followed wherever they appear, cutting
+  off only a fragment already on the current path — right for a cycle, and not
+  enough for a DAG. A document where each of N fragments spreads the next one
+  twice is legal, acyclic, and used to be walked 2^N times: an 815-byte body
+  reached 4.9 s of CPU at N=22 and doubled with every further fragment, while
+  depth stayed at 2 and aliases at 0, so neither of those budgets could refuse
+  it. The verdict only existed once the walk finished, which made the guard the
+  expense. A document that exceeds the visit budget is now refused for that
+  reason:
+
+  ```
+  {"error":{"code":"VALIDATION","message":"Query is too complex to measure — reduce the number of fragment spreads or inline them"}}
+  ```
+
+  The ceiling is far above any real query — the whole GraphiQL introspection
+  document is about 1 300 visits, and a 60-fragment generated client document
+  fewer still — so a legitimate caller never meets it.
+- **An oversized document is refused ahead of `parse`**, which is linear in the
+  source and would otherwise build an AST proportional to the body before any
+  budget was consulted. Checked per document rather than per request body, so a
+  batched payload cannot smuggle one large operation past it.
 
 Raise the ceilings per deployment with `GRAPHQL_MAX_DEPTH`, `GRAPHQL_MAX_COST`
 and `GRAPHQL_MAX_ALIASES`. A non-numeric or non-positive value is ignored and

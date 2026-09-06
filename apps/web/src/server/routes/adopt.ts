@@ -18,6 +18,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { inspectTable, listAdoptableTables } from "../services/adopt";
+import { reservedTableReason } from "../services/system-tables";
 import { readJson } from "../lib/body";
 
 const requireAdmin = (auth: { roles: string[] }) => {
@@ -76,6 +77,14 @@ export const adoptRoutes = new Hono<AppBindings>()
     const body = z
       .object({ table: z.string().min(1).max(120) })
       .parse(await readJson(c.req));
+    // The picker no longer offers these, but `/inspect` takes a name rather
+    // than a choice — and its answer is the full column list, which is how an
+    // admin learns that `signing_keys` has a `private_key` column worth
+    // adopting for. Refuse the same set the create endpoint refuses.
+    const reserved = reservedTableReason(body.table, auth.tenantId!);
+    if (reserved) {
+      throw new AppError("FORBIDDEN", `${reserved} and cannot be inspected for adoption.`);
+    }
     try {
       const data = await inspectTable(
         { db: ctx.db, dialect: ctx.dialect },

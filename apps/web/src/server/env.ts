@@ -438,6 +438,23 @@ export interface Env {
    *  TOTP two-factor is NOT listed here — it's loaded unconditionally (always
    *  available; users opt in from Account → Security). */
   AUTH_PLUGINS?: string;
+  /**
+   * Name of the request header this deployment's reverse proxy sets to the
+   * client address — `x-real-ip` for nginx/Caddy's default, `x-forwarded-for`
+   * for a plain proxy. Unset means "no proxy in front of me", and then NO
+   * client-supplied header is believed.
+   *
+   * Only needed on the Bun/Node self-host. Cloudflare, Vercel and Netlify each
+   * set (and strip the inbound copy of) their own header, which
+   * `lib/client-address.ts` reads on those runtimes without configuration.
+   *
+   * Set this ONLY if a proxy you control is the only way in. If the app is also
+   * reachable directly, a caller sends the header themselves and every IP-keyed
+   * limit becomes one bucket per request again. A comma-separated value is read
+   * from the RIGHT (the hop the nearest proxy appended), which assumes exactly
+   * one trusted proxy.
+   */
+  TRUSTED_PROXY_HEADER?: string;
   // Global per-identity rate limit on the `/api/*` data surface (abuse / runaway
   // guard, distinct from the per-IP auth limiter). See lib/api-rate-limit.ts.
   /** Max `/api/*` calls per identity (API key → user → IP) per window. Setting
@@ -525,6 +542,17 @@ export interface Env {
    *  Workers / Vercel Edge / Netlify Edge) while still offering DB-aware
    *  functions. Pairs with `SANDBOX_RPC_TOKEN` + `SELF_URL` for `ctx.*`. */
   FUNCTIONS_EXEC_URL?: string;
+  /** Which sandbox runs user functions. Unset (or `auto`) picks the strongest
+   *  isolation available: `remote-http` when `FUNCTIONS_EXEC_URL` is set,
+   *  otherwise the in-isolate QuickJS-WASM sandbox.
+   *
+   *  `bun-worker` opts INTO the in-process Bun worker, which is a soft sandbox:
+   *  user code reaches `node:*`, the filesystem and `Bun.spawnSync`, so a
+   *  function author gets the API host's env and shell. Set it only where the
+   *  people who author functions are the people who run the deployment — a
+   *  single-tenant self-host or a dev box — never where `POST /api/tenants` is
+   *  open. `quickjs` pins the safe in-isolate sandbox explicitly. */
+  FUNCTIONS_SANDBOX?: string;
   /** npm registry base URL extension installs resolve against. Defaults to
    *  https://registry.npmjs.org; point at a private registry mirror to gate
    *  which packages `POST /api/extensions/install` may pull. */
@@ -847,6 +875,7 @@ export const STRING_ENV_KEYS = [
   "OAUTH_APPLE_CLIENT_ID",
   "OAUTH_APPLE_CLIENT_SECRET",
   "AUTH_PLUGINS",
+  "TRUSTED_PROXY_HEADER",
   "API_RATE_LIMIT_MAX",
   "API_RATE_LIMIT_WINDOW_MS",
   "API_RATE_LIMIT_DISABLED",
@@ -875,6 +904,7 @@ export const STRING_ENV_KEYS = [
   "EXTRA_TRUSTED_ORIGINS",
   "FUNCTIONS_FETCH_ALLOW",
   "FUNCTIONS_EXEC_URL",
+  "FUNCTIONS_SANDBOX",
   "EXTENSIONS_NPM_REGISTRY",
   "GRAPHQL_MAX_DEPTH",
   "GRAPHQL_MAX_COST",

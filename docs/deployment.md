@@ -449,10 +449,16 @@ Then point the Worker at it:
 
 ```bash
 wrangler secret put FUNCTIONS_EXEC_URL  # https://your-exec-host (base URL, no /run)
-wrangler secret put SANDBOX_RPC_TOKEN   # generate with `openssl rand -hex 32` (same on both)
+wrangler secret put SANDBOX_RPC_TOKEN   # generate with `openssl rand -hex 32` (Worker only)
 wrangler secret put SELF_URL            # https://api.your.app
 wrangler deploy
 ```
+
+`SANDBOX_RPC_TOKEN` goes on the Worker and **not** on the executor: the Worker
+signs a short-lived per-invocation grant and passes it in the `/run` body's
+`rpcToken`, which the executor echoes back as its bearer. The executor runs
+user-authored code in-process, so it must never hold a secret that outlives one
+run.
 
 The selector falls back to QuickJS when `FUNCTIONS_EXEC_URL` is unset, so
 Workers users still get a sandbox — sync only.
@@ -823,9 +829,11 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `RESEND_API_KEY` \| `SENDGRID_API_KEY` \| `MAILGUN_API_KEY`+`MAILGUN_DOMAIN` \| `SES_REGION`+`SES_ACCESS_KEY_ID`+`SES_SECRET_ACCESS_KEY` \| `SMTP_HOST`+`SMTP_PORT`+`SMTP_USER`+`SMTP_PASSWORD` | no | Credentials for the chosen email provider |
 | `OAUTH_{GOOGLE,GITHUB,APPLE}_CLIENT_{ID,SECRET}` | no | enable each provider when both set; Apple's `_CLIENT_ID` is the Service ID, `_CLIENT_SECRET` is the signed JWT |
 | `AUTH_PLUGINS`               | no        | Comma-separated: `passkey,magic-link,email-otp,anonymous`. TOTP two-factor is always on (not listed here) |
+| `TRUSTED_PROXY_HEADER`       | no¹       | ¹ **Set this on a self-host behind a reverse proxy.** Names the header your proxy writes the client address to — `x-real-ip` for nginx/Caddy defaults, `x-forwarded-for` for a plain proxy. Unset means no header is believed and every IP-keyed limit falls back to one shared bucket. Not needed on Cloudflare, Vercel or Netlify, which set their own. See "Client address and rate limits" below. |
 | `FUNCTIONS_FETCH_ALLOW`      | no        | Comma-separated host allow-list for ctx.fetch |
 | `FUNCTIONS_EXEC_URL`         | no        | Base URL of a remote-http function executor  |
-| `SANDBOX_RPC_TOKEN`          | no        | remote-http only — shared secret for ctx.* RPC |
+| `FUNCTIONS_SANDBOX`          | no        | Pin the provider: `quickjs` \| `remote-http` \| `bun-worker`. Unset = remote-http if `FUNCTIONS_EXEC_URL`, else quickjs. `bun-worker` is **not** a sandbox — only where function authors are the operator |
+| `SANDBOX_RPC_TOKEN`          | no        | remote-http only — signing key for ctx.* RPC grants. Main app only, never on the executor |
 | `SELF_URL`                   | no        | Required for cron-triggered remote-http RPC  |
 | `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel / Netlify Functions (no local fs in a Lambda zip); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
@@ -834,6 +842,37 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | no | Durable realtime transport for serverless (Vercel/Netlify), where the in-process pub/sub map doesn't survive between invocations. When both are set, realtime publish/subscribe fan out through an Upstash Redis stream per channel. Unset on Bun (in-proc) / Workers (Durable Object). |
 | `ABLY_API_KEY`               | no        | Collaboration transport for serverless (`keyName:keySecret`). The server only mints channel-scoped token requests (`POST /api/realtime/collab-token`); the browser talks to Ably directly, so presence/field-awareness costs zero function invocations. Preferred over the Redis fallback on Vercel/Netlify; ignored where a Durable Object or long-lived process exists. See `docs/realtime.md`. |
 | `CLOUD_REPORT_URL` + `CLOUD_REPORT_SECRET` + `CLOUD_PROJECT_ID` | no | **Managed-cloud only.** Set automatically by the backlex cloud provisioner so a tenant can opt-in report 5xx errors + AI token usage to the control plane. Self-hosted installs leave all three unset and never phone home — the reporting path is a no-op (`server/lib/cloud-report.ts`). |
+
+## Client address and rate limits
+
+Every per-IP limit in the app — the auth caps, the global `/api/*` limiter, and
+the unauthenticated public routes (forms, booking, analytics, inbound hooks,
+payments, public dashboards, webhook triggers, consent, realtime, MCP) — keys on
+one derivation, `server/lib/client-address.ts`. It reads a header **only where
+something you control wrote it**:
+
+| Runtime | Header read | Configuration |
+|---|---|---|
+| Cloudflare Workers | `cf-connecting-ip` | none — the edge overwrites the inbound value |
+| Vercel | `x-vercel-forwarded-for`, then `x-real-ip` | none — Vercel strips inbound `x-vercel-*` |
+| Netlify | `x-nf-client-connection-ip`, then `x-real-ip` | none |
+| Bun / Node self-host | whatever `TRUSTED_PROXY_HEADER` names | **required if you are behind a proxy** |
+
+**On a self-host, an unset `TRUSTED_PROXY_HEADER` is a working configuration,
+not a broken one** — it just means no caller can be told apart, so every
+anonymous request shares one limiter bucket. That is blunt but real. Setting the
+variable is what buys per-client limits.
+
+Set it **only if your proxy is the only way in**. If the app is also reachable
+directly, a caller sends the header themselves and each request lands in its own
+bucket again — which is no limit at all, and was the behaviour before this
+derivation existed. A comma-separated value is read from the **right** (the hop
+your proxy appended); the left end is what the original client claimed, so it is
+never used. That assumes exactly one trusted proxy in front of the app.
+
+The same value is what gets recorded as the request address in the activity log
+and in consent proofs, so an unset variable also means those rows carry no
+address rather than an unverifiable one.
 
 ## Verifying a deploy
 
@@ -865,9 +904,10 @@ git push origin main         # → Cloudflare / Vercel / Netlify auto-redeploys
 What happens automatically after the redeploy:
 
 - **DB migrations** apply on the next request via `ensureMigrations`
-  (`apps/web/src/server/context.ts`) — idempotent against the
-  `__drizzle_migrations` ledger, so only new migrations run. There is no
-  manual `db:migrate` step on managed deploys.
+  (`apps/web/src/server/context.ts`) — only migrations the database has not
+  already had are run. There is no manual `db:migrate` step on managed deploys.
+  See [Two ledgers, one schema](#two-ledgers-one-schema) for which ledger that
+  means, because there are two and this paragraph used to name the wrong one.
 - **Build + deploy** are triggered by the push through the platform's native
   Git integration — no GitHub Actions workflow needed.
 
@@ -878,6 +918,62 @@ What you still do by hand:
   together with — the upgrade.
 - **Conflicts.** A clean, unmodified instance merges without conflict. If you
   edited code, conflicts are limited to the files you touched.
+
+### Two ledgers, one schema
+
+backlex records applied migrations in **two different tables**, written by
+different things, and knowing which is which is the difference between an
+upgrade and a data loss.
+
+| ledger | written by | keyed on |
+|---|---|---|
+| `__drizzle_migrations` (SQLite/D1/libSQL) and `drizzle.__drizzle_migrations` (Postgres) | the CLIs — `db:migrate:sqlite`, `db:migrate:pg`, `db:migrate:d1` | the migration file's **sha256** |
+| `__backlex_migrations` | the boot runner, `ensureMigrations` | the migration's **folder name** |
+
+The boot runner exists because Vercel and Netlify have no migrate step: every
+deploy just uploads a bundle, so without it the schema freezes at whatever the
+database held when it was provisioned. It runs on **every target except
+Cloudflare D1**, whose migrations run inside the Workers build — including a
+Bun or Node self-host that already ran the CLI.
+
+That overlap is why the runner now **adopts** the CLI ledger. On each run it
+reads the CLI's hashes, maps them to folder names through
+`packages/db/src/migrations-manifest.generated.ts`, and records them as applied.
+A database the CLI brought current is therefore recognised as current instead of
+being replayed into. Before this, `bun run db:migrate:sqlite` followed by the
+first HTTP request replayed all 138 files, and one of them
+(`20260510120000_per_workspace_collections`) rebuilds the `collections` table —
+so 26 metadata columns added by later migrations were dropped and re-created at
+their defaults. `adopted` went from `1` to `0`, which turns a table you merely
+pointed backlex at into one it believes it owns. Nothing errored.
+
+**A released migration's SQL is immutable.** Both ledgers key on the hash of the
+file, so editing one that has already shipped means every database in the world
+stops recognising it: the CLI re-runs it, and the runner cannot adopt it. If a
+released migration is wrong, add a new migration that corrects it. Regenerate
+the manifest whenever you add one — `bun run --cwd packages/db manifest` — or
+the runner cannot map that file's hash and will replay it;
+`schema-declared-vs-shipped.test.ts` fails when you forget.
+
+**If a boot log says a migration was refused.** The runner will not replay a
+file that transforms data into a schema that already has it. The message names
+the file and prints the exact `INSERT` that records it:
+
+```
+[auto-migrate] migration "20260510120000_per_workspace_collections" FAILED:
+migration is already applied ("duplicate column name: id") but the file also
+transforms data … Refusing. Record it instead — INSERT INTO
+__backlex_migrations (name) VALUES ('20260510120000_per_workspace_collections')
+— or run `bun run db:migrate:sqlite` so the CLI ledger this runner adopts is
+present.
+```
+
+This means the database is already current but carries no ledger the runner can
+read — a data-only restore, a schema created with `drizzle-kit push`, or a
+ledger table dropped by hand. Running the CLI once is the clean fix; it writes
+the hashes, and the next boot adopts them. The refusal is deliberately not
+recorded as applied, so it repeats every cold start until you resolve it rather
+than passing an unverified schema off as complete.
 
 **Deno Deploy caveat:** the `--source local` CLI flow is **not** git-linked, so
 `git push` won't redeploy it. After pulling, either re-run

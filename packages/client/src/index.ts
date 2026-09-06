@@ -848,27 +848,51 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   // EventSource and switching): on a stateless-serverless deployment an
   // `items:*` SSE subscribe would hold a function invocation open for a stream
   // that can never deliver anything.
-  let itemsTransportPromise: Promise<ItemsTransportKind> | null = null;
-  const itemsTransport = (): Promise<ItemsTransportKind> => {
-    itemsTransportPromise ??= request<{ transport?: ItemsTransportKind }>(
-      "GET",
-      "/api/realtime/items-config",
-    )
-      .then((j) => j.transport ?? "sse")
+  let itemsTransportPromise: Promise<{
+    transport: ItemsTransportKind;
+    ablyPrefix: string;
+  }> | null = null;
+  const itemsTransport = async () => {
+    itemsTransportPromise ??= request<{
+      transport?: ItemsTransportKind;
+      ablyPrefix?: string;
+    }>("GET", "/api/realtime/items-config")
+      .then((j) => ({
+        transport: j.transport ?? ("sse" as const),
+        // The workspace's Ably room prefix. Empty against a server that sends
+        // none, and empty when this probe went out SIGNED OUT — the server
+        // withholds it from an anonymous caller.
+        ablyPrefix: j.ablyPrefix ?? "",
+      }))
       // A probe failure must not take realtime down on deployments where SSE
       // works — assume the historical transport.
-      .catch(() => "sse" as const);
-    return itemsTransportPromise;
+      .catch(() => ({ transport: "sse" as const, ablyPrefix: "" }));
+    const answer = await itemsTransportPromise;
+    // The TRANSPORT is deployment-static and safe to memoize forever; the
+    // PREFIX is not — it is per workspace, and empty for a signed-out caller.
+    // `setToken` means a client can be built anonymously and sign in later, so
+    // caching an empty prefix would strand it on the bare channel, which is a
+    // room nothing publishes to. Re-probe until the answer is usable; the
+    // request is one GET and only the signal plane ever reads the prefix.
+    if (answer.transport === "ably-signal" && answer.ablyPrefix === "") {
+      itemsTransportPromise = null;
+    }
+    return answer;
   };
 
   /** Lazily-created Ably connection shared by every signal subscription. */
   let signalHub: SignalHub | null = null;
-  const getSignalHub = (): SignalHub => {
+  const getSignalHub = (ablyPrefix: string): SignalHub => {
     signalHub ??= createSignalHub({
+      // The BARE channel — the server namespaces it with the caller's
+      // workspace and mints the capability for that name.
       token: (channels) =>
         request<{ tokenRequest: unknown }>("POST", "/api/realtime/ably-token", {
           channels,
         }).then((r) => r.tokenRequest),
+      // …and the room to actually attach to, which is what Ably matches the
+      // capability against.
+      room: (channel) => `${ablyPrefix}${channel}`,
     });
     return signalHub;
   };
@@ -1007,6 +1031,8 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     onEvent: (e: ItemEvent<T>) => void,
     onError: ((err: unknown) => void) | undefined,
     query: string | undefined,
+    /** Workspace room prefix from `items-config` — see `ItemsConfig`. */
+    ablyPrefix: string,
   ): Promise<() => void> => {
     const filter = filterFromQuery(query);
     const hydrator = createSignalHydrator<T>(
@@ -1019,7 +1045,10 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       onEvent,
       onError,
     );
-    return getSignalHub()
+    return getSignalHub(ablyPrefix)
+      // The LOGICAL channel. The hub asks for a token on this name (the server
+      // namespaces it, and a pre-prefixed one would not even match its
+      // `signal:` gate) and attaches to the room its `room` mapper returns.
       .attach(signalChannel(slug), (s) => hydrator.push(s))
       .then((detach) => () => {
         hydrator.close();
@@ -1046,7 +1075,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     let disposed = false;
     let stop: (() => void) | null = null;
     void (async () => {
-      const transport = await itemsTransport();
+      const { transport, ablyPrefix } = await itemsTransport();
       if (disposed) return;
       if (transport === "off") {
         onError?.(
@@ -1063,6 +1092,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
               onEvent as (e: ItemEvent<Record<string, unknown>>) => void,
               onError,
               query,
+              ablyPrefix,
             )
           : subscribeSse(channel, onEvent, onError, query);
       if (disposed) {

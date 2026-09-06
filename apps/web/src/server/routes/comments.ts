@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, desc, eq } from "drizzle-orm";
-import { AppError } from "@backlex/core";
+import { and, desc, eq, type SQL } from "drizzle-orm";
+import { AppError, type AuthSubject } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Context } from "hono";
@@ -8,6 +8,8 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { getRequestPermCache, requirePermission } from "../middleware/permission";
 import { resolvePermission } from "../services/permissions";
+import { loadCollection } from "../services/items/collection-loader";
+import { readableRow } from "../services/items/row-access";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -24,6 +26,36 @@ const requireTenant = (c: Context<AppBindings>): string => {
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.comments : sqlite.schema.comments;
+
+/**
+ * A thread hangs off a row, so reaching it needs the row — not just the
+ * collection it lives in.
+ *
+ * `read` on the collection is what the middleware settles, and for a role whose
+ * grant carries a condition that is every row in the table. The self-service
+ * portal shape (`{app_user_id: {_eq: "$user.id"}}`) therefore passed the gate
+ * for a colleague's record: `GET /api/items/employees/<B>` answered 404 while
+ * `GET /api/comments?collection=employees&itemId=<B>` answered 200 with the
+ * discussion on it, and `POST` let the same caller write onto that record.
+ * Item ids are not secret — every relation field, expand and aggregate the
+ * caller CAN reach hands them out.
+ *
+ * 404, not 403, matching the item's own answer: a thread must not confirm the
+ * existence of a row the caller cannot see.
+ */
+const assertItemReadable = async (
+  c: Context<AppBindings>,
+  collection: string,
+  itemId: string,
+  perm: { whereSql: SQL | null; isAdmin?: boolean },
+  auth: AuthSubject & { tenantId?: string | null },
+): Promise<void> => {
+  const ctx = c.get("ctx");
+  const col = await loadCollection(ctx, auth.tenantId, collection);
+  if (!(await readableRow(ctx, auth, col, itemId, perm))) {
+    throw new AppError("NOT_FOUND", "Item not found");
+  }
+};
 
 const CommentInput = z
   .object({
@@ -88,6 +120,8 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
       const tenantId = requireTenant(c);
       const { collection, itemId } = c.req.valid("query");
       if (!collection || !itemId) {
@@ -96,6 +130,7 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           "?collection=<slug>&itemId=<id> are required",
         );
       }
+      await assertItemReadable(c, collection, itemId, perm, auth);
       const t = tableFor(ctx.dialect);
       const rows = await (ctx.db as any)
         .select()
@@ -150,6 +185,7 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           `No permission to read "${body.collection}"`,
         );
       }
+      await assertItemReadable(c, body.collection, body.itemId, perm, auth);
       const t = tableFor(ctx.dialect);
       const id = crypto.randomUUID();
       const now = ctx.dialect === "pg" ? new Date() : Date.now();

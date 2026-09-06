@@ -2,10 +2,15 @@
  * Functions feature — CRUD + real sandboxed execution.
  *
  * The invoke path runs on the REAL bun-worker sandbox provider (a fresh
- * Worker thread per invocation with the RPC host-bridge), so these specs
- * exercise what production Bun self-host runs — including the security
- * properties: stripped globals, fetch allow-list, permission-checked db RPC,
- * and hard timeout termination.
+ * Worker thread per invocation with the RPC host-bridge), asked for by name
+ * via `FUNCTIONS_SANDBOX` — so these specs exercise what a Bun self-host that
+ * has opted into it runs, including the fetch allow-list, permission-checked
+ * db RPC, and hard timeout termination.
+ *
+ * What they deliberately do NOT claim is isolation. The stripped-globals list
+ * is defence in depth and nothing more: `globalThis.Bun` is non-configurable
+ * and `import("node:fs")` is reachable, which is exactly why the provider is
+ * opt-in. See `services/sandbox/worker-entry.ts`.
  *
  * Event/cron-triggered execution is fire-and-forget off the write path
  * (`runEventFunctions`) and not deterministically observable through the
@@ -45,7 +50,12 @@ const invoke = async (
 };
 
 beforeAll(async () => {
-  h = makeHarness();
+  // The provider is named rather than inherited from the runtime. `bun-worker`
+  // used to be picked automatically whenever the tests ran on Bun, which meant
+  // this file drove it without ever saying so — and it is now opt-in, because a
+  // soft sandbox may only run code the operator authored. Naming it here is
+  // what keeps these specs pointed at the provider they were written for.
+  h = makeHarness({ FUNCTIONS_SANDBOX: "bun-worker" });
   await seedAdmin(h);
 });
 
@@ -174,7 +184,10 @@ describe("functions invoke — gates", () => {
 
   test("non-admin users cannot list, create, or invoke", async () => {
     // Second sign-up on the same harness lands as `authenticated`, not admin.
-    const member = makeHarness({ SQLITE_PATH: h.env.SQLITE_PATH });
+    const member = makeHarness({
+      SQLITE_PATH: h.env.SQLITE_PATH,
+      FUNCTIONS_SANDBOX: "bun-worker",
+    });
     const res = await member.fetch("/api/auth/sign-up/email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

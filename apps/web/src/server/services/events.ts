@@ -1,9 +1,11 @@
 import type { AuthSubject, Condition, EmailAdapter } from "@backlex/core";
 import {
+  eventIsForSubscriber,
   type IncomingItemEvent,
   renderItemEvent,
   stripBefore,
 } from "./realtime-filter";
+import { type ChannelAddress, parseTopic, topicFor } from "./realtime-topic";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
@@ -51,6 +53,17 @@ export interface Subscriber {
    *  resumption; `0` (or omitted) means the message is not replayable. */
   send: (msg: string, id?: number) => void;
   meta?: SubscriptionMeta;
+  /**
+   * The workspace this subscription was gated in — `auth.tenantId` frozen at
+   * subscribe time, `null` for a caller with no active workspace.
+   *
+   * REQUIRED, and deliberately not on {@link SubscriptionMeta}: `collab:` and
+   * application-owned channels are authorized without a meta, and those are
+   * precisely the subscriptions whose payloads are forwarded raw. Required
+   * rather than optional so a new subscription site cannot omit it and inherit
+   * whatever the room happens to hold.
+   */
+  tenantId: string | null;
 }
 
 const isItemPayload = (payload: unknown): payload is ItemEventPayload =>
@@ -67,7 +80,9 @@ const renderFor = (
   sub: Subscriber,
   payload: unknown,
   isItem: boolean,
+  eventTenant: string | null | undefined,
 ): string | null => {
+  if (!eventIsForSubscriber(eventTenant, sub.tenantId)) return null;
   if (sub.meta && isItem) {
     const out = renderItemEvent(payload as IncomingItemEvent, sub.meta);
     return out === null ? null : JSON.stringify(out);
@@ -86,9 +101,22 @@ const renderFor = (
 export const renderEventForMeta = (
   meta: SubscriptionMeta | undefined,
   payload: unknown,
+  /** The subscription's workspace, and the workspace the event was published
+   *  in. Separate parameters because on the Redis path the two come from
+   *  different places — the gate and the stream key — and a caller that could
+   *  pass one for both would be asserting the thing being checked. */
+  subscriberTenant: string | null,
+  eventTenant: string | null,
 ): string | null =>
-  renderFor({ send: () => {}, meta }, payload, isItemPayload(payload));
+  renderFor(
+    { send: () => {}, meta, tenantId: subscriberTenant },
+    payload,
+    isItemPayload(payload),
+    eventTenant,
+  );
 
+/** Keyed by TOPIC (`realtime-topic.ts`), never by channel — two workspaces that
+ *  own a collection of the same name must not share a room. */
 const subscribers = new Map<string, Set<Subscriber>>();
 
 /** Bounded per-channel ring buffer of recent events so a reconnecting SSE
@@ -102,11 +130,11 @@ interface RecentEntry {
 const RECENT_LIMIT = 50;
 const recent = new Map<string, { seq: number; entries: RecentEntry[] }>();
 
-const recordRecent = (channel: string, payload: unknown): number => {
-  let r = recent.get(channel);
+const recordRecent = (topic: string, payload: unknown): number => {
+  let r = recent.get(topic);
   if (!r) {
     r = { seq: 0, entries: [] };
-    recent.set(channel, r);
+    recent.set(topic, r);
   }
   r.seq += 1;
   r.entries.push({ id: r.seq, raw: JSON.stringify(payload) });
@@ -116,9 +144,9 @@ const recordRecent = (channel: string, payload: unknown): number => {
   return r.seq;
 };
 
-/** Highest sequence number currently recorded for `channel` (0 if none). */
-export const currentSeq = (channel: string): number =>
-  recent.get(channel)?.seq ?? 0;
+/** Highest sequence number currently recorded for an address (0 if none). */
+export const currentSeq = (addr: ChannelAddress): number =>
+  recent.get(topicFor(addr))?.seq ?? 0;
 
 /**
  * Read-only diagnostic snapshot of a channel's in-process state. Mirrors the
@@ -132,9 +160,10 @@ export interface ChannelStats {
   logSize: number;
 }
 
-export const getLocalChannelStats = (channel: string): ChannelStats => {
-  const subs = subscribers.get(channel)?.size ?? 0;
-  const room = presenceRooms.get(channel);
+export const getLocalChannelStats = (addr: ChannelAddress): ChannelStats => {
+  const topic = topicFor(addr);
+  const subs = subscribers.get(topic)?.size ?? 0;
+  const room = presenceRooms.get(topic);
   // Presence rosters dedupe by userId — count unique members, not raw sockets.
   let presenceMembers = 0;
   if (room) {
@@ -142,7 +171,7 @@ export const getLocalChannelStats = (channel: string): ChannelStats => {
     for (const m of room.values()) ids.add(m.userId);
     presenceMembers = ids.size;
   }
-  const r = recent.get(channel);
+  const r = recent.get(topic);
   return {
     connectedSockets: subs,
     presenceMembers,
@@ -151,36 +180,53 @@ export const getLocalChannelStats = (channel: string): ChannelStats => {
   };
 };
 
-/** Channels that currently have at least one in-process subscriber. Used by
- *  the admin route to enumerate active free-form channels on the Bun path —
- *  on Workers there's no equivalent (DOs aren't enumerable). */
-export const listLocalChannels = (): string[] => [...subscribers.keys()];
+/** Channels of `tenantId` that currently have at least one in-process
+ *  subscriber — the Bun-path answer to "which free-form channels are live"
+ *  (on Workers there is no equivalent; DOs aren't enumerable).
+ *
+ *  Filtered by workspace, because the map holds every workspace's rooms and a
+ *  caller is an admin of exactly one.
+ *
+ *  **No caller today.** `routes/realtime-admin.ts` enumerates from the
+ *  `collections` table instead, so the comment that used to claim it as this
+ *  function's consumer was wrong. Kept because it is the only way to see an
+ *  application-owned channel that no table knows about, and corrected here
+ *  rather than left as a false lead. */
+export const listLocalChannels = (tenantId: string | null): string[] => {
+  const out: string[] = [];
+  for (const topic of subscribers.keys()) {
+    const addr = parseTopic(topic);
+    if (addr && addr.tenantId === tenantId) out.push(addr.channel);
+  }
+  return out;
+};
 
 export const subscribeLocal = (
-  channel: string,
+  addr: ChannelAddress,
   sub: Subscriber,
 ): (() => void) => {
-  let set = subscribers.get(channel);
+  const topic = topicFor(addr);
+  let set = subscribers.get(topic);
   if (!set) {
     set = new Set();
-    subscribers.set(channel, set);
+    subscribers.set(topic, set);
   }
   set.add(sub);
   return () => {
     set!.delete(sub);
-    if (set!.size === 0) subscribers.delete(channel);
+    if (set!.size === 0) subscribers.delete(topic);
   };
 };
 
 /** Replay events `after < id <= upTo` from the ring buffer to a single
  *  subscriber, applying its permission filter. */
 export const replayLocal = (
-  channel: string,
+  addr: ChannelAddress,
   sub: Subscriber,
   after: number,
   upTo: number,
 ): void => {
-  const r = recent.get(channel);
+  const r = recent.get(topicFor(addr));
   if (!r) return;
   for (const e of r.entries) {
     if (e.id <= after || e.id > upTo) continue;
@@ -190,7 +236,10 @@ export const replayLocal = (
     } catch {
       payload = e.raw;
     }
-    const msg = renderFor(sub, payload, isItemPayload(payload));
+    // Every entry in this ring buffer was published into THIS topic, so the
+    // topic's own workspace is the publishing workspace — there is nothing
+    // per-entry to store.
+    const msg = renderFor(sub, payload, isItemPayload(payload), addr.tenantId);
     if (msg === null) continue;
     try {
       sub.send(msg, e.id);
@@ -200,14 +249,15 @@ export const replayLocal = (
   }
 };
 
-export const publishLocal = (channel: string, payload: unknown): void => {
-  const id = recordRecent(channel, payload);
-  const set = subscribers.get(channel);
+export const publishLocal = (addr: ChannelAddress, payload: unknown): void => {
+  const topic = topicFor(addr);
+  const id = recordRecent(topic, payload);
+  const set = subscribers.get(topic);
   if (!set) return;
   const isItem = isItemPayload(payload);
   for (const sub of set) {
     try {
-      const msg = renderFor(sub, payload, isItem);
+      const msg = renderFor(sub, payload, isItem, addr.tenantId);
       if (msg !== null) sub.send(msg, id);
     } catch {
       // ignore per-subscriber errors
@@ -227,10 +277,11 @@ export interface PresencePayload {
   data: { members: PresenceMember[] };
 }
 
+/** Keyed by TOPIC, like every other room in this module. */
 const presenceRooms = new Map<string, Map<Subscriber, PresenceMember>>();
 
-const presenceMembers = (channel: string): PresenceMember[] => {
-  const room = presenceRooms.get(channel);
+const presenceMembers = (topic: string): PresenceMember[] => {
+  const room = presenceRooms.get(topic);
   if (!room) return [];
   const byId = new Map<string, PresenceMember>();
   for (const m of room.values()) byId.set(m.userId, m);
@@ -239,31 +290,32 @@ const presenceMembers = (channel: string): PresenceMember[] => {
   );
 };
 
-const broadcastPresenceLocal = (channel: string): void => {
-  publishLocal(channel, {
+const broadcastPresenceLocal = (addr: ChannelAddress): void => {
+  publishLocal(addr, {
     event: "presence",
-    data: { members: presenceMembers(channel) },
+    data: { members: presenceMembers(topicFor(addr)) },
   } satisfies PresencePayload);
 };
 
 /** Register `sub` as a member of a `presence:*` channel and announce the
  *  updated roster. Returns a leave fn that deregisters + re-announces. */
 export const joinPresence = (
-  channel: string,
+  addr: ChannelAddress,
   sub: Subscriber,
   member: PresenceMember,
 ): (() => void) => {
-  let room = presenceRooms.get(channel);
+  const topic = topicFor(addr);
+  let room = presenceRooms.get(topic);
   if (!room) {
     room = new Map();
-    presenceRooms.set(channel, room);
+    presenceRooms.set(topic, room);
   }
   room.set(sub, member);
-  broadcastPresenceLocal(channel);
+  broadcastPresenceLocal(addr);
   return () => {
     room!.delete(sub);
-    if (room!.size === 0) presenceRooms.delete(channel);
-    broadcastPresenceLocal(channel);
+    if (room!.size === 0) presenceRooms.delete(topic);
+    broadcastPresenceLocal(addr);
   };
 };
 
@@ -274,10 +326,6 @@ export interface EventServerCtx {
   dialect: "pg" | "sqlite";
   email?: EmailAdapter;
   fullCtx?: Ctx;
-  /** Active workspace for the originating request. Required for downstream
-   *  fan-out (event functions/flows) so triggers from one workspace never fire
-   *  handlers in another. */
-  tenantId?: string | null;
 }
 
 /**
@@ -301,7 +349,7 @@ export interface EventServerCtx {
  */
 export const dispatchEventHandlers = (
   env: Env,
-  channel: string,
+  addr: ChannelAddress,
   /**
    * Wider than {@link ItemEventPayload}, whose `event` is the three verbs a ROW
    * can undergo. Every consumer below matches on the event as a plain string
@@ -313,8 +361,10 @@ export const dispatchEventHandlers = (
   serverCtx: EventServerCtx,
 ): void => {
   // Every fan-out below is scoped with the ORIGINATING workspace, taken from
-  // the request context — never re-derived from the payload.
-  const tenantId = serverCtx.tenantId ?? null;
+  // the address the caller published to — never re-derived from the payload.
+  // It is the same value that keys the realtime room, so a handler and a
+  // subscriber can never disagree about which workspace an event belongs to.
+  const { tenantId, channel } = addr;
   // Pass the full Ctx when available so dispatch enqueues durable
   // webhook.deliver jobs (retry + dead-letter); otherwise it sends inline.
   void dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, tenantId, channel, evt);
@@ -339,49 +389,56 @@ export const dispatchEventHandlers = (
   }
 };
 
+/**
+ * Put an event on the realtime bus and run its server-side handlers.
+ *
+ * The address is a (workspace, channel) pair and BOTH halves are required —
+ * that is the whole point of the parameter's shape. It used to be a bare
+ * channel string with the workspace tucked into an OPTIONAL `serverCtx`, and
+ * two call sites (the agent thread emitters) passed no context at all. A
+ * publisher that omits its workspace does not fail loudly: it publishes into a
+ * room nobody is listening in, so realtime goes quietly dark. Making the
+ * workspace part of the address means the compiler asks the question at every
+ * call site instead.
+ */
 export const publishEvent = async (
   env: Env,
-  channel: string,
+  addr: ChannelAddress,
   payload: unknown,
-  serverCtx?: {
-    db: PgDb | SqliteDb;
-    dialect: "pg" | "sqlite";
-    email?: EmailAdapter;
-    fullCtx?: Ctx;
-    /** Active workspace for the originating request. Required for downstream
-     *  fan-out (event functions/flows) so triggers from one workspace never
-     *  fire handlers in another. */
-    tenantId?: string | null;
-  },
+  serverCtx?: EventServerCtx,
 ): Promise<void> => {
+  const topic = topicFor(addr);
   if (env.REALTIME) {
-    const id = env.REALTIME.idFromName(channel);
+    const id = env.REALTIME.idFromName(topic);
     const stub = env.REALTIME.get(id);
     await stub.fetch("https://do/publish", {
       method: "POST",
+      // The room is already per-workspace; the header restates it so the DO can
+      // refuse a frame that reached the wrong room rather than fan it out.
+      headers: { "x-backlex-event-tenant": addr.tenantId ?? "" },
       body: JSON.stringify(payload),
     });
   } else if (redisRealtimeEnabled(env)) {
     // Stateless serverless (Vercel / Netlify) with Upstash configured: fan out
     // through a Redis Stream so subscribers on other invocations see the event.
     // The in-process map (publishLocal) wouldn't reach them.
-    await redisPublish(env, channel, payload);
+    await redisPublish(env, topic, payload);
   } else if (itemsTransportKind(env) === "ably-signal") {
     // Stateless serverless with Ably and nothing else: the only thing that goes
     // out is an ID-ONLY signal — subscribers read the row back through the
     // permission-filtered REST path (see services/realtime-signal.ts). Rows
     // themselves NEVER cross this plane, so no per-subscriber filtering is lost.
-    const signal = itemSignalFor(channel, payload);
+    const signal = itemSignalFor(addr.channel, payload);
     // Non-row channels (`collections`, agent threads, …) have no signal shape;
     // they simply have no serverless transport here, same as before.
-    if (signal) await ablyPublishSignal(env.ABLY_API_KEY!, signal);
+    if (signal) await ablyPublishSignal(env.ABLY_API_KEY!, addr.tenantId, signal);
   } else {
-    publishLocal(channel, payload);
+    publishLocal(addr, payload);
   }
   // Webhook + flow dispatch (fire-and-forget) for ItemEvent-shaped payloads.
   // Item events do not carry `tenant_id` (the serializer only emits declared
-  // fields), so the scope comes from the request context — a payload-derived
-  // one silently falls open and delivers one workspace's rows to every other
+  // fields), so the scope comes from the address — a payload-derived one
+  // silently falls open and delivers one workspace's rows to every other
   // workspace's webhooks/flows.
   if (
     serverCtx &&
@@ -390,6 +447,6 @@ export const publishEvent = async (
     "event" in payload &&
     "data" in payload
   ) {
-    dispatchEventHandlers(env, channel, payload as ItemEventPayload, serverCtx);
+    dispatchEventHandlers(env, addr, payload as ItemEventPayload, serverCtx);
   }
 };

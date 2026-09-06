@@ -71,15 +71,29 @@ The token resolves at:
 
 ### Data scope (`embedRoleId`)
 
-Because the embed has no session, panel data is run under a chosen scope:
+Because the embed has no session, every panel runs under a permission the same
+way a signed-in read does — **sharing a dashboard is not a grant.**
 
-- **Public (unscoped, default)** — `items-aggregate` panels run with full read
-  access. Use only for genuinely public stats.
-- **Role-scoped** — pass `roleId` on `share`. Each `items-aggregate` panel then
-  resolves that role's `read` permission for its target collection and clamps
-  the query (`whereSql` + field allow-list), so the embed can never expose rows
-  or columns the role can't read. `sql` panels always run as read-only `SELECT`s
-  (admin-authored).
+- **Default (no `roleId`)** — panels resolve the workspace's `public` role. An
+  `items-aggregate` or `kpi` panel over a collection the `public` role holds no
+  `read` on comes back as `{"data": [], "error": "Not permitted for this
+  embed."}`. Grant `public` a `read` permission on that collection (optionally
+  with a condition and a field allow-list) to publish it.
+- **Role-scoped** — pass `roleId` on `share` to name the role explicitly.
+
+Either way the panel's query is clamped by that role's `whereSql` and field
+allow-list, and soft-deleted rows and unpublished drafts are excluded, so an
+embed can never expose rows or columns the role could not read through
+`/api/items`. `sql` panels do not run on an embed at all — they carry no clamp
+(the stored statement names its own tables and reaches `sql.raw`), so they are
+restricted to the instance operator on every surface.
+
+> **Changed in the 2026-09 hardening.** The default used to be *unscoped*: a
+> dashboard shared with no `roleId` ran `items-aggregate` panels with full read
+> access, so a panel with `groupBy` over any column returned one label per
+> distinct value — a full column read, to anyone holding the link. If an
+> existing embed goes blank after upgrading, that is this change; grant the
+> `public` role `read` on the collection to restore it deliberately.
 
 ## Surfaces
 

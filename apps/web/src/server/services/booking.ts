@@ -974,9 +974,9 @@ const announce = (
 ): void => {
   dispatchEventHandlers(
     ctx.env,
-    "booking",
+    { tenantId, channel: "booking" },
     { event, data: { ...booking, resourceKey: resource.key, resourceName: resource.name } },
-    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId },
+    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
   );
 };
 

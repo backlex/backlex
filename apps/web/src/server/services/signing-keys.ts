@@ -199,7 +199,19 @@ export const dbKeyMaterial = async (
       continue;
     }
     material.jwks.push(jwk);
-    material.verify.set(jwk.kid, { alg: jwk.alg, key: await verifierForJwk(jwk) });
+    // PUBLISHED but not TRUSTED. Standby exists so verifiers can cache a key
+    // BEFORE it signs — that is a statement about the JWKS document, not about
+    // what this instance accepts. Nothing legitimate can present a
+    // standby-signed token: `material.signing` is only ever set below, under
+    // `status === "in_use"`; `promoteSigningKey` stamps `activatedAt` in the
+    // same UPDATE; and `restoreSigningKey` returns a key to `standby` only when
+    // `activatedAt` is null, i.e. it never signed. So trusting standby buys
+    // nothing and costs the blast radius of a bad import — which is exactly
+    // what an operator importing a key they were handed cannot fully vet.
+    // `previously_used` still verifies: its tokens are live and legitimate.
+    if (status !== "standby") {
+      material.verify.set(jwk.kid, { alg: jwk.alg, key: await verifierForJwk(jwk) });
+    }
     if (status !== "in_use") continue;
     const pem = await decryptSecret(row.privateKey, ctx.env.AUTH_SECRET);
     if (!pem) {

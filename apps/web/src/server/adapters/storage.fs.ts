@@ -5,25 +5,53 @@ import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
 
+/**
+ * Charset a multipart upload id may use, checked because on this backend the id
+ * becomes part of a FILENAME.
+ *
+ * Every id this adapter issues is a `randomUUID()`, and R2's and S3's are
+ * base64url-ish, so no legitimate caller is narrowed by this — including an
+ * upload already in flight when the check landed, whose temp file keeps exactly
+ * the name it had. What it refuses is an id carrying a path separator, which is
+ * the only reason a caller would choose one.
+ */
+const SAFE_UPLOAD_ID = /^[A-Za-z0-9._~-]{1,200}$/;
+
 export const fsStorage = (root: string): StorageAdapter => {
   const rootAbs = resolve(root);
+  /** Refuse an already-resolved absolute path that is not under the storage
+   *  root. Split out from `path` because the multipart temp name is built by
+   *  appending to a resolved key, and the check has to run on the RESULT of
+   *  that — checking the key half alone is what let an upload id containing
+   *  parent-directory segments write outside the root. */
+  const underRoot = (abs: string, what: string): string => {
+    if (abs !== rootAbs && !abs.startsWith(rootAbs + sep)) {
+      throw new Error(`storage key escapes the storage root: ${what}`);
+    }
+    return abs;
+  };
   /** Resolve a key under the storage root, refusing anything that escapes it.
    *  Callers are expected to have run `guardLogicalKey` already; this is the
    *  last line of defense, because a bare `join(root, key)` happily walks out
    *  of the root on a key made of parent-directory segments, turning any
    *  key-carrying field into an arbitrary host-file read. */
-  const path = (key: string) => {
-    const abs = resolve(rootAbs, key);
-    if (abs !== rootAbs && !abs.startsWith(rootAbs + sep)) {
-      throw new Error(`storage key escapes the storage root: ${key}`);
-    }
-    return abs;
-  };
+  const path = (key: string) => underRoot(resolve(rootAbs, key), key);
   // Temp file backing an in-progress multipart upload. TUS is strictly
   // sequential by offset, so we just append each part to one file and rename
   // it into place on complete — the current file size IS the committed offset.
-  const partPath = (key: string, uploadId: string) =>
-    `${path(key)}.${uploadId}.uploading`;
+  //
+  // The upload id is caller-supplied on the S3 endpoint (`?uploadId=`), so it
+  // gets both halves of the treatment: a charset that cannot express a
+  // separator, and a root check on the FINISHED path rather than on the key it
+  // was appended to. `resolve` collapses any parent-directory segment first, so
+  // what `underRoot` judges is the same path the kernel would open.
+  const partPath = (key: string, uploadId: string) => {
+    if (!SAFE_UPLOAD_ID.test(uploadId)) {
+      throw new Error("storage: multipart upload id is not a valid path fragment");
+    }
+    const keyPath = path(key);
+    return underRoot(resolve(`${keyPath}.${uploadId}.uploading`), `${key}.${uploadId}`);
+  };
 
   const ensureDir = async (file: string) => {
     await mkdir(dirname(file), { recursive: true });

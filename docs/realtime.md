@@ -106,14 +106,45 @@ So a feed for `items:posts` gives admin every event, owner-scoped users
 their own item events, and anonymous users nothing (no `public` read
 permission means subscribe rejects with 401).
 
+## Channels are per workspace
+
+A channel name is **scoped to the workspace it is used in**. Two workspaces can
+each own a collection called `orders`, and each one's `items:orders` feed
+carries only its own rows — a subscriber never sees the other's, whatever their
+role. The same holds for `presence:*`, `collab:*`, agent threads and your own
+[broadcast channels](/docs/broadcast-channels).
+
+The workspace is never taken from the channel you name. On subscribe it is the
+workspace the request is acting in (the `X-Backlex-Tenant` header, or your
+default); on publish it is the workspace that owns the collection. So there is
+no channel name that reaches another workspace's feed — including one spelled to
+look like an internal room.
+
+**The name itself does not change.** `items:orders` is still what you pass to
+`client.subscribe()`, still what a webhook, flow or integration trigger matches
+on, and still what the admin channel list shows. Only the room behind it is
+per-workspace, so nothing you have configured needs updating.
+
+One consequence worth knowing on the Ably plane: because the browser connects to
+Ably directly, the room name has to be stated on the wire. `GET
+/api/realtime/items-config` and `/collab-config` return an `ablyPrefix` for the
+calling workspace, and `POST /api/realtime/ably-token` mints the capability for
+the prefixed name. The SDK and the admin do this for you; a hand-rolled Ably
+client must attach to `<ablyPrefix><channel>`, not to the bare channel.
+
 ## Hosting matrix
 
 | Host                                | Client transport   | Server fan-out                                                                                                  |
 |-------------------------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
-| Bun (self-host)                     | SSE                | In-process `Map<channel, Set<Subscriber>>` + a bounded per-channel ring buffer for replay. Single-instance only. |
+| Bun (self-host)                     | SSE                | In-process `Map<topic, Set<Subscriber>>` + a bounded per-topic ring buffer for replay. Single-instance only. |
 | Cloudflare Workers                  | SSE                | SSE response bridged into the `RealtimeRoom` Durable Object (WebSocket Hibernation API; `seq` + recent-event log persisted in `state.storage`). |
 | Vercel Functions (Node 22)          | SSE, or Ably signals | With `UPSTASH_REDIS_REST_*`: a Redis Stream per channel, subscribe as a bounded long-poll. With only `ABLY_API_KEY`: the [signal-only data plane](#signal-only-data-plane-signalitemsslug) below. With neither: nothing — each stateless instance gets its own Map. |
 | Netlify Functions (Node 22)         | SSE, or Ably signals | Same as Vercel.                                                                                                   |
+
+Every one of those fan-outs keys its room on a **topic** — the (workspace,
+channel) pair — rather than on the channel alone: the Durable Object's
+`idFromName`, the Upstash stream key, the in-process `Map` key and the Ably room
+name are all derived the same way (`services/realtime-topic.ts`).
 
 The server still chooses different fan-out paths under the hood (in-proc
 Map on Bun, Durable Object on Workers), but every subscriber sees the
@@ -204,10 +235,16 @@ Rolling your own client:
 
 | Step | Call |
 |---|---|
-| Detect the transport | `GET /api/realtime/items-config` → `{ transport: "sse" \| "ably-signal" \| "off" }` |
+| Detect the transport | `GET /api/realtime/items-config` → `{ transport: "sse" \| "ably-signal" \| "off", ablyPrefix: "t.<workspace-id>:" }` |
 | Get a token | `POST /api/realtime/ably-token` `{ channels: ["signal:items:posts"] }` → a signed Ably `TokenRequest`, `clientId` pinned to the session user |
-| Listen | Ably channel `signal:items:posts`, message name `signal` |
+| Listen | Ably channel `` `${ablyPrefix}signal:items:posts` ``, message name `signal` |
 | Hydrate | `GET /api/items/posts?filter={"id":{"_in":[…]}}` |
+
+**Ask for the bare channel, attach to the prefixed room.** The token endpoint
+namespaces whatever you send it with YOUR workspace and mints the capability for
+that name, so attaching to the bare `signal:items:posts` gets you a channel Ably
+will not admit you to — and naming another workspace's room just nests it inside
+your own, which nothing publishes to.
 
 Signal channels are **subscribe-only** in the minted capability — a client that
 could publish signals could make every other reader refetch rows that never

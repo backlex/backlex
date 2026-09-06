@@ -224,7 +224,7 @@ export const itemsIngestRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).o
       orgId: auth.orgId ?? null,
       orgRole: auth.orgRole ?? null,
       orgIds: auth.orgIds ?? [],
-      meta: requestMeta(c.req.raw),
+      meta: requestMeta(c.req.raw, c.get("ctx").env),
       impersonatedBy: auth.impersonatedBy ?? null,
       impersonationReadOnly: auth.impersonationReadOnly ?? false,
       durationMs: () => elapsedMs(c),

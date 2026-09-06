@@ -4,6 +4,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { isInstanceOperator } from "../services/roles/guards";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -233,6 +234,19 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // >= start` bound is applied in SQL so we read only the range window (uses
       // `activity_created_idx`) instead of the newest 5000 rows regardless of range;
       // the LIMIT stays as a safety cap for very busy windows.
+      //
+      // `tenant_id IS NULL` rows belong to the INSTANCE, not to whoever is
+      // looking — `lib/auth-rate-limit.ts` writes `auth.rate_limited` and
+      // `auth.login_locked` there during sign-in, before a workspace is known.
+      // This used to include them unconditionally, so every self-made workspace
+      // admin's request/error graph was partly built from the instance's own
+      // pre-auth trail. `routes/activity.ts` — the endpoint that reads this same
+      // table — already answers this correctly, and this is that answer: the
+      // operator keeps seeing what they always saw, a delegated workspace admin
+      // sees their workspace. Only counts leave this handler (no row content),
+      // which is why it is a smaller finding than Faz 4's seven and not a
+      // different one.
+      const operator = await isInstanceOperator(ctx, auth);
       const rows = await queryAll<{
         action: string;
         created_at: number | string;
@@ -246,7 +260,9 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         { db: ctx.db, dialect: ctx.dialect },
         sql.raw(
           `SELECT action, created_at, tenant_id, duration_ms, collection, item_id, user_id, payload FROM activity WHERE created_at >= ${start}${
-            auth.tenantId ? ` AND (tenant_id = '${auth.tenantId.replace(/'/g, "''")}' OR tenant_id IS NULL)` : ""
+            auth.tenantId
+              ? ` AND (tenant_id = '${auth.tenantId.replace(/'/g, "''")}'${operator ? " OR tenant_id IS NULL" : ""})`
+              : ""
           } ORDER BY created_at DESC LIMIT 5000`,
         ),
       );

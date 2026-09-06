@@ -53,6 +53,7 @@ import { loadCollection } from "./items/collection-loader";
 import { ingestRows } from "./migrate-ingest";
 import { queryAll } from "./items/sql-helpers";
 import { connectionConfigFor } from "./integration-credentials";
+import { guardedIntegrationFetch } from "./integrations-fetch";
 
 type AnyDb = any;
 
@@ -301,7 +302,7 @@ export async function runTask(
         idempotencyKey: runId,
         connectionKey: integration.id,
       },
-      fetchImpl,
+      fetchImpl ?? guardedIntegrationFetch(ctx.env),
     );
   } catch (e) {
     await settle(ctx, runId, {

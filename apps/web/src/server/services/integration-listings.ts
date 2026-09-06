@@ -54,6 +54,7 @@ import { ingestRows } from "./migrate-ingest";
 import { queryAll } from "./items/sql-helpers";
 import { LISTING_VARIANT_GROUP, type SyncRow } from "./integration-syncs";
 import { connectionConfigFor, type ConnectionRow } from "./integration-credentials";
+import { guardedIntegrationFetch } from "./integrations-fetch";
 import { enqueueJob } from "./jobs";
 
 type AnyDb = any;
@@ -545,7 +546,7 @@ export async function runListingSync(
     batch = await publishListings(
       kind,
       { config, settings: row.settings ?? {}, products: payload, connectionKey: integration.id },
-      opts.fetchImpl,
+      opts.fetchImpl ?? guardedIntegrationFetch(ctx.env),
     );
   } catch (e) {
     await noteRunFailure(ctx, row, e);
@@ -651,7 +652,7 @@ export async function pollListingBatchRow(
         known: Object.keys(batch.sent ?? {}),
         connectionKey: integration.id,
       },
-      opts.fetchImpl,
+      opts.fetchImpl ?? guardedIntegrationFetch(ctx.env),
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

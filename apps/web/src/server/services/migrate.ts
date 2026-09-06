@@ -37,6 +37,8 @@ import {
 } from "@backlex/migrate";
 import type { Ctx } from "../context";
 import { decryptSecret, encryptSecret } from "../lib/crypto";
+import { isPrivateHost } from "./storage/hosts";
+import { assertNotDemo } from "./demo";
 import { invalidateTenantCollections } from "./collections-cache";
 import { loadCollection } from "./items/collection-loader";
 import { ingestRows } from "./migrate-ingest";
@@ -92,25 +94,27 @@ export const __setMigrateConnectorFactory = (
 
 // ── SSRF guard ─────────────────────────────────────────────────────────────
 
-const PRIVATE_HOST = [
-  /^localhost$/i,
-  /\.(local|internal|localdomain)$/i,
-  /^127\./,
-  /^10\./,
-  /^192\.168\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^169\.254\./,
-  /^0\.0\.0\.0$/,
-  /^\[?::1\]?$/,
-  /^\[?f[cd][0-9a-f]{2}:/i, // fc00::/7 ULA
-  /^\[?fe80:/i, // link-local
-];
-
-/** Reject connection strings that point back into the platform's own
- *  network — a hosted admin must not be able to use the server as a proxy
- *  into private infrastructure. Self-hosters whose source DB legitimately
- *  lives on a private address opt out with MIGRATE_ALLOW_PRIVATE_SOURCES.
- *  (The CLI pump has no such restriction — it runs on the user's machine.) */
+/**
+ * Reject connection strings that point back into the platform's own network — a
+ * hosted admin must not be able to use the server as a proxy into private
+ * infrastructure. Self-hosters whose source DB legitimately lives on a private
+ * address opt out with MIGRATE_ALLOW_PRIVATE_SOURCES. (The CLI pump has no such
+ * restriction — it runs on the user's machine.)
+ *
+ * This used to be eleven hand-written regexes over `u.hostname`, and it is now
+ * `isPrivateHost` because the regexes answered a question the resolver does not
+ * ask. `postgres:` is a non-special scheme, so the WHATWG parser leaves the
+ * host opaque: `postgres://u:p@2130706433/db` has hostname `2130706433`, which
+ * matches none of the eleven — and `getaddrinfo` turns it into `127.0.0.1`.
+ * `0x7f000001`, `0177.0.0.1` and `[::ffff:127.0.0.1]` were three more of the
+ * same. A saved source is readable (`POST /sources/:id/test`,
+ * `GET /sources/:id/tables`) and copyable into the caller's own collections, so
+ * every one of those was the outcome this function's own comment says it exists
+ * to prevent.
+ *
+ * One matcher for the whole repo now, so a spelling the outbound-fetch guard
+ * learns is a spelling this one knows too.
+ */
 export const assertSourceUrlAllowed = (ctx: Ctx, raw: string): void => {
   let u: URL;
   try {
@@ -126,7 +130,7 @@ export const assertSourceUrlAllowed = (ctx: Ctx, raw: string): void => {
   }
   if (!u.hostname) throw new AppError("VALIDATION", "Connection URL is missing a host");
   if (ctx.env.MIGRATE_ALLOW_PRIVATE_SOURCES === "true") return;
-  if (PRIVATE_HOST.some((re) => re.test(u.hostname))) {
+  if (isPrivateHost(u.hostname)) {
     throw new AppError(
       "VALIDATION",
       `Host "${u.hostname}" is a private/internal address. If this backlex is self-hosted next to the database, set MIGRATE_ALLOW_PRIVATE_SOURCES=true; otherwise run the copy from your own network with \`backlex import-db\`.`,
@@ -193,6 +197,10 @@ export const createSource = async (
   tenantId: string,
   input: { name: string; url: string; createdBy?: string | null },
 ): Promise<PublicSource> => {
+  // Blocked in the playground wherever it is reached from — the route
+  // prefix list is one layer and GraphQL does not pass through it.
+  // See `services/demo.ts::assertNotDemo`.
+  assertNotDemo(ctx.env);
   const name = input.name.trim();
   if (!name) throw new AppError("VALIDATION", "Source name is required");
   assertSourceUrlAllowed(ctx, input.url);
@@ -392,6 +400,10 @@ export const startRun = async (
   tenantId: string,
   input: { sourceId: string; plan: unknown; createdBy?: string | null },
 ): Promise<ReturnType<typeof toPublicRun>> => {
+  // Blocked in the playground wherever it is reached from — the route
+  // prefix list is one layer and GraphQL does not pass through it.
+  // See `services/demo.ts::assertNotDemo`.
+  assertNotDemo(ctx.env);
   let plan: MigrationPlan;
   try {
     plan = parsePlan(input.plan);

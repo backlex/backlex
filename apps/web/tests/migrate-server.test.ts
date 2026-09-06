@@ -81,6 +81,17 @@ describe("migrate server-side (sources + runs)", () => {
       "postgres://u:p@172.20.3.4/db",
       "postgres://u:p@169.254.169.254/db", // cloud metadata endpoint
       "postgres://u:p@db.internal/db",
+      // The bypasses the old eleven-regex list waved through. `postgres:` is a
+      // non-special scheme, so the URL parser leaves the host OPAQUE — these
+      // arrive as the literal strings below, match no dotted-decimal pattern,
+      // and `getaddrinfo` then resolves every one of them to loopback or
+      // RFC1918. Verified against `dns.lookup` while the finding was written.
+      "postgres://u:p@2130706433:5432/db", // 127.0.0.1, bare integer
+      "postgres://u:p@0x7f000001/db", // 127.0.0.1, hex
+      "postgres://u:p@0177.0.0.1/db", // 127.0.0.1, octal octet
+      "postgres://u:p@0xa000001/db", // 10.0.0.1, hex
+      "postgres://u:p@127.1/db", // 127.0.0.1, short inet_aton form
+      "postgres://u:p@[::ffff:127.0.0.1]/db", // IPv4-mapped IPv6
     ]) {
       const res = await h.fetch(
         "/api/admin/migrate/sources",

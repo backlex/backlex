@@ -41,6 +41,7 @@ import {
 } from "@backlex/integrations";
 import type { Ctx } from "../context";
 import { loadCollection } from "./items/collection-loader";
+import { guardedIntegrationFetch } from "./integrations-fetch";
 import { ingestRows } from "./migrate-ingest";
 import { queryAll } from "./items/sql-helpers";
 import { connectionConfigFor } from "./integration-credentials";
@@ -1174,7 +1175,7 @@ export async function runSync(
           limit: PAGE_SIZE,
           connectionKey: integration.id,
         },
-        fetchImpl,
+        fetchImpl ?? guardedIntegrationFetch(ctx.env),
       );
       // A rejected row throws out of here, which is what holds the cursor: it
       // must not advance past an order — or an order's lines — nobody stored.
@@ -1365,7 +1366,7 @@ async function pushCollection(
         syncKey: row.id,
         connectionKey: integration.id,
       },
-      fetchImpl,
+      fetchImpl ?? guardedIntegrationFetch(ctx.env),
     );
 
     const last = batch[batch.length - 1]!;

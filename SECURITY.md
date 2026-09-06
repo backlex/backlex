@@ -96,14 +96,34 @@ Isolation is enforced at multiple layers, not just by permission filters:
 ## SSRF protection
 
 Server-side fetches to admin-supplied URLs (outbound webhooks, flow
-`request`/`webhook` ops, web-push, URL imports) are guarded when
-`BLOCK_PRIVATE_FETCH_HOSTS` is set — **auto-enabled on managed cloud**
-(`CLOUD_PROJECT_ID`), where a tenant admin is not the host operator; **off by
-default on self-host** so legitimate internal receivers keep working. The guard
-(`services/storage/hosts.ts`) rejects private/loopback/link-local/CGNAT/metadata
-hosts across octal, hex, decimal, bare-integer, and IPv4-mapped-IPv6 encodings,
-and **re-validates every redirect hop** to defeat DNS-rebinding / redirect-to-
-internal.
+`request`/`webhook` ops, integration syncs and tasks, the functions sandbox's
+`ctx.fetch`, web-push, URL imports) go through `services/storage/hosts.ts`.
+There are two tiers, and the difference matters when you size your exposure.
+
+**Always on, every runtime, not configurable.** The cloud instance-metadata
+endpoints are refused: `169.254.0.0/16` (AWS/Azure/GCP/DO/Oracle IMDS and the
+`169.254.170.2` ECS task endpoint), `fd00:ec2::254`, `metadata.google.internal`
+and `100.100.100.200` — across octal, hex, decimal, bare-integer and
+IPv4-mapped-IPv6 spellings, and re-checked on every redirect hop. The flow
+`request` op additionally refuses to forward the headers those services require
+as their own anti-SSRF token (`Metadata-Flavor`, `X-aws-ec2-metadata-token`,
+`Metadata`, `X-IDENTITY-HEADER`). No deployment has a reason to fetch its own
+credentials from inside a tenant-authored flow, so this is not an operator
+decision. Non-http(s) schemes are refused on the same unconditional footing.
+
+**Opt-in: the full private-host block.** `BLOCK_PRIVATE_FETCH_HOSTS` (or
+`CLOUD_PROJECT_ID`, so it is **auto-enabled on managed cloud**) additionally
+rejects private/loopback/link-local/CGNAT hosts and internal-DNS suffixes. It is
+**off by default on self-host** so legitimate internal receivers keep working.
+
+**It is syntactic, and it does not stop DNS rebinding.** This sentence used to
+claim that re-validating each redirect hop "defeats DNS-rebinding", and that was
+wrong: the guard compares the hostname STRING, and a name whose A record is
+`127.0.0.1` never redirects — the very first hop is already the private address.
+Hop re-validation defeats *redirect*-to-internal, which is a different attack.
+Closing the rebinding case needs the runtime's egress policy (a VPC egress
+rule, a Workers `fetch` policy, an outbound proxy); size your exposure on that,
+not on this guard.
 
 ## Secrets handling
 
@@ -146,7 +166,9 @@ operator), and stay off on self-host by default:
 
 | Guard | Self-host default | Managed cloud (`CLOUD_PROJECT_ID`) |
 |---|---|---|
-| SSRF host blocking | off (set `BLOCK_PRIVATE_FETCH_HOSTS`) | on |
+| SSRF **private-host** blocking | off (set `BLOCK_PRIVATE_FETCH_HOSTS`) | on |
 | Global API rate limit | off (set `API_RATE_LIMIT_MAX`) | on |
 
-Self-hosters who expose backlex to untrusted tenants should enable both.
+Self-hosters who expose backlex to untrusted tenants should enable both. Note
+the row says *private-host*: the metadata-endpoint refusal above is on either
+way and is not in this table.

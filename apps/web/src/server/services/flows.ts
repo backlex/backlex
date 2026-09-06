@@ -161,6 +161,42 @@ interface RunCtx {
   log?: string[];
 }
 
+/**
+ * Headers that only ever mean "I am talking to an instance metadata service",
+ * dropped from a caller-supplied set.
+ *
+ * The `request` op spreads `op.headers` verbatim and takes a caller-supplied
+ * method, which is what made it a sharper primitive than the outbound webhook
+ * beside it (that one hard-codes POST, and GCE metadata refuses non-GET). Every
+ * IMDS implementation requires one of these as its anti-SSRF token — GCE wants
+ * `Metadata-Flavor: Google`, EC2 IMDSv2 wants `X-aws-ec2-metadata-token`, Azure
+ * wants `Metadata: true` — so refusing to forward them is a second, independent
+ * lock on the same door `assertNotMetadataHost` bolts. Belt and braces, because
+ * the address list can go stale and a header name does not.
+ *
+ * A flow that legitimately needs one of these names is talking to a metadata
+ * service, which is the case being refused.
+ */
+const METADATA_HEADERS = new Set([
+  "metadata-flavor",
+  "metadata",
+  "x-aws-ec2-metadata-token",
+  "x-aws-ec2-metadata-token-ttl-seconds",
+  "x-metadata-token",
+  "x-identity-header",
+]);
+
+const stripMetadataHeaders = (
+  headers: Record<string, string>,
+): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    if (METADATA_HEADERS.has(k.toLowerCase().trim())) continue;
+    out[k] = v;
+  }
+  return out;
+};
+
 /** Caps for {@link RunCtx.log} — enough to debug a flow, not enough to be a
  *  write amplifier. The overflow is reported rather than dropped silently. */
 const MAX_LOG_LINES = 50;
@@ -685,7 +721,7 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   if (op.type === "webhook" || op.type === "request") {
     const headers: Record<string, string> = {
       "content-type": "application/json",
-      ...(op.headers ?? {}),
+      ...stripMetadataHeaders(op.headers ?? {}),
     };
     const body =
       op.body !== undefined

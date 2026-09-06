@@ -3,6 +3,28 @@ import { magicLinkClient, twoFactorClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
 
 /**
+ * Header the invite-acceptance screen puts the invite token in when it signs a
+ * new account up.
+ *
+ * A header rather than a body field because the sign-up body belongs to
+ * better-auth: adding a property there means declaring an additional user field
+ * and having it persisted, which is not what this is — it is a one-request
+ * proof of possession, consumed and forgotten.
+ *
+ * Why it exists at all: the invite was previously bound by EMAIL. Anyone who
+ * knew the invited address could sign up with it first, and
+ * `acceptInviteForUser` matched the pending row on the address alone — so a
+ * stranger arrived holding the standing the invite carried (`admin`, or
+ * `owner`), with a password they chose and no token ever presented. Knowing an
+ * address is not proof of controlling it; the token is.
+ *
+ * Declared HERE, in the client module, because both halves need it and the
+ * server half can import a client constant while the reverse would pull
+ * better-auth's server graph into the SPA bundle.
+ */
+export const INVITE_TOKEN_HEADER = "x-backlex-invite-token";
+
+/**
  * Client plugin set must mirror what's enabled on the server (see
  * apps/web/src/server/context.ts). Magic-link is added unconditionally —
  * if the server doesn't have the plugin, the calls return a clear error

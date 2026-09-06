@@ -77,11 +77,14 @@ export interface Env {
    *  intent they could have had — while an unset value is not a typo and keeps
    *  its meaning. */
   WORKSPACE_CREATION?: string;
-  /** `"enforce"` makes the plane firewall refuse a request whose auth plane is
-   *  not admitted by the route's declared plane (`lib/route-planes.ts`);
-   *  anything else — including unset — logs the violation and lets it through.
-   *  Defaults to warn so a first-draft table cannot take a paying tenant down
-   *  on the release that introduces it. See `middleware/plane-firewall.ts`. */
+  /** `"warn"` makes the plane firewall LOG a request whose auth plane is not
+   *  admitted by the route's declared plane (`lib/route-planes.ts`) and let it
+   *  through; anything else — including unset — refuses it with a 403.
+   *
+   *  It used to default the other way, and was set to `enforce` only in the two
+   *  wrangler configs — so the firewall was real on Cloudflare and inert on
+   *  every self-host, Vercel, Netlify and Node deploy. See
+   *  `middleware/plane-firewall.ts`. */
   PLANE_GUARD?: string;
   /** `"enforce"` makes a create/update whose proposed row fails its own
    *  permission condition refuse with 403; anything else — including unset —
@@ -532,6 +535,20 @@ export interface Env {
    *  origins derived from each workspace's `auth_config.redirectUrls`. Set
    *  this for customer apps hosted on a different domain than the API. */
   EXTRA_TRUSTED_ORIGINS?: string;
+  /**
+   * Trust each workspace's `auth_config.redirectUrls` as cross-origin,
+   * credentialled CORS origins even when the instance hosts SEVERAL workspaces.
+   *
+   * Off by default on a multi-workspace deployment, and that default is the
+   * point: the allow-list is one deployment-wide set (a CORS preflight carries
+   * neither the workspace header's value nor cookies, so there is nothing to
+   * key it by), so one workspace's admin writing a redirect URL would grant
+   * `Access-Control-Allow-Origin` + `Allow-Credentials: true` on EVERY other
+   * workspace's API. Set to `"1"` where every workspace belongs to the same
+   * customer. A single-workspace instance needs nothing — the source is
+   * trusted there because there is no boundary to cross.
+   */
+  CORS_TRUST_WORKSPACE_REDIRECTS?: string;
   /** Comma-separated host allow-list for `ctx.fetch` inside functions.
    *  `*` allows any host (development only). Empty disables outbound fetch. */
   FUNCTIONS_FETCH_ALLOW?: string;
@@ -902,6 +919,7 @@ export const STRING_ENV_KEYS = [
   "FORM_UPLOAD_MAX_PER_DAY",
   "PLATFORM_SSO_ENABLED",
   "EXTRA_TRUSTED_ORIGINS",
+  "CORS_TRUST_WORKSPACE_REDIRECTS",
   "FUNCTIONS_FETCH_ALLOW",
   "FUNCTIONS_EXEC_URL",
   "FUNCTIONS_SANDBOX",

@@ -1,3 +1,4 @@
+import { assertIdent } from "@backlex/db";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
@@ -393,9 +394,28 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         // the slug-sorted output is unchanged.
         const perColl = await Promise.all(
           cs.map(async (c) => {
-            const safeTable = (c.physical_table ?? "").replace(/"/g, "");
+            // `assertIdent` rather than "strip the double quotes".
+            //
+            // The stripped value was spliced into TWO different SQL contexts —
+            // a double-quoted identifier AND, for the PG size query below, a
+            // single-quoted string literal. A `'` in the column therefore
+            // escaped the literal even though the sanitizer looked thorough:
+            // it was sanitizing for the wrong context. Nothing writes such a
+            // value today (every door runs `assertIdent`), which is precisely
+            // the shape worth fixing before a new writer — a restore, an
+            // import, a cloud provisioner — becomes the one that does not.
+            //
+            // A name the identifier grammar refuses is skipped rather than
+            // thrown: this is a metrics tile, and one unreadable row must not
+            // take the whole dashboard down.
+            const raw = c.physical_table ?? "";
+            let safeTable: string;
+            try {
+              safeTable = assertIdent(raw);
+            } catch {
+              return null;
+            }
             const writes24h = writes24hBySlug.get(c.slug) ?? 0;
-            if (!safeTable) return null;
             try {
               const r = await queryAll<{ n: number; m: number | string | null }>(
                 { db: ctx.db, dialect: ctx.dialect },
@@ -411,9 +431,11 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
               let bytes = rowCount * 256;
               if (ctx.dialect === "pg") {
                 try {
+                  // Bound, not interpolated — `regclass` resolves the name at
+                  // the server and needs no quoting decision here at all.
                   const sz = await queryAll<{ s: number }>(
                     { db: ctx.db, dialect: ctx.dialect },
-                    sql.raw(`SELECT pg_total_relation_size('"${safeTable}"') AS s`),
+                    sql`SELECT pg_total_relation_size(${safeTable}::regclass) AS s`,
                   );
                   if (sz[0]?.s != null) bytes = Number(sz[0].s);
                 } catch {}

@@ -24,6 +24,7 @@ import {
   lockoutPolicy,
   recordFailure,
 } from "./auth-lockout";
+import type { LockPolicy } from "./lockout-core";
 import { recordActivity } from "../services/activity";
 
 import { type ClientAddressEnv, clientAddressKey } from "./client-address";
@@ -57,6 +58,16 @@ const auditAuth = async (
     /* never let auditing break auth */
   }
 };
+
+/**
+ * How much wider the account-wide lock is than the per-source one.
+ *
+ * Sized so a single source under its own narrow lock can never reach it — see
+ * the arithmetic in the middleware below. Raising `maxFails` raises both, which
+ * keeps the relationship intact.
+ */
+const WIDE_FAIL_FACTOR = 5;
+const WIDE_WINDOW_FACTOR = 2;
 
 /** Workspace slug for `/api/t/<slug>/auth/...`, else `_` for the admin plane.
  *  Keeps the same email in different workspaces in separate lockout buckets. */
@@ -195,15 +206,53 @@ export const authLockoutMiddleware: MiddlewareHandler = async (c, next) => {
     return;
   }
 
-  const key = `signin:${planeScope(path)}:${email}`;
   const audit = ctx?.db && ctx?.dialect ? ({ db: ctx.db, dialect: ctx.dialect } as AuditCtx) : null;
   const ip = ipFromHeaders(c.req.raw, c.get("ctx").env);
 
-  const locked = await checkLocked(env, key);
-  if (locked.locked) {
+  // TWO locks, because one of them was a denial-of-service primitive.
+  //
+  // The lock used to be keyed on the victim's EMAIL alone and it blocked every
+  // source, including the victim's own. Eight wrong passwords — under the
+  // per-IP sign-in cap, so no address rotation was even needed — shut the
+  // account, and because `cycles` never decayed the cooldown pinned at its
+  // 15-minute ceiling. An attacker who knew `admin@example.com` held it shut
+  // forever at eight requests every fifteen minutes.
+  //
+  //  · The NARROW lock is per (account, source). It is the one that stops
+  //    credential stuffing, and it cannot deny the real owner, who is not the
+  //    source doing the guessing.
+  //  · The WIDE lock is the old account-wide one, kept for a genuinely
+  //    DISTRIBUTED attack — but at a far higher threshold and a longer window.
+  //    The arithmetic is what makes the fix hold: a source under its own narrow
+  //    lock is refused BEFORE `next()`, so it produces no further 401s and adds
+  //    nothing to the wide count while locked. Once its cooldown pins at 15
+  //    minutes it can contribute at most `maxFails` per wide window, so one
+  //    source can never reach `WIDE_FAIL_FACTOR × maxFails`. Many sources can,
+  //    which is exactly the case the wide lock is for.
+  const scope = planeScope(path);
+  const key = `signin:${scope}:${email}`;
+  // A deployment that names no trusted proxy derives no address, and every
+  // caller then shares the `unknown` bucket — which is the OLD behaviour, one
+  // account-wide lock, and no worse than it: the wide lock is now five times
+  // wider, so the account is HARDER to shut than before even in that case.
+  // Where an address is derivable this is per-source, which is the fix.
+  const sourceKey = `signin:${scope}:${email}:${ip ?? "unknown"}`;
+  const policy = lockoutPolicy(env);
+  const widePolicy: LockPolicy = {
+    ...policy,
+    maxFails: policy.maxFails * WIDE_FAIL_FACTOR,
+    windowMs: policy.windowMs * WIDE_WINDOW_FACTOR,
+  };
+
+  const [sourceLocked, locked] = await Promise.all([
+    checkLocked(env, sourceKey),
+    checkLocked(env, key),
+  ]);
+  const active = sourceLocked.locked ? sourceLocked : locked;
+  if (active.locked) {
     throw new AppError(
       "RATE_LIMITED",
-      `Too many failed sign-in attempts — try again in ${Math.ceil(locked.retryAfterMs / 1000)}s`,
+      `Too many failed sign-in attempts — try again in ${Math.ceil(active.retryAfterMs / 1000)}s`,
     );
   }
 
@@ -214,15 +263,28 @@ export const authLockoutMiddleware: MiddlewareHandler = async (c, next) => {
   // validation so a known-good account isn't locked for a non-credential error.
   const status = c.res.status;
   if (status === 200) {
-    await clearFailures(env, key);
+    // A success clears BOTH — the source proved it holds the credential, and
+    // the account is demonstrably not under a successful attack.
+    await Promise.all([clearFailures(env, sourceKey), clearFailures(env, key)]);
   } else if (status === 401) {
-    const r = await recordFailure(env, key, lockoutPolicy(env));
-    if (r.justLocked && audit) {
-      await auditAuth(audit, "auth.login_locked", {
-        ip,
-        userAgent: userAgentOf(c.req.raw),
-        payload: { identifier: email, retryAfterMs: r.retryAfterMs },
-      });
+    const [source, account] = await Promise.all([
+      recordFailure(env, sourceKey, policy),
+      recordFailure(env, key, widePolicy),
+    ]);
+    // Audited on either edge, and the payload says WHICH — an operator reading
+    // `auth.login_locked` needs to know whether one source was shut out or the
+    // account was, because only the second is a reason to call the owner.
+    for (const [r, kind] of [
+      [source, "source"],
+      [account, "account"],
+    ] as const) {
+      if (r.justLocked && audit) {
+        await auditAuth(audit, "auth.login_locked", {
+          ip,
+          userAgent: userAgentOf(c.req.raw),
+          payload: { identifier: email, retryAfterMs: r.retryAfterMs, lock: kind },
+        });
+      }
     }
   }
 };

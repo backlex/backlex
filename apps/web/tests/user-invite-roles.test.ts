@@ -38,11 +38,25 @@ const json = (body: unknown) => ({
 
 const signOut = (h: TestHarness) => h.fetch("/api/auth/sign-out", { method: "POST" });
 
-const signUp = (h: TestHarness, email: string) =>
-  h.fetch(
-    "/api/auth/sign-up/email",
-    json({ email, password: "correct-horse-battery", name: "X" }),
-  );
+/**
+ * Sign up, optionally presenting the invite token.
+ *
+ * The token is what BINDS the invite. It used to be bound on the email alone,
+ * so anyone who knew an invited address could sign up with it first and arrive
+ * holding the standing the invite carried — the 2026-09 audit's phase 10.
+ * Every test below that expects a membership now passes the token; the ones
+ * that expect a bare account deliberately do not.
+ */
+const signUp = (h: TestHarness, email: string, inviteToken?: string) => {
+  const init: RequestInit = json({ email, password: "correct-horse-battery", name: "X" });
+  if (inviteToken) {
+    init.headers = {
+      ...(init.headers as Record<string, string>),
+      "x-backlex-invite-token": inviteToken,
+    };
+  }
+  return h.fetch("/api/auth/sign-up/email", init);
+};
 
 const signIn = (h: TestHarness, email: string) =>
   h.fetch(
@@ -147,7 +161,7 @@ describe("users invite: the standing and the RBAC role are two different things"
     expect(storedRole(h, "plain@example.test")).toBe("member");
 
     await signOut(h);
-    expect((await signUp(h, "plain@example.test")).ok).toBe(true);
+    expect((await signUp(h, "plain@example.test", inv.token)).ok).toBe(true);
     expect(rbacRoles(h, "plain@example.test")).toEqual(["authenticated"]);
   });
 
@@ -163,11 +177,14 @@ describe("users invite: the standing and the RBAC role are two different things"
     };
     const tenantId = tenants.data.find((t) => t.slug === "default")!.id;
 
-    await inviteOk(h, { email: "second@example.test", workspaceRole: "admin" });
+    const secondInv = await inviteOk(h, {
+      email: "second@example.test",
+      workspaceRole: "admin",
+    });
     expect(storedRole(h, "second@example.test")).toBe("admin");
 
     await signOut(h);
-    expect((await signUp(h, "second@example.test")).ok).toBe(true);
+    expect((await signUp(h, "second@example.test", secondInv.token)).ok).toBe(true);
     expect(rbacRoles(h, "second@example.test")).toEqual(["admin", "authenticated"]);
 
     // The ladder-facing proof: a `manageOnly` route answers for them. A member
@@ -186,9 +203,12 @@ describe("users invite: the standing and the RBAC role are two different things"
     };
     const tenantId = tenants.data.find((t) => t.slug === "default")!.id;
 
-    await inviteOk(h, { email: "plainer@example.test", workspaceRole: "member" });
+    const plainerInv = await inviteOk(h, {
+      email: "plainer@example.test",
+      workspaceRole: "member",
+    });
     await signOut(h);
-    expect((await signUp(h, "plainer@example.test")).ok).toBe(true);
+    expect((await signUp(h, "plainer@example.test", plainerInv.token)).ok).toBe(true);
 
     // They ARE a member — the list read succeeds — but they may not invite.
     expect((await h.fetch(`/api/tenants/${tenantId}/members`)).status).toBe(200);
@@ -226,7 +246,7 @@ describe("users invite: the deprecated `role` field maps to what it named", () =
     expect(inv.rbacRole).toBe("authenticated");
 
     await signOut(h);
-    expect((await signUp(h, "legacy-auth@example.test")).ok).toBe(true);
+    expect((await signUp(h, "legacy-auth@example.test", inv.token)).ok).toBe(true);
     expect(rbacRoles(h, "legacy-auth@example.test")).toEqual(["authenticated"]);
   });
 
@@ -243,7 +263,7 @@ describe("users invite: the deprecated `role` field maps to what it named", () =
     expect(inv.workspaceRole).toBe("member");
 
     await signOut(h);
-    expect((await signUp(h, "reviewer@example.test")).ok).toBe(true);
+    expect((await signUp(h, "reviewer@example.test", inv.token)).ok).toBe(true);
     // `authenticated` rides along — both invite dialogs promise it.
     expect(rbacRoles(h, "reviewer@example.test")).toEqual(["authenticated", "reviewer"]);
   });
@@ -268,7 +288,7 @@ describe("users invite: the deprecated `role` field maps to what it named", () =
     expect(storedRole(h, "shadow@example.test")).toBe("owner");
 
     await signOut(h);
-    expect((await signUp(h, "shadow@example.test")).ok).toBe(true);
+    expect((await signUp(h, "shadow@example.test", inv.token)).ok).toBe(true);
     // The RBAC role named `owner` exists and was NOT bound — the standing's
     // `admin` was. Asserted as the whole set so an extra grant is a failure too.
     expect(rbacRoles(h, "shadow@example.test")).toEqual(["admin", "authenticated"]);
@@ -308,9 +328,9 @@ describe("users invite: nobody confers a standing above their own", () => {
    *  Returns their email. The seeded first user is `owner` there, so this is the
    *  one rung below the top — the interesting side of `assertMayGrant`. */
   const seedWorkspaceAdmin = async (email: string): Promise<string> => {
-    await inviteOk(h, { email, workspaceRole: "admin" });
+    const inv = await inviteOk(h, { email, workspaceRole: "admin" });
     await signOut(h);
-    expect((await signUp(h, email)).ok).toBe(true);
+    expect((await signUp(h, email, inv.token)).ok).toBe(true);
     return email;
   };
 
@@ -387,7 +407,7 @@ describe("users list: a pending invite is not a credential", () => {
     // which is what separates "stopped leaking it" from "broke the feature".
     await signOut(h);
     expect((await h.fetch(`/api/tenants/invite/${inv.token}`)).status).toBe(200);
-    expect((await signUp(h, "quiet@example.test")).ok).toBe(true);
+    expect((await signUp(h, "quiet@example.test", inv.token)).ok).toBe(true);
   });
 
   test("the CREATE response is still allowed to carry it", async () => {
@@ -408,10 +428,10 @@ describe("users list: a pending invite is not a credential", () => {
     // whoever happened to be signed in.
     await seedAdmin(h, "owner@example.test", "correct-horse-battery", { openSignup: false });
     const inv = await inviteOk(h, { email: "target@example.test", workspaceRole: "member" });
-    await inviteOk(h, { email: "nosy@example.test", workspaceRole: "admin" });
+    const nosyInv = await inviteOk(h, { email: "nosy@example.test", workspaceRole: "admin" });
 
     await signOut(h);
-    expect((await signUp(h, "nosy@example.test")).ok).toBe(true);
+    expect((await signUp(h, "nosy@example.test", nosyInv.token)).ok).toBe(true);
     const asNosy = await h.fetch("/api/users");
     expect(asNosy.status).toBe(200);
     const raw = await asNosy.text();

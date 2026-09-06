@@ -169,9 +169,31 @@ export const bookingPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // attributes the call to a workspace for usage metering.
       setMeterTenant(c, resource.tenantId);
       const q = c.req.valid("query");
+      // Refuse an unparseable date rather than carrying NaN into the window.
+      //
+      // The zod query schema takes any string, so `?from=x` produced
+      // `Date.parse("x")` = NaN, which survived `Math.max` and every comparison
+      // in `availableSlots` (`!(NaN < NaN)` is true, so it simply returned an
+      // empty list) and then threw `RangeError: Invalid Date` at
+      // `new Date(NaN).toISOString()`. That is a 500 on a PUBLIC endpoint, and
+      // `logServerError` writes a `request.error` activity row for each one —
+      // so one booking token also flooded the workspace's Recent-errors panel
+      // at the 60/min budget. `?from=+275760-09-13` reaches the same throw by
+      // overflowing the maximum date instead, which is why this tests the
+      // PARSED value rather than the string's shape.
+      const parseBound = (raw: string | undefined, key: string): number | undefined => {
+        if (!raw) return undefined;
+        const ms = Date.parse(raw);
+        if (!Number.isFinite(ms)) {
+          throw new AppError("VALIDATION", `\`${key}\` is not a valid date: ${raw}`);
+        }
+        return ms;
+      };
+      const from = parseBound(q.from, "from");
+      const to = parseBound(q.to, "to");
       const window = {
-        ...(q.from ? { from: Date.parse(q.from) } : {}),
-        ...(q.to ? { to: Date.parse(q.to) } : {}),
+        ...(from === undefined ? {} : { from }),
+        ...(to === undefined ? {} : { to }),
       };
       return c.json({ data: await listSlots(ctx, resource, window) });
     },

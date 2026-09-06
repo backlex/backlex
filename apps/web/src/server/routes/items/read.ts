@@ -83,6 +83,10 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         c.req.param("id"),
         perm,
       );
+      // A revision is a full pre-change snapshot, so this reads the row's
+      // contents and has to say so — the by-id GET below already does, and this
+      // did not. Metadata only, matching every other `auditRead` call.
+      auditRead(c, collection, c.req.param("id"), { revisions: data.length });
       return c.json({ data });
     },
   )

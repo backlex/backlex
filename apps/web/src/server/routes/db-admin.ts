@@ -22,7 +22,7 @@ import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { requireOperatorMw } from "../services/roles/guards";
 import { assertQueueable, startLongJob } from "../services/jobs-long-running";
-import { keepAlive } from "../services/activity";
+import { keepAlive, logActivity } from "../services/activity";
 
 /** Workspace-scoped admin. Enough for the backup routes below, which all run
  *  against `auth.tenantId`. NOT enough for the instance-wide routes (SQL
@@ -176,6 +176,46 @@ const BackupConfigSchema = z
 const collectionsTableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
+/** Ceiling on the SQL text carried into the audit payload — see
+ *  {@link logSqlRun}. */
+const SQL_AUDIT_MAX = 2_000;
+
+/**
+ * Record that arbitrary SQL was run, and by whom.
+ *
+ * This route's own docblock used to claim it was "auditable through the
+ * activity log (best-effort)" and nothing wrote a row. That sentence is the
+ * whole finding: `routes/impersonation.ts`, `roles/permissions.ts` and
+ * `roles/users.ts` all DO log their privileged actions, so an auditor
+ * reasonably reads the absence of a row as "it did not happen" — while the one
+ * endpoint that can `DELETE FROM activity` was the one leaving no trace of
+ * having done it.
+ *
+ * The SQL text is truncated rather than dropped: an activity payload is read by
+ * a human deciding whether to be alarmed, and "a write ran" without the
+ * statement is not enough to decide with. It is truncated because a bulk INSERT
+ * would otherwise park megabytes in the audit table.
+ */
+const logSqlRun = async (
+  c: Parameters<typeof logActivity>[0],
+  stmts: string[],
+  writeStmts: string[],
+  sql: string,
+  error: string | null,
+): Promise<void> => {
+  await logActivity(c, {
+    action: "db.sql",
+    collection: "db",
+    itemId: null,
+    payload: {
+      statements: stmts.length,
+      writes: writeStmts.length,
+      sql: sql.length > SQL_AUDIT_MAX ? `${sql.slice(0, SQL_AUDIT_MAX)}…` : sql,
+      ...(error ? { error } : {}),
+    },
+  });
+};
+
 export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
@@ -211,7 +251,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
      * Run a single SQL statement (or short multi-statement block) against the
      * active database. Defaults to read-only; the client must opt into writes
      * with `?writes=1` AND `X-Backlex-Confirm: yes` to actually execute
-     * mutating SQL. Auditable through the activity log (best-effort).
+     * mutating SQL. Every run writes an activity row — see {@link logSqlRun}.
      */
     async (c) => {
       const ctx = c.get("ctx");
@@ -245,8 +285,13 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           }
         }
       } catch (e) {
+        // Recorded BEFORE the throw. A statement that errored still ran against
+        // the database, and a failed `DELETE FROM activity` is exactly the
+        // attempt an auditor most wants to see.
+        await logSqlRun(c, stmts, writeStmts, body.sql, (e as Error).message);
         throw new AppError("VALIDATION", `SQL error: ${(e as Error).message}`);
       }
+      await logSqlRun(c, stmts, writeStmts, body.sql, null);
       return c.json({ data: results, ms: Date.now() - t0, count: stmts.length });
     },
   )

@@ -157,8 +157,16 @@ describe("the states", () => {
 
     // The token was signed by a key that no longer signs. It has to keep
     // working — its `exp` is the only thing that should end it.
+    //
+    // Probed on `/api/notifications`, which `lib/route-planes.ts` declares
+    // `either`. It used to probe `/api/tenants`, and that stopped being a
+    // question about the SIGNATURE the moment `PLANE_GUARD` began defaulting to
+    // `enforce` (2026-09 audit, phase 10): the token verified fine and the
+    // firewall refused the route, so a green suite would have meant "the plane
+    // check works" rather than "the key still verifies". A probe has to be on a
+    // door the caller is entitled to walk through, or it measures the door.
     const res = await h.app.request(
-      "/api/tenants",
+      "/api/notifications",
       {
         headers: {
           authorization: `Bearer ${minted.token}`,

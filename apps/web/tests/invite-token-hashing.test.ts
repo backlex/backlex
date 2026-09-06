@@ -319,14 +319,16 @@ describe("workspace invite tokens (tenant_members)", () => {
     );
     expect(stranger.status).toBe(403);
 
-    const signedUp = await h.fetch(
-      "/api/auth/sign-up/email",
-      json("POST", {
-        email: "accepts@hashing.test",
-        password: "correct-horse-battery",
-        name: "X",
-      }),
-    );
+    // The TOKEN is what binds the invite — the address alone used to, which let
+    // anyone who knew it claim the standing (2026-09 audit, phase 10). Sent as
+    // a header so the sign-up body stays better-auth's.
+    const acceptInit = json("POST", {
+      email: "accepts@hashing.test",
+      password: "correct-horse-battery",
+      name: "X",
+    });
+    acceptInit.headers = { ...acceptInit.headers, "x-backlex-invite-token": inv.token };
+    const signedUp = await h.fetch("/api/auth/sign-up/email", acceptInit);
     expect(signedUp.ok).toBe(true);
 
     const me = (await (await h.fetch("/api/me")).json()) as {
@@ -370,14 +372,13 @@ describe("workspace invite tokens (tenant_members)", () => {
 
     // And it is a real accept, not just a resolve.
     await h.fetch("/api/auth/sign-out", { method: "POST" });
-    const signedUp = await h.fetch(
-      "/api/auth/sign-up/email",
-      json("POST", {
-        email: "legacy@hashing.test",
-        password: "correct-horse-battery",
-        name: "X",
-      }),
-    );
+    const legacyInit = json("POST", {
+      email: "legacy@hashing.test",
+      password: "correct-horse-battery",
+      name: "X",
+    });
+    legacyInit.headers = { ...legacyInit.headers, "x-backlex-invite-token": inv.token };
+    const signedUp = await h.fetch("/api/auth/sign-up/email", legacyInit);
     expect(signedUp.ok).toBe(true);
     const row = rowWhere(h, "SELECT * FROM tenant_members WHERE id = ?1", inv.id);
     expect(row!.status).toBe("active");

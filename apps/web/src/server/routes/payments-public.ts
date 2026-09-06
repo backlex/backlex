@@ -377,7 +377,15 @@ export const paymentsPublicRoutes = new Hono<AppBindings>()
       provider: provider.provider,
       err: message,
     });
-    throw new AppError("INTERNAL", `Could not apply the delivery: ${message}`);
+    // The message stays in the LOG, not in the response.
+    //
+    // `receiveWebhook` rethrows whatever the write layer raised, and a drizzle
+    // failure arrives as `Failed query: insert into "c_<tenantPrefix>_payments"
+    // (...) values (...)` — so the 500 body handed to an unauthenticated
+    // webhook caller named the tenant's physical table and its column list. The
+    // response already carries `requestId`, which is the correlation an
+    // operator needs to find the line above.
+    throw new AppError("INTERNAL", "Could not apply the delivery");
   }
 
   if (!outcome.ok) {

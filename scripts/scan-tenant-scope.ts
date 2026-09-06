@@ -276,7 +276,6 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/third-party-auth.ts", symbol: "assertIssuerFree", reason: "Instance-wide uniqueness check on a JWT issuer. It has to see every workspace's rows to be a uniqueness check at all, and it deliberately reports only that the issuer is taken — naming the holder would leak another tenant's configuration to whoever probes issuers." },
   { file: "apps/web/src/server/routes/tenant-auth.ts", symbol: "consumeVerification", reason: "Deletes the verification row the magic-link/OTP path just matched on its own token." },
   { file: "apps/web/src/server/services/app-user-invites.ts", symbol: "consumeAppUserInvite", reason: "Deletes the verification row the invite-accept path just matched on its own token." },
-  { file: "apps/web/src/server/services/invites.ts", symbol: "bindInvite", reason: "Binds the InviteRow findInviteByToken resolved from the presented token, and clears the token in the same write." },
   { file: "apps/web/src/server/services/dashboards.ts", symbol: "runDashboardPublic", reason: "Loads the role a public dashboard embeds AS, by the embedRoleId stored on the dashboard row the embed token resolved to." },
 
   // ── Reached through a parent the caller scoped ──────────────────────────

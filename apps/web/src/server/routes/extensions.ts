@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requirePlatformMw } from "../services/roles/guards";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import {
   getAsset,
@@ -104,9 +105,17 @@ export const extensionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags,
       summary: "List enabled extensions",
       description:
-        "Any signed-in user. Returns enabled extensions' manifests so the admin SPA can mount contributed panels and field editors.",
+        "Operator plane. Returns enabled extensions' manifests so the admin SPA can mount contributed panels and field editors.",
       security: SECURITY,
-      middleware: [requireUser],
+      // `requireUser` alone admits an APP-PLANE end user: it checks
+      // `auth.userId`, and an `app_users` id satisfies that exactly as a
+      // platform `users` id does. `tenantMiddleware` then pins them to their own
+      // workspace, so `requireTenant` succeeds too. A workspace's own end user
+      // could therefore sign in at `/api/t/{slug}/auth` and enumerate every
+      // installed extension — names, versions, and the manifest's
+      // `permissions.api`, i.e. which admin API paths each extension is wired to
+      // call. The admin SPA is the only intended consumer.
+      middleware: [requireUser, requirePlatformMw],
       responses: {
         200: {
           description: "OK",
@@ -378,12 +387,19 @@ export const extensionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
 
 /**
  * Iframe entry / asset serving. Plain Hono route (not OpenAPI) because the
- * path has a wildcard. Session-gated; responses carry their own CSP that
- * permits inline script/style ONLY — extension entries are self-contained
- * documents rendered inside a sandboxed iframe (opaque origin), so they can
- * never touch the admin session even though they're served same-origin.
+ * path has a wildcard. Responses carry their own CSP that permits inline
+ * script/style ONLY — extension entries are self-contained documents rendered
+ * inside a sandboxed iframe (opaque origin), so they can never touch the admin
+ * session even though they're served same-origin.
+ *
+ * OPERATOR plane, not merely signed-in. This is the complete entry SOURCE of
+ * every panel, field editor and hook — server-side code that regularly embeds
+ * internal endpoint layout and sometimes third-party keys, and that was never
+ * meant to leave the operator plane. `requireUser` admits an app-plane end
+ * user (see the note on `/enabled`), so a workspace's own customer could
+ * download all of it.
  */
-extensionsRoutes.get("/:name/assets/*", requireUser, async (c) => {
+extensionsRoutes.get("/:name/assets/*", requireUser, requirePlatformMw, async (c) => {
   const ctx = c.get("ctx");
   const tenantId = requireTenant(c);
   const name = c.req.param("name");
@@ -404,8 +420,23 @@ extensionsRoutes.get("/:name/assets/*", requireUser, async (c) => {
     headers: {
       "content-type": asset.contentType,
       "cache-control": "private, max-age=60",
+      // `sandbox allow-scripts` is the load-bearing addition.
+      //
+      // These bytes are a third-party extension's `panel.html`, and the design
+      // says they run in an opaque origin. That was true only because the admin
+      // SPA happens to embed them with `<iframe sandbox="allow-scripts">` — the
+      // containment lived in the EMBEDDER's attribute, not in the response. The
+      // same URL opened top-level, or framed by anything else on this origin,
+      // was a same-origin document whose own CSP explicitly permits inline
+      // script: an extension author, or anyone with one HTML-injection sink on
+      // the admin origin, reached the admin's session through
+      // `frame.contentWindow.parent`.
+      //
+      // The CSP sandbox and the attribute sandbox intersect to the same
+      // opaque-origin-with-scripts state, so the panel keeps working exactly as
+      // it does today; what changes is that a DIRECT hit lands in the box too.
       "content-security-policy":
-        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'",
+        "default-src 'none'; sandbox allow-scripts; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'",
     },
   });
 });

@@ -41,6 +41,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
 import { fetchOutbound } from "./storage/hosts";
+import { keepAliveCtx } from "./activity";
 
 type AnyDb = any;
 
@@ -337,7 +338,13 @@ export async function runSyncHooks(
       data,
       actor,
     });
-    void applyOutcome(ctx, hook, out.ok, out.error ?? "ok");
+    // The circuit breaker's whole job is to count failures until a dead hook
+    // trips its auto-disable threshold. A bare `void` here means that counter
+    // is written only when the runtime happens not to reclaim the isolate
+    // first — so on Workers a permanently-dead hook could be re-called forever
+    // and never reach the threshold it exists for. Still not awaited: a write
+    // must not pay for its own bookkeeping.
+    keepAliveCtx(ctx, applyOutcome(ctx, hook, out.ok, out.error ?? "ok"), "sync-hook");
 
     if (!out.ok) {
       if ((hook.onError as OnHookError) === "deny") {

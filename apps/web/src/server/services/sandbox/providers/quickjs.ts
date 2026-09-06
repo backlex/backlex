@@ -122,6 +122,17 @@ const installRefusingHostIo = (vm: QuickJSContext, ctxHandle: QuickJSHandle): vo
 };
 
 /**
+ * Opcode-budget ceiling for a single `run`.
+ *
+ * QuickJS invokes the interrupt handler every ~N opcodes, so this is a rough
+ * instruction budget rather than a precise one. Sized to be far beyond any
+ * legitimate transform (a function shaping a row does thousands of operations,
+ * not tens of millions) while still tripping in well under a Worker's CPU limit
+ * on a tight infinite loop.
+ */
+const MAX_INTERRUPT_TICKS = 2_000_000;
+
+/**
  * QuickJS-WASM sandbox — sync only, no host I/O bridge. True isolation
  * (WASM sandbox) but cannot do `ctx.fetch` / `ctx.db` / `ctx.email`. This is
  * the DEFAULT everywhere, and the only in-isolate provider that is actually an
@@ -141,7 +152,25 @@ export const quickjsProvider: SandboxProvider = {
     const runtime = QuickJS.newRuntime();
     const start = Date.now();
     const deadline = start + Math.max(50, Math.min(60_000, timeoutMs));
-    runtime.setInterruptHandler(() => Date.now() > deadline);
+    // Two budgets, because the wall clock does not run where this provider is
+    // the DEFAULT.
+    //
+    // Cloudflare Workers (and Vercel/Netlify edge) pin `Date.now()` to the last
+    // I/O as a timing-attack mitigation, so it returns a CONSTANT throughout a
+    // synchronous computation. QuickJS calls this handler between opcodes, but
+    // it never saw the deadline pass — so `while(true){}` in a function body ran
+    // until workerd killed the whole request on its CPU limit, and the clean
+    // `{ok:false, error:"timed out"}` this provider promises could never fire on
+    // the one runtime where it is what runs by default. Event-triggered
+    // functions are dispatched on the item write path, so a single runaway
+    // `active` function turned every create/update in that workspace into a
+    // CPU-limit failure until an operator noticed and disabled it.
+    //
+    // The tick count advances regardless of the clock, so IT is the budget that
+    // actually fires on Workers; the wall-clock check stays for the runtimes
+    // that have a live one, where it is the more meaningful of the two.
+    let ticks = 0;
+    runtime.setInterruptHandler(() => ++ticks > MAX_INTERRUPT_TICKS || Date.now() > deadline);
     runtime.setMemoryLimit(64 * 1024 * 1024);
 
     const vm = runtime.newContext();

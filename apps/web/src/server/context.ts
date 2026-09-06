@@ -184,6 +184,22 @@ export interface Ctx {
    *  `image` when the file is publicly reachable — no bytes through the
    *  runtime. */
   edgeImage?: EdgeImageAdapter;
+  /**
+   * Keep work alive past the response.
+   *
+   * A bare `void somePromise()` is not fire-and-forget on Workers — it is
+   * fire-and-*maybe*. Once the handler's response resolves the runtime is free
+   * to tear the isolate down, and every promise still in flight is cancelled
+   * mid-await. That is how the webhook/flow/integration fan-out, the SSO audit
+   * rows and the sync-hook circuit breaker all became best-effort on the one
+   * deploy target this repo ships to by default.
+   *
+   * Set by the request middleware (`app.ts`), which is the only layer holding
+   * an `ExecutionContext`. Absent on cron ticks, queue consumers and tests —
+   * callers fall back to floating the promise, which is what those runtimes
+   * did anyway, so nothing narrows for a caller that has not been told.
+   */
+  waitUntil?: (p: Promise<unknown>) => void;
 }
 
 /**
@@ -729,7 +745,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     plugins: pluginList,
     requireEmailVerification,
     hooks: {
-      onBeforeUserCreated: async ({ email }) => {
+      onBeforeUserCreated: async ({ email, inviteToken }) => {
         // The first user bootstraps the instance admin. On a managed cloud
         // instance the provisioner pins OWNER_EMAIL so a stranger can't claim
         // the public instance URL before the real owner does; self-host leaves
@@ -746,7 +762,8 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         }
         // An invited address may sign up even while public sign-up is closed —
         // that's how admins add users without opening the door to everyone.
-        if (await hasValidInvite(dbCtx, email)) return { allow: true };
+        // The TOKEN is what admits it, not the address: see `hasValidInvite`.
+        if (await hasValidInvite(dbCtx, email, inviteToken)) return { allow: true };
         const tenantId = await ensureDefaultTenant(dbCtx);
         const { openSignup } = await loadPolicy(dbCtx, tenantId);
         return { allow: openSignup === true, reason: "Sign-up is disabled" };
@@ -782,7 +799,11 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         // the invited row to `active` first, and the invite (with its role
         // grant) would no longer match.
         try {
-          await acceptInviteForUser(dbCtx, user.id, user.email);
+          // Bound by the TOKEN the request carried, never by the address alone.
+          // Without one this is a no-op and the account simply exists with no
+          // workspace membership — which is what a sign-up by someone who was
+          // not invited should produce.
+          await acceptInviteForUser(dbCtx, user.id, user.email, user.inviteToken);
         } catch (e) {
           console.error("[invite] auto-accept failed", (e as Error).message);
         }

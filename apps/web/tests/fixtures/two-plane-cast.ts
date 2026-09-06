@@ -137,11 +137,24 @@ export const buildTwoPlaneCast = async (): Promise<TwoPlaneCast> => {
     current = null;
   };
 
-  const signUp = async (email: string): Promise<void> => {
-    const res = await h.fetch(
-      "/api/auth/sign-up/email",
-      json("POST", { email, password: CAST_PASSWORD, name: email }),
-    );
+  /**
+   * Sign a new account up, optionally presenting a workspace invite token.
+   *
+   * The token is what BINDS the invite. It used to be bound by email — anyone
+   * who knew an invited address could sign up with it first and arrive holding
+   * the standing the invite carried — so the sign-up path now requires the same
+   * proof `POST /api/tenants/accept` always did. See the 2026-09 audit, phase
+   * 10.
+   */
+  const signUp = async (email: string, inviteToken?: string): Promise<void> => {
+    const init = json("POST", { email, password: CAST_PASSWORD, name: email });
+    if (inviteToken) {
+      init.headers = {
+        ...(init.headers as Record<string, string>),
+        "x-backlex-invite-token": inviteToken,
+      };
+    }
+    const res = await h.fetch("/api/auth/sign-up/email", init);
     if (!res.ok) throw new Error(`sign-up ${email} failed: ${res.status} ${await res.text()}`);
     // better-auth signs the new account in, so the jar now holds them.
     current = email;
@@ -260,13 +273,17 @@ export const buildTwoPlaneCast = async (): Promise<TwoPlaneCast> => {
     json("POST", { email: adminAEmail, role: "admin" }),
   );
   expect(inviteA.status, "invite a second admin into workspace A").toBe(201);
+  const inviteAToken = ((await inviteA.json()) as { data: { token: string } }).data.token;
 
   await signOut();
-  // Signing up with the invited address IS the accept — `onUserCreated` binds
-  // any pending invite for that email and nulls its token. Calling
+  // Signing up with the invited address AND ITS TOKEN is the accept —
+  // `onUserCreated` binds the invite the token names and nulls it. Calling
   // `POST /api/tenants/accept` afterwards would 404 on a token that no longer
   // exists, which is the correct single-use behaviour and not a failure.
-  await signUp(adminAEmail);
+  //
+  // The token is not optional: binding on the address alone let anyone who knew
+  // an invited email claim the standing it carried.
+  await signUp(adminAEmail, inviteAToken);
   const adminAId = await whoami();
   const memberships = (await (await h.fetch("/api/tenants")).json()) as {
     data: { id: string }[];

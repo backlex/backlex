@@ -358,6 +358,165 @@ describe("pg migrations ↔ pg schema.ts", () => {
   });
 });
 
+/**
+ * Referential ACTIONS, declared vs. migrated — the fourth kind of drift.
+ *
+ * The three comparisons above match tables, columns and index NAMES, and all
+ * three passed while `files.folder_id` carried `ON DELETE SET NULL` on Postgres
+ * and a bare `REFERENCES folders(id)` on SQLite — with both `schema.ts` files
+ * declaring `onDelete: "set null"`. Same table, same column, same index: no
+ * shape difference to see.
+ *
+ * What that costs is a dialect-dependent answer to one question. Delete a folder
+ * outside `DELETE /api/folders/:id` and on Postgres the files detach; on SQLite
+ * with FK enforcement ON (which the CLI migrator sets) the delete raises
+ * `FOREIGN KEY constraint failed`, and with it OFF (bun:sqlite's default, which
+ * is what the auto-migrate boot path runs under) the files keep a `folder_id`
+ * pointing at nothing and appear in neither the root listing nor any folder.
+ *
+ * Compared against what `schema.ts` DECLARES rather than across dialects,
+ * deliberately: the cross-dialect block below only runs under
+ * `BACKLEX_PG_TESTS=optional`, so a check placed there would be skipped in the
+ * default suite and report success by matching nothing.
+ */
+describe("sqlite migrations honour the schema's referential actions", () => {
+  /** `(table, column) -> on_delete` as the migrated database actually has it. */
+  const migratedActions = (): Map<string, string> => {
+    const out = new Map<string, string>();
+    const names = (
+      sqliteDb
+        .query(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+        )
+        .all() as { name: string }[]
+    ).map((r) => r.name);
+    for (const t of names) {
+      const fks = sqliteDb
+        .query(`PRAGMA foreign_key_list("${t}")`)
+        .all() as Array<{ from: string; on_delete: string }>;
+      for (const fk of fks) {
+        out.set(`${t}.${fk.from}`, (fk.on_delete ?? "NO ACTION").toUpperCase());
+      }
+    }
+    return out;
+  };
+
+  /** `(table, column) -> on_delete` as `schema.ts` declares it. */
+  const declaredActions = (): Map<string, string> => {
+    const out = new Map<string, string>();
+    for (const value of Object.values(sqliteSchemaNs.schema as Record<string, unknown>)) {
+      if (!is(value as never, Table)) continue;
+      const cfg = sqliteTableConfig(value as never);
+      for (const fk of cfg.foreignKeys) {
+        const ref = fk.reference();
+        const action = (fk.onDelete ?? "no action").toUpperCase();
+        for (const col of ref.columns) out.set(`${cfg.name}.${col.name}`, action);
+      }
+    }
+    return out;
+  };
+
+  /**
+   * The one divergence that is KNOWN, with why it is tolerated and what pays
+   * for it.
+   *
+   * Not a place to put a new one. `20260504194131_rich_old_lace` created
+   * `files.folder_id` with a bare `REFERENCES folders(id)` while the Postgres
+   * twin and both `schema.ts` files say `ON DELETE SET NULL`. Correcting it on
+   * SQLite means REBUILDING the table (SQLite cannot alter a constraint), and a
+   * table rebuild is the exact migration class that caused the phase-8 incident
+   * — a replay of one reset 26 collection metadata columns to their defaults.
+   * On a pre-release audit the cheaper trade is to pin the divergence and let
+   * the application compensate: `DELETE /api/folders/:id` detaches the files
+   * itself, which is the only door that deletes a folder.
+   *
+   * The staleness test below is what stops this being a mute button: the day
+   * the DDL is fixed, this entry matches nothing and the suite says so.
+   */
+  const KNOWN_ACTION_DRIFT = new Map<string, { declared: string; migrated: string }>([
+    ["files.folder_id", { declared: "SET NULL", migrated: "NO ACTION" }],
+  ]);
+
+  /**
+   * Every declared/migrated mismatch, optionally minus the recorded exceptions.
+   *
+   * The flag exists so the self-check below runs through THIS function rather
+   * than a second loop of its own: a comparison that stopped comparing would
+   * otherwise leave the drift list empty, every assertion would pass, and the
+   * exception list would be doing all the work.
+   */
+  const driftEntries = (opts: { applyExceptions: boolean }): string[] => {
+    const declared = declaredActions();
+    const migrated = migratedActions();
+    const out: string[] = [];
+    for (const [key, action] of declared) {
+      // Only judge FKs the migration actually created — a table that predates
+      // the declaration is a different (and louder) failure the blocks above
+      // already report.
+      if (!migrated.has(key)) continue;
+      const actual = migrated.get(key)!;
+      if (actual === action) continue;
+      if (opts.applyExceptions) {
+        const known = KNOWN_ACTION_DRIFT.get(key);
+        if (known && known.declared === action && known.migrated === actual) continue;
+      }
+      out.push(`${key}: schema.ts says ${action}, migrated db says ${actual}`);
+    }
+    return out;
+  };
+
+  test("every declared ON DELETE reaches the migrated database", () => {
+    const drift = driftEntries({ applyExceptions: true });
+    expect(
+      drift.length === 0
+        ? ""
+        : "A migration created a foreign key without the referential action its\n" +
+          "schema declares. Folder deletes, cascades and detaches then behave\n" +
+          "differently per dialect, silently:\n  " +
+          drift.join("\n  "),
+    ).toBe("");
+  });
+
+  test("the comparison really finds the known divergence", () => {
+    // Without this the exception list would be doing all the work: a comparison
+    // that stopped comparing would leave `driftEntries()` empty and every
+    // assertion above would still pass. Asserted on the RAW set — everything
+    // that differs, before the exception filter — so it is the comparison
+    // itself under test.
+    const raw = driftEntries({ applyExceptions: false }).map((line) => line.split(":")[0]!);
+    expect(raw.sort()).toEqual([...KNOWN_ACTION_DRIFT.keys()].sort());
+  });
+
+  test("no KNOWN_ACTION_DRIFT entry is stale", () => {
+    // An excuse that matches nothing any more must go, or the next divergence
+    // in that table inherits an exemption nobody wrote for it.
+    const declared = declaredActions();
+    const migrated = migratedActions();
+    const stale: string[] = [];
+    for (const [key, expected] of KNOWN_ACTION_DRIFT) {
+      const d = declared.get(key);
+      const m = migrated.get(key);
+      if (d === expected.declared && m === expected.migrated) continue;
+      stale.push(`${key} (recorded ${expected.declared}/${expected.migrated}, now ${d}/${m})`);
+    }
+    expect(
+      stale.length === 0
+        ? ""
+        : `KNOWN_ACTION_DRIFT entries no longer describe reality — delete them:\n  ${stale.join("\n  ")}`,
+    ).toBe("");
+  });
+
+  test("the guard sees the foreign keys it is supposed to be judging", () => {
+    // A comparison that matches nothing reports success. Pin that there ARE
+    // declared foreign keys and that they were found in the migrated database.
+    const declared = declaredActions();
+    const migrated = migratedActions();
+    expect(declared.size).toBeGreaterThan(5);
+    const overlap = [...declared.keys()].filter((k) => migrated.has(k));
+    expect(overlap.length).toBeGreaterThan(5);
+  });
+});
+
 describe("migrated pg ↔ migrated sqlite", () => {
   test("both migration chains produce the same structure", () => {
     // Only reachable under `BACKLEX_PG_TESTS=optional`.

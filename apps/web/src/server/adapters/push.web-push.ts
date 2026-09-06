@@ -31,21 +31,54 @@ interface WebPushConfig {
   vapidPrivateKey: string;
 }
 
-/** Build the VAPID `Authorization` header for an endpoint's origin (per-origin
- *  JWT, cached for the token's ~12h lifetime). */
+/**
+ * Build the VAPID `Authorization` header for an endpoint's origin (per-origin
+ * JWT, cached for the token's ~12h lifetime).
+ *
+ * Both caches are keyed by the VAPID IDENTITY, not just the endpoint origin.
+ * They were not, and on a multi-workspace deployment that made them wrong in
+ * two compounding ways: `vapidCache` keyed on `aud` alone handed workspace B
+ * the header workspace A minted for the same push service, and the single
+ * `let vapidKey` pinned the FIRST config's private key for the life of the
+ * isolate — so B's header advertised `k=<B's public key>` over a signature made
+ * with A's private one. A browser push service validates that pair against the
+ * subscription's `applicationServerKey` and answers 403, meaning one
+ * workspace's web push went dark for as long as the isolate lived, with no
+ * error anywhere on the send path.
+ *
+ * `vapidPublicKey` identifies the keypair and `subject` is asserted in the
+ * `sub` claim, so both belong in the header's key; the private key never does.
+ * Capped like every other per-isolate map here — see `push.apns.ts`.
+ */
 const vapidCache = new Map<string, { header: string; exp: number }>();
-let vapidKey: Promise<CryptoKey> | undefined;
+const vapidKeys = new Map<string, Promise<CryptoKey>>();
+const VAPID_CACHE_CAP = 500;
 
 const vapidHeader = async (cfg: WebPushConfig, endpoint: string): Promise<string> => {
   const aud = new URL(endpoint).origin;
   const now = Math.floor(Date.now() / 1000);
-  const cached = vapidCache.get(aud);
+  const identity = `${cfg.vapidPublicKey}|${cfg.subject}`;
+  const key = `${identity}|${aud}`;
+  const cached = vapidCache.get(key);
   if (cached && cached.exp - 300 > now) return cached.header;
   const exp = now + 12 * 3600;
-  if (!vapidKey) vapidKey = importVapidKey(cfg.vapidPrivateKey, cfg.vapidPublicKey);
-  const jwt = await signJwt({}, { aud, exp, sub: cfg.subject }, await vapidKey, "ES256");
+  let signingKey = vapidKeys.get(identity);
+  if (!signingKey) {
+    // Drop a rejected import rather than memoizing the failure: an unparseable
+    // key is worth reporting once per send, not once per isolate.
+    signingKey = importVapidKey(cfg.vapidPrivateKey, cfg.vapidPublicKey).catch(
+      (e: unknown) => {
+        vapidKeys.delete(identity);
+        throw e;
+      },
+    );
+    if (vapidKeys.size >= VAPID_CACHE_CAP) vapidKeys.clear();
+    vapidKeys.set(identity, signingKey);
+  }
+  const jwt = await signJwt({}, { aud, exp, sub: cfg.subject }, await signingKey, "ES256");
   const header = `vapid t=${jwt}, k=${cfg.vapidPublicKey}`;
-  vapidCache.set(aud, { header, exp });
+  if (vapidCache.size >= VAPID_CACHE_CAP) vapidCache.clear();
+  vapidCache.set(key, { header, exp });
   return header;
 };
 

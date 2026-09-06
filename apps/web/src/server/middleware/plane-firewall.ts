@@ -78,7 +78,23 @@ export const planeFirewall: MiddlewareHandler<AppBindings> = async (c, next) => 
   const caller = auth.plane === "app" ? "app" : "platform";
   if (admits(entry.plane, caller)) return next();
 
-  const mode = c.get("ctx")?.env?.PLANE_GUARD ?? "warn";
+  // Default ENFORCE, since 2026-09.
+  //
+  // It defaulted to `warn`, and was set to `enforce` only in the two wrangler
+  // configs — so the firewall was real on Cloudflare and a log line on every
+  // self-host, Vercel, Netlify and Node target. That is the inverse of where
+  // the risk lives: the managed deploy has an operator watching it, and the
+  // self-host is where a workspace's own end-user is most likely to be pointed
+  // at an operator route.
+  //
+  // The reason for `warn` was that a first-draft route table must not take a
+  // paying tenant down on the release that introduces it. That release has
+  // shipped, the table has run under `enforce` in production since, and
+  // `route-plane-registry.test.ts` refuses a new `/api` mount that does not
+  // declare a plane. An operator who needs the old behaviour sets
+  // `PLANE_GUARD=warn`, and an UNKNOWN path is still admitted in either mode —
+  // a typo in the registry must not take the site down.
+  const mode = c.get("ctx")?.env?.PLANE_GUARD ?? "enforce";
   const detail = {
     msg: "plane-violation",
     path,

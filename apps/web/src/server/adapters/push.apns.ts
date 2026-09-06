@@ -24,10 +24,31 @@ interface ApnsConfig {
   production?: boolean;
 }
 
-let cached: { jwt: string; exp: number } | null = null;
+/**
+ * Provider JWTs, keyed by the credential that produced them.
+ *
+ * This used to be one module-global `let`, and a module global on a
+ * multi-workspace deployment is not a cache — it is a mix-up. The first
+ * workspace to send in an isolate minted a JWT from ITS `.p8`, and every
+ * workspace that sent for the next 40 minutes signed with it: APNs sees a
+ * token issued by the wrong team, answers 403 InvalidProviderToken, and the
+ * second workspace's push silently fails while the first one's works. The key
+ * is `keyId|teamId` because those two are exactly what the JWT asserts — the
+ * `kid` header and the `iss` claim — so two configs that agree on them produce
+ * the same token by construction, and the private key never enters a cache key.
+ *
+ * Bounded for the same reason every other per-isolate map in this codebase is:
+ * one entry per credential, and an isolate that has seen 500 of them is better
+ * off re-minting than growing. Clearing wholesale (rather than evicting one)
+ * matches `middleware/session.ts`; the cost is one extra sign per config.
+ */
+const jwtCache = new Map<string, { jwt: string; exp: number }>();
+const JWT_CACHE_CAP = 500;
 
 const providerJwt = async (cfg: ApnsConfig): Promise<string> => {
   const now = Math.floor(Date.now() / 1000);
+  const key = `${cfg.keyId}|${cfg.teamId}`;
+  const cached = jwtCache.get(key);
   if (cached && now - (cached.exp - 3600) < 40 * 60) return cached.jwt;
   const jwt = await signJwt(
     { kid: cfg.keyId },
@@ -35,7 +56,8 @@ const providerJwt = async (cfg: ApnsConfig): Promise<string> => {
     cfg.privateKey,
     "ES256",
   );
-  cached = { jwt, exp: now + 3600 };
+  if (jwtCache.size >= JWT_CACHE_CAP) jwtCache.clear();
+  jwtCache.set(key, { jwt, exp: now + 3600 });
   return jwt;
 };
 

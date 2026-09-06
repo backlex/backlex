@@ -1019,14 +1019,20 @@ describe("app-orgs — the plane boundary", () => {
 
     for (const slug of [cast.defaultTenant.slug, cast.tenantA.slug]) {
       const res = await cast.operator.fetch(`/api/t/${slug}/orgs`);
-      expect(res.status, `platform cookie at /api/t/${slug}/orgs`).toBe(401);
+      // 403, not 401, since `PLANE_GUARD` began defaulting to `enforce`
+      // (2026-09 audit, phase 10): the plane firewall refuses a platform caller
+      // on an `app`-declared prefix BEFORE `requireAppUser` gets to answer. The
+      // more honest of the two codes — the caller is signed in, on the wrong
+      // plane, which is what 403 means and 401 does not.
+      expect(res.status, `platform cookie at /api/t/${slug}/orgs`).toBe(403);
       const body = (await res.json()) as { error: { code: string } };
-      expect(body.error.code).toBe("UNAUTHORIZED");
+      expect(body.error.code).toBe("FORBIDDEN");
     }
 
-    // This one is a REAL check rather than an accident: `requireAppUser` in
-    // routes/app-orgs-public.ts tests `auth.plane !== "app"` explicitly. It is
-    // the shape the rest of the app is missing, not an example of the gap.
+    // Two checks agree here rather than one: `requireAppUser` in
+    // routes/app-orgs-public.ts tests `auth.plane !== "app"` explicitly, and
+    // the firewall tests the route's declared plane. The app plane always had
+    // the gate the control plane was missing.
   });
 
   test("an app-plane bearer is refused at the operator org surface", async () => {
@@ -1044,17 +1050,18 @@ describe("app-orgs — the plane boundary", () => {
       expect(res.status, `app-plane bearer ${label} at /api/app-orgs`).toBe(403);
       const body = (await res.json()) as { error: { code: string; message: string } };
       expect(body.error.code).toBe("FORBIDDEN");
-      // KNOWN GAP — the message is the tell. `/api/app-orgs` carries
+      // The message is the tell, and it has changed. `/api/app-orgs` carries
       // `requireUser` + a local `requireAdmin` that reads `auth.roles`, and an
-      // app-plane identity is refused only because `tenantMiddleware` leaves
-      // that array EMPTY for `plane === "app"`. Nothing on this route ever asks
-      // which plane the caller is on. Populate `auth.roles` for app-plane
-      // identities for any reason — an org-scoped role bundle is one line away
-      // from doing exactly that — and this 403 becomes a 200. PHASE 1 replaces
-      // the accident with `requirePlatformMw`, at which point this expectation
-      // should be re-read: the status stays 403, but the message will name the
-      // plane rather than the role.
-      expect(body.error.message).toBe("Admin role required");
+      // app-plane identity used to be refused ONLY because `tenantMiddleware`
+      // leaves that array empty for `plane === "app"` — populate it for any
+      // reason (an org-scoped role bundle is one line away) and the 403 became
+      // a 200.
+      //
+      // The plane firewall now answers first, so the refusal names the plane
+      // rather than the role and cannot be undone by a populated array. This
+      // expectation is the record of that: it was written to fail loudly when
+      // the accident was replaced, and it did.
+      expect(body.error.message).toBe("Operator access required");
     }
   });
 

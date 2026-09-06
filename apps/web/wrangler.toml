@@ -95,6 +95,10 @@ EMAIL_FROM = "onboarding@resend.dev"
 # which auth plane may call it (`lib/route-planes.ts`); a mismatch is a 403
 # instead of a log line. A path the registry does not name is still allowed in
 # either mode, deliberately: a typo in the registry must not take the site down.
+#
+# Redundant since the default became `enforce` (2026-09) — kept because this
+# file is where an operator looks to see what the deploy is running, and a value
+# stated is a value nobody has to go and derive. Set it to "warn" to opt out.
 PLANE_GUARD = "enforce"
 # PERMISSION_WRITE_CHECK — `services/items/write.ts`. A permission's condition
 # (`owner_id = $user.id`) used to filter READS only, so a role could create or

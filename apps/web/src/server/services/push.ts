@@ -79,12 +79,20 @@ export const sendPushToUsers = async (
 
   // Deactivate tokens the provider rejected as gone — keep the row (a
   // re-register revives it via the unique index) but stop targeting it.
+  //
+  // Scoped with the SAME predicate the SELECT above used, not by token value
+  // alone. `device_tokens` is keyed on `(tenant_id, user_id, token)`, and one
+  // physical device registered in two workspaces is one token in two rows — so
+  // an unscoped UPDATE let workspace A's provider rejection deactivate
+  // workspace B's live registration, in a table B's admin has no reason to
+  // look at. Narrowing to the rows this send actually addressed also means the
+  // statement can only ever touch what it just tried to deliver to.
   if (result.invalidTokens.length > 0) {
     try {
       await (ctx.db as any)
         .update(t)
         .set({ isActive: false })
-        .where(inArray(t.token, result.invalidTokens));
+        .where(and(where, inArray(t.token, result.invalidTokens)));
     } catch {
       // best-effort cleanup; never fail the send over pruning
     }

@@ -1,3 +1,4 @@
+import { AppError } from "@backlex/core";
 import { hashSecret } from "@backlex/auth/secret-hash";
 import { dropCollection } from "@backlex/db";
 import * as pg from "@backlex/db/pg";
@@ -82,6 +83,29 @@ const BLOCKED_WRITE_PREFIXES = [
   "/api/auth/delete-user",
   "/api/auth/two-factor",
 ];
+
+/**
+ * Refuse a blocked capability wherever it is reached from.
+ *
+ * The prefix list above is a ROUTE policy, and GraphQL is one POST to
+ * `/api/graphql` — so `POST /api/messaging/sms` was refused while
+ * `mutation { sendSms(...) }` reached `dispatchSms` and spent the instance's
+ * SMS credit. Same asymmetry for `migrateCreateSource` / `migrateTestSource` /
+ * `migrateStartRun` (outbound connections to an attacker-named database host,
+ * which is precisely why `/api/admin/migrate` is on the list) and
+ * `advisorApply` (DDL against the shared demo database). The playground
+ * publishes its admin credentials on the sign-in screen, so every visitor holds
+ * the `admin` role there.
+ *
+ * MCP was never affected — its tools re-enter through `app.fetch`, so they pass
+ * the middleware again. GraphQL is the one surface that calls services
+ * directly, and rather than teach the demo policy to read GraphQL documents,
+ * each blocked capability asserts for itself. The prefix list stays as the
+ * outer layer; this one travels with the thing it protects.
+ */
+export const assertNotDemo = (env: Env): void => {
+  if (isDemoMode(env)) throw new AppError("FORBIDDEN", DEMO_BLOCKED_MESSAGE);
+};
 
 /** True when a request must be rejected in demo mode. Pure — unit-testable. */
 export const isDemoBlockedRequest = (method: string, path: string): boolean => {

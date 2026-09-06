@@ -402,10 +402,17 @@ describe("AI flow ops", () => {
         expect(res.status).toBe(422);
       });
 
-      test("a GraphQL-authored op whose labels are not even a list is NAMED, not a TypeError", async () => {
+      test("a GraphQL-authored op whose labels are not even a list is refused at SAVE", async () => {
         // `operations` is raw JSON on that path, so `labels` can be a string
-        // and an element can be a number. An unguarded `.trim()` would surface
-        // as "undefined is not a function" instead of saying what is wrong.
+        // and an element can be a number.
+        //
+        // This used to save and then fail at RUN time, which is what the audit's
+        // 2026-09 phase 10 filed: `OperationSchema` — where every per-op cap and
+        // URL check lives — was applied on the REST route and nowhere else. The
+        // parse now lives inside `assertFlowShape`, the one guard both surfaces
+        // already call, so the refusal is the same on either road. The run-time
+        // re-check below stays: it is what catches a row written before this
+        // landed, or by a future surface that forgets.
         await configureAi();
         for (const labels of ["billing", [1, 2], ["billing", ""], ["billing"]]) {
           const created = await h.fetch(
@@ -421,21 +428,22 @@ describe("AI flow ops", () => {
               },
             }),
           );
-          const id = ((await created.json()) as { data?: { createFlow?: { id: string } } }).data?.createFlow?.id;
-          expect(typeof id).toBe("string");
-          const out = (await (await h.fetch(`/api/flows/${id}/run`, json({}))).json()) as {
-            ok: boolean;
-            error?: string;
+          const body = (await created.json()) as {
+            data?: { createFlow?: { id: string } | null };
+            errors?: Array<{ message: string }>;
           };
-          expect(out.ok).toBe(false);
-          expect(out.error).toContain("at least two labels");
+          expect(body.data?.createFlow?.id).toBeFalsy();
+          expect(body.errors?.length).toBeGreaterThan(0);
+          // NAMED, not a TypeError: an unguarded `.trim()` on a string `labels`
+          // would surface as "undefined is not a function".
+          expect(body.errors![0]!.message).not.toContain("is not a function");
         }
       });
 
-      test("a flow saved through GraphQL — which never meets zod — is refused at run time", async () => {
-        // `operations` is an opaque JSON scalar on GraphQL, so the schema's
-        // `.refine()` binds REST alone. The executor re-checks for exactly this
-        // reason, the same way `sms` re-checks its two addressing modes.
+      test("a GraphQL flow now meets the same zod the REST twin does", async () => {
+        // The exact payload REST answers 422 for. It used to save here — "it
+        // really did save" is what the previous version of this test asserted,
+        // as the pin on a known gap.
         await configureAi();
         const mock = installAnthropicMock(() => anthropicReply("billing"));
         try {
@@ -454,19 +462,42 @@ describe("AI flow ops", () => {
               },
             }),
           );
-          const body = (await created.json()) as { data?: { createFlow?: { id: string } } };
-          const id = body.data?.createFlow?.id;
-          // It really did save — that is the gap this test exists to pin.
-          expect(typeof id).toBe("string");
-
-          const res = await h.fetch(`/api/flows/${id}/run`, json({}));
-          const out = (await res.json()) as FlowRunResult;
-          expect(out.ok).toBe(false);
-          expect(out.error).toContain("fallback must be one of labels");
+          const body = (await created.json()) as {
+            data?: { createFlow?: { id: string } | null };
+            errors?: Array<{ message: string }>;
+          };
+          expect(body.data?.createFlow?.id).toBeFalsy();
+          expect(body.errors?.length).toBeGreaterThan(0);
+          // Nothing reached the provider, on either surface.
           expect(mock.calls.length).toBe(0);
         } finally {
           mock.restore();
         }
+      });
+
+      test("a WELL-FORMED GraphQL flow still saves", async () => {
+        // The other direction. A parse that refuses everything passes every
+        // assertion above.
+        await configureAi();
+        const created = await h.fetch(
+          "/api/graphql",
+          json({
+            query: "mutation ($data: FlowInput!) { createFlow(data: $data) { id } }",
+            variables: {
+              data: {
+                name: `gql-ok-${Math.random().toString(36).slice(2)}`,
+                trigger: "manual:",
+                operations: [{ type: "ai.classify", input: "x", labels: LABELS }],
+              },
+            },
+          }),
+        );
+        const body = (await created.json()) as {
+          data?: { createFlow?: { id: string } | null };
+          errors?: Array<{ message: string }>;
+        };
+        expect(body.errors).toBeUndefined();
+        expect(typeof body.data?.createFlow?.id).toBe("string");
       });
     });
   });

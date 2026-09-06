@@ -1,6 +1,8 @@
+import { z } from "zod";
 import {
   AppError,
   OPERATION_BRANCH_KEYS,
+  OperationSchema,
   type Operation,
   findForeachViolation,
   findNestedApproval,
@@ -31,6 +33,28 @@ export const assertFlowShape = async (
   input: { trigger?: unknown; operations?: unknown },
 ): Promise<void> => {
   if (input.operations !== undefined) {
+    // PARSE first, then check the shapes that zod cannot see.
+    //
+    // The zod parse used to live on the REST route only, which is exactly the
+    // failure this file's header warns about — and it was worse than the
+    // nested-approval case it describes, because `OperationSchema` is where
+    // EVERY per-op cap and URL check lives. GraphQL's `createFlow` stored
+    // `{type:"request", timeoutMs: 3600000, headers: "not-an-object"}`
+    // verbatim; at run time `op.timeoutMs ?? 10_000` has no ceiling,
+    // `...(op.headers ?? {})` spreads a string, and an operation whose `type`
+    // is in no branch reports success having done nothing. All three present
+    // at RUN time as silence, which is the shape this function exists to stop.
+    //
+    // Here rather than in each resolver, so the next surface inherits it.
+    const parsed = z.array(OperationSchema).min(1).safeParse(input.operations);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const where = issue?.path?.length ? ` at operations.${issue.path.join(".")}` : "";
+      throw new AppError(
+        "VALIDATION",
+        `This flow's steps could not be read${where}: ${issue?.message ?? "invalid shape"}`,
+      );
+    }
     const nested = findNestedApproval(input.operations);
     if (nested) {
       throw new AppError(

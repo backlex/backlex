@@ -49,6 +49,7 @@ import {
   collectionFromPath,
   loadRuntimeInsights,
 } from "./advisor-insights";
+import { assertNotDemo } from "./demo";
 
 export type AdvisorKind = "security" | "performance";
 export type AdvisorLevel = "error" | "warn" | "info";
@@ -1125,6 +1126,10 @@ export const applyAdvisorFix = async (
     userAgent?: string | null;
   },
 ): Promise<{ applied: AdvisorAction }> => {
+  // Blocked in the playground wherever it is reached from — the route
+  // prefix list is one layer and GraphQL does not pass through it.
+  // See `services/demo.ts::assertNotDemo`.
+  assertNotDemo(ctx.env);
   const result = await runAdvisorChecks(ctx, tenantId, {
     windowDays: input.windowDays,
   });

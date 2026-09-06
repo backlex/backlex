@@ -1433,9 +1433,10 @@ export const writeEnvOf = async (
     // request metadata would be a guess. The activity row records the surface
     // instead of inventing an IP for it.
     meta: { surface: "graphql" },
-    // Impersonation rides the write env on every surface. GraphQL never sees
-    // the permission middleware, so the write core's own gate is the only one
-    // standing between a read-only impersonation and a mutation here.
+    // Impersonation rides the write env on every surface. The write core's gate
+    // is one of TWO standing between a read-only impersonation and a mutation
+    // here — `guardMutationFields` wraps every Mutation resolver, because the
+    // write core only covers the mutations that go THROUGH it.
     impersonatedBy: gqlCtx.auth.impersonatedBy ?? null,
     impersonationReadOnly: gqlCtx.auth.impersonationReadOnly ?? false,
     durationMs: () => Date.now() - started,
@@ -1907,4 +1908,46 @@ export const changesResolver = async (
       fields: args.fields?.length ? args.fields.join(",") : undefined,
     });
   });
+};
+
+/**
+ * Refuse every GraphQL mutation during a read-only impersonation.
+ *
+ * `middleware/impersonation-readonly.ts` exempts `POST /api/graphql` — it has
+ * to, because queries and mutations share the method and deciding at that layer
+ * would mean parsing the document, dragging yoga's whole dependency graph into
+ * every request. Its exemption note said the layer underneath covers it:
+ * "mutations reach `services/items/write.ts`, which refuses a read-only
+ * impersonation on its own".
+ *
+ * Several do not. `normalizeOrder`, `reorderItem`, `backfillSlugs(apply: true)`,
+ * `updateFile` and `deleteFile` all mutate WITHOUT going through the item write
+ * core — renumbering rows the caller never named, rewriting the published URL
+ * handle of every row with an empty slug, deleting object bytes. Reproduced
+ * side by side: the REST twin answered 403 and the GraphQL one answered 200 in
+ * the same session, while a `createNotes` control confirmed the session really
+ * was read-only.
+ *
+ * Wrapping the FIELD MAP rather than each resolver is the point: a mutation
+ * added tomorrow inherits the answer instead of having to remember it. Applied
+ * at both schema-construction sites in `services/graphql/index.ts`.
+ */
+export const guardMutationFields = <T extends Record<string, unknown>>(fields: T): T => {
+  for (const key of Object.keys(fields)) {
+    const field = fields[key] as { resolve?: (...a: unknown[]) => unknown } | undefined;
+    const inner = field?.resolve;
+    if (typeof inner !== "function") continue;
+    field!.resolve = (source: unknown, args: unknown, gqlCtx: unknown, info: unknown) => {
+      const auth = (gqlCtx as { auth?: { impersonationReadOnly?: boolean } } | null)?.auth;
+      if (auth?.impersonationReadOnly) {
+        throw new GraphQLError(
+          `This is a read-only impersonation — the "${key}" mutation is refused. ` +
+            "Start one with `readOnly: false` if acting on the customer's behalf is intended.",
+          { extensions: { code: "FORBIDDEN" } },
+        );
+      }
+      return inner(source, args, gqlCtx, info);
+    };
+  }
+  return fields;
 };

@@ -524,6 +524,19 @@ export interface RestoreResult {
    * and got additive for some of the dump must be able to see which part.
    */
   keptAdditive: string[];
+  /**
+   * Rows whose case/accent-fold companion column the post-restore pass could
+   * not reach, summed across every table.
+   *
+   * The fold pass is deliberately capped (`batch × maxBatches`, 100,000 rows by
+   * default) so one restore cannot run for ever, and it returns what it could
+   * not finish precisely so a caller can say "not done". That number used to be
+   * discarded — inside an empty `catch`, no less — so a restore of a large
+   * table reported plain success while `_icontains` quietly stopped matching
+   * everything past the cap. Non-zero here means the fold pass has to be run
+   * again; it does not mean the restore failed.
+   */
+  unfoldedRows: number;
 }
 
 /**
@@ -545,6 +558,12 @@ export const restoreBackup = async (
     tenantId: string | null;
     mode?: RestoreMode;
     onlyTables?: string[];
+    /** Caps for the post-restore fold pass, threaded to
+     *  {@link backfillFoldColumns}. The same knob `applyCollection` takes, and
+     *  here for the same reason: the branch that REPORTS an unfinished pass is
+     *  only reachable past 100,000 rows by default, and an unreachable branch
+     *  is an untested one. Left unset in production. */
+    fold?: { batch?: number; maxBatches?: number };
   },
 ): Promise<RestoreResult> => {
   const mode: RestoreMode = options.mode === "overwrite" ? "overwrite" : "additive";
@@ -609,6 +628,11 @@ export const restoreBackup = async (
       }
     }
     try {
+      // The same caps as the post-restore pass below. Two fold passes run over
+      // a restore — this one (against a table that is usually still empty) and
+      // the one after the inserts — and a cap that applied to only one of them
+      // would make the reported backlog depend on which pass happened to do the
+      // work. Unset in production, so both are uncapped as before.
       await applyCollection(ctx.db as any, ctx.dialect, {
         table,
         fields: (Array.isArray(fields) ? fields : []) as FieldDef[],
@@ -629,7 +653,7 @@ export const restoreBackup = async (
             : asBool(row.has_updated_at ?? row.hasUpdatedAt),
         fts: asBool(row.fts),
         adopted: asBool(row.adopted),
-      });
+      }, { fold: options.fold });
       // Remembered for the fold backfill AFTER the rows land. `applyCollection`
       // runs its own backfill, but it runs here — against a table that is still
       // empty, because the restore has not inserted anything yet.
@@ -868,16 +892,42 @@ export const restoreBackup = async (
   // to `_icontains` with nothing to indicate why. The pass is a no-op for a
   // newer dump that already carries them: it only touches rows whose companion
   // is NULL while the source column is not.
+  //
+  // The pass is CAPPED (`batch × maxBatches`, 100,000 rows by default) and
+  // returns how many rows it could not reach. That number used to be dropped
+  // on the floor here — inside an empty `catch`, so a failure was silent too —
+  // which meant a restore of a large table reported success over a job that had
+  // only partly run, and the rows past the cap stayed invisible to `_icontains`
+  // with nothing anywhere to say so.
+  let unfoldedRows = 0;
   for (const { table, fields } of restoredTables) {
     try {
-      await backfillFoldColumns(ctx.db as any, ctx.dialect, table, fields);
-    } catch {
-      // Best-effort, like the rest of restore: a table we cannot fold is a
-      // table whose case-insensitive filters fall back, not a failed restore.
+      const backlog = await backfillFoldColumns(
+        ctx.db as any,
+        ctx.dialect,
+        table,
+        fields,
+        options.fold,
+      );
+      for (const [field, rows] of Object.entries(backlog)) {
+        unfoldedRows += rows;
+        console.warn(
+          `[restore] ${table}.${field}: ${rows} row(s) past the fold cap — ` +
+            "case/accent-insensitive filters will not match them until the pass is re-run.",
+        );
+      }
+    } catch (e) {
+      // Still best-effort — a table we cannot fold is a table whose
+      // case-insensitive filters fall back, not a failed restore — but it says
+      // so now. An empty catch here meant the one signal that the search index
+      // was incomplete never left this loop.
+      console.warn(
+        `[restore] fold pass failed for ${table}: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
 
-  return { tableCount, rowCount, skipped, overwritten, keptAdditive };
+  return { tableCount, rowCount, skipped, overwritten, keptAdditive, unfoldedRows };
 };
 
 // ---------------------------------------------------------------------------
@@ -1276,7 +1326,15 @@ export const restoreBackupById = async (
   ctx: Ctx,
   tenantId: string | null,
   id: string,
-  opts: { mode?: RestoreMode; onlyTables?: string[]; userId?: string | null } = {},
+  opts: {
+    mode?: RestoreMode;
+    onlyTables?: string[];
+    userId?: string | null;
+    /** Passed straight to {@link restoreBackup}; see the note on its own
+     *  `fold` option. Not reachable from any route — the REST/GraphQL/MCP/CLI
+     *  surfaces all omit it, so production always gets the real caps. */
+    fold?: { batch?: number; maxBatches?: number };
+  } = {},
 ): Promise<RestoreResult> => {
   const row = await getBackupScoped(ctx, tenantId, id);
   const mode: RestoreMode = opts.mode === "overwrite" ? "overwrite" : "additive";
@@ -1285,6 +1343,7 @@ export const restoreBackupById = async (
     tenantId: tenantId ?? null,
     mode,
     onlyTables: opts.onlyTables,
+    fold: opts.fold,
   });
   // Best-effort: the restore already happened and a failed audit write must not
   // turn a completed restore into a 500 (same reasoning as the backup failure

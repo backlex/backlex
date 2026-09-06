@@ -154,6 +154,10 @@ const RestoreResult = z
       description:
         "Tables that stayed additive despite `mode=overwrite` because they have no single-column `id` to name as the conflict target (e.g. `user_roles`).",
     }),
+    unfoldedRows: z.number().int().nonnegative().openapi({
+      description:
+        "Rows whose case/accent-fold companion column the post-restore pass could not reach before its cap. Non-zero means case-insensitive filters will not match those rows until the fold pass is run again — the restore itself succeeded.",
+    }),
   })
   .openapi("RestoreResult");
 

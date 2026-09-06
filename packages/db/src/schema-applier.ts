@@ -509,15 +509,42 @@ const ensurePaginationIndex = async (
  * columns that aren't already present. Never drops columns; for that, use
  * `dropField` explicitly.
  */
+/**
+ * What an apply left unfinished.
+ *
+ * `applyCollection` used to return `void` while calling a function whose whole
+ * point is a resumable-progress report — see {@link backfillFoldColumns}, which
+ * documents "the return value is how many rows are still unfolded, so a caller
+ * can report 'not finished' instead of reporting success over a half-done job".
+ * Both of its call sites threw that away, so the one thing the cap exists to
+ * communicate reached nobody: above `batch × maxBatches` rows (100,000 by
+ * default) the companion columns stay NULL, `_icontains` silently stops
+ * matching those rows, and the apply returns as if it had finished.
+ */
+export interface ApplyCollectionOutcome {
+  /**
+   * Rows still needing a fold, per field name. Empty means the apply finished
+   * the job. A non-empty value is not an error — the pass is resumable and the
+   * next apply continues it — but it IS a claim the caller must not silently
+   * drop, because "the next apply" may never come for a collection nobody
+   * edits again.
+   */
+  foldBacklog: Record<string, number>;
+}
+
 export const applyCollection = async (
   db: AnyDb,
   dialect: Dialect,
   def: CollectionShape,
-): Promise<void> => {
+  /** Fold-pass caps, threaded through to {@link backfillFoldColumns}. Exists so
+   *  a test can reach the cap with three rows instead of a hundred thousand —
+   *  an unreachable branch is an untested one. */
+  opts: { fold?: { batch?: number; maxBatches?: number } } = {},
+): Promise<ApplyCollectionOutcome> => {
   // Adopted tables are the user's pre-existing tables — DDL on them is the
   // one thing the adopt flow exists *not* to do. The `collections` row is
   // the source of truth; ALTER/CREATE never runs here.
-  if (def.adopted) return;
+  if (def.adopted) return { foldBacklog: {} };
   validateFields(def.fields);
   const table = def.table;
   const ownerScoped = Boolean(def.ownerScoped);
@@ -602,7 +629,10 @@ export const applyCollection = async (
     await ensurePaginationIndex(db, dialect, table, { tenantScoped, hasCreatedAt });
     if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);
     await ensureSidecar(db, dialect, table, def.fields, def.pkType ?? "uuid");
-    return;
+    // The create branch: the table did not exist a moment ago, so it holds no
+    // rows and there is nothing to fold. Empty is the true answer here, not a
+    // placeholder.
+    return { foldBacklog: {} };
   }
 
   const existing = await introspectColumns(db, dialect, table);
@@ -683,7 +713,19 @@ export const applyCollection = async (
   // stop matching. So the rows are filled here, in the same call that created
   // the column. Resumable and idempotent; a table too large to finish in one
   // pass leaves the rest for the next apply (see `backfillFoldColumns`).
-  await backfillFoldColumns(db, dialect, table, def.fields);
+  const foldBacklog = await backfillFoldColumns(db, dialect, table, def.fields, opts.fold);
+  // Warned as well as returned. Nine call sites `await` this function and none
+  // read its result, so a return value alone would rebuild the same silence one
+  // level up — the defect being fixed here is precisely that a report nobody is
+  // obliged to read is not a report. A log line does not depend on a caller.
+  for (const [field, rows] of Object.entries(foldBacklog)) {
+    console.warn(
+      `[schema-applier] ${table}.${field}: ${rows} row(s) still unfolded after the ` +
+        "capped backfill pass — case/accent-insensitive filters will not match them " +
+        "until another apply finishes the job.",
+    );
+  }
+  return { foldBacklog };
 };
 
 export const dropField = async (

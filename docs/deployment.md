@@ -904,9 +904,10 @@ git push origin main         # → Cloudflare / Vercel / Netlify auto-redeploys
 What happens automatically after the redeploy:
 
 - **DB migrations** apply on the next request via `ensureMigrations`
-  (`apps/web/src/server/context.ts`) — idempotent against the
-  `__drizzle_migrations` ledger, so only new migrations run. There is no
-  manual `db:migrate` step on managed deploys.
+  (`apps/web/src/server/context.ts`) — only migrations the database has not
+  already had are run. There is no manual `db:migrate` step on managed deploys.
+  See [Two ledgers, one schema](#two-ledgers-one-schema) for which ledger that
+  means, because there are two and this paragraph used to name the wrong one.
 - **Build + deploy** are triggered by the push through the platform's native
   Git integration — no GitHub Actions workflow needed.
 
@@ -917,6 +918,62 @@ What you still do by hand:
   together with — the upgrade.
 - **Conflicts.** A clean, unmodified instance merges without conflict. If you
   edited code, conflicts are limited to the files you touched.
+
+### Two ledgers, one schema
+
+backlex records applied migrations in **two different tables**, written by
+different things, and knowing which is which is the difference between an
+upgrade and a data loss.
+
+| ledger | written by | keyed on |
+|---|---|---|
+| `__drizzle_migrations` (SQLite/D1/libSQL) and `drizzle.__drizzle_migrations` (Postgres) | the CLIs — `db:migrate:sqlite`, `db:migrate:pg`, `db:migrate:d1` | the migration file's **sha256** |
+| `__backlex_migrations` | the boot runner, `ensureMigrations` | the migration's **folder name** |
+
+The boot runner exists because Vercel and Netlify have no migrate step: every
+deploy just uploads a bundle, so without it the schema freezes at whatever the
+database held when it was provisioned. It runs on **every target except
+Cloudflare D1**, whose migrations run inside the Workers build — including a
+Bun or Node self-host that already ran the CLI.
+
+That overlap is why the runner now **adopts** the CLI ledger. On each run it
+reads the CLI's hashes, maps them to folder names through
+`packages/db/src/migrations-manifest.generated.ts`, and records them as applied.
+A database the CLI brought current is therefore recognised as current instead of
+being replayed into. Before this, `bun run db:migrate:sqlite` followed by the
+first HTTP request replayed all 138 files, and one of them
+(`20260510120000_per_workspace_collections`) rebuilds the `collections` table —
+so 26 metadata columns added by later migrations were dropped and re-created at
+their defaults. `adopted` went from `1` to `0`, which turns a table you merely
+pointed backlex at into one it believes it owns. Nothing errored.
+
+**A released migration's SQL is immutable.** Both ledgers key on the hash of the
+file, so editing one that has already shipped means every database in the world
+stops recognising it: the CLI re-runs it, and the runner cannot adopt it. If a
+released migration is wrong, add a new migration that corrects it. Regenerate
+the manifest whenever you add one — `bun run --cwd packages/db manifest` — or
+the runner cannot map that file's hash and will replay it;
+`schema-declared-vs-shipped.test.ts` fails when you forget.
+
+**If a boot log says a migration was refused.** The runner will not replay a
+file that transforms data into a schema that already has it. The message names
+the file and prints the exact `INSERT` that records it:
+
+```
+[auto-migrate] migration "20260510120000_per_workspace_collections" FAILED:
+migration is already applied ("duplicate column name: id") but the file also
+transforms data … Refusing. Record it instead — INSERT INTO
+__backlex_migrations (name) VALUES ('20260510120000_per_workspace_collections')
+— or run `bun run db:migrate:sqlite` so the CLI ledger this runner adopts is
+present.
+```
+
+This means the database is already current but carries no ledger the runner can
+read — a data-only restore, a schema created with `drizzle-kit push`, or a
+ledger table dropped by hand. Running the CLI once is the clean fix; it writes
+the hashes, and the next boot adopts them. The refusal is deliberately not
+recorded as applied, so it repeats every cold start until you resolve it rather
+than passing an unverified schema off as complete.
 
 **Deno Deploy caveat:** the `--source local` CLI flow is **not** git-linked, so
 `git push` won't redeploy it. After pulling, either re-run

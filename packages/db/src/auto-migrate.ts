@@ -15,6 +15,10 @@
  * worker boots. Bun self-host runs migrations through the CLI explicitly.
  */
 import { sql, type SQL } from "drizzle-orm";
+import {
+  MIGRATION_TAGS_PG,
+  MIGRATION_TAGS_SQLITE,
+} from "./migrations-manifest.generated";
 import { MIGRATIONS as PG_MIGRATIONS } from "./pg/migrations-bundle";
 import { MIGRATIONS as SQLITE_MIGRATIONS } from "./sqlite/migrations-bundle";
 
@@ -45,6 +49,10 @@ interface Applier {
 export interface MigrationOutcome {
   applied: string[];
   failed: Array<{ name: string; error: string }>;
+  /** Migrations this run did not execute because a CLI ledger already
+   *  records them. Non-empty exactly once per database: the run that adopts
+   *  it. See {@link adoptCliLedger}. */
+  adopted: string[];
 }
 
 const runStatement = async (a: Applier, query: SQL): Promise<void> => {
@@ -175,11 +183,156 @@ const deepestMessage = (e: unknown): string => {
   return deepest;
 };
 
+/**
+ * Where the migration CLIs keep THEIR ledger.
+ *
+ * This runner records migration NAMES in `__backlex_migrations`; every CLI in
+ * `packages/db/src/*` records file HASHES in `__drizzle_migrations` instead
+ * (drizzle-orm's own migrator does the same for Postgres, under the `drizzle`
+ * schema). Two ledgers, no overlap — so a database the CLI brought fully
+ * current reads as completely unmigrated here, and the runner replays all 138
+ * files. See {@link adoptCliLedger} for why that is not merely wasteful.
+ */
+const CLI_LEDGER_SELECT = {
+  pg: sql`SELECT hash FROM drizzle.__drizzle_migrations`,
+  sqlite: sql`SELECT hash FROM __drizzle_migrations`,
+} as const;
+
+/**
+ * Statements that are NOT no-ops when replayed against a schema that already
+ * has them.
+ *
+ * `CREATE TABLE` / `ADD COLUMN` / `CREATE INDEX` are deliberately absent: those
+ * raise an "already exists" the runner tolerates, which is the whole point of
+ * {@link isAlreadyExistsError}. What is listed here changes rows or removes
+ * objects, and re-running it against a current schema destroys work that
+ * arrived after the migration did.
+ *
+ * Derived from the statement TEXT rather than a list of migration names, for
+ * the reason a hand-written list of system tables covered 46 of 131 in the
+ * phase-2 audit: a list stops being right the moment somebody adds a file.
+ */
+const TRANSFORM_RE =
+  /^\s*(?:INSERT\s+INTO|INSERT\s+OR|UPDATE|DELETE\s+FROM|DROP\s+TABLE)\b|\bRENAME\s+TO\b|\bRENAME\s+COLUMN\b|\bDROP\s+COLUMN\b/i;
+
+/**
+ * Would replaying this ONE statement against a schema that already has it
+ * change something?
+ *
+ * EXPORTED so the spec can drive each alternative directly. That is not a
+ * convenience: three of the alternatives (`RENAME TO`, `RENAME COLUMN`,
+ * `DROP COLUMN`) match no statement in today's bundle, because every file that
+ * renames also drops or inserts. Verified by breaking, `RENAME TO` could be
+ * deleted from the regex with the whole suite still green — a rule that reads
+ * as load-bearing and is not. Phase 7 met the same shape and DELETED the rule;
+ * this one is kept instead, because a standalone `ALTER TABLE … RENAME TO …`
+ * is a migration somebody will write and its replay renames the wrong table.
+ * Keeping it is only defensible if it is exercised, so it is.
+ */
+export const isTransformStatement = (statement: string): boolean =>
+  TRANSFORM_RE.test(statement);
+
+const hasTransform = (statements: readonly string[]): boolean =>
+  statements.some(isTransformStatement);
+
+/**
+ * Record every migration a CLI ledger already vouches for, so this runner does
+ * not replay it.
+ *
+ * WHAT WAS WRONG
+ *
+ * The documented self-host path is `bun run db:migrate:sqlite`, which applies
+ * every file and records 138 hashes in `__drizzle_migrations`. The first
+ * request then reaches `context.ts`, which calls `ensureMigrations` on every
+ * target that is not D1 — including that self-host — and `__backlex_migrations`
+ * is empty, so the whole bundle replays. Reproduced end to end against a real
+ * SQLite file: `applied: 138, failed: 0`, and an adopted collection carrying
+ * `adopted=1, icon='star', hidden=1, group_name='Content'` came back out as
+ * `adopted=0, icon=null, hidden=0, group_name=null`.
+ *
+ * The mechanism is worth stating precisely, because "already exists" tolerance
+ * is what made it silent. `20260510120000_per_workspace_collections` cannot
+ * ALTER a SQLite primary key, so it rebuilds the table: create `__new_collections`
+ * with the 14 columns of that era, copy, `DROP TABLE collections`, rename. On a
+ * replay its first statement (`ADD COLUMN id`) raises `duplicate column name`,
+ * which the runner correctly skips — and then runs the rebuild anyway, against a
+ * table that by then has 40 columns. The 26 columns added by later migrations
+ * are dropped with the old table and re-created, at their DEFAULTS, by those
+ * same later migrations replaying behind it. Nothing errors. `adopted` reset to
+ * `0` means backlex now believes it owns a table the operator merely wrapped.
+ *
+ * WHY MATCHING ON HASHES AND NOT ON NAMES
+ *
+ * The CLI ledger stores only the sha256 of the file, but
+ * `migrations-manifest.generated.ts` already maps hash → folder tag for both
+ * dialects (it exists so the admin Migrations page can show tags), and
+ * `scripts/build-manifest.ts` hashes exactly the way drizzle-orm's migrator and
+ * both CLIs do. So the mapping is free and it is the same function the writers
+ * used.
+ *
+ * A consequence worth writing down: **the SQL of a released migration is now
+ * immutable.** Editing one changes its hash, which un-maps every ledger row a
+ * production database already holds — the CLI would re-run the file and so
+ * would this. That is why the destructive rebuild above is NOT fixed by editing
+ * its SQL, which is what the audit finding proposed; the guard below covers it
+ * from the runner side instead.
+ *
+ * Runs on every invocation rather than only when the ledger is empty, so a
+ * self-host that keeps using the CLI stays converged for FUTURE migrations too.
+ * The read is one indexed scan of a table with as many rows as migrations.
+ */
+const adoptCliLedger = async (
+  a: Applier,
+  seen: Set<string>,
+  bundled: ReadonlySet<string>,
+): Promise<string[]> => {
+  let hashes: string[];
+  try {
+    const rows = await selectRows<{ hash: unknown }>(a, CLI_LEDGER_SELECT[a.dialect]);
+    hashes = rows.map((r) => r.hash).filter((h): h is string => typeof h === "string");
+  } catch {
+    // No CLI ledger. The ordinary case for a database this runner provisioned
+    // itself (Vercel / Netlify Postgres), and not a problem — there is simply
+    // nothing to adopt.
+    return [];
+  }
+  const tags = a.dialect === "pg" ? MIGRATION_TAGS_PG : MIGRATION_TAGS_SQLITE;
+  const adopted: string[] = [];
+  for (const hash of new Set(hashes)) {
+    const name = tags[hash];
+    // Unknown hash: a migration this bundle does not carry (the database is
+    // ahead of the deployed code) or a file edited since it was applied.
+    // Either way there is nothing here to claim as done.
+    if (!name || seen.has(name) || !bundled.has(name)) continue;
+    // Conflict-tolerant, because `seen` was read before this loop began and two
+    // isolates can boot at once: without it, the second one's INSERT hits the
+    // PRIMARY KEY and throws out of `apply` entirely, leaving that process with
+    // NO migrations applied. A name already in the ledger is the outcome this
+    // statement wanted anyway.
+    await runStatement(
+      a,
+      a.dialect === "pg"
+        ? sql`INSERT INTO __backlex_migrations (name) VALUES (${name}) ON CONFLICT DO NOTHING`
+        : sql`INSERT OR IGNORE INTO __backlex_migrations (name) VALUES (${name})`,
+    );
+    seen.add(name);
+    adopted.push(name);
+  }
+  return adopted;
+};
+
 const apply = async (a: Applier): Promise<MigrationOutcome> => {
   await ensureTable(a);
   const seen = await fetchApplied(a);
   const migrations = a.dialect === "pg" ? PG_MIGRATIONS : SQLITE_MIGRATIONS;
-  const outcome: MigrationOutcome = { applied: [], failed: [] };
+  const outcome: MigrationOutcome = { applied: [], failed: [], adopted: [] };
+  // Before deciding what to run: believe the other ledger. A database a CLI
+  // already brought current must not be replayed into.
+  outcome.adopted = await adoptCliLedger(
+    a,
+    seen,
+    new Set(migrations.map((m) => m.name)),
+  );
 
   for (const m of migrations) {
     if (seen.has(m.name)) continue;
@@ -196,11 +349,32 @@ const apply = async (a: Applier): Promise<MigrationOutcome> => {
     // migration is skipped with a warning, and the loop continues. The
     // ledger row is NOT inserted so the next cold start retries this
     // migration in isolation.
+    const statements = splitStatements(m.sql);
+    // A file that only creates things is safe to replay statement by statement:
+    // every "already exists" is genuinely a no-op. A file that also TRANSFORMS
+    // is not, and the two have to be told apart before the first error, not
+    // after — see `TRANSFORM_RE` and {@link adoptCliLedger}.
+    const transforms = hasTransform(statements);
     try {
-      for (const stmt of splitStatements(m.sql)) {
+      for (const stmt of statements) {
         try {
           await runStatement(a, sql.raw(stmt));
         } catch (e) {
+          if (isAlreadyExistsError(e) && transforms) {
+            // The object this statement creates is already there, so the file
+            // has run before — and it carries statements that would rewrite or
+            // drop data if the rest of it ran now. Refuse, and refuse LOUDLY:
+            // the ledger row is deliberately not written, so the operator is
+            // told on every boot until the ledger is repaired, and no partial
+            // replay is passed off as a completed one.
+            throw new Error(
+              `migration is already applied ("${deepestMessage(e)}") but the file also ` +
+                `transforms data, so replaying the rest of it would rewrite rows that ` +
+                `arrived after it. Refusing. Record it instead — ` +
+                `INSERT INTO __backlex_migrations (name) VALUES ('${m.name}') — or run ` +
+                `\`bun run db:migrate:${a.dialect}\` so the CLI ledger this runner adopts is present.`,
+            );
+          }
           if (isAlreadyExistsError(e)) {
             // Schema state matches what this migration would create —
             // usually because the table/column was provisioned by an

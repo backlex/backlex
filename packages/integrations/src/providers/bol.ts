@@ -1,4 +1,4 @@
-import { defineProvider } from "../provider";
+import { defineProvider, epochResumeToken } from "../provider";
 
 /**
  * bol.com — the Netherlands and Belgium, and the marketplace that is NOT a
@@ -154,8 +154,10 @@ export const bol = defineProvider({
       return {
         records,
         cursor: more ? `${since}:${page + 1}` : null,
-        complete: !more,
-        ...(more ? {} : { resumeAt: Date.now() }),
+        // `readSince` takes the first `:`-segment as an epoch, and `readPage`
+        // falls back to 1 when there is no second one — so a bare number is a
+        // window start and cannot be read as a page.
+        ...(more ? {} : { resumeToken: epochResumeToken() }),
       };
     },
   },

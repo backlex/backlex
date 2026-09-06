@@ -1,4 +1,4 @@
-import { defineProvider } from "../provider";
+import { defineProvider, epochResumeToken } from "../provider";
 
 /**
  * Etsy — orders in, stock and price out, a tracking number back.
@@ -301,8 +301,10 @@ export const etsy = defineProvider({
       return {
         records,
         cursor: more ? `${since}:${offset + results.length}` : null,
-        complete: !more,
-        ...(more ? {} : { resumeAt: Date.now() }),
+        // `readSince` takes the segment before the first `:` as an epoch, and
+        // `readOffset` answers 0 when there is no second one — so a bare number
+        // is a window start and cannot be read as an offset.
+        ...(more ? {} : { resumeToken: epochResumeToken() }),
       };
     },
   },

@@ -1,5 +1,6 @@
 import {
   defineProvider,
+  epochResumeToken,
   type ListingAttribute,
   type ListingCategory,
   type ListingVerdict,
@@ -188,10 +189,11 @@ export const ebay = defineProvider({
       return {
         records,
         cursor: more ? `${since}:${offset + orders.length}` : null,
-        complete: !more,
         // Only advance the watermark when the walk finished, or a later page's
-        // orders would be skipped on the next run.
-        ...(more ? {} : { resumeAt: Date.now() }),
+        // orders would be skipped on the next run. `readSince` takes the first
+        // `:`-segment as an epoch and `readOffset` answers 0 without a second
+        // one, so a bare number is a window start, never an offset.
+        ...(more ? {} : { resumeToken: epochResumeToken() }),
       };
     },
   },

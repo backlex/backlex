@@ -159,8 +159,13 @@ describe("orders", () => {
     // bol identifies a product by EAN — there is no seller SKU on an order.
     expect(rec.children!.lines![0]!.data.ean).toBe("8718526018349");
     // The engine's only end-of-run signal is `cursor === null` (see
-    // `integration-syncs.ts`). This provider ALSO returns `complete` and
-    // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
+    // `integration-syncs.ts`), and that is still what this asserts on. It used
+    // to also note that the provider returned `complete` and `resumeAt`,
+    // neither of which `SourcePullPage` declares and neither of which anything
+    // read — so the resume never engaged. Fixed in #318; the round trip is
+    // proven behaviourally in `marketplace-resume.test.ts`, by running the
+    // walk twice and looking at the second request's window rather than at the
+    // field.
     expect(page.cursor).toBeNull();
   });
 

@@ -229,6 +229,21 @@ describe("worker startup budget", () => {
     // the graph already reached (`permissions`, `collection-loader`,
     // `sql-helpers`, `vectorize`), so nothing new became REACHABLE and there
     // is again no seam a dynamic import would help.
-    expect(kib).toBeLessThan(8300);
+    //
+    // Raised 8300 → 8350 on 2026-09-06, measured at 8306 across 632 modules.
+    // Four new modules totalling 17.5 KiB — `mcp/mounts.ts` (1.7 KiB),
+    // `middleware/credential-scope.ts` (5.9 KiB), `services/saml-binding.ts`
+    // (4.9 KiB), `lib/client-address.ts` (4.9 KiB) — and the remaining ~36 KiB
+    // is comment on the eager files those two phases touched. Every one of the
+    // four imports only what the graph already reached (`mcp/internal-fetch`,
+    // `lib/runtime`, `@backlex/core`), so again nothing new became REACHABLE
+    // and there is no seam.
+    //
+    // Worth its own note: **neither phase crossed this line alone.** Phase 6
+    // and phase 7 were written in parallel worktrees, each ran the full suite
+    // against its own branch, and each was green. 8306 exists only in the
+    // merge. A per-branch budget check does not compose, so a stack of green
+    // branches still owes one gate on the tree that actually ships.
+    expect(kib).toBeLessThan(8350);
   });
 });

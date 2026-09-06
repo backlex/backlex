@@ -161,7 +161,7 @@ const relationFields = (
 // `CollectionsMap = Record<string, Record<string, unknown>>`. Emitting
 // interfaces makes the generated file fail its own consumer with
 // `TS2344: … Index signature for type 'string' is missing`, on the row types
-// as well as on the registry. Pinned by tests/gen-types-index-signature.test.ts.
+// as well as on the registry. Pinned by apps/web/tests/gen-types.test.ts.
 const renderCollection = (c: Collection): string => {
   const lines: string[] = [];
   lines.push(`export type ${pascal(c.slug)} = {`);

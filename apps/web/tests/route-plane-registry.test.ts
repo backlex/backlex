@@ -1,14 +1,19 @@
 /**
  * Every mounted `/api` route declares which auth plane it belongs to.
  *
- * This spec does not assert that the declarations are ENFORCED — nothing
- * enforces them yet, deliberately. It asserts they are COMPLETE, which is the
- * property that decays silently: a new route file gets mounted, nobody thinks
- * about the plane, and the boundary quietly acquires another hole. Today
- * `requirePlatformMw` sits on a handful of route files out of ~110 mounts, and
- * the plane boundary everywhere else rests on `tenantMiddleware` leaving
- * `auth.roles` empty for `plane === "app"` — an accident one line from being
- * undone.
+ * This spec asserts the declarations are COMPLETE — not that they are right,
+ * and not that they are obeyed. Completeness is what makes the enforcement real
+ * rather than decorative. `middleware/plane-firewall.ts` does enforce the table
+ * (`PLANE_GUARD` defaults to `enforce`), but an UNKNOWN path is admitted in
+ * BOTH modes, deliberately: a typo in the registry must not take the site down.
+ * So a mount nobody declared is a hole in an ENFORCING guard that raises no 403
+ * and writes no log line to find it by. There is nothing to notice — which is
+ * the property that decays silently: a new route file gets mounted, nobody
+ * thinks about the plane, and the boundary quietly acquires another hole.
+ *
+ * The per-route gates (`requirePlatformMw`) stay as the second, narrow layer;
+ * the firewall's own docblock argues why two layers are deliberate. This file
+ * guards only the broad one.
  *
  * The registry is built from the real app, not from a hand-written list of
  * paths, so it cannot drift from what is actually served.

@@ -39,7 +39,7 @@
  * nothing reports success, and this repo has shipped that failure before — so
  * in both modes the line is emitted at WARN with the path, the plane it
  * declared, the plane the caller actually holds, the identity, and which
- * credential shape got there, and `route-planes.test.ts` asserts a violation is
+ * credential shape got there, and `plane-boundary.test.ts` asserts a violation is
  * observable rather than trusting that it would be.
  */
 import type { MiddlewareHandler } from "hono";

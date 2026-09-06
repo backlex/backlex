@@ -1,11 +1,23 @@
 import { AppError } from "@backlex/core";
 import { createYoga } from "graphql-yoga";
-import { Kind, parse, valueFromASTUntyped, type FieldNode, type OperationDefinitionNode } from "graphql";
+import {
+  Kind,
+  parse,
+  valueFromASTUntyped,
+  type DocumentNode,
+  type FieldNode,
+  type OperationDefinitionNode,
+} from "graphql";
 import type { Context, Hono } from "hono";
 import type { AppBindings } from "../app";
 import { getRequestPermCache } from "../middleware/permission";
 import { getSchema } from "../services/graphql";
-import { MAX_DOCUMENT_CHARS, budgetFromEnv, overBudget } from "../services/graphql/cost";
+import {
+  MAX_DOCUMENT_CHARS,
+  budgetFromEnv,
+  overBudget,
+  type CostBudget,
+} from "../services/graphql/cost";
 import { loadCollection } from "../services/items/collection-loader";
 import { openRealtimeSubscribe } from "./realtime";
 import { keepAlive } from "../services/activity";
@@ -66,6 +78,43 @@ const queriesOf = async (req: Request): Promise<string[]> => {
 };
 
 /**
+ * Parse one document, or refuse to.
+ *
+ * The size cap runs AHEAD of `parse`, which is linear in the source and would
+ * otherwise build an AST proportional to the body before any budget is
+ * consulted. `overBudget` runs immediately after, before the schema is built
+ * and long before a row is read.
+ *
+ * This exists as one function because there are TWO doors into the same parser
+ * — `/api/graphql` and `/api/graphql/stream` — and the stream one reached
+ * `parse` directly, with no cap and no budget (#327). The budget was never
+ * broken; it simply was not as wide as its callers. Restating it at the second
+ * door would leave a third free to skip it again, so both now go through here.
+ *
+ * A syntax error returns `null` rather than throwing: the two doors report it
+ * differently on purpose (yoga owns the error shape on the batch door; the
+ * stream door has no yoga and answers with its own message), and that is a
+ * caller's decision, not this function's.
+ */
+const affordableDoc = (query: string, budget: CostBudget): DocumentNode | null => {
+  if (query.length > MAX_DOCUMENT_CHARS) {
+    throw new AppError(
+      "VALIDATION",
+      `GraphQL document is too large (${query.length} characters, max ${MAX_DOCUMENT_CHARS})`,
+    );
+  }
+  let doc: DocumentNode;
+  try {
+    doc = parse(query);
+  } catch {
+    return null;
+  }
+  const reason = overBudget(doc, budget);
+  if (reason) throw new AppError("VALIDATION", reason);
+  return doc;
+};
+
+/**
  * GraphQL request handler. app.ts mounts this via a **dynamic import** so the
  * whole graphql-yoga + graphql + @graphql-tools dependency graph (a large slice
  * of the worker bundle) stays OUT of the cold-start eval path — it loads only
@@ -85,22 +134,8 @@ export const handleGraphql = async (
   // schema generation. See services/graphql/cost.ts.
   const budget = budgetFromEnv(ctx.env);
   for (const query of await queriesOf(c.req.raw)) {
-    // Ahead of `parse`, which is linear in the source and would otherwise build
-    // an AST proportional to the body before any budget is consulted.
-    if (query.length > MAX_DOCUMENT_CHARS) {
-      throw new AppError(
-        "VALIDATION",
-        `GraphQL document is too large (${query.length} characters, max ${MAX_DOCUMENT_CHARS})`,
-      );
-    }
-    let doc;
-    try {
-      doc = parse(query);
-    } catch {
-      continue; // yoga reports the syntax error in its own shape
-    }
-    const reason = overBudget(doc, budget);
-    if (reason) throw new AppError("VALIDATION", reason);
+    // `null` is a syntax error; yoga reports it in its own shape below.
+    affordableDoc(query, budget);
   }
   const schema = await getSchema(ctx, auth.tenantId);
   const permCache = getRequestPermCache(c);
@@ -157,15 +192,9 @@ interface ParsedSubscription {
 }
 
 const parseSubscription = (
-  query: string,
+  doc: DocumentNode,
   variables: Record<string, unknown>,
 ): ParsedSubscription => {
-  let doc;
-  try {
-    doc = parse(query);
-  } catch (e) {
-    throw new AppError("VALIDATION", `Invalid GraphQL document: ${(e as Error).message}`);
-  }
   const op = doc.definitions.find(
     (d): d is OperationDefinitionNode =>
       d.kind === Kind.OPERATION_DEFINITION && d.operation === "subscription",
@@ -279,7 +308,24 @@ export const handleGraphqlStream = async (
     }
   }
   if (!query) throw new AppError("VALIDATION", "query is required");
-  const sub = parseSubscription(query, variables);
+  // The same cap and budget the batch door pays, and for the same reason: this
+  // is a second entry point into `parse`, and it had neither (#327).
+  const doc = affordableDoc(query, budgetFromEnv(c.get("ctx").env));
+  if (!doc) {
+    // Re-parsed only to recover the message. This door has no yoga to report a
+    // syntax error in its own shape, and "Invalid GraphQL document" with no
+    // position is a worse answer than the one this path used to give. The
+    // second parse is on the error path only, and on a document the size cap
+    // above has already bounded.
+    let detail = "";
+    try {
+      parse(query);
+    } catch (e) {
+      detail = `: ${(e as Error).message}`;
+    }
+    throw new AppError("VALIDATION", `Invalid GraphQL document${detail}`);
+  }
+  const sub = parseSubscription(doc, variables);
 
   // Friendlier than the realtime channel's admin behavior (silent empty
   // stream): a subscription on a collection that doesn't exist is a 404.

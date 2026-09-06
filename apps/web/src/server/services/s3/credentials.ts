@@ -119,12 +119,7 @@ export const createS3Credential = async (
   if (!input.name || input.name.length > 120) {
     throw new AppError("VALIDATION", "`name` must be 1–120 characters");
   }
-  const prefix = input.prefix?.trim() || null;
-  if (prefix && (prefix.startsWith("/") || prefix.includes(".."))) {
-    // A prefix is a scope, so a value that could climb out of it is refused
-    // rather than normalized — normalizing would silently widen the scope.
-    throw new AppError("VALIDATION", "`prefix` must be a plain key prefix");
-  }
+  const prefix = normalizePrefix(input.prefix);
   const secret = randomSecret();
   const t = table(ctx.dialect);
   const row = {
@@ -150,6 +145,29 @@ export const createS3Credential = async (
   };
 };
 
+/**
+ * Trim a credential prefix, or refuse it.
+ *
+ * Extracted because the create door had this check and the update door did not,
+ * so a workspace admin could create a credential with a clean scope and then
+ * PATCH it to `../` or `/` — a stored value the product says is not a valid
+ * scope. It narrows to nothing today (`withinPrefix` is a plain `startsWith`
+ * and `guardLogicalKey` already refuses the keys such a prefix would describe),
+ * but it leaves the invariant "a stored prefix is a plain key prefix" FALSE,
+ * and that is the assumption every future prefix-based filter is entitled to
+ * make — the `effective` prefix computation in `routes/s3.ts` already does.
+ *
+ * Refused rather than normalized: normalizing would silently WIDEN the scope,
+ * which is the opposite of what an admin editing a scope intends.
+ */
+export const normalizePrefix = (raw: string | null | undefined): string | null => {
+  const prefix = raw?.trim() || null;
+  if (prefix && (prefix.startsWith("/") || prefix.includes(".."))) {
+    throw new AppError("VALIDATION", "`prefix` must be a plain key prefix");
+  }
+  return prefix;
+};
+
 export const updateS3Credential = async (
   ctx: Ctx,
   tenantId: string,
@@ -166,7 +184,7 @@ export const updateS3Credential = async (
   if (!existing) throw new AppError("NOT_FOUND", "Credential not found");
   const next = {
     name: patch.name ?? existing.name,
-    prefix: patch.prefix === undefined ? existing.prefix : (patch.prefix?.trim() || null),
+    prefix: patch.prefix === undefined ? existing.prefix : normalizePrefix(patch.prefix),
     readOnly: patch.readOnly ?? Boolean(existing.readOnly),
     enabled: patch.enabled ?? Boolean(existing.enabled),
     updatedAt: new Date(),

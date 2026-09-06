@@ -50,6 +50,7 @@ import {
   matchesAccept,
   storeFormUpload,
 } from "../services/form-uploads";
+import { assertDeclaredLengthWithin } from "../services/storage/limit-stream";
 import { DEMO_BLOCKED_MESSAGE, isDemoMode } from "../services/demo";
 import { assertStorageWithinLimit } from "../services/usage";
 
@@ -59,6 +60,11 @@ const TAGS = ["forms"];
  *  flooded form can't eat the workspace's overall request budget. */
 export const SUBMIT_MAX_PER_MINUTE = 10;
 const SUBMIT_WINDOW_MS = 60_000;
+
+/** Multipart boundaries + per-part headers, allowed on top of the file cap.
+ *  Generous — this check exists to refuse a body that is obviously too big, not
+ *  to be the byte-exact limit. `file.size > cap` below still is. */
+const MULTIPART_FRAMING_ALLOWANCE = 64 * 1024;
 
 /** Per-form, per-IP upload budget — uploads happen per field before submit,
  *  so the minute window is looser than the submit one. */
@@ -468,6 +474,24 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const meta = requestMeta(c.req.raw, c.get("ctx").env);
       const ip = meta.ip ?? "unknown";
       const policy = formUploadPolicy(ctx.env);
+      // Refuse on the DECLARED length, before anything reads the body.
+      //
+      // `c.req.valid("form")` calls `Request.formData()`, which buffers the
+      // ENTIRE multipart body — every part, in memory — before a line of
+      // handler code runs. So the `file.size > cap` refusal further down fired
+      // only after the bytes were already resident: an unauthenticated visitor
+      // could POST 100 MB to a form whose file block declares a 1 MB cap, push
+      // a 128 MB Workers isolate toward its ceiling, and get a 422 afterwards.
+      // Repeated from a few addresses inside the per-IP minute budget, that is
+      // unauthenticated memory pressure on the tenant's Worker.
+      //
+      // The framing allowance covers the multipart boundaries and part headers,
+      // which are part of the request but not of the file.
+      assertDeclaredLengthWithin(
+        c.req.header("content-length"),
+        policy.maxBytes + MULTIPART_FRAMING_ALLOWANCE,
+        "Upload",
+      );
       const minuteOk = await rateLimitOk(
         ctx.env,
         `form-upload:${form.id}:${ip}`,

@@ -47,4 +47,21 @@ export interface StorageAdapter {
   ): Promise<StoredObject>;
   /** Discard an in-progress multipart upload and any staged parts. */
   abortMultipart?(key: string, uploadId: string): Promise<void>;
+
+  /**
+   * The smallest a non-final part may be, in bytes, on THIS backend.
+   *
+   * `0` means the backend has no minimum. Omitted means "use the deployment
+   * policy's default", which is 5 MiB — the figure S3 and R2 both enforce.
+   *
+   * It has to come from the adapter because the constraint is physical and the
+   * backends disagree: S3 and R2 reject an undersized part at COMPLETE, not at
+   * upload, so a client chunking at 1 MB transferred an entire file with every
+   * PATCH answering 204 and then lost all of it to `EntityTooSmall`. The fs
+   * adapter appends to one file and has no such limit, so enforcing 5 MiB there
+   * would refuse uploads that work perfectly. Declaring it here is what lets
+   * `appendChunk` refuse the FIRST short part on the backends where it matters
+   * and stay out of the way on the ones where it does not.
+   */
+  minPartBytes?: number;
 }

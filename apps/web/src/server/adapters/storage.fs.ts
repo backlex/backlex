@@ -1,8 +1,9 @@
 import { appendFile, mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, statSync } from "node:fs";
 import { join, dirname, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
 
 /**
@@ -72,15 +73,28 @@ export const fsStorage = (root: string): StorageAdapter => {
     async put({ key, body, contentType }) {
       const target = path(key);
       await ensureDir(target);
-      const buf =
-        typeof body === "string"
-          ? Buffer.from(body)
-          : body instanceof Uint8Array
-            ? Buffer.from(body)
-            : body instanceof ArrayBuffer
-              ? Buffer.from(body)
-              : Buffer.from(await new Response(body as ReadableStream).arrayBuffer());
-      await writeFile(target, buf);
+      if (typeof body === "string" || body instanceof Uint8Array || body instanceof ArrayBuffer) {
+        await writeFile(target, Buffer.from(body as never));
+      } else {
+        // STREAM it. This used to be `Buffer.from(await new
+        // Response(body).arrayBuffer())` — the entire upload materialised in
+        // memory before the first byte reached disk, so process RSS tracked the
+        // request and a large upload took the server down. `PUT
+        // /api/storage/:key` had no byte ceiling either, which is what made a
+        // multi-gigabyte chunked body reachable in the first place (fixed in
+        // `routes/storage.ts`); this makes the adapter honest regardless.
+        try {
+          await pipeline(Readable.fromWeb(body as never), createWriteStream(target));
+        } catch (e) {
+          // A stream that errors mid-flight leaves a TRUNCATED file behind, and
+          // the caller is about to throw — so no `files` row will point at it.
+          // `limitStream` makes that a routine outcome rather than a rare one
+          // (a body over the ceiling errors on purpose), which is exactly when
+          // unreferenced bytes start accumulating on disk.
+          await unlink(target).catch(() => {});
+          throw e;
+        }
+      }
       const s = await stat(target);
       return {
         key,
@@ -180,5 +194,9 @@ export const fsStorage = (root: string): StorageAdapter => {
       const target = partPath(key, uploadId);
       if (existsSync(target)) await unlink(target);
     },
+    // No minimum: this backend appends every part to one file, so a 1-byte
+    // chunk assembles exactly as well as a 5 MiB one. S3 and R2 do not, which
+    // is why the number belongs to the adapter — see `StorageAdapter`.
+    minPartBytes: 0,
   };
 };

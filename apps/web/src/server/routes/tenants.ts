@@ -2,6 +2,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { slugify as slugifySlug } from "@backlex/db/slug";
+import { TENANT_TILE_PALETTE } from "../lib/tenant-palette";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Context } from "hono";
@@ -115,15 +116,6 @@ const assertWorkspaceAccess = async (
  *  `r-n` here while a slugifier ten files away made it `urun`. The cap stays
  *  local because it is this table's policy, not a property of slugs. */
 const slugify = (s: string) => slugifySlug(s, 24);
-
-const PALETTE = [
-  "var(--primary)",
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
 
 /** One membership row, in the shape every guard below needs.
  *
@@ -737,7 +729,7 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         branch: "main",
         env: body.env ?? "development",
         mark: body.name.charAt(0).toUpperCase(),
-        color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+        color: TENANT_TILE_PALETTE[Math.floor(Math.random() * TENANT_TILE_PALETTE.length)],
         createdBy: auth.userId,
       });
       try {

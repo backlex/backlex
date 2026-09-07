@@ -253,6 +253,12 @@ export type AppBindings = {
       impersonationId?: string | null;
       impersonationReadOnly?: boolean;
     };
+    /** Resolved by `requireAppUserMw` on the `/api/t/:slug/*` end-user routes:
+     *  the signed-in workspace end-user, already pinned to the workspace named
+     *  in the path. Read with `appUserOf(c)`, which falls back to running the
+     *  check when a route has not been moved to the middleware yet — see
+     *  `middleware/app-user.ts`. */
+    appUser?: { tenantId: string; appUserId: string };
     /** Correlation id for this request. Taken from an inbound `x-request-id`
      *  (trusted proxy / client), else `cf-ray` on Workers, else a generated
      *  UUID. Echoed back on the `x-request-id` response header, stamped onto

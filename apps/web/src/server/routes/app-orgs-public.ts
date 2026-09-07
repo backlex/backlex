@@ -21,6 +21,7 @@ import {
   updateOrg,
 } from "../services/app-orgs";
 import { readJsonOr } from "../lib/body";
+import { appUserOf, requireAppUserMw } from "../middleware/app-user";
 
 /**
  * End-user-facing organization surface, mounted at `/api/t/:slug/orgs`.
@@ -41,29 +42,6 @@ import { readJsonOr } from "../lib/body";
  * path that binds org-scoped roles.
  */
 
-/** The signed-in end-user, or 401. Also pins the request to the workspace named
- *  in the path: the session already carries its own tenant, so a mismatched
- *  slug means the caller is pointing a token at the wrong workspace. */
-const requireAppUser = async (
-  c: Context<AppBindings>,
-): Promise<{ tenantId: string; appUserId: string }> => {
-  const auth = c.get("auth");
-  if (auth.plane !== "app" || !auth.userId)
-    throw new AppError("UNAUTHORIZED", "Workspace end-user sign-in required");
-  const tenantId = auth.tenantId;
-  if (!tenantId) throw new AppError("UNAUTHORIZED", "Session is not bound to a workspace");
-
-  const ctx = c.get("ctx");
-  const slug = c.req.param("slug");
-  const tenant = slug
-    ? await findTenantBySlugOrId({ db: ctx.db, dialect: ctx.dialect }, slug)
-    : null;
-  if (!tenant) throw new AppError("NOT_FOUND", `Workspace "${slug ?? ""}" not found`);
-  if (tenant.id !== tenantId)
-    throw new AppError("FORBIDDEN", "Session belongs to a different workspace");
-  return { tenantId, appUserId: auth.userId };
-};
-
 const dbCtx = (c: Context<AppBindings>) => {
   const ctx = c.get("ctx");
   return { db: ctx.db, dialect: ctx.dialect };
@@ -82,8 +60,8 @@ const asStringArray = (v: unknown): string[] | undefined =>
 
 export const appOrgsPublicRoutes = new Hono<AppBindings>()
   /** Orgs I belong to, with my membership role and each org's member count. */
-  .get("/:slug/orgs", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .get("/:slug/orgs", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const q = c.req.query("q");
     const data = await listOrgs(dbCtx(c), tenantId, {
       appUserId,
@@ -102,8 +80,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
    * owner would be unadministerable, and self-serve creation is the whole
    * point of this endpoint.
    */
-  .post("/:slug/orgs", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .post("/:slug/orgs", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const input = await body<{
       name: string;
       slug?: string;
@@ -160,8 +138,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
    * Accept an invitation. Registered before `/:slug/orgs/:orgId` so the literal
    * `invites` segment isn't swallowed by the param route.
    */
-  .post("/:slug/orgs/invites/accept", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .post("/:slug/orgs/invites/accept", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const input = await body<{ token: string }>(c);
     if (typeof input.token !== "string" || !input.token)
       throw new AppError("VALIDATION", "An invitation token is required");
@@ -170,16 +148,16 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   })
 
   /** One org I belong to. */
-  .get("/:slug/orgs/:orgId", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .get("/:slug/orgs/:orgId", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     const role = await requireOrgRole(dbCtx(c), org.id, appUserId, "member");
     return c.json({ data: { ...org, role } });
   })
 
   /** Rename / re-slug / restyle. Owners only. */
-  .patch("/:slug/orgs/:orgId", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .patch("/:slug/orgs/:orgId", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     await requireOrgRole(dbCtx(c), org.id, appUserId, "owner");
     const patch = await body<{
@@ -193,8 +171,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   })
 
   /** Delete the org. Owners only, and irreversible. */
-  .delete("/:slug/orgs/:orgId", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .delete("/:slug/orgs/:orgId", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     await requireOrgRole(dbCtx(c), org.id, appUserId, "owner");
     await deleteOrg(dbCtx(c), tenantId, org.id);
@@ -209,8 +187,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
    *
    * Registered before `/:slug/orgs/:orgId` so the literal segment wins.
    */
-  .post("/:slug/orgs/set-active", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .post("/:slug/orgs/set-active", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const appSessionId = c.get("auth").appSessionId;
     if (!appSessionId)
       throw new AppError(
@@ -226,8 +204,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   })
 
   /** Leave an org. The last owner has to hand over first. */
-  .post("/:slug/orgs/:orgId/leave", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .post("/:slug/orgs/:orgId/leave", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     const role = await requireOrgRole(dbCtx(c), org.id, appUserId, "member");
     await leaveOrg(dbCtx(c), tenantId, org.id, appUserId, role);
@@ -235,8 +213,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   })
 
   /** Who else is in here. Any member may look. */
-  .get("/:slug/orgs/:orgId/members", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .get("/:slug/orgs/:orgId/members", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     await requireOrgRole(dbCtx(c), org.id, appUserId, "member");
     const data = await listMembers(dbCtx(c), tenantId, org.id);
@@ -249,8 +227,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
    * and nobody can act on a member who outranks them, so an admin can neither
    * promote themselves past their own ceiling nor depose the owner above it.
    */
-  .patch("/:slug/orgs/:orgId/members/:appUserId", async (c) => {
-    const { tenantId, appUserId: actorId } = await requireAppUser(c);
+  .patch("/:slug/orgs/:orgId/members/:appUserId", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId: actorId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     const actorRole = await requireOrgRole(dbCtx(c), org.id, actorId, "admin");
     const patch = await body<{ role?: string; roleIds?: string[] }>(c);
@@ -278,8 +256,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
 
   /** Remove someone. Org admins may — but never someone who outranks them, and
    *  the last owner can't be removed at all. */
-  .delete("/:slug/orgs/:orgId/members/:appUserId", async (c) => {
-    const { tenantId, appUserId: actorId } = await requireAppUser(c);
+  .delete("/:slug/orgs/:orgId/members/:appUserId", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId: actorId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     const actorRole = await requireOrgRole(dbCtx(c), org.id, actorId, "admin");
     await removeMember(dbCtx(c), tenantId, org.id, c.req.param("appUserId"), {
@@ -290,8 +268,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   })
 
   /** Pending + accepted invitations for this org. */
-  .get("/:slug/orgs/:orgId/invites", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .get("/:slug/orgs/:orgId/invites", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     await requireOrgRole(dbCtx(c), org.id, appUserId, "admin");
     // `OrgInviteRow` carries no `token` on purpose: the raw token is write-only,
@@ -304,8 +282,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   })
 
   /** Invite a colleague by email. Org admins may. */
-  .post("/:slug/orgs/:orgId/invites", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .post("/:slug/orgs/:orgId/invites", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const ctx = c.get("ctx");
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     const actorRole = await requireOrgRole(dbCtx(c), org.id, appUserId, "admin");
@@ -348,8 +326,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   })
 
   /** Revoke a pending invitation. */
-  .delete("/:slug/orgs/:orgId/invites/:inviteId", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .delete("/:slug/orgs/:orgId/invites/:inviteId", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
     await requireOrgRole(dbCtx(c), org.id, appUserId, "admin");
     await revokeOrgInvite(dbCtx(c), tenantId, org.id, c.req.param("inviteId"));

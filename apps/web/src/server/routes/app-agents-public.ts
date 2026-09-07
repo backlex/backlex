@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
-import { findTenantBySlugOrId } from "../services/tenant-auth";
+import { appUserOf, requireAppUserMw } from "../middleware/app-user";
 import {
   createThread,
   getAgent,
@@ -48,29 +48,6 @@ import { readJsonOr } from "../lib/body";
  * workspace's meter sink, so an end-user turn lands in `usage_counters` the
  * same as an operator's.
  */
-
-/** The signed-in end user, or 401. Also pins the request to the workspace named
- *  in the path: the session already carries its own tenant, so a mismatched
- *  slug means the caller is pointing a token at the wrong workspace. */
-const requireAppUser = async (
-  c: Context<AppBindings>,
-): Promise<{ tenantId: string; appUserId: string }> => {
-  const auth = c.get("auth");
-  if (auth.plane !== "app" || !auth.userId)
-    throw new AppError("UNAUTHORIZED", "Workspace end-user sign-in required");
-  const tenantId = auth.tenantId;
-  if (!tenantId) throw new AppError("UNAUTHORIZED", "Session is not bound to a workspace");
-
-  const ctx = c.get("ctx");
-  const slug = c.req.param("slug");
-  const tenant = slug
-    ? await findTenantBySlugOrId({ db: ctx.db, dialect: ctx.dialect }, slug)
-    : null;
-  if (!tenant) throw new AppError("NOT_FOUND", `Workspace "${slug ?? ""}" not found`);
-  if (tenant.id !== tenantId)
-    throw new AppError("FORBIDDEN", "Session belongs to a different workspace");
-  return { tenantId, appUserId: auth.userId };
-};
 
 /** What an end user is allowed to know about an agent: enough to render a
  *  picker. Never the system prompt, the model, or the tool list — those are the
@@ -121,8 +98,8 @@ const requireOwnThread = async (
 export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
   new Hono<AppBindings>()
   /** The agents this workspace exposes to its end users. */
-  .get("/:slug/agents", async (c) => {
-    const { tenantId } = await requireAppUser(c);
+  .get("/:slug/agents", requireAppUserMw, async (c) => {
+    const { tenantId } = await appUserOf(c);
     const ctx = c.get("ctx");
     const agents = await listAgents(ctx, tenantId);
     return c.json({
@@ -131,8 +108,8 @@ export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
   })
 
   /** My conversations. Scoped to the caller — never the workspace's. */
-  .get("/:slug/agents/threads", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .get("/:slug/agents/threads", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const ctx = c.get("ctx");
     const threads = await listThreads(ctx, tenantId);
     const open = new Set(
@@ -155,8 +132,8 @@ export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
   })
 
   /** Start a conversation with one of them. */
-  .post("/:slug/agents/threads", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .post("/:slug/agents/threads", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const ctx = c.get("ctx");
     const body = (await readJsonOr(c.req, {})) as {
       agentId?: unknown;
@@ -183,8 +160,8 @@ export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
   })
 
   /** The transcript. */
-  .get("/:slug/agents/threads/:threadId/messages", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .get("/:slug/agents/threads/:threadId/messages", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const ctx = c.get("ctx");
     const thread = await requireOwnThread(
       c,
@@ -211,8 +188,8 @@ export const appAgentsPublicRoutes = (app: Hono<AppBindings>) =>
   })
 
   /** Say something, and get the reply. */
-  .post("/:slug/agents/threads/:threadId/messages", async (c) => {
-    const { tenantId, appUserId } = await requireAppUser(c);
+  .post("/:slug/agents/threads/:threadId/messages", requireAppUserMw, async (c) => {
+    const { tenantId, appUserId } = await appUserOf(c);
     const ctx = c.get("ctx");
     const thread = await requireOwnThread(
       c,

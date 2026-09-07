@@ -4,6 +4,7 @@ import * as pg from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq, isNull } from "drizzle-orm";
+import { tenantColorFor } from "../lib/tenant-palette";
 import {
   getCachedTenantResolve,
   invalidateTenantMembership,
@@ -42,16 +43,16 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
  */
 export const DEFAULT_TENANT_SLUG = "default";
 
-const PALETTE = [
-  "oklch(0.78 0.16 95)",
-  "oklch(0.72 0.18 145)",
-  "oklch(0.72 0.16 240)",
-  "oklch(0.7 0.16 28)",
-  "oklch(0.7 0.18 320)",
-  "oklch(0.74 0.14 200)",
-];
-const colorFor = (slug: string) =>
-  PALETTE[Math.abs([...slug].reduce((a, c) => a + c.charCodeAt(0), 0)) % PALETTE.length];
+/**
+ * Theme TOKENS, not `oklch()` literals — see `lib/tenant-palette.ts`.
+ *
+ * This list used to be six raw `oklch(…)` values, which is the exact shape
+ * `20260520190000_workspace_theme_colors` exists to replace. Every newly
+ * provisioned default workspace was therefore born holding a value that
+ * migration would overwrite (#329), and four of the five live tenant databases
+ * still carry it.
+ */
+const colorFor = tenantColorFor;
 
 export const ensureDefaultTenant = async (ctx: DbCtx): Promise<string> => {
   // Unauthenticated / no-tenant-context requests fall back to the default

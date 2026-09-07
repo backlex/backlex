@@ -58,7 +58,7 @@ const insertActivityRow = (
  */
 const insertSession = (
   h: TestHarness,
-  row: { id: string; userId: string; createdAt: number },
+  row: { id: string; userId: string; createdAt: number; tenantId: string },
 ) =>
   h.fetch("/api/admin/db/sql/run?writes=1", {
     method: "POST",
@@ -67,6 +67,16 @@ const insertSession = (
       sql:
         "INSERT INTO users (id, email, created_at, updated_at) VALUES (" +
         `'${sqlEscape(row.userId)}', '${sqlEscape(`${row.userId}@example.test`)}', ${row.createdAt}, ${row.createdAt}); ` +
+        // The tile counts people administering THIS workspace, so a session
+        // only reaches it through a `tenant_members` row (#332). Without one
+        // these users are correctly invisible — which is right, and would leave
+        // the range assertions below asserting nothing.
+        "INSERT INTO tenant_members (id, tenant_id, user_id, email, role, status, created_at, updated_at) VALUES (" +
+        `'${sqlEscape(`m-${row.userId}`)}', ` +
+        `'${sqlEscape(row.tenantId)}', ` +
+        `'${sqlEscape(row.userId)}', ` +
+        `'${sqlEscape(`${row.userId}@example.test`)}', ` +
+        `'member', 'active', ${row.createdAt}, ${row.createdAt}); ` +
         "INSERT INTO sessions (id, user_id, token, expires_at, created_at, updated_at) VALUES (" +
         `'${sqlEscape(row.id)}', ` +
         `'${sqlEscape(row.userId)}', ` +
@@ -221,6 +231,11 @@ describe("metrics overview: totals.activeUsers respects the range window", () =>
   beforeAll(async () => {
     h = makeHarness();
     await seedAdmin(h);
+    // The tile joins `tenant_members`, so every seeded user needs to belong to
+    // the workspace the request runs in — see `insertSession`.
+    const me = (await (await h.fetch("/api/me")).json()) as { data?: { tenantId?: string } };
+    const tenantId = me.data?.tenantId ?? "";
+    expect(tenantId).not.toBe("");
     const now = Date.now();
     // 3 distinct users signed in inside the 1h window (~15 min ago).
     for (let i = 0; i < 3; i++) {
@@ -228,6 +243,7 @@ describe("metrics overview: totals.activeUsers respects the range window", () =>
         id: `sess-in-${i}`,
         userId: `user-in-${i}`,
         createdAt: now - 15 * 60 * 1000,
+        tenantId,
       });
       expect(r.status).toBe(200);
     }
@@ -237,6 +253,7 @@ describe("metrics overview: totals.activeUsers respects the range window", () =>
         id: `sess-out-${i}`,
         userId: `user-out-${i}`,
         createdAt: now - 8 * HOUR,
+        tenantId,
       });
       expect(r.status).toBe(200);
     }

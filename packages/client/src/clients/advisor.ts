@@ -108,7 +108,7 @@ export interface AdvisorInsights {
    * Writes that landed outside their role's `write` conditions, busiest first.
    *
    * Empty means no recorded write in the window would be refused by
-   * `PERMISSION_WRITE_CHECK=enforce` — which is the reading its `warn` default
+   * `PERMISSION_WRITE_CHECK=enforce`, the default — which is the reading `warn`
    * exists to produce, and is only as strong as `window.sampleRate`.
    * Conditions reaching through a relation are not judged in memory and are
    * outside this count either way.

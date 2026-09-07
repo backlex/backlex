@@ -202,13 +202,15 @@ export interface Ctx {
   waitUntil?: (p: Promise<unknown>) => void;
   /**
    * Writes this request made that a `write` permission condition did not
-   * allow — recorded whether `PERMISSION_WRITE_CHECK` let them through
-   * (`warn`, the default) or refused them (`enforce`).
+   * allow — recorded whether `PERMISSION_WRITE_CHECK` refused them
+   * (`enforce`, the default since #334) or let them through (`warn`).
    *
    * The advisor is the reason this exists. `warn` mode's whole value is
-   * telling an operator whether flipping to `enforce` would break their
-   * tenants, and a `console.warn` cannot answer that — nobody can query last
-   * week's logs from the Advisor page. So the write path appends here, the
+   * telling an operator whether enforcing would break their tenants, and a
+   * `console.warn` cannot answer that — nobody can query last week's logs from
+   * the Advisor page. That is now a MIGRATION reading rather than a
+   * pre-flip one: an existing deployment that starts refusing on upgrade sets
+   * `warn`, reads this, widens the conditions it names, and unsets it. So the write path appends here, the
    * span middleware folds it into the span's `attributes`, and the
    * `permission-write-check` rule counts them over the window. See
    * `services/advisor.ts` and issue #334.

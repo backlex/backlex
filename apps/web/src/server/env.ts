@@ -86,13 +86,27 @@ export interface Env {
    *  every self-host, Vercel, Netlify and Node deploy. See
    *  `middleware/plane-firewall.ts`. */
   PLANE_GUARD?: string;
-  /** `"enforce"` makes a create/update whose proposed row fails its own
-   *  permission condition refuse with 403; anything else — including unset —
-   *  logs it and lets the write through. Defaults to warn because a tenant's
+  /** `"enforce"` — THE DEFAULT — makes a create/update whose proposed row
+   *  fails its own permission condition refuse with 403. `"warn"` logs it and
+   *  lets the write through.
+   *
+   *  It defaulted to `warn` until #334, for a real reason: a tenant's
    *  integrations may have been writing cross-scope rows for months against a
-   *  rule that only ever filtered reads, and turning that into a 403 on
-   *  upgrade breaks a working application. The advisor rule shipped alongside
-   *  is how an operator finds out whether they have any before flipping it. */
+   *  rule that only ever filtered reads, and turning that into a 403 on upgrade
+   *  breaks a working application for somebody who changed nothing. What made
+   *  the flip safe was the advisor rule that answers "would enforcing refuse
+   *  anything this workspace actually does?" from recorded spans rather than
+   *  from a guess — see `services/advisor.ts` and `docs/advisor.md`.
+   *
+   *  `warn` is now the MIGRATION setting, not the resting state: set it, run
+   *  the advisor's `permission-write-check` rule over a representative window,
+   *  widen the conditions it names, then unset it. Note the exact spelling of
+   *  the fallback — an empty value falls back to `enforce`, so
+   *  `PERMISSION_WRITE_CHECK=` cannot quietly disable the check.
+   *
+   *  Directly parallel to `PLANE_GUARD` above, which was in this same position
+   *  and for the same reason: a permissive default meant the guarantee was real
+   *  on the deployments that set it and inert everywhere else. */
   PERMISSION_WRITE_CHECK?: string;
   /** `"off"` skips the `PRAGMA foreign_keys = ON` the Bun SQLite client now
    *  issues. The pragma is defence in depth, not a fix — D1 and Postgres

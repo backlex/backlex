@@ -399,7 +399,7 @@ const assertWriteConditions = (
     return;
   }
 
-  const mode = env.ctx.env.PERMISSION_WRITE_CHECK ?? "warn";
+  const mode = (env.ctx.env.PERMISSION_WRITE_CHECK ?? "").trim() || "enforce";
   const detail = {
     msg: "permission-write-check",
     collection: env.collection.slug,

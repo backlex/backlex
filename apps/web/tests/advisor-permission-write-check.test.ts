@@ -1,19 +1,26 @@
 /**
- * The advisor rule that has to exist before `PERMISSION_WRITE_CHECK` can be
- * flipped — issue #334.
+ * The advisor rule that had to exist before `PERMISSION_WRITE_CHECK` could be
+ * flipped — issue #334. **It has now been flipped**: `enforce` is the default,
+ * and this file is why that was possible.
  *
  * WHY THE FLIP NEEDED A RULE FIRST
  *
- * `PERMISSION_WRITE_CHECK` defaults to `warn`: a write landing outside its
- * role's `write` conditions is counted and allowed. `PLANE_GUARD` had the same
- * permissive default and phase 10 flipped it, but the reason for THIS one had
- * not expired. A tenant's integrations may have been writing cross-scope rows
- * for months against a rule that only ever filtered READS; turning that into a
- * 403 on upgrade breaks a working application for somebody who changed nothing.
+ * `PERMISSION_WRITE_CHECK` used to default to `warn`: a write landing outside
+ * its role's `write` conditions was counted and allowed. `PLANE_GUARD` had the
+ * same permissive default and phase 10 flipped it, but the reason for THIS one
+ * had not expired. A tenant's integrations may have been writing cross-scope
+ * rows for months against a rule that only ever filtered READS; turning that
+ * into a 403 on upgrade breaks a working application for somebody who changed
+ * nothing.
  *
  * The operator could not tell whether they were that tenant. The check wrote a
  * `console.warn` and moved on — nobody queries last week's logs from the
  * Advisor page — so "is enforce safe here?" was a guess about their own data.
+ *
+ * With that guess replaced by a reading, the default moved and `warn` became
+ * the MIGRATION setting. Which is why the block below now sets it explicitly
+ * instead of relying on it: `warn` is a deliberate state a deployment enters,
+ * reads, and leaves.
  *
  * WHAT THIS FILE PINS
  *
@@ -199,8 +206,12 @@ describe("advisor: PERMISSION_WRITE_CHECK=warn — what the flip would cost", ()
   let f: Fixture;
 
   beforeAll(async () => {
-    // No override: `warn` is the default, and running the default is the point.
-    f = await buildFixture();
+    // Set EXPLICITLY. This used to read `no override: warn is the default`, and
+    // when the default became `enforce` (#334) both tests in this block went
+    // red — correctly, because they are about what `warn` reports, not about
+    // what happens to be default. The default itself is pinned in
+    // `write-condition-check.test.ts` (6), which is where it belongs.
+    f = await buildFixture({ PERMISSION_WRITE_CHECK: "warn" });
   });
   afterAll(() => f.h.cleanup());
 

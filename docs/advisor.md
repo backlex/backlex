@@ -128,16 +128,18 @@ It answers the single question `PERMISSION_WRITE_CHECK` exists to raise:
 
 | what it saw | level | what it means |
 |---|---|---|
-| the mode is `warn` and nothing was recorded | `info` | no recorded write in the window would be refused — this is the green light to set `PERMISSION_WRITE_CHECK=enforce` |
-| the mode is `warn` and something was | `error` | flipping to `enforce` would start refusing a caller that changed nothing. Decide first: widen the condition, or fix the caller |
-| the mode is `enforce` and something was | `warn` | writes are being refused right now. The caller is broken, but no row landed where it should not have |
+| the mode is `enforce` (the default) and something was recorded | `warn` | writes are being refused right now. The caller is broken, but no row landed where it should not have — widen the condition or fix the caller |
+| the mode is `warn` and something was | `error` | those writes are landing outside their conditions and the rows ARE in the collection. Unsetting the variable would start refusing a caller that changed nothing. Decide first |
+| the mode is `warn` and nothing was recorded | `info` | no recorded write in the window would be refused — the green light to unset the variable and return to the `enforce` default |
 
-The default is `warn`: a write outside its role's `write` conditions is
-counted and allowed. That default is deliberate and not an oversight — a
-tenant's integrations may have been writing cross-scope rows for months against
-a rule that only ever filtered READS, and turning that into a 403 on upgrade
-breaks a working application for somebody who changed nothing. This rule is
-what makes the flip a measurement instead of a guess.
+**The default is `enforce`.** It was `warn` until this rule existed, and that
+was deliberate rather than an oversight: a tenant's integrations may have been
+writing cross-scope rows for months against a rule that only ever filtered
+READS, and turning that into a 403 on upgrade breaks a working application for
+somebody who changed nothing. What this rule changed is that the question is now
+answerable from recorded traffic instead of guessed — so the safe default could
+become the strict one, with `warn` kept as the migration path for a deployment
+that starts refusing after an upgrade.
 
 Two things the count deliberately does not include, both because "zero" has to
 mean what an operator reads it as. Conditions that reach through a **relation**

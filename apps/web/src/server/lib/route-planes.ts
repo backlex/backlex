@@ -118,6 +118,20 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   },
 
   // ── platform plane ──────────────────────────────────────────────────────
+  {
+    // Longest-match wins, so this sits above `/api/tenants` and covers only
+    // `GET /invite/{token}` — `covers` compares whole segments, so it does not
+    // reach `/api/tenants/invites`.
+    //
+    // It DOES cover anything added deeper, though: a future
+    // `POST /api/tenants/invite/<anything>` would inherit `public` from here
+    // rather than `platform` from the entry below. Nothing lives there today;
+    // check this before adding one.
+    prefix: "/api/tenants/invite",
+    plane: "public",
+    note:
+      "The invite-accept page's lookup, and the one route under /api/tenants that is unauthenticated by design — its own OpenAPI description opens with \"Public.\" Holding the token IS the authorization, and the response is the invited email plus the workspace name, both of which the holder already has. Declared separately because `platform` was also refusing an app-plane bearer: somebody already signed in to another workspace who clicks an invite link got a 403 from the plane firewall, which is not a boundary anyone meant to draw. #345.",
+  },
   { prefix: "/api/tenants", plane: "platform", note: "Workspace CRUD, membership and invites. POST / is requireUser-only today — the single most load-bearing missing plane gate in the app." },
   { prefix: "/api/users", plane: "platform", note: "Platform-user administration." },
   { prefix: "/api/app-users", plane: "platform", note: "OPERATOR view of the end-user pool. The end-users' own surface is /api/t." },

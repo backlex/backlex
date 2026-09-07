@@ -88,6 +88,11 @@ export const revisionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     },
   )
   .openapi(
+    // NO mounted permission gate, and it cannot have one: the collection this
+    // acts on is only known after loading the revision row named by `{id}`, and
+    // a middleware runs before that. The handler resolves `update` on the
+    // collection it finds — which is why this route shows in the ungated count
+    // that `scripts/scan-route-gates.ts` keeps. See #345.
     createRoute({
       method: "post",
       path: "/{id}/revert",

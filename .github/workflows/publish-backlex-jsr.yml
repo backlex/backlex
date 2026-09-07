@@ -36,6 +36,23 @@ jobs:
       - name: Typecheck
         run: bun run --cwd packages/client typecheck
 
+      # `jsr publish` does NOT error on a version it already holds — it prints
+      # `Warning: Skipping, already published @backlex/backlex@x.y.z` and exits
+      # 0. That is how `backlex-v0.4.0` and `backlex-v0.4.1` each ran this
+      # workflow, each published nothing, and each reported GREEN: `jsr.json`
+      # had drifted to 0.3.3 while package.json moved on. The drift itself is
+      # now pinned by apps/web/tests/sdk-exports.test.ts, but the exit code
+      # still says "fine" for the one outcome that means nothing shipped, so a
+      # re-run of an old tag would be just as silent.
+      #
+      # `pipefail` is load-bearing: GitHub's default shell is `bash -e`, which
+      # takes the exit status of `tee`, not of `jsr`.
       - name: Publish to JSR
         working-directory: packages/client
-        run: bunx jsr publish
+        run: |
+          set -o pipefail
+          bunx jsr publish 2>&1 | tee /tmp/jsr-publish.log
+          if grep -q "Skipping, already published" /tmp/jsr-publish.log; then
+            echo "::error::jsr publish skipped the upload — that version is already on JSR, so this run shipped NOTHING. Check packages/client/jsr.json against the tag."
+            exit 1
+          fi

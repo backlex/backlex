@@ -1,5 +1,6 @@
 import {
   defineProvider,
+  epochResumeToken,
   type ListingAttribute,
   type ListingCategory,
   type ListingOption,
@@ -148,8 +149,12 @@ export const otto = defineProvider({
       return {
         records,
         cursor: next ? `${since}|${next}` : null,
-        complete: !next,
-        ...(next ? {} : { resumeAt: Date.now() }),
+        // `readSince` takes the first `|`-segment as an epoch, and
+        // `readNextCursor` is guarded by `cursor.includes("|")` — so a bare
+        // number resumes the window and is never mistaken for Otto's own opaque
+        // page cursor. That guard is load-bearing here: without it the slice
+        // would hand the resume number straight back as a page token.
+        ...(next ? {} : { resumeToken: epochResumeToken() }),
       };
     },
   },

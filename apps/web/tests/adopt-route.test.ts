@@ -32,7 +32,12 @@ interface InspectResult {
   table: string;
   pk: { column: string; dbType: string; supported: boolean } | null;
   columns: InspectedColumn[];
-  systemColumnsPresent: { createdAt: boolean; updatedAt: boolean; ownerId: boolean };
+  systemColumnsPresent: {
+    createdAt: boolean;
+    updatedAt: boolean;
+    ownerId: boolean;
+    tenantId: boolean;
+  };
   foreignKeys: unknown[];
   warnings: string[];
 }
@@ -118,6 +123,11 @@ describe("admin adopt helpers", () => {
       createdAt: true,
       updatedAt: false,
       ownerId: false,
+      // Reported since #339: without it a tenant-scoped collection over this
+      // table matches nothing, silently, because `sql.identifier()` emits the
+      // column double-quoted and SQLite re-reads an unresolvable double-quoted
+      // identifier as a string literal.
+      tenantId: false,
     });
     expect(data.foreignKeys).toEqual([]);
   });

@@ -154,7 +154,12 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   { prefix: "/api/revisions", plane: "either", note: "Permission-gated history of a row the caller may already read." },
   { prefix: "/api/comments", plane: "either", note: "Permission-gated; end-user commenting is a supported shape." },
   { prefix: "/api/realtime", plane: "either", note: "SSE. The realtime filter re-evaluates the subscriber's own permission predicate, so both planes subscribe through one route." },
-  { prefix: "/api/vector", plane: "either", note: "Permission-gated similarity search." },
+  {
+    prefix: "/api/vector",
+    plane: "either",
+    note:
+      "Permission-gated similarity search. A namespace naming a collection takes that collection's gate; one naming nothing is a per-workspace scratch space. Those two answers are distinguishable (403 vs fall-through), so an app-plane caller can learn WHICH collection slugs exist — a workspace's collection names are DELIBERATELY not treated as secret. See docs/vector-search.md; #333 recorded the decision.",
+  },
   { prefix: "/api/notifications", plane: "either", note: "Both planes receive notifications addressed to them." },
   { prefix: "/api/device-tokens", plane: "either", note: "Push registration. An end-user's phone is the primary case." },
   {

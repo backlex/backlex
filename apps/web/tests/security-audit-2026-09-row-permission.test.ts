@@ -399,6 +399,15 @@ describe("vector namespaces that name a collection take that collection's gate",
     // gate had become a blanket refusal. `/query` rather than `/search`
     // because it takes pre-computed values and so gets past the (also absent)
     // embedding provider to the store itself.
+    //
+    // This difference is ALSO an information channel: a caller can tell a
+    // collection namespace from a free-form one, and so learn which slugs
+    // exist. #333 weighed that and recorded the posture — collection names are
+    // not treated as secret, because a workspace's own client application
+    // exposes them anyway, and closing the channel would cost app-plane callers
+    // the scratch space entirely. See `docs/vector-search.md`. So this
+    // assertion is load-bearing in two directions: it pins the gate as narrow,
+    // and it pins the decision.
     const res = await vec("query", {
       model: "bge-m3",
       values: [0.1, 0.2],

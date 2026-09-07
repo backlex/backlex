@@ -233,6 +233,13 @@ describe("external-DB migration: pkType + ingest", () => {
         physicalTable: phys,
         slug: `legacy_${Date.now()}`,
         pkColumn: "id",
+        // The fixture table has no `tenant_id`, and `tenantScoped` DEFAULTS
+        // true — a combination the create door now refuses (#339), because
+        // every read of it would answer 200 with nothing. This is the
+        // configuration the adopt wizard produces for a plain legacy table;
+        // stating it keeps the setup valid so the test can be about what it is
+        // about, which is ingest refusing an adopted collection.
+        tenantScoped: false,
         fields: [{ name: "name", type: "text" }],
       }),
     });

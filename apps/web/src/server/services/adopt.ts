@@ -259,6 +259,11 @@ export interface InspectedTable {
     createdAt: boolean;
     updatedAt: boolean;
     ownerId: boolean;
+    /** Whether the source table can back a TENANT-SCOPED collection at all.
+     *  Reported rather than inferred because `tenantScoped` defaults true, and
+     *  without the column every read silently matches nothing — see the
+     *  warning this drives. */
+    tenantId: boolean;
   };
   /** Heuristic suggestions for aliasing a non-conventional column to one
    *  of our system fields. Populated when the source table doesn't have
@@ -662,6 +667,23 @@ const buildInspectResult = (
       `${unsupportedCount} column(s) have unsupported types and will be skipped on import`,
     );
   }
+  // A tenant-scoped collection over a table with no `tenant_id` cannot match a
+  // single row, and — this is the part worth warning about — it does not fail
+  // while not matching. `tenantFilter` builds the predicate with
+  // `sql.identifier("tenant_id")`, which emits it DOUBLE-QUOTED, and SQLite
+  // re-reads a double-quoted identifier that resolves to no column as a string
+  // literal. So the clause degrades to `'tenant_id' = '<uuid>'`: false for
+  // every row, no error, HTTP 200 with an empty page over a table the operator
+  // knows has data (#339).
+  //
+  // `tenantScoped` defaults TRUE, so this is the default outcome of adopting a
+  // plain legacy table — which is why it belongs in the wizard's warnings and
+  // not only in a doc.
+  if (!byName.has("tenant_id")) {
+    warnings.push(
+      'Table has no "tenant_id" column — a tenant-scoped collection over it cannot match any row. Adopt it with tenantScoped: false.',
+    );
+  }
   return {
     table,
     pk: pkCol
@@ -676,6 +698,7 @@ const buildInspectResult = (
       createdAt: byName.has("created_at"),
       updatedAt: byName.has("updated_at"),
       ownerId: byName.has("owner_id"),
+      tenantId: byName.has("tenant_id"),
     },
     aliasSuggestions: {
       createdAt: byName.has("created_at")

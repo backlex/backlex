@@ -1461,7 +1461,6 @@ const extractBundles = async (
   const custom = roleRows.filter(
     (r) => r.name !== SYSTEM_ROLES.admin && r.name !== SYSTEM_ROLES.authenticated && r.name !== SYSTEM_ROLES.public,
   );
-  const roleNameById = new Map(roleRows.map((r) => [r.id, r.name]));
   // `permissions` carries no tenant_id — it is scoped only transitively through
   // `role_id`. Constraining the QUERY to this workspace's own role ids rather
   // than reading every row and filtering afterwards: the filter would be
@@ -1521,7 +1520,6 @@ const extractBundles = async (
       name: s.dashboards.name,
       description: s.dashboards.description,
       embedEnabled: s.dashboards.embedEnabled,
-      embedRoleId: s.dashboards.embedRoleId,
     })
     .from(s.dashboards)
     .where(mine(s.dashboards))) as {
@@ -1529,7 +1527,6 @@ const extractBundles = async (
     name: string;
     description: string | null;
     embedEnabled: unknown;
-    embedRoleId: string | null;
   }[];
   const panelRows = dashRows.length
     ? ((await db
@@ -1560,17 +1557,8 @@ const extractBundles = async (
       // one token.
       omit({
         resource: `dashboard:${d.name}`,
-        what: "public embed (token, enabled flag, viewer role)",
+        what: "public embed (token and enabled flag)",
         reason: "the embed token is a one-way hash — re-enable the embed in the target to mint a new one",
-      });
-    }
-    if (d.embedRoleId && roleNameById.has(d.embedRoleId)) {
-      // Recorded separately: even with a fresh token, the viewer role is a raw
-      // id here and the template format has no slot to name it.
-      omit({
-        resource: `dashboard:${d.name}`,
-        what: `embed viewer role "${roleNameById.get(d.embedRoleId)}"`,
-        reason: "the template format carries no embed settings; set it again after re-enabling the embed",
       });
     }
     const panels = panelRows.filter((p) => p.dashboardId === d.id);

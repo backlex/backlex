@@ -266,8 +266,15 @@ function SqlEditor({ pushToast }: { pushToast: PushToast }) {
 }
 
 function Migrations({ pushToast }: { pushToast: PushToast }) {
-  type Mig = { hash: string; tag: string | null; applied: boolean; t: string };
+  type Mig = {
+    hash: string;
+    tag: string | null;
+    applied: boolean;
+    source: string | null;
+    t: string;
+  };
   const [migs, setMigs] = useState<Mig[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [active, setActive] = useState<Mig | null>(null);
   useEffect(() => {
     if (active && migs.some((m) => m.hash === active.hash)) return;
@@ -278,16 +285,21 @@ function Migrations({ pushToast }: { pushToast: PushToast }) {
     void (async () => {
       try {
         const r = await dbAdminApi.migrations();
-        if (cancelled || !Array.isArray(r.data) || r.data.length === 0) return;
+        if (cancelled || !Array.isArray(r.data)) return;
         const mapped: Mig[] = r.data.map((m) => ({
           hash: String(m.hash ?? m.id),
           tag: m.tag ?? null,
-          applied: true,
+          // Read off the response. It used to be hardcoded true here as well as
+          // on the server, so a row the server said was unapplied would still
+          // have rendered a green check.
+          applied: m.applied,
+          source: m.source ?? null,
           t: typeof m.created_at === "number"
             ? new Date(m.created_at).toISOString().replace("T", " ").slice(0, 16)
-            : String(m.created_at),
+            : String(m.created_at ?? ""),
         }));
         setMigs(mapped);
+        setNote(r.note ?? null);
         setActive(mapped[0] ?? null);
       } catch (e) {
         pushToast?.((e as Error).message);
@@ -303,6 +315,11 @@ function Migrations({ pushToast }: { pushToast: PushToast }) {
           <div className="flex-1" />
           <span className="font-mono text-[11px] text-muted-foreground">{migs.length}</span>
         </div>
+        {note && (
+          <div className="border-b border-border px-4 py-2.5 text-[11.5px] text-muted-foreground">
+            {note}
+          </div>
+        )}
         {migs.length === 0 && (
           <EmptyState size="sm" title={<Trans>No migrations applied yet.</Trans>} />
         )}
@@ -310,16 +327,27 @@ function Migrations({ pushToast }: { pushToast: PushToast }) {
           <div
             key={m.hash}
             onClick={() => setActive(m)}
-            className={`grid cursor-pointer grid-cols-[20px_1fr_70px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active?.hash === m.hash ? "bg-accent" : ""}`}
+            className={`grid cursor-pointer grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active?.hash === m.hash ? "bg-accent" : ""}`}
           >
-            <span><I.Check size={13} className="text-[oklch(0.55_0.16_145)]" /></span>
+            <span>
+              {m.applied ? (
+                <I.Check size={13} className="text-[oklch(0.55_0.16_145)]" />
+              ) : (
+                <I.Clock size={13} className="text-muted-foreground" />
+              )}
+            </span>
             <div className="min-w-0">
               <div className="truncate font-mono text-[11.5px]">
                 {m.tag ?? m.hash.slice(0, 12)}
               </div>
-              <div className="text-[11px] text-muted-foreground">{m.t}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{m.t}</div>
             </div>
-            <Badge variant="default"><Trans>applied</Trans></Badge>
+            {/* `auto` rather than a fixed 70px: "cli+runtime" does not fit one,
+                and a clipped badge on a 390px viewport reads as a rendering
+                bug. The tag column absorbs the difference. */}
+            <Badge variant={m.applied ? "default" : "outline"} className="whitespace-nowrap">
+              {m.applied ? m.source ?? <Trans>applied</Trans> : <Trans>pending</Trans>}
+            </Badge>
           </div>
         ))}
       </Card>
@@ -334,9 +362,20 @@ function Migrations({ pushToast }: { pushToast: PushToast }) {
             <div className="flex flex-col gap-2 p-4 text-xs">
               <div><span className="text-muted-foreground"><Trans>Folder tag</Trans></span><div className="font-mono">{active.tag ?? <em className="text-muted-foreground"><Trans>unknown — manifest out of sync, run <code>bun run --cwd packages/db manifest</code></Trans></em>}</div></div>
               <div><span className="text-muted-foreground"><Trans>Hash</Trans></span><div className="font-mono [word-break:break-all]">{active.hash}</div></div>
-              <div><span className="text-muted-foreground"><Trans>Applied at</Trans></span><div className="font-mono">{active.t}</div></div>
+              <div>
+                <span className="text-muted-foreground"><Trans>Applied at</Trans></span>
+                <div className="font-mono">
+                  {active.applied ? active.t : <em className="text-muted-foreground"><Trans>not applied</Trans></em>}
+                </div>
+              </div>
+              <div>
+                <span className="text-muted-foreground"><Trans>Recorded by</Trans></span>
+                <div className="font-mono">
+                  {active.source ?? <em className="text-muted-foreground"><Trans>neither ledger</Trans></em>}
+                </div>
+              </div>
               <div className="mt-2 text-[11.5px] text-muted-foreground">
-                <Trans>Migrations are applied via <code>bun run db:migrate:&lt;dialect&gt;</code> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead.</Trans>
+                <Trans>Two things record a migration: the CLI (<code>bun run db:migrate:&lt;dialect&gt;</code>) writes <code>__drizzle_migrations</code>, and the boot runner writes <code>__backlex_migrations</code>. On Vercel and Netlify no CLI runs, so <code>runtime</code> is the expected answer there. Drizzle tracks by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead.</Trans>
               </div>
             </div>
           </>

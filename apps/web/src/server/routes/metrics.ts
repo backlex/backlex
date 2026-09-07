@@ -306,12 +306,36 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // inside the range. The `created_at >= start` bound is applied in SQL
       // (uses `sessions_created_idx`) so we read only the window instead of
       // full-scanning + sorting the whole sessions table on every load.
+      //
+      // WHAT THIS TILE MEANS: people administering THIS workspace. `sessions`
+      // is a global better-auth table with no `tenant_id`, so scoping it is a
+      // JOIN rather than a missing predicate — and the choice of join decides
+      // the number. This one counts `tenant_members`, which deliberately
+      // EXCLUDES app-plane end-users: they hold no membership row, and "how
+      // many people use the application this workspace serves" is a different
+      // question that would need its own tile rather than quietly changing this
+      // one. Decided in #332; until then the query had no tenant clause at all
+      // and a workspace admin was reading the whole deployment's count.
+      //
+      // `auth.tenantId` absent means single-tenant mode, where every session on
+      // the instance IS this workspace's — so the join is skipped rather than
+      // fail-closed to zero.
       try {
         const sessRows = await queryAll<{ user_id: string; created_at: number | string }>(
           { db: ctx.db, dialect: ctx.dialect },
-          sql.raw(
-            `SELECT user_id, created_at FROM sessions WHERE created_at >= ${start} ORDER BY created_at DESC LIMIT 2000`,
-          ),
+          auth.tenantId
+            ? sql`SELECT s.user_id AS user_id, s.created_at AS created_at
+                    FROM sessions s
+                    JOIN tenant_members m
+                      ON m.user_id = s.user_id
+                     AND m.tenant_id = ${auth.tenantId}
+                   WHERE s.created_at >= ${start}
+                   ORDER BY s.created_at DESC
+                   LIMIT 2000`
+            : sql`SELECT user_id, created_at FROM sessions
+                   WHERE created_at >= ${start}
+                   ORDER BY created_at DESC
+                   LIMIT 2000`,
         );
         for (const s of sessRows) {
           const ts = typeof s.created_at === "number" ? s.created_at : new Date(s.created_at).getTime();

@@ -33,7 +33,7 @@ const HELP = `backlex dashboards <list|get|run|report|create|delete|share|revoke
               [--out <file.pdf>]  also write the PDF to disk
   create --data <json|@file|->  create a dashboard ({ name, description?, layout? })
   delete <id>
-  share <id> [--role <roleId>]  enable the public embed (prints one-time token)
+  share <id>                    enable the public embed (prints one-time token)
   revoke <id>                   disable the public embed
 `;
 
@@ -181,14 +181,16 @@ export const runDashboards = async (args: string[]): Promise<void> => {
       case "share": {
         const id = rest[0];
         if (!id) {
-          process.stderr.write("dashboards share <id> [--role <roleId>]\n");
+          process.stderr.write("dashboards share <id>\n");
           process.exit(1);
         }
-        const roleId = flag(rest, "--role");
+        // No `--role`: an embed has no signed-in user, so it always resolves
+        // the `public` role. The flag named one and changed nothing, and the
+        // server now refuses a `roleId` outright (#331).
         const res = await client.request<{ token: string; url: string }>(
           "POST",
           `${BASE}/${encodeURIComponent(id)}/share`,
-          roleId ? { roleId } : {},
+          {},
         );
         if (json) printJson(res);
         else printKeyValues({ token: res.token, url: res.url });

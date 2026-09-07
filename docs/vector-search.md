@@ -315,6 +315,28 @@ censored field by field (the same rule `POST /items/{slug}/search` applies to
 A namespace that names **no** collection is a free-form per-workspace scratch
 space and stays open to any member of that workspace, as it has always been.
 
+#### Collection slugs are not treated as secret
+
+Those two behaviours are distinguishable: a namespace naming a collection the
+caller may not read answers **403**, and a namespace naming nothing falls
+through to the scratch space. So a caller can probe namespaces and learn *which
+collection slugs exist* — including an app-plane end-user, for whom
+`route-planes.ts` declares `/api/vector` as `plane: "either"` and who has no
+`GET /api/collections` to list them with.
+
+**This is a decision, not an oversight** (#333). A workspace's collection names
+are routinely visible in the client application it serves — in URLs, in SDK
+calls, in the shape of its own API — so treating them as a secret would be a
+guarantee this system does not otherwise make. What is protected is the
+*contents*: the 403 is real, and the scratch space holds nothing a collection
+put there.
+
+The alternative was to answer 403 for **every** namespace an app-plane caller
+may not read, which removes the oracle but also removes app-plane access to the
+scratch space entirely. That was not taken. If a deployment needs slugs to be
+unguessable, the answer is `plane: "platform"` on `/api/vector`, not a
+per-namespace disguise.
+
 > **Changed in the 2026-09 hardening.** All six endpoints were previously
 > session-only, so any signed-in identity — including a workspace's own
 > app-plane end-users — could read back `metadata.content`, the verbatim indexed

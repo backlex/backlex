@@ -13,6 +13,7 @@
  */
 import { and, asc, eq } from "drizzle-orm";
 import { AppError } from "@backlex/core";
+import { guardLogicalPrefix } from "../storage/keys";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { decryptSecret, encryptSecret } from "../../lib/crypto";
@@ -159,11 +160,36 @@ export const createS3Credential = async (
  *
  * Refused rather than normalized: normalizing would silently WIDEN the scope,
  * which is the opposite of what an admin editing a scope intends.
+ *
+ * It DELEGATES to `guardLogicalPrefix` rather than restating the rules, and
+ * that is the whole point of #328. Both doors did call this — so "the create
+ * door has no validation" was never the mechanism — but this was a *different,
+ * weaker* validator than the reader's. Faz 7 taught the reader about
+ * backslashes, `?`/`#`, NUL bytes, the reserved `tenants/` prefix, invalid
+ * percent-encoding, a bare `.` segment and traversal that only appears after
+ * decoding; nothing carried any of that back here. So the product wrote rows
+ * that its own reader answers 400 to, on every LIST with that credential.
+ *
+ * One consequence worth naming because it is a WIDENING: the old rule refused
+ * any `..` substring, so `release..2026/` — an ordinary key prefix — was
+ * refused here while the reader (which checks `..` per SEGMENT) allows it. The
+ * reader is the authority on what a key prefix is, so the doors now agree with
+ * it in both directions rather than being independently strict.
  */
 export const normalizePrefix = (raw: string | null | undefined): string | null => {
   const prefix = raw?.trim() || null;
-  if (prefix && (prefix.startsWith("/") || prefix.includes(".."))) {
-    throw new AppError("VALIDATION", "`prefix` must be a plain key prefix");
+  if (prefix === null) return null;
+  try {
+    guardLogicalPrefix(prefix);
+  } catch (e) {
+    // Re-thrown with the credential-shaped message. The reader's wording is
+    // about a `?prefix=` query parameter; an admin editing a credential scope
+    // is somewhere else entirely, and the cause is kept so the specific rule is
+    // not lost.
+    throw new AppError(
+      "VALIDATION",
+      `\`prefix\` must be a plain key prefix — ${(e as Error).message}`,
+    );
   }
   return prefix;
 };

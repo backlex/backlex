@@ -32,6 +32,25 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
+      # `release-tag-recorded` compares the recorded surface baselines against
+      # the newest `backlex-v*` / `cli-v*` TAG — the only evidence CI has that a
+      # release shipped, since it cannot reach npm by design. `actions/checkout`
+      # brings no tags, and without them the comparison would match nothing and
+      # report SUCCESS, which is worse than no check at all (#336).
+      #
+      # `fetch-tags: true` on the checkout step is NOT enough, and this is
+      # measured rather than assumed: it was tried on PR #346 and the guard test
+      # went red on CI while passing locally, because `fetch-tags` does not
+      # populate tags alongside the default `fetch-depth: 1`. The alternative —
+      # `fetch-depth: 0` — is a full-history clone on every PR, which is a real
+      # cost for a check that only ever reads refs.
+      #
+      # So: fetch the tag refs explicitly, at depth 1. `git tag --list` reads
+      # refs and never walks to the tagged commits, so their history is not
+      # needed.
+      - name: Fetch release tags
+        run: git fetch --no-recurse-submodules --depth=1 origin '+refs/tags/*:refs/tags/*'
+
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22

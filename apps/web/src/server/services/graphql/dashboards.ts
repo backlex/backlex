@@ -39,7 +39,6 @@ const DashboardType = new GraphQLObjectType({
     description: { type: GraphQLString },
     layout: { type: JSONScalar },
     embedEnabled: { type: new GraphQLNonNull(GraphQLBoolean) },
-    embedRoleId: { type: GraphQLString },
   },
 });
 
@@ -139,7 +138,6 @@ const normalizeDashboardRow = (r: any) => ({
   description: r.description ?? null,
   layout: r.layout ?? null,
   embedEnabled: Boolean(r.embedEnabled),
-  embedRoleId: r.embedRoleId ?? null,
 });
 
 export const dashboardQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {

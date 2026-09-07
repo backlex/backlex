@@ -5,7 +5,7 @@
  * Two consumption paths share one panel-runner (`runPanel`):
  *   - Admin (`runDashboard`)        — runs panels with the caller's identity.
  *   - Public embed (`runDashboardPublic`) — runs panels with the dashboard's
- *     `embedRoleId` scope (or fully unscoped when null), with NO session.
+ *     `public` role — an embed has no user, so no other role resolves (#331).
  *
  * The embed token (`dsh_<hex>`) is minted once on share and only its SHA-256
  * hash is stored, mirroring `services/shared-links.ts`. Every read/write
@@ -40,9 +40,6 @@ const dashTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.dashboards : sqlite.schema.dashboards;
 const panelTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.savedPanels : sqlite.schema.savedPanels;
-const roleTable = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? pg.schema.roles : sqlite.schema.roles;
-
 const EMBED_TOKEN_PREFIX = "dsh";
 const EMBED_TOKEN_BYTES = 24;
 
@@ -227,8 +224,20 @@ export const deleteDashboard = async (
 };
 
 /**
- * Enable the public embed: mint a fresh token (rotating any prior one),
- * optionally scope it to `roleId`. Returns the one-time plaintext token.
+ * Enable the public embed: mint a fresh token (rotating any prior one).
+ * Returns the one-time plaintext token.
+ *
+ * There is no role to scope it to. An anonymous embed resolves the `public`
+ * role and nothing else — see {@link runDashboardPublic}. This used to accept a
+ * `roleId`, store it, and have it do NOTHING: `resolvePermission` loads roles
+ * from the database BY USER ID, and an embed subject has none, so every panel
+ * resolved `public` whichever role the share named (#331). It failed closed —
+ * a more privileged embed role yielded LESS access, not more — which is why it
+ * survived so long.
+ *
+ * A publisher who needs an embed to see more grants it to `public` explicitly,
+ * on the collections in question. That is the same reach the old field
+ * appeared to offer, said out loud.
  */
 export const shareDashboard = async (
   ctx: Ctx,
@@ -237,6 +246,15 @@ export const shareDashboard = async (
   id: string,
   opts: { roleId?: string | null } = {},
 ): Promise<{ token: string; url: string }> => {
+  // Refused rather than ignored. A caller passing this had a belief about what
+  // the link would be able to read, and silently dropping it leaves the belief
+  // intact — which is exactly the state the docs put people in.
+  if (opts.roleId) {
+    throw new AppError(
+      "VALIDATION",
+      "An embed always runs as the `public` role, so `roleId` cannot scope it. Grant what the embed should read to `public` on the collections in question.",
+    );
+  }
   const t = dashTable(ctx.dialect);
   const existing = await getDashboard(ctx, tenantId, id);
   if (!existing) throw new AppError("NOT_FOUND", "Dashboard not found");
@@ -251,7 +269,10 @@ export const shareDashboard = async (
     .set({
       embedEnabled: true,
       embedTokenHash: tokenHash,
-      embedRoleId: opts.roleId ?? null,
+      // Cleared, not left alone: a dashboard shared before #331 carries a role
+      // id that never did anything, and leaving it would keep the column
+      // looking like it means something to the next reader.
+      embedRoleId: null,
       updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
     })
     .where(and(eq(t.id, id), or(eq(t.tenantId, tenantId), isNull(t.tenantId))));
@@ -518,7 +539,9 @@ const runPanel = async (
   auth: AuthSubject,
   tenantId: string,
   panel: any,
-  scope: { embedRoleName: string | null } | null,
+  /** Present ⇒ this is an anonymous public embed. Only its presence matters:
+   *  the clamps below are unconditional on that path. */
+  scope: { embed: true } | null,
   allowRawSql = false,
 ): Promise<PanelResult> => {
   const base: Omit<PanelResult, "data"> = {
@@ -552,9 +575,9 @@ const runPanel = async (
       if (scope) {
         const coll = (panel.config as any)?.collection;
         if (typeof coll === "string" && coll) {
-          // `auth` IS the embed subject on this path — the caller built it
-          // from the same `embedRoleName`. Resolving off a second, locally
-          // rebuilt copy is how the two would drift.
+          // `auth` IS the embed subject on this path — `userId: null`, which is
+          // what makes this resolve the `public` role. Rebuilding a second
+          // subject here is how the two would drift.
           const perm = await resolvePermission(ctx, auth, coll, "read");
           if (!perm.allowed)
             return { ...base, data: [], error: "Not permitted for this embed." };
@@ -666,44 +689,41 @@ export const runDashboard = async (
 };
 
 /**
- * Run a dashboard for a public embed — NO session. Panel data is scoped to the
- * dashboard's `embedRoleId` (resolved to its role name for the DSL); a null
- * role means fully public stats (unscoped read).
+ * Run a dashboard for a public embed — NO session. Every panel resolves the
+ * workspace's `public` role, and only that.
+ *
+ * It used to look up `dashboard.embedRoleId`, resolve it to a role name, put
+ * that name in the synthetic subject's `roles` and pass it along as a scope.
+ * All three were decorative: `resolvePermission` loads roles from the database
+ * BY USER ID (`loadRolesForUser`), an embed subject has none, and the
+ * `!userId` branch returns the `public` role and nothing else — `auth.roles` is
+ * never consulted. The scope's `embedRoleName` was never read either; `scope`
+ * was only ever tested for truthiness. See #331.
+ *
+ * It failed CLOSED — a more privileged embed role produced LESS access, not
+ * more — so there was nothing to leak, only a documented feature that was not
+ * real. A publisher who needs an embed to see more grants it to `public`.
  */
 export const runDashboardPublic = async (
   ctx: Ctx,
   dashboard: DashboardRow,
 ): Promise<DashboardEmbed> => {
   const tenantId = dashboard.tenantId ?? "";
-  let embedRoleName: string | null = null;
-  if (dashboard.embedRoleId) {
-    try {
-      const r = roleTable(ctx.dialect);
-      const rows = (await (ctx.db as any)
-        .select()
-        .from(r)
-        .where(eq(r.id, dashboard.embedRoleId))
-        .limit(1)) as { name: string }[];
-      embedRoleName = rows[0]?.name ?? null;
-    } catch {
-      embedRoleName = null;
-    }
-  }
-  // Synthetic auth for runItemsAggregate's signature; the real clamp comes from
-  // the resolved permission opts passed via `scope`.
+  // Synthetic auth for runItemsAggregate's signature. `userId: null` is what
+  // does the work — it is what makes `loadRolesForUser` answer `public`.
   const embedAuth: AuthSubject = {
     plane: "platform",
     userId: null,
     email: null,
-    roles: embedRoleName ? [embedRoleName] : ["public"],
+    roles: ["public"],
     tenantId,
   };
   // ALWAYS a scope on the public path. `dashboard.embedRoleId ? … : null` was
-  // the bug: `shareDashboard` defaults that column to null, so the ordinary
-  // share turned the clamp off entirely rather than narrowing it to `public`.
-  // A null `embedRoleName` means "the public role", which is what
-  // `resolvePermission` resolves for a subject with no user id anyway.
-  const scope = { embedRoleName };
+  // the bug that preceded this one: an ordinary share left that column null, so
+  // the clamp was turned off entirely rather than narrowed. The object is a
+  // marker meaning "this is an anonymous embed", which is all `runPanel` ever
+  // asked of it.
+  const scope = { embed: true as const };
   const panels = await panelsOf(ctx, tenantId, dashboard.id);
   const results: PanelResult[] = [];
   for (const panel of panels)

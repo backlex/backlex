@@ -5,6 +5,7 @@ import { AppError } from "@backlex/core";
 import { rangeOrderError, validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import { serializeColumns } from "./items/serialize";
+import { readFoldColumns } from "./items/collection-loader";
 import { canonicalizeMoneyFields } from "./items/money-fields";
 import { canonicalizeEmailFields } from "./items/email-fields";
 import { canonicalizeUrlFields } from "./items/url-fields";
@@ -32,6 +33,18 @@ export interface CollectionRow {
   fields: FieldDef[];
   ownerScoped: boolean;
   tenantScoped: boolean;
+  /**
+   * Which `<name>__fold` companion columns the physical table ACTUALLY has.
+   *
+   * Same field, same reason, same source as the items loader's — see
+   * `items/collection-loader.ts`. This loader had no equivalent, so every write
+   * behind flows / booking / payments / signatures / approvals named the
+   * companion from the field type and 500'd on any table that predates folded
+   * search (#324). The items path had the introspection and this one did not,
+   * which is the whole shape of the defect: one guarantee, two callers, and
+   * only one of them holding it.
+   */
+  foldColumns: ReadonlySet<string>;
 }
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
@@ -56,9 +69,17 @@ export const loadCollection = async (
     .limit(1);
   if (!rows[0]) throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   const r = rows[0] as Record<string, unknown>;
+  const physicalTable = (r.physicalTable ?? r.physical_table) as string;
   return {
     slug: r.slug as string,
-    physicalTable: (r.physicalTable ?? r.physical_table) as string,
+    physicalTable,
+    // Introspected here, before the row is built, for the same reason the items
+    // loader does it there: a `CollectionRow` is handed to a writer and must
+    // never exist in a state where `foldColumns` is unset. This loader has no
+    // cache, so it is one introspection per admin-trust write — the paths that
+    // use it (flows, bookings, payment syncs, approvals) are not the hot loop
+    // the items cache exists for.
+    foldColumns: await readFoldColumns(ctx, physicalTable),
     fields: r.fields as FieldDef[],
     ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
     tenantScoped:
@@ -215,7 +236,12 @@ export const createItem = async (
   for (const f of collection.fields) {
     if (input.data[f.name] === undefined) continue;
     // Same two-column rule as every other write path — see `serializeColumns`.
-    for (const [col, val] of serializeColumns(input.data[f.name], f, ctx.dialect)) {
+    for (const [col, val] of serializeColumns(
+      input.data[f.name],
+      f,
+      ctx.dialect,
+      collection.foldColumns,
+    )) {
       cols.push(col);
       vals.push(val);
     }
@@ -313,7 +339,12 @@ export const updateItem = async (
   const sets = [sql`${sql.identifier("updated_at")} = ${now}`];
   for (const f of collection.fields) {
     if (input.data[f.name] === undefined) continue;
-    for (const [col, val] of serializeColumns(input.data[f.name], f, ctx.dialect)) {
+    for (const [col, val] of serializeColumns(
+      input.data[f.name],
+      f,
+      ctx.dialect,
+      collection.foldColumns,
+    )) {
       sets.push(sql`${sql.identifier(col)} = ${val}`);
     }
   }

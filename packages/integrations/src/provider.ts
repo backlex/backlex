@@ -271,6 +271,37 @@ export interface SourcePullPage {
   resumeToken?: string;
 }
 
+/**
+ * How far back a time-windowed resume deliberately overlaps.
+ *
+ * A page walk over a mutating set cannot be exact: a record edited while the
+ * walk is in progress can land on a page that has already gone past. Resuming
+ * at the instant the walk ENDED steps over it for ever. Re-reading is an upsert
+ * on `externalId` and therefore free, so the window is deliberately generous —
+ * wide enough to cover a slow multi-page walk, not so wide that a run re-reads
+ * a whole lookback period.
+ *
+ * The same reasoning mailchimp's own `RESUME_OVERLAP_MS` records; this is the
+ * shared version for the marketplace providers whose window is a plain epoch.
+ */
+export const RESUME_OVERLAP_MS = 5 * 60_000;
+
+/**
+ * The resume marker for a provider whose cursor carries an epoch-ms window
+ * start in its first segment — bol, etsy, allegro, ebay, otto.
+ *
+ * A bare number is deliberate: every one of those providers parses the first
+ * segment of the cursor with `Number(...)` and falls back to page 0/1 when the
+ * second segment is absent, so this round-trips through all five unchanged and
+ * cannot be mistaken for a page cursor.
+ *
+ * It exists as one function because five copies of `resumeAt: Date.now()` is
+ * exactly how those five came to return a field name that was never in the
+ * contract, for months, while the sibling providers resumed correctly (#318).
+ */
+export const epochResumeToken = (now: number = Date.now()): string =>
+  String(now - RESUME_OVERLAP_MS);
+
 /** What a source provider's `pull` receives. */
 export interface SourcePullContext {
   /** Connection config — credentials, already decrypted. */

@@ -1,5 +1,6 @@
 import {
   defineProvider,
+  epochResumeToken,
   type ListingAttribute,
   type ListingCategory,
   type ListingVerdict,
@@ -169,10 +170,11 @@ export const allegro = defineProvider({
       return {
         records,
         cursor: more ? `${since}:${seen}` : null,
-        complete: !more,
         // The watermark only moves when the walk finished, or a later page's
-        // orders would be skipped for ever.
-        ...(more ? {} : { resumeAt: Date.now() }),
+        // orders would be skipped for ever. `readSince` takes the first
+        // `:`-segment as an epoch and `readOffset` answers 0 without a second
+        // one, so a bare number is a window start, never an offset.
+        ...(more ? {} : { resumeToken: epochResumeToken() }),
       };
     },
   },

@@ -82,6 +82,10 @@ interface InspectResult {
     createdAt: boolean;
     updatedAt: boolean;
     ownerId: boolean;
+    /** Without it a tenant-scoped collection over this table matches nothing,
+     *  silently — so the switch below is disabled rather than left to produce a
+     *  422 at apply time. See #339. */
+    tenantId: boolean;
   };
   // Heuristic alias suggestions from the backend — column names that look
   // like a non-conventional version of a system field. Null = no candidate.
@@ -1519,6 +1523,8 @@ function Step3Metadata({
   applyError: string | null;
 }) {
   const { t } = useLingui();
+  /** Whether the source table can back a tenant-scoped collection at all. */
+  const hasTenantColumn = inspect.systemColumnsPresent.tenantId;
   // Build a list of "system column wiring" lines for the dry-run summary.
   // Each entry maps a logical system field to the physical resolution
   // (conventional, alias <- column, side table, or "not used").
@@ -1607,10 +1613,22 @@ function Step3Metadata({
           <div>
             <div className="field-label"><Trans>Tenant-scoped</Trans></div>
             <div className="field-hint">
-              <Trans>Rows carry a <span className="font-mono">tenant_id</span>. Adopted tables usually don't — leave off unless you know the source already partitions by tenant.</Trans>
+              {hasTenantColumn ? (
+                <Trans>Rows carry a <span className="font-mono">tenant_id</span>. Adopted tables usually don't — leave off unless you know the source already partitions by tenant.</Trans>
+              ) : (
+                // Not merely disabled: say WHY. The server refuses this
+                // combination (#339) because the read would match no row and
+                // still answer 200 — an operator who is not told will read the
+                // greyed-out switch as an arbitrary restriction.
+                <Trans>This table has no <span className="font-mono">tenant_id</span> column, so a tenant-scoped collection over it could not match any row.</Trans>
+              )}
             </div>
           </div>
-          <Switch checked={tenantScoped} onChange={setTenantScoped} />
+          <Switch
+            checked={tenantScoped && hasTenantColumn}
+            disabled={!hasTenantColumn}
+            onChange={setTenantScoped}
+          />
         </div>
 
         <div

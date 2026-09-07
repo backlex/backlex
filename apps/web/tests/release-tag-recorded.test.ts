@@ -20,9 +20,16 @@
  * naive version of this check would find an empty list, compare nothing, and
  * report SUCCESS — a permanently green check guarding nothing, which is worse
  * than no check at all. So an empty tag list is a FAILURE here, not a skip, and
- * `.github/workflows/test.yml` carries the `fetch-tags: true` that keeps it
- * answerable. Break-verified in both directions: a stale `recorded.version`
- * goes red, and so does a checkout with no tags.
+ * `.github/workflows/test.yml` carries an explicit `git fetch` of the tag refs
+ * that keeps it answerable. Break-verified in both directions: a stale
+ * `recorded.version` goes red, and so does a checkout with no tags.
+ *
+ * That guard EARNED ITS KEEP on the very first CI run. `fetch-tags: true` on
+ * the checkout step looked sufficient and is not — it does not populate tags
+ * alongside the default `fetch-depth: 1` — so this file went red on PR #346
+ * while passing locally. Which is the point: without the empty-list assertion
+ * the job would have gone green over a check comparing nothing, and nobody
+ * would have learned that for another four releases.
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -94,7 +101,7 @@ describe("a tagged release is reflected in the recorded surface", () => {
     expect(
       all.length,
       "No release tags are visible to git. On CI that means the checkout step " +
-        "lost `fetch-tags: true`, which would make every " +
+        "lost its `git fetch` of the tag refs, which would make every " +
         "assertion below pass by comparing an empty list — the exact shape of a " +
         "guard that reports SUCCESS while checking nothing. Restore it in " +
         ".github/workflows/test.yml. Locally, `git fetch --tags`.",

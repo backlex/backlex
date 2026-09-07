@@ -32,7 +32,12 @@ interface InspectResult {
   table: string;
   pk: { column: string; dbType: string; supported: boolean } | null;
   columns: InspectedColumn[];
-  systemColumnsPresent: { createdAt: boolean; updatedAt: boolean; ownerId: boolean };
+  systemColumnsPresent: {
+    createdAt: boolean;
+    updatedAt: boolean;
+    ownerId: boolean;
+    tenantId: boolean;
+  };
   foreignKeys: unknown[];
   warnings: string[];
 }

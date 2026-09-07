@@ -226,7 +226,7 @@ describe("a marketplace walk that finished resumes where it stopped", () => {
         c.id,
         { config: c.config, settings: { lookbackDays: "30" }, cursor: null, limit: 200, connectionKey: "c1" },
         fetchImpl,
-      )) as Record<string, unknown>;
+      )) as unknown as Record<string, unknown>;
       expect({ id: c.id, resumeAt: "resumeAt" in page, complete: "complete" in page }).toEqual({
         id: c.id,
         resumeAt: false,

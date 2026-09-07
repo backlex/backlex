@@ -31,6 +31,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          # `sdk-release-drift` / `cli-release-drift` compare the recorded
+          # surface baseline against the newest `backlex-v*` / `cli-v*` TAG —
+          # the only evidence CI has that a release shipped, since it cannot
+          # reach npm by design. `actions/checkout` fetches no tags by default,
+          # and without them the comparison would match nothing and report
+          # SUCCESS, which is worse than no check at all. The tests refuse to
+          # pass on an empty tag list for exactly that reason; this is what
+          # keeps them able to answer. See #336.
+          fetch-tags: true
+          # Deliberately NOT `fetch-depth: 0`. `fetch-tags` exists precisely to
+          # bring tags alongside a shallow clone, and the check reads refs with
+          # `git tag --list` — it never walks to the tagged commits. A full
+          # history clone would put that cost on every PR for nothing.
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:

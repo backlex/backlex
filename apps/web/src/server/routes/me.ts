@@ -5,6 +5,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { SECURITY, errorResponses } from "../lib/openapi";
+import { requireUser } from "../middleware/session";
 import { listReadableCollections } from "../services/permissions";
 import { isInstanceOperator } from "../services/roles/guards";
 import { FILES_COLLECTION } from "./storage";
@@ -34,6 +35,14 @@ const MeRow = z
   })
   .openapi("Me");
 
+const me = new OpenAPIHono<AppBindings>({ defaultHook });
+
+// Mounted rather than left inline so the router can SEE this route's gate. The
+// handler's own `auth.userId` check below stays: it narrows the type for the
+// query that follows, and a route that ever loses this mount would lose
+// visibility, not its gate. See scripts/scan-route-gates.ts and #345.
+me.use("*", requireUser);
+
 /**
  * `GET /api/me` — minimal "who am I" surface for the admin SPA so the header
  * dropdown can render name/email/avatar + a role badge without reaching for
@@ -42,7 +51,7 @@ const MeRow = z
  * resolver uses server-side; `isAdmin` is precomputed so callers can render
  * a badge in one cycle.
  */
-export const meRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
+export const meRoutes = me.openapi(
   createRoute({
     method: "get",
     path: "/",
@@ -62,6 +71,9 @@ export const meRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
+    // Unreachable behind `requireUser` above, and kept for both reasons in that
+    // comment — the narrowing `auth.userId` needs, and a gate that does not
+    // depend on the mount surviving.
     if (!auth.userId) throw new AppError("UNAUTHORIZED", "Not signed in");
     const usersTable = ctx.dialect === "pg" ? pg.schema.users : sqlite.schema.users;
     const rows = (await (ctx.db as any)

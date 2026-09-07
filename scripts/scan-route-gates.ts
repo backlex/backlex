@@ -160,27 +160,60 @@ export const scanRouteGates = (
  * and goes red, whatever its path.
  *
  * It is not a target to sit at. Every entry under it is a route whose gate a
- * reader cannot see, and #345 carries the classification. As of `156cd042` the
- * 20 are: `app.use` registrations under `/api/t/*` and `/api/uploads/*`; the
- * two GraphQL doors and `/api/me`, which check `auth` in the handler; three
- * that CANNOT become a mounted middleware (see below); and four that are public
- * by design and CANNOT be declared so either — `ROUTE_PLANES` is keyed on a
- * path PREFIX, not a method, and each of those four shares its prefix with an
- * operator-only route. `GET /api/workspace-config` is the clearest:
- * `PUT /` and `GET /raw` live under the same prefix and are the operator's, so
- * declaring the prefix `public` would open them. `GET /api/tenants/invite` was
- * the one of the five that DID have a prefix of its own, and it moved.
+ * reader cannot see. What follows is the classification, RE-DERIVED from the
+ * live router rather than carried forward — an earlier version of this comment
+ * had three of these wrong, and a wrong classification is worse than none
+ * because it retires a question nobody then re-asks.
  *
- * The three that cannot be a mounted middleware, because the permission is not
- * knowable before the handler runs:
- *   · `POST /api/items/:slug/batch` — the action differs per operation
- *   · `POST /api/revisions/:id/revert` — the collection is only known after
- *     loading the revision row
- *   · `/api/realtime/*` — the permission is keyed on the channel path param
+ * The 19, by why each one is here:
+ *
+ *  · **2 middleware registrations.** `ALL /api/t/*` and `ALL /api/uploads/*`
+ *    are `app.use(...)` rows, not routes. Arguably the scan should not count
+ *    them at all; that is a change to this file, not to the product.
+ *
+ *  · **9 `/api/realtime/*`.** The permission is keyed on the `:channel` path
+ *    param and what it maps to differs per channel KIND, so there is nothing
+ *    for a mounted middleware to name.
+ *
+ *  · **2 GraphQL doors** — `ALL /api/graphql` and `ALL /api/graphql/stream`.
+ *    These were previously filed as "genuinely liftable" and that was WRONG.
+ *    Their route-level check is `auth.tenantId`, a scoping precondition, not
+ *    authorization: an anonymous caller carrying `X-Backlex-Tenant` is meant to
+ *    reach them, and the real check is `resolvePermission(ctx, auth, collection,
+ *    action)` per resolver — a single document touches many collections with
+ *    different actions. Mounting `requireUser` would break anonymous public
+ *    reads; mounting a `requireTenant` would be worse than nothing, because a
+ *    gate name that means "a tenant is required" would let a future route drop
+ *    out of this count while staying anonymously reachable.
+ *
+ *  · **1 `POST /api/items/:slug/batch`** — a batch carries mixed
+ *    create/update/delete, so there is no single action to name.
+ *
+ *  · **1 `POST /api/revisions/:id/revert`** — the collection is only known
+ *    after loading the revision row named by `{id}`.
+ *
+ *  · **1 `GET /api/admin/integrations/oauth/callback`** — gated inside, and it
+ *    has to be: it is where the PROVIDER redirects a browser back, so it must
+ *    answer a signed-out caller with a redirect to `/integrations?oauth=…`, not
+ *    the JSON 401 a mounted gate returns.
+ *
+ *  · **3 public by design that CANNOT be declared so.** `ROUTE_PLANES` is keyed
+ *    on a path PREFIX, not a method, and `GET /api/workspace-config` +
+ *    `GET /api/workspace-config/asset/:kind` share their prefix with the
+ *    operator's `PUT /` and `GET /raw`. Declaring the prefix `public` would open
+ *    those. `GET /api/t/:slug/orgs/invites/:token` is the app-plane invite
+ *    lookup, where holding the token IS the authorization.
+ *    (`GET /api/tenants/invite` was the one of these with a prefix of its own,
+ *    and it moved in #350.)
+ *
+ * So exactly ONE of the 19 was liftable — `GET /api/me`, which now mounts
+ * `requireUser` — and the honest remainder is two structural questions rather
+ * than a backlog of routes: should this scan count `app.use` rows at all, and
+ * should `ROUTE_PLANES` gain method granularity.
  *
  * Lower it when a family moves. Raising it needs a sentence saying why.
  */
-export const MAX_UNGATED = 20;
+export const MAX_UNGATED = 19;
 
 /** Below this the scan has stopped seeing the router and its zero means
  *  nothing. */

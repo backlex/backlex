@@ -1390,11 +1390,21 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   // Lazy: the GraphQL subsystem (graphql-yoga + graphql + @graphql-tools) is a
   // large slice of the bundle that most requests never touch. Dynamic-import it
   // on first hit so it stays out of the worker's cold-start eval path.
+  //
+  // NO MOUNTED GATE, and this is one of the shapes that cannot have one — see
+  // MAX_UNGATED in scripts/scan-route-gates.ts. The route-level check inside is
+  // `auth.tenantId`, a scoping precondition rather than authorization: an
+  // anonymous caller carrying `X-Backlex-Tenant` is MEANT to reach a public
+  // read here. The authorization is per resolver —
+  // `resolvePermission(ctx, auth, collection, action)` in
+  // services/graphql/core.ts — because one document touches many collections
+  // with different actions, so there is no single check to name out here.
   app.all("/api/graphql", (c) =>
     import("./routes/graphql").then((m) => m.handleGraphql(c, app as unknown as Hono)),
   );
   // GraphQL subscriptions over SSE (graphql-sse distinct-connections mode) —
   // delegates to the realtime layer's transports; same lazy-load rationale.
+  // Same story as the door above: tenant-scoped, permission-checked per field.
   app.all("/api/graphql/stream", (c) =>
     import("./routes/graphql").then((m) => m.handleGraphqlStream(c)),
   );

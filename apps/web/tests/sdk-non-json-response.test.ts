@@ -95,7 +95,7 @@ describe("a 2xx that is not JSON", () => {
         return r;
       }) as unknown as typeof fetch,
     });
-    await expect(stripped.from("orders").list()).resolves.toEqual({ data: [] });
+    expect((await stripped.from("orders").list()).data).toEqual([]);
   });
 
   test("a 204 is still nothing, not a parse attempt", async () => {

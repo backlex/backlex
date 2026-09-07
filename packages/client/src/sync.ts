@@ -18,6 +18,7 @@
  */
 
 import { matchesCondition, shapeKey, type Condition } from "./condition";
+import { encodePathSegment } from "./core";
 
 /** A locally-queued offline write awaiting flush to the server.
  *
@@ -350,7 +351,7 @@ export const createSync = (client: SyncClientLike, options: SyncOptions): SyncCo
   const store = options.store ?? memoryStore();
   const pk = options.pk ?? "id";
   const pageSize = options.pageSize ?? 200;
-  const slug = encodeURIComponent(options.collection);
+  const slug = encodePathSegment(options.collection, "Collection slug");
   const notify = () => options.onChange?.();
   const shape = options.shape ?? null;
   const shapeParam = shape ? `&shape=${encodeURIComponent(JSON.stringify(shape))}` : "";

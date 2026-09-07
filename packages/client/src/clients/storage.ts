@@ -1,5 +1,6 @@
 import { BacklexError } from "../types";
 import type { ResumableUploadResult } from "../types";
+import { encodePathSegment } from "../core";
 import type { ClientCore } from "../core";
 
 // ── Resumable-upload helpers (TUS) ──────────────────────────────────────────
@@ -47,17 +48,12 @@ const normalizeUploadData = (data: Blob | ArrayBuffer | Uint8Array): UploadSourc
 const encodeKeyPath = (key: string): string =>
   key
     .split("/")
-    .map((segment) => {
-      if (segment === "." || segment === "..") {
-        throw new BacklexError(400, {
-          error: {
-            code: "VALIDATION",
-            message: `Storage key segment ${JSON.stringify(segment)} cannot be addressed by URL — a dot segment is normalized away by every URL parser.`,
-          },
-        });
-      }
-      return encodeURIComponent(segment);
-    })
+    // An EMPTY segment is kept as-is, which is the one way this differs from
+    // every other path segment the SDK builds: `a//b` is a legal object key and
+    // `//` is not a dot segment, so nothing normalizes it away.
+    .map((segment) =>
+      segment === "" ? "" : encodePathSegment(segment, "Storage key segment"),
+    )
     .join("/");
 
 /** Image transform parameters, as the download route accepts them. */

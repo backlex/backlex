@@ -1350,6 +1350,11 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // into an open redirect or a reflection sink.
       const back = (status: string) => c.redirect(`/integrations?oauth=${status}`, 302);
 
+      // Gated here rather than by a mounted middleware, and it has to be: this
+      // is where the PROVIDER redirects a BROWSER back, so a signed-out caller
+      // must be sent to the admin page with a status it can render. A mounted
+      // gate answers JSON 401, which a browser mid-redirect shows as a blank
+      // error page. See MAX_UNGATED in scripts/scan-route-gates.ts and #345.
       const auth = c.get("auth");
       if (!auth?.userId || !auth.roles?.includes(SYSTEM_ROLES.admin) || !auth.tenantId) {
         return back("signed_out");

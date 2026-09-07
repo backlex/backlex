@@ -862,6 +862,20 @@ const TestPublishInput = z
 
 const TAG = "realtime";
 
+/**
+ * NO mounted permission gate on these routes, and they cannot have one: the
+ * permission is keyed on the CHANNEL, which is a path param, and what it maps
+ * to differs per channel kind — `items:<slug>` resolves the collection's `read`
+ * or `publish`, a signal channel resolves something else, and a workspace's own
+ * named channels are checked against their own rule. A
+ * `requirePermission(collection, action)` has nothing to name before the
+ * handler has parsed the channel.
+ *
+ * Each handler resolves it and refuses with UNAUTHORIZED / FORBIDDEN. That is
+ * why these routes show in the ungated count `scripts/scan-route-gates.ts`
+ * keeps — the count measures what the ROUTER can see, not whether a route is
+ * safe. See #345.
+ */
 export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({

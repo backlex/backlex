@@ -160,19 +160,27 @@ export const scanRouteGates = (
  * and goes red, whatever its path.
  *
  * It is not a target to sit at. Every entry under it is a route whose gate a
- * reader cannot see, and #345 carries the classification. As of `cf670380` the
- * 21 are: `app.use` registrations under `/api/t/*` and `/api/uploads/*`; the
- * two GraphQL doors and `/api/me`, which check `auth` in the handler; five
- * routes that are public by design but not yet declared so in `ROUTE_PLANES`;
- * and three that CANNOT become a mounted middleware —
- * `POST /api/items/:slug/batch` (the action differs per operation),
- * `POST /api/revisions/:id/revert` (the collection is only known after loading
- * the revision row) and `/api/realtime/*` (the permission is keyed on the
- * channel path param).
+ * reader cannot see, and #345 carries the classification. As of `156cd042` the
+ * 20 are: `app.use` registrations under `/api/t/*` and `/api/uploads/*`; the
+ * two GraphQL doors and `/api/me`, which check `auth` in the handler; three
+ * that CANNOT become a mounted middleware (see below); and four that are public
+ * by design and CANNOT be declared so either — `ROUTE_PLANES` is keyed on a
+ * path PREFIX, not a method, and each of those four shares its prefix with an
+ * operator-only route. `GET /api/workspace-config` is the clearest:
+ * `PUT /` and `GET /raw` live under the same prefix and are the operator's, so
+ * declaring the prefix `public` would open them. `GET /api/tenants/invite` was
+ * the one of the five that DID have a prefix of its own, and it moved.
+ *
+ * The three that cannot be a mounted middleware, because the permission is not
+ * knowable before the handler runs:
+ *   · `POST /api/items/:slug/batch` — the action differs per operation
+ *   · `POST /api/revisions/:id/revert` — the collection is only known after
+ *     loading the revision row
+ *   · `/api/realtime/*` — the permission is keyed on the channel path param
  *
  * Lower it when a family moves. Raising it needs a sentence saying why.
  */
-export const MAX_UNGATED = 21;
+export const MAX_UNGATED = 20;
 
 /** Below this the scan has stopped seeing the router and its zero means
  *  nothing. */

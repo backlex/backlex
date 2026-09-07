@@ -47,6 +47,12 @@ const BulkUpdateInput = z
 
 export const itemsBatchRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
+    // NO mounted permission gate, and it cannot have one: a batch carries a
+    // MIX of create / update / delete ops, so there is no single action for a
+    // `requirePermission(collection, action)` to name. The check is per
+    // operation in `services/items/batch.ts` — `resolvePermission(action)`,
+    // refusing with FORBIDDEN — which is why this route shows in the ungated
+    // count that `scripts/scan-route-gates.ts` keeps. See #345.
     createRoute({
       method: "post",
       path: "/{slug}/batch",

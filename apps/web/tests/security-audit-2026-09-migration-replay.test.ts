@@ -54,6 +54,7 @@ import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { ensureMigrations, isTransformStatement } from "@backlex/db/auto-migrate";
 import { MIGRATIONS as SQLITE_BUNDLE } from "@backlex/db/sqlite/migrations-bundle";
 import { MIGRATIONS as PG_BUNDLE } from "@backlex/db/pg/migrations-bundle";
+import { MIGRATION_TAGS_PG } from "@backlex/db";
 import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 import { PG_TESTS_OPTIONAL } from "./setup-pg";
 
@@ -459,6 +460,50 @@ describe("auto-migrate (pg): the CLI ledger is adopted there too", () => {
         expect(outcome.adopted.length).toBeLessThanOrEqual(PG_BUNDLE.length);
         expect(outcome.applied).toEqual([]);
         expect(outcome.failed).toEqual([]);
+
+        // ── Added for #325 ──────────────────────────────────────────────────
+        // That issue asked for this path to be run, believing it had no test.
+        // It has had one since the audit — this one. What it did NOT have is
+        // the two halves below, and both fail SILENTLY: adoption's `catch`
+        // turns any read error into "nothing to adopt", and an unrecognised
+        // hash is skipped rather than reported.
+
+        // (a) The hash agreement. `adoptCliLedger` maps hash → migration NAME
+        // through `MIGRATION_TAGS_PG`, so if drizzle's migrator ever hashed
+        // differently from `build-manifest.ts` every row would be skipped and
+        // the outcome would look exactly like an empty ledger.
+        const ledger = await pg.query<{ hash: string }>(
+          "SELECT hash FROM drizzle.__drizzle_migrations",
+        );
+        expect(ledger.rows.length).toBeGreaterThan(0);
+        const unknown = ledger.rows.map((r) => r.hash).filter((h) => !MIGRATION_TAGS_PG[h]);
+        expect({ unknown: unknown.length, sample: unknown.slice(0, 3) }).toEqual({
+          unknown: 0,
+          sample: [],
+        });
+
+        // (b) Boot TWICE. The issue asks for it by name, and it is a different
+        // question: the first call wrote `__backlex_migrations`, so the second
+        // must find nothing left to do. A fresh drizzle handle is required —
+        // `ensureMigrations` memoises per handle in a WeakMap, so re-calling it
+        // with the same object returns the first result and asserts nothing.
+        const second = await ensureMigrations(drizzlePglite({ client: pg }) as never, "pg");
+        expect({ applied: second.applied.length, failed: second.failed.length }).toEqual({
+          applied: 0,
+          failed: 0,
+        });
+
+        // (c) The concrete stake. `20260510120000_per_workspace_collections` is
+        // the file whose replay reset 26 collection metadata columns to their
+        // defaults on SQLite — `adopted` among them, the difference between
+        // "backlex owns this table" and "backlex was pointed at it". If
+        // adoption had silently failed, this table would have been rebuilt.
+        const cols = await pg.query<{ column_name: string }>(
+          "SELECT column_name FROM information_schema.columns WHERE table_name = 'collections'",
+        );
+        const names = cols.rows.map((r) => r.column_name);
+        expect(names).toContain("adopted");
+        expect(names).toContain("tenant_id");
       } finally {
         await pg.close();
       }

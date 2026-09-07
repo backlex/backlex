@@ -82,6 +82,13 @@ pre-commit:
 # broken main and the deploy workflow. Same checks the workflow runs —
 # any green-here / red-there divergence is a CI bug.
 #
+# That sentence used to be aspirational. `apps/web/tests/prepush-ci-parity.test.ts`
+# now enforces it: it reads test.yml's `test` and `build` jobs and this file,
+# and fails when CI runs a script the hook does not. It was written because the
+# claim was FALSE — the hook was missing `typecheck:tests`, `build:examples`
+# and the SDK's tsup build, and a PR went red on the first of those after a
+# fully green ~190s local gate. See #352.
+#
 # Override with `git push --no-verify` ONLY when you're certain a transient
 # issue (network, sandbox-only DB lock) is the cause; otherwise diagnose it.
 # Deliberately SERIAL. This ran `parallel: true` until it was measured on the
@@ -134,6 +141,24 @@ pre-push:
       run: bun run --no-orphans build:targets
     - name: typecheck
       run: bun run --no-orphans typecheck
+    # `typecheck` does NOT cover apps/web/tests — that is a separate tsconfig
+    # and a separate script, and `bun test` never type-checks at all. So a spec
+    # could be green three ways locally (bun test, typecheck, the whole gate)
+    # and still be wrong; PR #351 was. 1.0s measured.
+    - name: typecheck:tests
+      run: bun run --no-orphans typecheck:tests
+    # The tsup `.d.ts` build, and the one with teeth beyond convenience: it runs
+    # rollup-plugin-dts against the TypeScript 6.0.3 this package pins in its
+    # OWN devDependencies — a different compiler from the 7.0.2 `typecheck`
+    # above uses, because 7.0 ships no compiler API. A declaration-only
+    # regression is invisible to every other local check. 3.0s measured.
+    - name: build:sdk-dts
+      run: bun run --no-orphans --cwd packages/client build
+    # The examples are nine real apps built against the SDK by source path, so
+    # they are the closest thing here to a consumer compiling against a change.
+    # 6.6s measured warm.
+    - name: build:examples
+      run: bun run --no-orphans build:examples
     # `--timeout` stays at 30s. It was raised from Bun's 5s default because
     # contention made different specs lose the race each run, and `--parallel`
     # (below) puts some of that contention back deliberately. 30s still fails a

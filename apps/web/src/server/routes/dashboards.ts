@@ -33,15 +33,29 @@ const DashboardRow = z
     description: z.string().nullable(),
     layout: z.unknown().nullable(),
     embedEnabled: z.boolean(),
-    embedRoleId: z.string().nullable(),
     createdBy: z.string().nullable(),
     createdAt: z.unknown().nullable(),
     updatedAt: z.unknown().nullable(),
   })
   .openapi("Dashboard");
 
+/**
+ * `roleId` is still ACCEPTED by the schema so a caller that sends one gets the
+ * service's explanation (a 422 naming `public`) rather than a shape error that
+ * says nothing about why. It scopes nothing — see `shareDashboard` and #331.
+ */
 const ShareInput = z
-  .object({ roleId: z.string().nullable().optional() })
+  .object({
+    roleId: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({
+        deprecated: true,
+        description:
+          "REMOVED. An embed always runs as the `public` role; sending a role id is refused. Grant what the embed should read to `public` on the collections in question.",
+      }),
+  })
   .openapi("DashboardShareInput");
 
 const ShareResult = z
@@ -111,7 +125,6 @@ const publicRow = (row: any) => ({
   description: row.description,
   layout: row.layout ?? null,
   embedEnabled: Boolean(row.embedEnabled),
-  embedRoleId: row.embedRoleId ?? null,
   createdBy: row.createdBy,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
@@ -265,7 +278,7 @@ export const dashboardsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: TAGS,
       summary: "Enable the public embed",
       description:
-        "Mints a fresh embed token (rotating any prior one). Optionally scope panel data to a role via `roleId`.",
+        "Mints a fresh embed token (rotating any prior one). Panel data always resolves the `public` role — an anonymous embed has no user, so no other role can be resolved for it. Grant what the embed should read to `public`.",
       security: SECURITY,
       middleware: ADMIN_GATE,
       request: {

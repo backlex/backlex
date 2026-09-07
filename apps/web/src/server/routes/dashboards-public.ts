@@ -42,8 +42,8 @@ const PublicDashboard = z
 /**
  * Public, unauthenticated read of an embedded dashboard. Mounted at
  * `/api/public/dashboards` with NO `requireUser` — anyone holding the embed
- * token can read. Panel data is scoped to the dashboard's `embedRoleId`
- * (resolved server-side); a null role means fully public stats.
+ * token can read. Panel data always resolves the workspace's `public` role —
+ * an embed has no signed-in user, so no other role can be resolved for it.
  *
  * Degrades to 404 when the token is unknown/revoked or the `dashboards` table
  * hasn't been migrated yet (`resolveEmbedToken` swallows the missing-table

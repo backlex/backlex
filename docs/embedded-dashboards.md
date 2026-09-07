@@ -19,8 +19,9 @@ Two system tables (dual-dialect, in `packages/db/src/{pg,sqlite}/schema.ts`):
 
 - **`dashboards`** — `id`, `tenantId`, `name`, `description`, `layout` (JSON,
   dashboard-level display config), `embedEnabled` (bool), `embedTokenHash`
-  (SHA-256 of the one-time embed token), `embedRoleId` (role the public embed
-  scopes data to), `createdBy`, timestamps.
+  (SHA-256 of the one-time embed token), `createdBy`, timestamps. There is also
+  a legacy `embedRoleId` column; it is written `NULL` and read by nothing — see
+  the data-scope note below.
 - **`saved_panels.dashboard_id`** — nullable FK-ish column. `NULL` = a loose
   ("Ungrouped") panel rendered on the default Insights grid; otherwise the panel
   belongs to that dashboard.
@@ -69,24 +70,25 @@ The token resolves at:
         width="100%" height="640" frameborder="0"></iframe>
 ```
 
-### Data scope (`embedRoleId`)
+### Data scope
 
 Because the embed has no session, every panel runs under a permission the same
 way a signed-in read does — **sharing a dashboard is not a grant.**
 
-- **Default (no `roleId`)** — panels resolve the workspace's `public` role. An
-  `items-aggregate` or `kpi` panel over a collection the `public` role holds no
-  `read` on comes back as `{"data": [], "error": "Not permitted for this
-  embed."}`. Grant `public` a `read` permission on that collection (optionally
-  with a condition and a field allow-list) to publish it.
-- **Role-scoped** — pass `roleId` on `share` to name the role explicitly.
+**An embed always resolves the workspace's `public` role, and only that.** It
+has no signed-in user, and `resolvePermission` loads roles from the database by
+user id, so `public` is the only role that can be resolved for it. An
+`items-aggregate` or `kpi` panel over a collection the `public` role holds no
+`read` on comes back as `{"data": [], "error": "Not permitted for this
+embed."}`. To publish such a panel, grant `public` a `read` permission on that
+collection — optionally with a condition and a field allow-list.
 
-Either way the panel's query is clamped by that role's `whereSql` and field
-allow-list, and soft-deleted rows and unpublished drafts are excluded, so an
-embed can never expose rows or columns the role could not read through
-`/api/items`. `sql` panels do not run on an embed at all — they carry no clamp
-(the stored statement names its own tables and reaches `sql.raw`), so they are
-restricted to the instance operator on every surface.
+The panel's query is clamped by that role's `whereSql` and field allow-list, and
+soft-deleted rows and unpublished drafts are excluded, so an embed can never
+expose rows or columns the role could not read through `/api/items`. `sql`
+panels do not run on an embed at all — they carry no clamp (the stored statement
+names its own tables and reaches `sql.raw`), so they are restricted to the
+instance operator on every surface.
 
 > **Changed in the 2026-09 hardening.** The default used to be *unscoped*: a
 > dashboard shared with no `roleId` ran `items-aggregate` panels with full read
@@ -94,6 +96,15 @@ restricted to the instance operator on every surface.
 > distinct value — a full column read, to anyone holding the link. If an
 > existing embed goes blank after upgrading, that is this change; grant the
 > `public` role `read` on the collection to restore it deliberately.
+
+> **`roleId` was removed (#331).** `share` used to accept a `roleId` and this
+> page documented it as scoping the embed. It never did: the id was stored, and
+> every panel still resolved `public`, because the resolver reads roles by user
+> id and an embed has no user. It failed CLOSED — a more privileged embed role
+> produced *less* access, not more — so nothing leaked; the feature simply was
+> not real. `share` now refuses a `roleId` rather than accepting one and
+> ignoring it, and dashboards shared earlier have the column cleared on the next
+> share.
 
 ## Surfaces
 
@@ -112,7 +123,7 @@ parity gate is `apps/web/tests/dashboards-surfaces.test.ts`.
 ```ts
 const { data } = await client.dashboards.create({ name: "Revenue" });
 await client.dashboards.run(data.id);            // -> per-panel results
-const { token, url } = await client.dashboards.share(data.id, { roleId });
+const { token, url } = await client.dashboards.share(data.id);
 await client.dashboards.revoke(data.id);
 ```
 
@@ -134,7 +145,7 @@ Queries `dashboards`, `dashboard(id)`. Mutations `createDashboard`,
 backlex dashboards list
 backlex dashboards run <id>
 backlex dashboards create --data '{"name":"Revenue"}'
-backlex dashboards share <id> [--role <roleId>]
+backlex dashboards share <id>
 backlex dashboards revoke <id>
 ```
 

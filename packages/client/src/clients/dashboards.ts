@@ -10,8 +10,6 @@ export interface Dashboard {
   layout?: unknown;
   /** Whether the public embed is currently live. */
   embedEnabled: boolean;
-  /** Role the public embed scopes panel data to (null = unscoped public). */
-  embedRoleId: string | null;
 }
 
 /** Create/update payload for a dashboard. */
@@ -54,8 +52,15 @@ export interface DashboardsClient {
   delete(id: string): Promise<{ ok: boolean }>;
   /** Run every panel and return their results. */
   run(id: string): Promise<{ data: DashboardPanelResult[]; ms: number }>;
-  /** Enable the public embed; mints a one-time token (optionally role-scoped). */
-  share(id: string, opts?: { roleId?: string | null }): Promise<DashboardShareResult>;
+  /**
+   * Enable the public embed; mints a one-time token.
+   *
+   * An embed always runs as the workspace's `public` role — it has no user, so
+   * no other role can be resolved for it. There was a `roleId` option; it never
+   * scoped anything and the server now refuses one (#331). Grant what the embed
+   * should read to `public` on the collections in question.
+   */
+  share(id: string): Promise<DashboardShareResult>;
   /** Disable the public embed and forget the token. */
   revoke(id: string): Promise<{ ok: boolean }>;
   /**
@@ -117,8 +122,8 @@ export const makeDashboards = (core: ClientCore): DashboardsClient => {
     delete: (id: string) => core.request<{ ok: boolean }>("DELETE", dash(id)),
     run: (id: string) =>
       core.request<{ data: DashboardPanelResult[]; ms: number }>("POST", `${dash(id)}/run`, {}),
-    share: (id: string, opts?: { roleId?: string | null }) =>
-      core.request<DashboardShareResult>("POST", `${dash(id)}/share`, opts ?? {}),
+    share: (id: string) =>
+      core.request<DashboardShareResult>("POST", `${dash(id)}/share`, {}),
     revoke: (id: string) => core.request<{ ok: boolean }>("DELETE", `${dash(id)}/share`),
     report: (id: string, input?: DashboardReportInput) =>
       core.request<DashboardReport>("POST", `${dash(id)}/report`, input ?? {}),

@@ -25,7 +25,6 @@ export interface ApiDashboard {
   description: string | null;
   layout: Record<string, unknown> | null;
   embedEnabled: boolean;
-  embedRoleId: string | null;
 }
 
 /** A named KPI definition — the shared formula every surface reads a figure
@@ -228,10 +227,12 @@ export const dashboardsApi = {
     api<Envelope<ApiDashboardPanelResult[]> & { ms: number }>(`/api/admin/dashboards/${id}/run`, {
       method: "POST",
     }),
-  share: (id: string, body: { roleId?: string | null } = {}) =>
+  /** An embed always runs as the `public` role — there is nothing to scope it
+   *  to, and the server refuses a `roleId` (#331). */
+  share: (id: string) =>
     api<{ token: string; url: string }>(`/api/admin/dashboards/${id}/share`, {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({}),
     }),
   revoke: (id: string) =>
     api<{ ok: true }>(`/api/admin/dashboards/${id}/share`, { method: "DELETE" }),

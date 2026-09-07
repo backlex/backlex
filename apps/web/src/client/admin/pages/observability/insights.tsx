@@ -28,12 +28,10 @@ import {
   analyticsApi,
   kpisApi,
   panelsApi,
-  rolesApi,
   type ApiCollection,
   type ApiDashboard,
   type ApiKpi,
   type ApiPanel,
-  type ApiRole,
 } from "../../api";
 import { PanelBody, panelSubtitle } from "./panel-render";
 import { detectSeries, MAX_SERIES } from "./panel-series";
@@ -1830,29 +1828,16 @@ function ShareDashboardDialog({
   pushToast?: PushToast;
 }) {
   const { t } = useLingui();
-  const [roles, setRoles] = useState<ApiRole[]>([]);
-  const [roleId, setRoleId] = useState<string>(dashboard.embedRoleId ?? "");
   const [token, setToken] = useState<string | null>(null);
   const [enabled, setEnabled] = useState<boolean>(dashboard.embedEnabled);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const r = await rolesApi.list();
-        if (!cancelled) setRoles(r.data ?? []);
-      } catch { /* leave empty */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   const url = token ? `${window.location.origin}/embed/d/${token}` : null;
 
   const enable = async () => {
     setBusy(true);
     try {
-      const res = await dashboardsApi.share(dashboard.id, { roleId: roleId || null });
+      const res = await dashboardsApi.share(dashboard.id);
       setToken(res.token);
       setEnabled(true);
       await onChanged();
@@ -1901,21 +1886,18 @@ function ShareDashboardDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-3.5 py-1">
+          {/* There is no scope to pick. An embed has no user, so the permission
+              resolver can only ever resolve the `public` role for it — the role
+              select here named one and it changed nothing (#331). The old
+              "Public (unscoped)" option was wrong in the other direction too:
+              an unscoped share is clamped to `public`, not given full read. */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[12.5px] font-medium"><Trans>Data scope</Trans></label>
-            <Select
-              value={roleId}
-              onChange={(v) => setRoleId(v)}
-              disabled={enabled}
-              options={[
-                { value: "", label: t`Public (unscoped)`, hint: t`panels run with full read access — for fully public stats` },
-                ...roles.map((r) => ({ value: r.id, label: r.name, hint: t`panel data limited to this role's read permission` })),
-              ]}
-            />
+            <div className="rounded-control border border-border bg-muted/40 px-2.5 py-2 text-[12.5px]">
+              <Trans>Runs as the <span className="font-mono">public</span> role</Trans>
+            </div>
             <span className="text-[11.5px] text-muted-foreground">
-              {enabled
-                ? <Trans>Disable the embed to change the scope.</Trans>
-                : <Trans>Scope the embed to a role so it only exposes what that role can read.</Trans>}
+              <Trans>An embed has no signed-in user, so panels resolve the <span className="font-mono">public</span> role and nothing else. To let the embed show more, grant read to <span className="font-mono">public</span> on those collections under Access.</Trans>
             </span>
           </div>
 

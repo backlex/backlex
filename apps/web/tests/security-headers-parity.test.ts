@@ -35,6 +35,7 @@ import {
   BASE_SECURITY_HEADERS,
   EMBED_CSP,
   isFramablePage,
+  isPublicFormPage,
   isFramablePath,
   renderHeadersFile,
   STRICT_CSP,
@@ -132,5 +133,34 @@ describe("faz10: framable means the four public shapes, not four prefixes", () =
     // `frame-ancestors *` — and it must not be mistaken for a page shell.
     expect(isFramablePath("/embed/form.js")).toBe(false);
     expect(isFramablePage("/embed/form.js")).toBe(false);
+  });
+});
+
+/**
+ * `/f/*` was left out of the Faz 10 anchoring because it has no clickjacking
+ * consequence — the standalone form page keeps `frame-ancestors 'self'` AND
+ * `X-Frame-Options`. What it kept was the SHAPE: `GET /f/zzz` answered the
+ * admin shell with 200, because Static Assets runs
+ * `not_found_handling = "single-page-application"` and the handler never asked
+ * whether the path was one the router declares. See #338.
+ */
+describe("faz338: the standalone form page is a shape, not a prefix", () => {
+  test("the declared shape matches", () => {
+    for (const p of ["/f/tok123", "/f/tok123/"]) {
+      expect(isPublicFormPage(p)).toBe(true);
+    }
+  });
+
+  test("a sub-path or a bare prefix does not", () => {
+    for (const p of ["/f/", "/f/a/b", "/f", "/fx/tok", "/embed/f/tok123", "/collections"]) {
+      expect(isPublicFormPage(p)).toBe(false);
+    }
+  });
+
+  test("it is NOT framable, which is why it was a separate matcher", () => {
+    // If this ever flips, `/f/:token` needs to move into FRAMABLE_PAGE and the
+    // reasoning above stops being true — the consequence would then be real.
+    expect(isFramablePage("/f/tok123")).toBe(false);
+    expect(isFramablePath("/f/tok123")).toBe(false);
   });
 });

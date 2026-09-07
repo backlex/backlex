@@ -40,7 +40,7 @@ import { tagManagerRoutes } from "./routes/tag-manager";
 import { consentRoutes } from "./routes/consent";
 import { consentPublicRoutes } from "./routes/consent-public";
 import { isPerSiteScript, isPublicSubresource } from "./lib/public-paths";
-import { EMBED_CSP, isFramablePage, isFramablePath, STRICT_CSP } from "./lib/security-headers";
+import { EMBED_CSP, isFramablePage, isFramablePath, isPublicFormPage, STRICT_CSP } from "./lib/security-headers";
 import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics-collect";
 import { analyticsIngestRoutes } from "./routes/analytics-ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
@@ -1309,6 +1309,14 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     // above can set their special CSP (Turnstile allowances; framable for
     // embeds) instead of the static `_headers` policy.
     app.get("/f/*", async (c) => {
+      // Anchored to `/f/:token`, the one shape `client/App.tsx` declares. This
+      // page is NOT framable — it keeps `frame-ancestors 'self'` and XFO — so
+      // there is no clickjacking here, but `GET /f/zzz` still answered the
+      // ADMIN shell with 200 rather than a 404, because Static Assets runs
+      // `not_found_handling = "single-page-application"` and this handler never
+      // asked. Same shape as the hole Faz 10 closed on `/embed/*`, `/book/*`
+      // and `/b/*`, without the consequence. #338.
+      if (!isPublicFormPage(new URL(c.req.url).pathname)) return c.notFound();
       const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
       if (isDevServer) return res;
       return new Response(res.body, {

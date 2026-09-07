@@ -101,6 +101,24 @@ export const isFramablePath = (path: string): boolean =>
 export const isFramablePage = (path: string): boolean => FRAMABLE_PAGE.test(path);
 
 /**
+ * The standalone public form page, `/f/:token` — the shape `client/App.tsx`
+ * declares, and nothing else.
+ *
+ * Separate from `FRAMABLE_PAGE` because this page is deliberately NOT framable:
+ * it keeps `frame-ancestors 'self'` and `X-Frame-Options`, so the clickjacking
+ * consequence that made the four shapes above urgent does not apply here. What
+ * remained is the same SHAPE without the consequence — `GET /f/zzz` answered
+ * the admin shell with 200, because Static Assets is configured
+ * `not_found_handling = "single-page-application"` and its own handler never
+ * asked whether the path was one the router declares. Anchored so a 404 is a
+ * 404 on every deploy target, and so the next prefix added beside it inherits
+ * the question rather than the catch-all (#338).
+ */
+const PUBLIC_FORM_PAGE = /^\/f\/[^/]+\/?$/;
+
+export const isPublicFormPage = (path: string): boolean => PUBLIC_FORM_PAGE.test(path);
+
+/**
  * `public/_headers` (Cloudflare Pages / Netlify), rendered from the constants
  * above. `apps/web/tests/security-headers-parity.test.ts` compares this to the
  * file on disk, so the two cannot drift the way they already had.

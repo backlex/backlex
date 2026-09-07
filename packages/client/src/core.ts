@@ -1,3 +1,4 @@
+import { BacklexError } from "./types";
 import type { QueryBuilder } from "./query";
 import type { TokenStore } from "./token-store";
 import type { AggregateQuery, AggregateRow, BatchOperation, BatchResponse, BulkUpdateResponse, ChangesQuery, ChangesResponse, ImportSummary, IngestInput, IngestSummary, ItemQuery, ItemResponse, ListQuery, ListResponse, SearchQuery, SearchResponse } from "./types";
@@ -407,6 +408,54 @@ export const formatMoney = (value: MoneyValue, locale = "en"): string => {
   } catch {
     return `${value.amount} ${value.currency}`;
   }
+};
+
+/**
+ * Escape one value so it is exactly ONE path segment, and nothing else.
+ *
+ * Every id and slug this SDK puts in a URL goes through here. The SDK runs in
+ * the CONSUMER's process with the CONSUMER's credentials, and the ordinary way
+ * an application calls it is with a value it did not choose:
+ *
+ *     client.from("orders").one(req.params.id)
+ *
+ * Interpolating that raw hands whoever supplies the parameter the choice of
+ * WHICH endpoint the request is spent on — the credential still goes out, and
+ * the server can only apply the authorization it has for wherever the request
+ * landed. That is the whole reason this is not left to the caller.
+ *
+ * Two separate rules, because escaping alone is not enough:
+ *
+ *  · `encodeURIComponent` for everything, so a `/` cannot open a new segment
+ *    and a `?` or `#` cannot start a query or fragment.
+ *  · `.` and `..` are REFUSED, not escaped. `encodeURIComponent` leaves a dot
+ *    alone (it is unreserved), and a dot segment is removed by the URL parser
+ *    before the request is sent — `%2E%2E` is normalized away too, since that
+ *    happens after percent-decoding. There is no encoding that survives, so
+ *    the honest answer is that such a value has no URL.
+ *  · `""` likewise: an empty segment silently addresses the PARENT route, so
+ *    `one("")` would list the whole collection instead of failing.
+ *
+ * Refusing throws {@link BacklexError} with a `VALIDATION` code and a 400, the
+ * same shape the server would answer with, so a caller's existing error
+ * handling already covers it.
+ *
+ * @param value The id, slug or key segment.
+ * @param what  What the value is, for the message — e.g. `"Item id"`.
+ */
+export const encodePathSegment = (value: string, what: string): string => {
+  if (value === "" || value === "." || value === "..") {
+    throw new BacklexError(400, {
+      error: {
+        code: "VALIDATION",
+        message:
+          value === ""
+            ? `${what} cannot be empty — an empty path segment addresses the parent route instead of a row.`
+            : `${what} ${JSON.stringify(value)} cannot be addressed by URL — a dot segment is normalized away by every URL parser.`,
+      },
+    });
+  }
+  return encodeURIComponent(value);
 };
 
 /** What {@link CollectionClient.backfillGeo} did in one bounded pass. */

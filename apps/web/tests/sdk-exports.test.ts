@@ -54,6 +54,36 @@ describe("SDK export maps agree across all four declarations", () => {
     expect(keysOf(json("jsr.json").exports)).toEqual(pkg);
   });
 
+  /**
+   * The two publish channels must agree on the NUMBER, not just the subpaths.
+   *
+   * `bunx jsr publish` reads `jsr.json`'s version verbatim; the npm publish
+   * reads `package.json`'s. Nothing connected them, and they drifted: on
+   * 2026-09-07 npm was at 0.4.1 while `jsr.json` still said 0.3.3.
+   *
+   * The failure mode is the reason this is a test and not a note. JSR does not
+   * error on a version it already has — it prints
+   * `Warning: Skipping, already published @backlex/backlex@0.3.3` and **exits
+   * 0**. So the `backlex-v0.4.0` and `backlex-v0.4.1` tags each ran this
+   * workflow, each re-published 0.3.3, each was skipped, and each reported
+   * GREEN. Two releases never reached JSR and the pipeline said they had.
+   *
+   * A version bump is a deliberate act, so pinning equality costs nothing:
+   * whoever bumps one is told to bump the other, in the same commit, before it
+   * can ship half a release.
+   */
+  test("package.json and jsr.json publish the same version", () => {
+    const npm = json("package.json").version;
+    const jsr = json("jsr.json").version;
+    expect(typeof npm, "package.json has no version").toBe("string");
+    expect(
+      jsr,
+      "jsr.json's version is what `jsr publish` uses. When it lags, JSR skips " +
+        "the publish with a WARNING and exits 0 — the release silently does not " +
+        "happen and the workflow stays green.",
+    ).toBe(npm);
+  });
+
   test("tsup builds an entry for every declared subpath", () => {
     // A subpath with no entry ships a package.json pointing at a file that was
     // never emitted.

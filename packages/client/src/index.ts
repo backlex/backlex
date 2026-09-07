@@ -239,6 +239,7 @@ import { makeTemplates } from "./clients/templates";
 import { makeAppUsers } from "./clients/app-users";
 import { makeOrgs } from "./clients/orgs";
 import { makeFlags } from "./clients/flags";
+import { encodePathSegment } from "./core";
 import type { ClientOptions, CollectionClient } from "./core";
 import type { ClientCore } from "./core";
 import { resolveTokenStore } from "./token-store";
@@ -493,6 +494,48 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     return { traceparent: makeTraceparent() };
   };
 
+  /**
+   * Read a 2xx body as JSON, naming what came back when it isn't.
+   *
+   * `res.json()` on an HTML page throws `SyntaxError: Unexpected token '<'`,
+   * which names neither the endpoint nor the fact that something else answered.
+   * The common way to reach it is not an attack — it is pointing `url` at the
+   * web app instead of the API, so every call gets the SPA's `index.html` with
+   * a cheerful 200. A captive portal, a CDN error page and a gateway
+   * interstitial all land the same way, and all three used to surface as a
+   * parser error naming neither the endpoint nor the status.
+   *
+   * Only refused when the response SAYS it is something else. A missing
+   * `content-type` is still parsed: that is what a 2xx from an endpoint which
+   * forgot the header always did, and nothing here is worth breaking it over.
+   */
+  const readJson = async <T>(res: Response, method: string, path: string): Promise<T> => {
+    const kind = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+    if (kind && !/^(application|text)\/([\w.-]+\+)?json$/i.test(kind)) {
+      const snippet = (await res.text().catch(() => ""))
+        .slice(0, 200)
+        .replace(/\s+/g, " ")
+        .trim();
+      throw new BacklexError(res.status, {
+        error: {
+          code: "NON_JSON_RESPONSE",
+          message: `${method} ${path} answered ${res.status} with ${kind}, not JSON. Check that \`url\` points at the backlex API and that nothing between you and it answered first.`,
+          ...(snippet ? { details: { body: snippet } } : {}),
+        },
+      });
+    }
+    try {
+      return (await res.json()) as T;
+    } catch (e) {
+      throw new BacklexError(res.status, {
+        error: {
+          code: "NON_JSON_RESPONSE",
+          message: `${method} ${path} answered ${res.status} with a body that is not JSON (${e instanceof Error ? e.message : String(e)}).`,
+        },
+      });
+    }
+  };
+
   const request = async <T>(
     method: string,
     path: string,
@@ -525,7 +568,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       throw new BacklexError(res.status, errBody);
     }
     if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
+    return await readJson<T>(res, method, path);
   };
 
   /** Like {@link request} but for endpoints whose body/response isn't JSON —
@@ -563,18 +606,26 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const collection = <T extends Record<string, unknown>>(
     slug: string,
   ): CollectionClient<T> => {
+    // Escaped ONCE for the collection, and per call for the row id. See
+    // `encodePathSegment`: an application's `from(x).one(req.params.id)` is
+    // handing this SDK a value it did not choose, and an unescaped one picks
+    // the endpoint the caller's credential is spent on.
+    const coll = encodePathSegment(slug, "Collection slug");
+    /** `<slug>/<id>`, both escaped — the prefix every per-row route shares.
+     *  Not `at`: `schedulePublish(id, at)` takes a parameter by that name. */
+    const row = (id: string): string => `${coll}/${encodePathSegment(id, "Item id")}`;
     const list = (q?: ListQuery): Promise<ListResponse<T>> =>
-      request<ListResponse<T>>("GET", `/api/items/${slug}${buildSearch(q)}`);
+      request<ListResponse<T>>("GET", `/api/items/${coll}${buildSearch(q)}`);
     return {
       list,
       /** Fluent, type-safe query builder that compiles to `ListQuery`. */
       query: (): QueryBuilder<T> => new QueryBuilder<T>(list),
       /** Run a single-function aggregate (count/sum/avg/min/max), optionally grouped. */
       aggregate: (body: AggregateQuery): Promise<{ data: AggregateRow[] }> =>
-        request<{ data: AggregateRow[] }>("POST", `/api/items/${slug}/aggregate`, body),
+        request<{ data: AggregateRow[] }>("POST", `/api/items/${coll}/aggregate`, body),
       /** Relevance search (full-text / vector / hybrid). */
       search: (body: SearchQuery): Promise<SearchResponse<T>> =>
-        request<SearchResponse<T>>("POST", `/api/items/${slug}/search`, body),
+        request<SearchResponse<T>>("POST", `/api/items/${coll}/search`, body),
       /** One page of the incremental changefeed (offline sync primitive). */
       changes: (q?: ChangesQuery): Promise<ChangesResponse<T>> => {
         const p = new URLSearchParams();
@@ -583,19 +634,19 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         if (q?.shape) p.set("shape", JSON.stringify(q.shape));
         if (q?.fields?.length) p.set("fields", q.fields.join(","));
         const qs = p.toString();
-        return request<ChangesResponse<T>>("GET", `/api/items/${slug}/changes${qs ? `?${qs}` : ""}`);
+        return request<ChangesResponse<T>>("GET", `/api/items/${coll}/changes${qs ? `?${qs}` : ""}`);
       },
       /** Export every readable row as a JSON or CSV string (honors the same
        *  read filters as `list`). */
       exportItems: (format: "json" | "csv" = "json"): Promise<string> =>
-        requestRaw("GET", `/api/items/${slug}/export?format=${format}`).then((r) =>
+        requestRaw("GET", `/api/items/${coll}/export?format=${format}`).then((r) =>
           r.text(),
         ),
       /** Bulk-import rows from a JSON array (or raw JSON/CSV string). Each row
        *  runs the normal create path; row-level failures land in `errors`. */
       /** Turn a stored document into rows — one per section. See `IngestInput`. */
       ingest: (body: IngestInput): Promise<{ data: IngestSummary }> =>
-        core.request<{ data: IngestSummary }>("POST", `/api/items/${slug}/ingest`, body),
+        core.request<{ data: IngestSummary }>("POST", `/api/items/${coll}/ingest`, body),
       importItems: (
         body: string | Partial<T>[],
         format: "json" | "csv" = "json",
@@ -604,21 +655,21 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         const contentType = format === "csv" ? "text/csv" : "application/json";
         return requestRaw(
           "POST",
-          `/api/items/${slug}/import?format=${format}`,
+          `/api/items/${coll}/import?format=${format}`,
           raw,
           contentType,
         ).then((r) => r.json() as Promise<ImportSummary>);
       },
       one: (id: string, opts?: ItemQuery): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}${buildItemSearch(opts)}`),
+        request<ItemResponse<T>>("GET", `/api/items/${row(id)}${buildItemSearch(opts)}`),
       create: (data: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("POST", `/api/items/${slug}${writeLocaleQuery(opts)}`, data),
+        request<ItemResponse<T>>("POST", `/api/items/${coll}${writeLocaleQuery(opts)}`, data),
       update: (id: string, patch: Partial<T>, opts?: WriteUpdateOpts): Promise<ItemResponse<T>> => {
         const base = writeLocaleQuery(opts);
         const search = opts?.live ? `${base ? `${base}&` : "?"}live=1` : base;
         return request<ItemResponse<T>>(
           "PATCH",
-          `/api/items/${slug}/${id}${search}`,
+          `/api/items/${row(id)}${search}`,
           patch,
           opts?.ifUnmodifiedSince
             ? { "x-if-unmodified-since": opts.ifUnmodifiedSince }
@@ -626,11 +677,11 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         );
       },
       delete: (id: string): Promise<{ ok: boolean }> =>
-        request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),
+        request<{ ok: boolean }>("DELETE", `/api/items/${row(id)}`),
       /** Bulk-create rows. `atomic` runs the whole set in one transaction
        *  (all-or-nothing; Postgres/SQLite only). Default is partial-success. */
       createMany: (rows: Partial<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>> =>
-        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+        request<BatchResponse<T>>("POST", `/api/items/${coll}/batch`, {
           operations: rows.map((data) => ({ op: "create", data })),
           atomic: opts?.atomic,
         }),
@@ -639,13 +690,13 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         updates: { id: string; data: Partial<T> }[],
         opts?: { atomic?: boolean },
       ): Promise<BatchResponse<T>> =>
-        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+        request<BatchResponse<T>>("POST", `/api/items/${coll}/batch`, {
           operations: updates.map((u) => ({ op: "update", id: u.id, data: u.data })),
           atomic: opts?.atomic,
         }),
       /** Bulk-delete rows by id. */
       deleteMany: (ids: string[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>> =>
-        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+        request<BatchResponse<T>>("POST", `/api/items/${coll}/batch`, {
           operations: ids.map((id) => ({ op: "delete", id })),
           atomic: opts?.atomic,
         }),
@@ -654,7 +705,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
        *  write is reported `NOT_FOUND`). Differs from `updateMany`, which sends
        *  a distinct patch per id. */
       bulkUpdate: (keys: string[], data: Partial<T>): Promise<BulkUpdateResponse> =>
-        request<BulkUpdateResponse>("POST", `/api/items/${slug}/bulk-update`, {
+        request<BulkUpdateResponse>("POST", `/api/items/${coll}/bulk-update`, {
           keys,
           data,
         }),
@@ -663,33 +714,33 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         operations: BatchOperation<T>[],
         opts?: { atomic?: boolean },
       ): Promise<BatchResponse<T>> =>
-        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+        request<BatchResponse<T>>("POST", `/api/items/${coll}/batch`, {
           operations,
           atomic: opts?.atomic,
         }),
       /** Flip a versioned item to published (`_status`) now. */
       publish: (id: string): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`),
+        request<ItemResponse<T>>("POST", `/api/items/${row(id)}/publish`),
       /** Flip a versioned item back to draft (clears any pending schedule). */
       unpublish: (id: string): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish?unpublish=1`),
+        request<ItemResponse<T>>("POST", `/api/items/${row(id)}/publish?unpublish=1`),
       /** Archive a versioned item — hidden from readers like a draft, but a
        *  distinct "pulled from publication" state. Leave archived via
        *  `publish()` (→ published) or `unpublish()` (→ draft). */
       archive: (id: string): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish?archive=1`),
+        request<ItemResponse<T>>("POST", `/api/items/${row(id)}/publish?archive=1`),
       /** Schedule a versioned item to auto-publish at `at` (the cron tick applies
        *  it when due). Pass `null` to cancel a pending schedule. Requires the
        *  `publish` permission. */
       schedulePublish: (id: string, at: Date | string | null): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`, {
+        request<ItemResponse<T>>("POST", `/api/items/${row(id)}/publish`, {
           publishAt: at == null ? null : at instanceof Date ? at.toISOString() : at,
         }),
       /** Set an expiry: auto-unpublish the item back to draft at `at` (the cron
        *  tick applies it when due), preserving its current state until then. Pass
        *  `null` to cancel. Requires the `publish` permission. */
       scheduleUnpublish: (id: string, at: Date | string | null): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`, {
+        request<ItemResponse<T>>("POST", `/api/items/${row(id)}/publish`, {
           unpublishAt: at == null ? null : at instanceof Date ? at.toISOString() : at,
         }),
       /** Discard a staged-edits item's pending staged patch without applying
@@ -697,13 +748,13 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
        *  `update()` against a published row stages the change; the next
        *  `publish()` applies it.) */
       discardStaged: (id: string): Promise<{ ok: boolean }> =>
-        request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}/staged`),
+        request<{ ok: boolean }>("DELETE", `/api/items/${row(id)}/staged`),
       /** Verify a plaintext against a `hash` field's stored digest. */
       verify: (id: string, field: string, value: string): Promise<{ valid: boolean }> =>
-        request<{ valid: boolean }>("POST", `/api/items/${slug}/${id}/verify`, { field, value }),
+        request<{ valid: boolean }>("POST", `/api/items/${row(id)}/verify`, { field, value }),
       /** The status moves this row could make right now, refused ones included. */
       transitions: (id: string): Promise<{ data: FieldTransitions[] }> =>
-        request<{ data: FieldTransitions[] }>("GET", `/api/items/${slug}/${id}/transitions`),
+        request<{ data: FieldTransitions[] }>("GET", `/api/items/${row(id)}/transitions`),
       /** Restate this collection's rollup columns from the rows they aggregate.
        *  Pass `{ async: true }` on a large collection to run it as a durable
        *  background job — it answers `{ jobId }`, which `jobs.waitFor` takes. */
@@ -712,19 +763,19 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       }): Promise<{ ok: boolean; refreshed?: string[]; jobId?: string; status?: string }> =>
         request<{ ok: boolean; refreshed?: string[]; jobId?: string; status?: string }>(
           "POST",
-          `/api/items/${slug}/rollups/refresh${opts?.async ? "?async=1" : ""}`,
+          `/api/items/${coll}/rollups/refresh${opts?.async ? "?async=1" : ""}`,
         ),
       /** Catch this collection's sequence counters up to the rows already in it. */
       syncSequences: (): Promise<{ ok: boolean; synced: SequenceSyncReport[] }> =>
         request<{ ok: boolean; synced: SequenceSyncReport[] }>(
           "POST",
-          `/api/items/${slug}/sequences/sync`,
+          `/api/items/${coll}/sequences/sync`,
         ),
       /** Peek at the next number each sequence column would issue. */
       nextSequences: (): Promise<Record<string, string>> =>
         request<{ data: Record<string, string> }>(
           "GET",
-          `/api/items/${slug}/sequences/next`,
+          `/api/items/${coll}/sequences/next`,
         ).then((r) => r.data),
       /** Move a row before or after another in the same hand-arranged list. */
       reorder: (
@@ -732,7 +783,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         id: string,
         to: { before: string } | { after: string },
       ): Promise<ReorderReport> =>
-        request<{ data: ReorderReport }>("POST", `/api/items/${slug}/reorder`, {
+        request<{ data: ReorderReport }>("POST", `/api/items/${coll}/reorder`, {
           field,
           id,
           ...to,
@@ -741,14 +792,14 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       retire: (id: string, opts?: { restore?: boolean }): Promise<RetireReport> =>
         request<RetireReport>(
           "POST",
-          `/api/items/${slug}/${encodeURIComponent(id)}/retire${opts?.restore ? "?restore=1" : ""}`,
+          `/api/items/${row(id)}/retire${opts?.restore ? "?restore=1" : ""}`,
           {},
         ),
       /** Renumber this collection's order fields into dense 1…N per list. */
       normalizeOrder: (field?: string): Promise<NormalizeOrderReport> =>
         request<{ data: NormalizeOrderReport }>(
           "POST",
-          `/api/items/${slug}/order/normalize`,
+          `/api/items/${coll}/order/normalize`,
           field === undefined ? {} : { field },
         ).then((r) => r.data),
       /**
@@ -765,7 +816,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ): Promise<SlugBackfillReport> =>
         request<{ data: SlugBackfillReport }>(
           "POST",
-          `/api/items/${slug}/slugs/backfill`,
+          `/api/items/${coll}/slugs/backfill`,
           opts,
         ).then((r) => r.data),
       /**
@@ -778,7 +829,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       backfillGeo: (field: string, limit?: number): Promise<GeoBackfillReport> =>
         request<{ data: GeoBackfillReport }>(
           "POST",
-          `/api/geo/backfill/${slug}`,
+          `/api/geo/backfill/${coll}`,
           limit === undefined ? { field } : { field, limit },
         ).then((r) => r.data),
       /**
@@ -798,7 +849,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ): Promise<{ jobId: string; status: string; field: string }> =>
         request<{ data: { jobId: string; status: string; field: string } }>(
           "POST",
-          `/api/geo/backfill/${slug}?async=1`,
+          `/api/geo/backfill/${coll}?async=1`,
           limit === undefined ? { field } : { field, limit },
         ).then((r) => r.data),
       /**
@@ -813,7 +864,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         field: string,
         opts: { limit?: number; after?: string; dryRun?: boolean } = {},
       ): Promise<PhoneNormalizeReport> =>
-        request<{ data: PhoneNormalizeReport }>("POST", `/api/phone/normalize/${slug}`, {
+        request<{ data: PhoneNormalizeReport }>("POST", `/api/phone/normalize/${coll}`, {
           field,
           ...(opts.limit === undefined ? {} : { limit: opts.limit }),
           ...(opts.after === undefined ? {} : { after: opts.after }),
@@ -831,7 +882,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         field: string,
         opts: { limit?: number; after?: string; dryRun?: boolean } = {},
       ): Promise<EmailNormalizeReport> =>
-        request<{ data: EmailNormalizeReport }>("POST", `/api/email/normalize/${slug}`, {
+        request<{ data: EmailNormalizeReport }>("POST", `/api/email/normalize/${coll}`, {
           field,
           ...(opts.limit === undefined ? {} : { limit: opts.limit }),
           ...(opts.after === undefined ? {} : { after: opts.after }),

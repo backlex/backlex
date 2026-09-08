@@ -900,22 +900,25 @@ export const runAdvisorChecks = async (
       // Skip silently.
     }
 
-    // Would flipping `PERMISSION_WRITE_CHECK` to `enforce` refuse anything this
-    // workspace actually does?
+    // What is `PERMISSION_WRITE_CHECK=enforce` refusing on this workspace — or,
+    // under `warn`, what would it refuse?
     //
-    // That question is the whole reason the `warn` default exists, and until
-    // this rule nothing could answer it. A tenant's integrations may have been
-    // writing rows outside their role's `write` conditions for months, against
-    // a rule that only ever filtered READS; turning that into a 403 on upgrade
-    // breaks a working application for somebody who changed nothing. So the
-    // check counted and allowed — into a `console.warn` nobody can query a week
-    // later, which made the operator's decision a guess about their own data.
+    // This rule is why the default could BECOME `enforce` (#334). A tenant's
+    // integrations may have been writing rows outside their role's `write`
+    // conditions for months, against a rule that only ever filtered READS;
+    // turning that into a 403 on upgrade breaks a working application for
+    // somebody who changed nothing. That was a real reason for a permissive
+    // default, and it held only while the operator could not tell whether they
+    // were that tenant — the check wrote a `console.warn` and moved on, and
+    // nobody queries last week's logs from the Advisor page.
     //
-    // Now the write path records each one on the request span and this counts
-    // them over the window. Zero is the green light; anything else names the
-    // collection and action to look at first. Issue #334.
+    // The write path now records each one on the request span and this counts
+    // them over the window, so the question is answered from traffic instead of
+    // guessed. Under the `enforce` default the findings say what is being
+    // refused right now; under an explicit `warn` — the migration setting — they
+    // say what unsetting it would start refusing, and zero is the green light.
     try {
-      const writeCheckMode = (ctx.env.PERMISSION_WRITE_CHECK ?? "").trim() || "warn";
+      const writeCheckMode = (ctx.env.PERMISSION_WRITE_CHECK ?? "").trim() || "enforce";
       const enforcing = writeCheckMode === "enforce";
       const observed = insights.permissionWriteChecks;
       // Relation-path conditions cannot be judged in memory and are allowed

@@ -157,19 +157,31 @@ that reaches a row write — REST, GraphQL, batch, bulk and CSV import. It judge
 the PROPOSED row against the same conditions, in memory.
 
 ```bash
-PERMISSION_WRITE_CHECK=warn     # default — count it, allow it
-PERMISSION_WRITE_CHECK=enforce  # refuse it with a 403
+PERMISSION_WRITE_CHECK=enforce  # default — refuse it with a 403
+PERMISSION_WRITE_CHECK=warn     # count it, allow it (the migration setting)
 ```
 
-**The permissive default is deliberate.** A tenant's integrations may have been
-writing cross-scope rows for months against a rule that only ever filtered
-reads; turning that into a 403 on upgrade breaks a working application for
-somebody who changed nothing.
+**`enforce` is the default, and `warn` is a migration setting rather than a
+resting state.** An empty value falls back to `enforce`, so
+`PERMISSION_WRITE_CHECK=` cannot quietly disable the check.
 
-**Do not flip it blind — measure first.** The Advisor's
-`permission-write-check` rule reports whether any recorded write in the window
-would have been refused, per collection and action. Zero is the green light;
-anything else names what to look at. See [Advisor](/docs/advisor/).
+**If you are upgrading an existing deployment, measure before you land on it.**
+A tenant's integrations may have been writing cross-scope rows for months
+against a rule that only ever filtered READS, and turning that into a 403
+breaks a working application for somebody who changed nothing. The move:
+
+1. set `PERMISSION_WRITE_CHECK=warn` and run for a representative window;
+2. read the Advisor's `permission-write-check` rule — it reports every recorded
+   write that `enforce` would refuse, per collection and action;
+3. widen the `write` conditions it names, or fix the caller;
+4. unset the variable.
+
+Zero findings is the green light. See [Advisor](/docs/advisor/).
+
+This defaulted to `warn` until the advisor rule existed to make the reading a
+measurement instead of a guess — the same position `PLANE_GUARD` was in, where
+a permissive default meant the guarantee was real on the deployments that set
+it and inert everywhere else.
 
 One case is judged by neither setting: a condition reaching through a
 **relation** (`author.department`) cannot be evaluated against a proposed row

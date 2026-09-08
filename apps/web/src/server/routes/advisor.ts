@@ -87,10 +87,11 @@ const CollectionStatSchema = z
   })
   .openapi("AdvisorCollectionStat");
 
-/** Writes that landed outside their role's `write` conditions. Empty means no
- *  recorded write in the window would be refused by
- *  `PERMISSION_WRITE_CHECK=enforce` — the reading the `warn` default exists to
- *  produce, and only as strong as `window.sampleRate`. */
+/** Writes that landed outside their role's `write` conditions. Under the
+ *  `enforce` default each was refused with a 403; under `warn` each was allowed
+ *  and counted, which is the reading a deployment migrating onto `enforce` sets
+ *  `warn` to produce. Empty means none — only as strong as
+ *  `window.sampleRate`. */
 const PermissionWriteCheckStatSchema = z
   .object({
     collection: z.string(),

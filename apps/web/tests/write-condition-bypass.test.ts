@@ -739,13 +739,21 @@ describe("write-condition check — what it actually fences", () => {
 
 /* ────────────────────────── the default posture ────────────────────────── */
 
-describe("write-condition check — the default is warn, and warn means allowed", () => {
+describe("write-condition check — the default refuses, with nothing configured", () => {
   /**
-   * Pinned so nobody reads the holes above as "the check is off by default
-   * anyway". They are all reproduced with `PERMISSION_WRITE_CHECK: "enforce"`,
-   * which is the mode this feature exists to be run in; this block is only here
-   * to state what the OTHER mode does, since an operator who has not opted in
-   * gets no protection from any of it and should not think otherwise.
+   * This block used to assert the opposite, and the reversal is the point.
+   *
+   * Its old comment ended "an operator who has not opted in gets no protection
+   * from any of it and should not think otherwise". That sentence is what #334
+   * made false: `PERMISSION_WRITE_CHECK` now defaults to `enforce`, so the
+   * holes reproduced above with an explicit `enforce` are closed for a
+   * deployment that configured nothing at all — which is every self-host.
+   *
+   * Kept rather than deleted, and turned around rather than relaxed: the
+   * default cannot quietly go back to `warn` without this going red. The other
+   * half — that an explicit `warn` still works, because it is the migration
+   * path for a deployment that starts refusing on upgrade — is pinned in
+   * `write-condition-check.test.ts` (7).
    */
   let h: TestHarness;
   let alice: EndUser;
@@ -791,12 +799,18 @@ describe("write-condition check — the default is warn, and warn means allowed"
   });
   afterAll(() => h.cleanup());
 
-  test("an unset PERMISSION_WRITE_CHECK still plants the row", async () => {
+  test("an unset PERMISSION_WRITE_CHECK refuses the cross-org plant", async () => {
     const planted = await bearerFor(h, alice.token, acme)(
       "/api/items/tickets",
       json("POST", { title: "planted", org_id: victim }),
     );
-    expect(planted.status).toBe(201);
-    expect((await dataOf(planted)).org_id).toBe(victim);
+    expect(planted.status, await planted.clone().text()).toBe(403);
+
+    // Refused, not merely reported. A 403 with the row already written would
+    // satisfy the status assertion and be the worse of the two bugs — and this
+    // is the exact plant the whole file is about, so it is worth reading back.
+    const rows = await bearerFor(h, alice.token, acme)("/api/items/tickets?limit=100");
+    const titles = ((await rows.json()) as { data: { title: string }[] }).data.map((r) => r.title);
+    expect(titles, "the row must not be in the collection").not.toContain("planted");
   });
 });

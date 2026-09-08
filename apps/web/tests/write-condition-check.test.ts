@@ -26,11 +26,18 @@
  *   5. `$org.id` genuinely RESOLVES on the write side. `authSubjectOf` used to
  *      omit org context entirely, so every org rule was judged against a null
  *      org; the assertions here invert if that plumbing is reverted;
- *   6. the WARN default — with `PERMISSION_WRITE_CHECK` unset the same
- *      cross-org create SUCCEEDS. Warn is what protects a tenant whose
- *      integrations have been writing cross-scope rows for months, and a suite
- *      that only ever runs in enforce would let the default silently flip;
- *   7. the relation-path SKIP — a dotted key (`author.department`) must not
+ *   6. the DEFAULT — with `PERMISSION_WRITE_CHECK` unset the same cross-org
+ *      create is REFUSED. This item used to assert the opposite and was
+ *      reversed in #334, not removed: a suite that only ever runs in an
+ *      explicit mode would let the default flip in either direction unnoticed.
+ *      (6b) covers the empty value, which must land on `enforce` too, and it
+ *      drives the real server rather than a copy of that expression — the
+ *      first version did the latter and stayed green when the hole was
+ *      reintroduced;
+ *   7. `warn` still ALLOWS when asked for. It is the migration setting for a
+ *      deployment that starts refusing on upgrade, and a flip that silently
+ *      broke it would leave those operators pinning an old version;
+ *   8. the relation-path SKIP — a dotted key (`author.department`) must not
  *      deny a write even in enforce mode, because the in-memory evaluator
  *      returns a hard `false` for it while the SQL compiler lowers it to a
  *      correlated EXISTS. Refusing there would be an outage, not a fix.
@@ -421,16 +428,28 @@ describe("write-condition check — a dotted relation path never denies a write"
 });
 
 /**
- * (6) The WARN default.
+ * (6) The DEFAULT, which is now `enforce`.
  *
- * Identical fixture, `PERMISSION_WRITE_CHECK` unset. The cross-org create must
- * SUCCEED and the row must exist. This is not a nicety: a tenant whose
- * integration has been writing cross-scope rows for months against a rule that
- * only ever filtered reads would go down on the release that introduces the
- * check. Without this test the default could quietly become enforce and nothing
- * in the suite would notice.
+ * This block used to assert the opposite, and the reversal was deliberate —
+ * #334. Its old comment said "without this test the default could quietly
+ * become enforce and nothing in the suite would notice", and that was right:
+ * the pin was doing its job. It is not removed here, it is TURNED AROUND, so
+ * the default cannot quietly go back to `warn` either.
+ *
+ * Why the reversal was safe to make. The old default protected a real case — a
+ * tenant whose integration had been writing cross-scope rows for months against
+ * a rule that only ever filtered READS would go down on the release that
+ * started refusing. What changed is that an operator can now find that out
+ * BEFORE it happens instead of guessing: the advisor's `permission-write-check`
+ * rule counts those writes from recorded spans over a window
+ * (`advisor-permission-write-check.test.ts`). `warn` is still there, and is now
+ * the migration setting — set it, read the advisor, widen the conditions it
+ * names, unset it.
+ *
+ * (7) below keeps `warn` honest, because a default flip is worth nothing if the
+ * escape hatch stopped working on the way.
  */
-describe("write-condition check — the warn default lets the write through", () => {
+describe("write-condition check — the default refuses", () => {
   let f: OrgFixture;
 
   beforeAll(async () => {
@@ -438,10 +457,89 @@ describe("write-condition check — the warn default lets the write through", ()
   });
   afterAll(() => f.h.cleanup());
 
-  test("(6) the same cross-org create succeeds, and the row is really there", async () => {
-    // The env is genuinely unset, not merely something-other-than-enforce.
+  test("(6) the same cross-org create is refused, and no row is written", async () => {
+    // The env is genuinely unset, not merely something-other-than-warn.
     expect(f.h.env.PERMISSION_WRITE_CHECK).toBeUndefined();
 
+    const res = await f.inA(
+      "/api/items/tickets",
+      json("POST", { title: "refused-by-default", org_id: f.orgB }),
+    );
+    expect(res.status, await res.clone().text()).toBe(403);
+
+    // Refused, not merely reported: the row must not be in the collection. A
+    // 403 with the write already committed would satisfy the status assertion
+    // and be the worse bug of the two.
+    const titles = await allTicketTitles(f.h);
+    expect(titles, "the default refuses rather than logging").not.toContain("refused-by-default");
+
+    // The update mirror refuses too, so a caller is not stopped by the half of
+    // the check somebody happened to test.
+    const created = await f.inA(
+      "/api/items/tickets",
+      json("POST", { title: "in-own-org", org_id: f.orgA }),
+    );
+    expect(created.status).toBe(201);
+    const id = String(((await created.json()) as { data: { id: unknown } }).data.id);
+    const moved = await f.inA(`/api/items/tickets/${id}`, json("PATCH", { org_id: f.orgB }));
+    expect(moved.status, "the update mirror also refuses under the default").toBe(403);
+  });
+
+});
+
+/**
+ * (6b) An EMPTY value falls back to `enforce`; it does not disable the check.
+ *
+ * `PERMISSION_WRITE_CHECK=` is the shape a misconfigured deploy actually
+ * produces — a variable declared and left blank. Under the old `?? "warn"` that
+ * read as `""` and warned, which was harmless while warn WAS the default and is
+ * a silent hole now that enforce is. The read is `(v ?? "").trim() ||
+ * "enforce"`, so blank and whitespace both land on the secure side.
+ *
+ * This drives the REAL server rather than asserting on a local copy of that
+ * expression. The first version of this test did the latter, and
+ * break-verification caught it: reverting the production line to `?? "enforce"`
+ * — which reintroduces the exact hole — left the test GREEN, because it was
+ * checking a reimplementation nobody ships.
+ */
+describe.each([
+  ["empty", ""],
+  ["whitespace", "   "],
+])("write-condition check — an %s PERMISSION_WRITE_CHECK still enforces", (_label, value) => {
+  let f: OrgFixture;
+
+  beforeAll(async () => {
+    f = await buildOrgFixture({ PERMISSION_WRITE_CHECK: value });
+  });
+  afterAll(() => f.h.cleanup());
+
+  test("(6b) the cross-org create is refused and no row is written", async () => {
+    const res = await f.inA(
+      "/api/items/tickets",
+      json("POST", { title: "blank-config", org_id: f.orgB }),
+    );
+    expect(res.status, await res.clone().text()).toBe(403);
+    expect(await allTicketTitles(f.h)).not.toContain("blank-config");
+  });
+});
+
+/**
+ * (7) `warn` still works when asked for.
+ *
+ * The escape hatch is the whole reason (6) could be reversed: an existing
+ * deployment that starts refusing on upgrade sets this, reads the advisor, and
+ * widens what needs widening. A flip that silently broke `warn` would leave
+ * those operators with no move except pinning an old version.
+ */
+describe("write-condition check — PERMISSION_WRITE_CHECK=warn still allows", () => {
+  let f: OrgFixture;
+
+  beforeAll(async () => {
+    f = await buildOrgFixture({ PERMISSION_WRITE_CHECK: "warn" });
+  });
+  afterAll(() => f.h.cleanup());
+
+  test("(7) the cross-org create is allowed and the row is really there", async () => {
     const res = await f.inA(
       "/api/items/tickets",
       json("POST", { title: "warned-not-refused", org_id: f.orgB }),
@@ -449,10 +547,8 @@ describe("write-condition check — the warn default lets the write through", ()
     expect(res.status, await res.clone().text()).toBe(201);
 
     const titles = await allTicketTitles(f.h);
-    expect(titles, "warn mode logs and allows").toContain("warned-not-refused");
+    expect(titles, "warn logs and allows").toContain("warned-not-refused");
 
-    // The update mirror warns too, so a tenant mid-migration is not caught by
-    // the half of the check nobody thought to try.
     const created = await f.inA(
       "/api/items/tickets",
       json("POST", { title: "warned-update", org_id: f.orgA }),
@@ -460,6 +556,6 @@ describe("write-condition check — the warn default lets the write through", ()
     expect(created.status).toBe(201);
     const id = String(((await created.json()) as { data: { id: unknown } }).data.id);
     const moved = await f.inA(`/api/items/tickets/${id}`, json("PATCH", { org_id: f.orgB }));
-    expect(moved.status, "the update mirror also warns rather than refusing").toBe(200);
+    expect(moved.status, "the update mirror warns rather than refusing").toBe(200);
   });
 });

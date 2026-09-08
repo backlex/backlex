@@ -41,8 +41,9 @@ export interface SpanInput {
   /** Writes in this request that fell outside their `write` permission's
    *  conditions. Persisted so the advisor's `permission-write-check` rule can
    *  answer the only question `PERMISSION_WRITE_CHECK=warn` exists to answer:
-   *  would turning it to `enforce` refuse anything this workspace actually
-   *  does. Collection + action + mode only — no row values. */
+   *  what is `enforce` — the default — refusing on this workspace, and which
+   *  condition needs widening. Collection + action + mode only, never row
+   *  values. */
   permissionWriteChecks?: { collection: string; action: string; mode: string }[];
 }
 

@@ -105,9 +105,10 @@ export interface RuntimeInsights {
   /** Collections ordered by list traffic desc. */
   collections: CollectionStat[];
   /** Writes that fell outside a `write` permission's conditions, busiest first.
-   *  Empty means no recorded write in the window would have been refused —
-   *  which is the reading `PERMISSION_WRITE_CHECK=warn` exists to produce, and
-   *  is only as strong as `window.sampleRate`. */
+   *  Under the `enforce` default each was refused; under `warn` each was
+   *  allowed and counted, which is the reading a deployment migrating onto the
+   *  default sets `warn` to produce. Empty means none — only as strong as
+   *  `window.sampleRate`. */
   permissionWriteChecks: PermissionWriteCheckStat[];
   window: {
     /** Inclusive lower bound of the window (epoch ms). */

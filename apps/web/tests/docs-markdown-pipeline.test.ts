@@ -100,11 +100,31 @@ describe("docs markdown processor dependencies", () => {
     expect(pkg("docs").dependencies?.["@astrojs/markdown-remark"]).toBeString();
   });
 
-  test("markdown-remark matches astro exactly", () => {
-    // astro declares the peer as an exact version (`"@astrojs/markdown-remark":
-    // "7.2.4"`), not a range, so the two have to move together.
-    const deps = pkg("docs").dependencies ?? {};
-    expect(deps["@astrojs/markdown-remark"]).toBe(deps["astro"] as string);
+  test("markdown-remark matches the version astro itself pins", () => {
+    // astro declares the peer as an EXACT version, not a range, so `apps/docs`
+    // has to declare that same exact version or two copies enter the graph.
+    //
+    // This used to compare against `deps["astro"]`, which passed only because
+    // astro's own version and the version it pinned had been the same string.
+    // astro 7.2.8 ended that coincidence: it still pins
+    // `@astrojs/markdown-remark` at 7.2.4, because that package has no 7.2.8 at
+    // all. The old assertion then failed on a tree that was entirely correct —
+    // it was reading a number that happens to match, not the coupling.
+    //
+    // Read from `bun.lock` for the same reason `typescript-pin-lockfile` and
+    // `vite-pin-lockfile` do: what astro RESOLVED to is the fact, and no
+    // version is written down here, so a legitimate astro bump keeps passing.
+    const lock = read(resolve(ROOT, "bun.lock"));
+    const astroEntry = lock.match(/^\s*"astro": \[[\s\S]*?\],$/m)?.[0];
+    expect(astroEntry).toBeString();
+    const pinned = astroEntry?.match(
+      /"@astrojs\/markdown-remark":\s*"([^"]+)"/,
+    )?.[1];
+    // Guards the guard: if the lockfile shape ever stops carrying that
+    // dependency the regex yields undefined, and comparing undefined to
+    // undefined would pass over nothing.
+    expect(pinned).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pkg("docs").dependencies?.["@astrojs/markdown-remark"]).toBe(pinned as string);
   });
 
   test("both Astro workspaces run the same astro", () => {

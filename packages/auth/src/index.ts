@@ -365,46 +365,43 @@ export const createAuth = async (
       // bare-token key, so the two windows COMPOUND: the last warm request at
       // t=59s keeps the token accepted to roughly t=89s.
       //
-      // Flipping `enabled` to false was measured too, and the harness result
-      // does NOT transfer to production unchanged. In-process it reads as
-      // immediate (401 on the very next request), because the handler calls
-      // `invalidateSession` and nothing repopulates the cache. But that cache
-      // is a module-level `TtlLru` with no shared store behind it, i.e. PER
-      // ISOLATE — `revoke-others` clears only the isolate that served it (see
-      // the note at `routes/auth-admin.ts`). Any other isolate that had the
-      // session cached keeps serving it until its own 30s TTL lapses.
+      // **Now OFF, and the note below is kept because the arithmetic that made
+      // it worth keeping ON is exactly what changed.** #319.
+      //
+      // When it was on:
       //
       //   as shipped       ~90s everywhere
       //   enabled: false   immediate in the revoking isolate, <=30s elsewhere
       //
-      // So disabling this is 90s -> 30s, not 90s -> 0, and the price is
-      // better-auth's ~2 D1 round-trips on every request that misses the inner
-      // cache.
+      // Disabling it alone is 90s -> 30s, not 90s -> 0. The residue is the
+      // per-isolate `TtlLru` in `services/permissions-cache`, which has no
+      // shared store behind it: `revoke-others` clears only the isolate that
+      // served it, and any other isolate holding the session keeps serving it
+      // until its own 30s TTL lapses.
       //
-      // **What makes 30s no safer than 90s in practice:** `api_keys` is keyed
-      // on `user_id`, never on a session, and `revoke-others` does not touch
-      // it. So the window is not "extra read access" — it is time to mint a
-      // `pak_` key that outlives the revocation entirely, and 30 seconds is as
-      // sufficient for that as 90. Buying 90->30 with a session read per cold
-      // request therefore buys very little against the threat that matters.
+      // The note here used to close by listing two levers, and calling the
+      // second one "measured and deliberately NOT built" while adding: "It is
+      // downstream of THIS flag, not independent of it: turn this off and the
+      // arithmetic inverts." That is what happened. Both are now built:
       //
-      // Left enabled deliberately. The two levers that would actually close it:
+      //   (1) `revoke-others` accounting for API keys — the one that mattered,
+      //       because a `pak_` key minted inside the window outlives the
+      //       revocation entirely. Opt-in (`?apiKeys=1`) on purpose: the same
+      //       personal key routinely powers a CI job that has nothing to do
+      //       with the laptop being signed out.
+      //   (2) a shared revocation signal — `services/revocation-epoch.ts`. A
+      //       monotonic stamp in `app_settings`, bumped by every session-delete
+      //       path and read at most once per second per isolate, so a cached
+      //       entry stamped with an older epoch is treated as a miss. That is
+      //       what removes the <=30s residue, and it is the reason turning this
+      //       off is now worth its price.
       //
-      //   (1) `revoke-others` accounting for API keys — DONE, and it is the one
-      //       that mattered, because a key minted inside the window outlives
-      //       the revocation entirely.
-      //   (2) a shared revocation signal so the other isolates hear about it —
-      //       measured and deliberately NOT built. It moves a device holding
-      //       `session_data` from 200 to 200 (a signed blob in a browser is
-      //       past the reach of any server-side signal) and only a token-only
-      //       device from 200 to 401, i.e. it buys the tail ~30s of ~90 at the
-      //       price of a shared-store read on a path that makes zero today.
-      //       It is downstream of THIS flag, not independent of it: turn this
-      //       off and the arithmetic inverts. See the `CachedSession` note in
-      //       `apps/web/src/server/services/permissions-cache.ts`.
-      //
-      // Neither is a TTL, which is the thing this line looks like it controls.
-      cookieCache: { enabled: true, maxAge: 60 },
+      // The price, unchanged and real: better-auth's ~2 D1 round-trips on every
+      // request that misses the inner cache. What is bought is ~90s -> ~1s,
+      // where the ~1s is the epoch poll interval (`EPOCH_TTL_MS`) and NOT zero
+      // — a true zero would need a shared read on every request, which is the
+      // cost the session cache exists to avoid.
+      cookieCache: { enabled: false },
     },
     databaseHooks: {
       // Block session creation for suspended operators at the source — covers

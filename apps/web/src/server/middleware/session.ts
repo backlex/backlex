@@ -15,6 +15,7 @@ import {
   setCachedAppSessionOwner,
   setCachedSession,
 } from "../services/permissions-cache";
+import { revocationEpoch } from "../services/revocation-epoch";
 
 import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
 const extractIp = (req: Request, env: ClientAddressEnv): string | null =>
@@ -427,7 +428,16 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     }
     sessionToken ??= cookies[name];
   }
-  const cached = sessionToken ? getCachedSession(sessionToken) : undefined;
+  // A cache hit is only good while no revocation has happened since it was
+  // stored. The epoch read is memoized per isolate for ~1s, so this costs one
+  // SELECT per isolate per second however busy it is — not one per request.
+  // `null` means the epoch could not be read, and an unreadable epoch must not
+  // license a stale hit, so it falls through to the authoritative session read.
+  // See `services/revocation-epoch.ts` and #319.
+  const rawCached = sessionToken ? getCachedSession(sessionToken) : undefined;
+  const epochNow = rawCached ? await revocationEpoch(ctx) : 0;
+  const cached =
+    rawCached && epochNow !== null && (rawCached.epoch ?? -1) >= epochNow ? rawCached : undefined;
   if (cached) {
     userId = cached.userId;
     email = cached.email;
@@ -445,7 +455,17 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         stampOnce(c, { db: ctx.db, dialect: ctx.dialect, env: ctx.env }, sessId, c.req.raw);
       }
       if (sessionToken) {
-        setCachedSession(sessionToken, { userId, email, sessionId: sessId });
+        // Stamped with the epoch this entry was believed under. Read fresh
+        // rather than reusing `epochNow`: that one is 0 on the miss path (no
+        // hit to validate), and stamping 0 would make every entry read as
+        // stale forever after the first revocation.
+        const epochAt = await revocationEpoch(ctx);
+        setCachedSession(sessionToken, {
+          userId,
+          email,
+          sessionId: sessId,
+          ...(epochAt === null ? {} : { epoch: epochAt }),
+        });
       }
     }
   }

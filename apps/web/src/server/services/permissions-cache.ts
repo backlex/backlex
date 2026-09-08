@@ -362,6 +362,12 @@ export interface CachedSession {
   userId: string;
   email: string | null;
   sessionId: string | null;
+  /** The revocation epoch in force when this was stored. A reader compares it
+   *  against the current one and treats an older entry as a miss — which is
+   *  how a revocation reaches the isolates that did not serve it. See
+   *  `services/revocation-epoch.ts` and #319. Absent on entries written before
+   *  that shipped, and absent reads as stale, which is the safe direction. */
+  epoch?: number;
 }
 
 const sessionCache = new TtlLru<string, CachedSession>(

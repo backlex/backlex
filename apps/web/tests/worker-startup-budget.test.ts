@@ -261,6 +261,17 @@ describe("worker startup budget", () => {
     // headroom is for. The one thing that WOULD move the number materially is
     // `security-headers.ts` growing a runtime dependency; it deliberately has
     // none.
-    expect(kib).toBeLessThan(8450);
+    // Raised 8450 → 8465 on 2026-09-08, measured at 8455. ONE module:
+    // `services/revocation-epoch.ts` (#319), the shared signal that lets an
+    // isolate which never served a revoke stop honouring the revoked cookie.
+    // ~5 KiB, and most of it is the comment explaining why it is an
+    // `app_settings` row and not a Durable Object — this walk counts source
+    // bytes, so that paragraph weighs what the code does.
+    //
+    // Nothing new became REACHABLE, which is the test that matters here:
+    // `middleware/session.ts` is the importer and it already pulled in both
+    // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
+    // dynamic import would bite on.
+    expect(kib).toBeLessThan(8465);
   });
 });

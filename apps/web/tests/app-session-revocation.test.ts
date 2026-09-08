@@ -33,14 +33,23 @@
  * once. The whole suite runs in one process against one in-memory cache, so
  * every "immediate" below is the in-process guarantee: the isolate that
  * performed the suspend/delete/revoke refuses the token on the very next
- * request. Across a fleet, an isolate that had already cached a `true` for
- * that session id can still honour the token for the remainder of that 30s
- * window. Nobody should read the test-speed immediacy proven here as a
- * fleet-wide guarantee — 30s is the ceiling, and it is the same ceiling every
- * other identity fact on this path carries.
+ * request.
+ *
+ * **The fleet-wide half used to be a stated ceiling and is now a test.** This
+ * paragraph read: "across a fleet, an isolate that had already cached a `true`
+ * for that session id can still honour the token for the remainder of that 30s
+ * window … 30s is the ceiling." That was true and is what #359 closed. Every
+ * app-plane revocation path now bumps the shared epoch in
+ * `services/revocation-epoch.ts`, and `appSessionOwner` drops its cache when
+ * the epoch moves — so a neighbouring isolate stops honouring the token within
+ * `EPOCH_TTL_MS` (~1s) rather than 30. The last describe in this file simulates
+ * that isolate; it is the one assertion here that is NOT about the in-process
+ * path.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { makeHarness, nextSyntheticIp, seedAdmin, type TestHarness } from "./setup";
+import { setCachedAppSessionOwner } from "../src/server/services/permissions-cache";
+import { EPOCH_TTL_MS } from "../src/server/services/revocation-epoch";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 const END_USER_PASSWORD = "suspension-means-suspension";
@@ -104,7 +113,7 @@ const accessTokenFor = async (refreshToken: string): Promise<string> => {
 const signIn = async (email: string): Promise<string> => {
   const res = await h.app.request(`/api/t/${SLUG}/auth/sign-in/email`, {
     method: "POST",
-    headers: JSON_HEADERS,
+    headers: { ...JSON_HEADERS, "x-forwarded-for": nextSyntheticIp() },
     body: JSON.stringify({ email, password: END_USER_PASSWORD }),
   });
   expect(res.status, `app-plane sign-in for ${email}`).toBe(200);
@@ -116,7 +125,12 @@ const signIn = async (email: string): Promise<string> => {
 const signUp = async (email: string): Promise<{ id: string; refreshToken: string }> => {
   const res = await h.app.request(`/api/t/${SLUG}/auth/sign-up/email`, {
     method: "POST",
-    headers: JSON_HEADERS,
+    // A fresh IP per call. This file drives `h.app.request` directly — it needs
+    // raw token control — and the harness's synthetic-IP wrapper sits on
+    // `h.fetch`, so every sign-up here shared ONE IP and the file fitted inside
+    // `lib/auth-rate-limit.ts`'s per-IP budget by accident. Adding two tests
+    // tipped it into 429s that had nothing to do with what they assert.
+    headers: { ...JSON_HEADERS, "x-forwarded-for": nextSyntheticIp() },
     body: JSON.stringify({ email, password: END_USER_PASSWORD, name: email }),
   });
   expect(res.status, `app-plane sign-up for ${email}`).toBe(200);
@@ -301,5 +315,70 @@ describe("impersonation stays exempt", () => {
     });
     expect(ended.status, "end the impersonation").toBe(200);
     await expectSpent(session.token, "after the impersonation ended");
+  });
+});
+
+/**
+ * The isolate that never heard about the revocation.
+ *
+ * Everything above proves the LOCAL half: the isolate that served the
+ * suspend/delete evicts its own entry. That was never the gap. The gap was
+ * every other isolate in the fleet, each holding its own `TtlLru` with no
+ * shared store behind it, and the file header used to say so as a permanent
+ * ceiling.
+ *
+ * A neighbour cannot be spawned in-process, so it is SIMULATED the same way
+ * `auth-admin-sessions.test.ts` does for the platform plane: re-plant the cache
+ * entry after the revocation, which is exactly the state an isolate that never
+ * saw it is in, then let its poll come due.
+ *
+ * Note the key. `appSessionOwnerCache` is keyed on the SESSION ID — not the
+ * token, and not a signed cookie. Planting under the wrong key puts the entry
+ * where nothing reads and the test then passes off the ordinary refusal, which
+ * is a mistake this repo has now made twice on the platform side.
+ */
+describe("an isolate that never heard the revocation", () => {
+  /** The active workspace id — half of what the cache stores. */
+  const tenantId = async (): Promise<string> => {
+    const me = await h.fetch("/api/me");
+    expect(me.status, "the admin session must resolve to a workspace").toBe(200);
+    const id = ((await me.json()) as { data: { tenantId: string | null } }).data.tenantId;
+    expect(id, "a tenant id is needed to plant a realistic cache entry").toBeTruthy();
+    return id as string;
+  };
+
+  test("stops honouring the token on its next request", async () => {
+    const u = await newEndUser(`neighbour-${crypto.randomUUID()}@end.test`);
+    await expectLive(u.accessToken, "before anything");
+    const sid = sidOf(u.accessToken);
+    const tid = await tenantId();
+
+    // The revocation. It bumps the shared epoch and clears THIS isolate's copy.
+    await setStatus(u.id, "suspended");
+
+    // The neighbour, planted with the answer it was holding when the revoke
+    // happened somewhere else. The ORDER is the whole simulation and it took a
+    // wrong first attempt to see it: `dropAppSessionsIfStale` flushes on the
+    // epoch CHANGING, not on the entry being old, so this has to be planted
+    // after the bump and BEFORE any request in this process has observed it.
+    // Plant it after a probe and the flush has already happened — the entry is
+    // then one the neighbour cached post-revocation, which is a different and
+    // legitimate thing, and the test would read 200 and mean nothing.
+    setCachedAppSessionOwner(sid, { userId: u.id, tenantId: tid });
+
+    // That next request is where the neighbour reads the epoch, sees it move,
+    // and drops everything it held. ~1s in production; here it is the first
+    // request after the bump.
+    await expectSpent(u.accessToken, "the neighbour's first request after the bump");
+  });
+
+  test("the bound is the poll interval, and it is a bound rather than zero", async () => {
+    // Stated as an assertion so "immediate" cannot creep back into the prose
+    // above. Between a revocation and a neighbour's next epoch read it goes on
+    // serving; closing that entirely would need a shared read on EVERY request,
+    // which is the cost the session cache exists to avoid. `EPOCH_TTL_MS` is
+    // that window, and it is the honest figure — ~90s became ~1s, not 0.
+    expect(EPOCH_TTL_MS).toBeGreaterThan(0);
+    expect(EPOCH_TTL_MS).toBeLessThanOrEqual(1_000);
   });
 });

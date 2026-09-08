@@ -34,6 +34,7 @@ import { execute, queryAll } from "./items/sql-helpers";
 import { deserializeRow } from "./items/serialize";
 import { sidecarClear, sidecarDeleteRow } from "./items/i18n-sidecar";
 import { deleteFts, indexFts } from "./fts";
+import { bumpRevocationEpoch } from "./revocation-epoch";
 import { deleteVector, embedAndUpsert } from "./vectorize";
 import { removeAppUserFromAllOrgs } from "./app-orgs";
 
@@ -780,6 +781,11 @@ async function eraseEverywhere(
 
   // 4. The identity itself, last — everything above keys off it.
   await db.delete(s.appSessions).where(eq(s.appSessions.userId, uid));
+  // An erased subject's sessions must stop being honoured everywhere, not just
+  // wherever this ran. Unlike the suspend/delete paths in `routes/app-users.ts`
+  // this one never had even the local invalidation, so the TTL was the whole
+  // guarantee — the widest version of the hole #359 describes.
+  await bumpRevocationEpoch({ db, dialect: ctx.dialect });
   await db.delete(s.appAccounts).where(eq(s.appAccounts.userId, uid));
   await db.delete(s.appUserRoles).where(eq(s.appUserRoles.appUserId, uid));
   // Memberships, org-scoped role bindings and any session pin, in one place —

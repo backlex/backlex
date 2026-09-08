@@ -20,7 +20,7 @@ made CI report drift on every Linux run over a single digit.
 
 Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
-**1123 resolved package versions across 21 distinct licences.**
+**1121 resolved package versions across 21 distinct licences.**
 
 > **10 packages have no usable licence field.** They are listed under `Unknown` below. Treat that as "unreviewed", not "permissive" — someone has to read the actual repository before shipping against it.
 
@@ -43,18 +43,18 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@ai-sdk/provider-utils@5.0.33`
 - `@ai-sdk/provider@4.0.8`
 - `@cf-wasm/photon@0.3.6`
-- `@img/sharp-darwin-arm64@0.35.3`
-- `@img/sharp-darwin-x64@0.35.3`
-- `@img/sharp-freebsd-wasm32@0.35.3`
-- `@img/sharp-linux-arm@0.35.3`
-- `@img/sharp-linux-arm64@0.35.3`
-- `@img/sharp-linux-ppc64@0.35.3`
-- `@img/sharp-linux-riscv64@0.35.3`
-- `@img/sharp-linux-s390x@0.35.3`
-- `@img/sharp-linux-x64@0.35.3`
-- `@img/sharp-linuxmusl-arm64@0.35.3`
-- `@img/sharp-linuxmusl-x64@0.35.3`
-- `@img/sharp-webcontainers-wasm32@0.35.3`
+- `@img/sharp-darwin-arm64@0.35.4`
+- `@img/sharp-darwin-x64@0.35.4`
+- `@img/sharp-freebsd-wasm32@0.35.4`
+- `@img/sharp-linux-arm@0.35.4`
+- `@img/sharp-linux-arm64@0.35.4`
+- `@img/sharp-linux-ppc64@0.35.4`
+- `@img/sharp-linux-riscv64@0.35.4`
+- `@img/sharp-linux-s390x@0.35.4`
+- `@img/sharp-linux-x64@0.35.4`
+- `@img/sharp-linuxmusl-arm64@0.35.4`
+- `@img/sharp-linuxmusl-x64@0.35.4`
+- `@img/sharp-webcontainers-wasm32@0.35.4`
 - `@opentelemetry/semantic-conventions@1.40.0`
 - `@swc/helpers@0.5.23`
 - `@typescript/typescript-aix-ppc64@7.0.2`
@@ -83,7 +83,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `ai@7.0.84`
 - `aria-query@5.3.2`
 - `axobject-query@4.1.0`
-- `baseline-browser-mapping@2.10.27`
+- `baseline-browser-mapping@2.11.21`
 - `bson@6.10.4`
 - `class-variance-authority@0.7.1`
 - `detect-libc@2.0.2`
@@ -93,29 +93,30 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `mongodb-connection-string-url@3.0.2`
 - `mongodb@6.21.0`
 - `reflect-metadata@0.2.2`
-- `sharp@0.35.3`
+- `sharp@0.35.4`
 - `typescript@7.0.2`
 
 ### Apache-2.0 AND LGPL-3.0-or-later (3)
 
-- `@img/sharp-win32-arm64@0.35.3`
-- `@img/sharp-win32-ia32@0.35.3`
-- `@img/sharp-win32-x64@0.35.3`
+- `@img/sharp-win32-arm64@0.35.4`
+- `@img/sharp-win32-ia32@0.35.4`
+- `@img/sharp-win32-x64@0.35.4`
 
 ### Apache-2.0 AND LGPL-3.0-or-later AND MIT (1)
 
-- `@img/sharp-wasm32@0.35.3`
+- `@img/sharp-wasm32@0.35.4`
 
-### BlueOak-1.0.0 (3)
+### BlueOak-1.0.0 (4)
 
 - `common-ancestor-path@2.0.0`
 - `lru-cache@11.5.0`
 - `sax@1.6.0`
+- `sax@1.6.1`
 
 ### BSD-2-Clause (10)
 
-- `css-select@5.2.2`
-- `css-what@6.2.2`
+- `css-select@6.0.0`
+- `css-what@7.0.0`
 - `domelementtype@2.3.0`
 - `domhandler@5.0.3`
 - `domutils@3.2.2`
@@ -129,7 +130,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
 - `asn1js@3.0.10`
 - `d3-ease@3.0.1`
-- `diff@8.0.4`
+- `diff@9.0.0`
 - `fast-uri@3.1.6`
 - `js-base64@3.7.8`
 - `moo@0.5.3`
@@ -141,7 +142,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
 ### CC-BY-4.0 (1)
 
-- `caniuse-lite@1.0.30001791`
+- `caniuse-lite@1.0.30001810`
 
 ### CC0-1.0 (3)
 
@@ -194,39 +195,39 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
 ### LGPL-3.0-or-later (10)
 
-- `@img/sharp-libvips-darwin-arm64@1.3.2`
-- `@img/sharp-libvips-darwin-x64@1.3.2`
-- `@img/sharp-libvips-linux-arm@1.3.2`
-- `@img/sharp-libvips-linux-arm64@1.3.2`
-- `@img/sharp-libvips-linux-ppc64@1.3.2`
-- `@img/sharp-libvips-linux-riscv64@1.3.2`
-- `@img/sharp-libvips-linux-s390x@1.3.2`
-- `@img/sharp-libvips-linux-x64@1.3.2`
-- `@img/sharp-libvips-linuxmusl-arm64@1.3.2`
-- `@img/sharp-libvips-linuxmusl-x64@1.3.2`
+- `@img/sharp-libvips-darwin-arm64@1.3.3`
+- `@img/sharp-libvips-darwin-x64@1.3.3`
+- `@img/sharp-libvips-linux-arm@1.3.3`
+- `@img/sharp-libvips-linux-arm64@1.3.3`
+- `@img/sharp-libvips-linux-ppc64@1.3.3`
+- `@img/sharp-libvips-linux-riscv64@1.3.3`
+- `@img/sharp-libvips-linux-s390x@1.3.3`
+- `@img/sharp-libvips-linux-x64@1.3.3`
+- `@img/sharp-libvips-linuxmusl-arm64@1.3.3`
+- `@img/sharp-libvips-linuxmusl-x64@1.3.3`
 
-### MIT (937)
+### MIT (934)
 
 - `@asteasolutions/zod-to-openapi@8.5.0`
 - `@astrojs/check@0.9.10`
-- `@astrojs/compiler-binding-darwin-arm64@0.3.2`
-- `@astrojs/compiler-binding-darwin-x64@0.3.2`
-- `@astrojs/compiler-binding-linux-arm64-gnu@0.3.2`
-- `@astrojs/compiler-binding-linux-arm64-musl@0.3.2`
-- `@astrojs/compiler-binding-linux-x64-gnu@0.3.2`
-- `@astrojs/compiler-binding-linux-x64-musl@0.3.2`
-- `@astrojs/compiler-binding-wasm32-wasi@0.3.2`
-- `@astrojs/compiler-binding-win32-arm64-msvc@0.3.2`
-- `@astrojs/compiler-binding-win32-x64-msvc@0.3.2`
-- `@astrojs/compiler-binding@0.3.2`
-- `@astrojs/compiler-rs@0.3.2`
+- `@astrojs/compiler-binding-darwin-arm64@0.4.0`
+- `@astrojs/compiler-binding-darwin-x64@0.4.0`
+- `@astrojs/compiler-binding-linux-arm64-gnu@0.4.0`
+- `@astrojs/compiler-binding-linux-arm64-musl@0.4.0`
+- `@astrojs/compiler-binding-linux-x64-gnu@0.4.0`
+- `@astrojs/compiler-binding-linux-x64-musl@0.4.0`
+- `@astrojs/compiler-binding-wasm32-wasi@0.4.0`
+- `@astrojs/compiler-binding-win32-arm64-msvc@0.4.0`
+- `@astrojs/compiler-binding-win32-x64-msvc@0.4.0`
+- `@astrojs/compiler-binding@0.4.0`
+- `@astrojs/compiler-rs@0.4.0`
 - `@astrojs/compiler@2.13.1`
 - `@astrojs/internal-helpers@0.10.2`
 - `@astrojs/internal-helpers@0.10.4`
 - `@astrojs/language-server@2.16.9`
 - `@astrojs/markdown-remark@7.2.4`
 - `@astrojs/markdown-satteri@0.3.5`
-- `@astrojs/markdown-satteri@0.3.7`
+- `@astrojs/markdown-satteri@0.3.8`
 - `@astrojs/mdx@7.0.7`
 - `@astrojs/prism@4.0.2`
 - `@astrojs/sitemap@3.7.3`
@@ -283,6 +284,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@emmetio/stream-reader@2.2.0`
 - `@emnapi/core@1.11.1`
 - `@emnapi/runtime@1.11.1`
+- `@emnapi/runtime@1.11.3`
 - `@emnapi/wasi-threads@1.2.2`
 - `@envelop/core@5.5.1`
 - `@envelop/instrumentation@1.0.0`
@@ -380,15 +382,15 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@neondatabase/serverless@1.1.0`
 - `@netlify/functions@5.3.0`
 - `@netlify/types@2.8.0`
-- `@next/env@16.3.1`
-- `@next/swc-darwin-arm64@16.3.1`
-- `@next/swc-darwin-x64@16.3.1`
-- `@next/swc-linux-arm64-gnu@16.3.1`
-- `@next/swc-linux-arm64-musl@16.3.1`
-- `@next/swc-linux-x64-gnu@16.3.1`
-- `@next/swc-linux-x64-musl@16.3.1`
-- `@next/swc-win32-arm64-msvc@16.3.1`
-- `@next/swc-win32-x64-msvc@16.3.1`
+- `@next/env@16.3.3`
+- `@next/swc-darwin-arm64@16.3.3`
+- `@next/swc-darwin-x64@16.3.3`
+- `@next/swc-linux-arm64-gnu@16.3.3`
+- `@next/swc-linux-arm64-musl@16.3.3`
+- `@next/swc-linux-x64-gnu@16.3.3`
+- `@next/swc-linux-x64-musl@16.3.3`
+- `@next/swc-win32-arm64-msvc@16.3.3`
+- `@next/swc-win32-x64-msvc@16.3.3`
 - `@noble/ciphers@2.2.0`
 - `@noble/hashes@2.2.0`
 - `@oslojs/encoding@1.1.0`
@@ -579,7 +581,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `@types/micromatch@4.0.10`
 - `@types/ms@2.1.0`
 - `@types/nlcst@2.0.3`
-- `@types/node@24.12.4`
 - `@types/node@25.6.0`
 - `@types/responselike@1.0.3`
 - `@types/sax@1.2.7`
@@ -627,7 +628,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `asn1@0.2.6`
 - `astring@1.9.0`
 - `astro-expressive-code@0.44.1`
-- `astro@7.2.4`
+- `astro@7.2.8`
 - `aws-ssl-profiles@1.1.2`
 - `aws4fetch@1.0.20`
 - `bail@2.0.2`
@@ -667,7 +668,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `color-name@1.1.4`
 - `comma-separated-tokens@2.0.3`
 - `commander@11.1.0`
-- `commander@14.0.3`
 - `compressible@2.0.18`
 - `compression@1.8.1`
 - `content-disposition@1.1.0`
@@ -744,7 +744,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `fdir@6.5.0`
 - `fill-range@7.1.1`
 - `finalhandler@2.1.1`
-- `find-process@2.1.1`
+- `find-proc@0.1.0`
 - `flattie@1.1.1`
 - `fontace@0.4.1`
 - `fontkitten@1.0.3`
@@ -788,7 +788,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `hast-util-to-text@4.0.2`
 - `hast-util-whitespace@3.0.0`
 - `hastscript@9.0.1`
-- `hono@4.13.2`
+- `hono@4.13.5`
 - `html-escaper@3.0.3`
 - `html-void-elements@3.0.0`
 - `html-whitespace-sensitive-tag-names@3.0.1`
@@ -816,7 +816,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `jiti@2.7.0`
 - `jose@6.2.3`
 - `js-sha256@0.10.1`
-- `js-yaml@4.3.1`
+- `js-yaml@4.3.2`
 - `json-buffer@3.0.1`
 - `json-schema-traverse@1.0.0`
 - `jsonc-parser@2.3.1`
@@ -829,7 +829,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `leven@3.1.0`
 - `libsql@0.5.29`
 - `lilconfig@3.1.3`
-- `loglevel@1.9.2`
 - `longest-streak@3.1.0`
 - `lowercase-keys@2.0.0`
 - `lru.min@1.1.4`
@@ -902,7 +901,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `mime-types@3.0.2`
 - `mimic-response@1.0.1`
 - `mimic-response@3.1.0`
-- `morgan@1.11.0`
+- `morgan@1.12.0`
 - `mrmime@2.0.1`
 - `ms@2.0.0`
 - `ms@2.1.3`
@@ -914,7 +913,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `negotiator@0.6.4`
 - `negotiator@1.0.0`
 - `neotraverse@1.0.1`
-- `next@16.3.1`
+- `next@16.3.3`
 - `nlcst-to-string@4.0.0`
 - `node-fetch-native@1.6.7`
 - `node-mock-http@1.0.4`
@@ -1051,7 +1050,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `style-to-object@1.0.14`
 - `styled-jsx@5.1.6`
 - `supports-color@7.2.0`
-- `svgo@4.0.2`
+- `svgo@4.1.0`
 - `tailwind-merge@3.6.0`
 - `tailwindcss@4.3.3`
 - `tapable@2.3.3`
@@ -1078,7 +1077,6 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `ulid@2.4.0`
 - `ultrahtml@1.6.0`
 - `uncrypto@0.1.3`
-- `undici-types@7.16.0`
 - `undici-types@7.19.2`
 - `undici@7.29.0`
 - `undici@8.10.0`
@@ -1155,7 +1153,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 
 ### MIT-0 (1)
 
-- `nodemailer@9.0.5`
+- `nodemailer@9.1.1`
 
 ### MPL-2.0 (24)
 

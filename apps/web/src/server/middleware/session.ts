@@ -10,6 +10,7 @@ import { verifyThirdPartyToken } from "../lib/third-party-jwt";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
 import { resolveThirdPartyUser } from "../services/third-party-auth";
 import {
+  dropAppSessionsIfStale,
   getCachedAppSessionOwner,
   getCachedSession,
   setCachedAppSessionOwner,
@@ -247,8 +248,20 @@ export const appSessionOwner = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
   sessionId: string,
 ): Promise<AppSessionOwner | null> => {
-  const cached = getCachedAppSessionOwner(sessionId);
-  if (cached !== undefined) return cached;
+  // The app-plane half of the revocation signal (#359). The epoch read is
+  // memoized per isolate for ~1s, so this costs one SELECT per isolate per
+  // second however busy it is, not one per request.
+  //
+  // `null` means it could not be read, and an unreadable epoch must not
+  // license a cached answer — so the cache is skipped on BOTH sides (no read,
+  // no write) until it recovers. That is a DB read per request: degraded, not
+  // down, and never stale.
+  const epoch = await revocationEpoch(ctx);
+  if (epoch !== null) {
+    dropAppSessionsIfStale(epoch);
+    const cached = getCachedAppSessionOwner(sessionId);
+    if (cached !== undefined) return cached;
+  }
   const t =
     ctx.dialect === "pg"
       ? { sessions: pg.schema.appSessions, users: pg.schema.appUsers }
@@ -282,7 +295,9 @@ export const appSessionOwner = async (
     row && row.status === "active" && exp > Date.now()
       ? { userId: row.userId, tenantId: row.tenantId }
       : null;
-  setCachedAppSessionOwner(sessionId, owner);
+  // Not written while the epoch is unreadable — an entry cached now could not
+  // be told apart from one cached before a revocation nobody could see.
+  if (epoch !== null) setCachedAppSessionOwner(sessionId, owner);
   return owner;
 };
 

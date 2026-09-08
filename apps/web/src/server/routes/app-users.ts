@@ -8,6 +8,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { invalidateAppSessions, invalidateUserRoles } from "../services/permissions-cache";
+import { bumpRevocationEpoch } from "../services/revocation-epoch";
 import { inviteAppUser, resolveAssignableRoles } from "../services/app-user-invites";
 import { removeAppUserFromAllOrgs } from "../services/app-orgs";
 import { defaultHook } from "../lib/openapi-router";
@@ -364,6 +365,11 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             .delete(t.appSessions)
             .where(eq(t.appSessions.userId, appUserId));
           invalidateAppSessions(doomed.map((r) => r.id));
+          // Local `invalidateAppSessions` above only reaches THIS isolate. The
+          // shared epoch is what makes every other one drop its cached owners
+          // within ~1s. After the delete and awaited — see
+          // `services/revocation-epoch.ts` and #359.
+          await bumpRevocationEpoch(ctx);
         }
       }
       if (body.name !== undefined) {
@@ -481,6 +487,11 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // refresh token the row itself is. Revoking one device is the operation
       // this route exists for, and it was the one the JWT ignored.
       invalidateAppSessions([sessionId]);
+      // Local `invalidateAppSessions` above only reaches THIS isolate. The
+      // shared epoch is what makes every other one drop its cached owners
+      // within ~1s. After the delete and awaited — see
+      // `services/revocation-epoch.ts` and #359.
+      await bumpRevocationEpoch(ctx);
       return c.json({ ok: true });
     },
   )
@@ -535,6 +546,11 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         .where(eq(t.appSessions.userId, appUserId))) as Array<{ id: string }>;
       await (ctx.db as any).delete(t.appSessions).where(eq(t.appSessions.userId, appUserId));
       invalidateAppSessions(doomed.map((r) => r.id));
+      // Local `invalidateAppSessions` above only reaches THIS isolate. The
+      // shared epoch is what makes every other one drop its cached owners
+      // within ~1s. After the delete and awaited — see
+      // `services/revocation-epoch.ts` and #359.
+      await bumpRevocationEpoch(ctx);
       await (ctx.db as any).delete(accounts).where(eq(accounts.userId, appUserId));
       // `app_verifications` keys on the identifier (email/token), not a user id —
       // those short-lived rows just expire on their own.

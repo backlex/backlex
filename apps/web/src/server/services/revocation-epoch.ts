@@ -45,7 +45,13 @@
 import { and, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { Ctx } from "../context";
+/** The minimum this file needs. Narrower than `Ctx` on purpose: the app-plane
+ *  reader (`middleware/session.ts::appSessionOwner`) is handed exactly this
+ *  shape by `routes/realtime.ts` and cannot produce a full `Ctx`. */
+interface EpochCtx {
+  db: unknown;
+  dialect: "pg" | "sqlite";
+}
 
 /** The `app_settings` row this lives in. `_global` is the instance-wide tier's
  *  sentinel — an ordinary value, so it conflicts like any other key and the
@@ -86,7 +92,7 @@ export const __resetEpochMemo = (): void => {
  * be a blackout on a transient DB blip; serving from a cache that might be
  * stale is the thing this file exists to stop.
  */
-export const revocationEpoch = async (ctx: Ctx): Promise<number | null> => {
+export const revocationEpoch = async (ctx: EpochCtx): Promise<number | null> => {
   const now = Date.now();
   if (memo && now - memo.readAt < EPOCH_TTL_MS) return memo.value;
   const t = table(ctx.dialect);
@@ -121,7 +127,7 @@ export const revocationEpoch = async (ctx: Ctx): Promise<number | null> => {
  * the read back on the hot path. Revocations are rare and a flush costs one
  * session read per live cookie, so the blunt instrument is the cheap one.
  */
-export const bumpRevocationEpoch = async (ctx: Ctx): Promise<void> => {
+export const bumpRevocationEpoch = async (ctx: EpochCtx): Promise<void> => {
   const t = table(ctx.dialect);
   const value = Math.max(Date.now(), (memo?.value ?? 0) + 1);
   const updatedAt = new Date();

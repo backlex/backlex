@@ -257,6 +257,32 @@ export const invalidateAppSessions = (sessionIds: readonly string[]): void => {
   appSessionOwnerCache.deleteBy((k) => gone.has(k));
 };
 
+/** The revocation epoch this isolate's app-session cache was last valid under.
+ *  `-1` so the first read after a cold start always flushes — an isolate that
+ *  has never checked has no grounds to trust entries it did not write. */
+let appSessionCacheEpoch = -1;
+
+/**
+ * Drop every cached app-session owner if a revocation has happened since they
+ * were cached — the app-plane half of #319, filed as #359.
+ *
+ * A FLUSH rather than a per-entry stamp, and the difference is deliberate.
+ * `appSessionOwnerCache` stores `{ userId, tenantId } | null`, and the `null`
+ * is a real cached answer ("this session is spent"), so giving each entry an
+ * epoch would mean wrapping that union and touching every reader. The epoch is
+ * GLOBAL, so any bump invalidates everything anyway — clearing the map is the
+ * same answer with none of the shape change.
+ *
+ * Cost is a revocation flushing live sessions into one DB read each. Revocations
+ * are rare and that read is the authoritative one, so it is the cheap direction:
+ * the alternative is serving a session somebody asked to end.
+ */
+export const dropAppSessionsIfStale = (epoch: number): void => {
+  if (epoch === appSessionCacheEpoch) return;
+  appSessionOwnerCache.deleteBy(() => true);
+  appSessionCacheEpoch = epoch;
+};
+
 export const getCachedMembership = (k: MembershipKey): boolean | undefined =>
   membershipCache.get(k);
 

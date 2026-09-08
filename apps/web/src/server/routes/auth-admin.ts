@@ -7,6 +7,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { invalidateSession } from "../services/permissions-cache";
+import { bumpRevocationEpoch } from "../services/revocation-epoch";
 import { encryptSecret } from "../lib/crypto";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
@@ -453,6 +454,10 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!row[0]) return c.json({ ok: true });
       await assertTenantMember(ctx, tenantId, row[0].userId);
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.id, id));
+      // Every OTHER isolate keeps answering this cookie from its own session
+      // cache until its TTL lapses; the shared epoch is what makes them drop it
+      // within ~1s. See `services/revocation-epoch.ts` and #319.
+      await bumpRevocationEpoch(ctx);
       return c.json({ ok: true });
     },
   )
@@ -546,12 +551,22 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       for (const s of allSessions as { id: string; token: string | null }[]) {
         if (s.id === keepId) continue;
         await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.id, s.id));
-        // Same isolate only — this is a per-worker cache, so it does not reach
-        // whichever other isolate served that device last. It is the half we
-        // can close from here; see `invalidateSession` for the half we cannot.
+        // The local half: drops the entry in THIS isolate immediately.
         if (s.token) invalidateSession(s.token);
         removed += 1;
       }
+
+      // The other half, which used to be the one "we cannot" close from here.
+      // A per-isolate cache does not reach whichever other isolate served that
+      // device last, so bumping the shared epoch is what makes those isolates
+      // drop it — within ~1s, not on their own 30s TTL. See
+      // `services/revocation-epoch.ts` and #319.
+      //
+      // AFTER the deletes, and awaited: an isolate that reads the new epoch
+      // must find the rows already gone, or it would re-cache the session it
+      // was just told to forget. Bumping first would be a race that reopens the
+      // window on exactly the busy deployments this exists for.
+      if (removed > 0) await bumpRevocationEpoch(ctx);
 
       // Scoped to the caller's own keys IN THE ACTIVE WORKSPACE. Both halves
       // are load-bearing and the second one was added because

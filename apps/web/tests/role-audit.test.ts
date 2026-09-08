@@ -19,6 +19,7 @@
  *    is recorded instead of content.
  */
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { Database } from "bun:sqlite";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -162,12 +163,28 @@ describe("authorization writes are audited", () => {
     // answers so an unexpected 500 can't turn this into a silent pass.
     expect([200, 403, 422]).toContain(suspended.status);
     if (suspended.status === 200) {
-      const rows = await activity(h, "auth");
-      const row = rows.find(
-        (r) => r.action === "auth.update" && r.itemId === userId,
-      );
-      expect(row).toBeDefined();
-      expect((row?.payload as Record<string, unknown>)?.suspended).toBe(true);
+      // Read the row from the DATABASE, not through `/api/activity`, and the
+      // reason is the point of #319. Suspending yourself deletes your own
+      // sessions; the API read used to keep working anyway, because a revoked
+      // session went on being served from a stale cache. Now it does not — the
+      // very next request is 401, which is the behaviour anyone would want and
+      // leaves nobody signed in to ask the endpoint.
+      //
+      // The subject of this test was always the audit ROW, so it reads the row.
+      // `/api/activity`'s own filtering is covered by the three tests above,
+      // which do not sign themselves out.
+      const db = new Database(h.env.SQLITE_PATH as string);
+      const row = db
+        .query(
+          "select action, item_id as itemId, payload from activity " +
+            "where action = 'auth.update' and item_id = ? order by rowid desc limit 1",
+        )
+        .get(userId) as { action: string; itemId: string; payload: string } | null;
+      db.close();
+      expect(row, "a self-suspend must still be audited").toBeTruthy();
+      expect(JSON.parse(row!.payload) as Record<string, unknown>).toMatchObject({
+        suspended: true,
+      });
     }
   });
 });

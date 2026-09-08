@@ -54,7 +54,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, nextSyntheticIp, seedAdmin, type TestHarness } from "./setup";
-import { __cacheStats, invalidateAllPermissions } from "../src/server/services/permissions-cache";
+import {
+  __cacheStats,
+  invalidateAllPermissions,
+  setCachedSession,
+} from "../src/server/services/permissions-cache";
+import { __resetEpochMemo, EPOCH_TTL_MS } from "../src/server/services/revocation-epoch";
 
 /**
  * Stand in for the per-isolate session LRU's 30s TTL elapsing.
@@ -86,10 +91,23 @@ let admin: { email: string; password: string };
 let ip: string;
 
 type Device = {
-  /** Every cookie the sign-in set — a browser inside the 60s cache window. */
+  /** Every cookie the sign-in set. Identical to `cold` now that `cookieCache`
+   *  is off and no `session_data` blob is issued — kept because that EQUALITY
+   *  is a property worth asserting, not an accident. */
   warm: (path: string) => Promise<Response>;
-  /** `session_token` only — the same browser once `session_data` has lapsed. */
+  /** `session_token` only. */
   cold: (path: string) => Promise<Response>;
+  /**
+   * The SIGNED cookie value — `<token>.<signature>`.
+   *
+   * `middleware/session.ts` keys its cache on this, not on the bare token the
+   * `sessions` row holds. The distinction is load-bearing and this file learned
+   * it the hard way: a test that plants a cache entry under the bare token
+   * plants it where nothing will ever look, then passes because the request
+   * 401s for the ordinary reason. See `invalidateSession`, which carries the
+   * same warning at the same cost.
+   */
+  signedToken: string;
 };
 
 /**
@@ -130,7 +148,18 @@ const signInSeparately = async (email: string): Promise<Device> => {
         h.env,
       ),
     );
-  return { warm: send(pairs.join("; ")), cold: send(token.join("; ")) };
+  // decodeURIComponent, and it is load-bearing: the signature is base64, so a
+  // `+` reaches the Set-Cookie header as `%2B`. `getCookie` decodes before the
+  // middleware looks the value up, so the RAW pair is a key nothing reads —
+  // planting under it makes a cache-hit test pass for the ordinary reason.
+  // Measured, not assumed: raw and decoded differ on every sign-in.
+  const signedToken = decodeURIComponent((token[0] ?? "").split("=").slice(1).join("="));
+  expect(`signed token captured: ${signedToken.length > 0}`).toBe("signed token captured: true");
+  return {
+    warm: send(pairs.join("; ")),
+    cold: send(token.join("; ")),
+    signedToken,
+  };
 };
 
 const sessionCount = (): number =>
@@ -171,28 +200,28 @@ describe("revoking other sessions", () => {
     expect(sessionCount()).toBe(1);
   });
 
-  test("a revoked device still passes for up to 60s on better-auth's cookieCache", async () => {
-    // Recorded, not endorsed. `session_data` is a signed copy of the session
-    // that better-auth trusts without a database read, so the row being gone
-    // changes nothing until it lapses. That window is better-auth's default and
-    // is what `permissions-cache.ts` sizes its own 30s TTL against — but it is
-    // invisible from the endpoint, from its response, and from the admin UI
-    // that calls it, which is why it is written down here.
+  test("a revoked device is refused immediately — warm and cold alike", async () => {
+    // This test used to assert the OPPOSITE, and its own note said what to do:
+    // "if this ever starts failing, revocation became immediate — check whether
+    // `cookieCache` was disabled ... and delete this test rather than restoring
+    // the lag." It was disabled (#319). Reversed rather than deleted, so the
+    // 60s window cannot come back unnoticed.
     //
-    // If this ever starts failing, revocation became immediate — check whether
-    // `cookieCache` was disabled or whether the handler learned to expire the
-    // cookie, and delete this test rather than restoring the lag.
+    // `warm` and `cold` are the same request now: with no `session_data` blob
+    // there is nothing for the warm shape to carry that the cold one does not.
+    // Both are asserted anyway, because that equality IS the property.
     const device = await signInSeparately(admin.email);
 
     const res = await h.fetch(`${BASE}/revoke-others`, { method: "POST" });
     expect(await res.json()).toEqual({ ok: true, removed: 1, apiKeys: 0, apiKeysRevoked: 0 });
     expect(sessionCount()).toBe(1);
 
-    expect((await device.warm("/api/me")).status).toBe(200);
-    // Same credential, once both caches are out of the way: the row really is
-    // gone, so the 200 above is the cache and nothing else.
-    sessionCacheExpires();
-    expect((await device.cold("/api/me")).status).toBe(401);
+    expect(`warm after revoke: ${(await device.warm("/api/me")).status}`).toBe(
+      "warm after revoke: 401",
+    );
+    expect(`cold after revoke: ${(await device.cold("/api/me")).status}`).toBe(
+      "cold after revoke: 401",
+    );
   });
 
   test("the per-isolate session cache is cleared, not left to time out", async () => {
@@ -273,16 +302,15 @@ describe("revoking other sessions", () => {
     expect(sessionCount()).toBe(before);
   });
 
-  test("`session_data` is not refreshed by traffic — the window has a ceiling", async () => {
-    // What bounds the ~90s at all. `cookieCache` answers without a database
-    // read, so if the blob were re-issued on activity the window would have no
-    // ceiling for a caller who keeps making requests — an attacker holding a
-    // stolen session could stay authenticated indefinitely past a revocation,
-    // and nothing anywhere would notice the difference.
+  test("sign-in issues NO `session_data` blob at all", async () => {
+    // The stronger form of what this used to check. The old test pinned that
+    // the blob was not REFRESHED by traffic, because that ceiling was the only
+    // thing bounding the window. With `cookieCache` off there is no blob, so
+    // there is no window to bound — and this is the assertion that says so.
     //
-    // It is asserted on TWO routes because the interesting one is the second:
-    // `/api/auth/get-session` is better-auth's own, the place a refresh would
-    // most plausibly appear if a future version added one.
+    // It is also the liveness guard for the test above: `warm` and `cold` being
+    // equal there means nothing unless a warm sign-in genuinely stopped
+    // carrying an extra credential.
     const res = await h.app.request(
       "/api/auth/sign-in/email",
       {
@@ -296,74 +324,86 @@ describe("revoking other sessions", () => {
       },
       h.env,
     );
-    const cookie = (res.headers.getSetCookie?.() ?? [])
-      .map((c) => c.split(";")[0] ?? "")
-      .filter(Boolean)
-      .join("; ");
-    // Liveness: without a `session_data` to begin with there is nothing to
-    // refresh, and both assertions below would hold vacuously.
-    expect(`sign-in issued session_data: ${cookie.includes("session_data")}`).toBe(
-      "sign-in issued session_data: true",
+    expect(res.status).toBe(200);
+    const names = (res.headers.getSetCookie?.() ?? []).map((c) => c.split("=")[0] ?? "");
+    expect(`sign-in issued session_data: ${names.some((n) => n.includes("session_data"))}`).toBe(
+      "sign-in issued session_data: false",
     );
-
-    for (const path of ["/api/me", "/api/auth/get-session"]) {
-      const r = await Promise.resolve(
-        h.app.request(
-          path,
-          { headers: { cookie, origin: h.env.APP_URL as string, "x-forwarded-for": ip } },
-          h.env,
-        ),
-      );
-      const reissued = (r.headers.getSetCookie?.() ?? []).some((c) =>
-        c.includes("session_data"),
-      );
-      expect(`${path} re-issued session_data: ${reissued}`).toBe(
-        `${path} re-issued session_data: false`,
-      );
-    }
+    // And it still issues the token, so the absence above is a disabled cache
+    // and not a broken sign-in.
+    expect(`sign-in issued session_token: ${names.some((n) => n.includes("session_token"))}`).toBe(
+      "sign-in issued session_token: true",
+    );
   });
 
-  test("the two caches COMPOUND rather than nest — the real lag is ~90s, not 60s", async () => {
-    // The claim this replaces was that the inner 30s TTL sits "below" the outer
-    // 60s one and therefore adds nothing. Three requests, each with the inner
-    // cache explicitly cleared first, show otherwise — and the order matters:
-    // asking warm first would repopulate the inner cache and make the cold
-    // request pass for the wrong reason, which is exactly how the nesting story
-    // survived this long.
+  test("an isolate that never heard the revoke drops the session once it reads the epoch", async () => {
+    // THE test for #319, and the one this file previously said could not be
+    // written: "this harness is a single process ... a conclusion like
+    // 'disabling cookieCache makes revocation immediate' is true in this file
+    // and false in production, where every other isolate still serves its
+    // cached copy for up to its own 30s."
+    //
+    // That neighbouring isolate is simulated rather than assumed. `revoke-others`
+    // clears the LOCAL cache, so the entry is re-planted by hand afterwards,
+    // stamped with an epoch from BEFORE the revoke — which is exactly the state
+    // an isolate that never served the revoke is in.
     const device = await signInSeparately(admin.email);
-    expect(await (await h.fetch(`${BASE}/revoke-others`, { method: "POST" })).json()).toEqual({
-      ok: true,
-      removed: 1,
-      apiKeys: 0,
-      apiKeysRevoked: 0,
+    // Warm it so the real code has stored a real entry, then read the token the
+    // way the middleware keys on it.
+    expect((await device.cold("/api/me")).status).toBe(200);
+    const staleUserId = (
+      client.query("select id from users limit 1").get() as { id: string }
+    ).id;
+
+    await h.fetch(`${BASE}/revoke-others`, { method: "POST" });
+
+    // The neighbour: still holding the entry, stamped before the bump. Keyed on
+    // the SIGNED cookie, which is what the middleware looks up — planting under
+    // the bare `sessions.token` would put it where nothing reads and make this
+    // test pass for the ordinary reason instead of the one it is about.
+    setCachedSession(device.signedToken, {
+      userId: staleUserId,
+      email: admin.email,
+      sessionId: null,
+      epoch: 0,
+    });
+    // …and its poll comes due, so it re-reads the epoch the revoke wrote.
+    __resetEpochMemo();
+
+    expect(`neighbour after its poll: ${(await device.cold("/api/me")).status}`).toBe(
+      "neighbour after its poll: 401",
+    );
+  });
+
+  test("the bound is the poll interval, not zero — and that is stated, not hidden", async () => {
+    // The honest other half. Between the bump and a neighbour's next epoch read
+    // it goes on serving, and no amount of shared state changes that without
+    // putting a read on EVERY request. `EPOCH_TTL_MS` is that bound.
+    //
+    // Same setup as above with one difference: the memo is NOT reset, so the
+    // neighbour is inside its poll window and has not heard yet.
+    const device = await signInSeparately(admin.email);
+    expect((await device.cold("/api/me")).status).toBe(200);
+    const staleUserId = (
+      client.query("select id from users limit 1").get() as { id: string }
+    ).id;
+
+    await h.fetch(`${BASE}/revoke-others`, { method: "POST" });
+
+    // Planted with an epoch NEWER than anything the bump could have written, so
+    // the entry is unambiguously inside its holder's poll window. Using
+    // "whatever the epoch is now" would be the same assertion with a race in it.
+    setCachedSession(device.signedToken, {
+      userId: staleUserId,
+      email: admin.email,
+      sessionId: null,
+      epoch: Number.MAX_SAFE_INTEGER,
     });
 
-    // 1. Cold, inner cache cleared: the row really is gone.
-    sessionCacheExpires();
-    expect(`cold after revoke: ${(await device.cold("/api/me")).status}`).toBe(
-      "cold after revoke: 401",
+    expect(`inside the poll window: ${(await device.cold("/api/me")).status}`).toBe(
+      "inside the poll window: 200",
     );
-
-    // 2. Warm, inner cache cleared: 200 can now only be better-auth's
-    //    `cookieCache` — and it is answering `/api/me`, one of OUR routes, not
-    //    just its own `/api/auth/*`. That is the cost side of `maxAge`.
-    sessionCacheExpires();
-    expect(`warm after revoke: ${(await device.warm("/api/me")).status}`).toBe(
-      "warm after revoke: 200",
-    );
-
-    // 3. Cold again, WITHOUT clearing: the warm hit above wrote the session
-    //    into the inner cache under the bare-token key, so the credential that
-    //    was 401 in step 1 is now accepted. Every warm request buys the revoked
-    //    device another 30s, for as long as the 60s blob lasts.
-    expect(`cold immediately after a warm hit: ${(await device.cold("/api/me")).status}`).toBe(
-      "cold immediately after a warm hit: 200",
-    );
-
-    // If this test starts failing, the lag got SHORTER — check whether
-    // `cookieCache` was disabled or narrowed, or whether `sessionMiddleware`
-    // stopped caching what `cookieCache` resolved, and delete this rather than
-    // restoring the behaviour.
+    expect(EPOCH_TTL_MS).toBeLessThanOrEqual(1_000);
   });
 });
 

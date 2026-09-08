@@ -361,7 +361,7 @@
     },
     "packages/client": {
       "name": "backlex",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "devDependencies": {
         "@types/react": "^19.2.18",
         "ably": "^2.27.0",
@@ -406,7 +406,7 @@
     },
     "packages/integrations": {
       "name": "@backlex/integrations",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "devDependencies": {
         "typescript": "7.0.2",
       },

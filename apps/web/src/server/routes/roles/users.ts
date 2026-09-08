@@ -34,6 +34,7 @@ import {
   UserUpdateInput,
 } from "../../services/roles/schemas";
 import { tableFor } from "../../services/roles/tables";
+import { bumpRevocationEpoch } from "../../services/revocation-epoch";
 import { defaultHook } from "../../lib/openapi-router";
 
 export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
@@ -577,6 +578,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           ),
         );
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      // Deleting the rows is only half a revocation: every OTHER isolate
+      // keeps answering those cookies from its own session cache until its
+      // TTL lapses. Bumping the shared epoch makes them drop it within ~1s.
+      // After the delete and awaited — see `services/revocation-epoch.ts`
+      // and #319.
+      await bumpRevocationEpoch(ctx);
       // Suspension is only effective if the per-isolate auth caches drop the
       // user's now-stale membership + role bundle; otherwise re-login would
       // resolve their old roles for up to the cache TTL.
@@ -686,6 +693,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // The session ROWS are deliberately not recorded — an id set is not
       // useful to an auditor and a session id is a bearer credential.
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      // Deleting the rows is only half a revocation: every OTHER isolate
+      // keeps answering those cookies from its own session cache until its
+      // TTL lapses. Bumping the shared epoch makes them drop it within ~1s.
+      // After the delete and awaited — see `services/revocation-epoch.ts`
+      // and #319.
+      await bumpRevocationEpoch(ctx);
       await logActivity(c, {
         action: "delete",
         collection: "system_users",
@@ -736,6 +749,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         .set({ twoFactorEnabled: false })
         .where(eq(t.users.id, id));
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      // Deleting the rows is only half a revocation: every OTHER isolate
+      // keeps answering those cookies from its own session cache until its
+      // TTL lapses. Bumping the shared epoch makes them drop it within ~1s.
+      // After the delete and awaited — see `services/revocation-epoch.ts`
+      // and #319.
+      await bumpRevocationEpoch(ctx);
       // No secret, no backup codes — the fact of the reset is the audit event.
       await logActivity(c, {
         action: "update",
@@ -879,6 +898,12 @@ export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await (ctx.db as any)
         .delete(t.sessions)
         .where(and(eq(t.sessions.id, sessionId), eq(t.sessions.userId, id)));
+      // Deleting the rows is only half a revocation: every OTHER isolate
+      // keeps answering those cookies from its own session cache until its
+      // TTL lapses. Bumping the shared epoch makes them drop it within ~1s.
+      // After the delete and awaited — see `services/revocation-epoch.ts`
+      // and #319.
+      await bumpRevocationEpoch(ctx);
       await logActivity(c, {
         action: "delete",
         collection: "system_users",

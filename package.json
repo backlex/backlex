@@ -55,6 +55,7 @@
   },
   "resolutions": {
     "@types/node": "25.6.0",
+    "miniflare/sharp": "0.35.4",
     "zod": "^4.4.3",
     "express-rate-limit": "^8.6.2",
     "yaml-language-server/yaml": "2.8.3",

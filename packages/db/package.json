@@ -48,7 +48,7 @@
     "postgres": "^3.4.5"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "1.4.0",
     "drizzle-kit": "1.0.0-beta.22",
     "typescript": "7.0.2"
   }

@@ -18,10 +18,17 @@
     "noEmit": true,
     "jsx": "react-jsx",
     // No `"node"` here even though the suite uses `node:*` freely: nothing
-    // declares `@types/node` directly, so it only exists nested under
-    // bun-types — in THREE different versions (22, 24, 25). Naming it is a
-    // TS2688, and the split is why `ChildProcess` resolves without the
-    // EventEmitter half in `tests/smoke/orchestrate.ts`.
+    // declares `@types/node` directly, so it exists only nested under
+    // bun-types and naming it is a TS2688. The `node:*` module declarations
+    // still arrive, because bun-types pulls the package in whole.
+    //
+    // It used to resolve to THREE versions at once (22.20.1 hoisted for
+    // mysql2/sharp/vite, 24.12.4 via sitemap, 25.6.0 via bun-types), and that
+    // split is why `ChildProcess` arrived without the `.on` it inherits from
+    // `EventEmitter` — the two halves came out of different copies. Root
+    // `resolutions` pins one version now, `tests/smoke/orchestrate.ts`'s
+    // `ProcessExits` narrowing is gone, and the server program lost ~227
+    // duplicate `.d.ts` files with it. Do not remove that resolution.
     "types": ["@cloudflare/workers-types", "bun", "vite/client"],
     "paths": { "@/*": ["./src/client/*"] }
   },

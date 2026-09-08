@@ -23,5 +23,13 @@
     // the same compiler as everything else. Both go away in 7.1.
     "ignoreDeprecations": "6.0"
   },
+  // `src` ONLY, and the `types: []` inherited from the base is why. This is the
+  // published isomorphic SDK: it must typecheck with no ambient Node or Bun
+  // globals in scope, or a `process.env` reach slips into a package that runs in
+  // browsers. Its build config and release script DO need those globals, so they
+  // live in `tsconfig.tooling.json` next door rather than widening this one —
+  // measured: adding them here put `record-surface.ts` in the program and it
+  // immediately failed on `node:fs` and `import.meta.dir`, which is the
+  // isolation working.
   "include": ["src/**/*"]
 }

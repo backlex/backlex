@@ -617,7 +617,7 @@ export const normalizeOrderField = async (
     for (const r of rows) {
       const raw = r.scope_value;
       const value = raw === undefined || raw === "" ? null : raw;
-      const key = value === null ? " null" : String(value);
+      const key = value === null ? "\0null" : String(value);
       if (seen.has(key)) continue;
       seen.add(key);
       scopeValues.push(value);

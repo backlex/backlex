@@ -176,7 +176,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
   const fields = availableFields;
   // A stable dependency for the load effect: the prop array is rebuilt by the
   // parent on every render, so depending on it directly would refetch forever.
-  const fieldsKey = fields.join(" ");
+  const fieldsKey = fields.join("\0");
   const knownRoleId = useMemo(() => roles.find((r) => r.name === role)?.id ?? null, [roles, role]);
 
   // Read the rule that is actually stored for this (role, collection, action).

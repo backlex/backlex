@@ -346,10 +346,10 @@ export const resolveMatrixColumns = (
   }
   const first = getChoices(known[0]!);
   if (first.length === 0) return null;
-  const shape = first.map((c) => c.value).join(" ");
+  const shape = first.map((c) => c.value).join("\0");
   for (const d of known) {
     const own = getChoices(d);
-    if (own.map((c) => c.value).join(" ") !== shape) return null;
+    if (own.map((c) => c.value).join("\0") !== shape) return null;
   }
   return { mode: "choice", scale: null, choices: first };
 };

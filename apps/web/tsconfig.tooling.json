@@ -1,0 +1,48 @@
+{
+  // The fourth `apps/web` project: everything in this workspace that is neither
+  // `src/client`, `src/server` nor `tests/`, and was therefore in no project at
+  // all.
+  //
+  // What that set contains is the argument for it — none of these are scratch
+  // files:
+  //
+  //   vite.config.ts               every build of the SPA and the worker
+  //   lingui.config.ts             the i18n:extract catalog config
+  //   scripts/saml-spike.ts        the SAML reference implementation
+  //   netlify/functions/cron.ts    a PRODUCTION entry — Netlify invokes it
+  //   templates/fn-exec-server/    the deployable sandbox exec server
+  //
+  // `scripts/gen-openapi-static.ts` is the one file in that directory that is
+  // NOT here: it imports the server's route tree, so covering it from this
+  // project would build a whole second copy of the server program. It sits in
+  // `tsconfig.server.json`'s include instead, where it costs one file. Keeping
+  // this project cheap is the point — it exists so config files are typed, not
+  // so a fourth program gets built.
+  //
+  // `types: ["bun"]` rather than the server project's worker set: these run on
+  // Bun (`bun scripts/…`, `bun run index.ts`) or on Node inside vite, and
+  // `bun-types` is also the only path to `@types/node` in this tree. Nothing
+  // here is a Worker, so pulling `@cloudflare/workers-types` in would be
+  // declaring the wrong globals.
+  //
+  // `moduleDetection: "force"` for the same reason `tsconfig.scripts.json` sets
+  // it — `templates/fn-exec-server/index.ts` is a top-level Bun program with
+  // nothing exported, and under the default `"auto"` it becomes a global script
+  // whose declarations leak into every other file in this project.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/.tsbuildinfo.tooling",
+    "noEmit": true,
+    "moduleDetection": "force",
+    "types": ["bun"],
+    "paths": { "@/*": ["./src/client/*"] }
+  },
+  "include": [
+    "vite.config.ts",
+    "lingui.config.ts",
+    "scripts/saml-spike.ts",
+    "netlify/functions/cron.ts",
+    "templates/fn-exec-server/**/*"
+  ]
+}

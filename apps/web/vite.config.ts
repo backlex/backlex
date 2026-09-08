@@ -23,7 +23,10 @@ function linguiMacro(): Plugin {
     name: "lingui-macro",
     enforce: "pre",
     async transform(code, id) {
-      const file = id.split("?")[0];
+      // `split` always yields at least one element, but `noUncheckedIndexedAccess`
+      // types `[0]` as possibly-undefined and this file was in no tsconfig until
+      // `tsconfig.tooling.json` existed, so nothing had ever said so.
+      const file = id.split("?")[0] ?? id;
       if (!file.includes("/src/client/") || !/\.[cm]?tsx?$/.test(file)) {
         return null;
       }

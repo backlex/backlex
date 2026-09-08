@@ -6,5 +6,9 @@
     "noEmit": true,
     "types": ["bun"]
   },
-  "include": ["src/**/*", "bin/**/*"]
+  // `tsup.config.ts` and `scripts/record-surface.ts` are part of this package's
+  // contract, not scratch work: the first is what `build` runs, the second is
+  // what CLAUDE.md tells you to run after every tag to restate the
+  // published-surface baseline. Neither belonged to any project.
+  "include": ["src/**/*", "bin/**/*", "tsup.config.ts", "scripts/**/*"]
 }

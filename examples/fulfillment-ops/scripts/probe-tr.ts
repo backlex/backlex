@@ -24,7 +24,7 @@ for (const [a, b] of [
   ["kahve", "KAHVE"],
   ["taşınabilir", "TAŞINABILIR"],
   ["güneş", "GÜNEŞ"],
-]) {
+] as [string, string][]) {
   const na = await search(a);
   const nb = await search(b);
   const same = na === nb;

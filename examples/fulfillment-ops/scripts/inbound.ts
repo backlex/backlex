@@ -11,7 +11,10 @@ import { must } from "./api";
 const count = Number(process.argv[2] ?? 3);
 const pick = <T,>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)]!;
 
-const list = async (slug: string, qs = "") => (await must("GET", `/api/items/${slug}${qs}`)).data;
+// `must()` hands back the parsed body untyped; these rows are whatever the
+// collection holds, so say `any[]` once here rather than at each use.
+const list = async (slug: string, qs = ""): Promise<any[]> =>
+  (await must("GET", `/api/items/${slug}${qs}`)).data;
 
 const customers = await list("customers", "?limit=50&filter=" + encodeURIComponent(JSON.stringify({ active: { _eq: true } })));
 const addresses = await list("customer_addresses", "?limit=100");

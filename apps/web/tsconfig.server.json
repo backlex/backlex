@@ -6,5 +6,11 @@
     "noEmit": true,
     "types": ["@cloudflare/workers-types", "bun"]
   },
-  "include": ["src/server/**/*"]
+  // `scripts/gen-openapi-static.ts` lives HERE rather than in the tooling
+  // project on purpose. It imports `src/server/lib/openapi` and two route
+  // modules, so wherever it is placed drags the entire server program in with
+  // it — in a project of its own that means building a second copy of the most
+  // expensive program in the repo (measured: it alone ran longer than the
+  // server project it duplicates). Here it costs one extra file.
+  "include": ["src/server/**/*", "scripts/gen-openapi-static.ts"]
 }

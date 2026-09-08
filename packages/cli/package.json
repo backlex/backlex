@@ -48,7 +48,7 @@
     "@aws-sdk/util-dynamodb": "^3.996.9",
     "@backlex/migrate": "workspace:*",
     "@google-cloud/firestore": "^7.11.0",
-    "@types/bun": "latest",
+    "@types/bun": "1.4.0",
     "backlex": "workspace:*",
     "tsup": "^8.3.5",
     "typescript": "7.0.2"

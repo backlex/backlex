@@ -432,7 +432,7 @@ const tokenFor = async (
   ctx: { fetch: (u: string, i?: RequestInit) => Promise<Response> },
   conn: Connection,
 ): Promise<string> => {
-  const key = `${conn.host} ${conn.clientId} ${conn.clientSecret}`;
+  const key = `${conn.host}\0${conn.clientId}\0${conn.clientSecret}`;
   const cached = tokens.get(key);
   if (cached && cached.expiresAtMs > Date.now()) return cached.value;
 

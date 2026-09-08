@@ -1,0 +1,42 @@
+{
+  // Typecheck for the repo-root `scripts/` directory and `vercel.ts`.
+  //
+  // These were the largest hole in this repo's type coverage. The 18 files in
+  // `scripts/` are not scratch work — CI and every deploy RUN them: the
+  // eight-runtime build matrix (`build-targets.ts` and the seven per-target
+  // builders it drives), the pre-deploy gate that `bun run build` calls before
+  // anything reaches Cloudflare, and the migration-bundle / consent-banner /
+  // licence generators the pre-commit hooks invoke. `vercel.ts` is here for the
+  // same reason with a sharper edge: the whole point of choosing it over
+  // `vercel.json` is that it is TYPED, and it was getting no typing at all.
+  // None of these belonged to any tsconfig, so `bun run typecheck` never looked
+  // at one of them.
+  //
+  // What the hole was hiding, found the moment this project first ran:
+  // `build-targets.ts` carried the same `ChildProcess` defect that
+  // `apps/web/tests/smoke/orchestrate.ts` diagnoses and works around in a
+  // fifteen-line comment. Identical idiom, identical cause — the copy inside a
+  // typechecked project got found and fixed, the copy in `scripts/` did not,
+  // because nothing was looking.
+  //
+  // `moduleDetection: "force"` is load-bearing, not tidiness. Two of these
+  // scripts (`verify-deploy.ts`, `require-green-checks.ts`) contain no import
+  // and no export, so under the default `"auto"` TypeScript treats them as
+  // global SCRIPTS rather than modules: their top-level `sleep` and `main`
+  // then collide with each other across files (TS2451 x4) and top-level
+  // `await` becomes TS1375. Every `examples/*` tsconfig already sets this;
+  // `tsconfig.base.json` deliberately does not, because a `.d.ts` like
+  // `src/server/global.d.ts` needs to stay a script.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/.tsbuildinfo.scripts",
+    "noEmit": true,
+    "moduleDetection": "force",
+    // Bun runs all of these (`bun scripts/<x>.ts`), so `bun` alone is the
+    // right ambient set — it is also what carries `@types/node`, which exists
+    // in this tree ONLY nested under `bun-types`.
+    "types": ["bun"]
+  },
+  "include": ["scripts/**/*", "vercel.ts"]
+}

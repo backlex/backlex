@@ -1,9 +1,32 @@
 {
+  // Solution-style: `apps/web` holds four separate programs and no files of its
+  // own. Each referenced project says why it exists in its own header.
+  //
+  //   tsconfig.client.json    src/client — React SPA, vite/client types
+  //   tsconfig.server.json    src/server — Hono API, worker + bun types
+  //   tsconfig.tests.json     tests/     — needs BOTH of the above at once
+  //   tsconfig.tooling.json   vite/lingui config, scripts/, netlify/, templates/
+  //
+  // The last two were missing from this list, and the tests one mattered: with
+  // no reference to it, an editor opening any of the 645 files under `tests/`
+  // finds this config, fails to locate the file in either referenced project,
+  // and falls back to an inferred project — no `@/*` alias, no bun globals, no
+  // worker types. `tsc -b apps/web` skipped them for the same reason.
+  //
+  // `compilerOptions.paths` below is NOT redundant, however much it looks it.
+  // A config with `files: []` builds no program, so **tsc** never reads it —
+  // each referenced project declares its own `@/*`. But **Bun's runtime module
+  // resolver reads `tsconfig.json`**, and this is the one it finds from
+  // `apps/web`. Deleting it as dead config broke `@/...` imports in the test
+  // suite: 27 pass / 0 fail became 20 pass / 7 fail, in files that have nothing
+  // to do with types. "Dead for tsc" is not "dead".
   "files": [],
   "include": [],
   "references": [
     { "path": "./tsconfig.client.json" },
-    { "path": "./tsconfig.server.json" }
+    { "path": "./tsconfig.server.json" },
+    { "path": "./tsconfig.tests.json" },
+    { "path": "./tsconfig.tooling.json" }
   ],
   "compilerOptions": {
     "paths": {

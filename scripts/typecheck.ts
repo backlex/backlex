@@ -44,8 +44,25 @@
 import { spawnSync } from "node:child_process";
 import { closeSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const NO_LOCK = process.env.BACKLEX_TYPECHECK_NO_LOCK === "1";
+/**
+ * `--tests` runs ONLY `apps/web`'s tests project, under this same lock.
+ *
+ * It used to be a bare `bun run --cwd apps/web typecheck:tests` in the root
+ * package.json, which took no lock at all — so the single most expensive
+ * program in the repo (645 spec files plus both halves of the app) could run
+ * beside another session's `bun run typecheck` and starve it. Observed while
+ * writing this: two checkers at 14% CPU each on an 8 GB box, both crawling.
+ *
+ * This is NOT the case the "lock here and ONLY here" warning above is about.
+ * That warns against locking inside a workspace script that this file SPAWNS —
+ * a child would then wait on its own parent's lock forever. `--tests` is a
+ * sibling entry point: nothing above it holds the lock when it runs.
+ */
+const TESTS_ONLY = process.argv.includes("--tests");
+const PASSTHROUGH = process.argv.slice(2).filter((a) => a !== "--tests");
 const POLL_MS = 2_000;
 /** How often to remind the user who they are waiting for. */
 const REPORT_EVERY_MS = 30_000;
@@ -151,6 +168,33 @@ const waitForLock = async (): Promise<void> => {
   }
 };
 
+/**
+ * The repo root is not a workspace, so `--filter '*'` below cannot reach it —
+ * which is exactly why `scripts/` and `vercel.ts` went unchecked for as long as
+ * they have existed. `tsconfig.scripts.json` covers them; this is the only
+ * place that can run it, because this is the only entry both the pre-push hook
+ * and `test.yml` call.
+ *
+ * It runs FIRST and short-circuits, on the same reasoning as `lefthook.yml`'s
+ * job order: 18 files cost about a second, so a broken build script fails here
+ * instead of after the ~7 minutes `apps/web` takes. `--checkers 1` because
+ * fanning the Go checker across cores for 18 files is pure setup cost.
+ */
+const checkRootScripts = (): number => {
+  // Resolved from this file, not from the cwd. The lock above already proves
+  // this script gets run from more than one place (every agent worktree is its
+  // own checkout), and a relative `./node_modules/...` would silently become
+  // "tsc: not found" — an exit code this function would then report as a type
+  // error.
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const r = spawnSync(
+    join(root, "node_modules/.bin/tsc"),
+    ["--noEmit", "-p", join(root, "tsconfig.scripts.json"), "--checkers", "1"],
+    { stdio: "inherit", cwd: root },
+  );
+  return r.status ?? 1;
+};
+
 const main = async (): Promise<never> => {
   if (!NO_LOCK) {
     await waitForLock();
@@ -164,9 +208,23 @@ const main = async (): Promise<never> => {
   }
 
   const started = Date.now();
+  if (TESTS_ONLY) {
+    const t = spawnSync("bun", ["run", "--cwd", "apps/web", "typecheck:tests", ...PASSTHROUGH], {
+      stdio: "inherit",
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+    });
+    if (!NO_LOCK) {
+      console.log(`[typecheck:tests] done in ${Math.round((Date.now() - started) / 1000)}s`);
+    }
+    process.exit(t.status ?? 1);
+  }
+
+  const rootStatus = checkRootScripts();
+  if (rootStatus !== 0) process.exit(rootStatus);
+
   const r = spawnSync(
     "bun",
-    ["run", "--filter", "*", "typecheck", ...process.argv.slice(2)],
+    ["run", "--filter", "*", "typecheck", ...PASSTHROUGH],
     { stdio: "inherit" },
   );
   if (!NO_LOCK) {

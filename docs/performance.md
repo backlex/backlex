@@ -360,6 +360,81 @@ killed at 31 minutes. It is not the analogue of `--max-old-space-size`.
 `--checkers` is.
 
 
+##### The program is mostly not our code — and it was carrying two of some of it
+
+`--checkers` decides how the work is split. This decides how much work there
+is. The server project's program is **2503 files**, of which ~800 are ours; the
+rest are dependency `.d.ts`. TypeScript 7 dropped `--listFiles`, but the
+incremental state file still holds the whole list, which makes this a one-liner:
+
+    python3 -c "import json;print(len(json.load(open('apps/web/node_modules/.cache/tsc/.tsbuildinfo.server'))['fileNames']))"
+
+Reading it is the cheapest possible answer to "why is this project slow", and
+the first read found something wrong. **Nothing in this repo declared
+`@types/node`**, so three versions resolved at once — 22.20.1 hoisted (demanded
+by `mysql2`, `sharp` and `vite`), 25.6.0 via `bun-types`, 24.12.4 via `sitemap`
+— and the server program carried **two of them at the same time**: 148 files of
+Node typings and 79 of `undici-types`, parsed and bound on every cold run for
+nothing.
+
+It was a correctness bug before it was a weight problem, which is how it
+surfaced. `ChildProcess` and the `EventEmitter` it extends resolved out of
+DIFFERENT copies, so the class arrived without `.on`. Two files carried
+hand-written `ProcessExits` narrowings to work around it, and a third —
+`scripts/build-targets.ts` — had the same defect unfixed, because it was in no
+tsconfig at all.
+
+    "resolutions": { "@types/node": "25.6.0" }
+
+collapses it. Measured on the server program, before → after:
+
+| | before | after |
+|---|---|---|
+| files in program | 2607 | **2503** |
+| `@types/node` | 148 (two majors) | **80** |
+| `undici-types` | 79 (two majors) | **42** |
+
+Both `ProcessExits` narrowings are deleted and `child.on(...)` typechecks
+unaided — that, not the file count, is the proof the split is gone. **Do not
+remove the resolution**; if a workspace genuinely needs a different major,
+declare it there rather than dropping the pin.
+
+The same file list explains the rest of the weight, and those parts are
+load-bearing: `drizzle-orm` (327), `kysely` (251, a drizzle peer), `better-auth`
+(127), `graphql` (102), `zod` (95). The duplicated Node typings were the only
+free win in the list.
+
+Whole-repo cold after all of it, on the 8 GB box with nothing else running:
+`bun run typecheck` → **359s real / 169s user / 3.14 GB peak RSS**, zero errors,
+21 workspaces plus both `astro check` passes plus the new root `scripts/`
+project. `bun run typecheck:tests` cold, alone → **767s real / 197s user / 2.58
+GB**, zero errors.
+
+**`typecheck:tests` now takes the machine-wide lock too**, and that is not
+theoretical tidying. It used to be a bare `bun run --cwd apps/web
+typecheck:tests` in the root package.json with no lock, while `bun run
+typecheck` had one — so the single most expensive program in the repo was the
+one thing that could not be serialised. Observed while measuring the numbers
+above: two agent sessions ran it simultaneously, **both at 12-14% CPU, still
+going at 24 minutes** for a job that takes 767s alone. Root `typecheck:tests` is
+`bun scripts/typecheck.ts --tests` now. The "lock here and ONLY here" warning in
+that file is about workspace scripts it SPAWNS; `--tests` is a sibling entry
+point, so nothing above it holds the lock.
+
+##### A config file can cost you a second copy of the biggest program
+
+`apps/web/tsconfig.tooling.json` was first written to cover all of
+`apps/web/scripts/`. It ran **9m40s** — for six config files — before being
+killed, because `scripts/gen-openapi-static.ts` imports the route tree and the
+project was therefore rebuilding the entire server program a second time.
+Moving that one file into `tsconfig.server.json`, where it costs one file, took
+the tooling project to **0.65s**. The root `scripts/` project (18 files,
+`vercel.ts` included) is **0.29s** for the same reason: nothing in it imports
+the app.
+
+When you add a project, look at what its files IMPORT, not how many there are.
+A single import can be the difference between 0.65 seconds and ten minutes.
+
 **Three things could not move, and each has a different reason.**
 
 `apps/docs` and `apps/site` stay on `typescript` 5.9.3: they typecheck through

@@ -1,0 +1,19 @@
+{
+  // This package's build config and release script — `tsup.config.ts` and
+  // `scripts/record-surface.ts`, the one CLAUDE.md tells you to run after every
+  // `backlex-v*` tag so the published-surface baseline stops being stale.
+  //
+  // Separate from `tsconfig.json` because that project deliberately runs with
+  // `types: []`: the SDK ships to browsers, so no ambient Node or Bun global may
+  // be in scope while its `src` is checked. These two files are the opposite —
+  // they are Bun programs that read the filesystem.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/.tsbuildinfo.tooling",
+    "noEmit": true,
+    "types": ["bun"],
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["tsup.config.ts", "scripts/**/*"]
+}

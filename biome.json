@@ -12,6 +12,7 @@
       "packages/**/*.{ts,tsx,js,jsx,json}",
       "examples/**/*.{ts,tsx,js,jsx,json}",
       "scripts/**/*.{ts,js}",
+      "*.ts",
       "!**/dist",
       "!**/.data",
       "!**/.wrangler",

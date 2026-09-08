@@ -492,7 +492,7 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // touch.
       const pool = new Map<string, string[]>();
       const cellKey = (collection: string, action: string) =>
-        `${collection} ${action}`;
+        `${collection}\0${action}`;
       for (const row of existing) {
         const key = cellKey(row.collection, row.action);
         const bucket = pool.get(key);

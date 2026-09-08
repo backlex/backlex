@@ -54,7 +54,7 @@
     }
   },
   "scripts": {
-    "typecheck": "../../node_modules/.bin/tsc --noEmit",
+    "typecheck": "../../node_modules/.bin/tsc --noEmit && ../../node_modules/.bin/tsc --noEmit -p tsconfig.tooling.json",
     "build": "tsup",
     "surface:record": "bun run scripts/record-surface.ts"
   },

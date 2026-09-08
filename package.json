@@ -15,7 +15,8 @@
     "dev:bun": "bun run --cwd apps/web dev:bun",
     "build": "bun scripts/require-green-checks.ts && bun run --cwd apps/web build",
     "typecheck": "bun scripts/typecheck.ts",
-    "typecheck:tests": "bun run --cwd apps/web typecheck:tests",
+    "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json --checkers 1",
+    "typecheck:tests": "bun scripts/typecheck.ts --tests",
     "db:generate:pg": "bun run --cwd packages/db generate:pg",
     "db:generate:sqlite": "bun run --cwd packages/db generate:sqlite",
     "db:migrate:pg": "bun run --cwd packages/db migrate:pg",
@@ -36,15 +37,15 @@
     "build:azure": "bun scripts/build-azure.ts",
     "build:deno": "bun scripts/build-deno.ts",
     "test": "bun run --cwd apps/web test",
-    "lint": "biome lint apps packages examples",
-    "lint:fix": "biome lint --write apps packages examples",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
     "prepare": "lefthook install --force || true",
     "backlex": "bun run packages/cli/bin/backlex.ts",
     "typecheck:raw": "bun run --filter '*' typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
-    "@types/bun": "latest",
+    "@types/bun": "1.4.0",
     "@vercel/config": "0.5.0",
     "lefthook": "^2.1.8",
     "typescript": "7.0.2"
@@ -53,6 +54,7 @@
     "bun": ">=1.4.0"
   },
   "resolutions": {
+    "@types/node": "25.6.0",
     "zod": "^4.4.3",
     "express-rate-limit": "^8.6.2",
     "yaml-language-server/yaml": "2.8.3",

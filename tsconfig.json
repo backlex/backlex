@@ -1,14 +1,37 @@
 {
+  // Solution-style root: no files of its own, just the list of every project in
+  // the repo. It is what `tsc -b` and an editor's project resolution read.
+  //
+  // This list had drifted from what `bun run typecheck` actually runs:
+  // `packages/auth-ui`, `packages/integrations` and `packages/migrate` were
+  // missing, and so were `apps/web`'s tests and tooling projects — so "the
+  // repo" meant one thing to `tsc -b` and a different, larger thing to the
+  // workspace fan-out.
+  //
+  // Being listed here is NOT what makes a project run. `bun run typecheck` fans
+  // out over workspace scripts, and two project sets deliberately stay out of
+  // this file: `apps/docs` / `apps/site` typecheck through `astro check` on a
+  // pinned 5.9 compiler and must not be pulled into a 7.0 `tsc -b`, and every
+  // `examples/*` runs its own. What
+  // `apps/web/tests/tsconfig-project-coverage.test.ts` enforces is the weaker,
+  // true invariant — every project is reached by SOME runner, and every source
+  // file by some project.
+  //
+  // `apps/web` is itself solution-style and fans out to its own four projects,
+  // so it appears once here rather than four times.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true,
-    "types": ["@cloudflare/workers-types"]
+    "noEmit": true
   },
   "files": [],
   "references": [
+    { "path": "./tsconfig.scripts.json" },
     { "path": "./packages/core" },
     { "path": "./packages/db" },
     { "path": "./packages/auth" },
+    { "path": "./packages/auth-ui" },
+    { "path": "./packages/integrations" },
+    { "path": "./packages/migrate" },
     { "path": "./packages/ui" },
     { "path": "./packages/client" },
     { "path": "./packages/cli" },

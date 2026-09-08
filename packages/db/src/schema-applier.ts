@@ -668,16 +668,62 @@ export const applyCollection = async (
   if (versioned) {
     await ensureVersionedColumns(db, dialect, table);
   }
+  // Whether the table already holds rows. Asked at most ONCE per apply, and
+  // only when a field actually needs the answer — see `assertAddable`.
+  let hasRows: boolean | null = null;
+  const tableHasRows = async (): Promise<boolean> => {
+    if (hasRows === null) {
+      const rows = await all<Record<string, unknown>>(
+        db,
+        dialect,
+        `SELECT 1 AS n FROM ${quote(table)} LIMIT 1`,
+      );
+      hasRows = rows.length > 0;
+    }
+    return hasRows;
+  };
+
+  /**
+   * Refuse a column that cannot be added, with a sentence instead of a 500.
+   *
+   * `ADD COLUMN … NOT NULL` with no `DEFAULT` has no answer for the rows that
+   * are already there, and the engine says so by failing the statement. That
+   * arrived as an opaque `500 INTERNAL` on an ordinary
+   * `PATCH /api/collections/:slug`, and — worse — as a per-collection `failed`
+   * entry in `POST /api/admin/db/schema/reapply` whose raw driver text reads
+   * like something a retry might fix. It is not: it fails identically every
+   * time. See #360, and #317 where a live tenant's sweep stalled on exactly it.
+   *
+   * The three neighbouring cases all work and must keep working — measured, not
+   * assumed: required + DEFAULT, required on an EMPTY table, and optional with
+   * no default. So this refuses the one shape that has no meaning, and nothing
+   * else.
+   *
+   * The generated `columnSql` is inspected rather than `f.required` /
+   * `f.default` re-read, because
+   * `columnDefSql` is the only thing that decides what is emitted — computed
+   * and rollup fields return early there and never carry `NOT NULL`. Reading
+   * its output cannot drift from it; re-deriving the condition could.
+   */
+  const assertAddable = async (f: FieldDef, columnSql: string): Promise<void> => {
+    if (!/\bNOT NULL\b/.test(columnSql) || /\bDEFAULT\b/.test(columnSql)) return;
+    if (!(await tableHasRows())) return;
+    throw new AppError(
+      "CONFLICT",
+      `Cannot add required field "${f.name}" to "${table}": the collection already has rows, ` +
+        "and a required column needs a value for each of them. Give the field a `default`, " +
+        "or add it without `required` first, fill it in, then make it required.",
+    );
+  };
+
   for (const f of def.fields) {
     // Localized fields are added to the sidecar by `ensureSidecar`, never here;
     // presentational blocks (divider/notice) have no column at all.
     if (isLocalized(f) || isPresentational(f)) continue;
     if (!existing.has(f.name)) {
-      await exec(
-        db,
-        dialect,
-        `ALTER TABLE ${quote(table)} ADD COLUMN ${columnDefSql(f, dialect)}`,
-      );
+      const columnSql = columnDefSql(f, dialect);
+      await assertAddable(f, columnSql);
+      await exec(db, dialect, `ALTER TABLE ${quote(table)} ADD COLUMN ${columnSql}`);
     }
     // Checked independently of the source column, not inside the branch above:
     // every collection that existed before folded search shipped already HAS

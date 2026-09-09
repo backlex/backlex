@@ -162,6 +162,13 @@ interface FieldDraft {
   onUpdate?: "now" | "user" | "tenant";
   /** App-layer ON DELETE action for a relation FK. */
   onDelete?: "set_null" | "cascade" | "no_action";
+  /** Row-id half of a POLYMORPHIC reference — the pair a translations /
+   *  attachments table uses instead of a typed FK. Declared IN THE SCHEMA (a
+   *  template, or the collections API) and carried through this dialog
+   *  untouched: there is no editor for it, and `cleaned` spreads `draft`, so
+   *  opening a field that has one and pressing Save preserves it. Typed here
+   *  so a future refactor that stops spreading has to notice. */
+  polymorphicRef?: { collectionField: string };
   /** Aggregate over another collection's rows — see the rollup editor. */
   rollup?: Record<string, unknown>;
   /** Server-issued document number — see the sequence editor. */

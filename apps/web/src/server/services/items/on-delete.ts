@@ -18,6 +18,14 @@ import { queryAll } from "./sql-helpers";
  *    entries cleaned up best-effort, and their OWN `onDelete` triggers chained
  *    (bounded by a visited-set so relation cycles terminate).
  *
+ * A second, narrower pass handles POLYMORPHIC references — a `(collection,
+ * row_id)` pair carrying `polymorphicRef` + `onDelete: "cascade"`, which is
+ * what a translations / attachments / comments table looks like. Those cannot
+ * be a `relation` (the target is a value, not a schema fact) so nothing
+ * collected them: a deleted product left its translated name and description
+ * behind permanently, and the first symptom is a translations table larger
+ * than the catalogue it describes.
+ *
  * v1 caveats: `relation_many` matching scans the referencing collection's rows
  * (capped — see MANY_SCAN_CAP), so keep those collections modestly sized; and
  * cascaded deletes still don't emit per-row realtime/changefeed events (the
@@ -35,21 +43,53 @@ interface RefTarget {
   field: FieldDef;
 }
 
-/** All active collections in the tenant that reference `targetSlug` via a
- *  `relation` / `relation_many` field carrying an actionable `onDelete`. */
-const findReferencingRelations = async (
+/**
+ * A collection that references rows POLYMORPHICALLY — a `(collection, row_id)`
+ * pair rather than a typed FK — and asks for its rows to go when the row they
+ * describe does.
+ *
+ * The shape a translations / attachments / comments table settles on. It can
+ * carry no `to`, so `findReferencingRelations` cannot see it, and nothing
+ * cleaned these rows up: a deleted product left its translated name and
+ * description behind permanently, joining to nothing and never collected.
+ */
+interface PolyRefTarget {
+  slug: string;
+  physicalTable: string;
+  tenantScoped: boolean;
+  /** Column holding the target's collection slug. */
+  collectionColumn: string;
+  /** Column holding the target row's id. */
+  rowIdColumn: string;
+}
+
+/**
+ * The tenant's ACTIVE collection rows, read once per trigger pass.
+ *
+ * Both scans below want the same rows, and a cascade chain re-enters this
+ * function for every row it deletes — so reading the table twice per hop
+ * doubles the cost of the deepest thing here for nothing.
+ */
+const activeCollections = async (
   ctx: Ctx,
   tenantId: string,
-  targetSlug: string,
-): Promise<RefTarget[]> => {
+): Promise<Record<string, unknown>[]> => {
   const t = collectionsTable(ctx.dialect);
   const rows = (await (ctx.db as any).select().from(t).where(eq(t.tenantId, tenantId))) as Record<
     string,
     unknown
   >[];
+  return rows.filter((r) => ((r.status ?? "active") as string) === "active");
+};
+
+/** Collections that reference `targetSlug` via a `relation` / `relation_many`
+ *  field carrying an actionable `onDelete`. */
+const findReferencingRelations = (
+  rows: Record<string, unknown>[],
+  targetSlug: string,
+): RefTarget[] => {
   const out: RefTarget[] = [];
   for (const r of rows) {
-    if (((r.status ?? "active") as string) !== "active") continue;
     const fields = (r.fields ?? []) as FieldDef[];
     for (const f of fields) {
       if (
@@ -65,6 +105,46 @@ const findReferencingRelations = async (
           field: f,
         });
       }
+    }
+  }
+  return out;
+};
+
+/**
+ * Collections carrying a cascading polymorphic reference.
+ *
+ * Unlike {@link findReferencingRelations} this cannot filter by target — the
+ * target lives in a COLUMN, not in the schema — so it returns every such
+ * collection and the `WHERE <collectionColumn> = <targetSlug>` does the
+ * narrowing. That also means the sweep is bounded by an index on the pair
+ * rather than by a scan: those two columns are the ones such a table already
+ * reads by, and the template that declares one indexes both.
+ */
+const findPolymorphicRefs = (rows: Record<string, unknown>[]): PolyRefTarget[] => {
+  const out: PolyRefTarget[] = [];
+  for (const r of rows) {
+    const fields = (r.fields ?? []) as FieldDef[];
+    for (const f of fields) {
+      if (!f.polymorphicRef || f.onDelete !== "cascade") continue;
+      const collectionColumn = f.polymorphicRef.collectionField;
+      // Stored field metadata is untrusted — a collection row can predate a
+      // rename, or be written by hand. `validateFields` refuses a pair naming a
+      // column that is not on the collection, but this is the read side and it
+      // must not build an identifier out of a name nothing confirms: skip it
+      // rather than emit SQL that fails mid-delete, on somebody's production
+      // data, in a path nothing exercises until then.
+      //
+      // It is also what keeps the identifier safe. A field NAME is validated
+      // `^[a-z][a-z0-9_]*$`, so requiring the pair to match one means the
+      // column spliced below is always a checked identifier.
+      if (!fields.some((o) => o.name === collectionColumn)) continue;
+      out.push({
+        slug: r.slug as string,
+        physicalTable: (r.physicalTable ?? r.physical_table) as string,
+        tenantScoped: (r.tenantScoped ?? r.tenant_scoped ?? true) ? true : false,
+        collectionColumn,
+        rowIdColumn: f.name,
+      });
     }
   }
   return out;
@@ -107,7 +187,8 @@ export const enforceOnDeleteTriggers = async (
   if (visited.has(key)) return touched;
   visited.add(key);
 
-  const refs = await findReferencingRelations(ctx, tenantId, targetSlug);
+  const collections = await activeCollections(ctx, tenantId);
+  const refs = findReferencingRelations(collections, targetSlug);
   for (const ref of refs) {
     const table = sql.identifier(ref.physicalTable);
     const fk = sql.identifier(ref.field.name);
@@ -164,6 +245,25 @@ export const enforceOnDeleteTriggers = async (
     }
     touched.add(ref.slug);
     await afterCascade(ctx, tenantId, ref, victims, run, visited, touched);
+  }
+
+  // Polymorphic references, second because they cannot chain: a translations
+  // row describes something, it is not itself described, so there is nothing
+  // below it to cascade into. Deleting them last also means the relation
+  // cascade above has already produced whatever rows it was going to produce —
+  // and each of those runs its OWN pass through here, so a cascaded child's
+  // translations go with it.
+  for (const poly of findPolymorphicRefs(collections)) {
+    const table = sql.identifier(poly.physicalTable);
+    const coll = sql.identifier(poly.collectionColumn);
+    const rowId = sql.identifier(poly.rowIdColumn);
+    const scope = poly.tenantScoped
+      ? sql` AND ${sql.identifier("tenant_id")} = ${tenantId}`
+      : sql``;
+    await run(
+      sql`DELETE FROM ${table} WHERE ${coll} = ${targetSlug} AND ${rowId} = ${deletedId}${scope}`,
+    );
+    touched.add(poly.slug);
   }
   return touched;
 };

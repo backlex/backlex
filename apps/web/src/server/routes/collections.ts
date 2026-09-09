@@ -228,6 +228,12 @@ const FieldObject = z.object({
     onUpdate: z.enum(["now", "user", "tenant"]).optional(),
     /** App-layer ON DELETE action for a relation FK (set_null/cascade/no_action). */
     onDelete: z.enum(["set_null", "cascade", "no_action"]).optional(),
+    /** Marks this column as the row-id half of a POLYMORPHIC reference: it
+     *  holds the id of a row in whichever collection the sibling column named
+     *  by `collectionField` names. Pairs with `onDelete: "cascade"`, which is
+     *  what collects a translations/attachments row when the record it
+     *  describes is deleted. `validateFields` checks the sibling exists. */
+    polymorphicRef: z.object({ collectionField: z.string().min(1).max(64) }).optional(),
     /** Display-only formatting hint (number/date/currency) — never affects
      *  storage, the API, sorting or filtering. */
     format: z

@@ -331,6 +331,54 @@ Hard constraints:
   after apply.
 - Keep `id`s stable once shipped (cloud contract), and add the id to the
   `CATEGORY` map so the picker files it under the right section.
+- **A polymorphic table needs `polymorphicRef`, or its rows are never
+  collected.** See below.
+
+### Polymorphic references
+
+A table that describes rows in *many* collections — translations,
+attachments, comments — keys on a `(collection, row_id)` pair rather than a
+typed relation. That pair cannot be a `relation` field: `to` names one
+collection, and the whole point is that the target is a value.
+
+Which meant nothing cleaned those rows up. A deleted product left its
+translated name and description behind permanently: they joined to nothing,
+surfaced nowhere and were never collected, and the first symptom is a
+translations table larger than the catalogue it describes.
+
+Declare the pair and the engine sweeps them in the same pass it runs the
+relation `onDelete` triggers:
+
+```ts
+...half(
+  text("collection", { required: true, indexed: true }),
+  text("row_id", {
+    required: true,
+    indexed: true,
+    polymorphicRef: { collectionField: "collection" },
+    onDelete: "cascade",
+  }),
+),
+```
+
+Four things worth knowing:
+
+- **`cascade` is the only action.** The row exists to describe something, so
+  when that something goes the row is garbage. `set_null` would leave a row
+  pointing at nothing — and on the usual `required: true` shape it cannot even
+  be written. It is refused at validation time rather than at delete time on
+  somebody's production data.
+- **The sweep matches the PAIR.** A row naming a different collection with the
+  same id survives; ids are unique per collection, not across them.
+- **A cascaded child takes its own rows with it.** The polymorphic pass runs
+  inside the trigger function, and a relation cascade re-enters that function
+  per row it deletes — so a variant deleted along with its product has its
+  translations collected by the variant's own pass.
+- **The reference is not enforced on write.** `collection` is a slug and
+  `row_id` is free text, so a row may name something that does not exist. That
+  is inherent to the shape — it is why the cleanup is a sweep on delete and not
+  a foreign key — and it means a bulk `DELETE` straight against the physical
+  table still leaves orphans behind.
 
 ### Authoring a bundle
 

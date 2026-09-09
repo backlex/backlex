@@ -167,6 +167,50 @@ describe("ecommerce — localized storefront text", () => {
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.map((r) => r.collection)).not.toContain("categories");
   });
+
+  test("deleting a described row takes its translations with it", async () => {
+    // `translations` is polymorphic — `collection` + `row_id` — so it can carry
+    // no foreign key, and nothing collected these rows: a deleted product left
+    // its translated name and description behind permanently, joining to
+    // nothing and surfacing nowhere. The first symptom is a translations table
+    // larger than the catalogue it describes. #315.
+    const made = await json("/api/items/products", {
+      name: "Ephemeral Tee",
+      slug: "ephemeral-tee",
+      price: 10,
+      currency: "USD",
+    });
+    expect(made.status).toBe(201);
+    const product = ((await made.json()) as { data: { id: string } }).data;
+
+    const tr = await json("/api/items/translations", {
+      collection: "products",
+      row_id: product.id,
+      field: "care_instructions",
+      locale: "tr",
+      value: "30 derecede yıkayın",
+    });
+    expect(tr.status).toBe(201);
+    const translation = ((await tr.json()) as { data: { id: string } }).data;
+
+    // A row describing a DIFFERENT record, to prove the sweep matches the pair
+    // rather than emptying the table.
+    const survivor = await json("/api/items/translations", {
+      collection: "products",
+      row_id: "some-other-product",
+      field: "care_instructions",
+      locale: "tr",
+      value: "kuru temizleme",
+    });
+    expect(survivor.status).toBe(201);
+    const survivorId = ((await survivor.json()) as { data: { id: string } }).data.id;
+
+    const deleted = await h.fetch(`/api/items/products/${product.id}`, { method: "DELETE" });
+    expect(deleted.status).toBe(200);
+
+    expect((await h.fetch(`/api/items/translations/${translation.id}`)).status).toBe(404);
+    expect((await h.fetch(`/api/items/translations/${survivorId}`)).status).toBe(200);
+  });
 });
 
 /**

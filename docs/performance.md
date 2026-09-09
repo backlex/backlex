@@ -360,13 +360,35 @@ killed at 31 minutes. It is not the analogue of `--max-old-space-size`.
 `--checkers` is.
 
 
-##### The program is mostly not our code — and it was carrying two of some of it
+##### What is actually in the program — and count is not weight
 
 `--checkers` decides how the work is split. This decides how much work there
-is. The server project's program is ~2560 files, of which ~800 are ours; the
-rest are dependency `.d.ts`. (The number moves with every dependency bump —
-measure it, do not quote this one.) TypeScript 7 dropped `--listFiles`, but the
-incremental state file still holds the whole list, which makes this a one-liner:
+is. The server project's program is ~2560 files / ~22 MB of `.d.ts` and `.ts`
+text, and **which of those two numbers you look at changes the answer**:
+
+| | files | | bytes | |
+|---|---:|---:|---:|---:|
+| our own source | 761 | 30% | 10.9 MB | **49%** |
+| dependency `.d.ts` | 1738 | 68% | 11.5 MB | 51% |
+| TypeScript `lib.*.d.ts` | 62 | 2% | ~0 | 0% |
+
+By file count the dependencies dominate and it is tempting to say the program is
+mostly not our code. By bytes it is a coin flip, and the single heaviest thing in
+it is `apps/web/src/server` itself at 8.63 MB. The per-package view says the same
+thing twice over: `drizzle-orm` is 327 files but only 0.85 MB, while
+`@cloudflare/workers-types` is **2 files** for 1.13 MB and `csstype` is **one
+file** for 0.85 MB. Counting files measures how much resolution work there is;
+counting bytes measures how much type text the checker has to bind. They are
+different questions and the second is the one that costs.
+
+Heaviest by bytes: `apps/web/src/server` 8.63, `@types/node` 2.19,
+`@cloudflare/workers-types` 1.13, `packages/integrations` 1.05, `bun-types`
+1.00, `packages/db` 0.95, then `csstype` / `kysely` / `drizzle-orm` /
+`better-auth` at ~0.85 each.
+
+(Every number here moves with a dependency bump — measure, do not quote.)
+TypeScript 7 dropped `--listFiles`, but the incremental state file still holds
+the whole list, which makes this a one-liner:
 
     python3 -c "import json;print(len(json.load(open('apps/web/node_modules/.cache/tsc/.tsbuildinfo.server'))['fileNames']))"
 

@@ -119,13 +119,28 @@ interface Project {
   references: string[];
 }
 
-/** A solution-style config builds no program of its own — it only points at
- *  others. `apps/web/tsconfig.json` and the repo root are both this shape. */
+/**
+ * A solution-style config builds no program of its own — it only points at
+ * others. `apps/web/tsconfig.json` and the repo root are both this shape, but
+ * they spell it differently: apps/web writes BOTH `files: []` and
+ * `include: []`, the root writes only `files: []`. An earlier version of this
+ * required `include` to be an empty array specifically, so the root config fell
+ * through and was classified as a project — and then passed the runner check
+ * only because that check used to accept "referenced from the root solution",
+ * which the root trivially is. Two bugs holding each other up.
+ *
+ * Either empty marker is enough: TypeScript needs one of them to stop the
+ * default `**\/*` glob, and which one is a matter of taste.
+ */
+const emptyOrAbsent = (v: unknown): boolean =>
+  v === undefined || (Array.isArray(v) && v.length === 0);
+
 const isSolution = (c: Record<string, unknown>): boolean =>
   Array.isArray(c.references) &&
   (c.references as unknown[]).length > 0 &&
-  Array.isArray(c.include) &&
-  (c.include as unknown[]).length === 0;
+  emptyOrAbsent(c.include) &&
+  emptyOrAbsent(c.files) &&
+  !(c.include === undefined && c.files === undefined);
 
 /** A base config exists only to be `extends`ed. It names no inputs and no
  *  references, so treating it as a project would give it TypeScript's default
@@ -262,10 +277,22 @@ describe("tsconfig project coverage", () => {
     // runs its own `tsc --noEmit`. It is that no project is dead: a tsconfig
     // nothing invokes is a file that looks like coverage and provides none.
     //
-    // Two runners count. `bun run typecheck` fans out to each workspace's own
-    // `typecheck` script (a bare `tsc --noEmit` means that workspace's
-    // `tsconfig.json`), and any script may name a project explicitly with
-    // `-p <path>`. `tsc -b` from the root solution counts as well.
+    // A runner is a package.json SCRIPT — `bun run typecheck` fans out to each
+    // workspace's own `typecheck` (a bare `tsc --noEmit` means that
+    // workspace's `tsconfig.json`), and any script may name a project
+    // explicitly with `-p <path>`.
+    //
+    // Being referenced from the root solution deliberately does NOT count, and
+    // that correction is why this comment is long. It DID count here at first,
+    // on the reasoning that `tsc -b` walks the solution — but **nothing in this
+    // repo ever runs `tsc -b`**; grep says the string appears only in this
+    // file's own comments. So the union quietly certified a project no gate
+    // compiled: `apps/web/tsconfig.tooling.json` passed this test while
+    // `vite.config.ts`, the Netlify cron entry and the sandbox exec server —
+    // the exact files it was created for — went on being checked by nothing.
+    //
+    // A guard that accepts a hypothetical runner is the same defect as the hole
+    // it was written to close, one level up.
     const named = new Set<string>();
     const scriptsOf = (pkgDir: string): Record<string, string> => {
       const p = repoPath(pkgDir ? `${pkgDir}/package.json` : "package.json");
@@ -293,10 +320,9 @@ describe("tsconfig project coverage", () => {
         }
       }
     }
-    const reachable = new Set([...named, ...referencedProjects()]);
     const dead = projects()
       .map((p) => p.config)
-      .filter((c) => !reachable.has(c));
+      .filter((c) => !named.has(c));
     expect(dead).toEqual([]);
   });
 

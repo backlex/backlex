@@ -272,6 +272,19 @@ describe("worker startup budget", () => {
     // `middleware/session.ts` is the importer and it already pulled in both
     // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
     // dynamic import would bite on.
-    expect(kib).toBeLessThan(8465);
+    //
+    // Raised 8465 → 8480 on 2026-09-10, measured at 8469. ZERO new modules:
+    // #315 added the polymorphic-reference sweep to two files that were already
+    // eager (`packages/db/src/field-types.ts`, `services/items/on-delete.ts`)
+    // plus one line of zod in `routes/collections.ts`. The ecommerce template
+    // itself is NOT counted — `templates/catalog.ts` is behind `templates/lazy`
+    // and this file asserts that two tests up, which is why 68 lines of
+    // commerce schema move this number by nothing.
+    //
+    // Most of the ~4 KiB is the argument for why `cascade` is the only action a
+    // polymorphic ref supports and why the read side re-checks the sibling
+    // column. This walk counts source bytes, so that weighs what the DELETE
+    // does.
+    expect(kib).toBeLessThan(8480);
   });
 });

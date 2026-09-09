@@ -154,3 +154,8 @@ dist
 # the bare `.env*` above was silently swallowing all of them.
 !.env.example
 !.env.*.example
+
+# The pre-push gate's durable test record (lefthook.yml `test` job). Written on
+# every gate run so a red push that scrolls away is still diagnosable — #316 was
+# investigated three times and twice ended at "I lost the failure text".
+.gate-test-results.xml

@@ -326,6 +326,18 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const { id } = c.req.valid("param");
       await loadOwnFunction(ctx, tenantId, id);
       const t = tableFor(ctx.dialect);
+      // Re-stamped when the CODE changes, and only then. The author of a
+      // function is whoever wrote what it runs — renaming it or switching it
+      // off is not authorship, and re-attributing on those would let an
+      // operator toggling `active` silently promote a tenant's code into the
+      // soft sandbox. Re-saving the body IS how an operator adopts a legacy
+      // row, which is what the refusal message tells them to do.
+      //
+      // Resolved BEFORE the chain rather than awaited inside `.set()`: an
+      // `await` in the middle of a Drizzle chain is hard to read and, more to
+      // the point, `scan-tenant-scope.ts` reads this file as source — it lost
+      // sight of the `.where` below and reported this update as unscoped.
+      const restamp = body.code !== undefined ? await authorStamp(c) : {};
       await (ctx.db as any)
         .update(t)
         .set({
@@ -335,13 +347,7 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           ...(body.code !== undefined ? { code: body.code } : {}),
           ...(body.timeoutMs !== undefined ? { timeoutMs: body.timeoutMs } : {}),
           ...(body.active !== undefined ? { active: body.active } : {}),
-          // Re-stamped when the CODE changes, and only then. The author of a
-          // function is whoever wrote what it runs — renaming it or switching
-          // it off is not authorship, and re-attributing on those would let an
-          // operator toggling `active` silently promote a tenant's code into
-          // the soft sandbox. Re-saving the body IS how an operator adopts a
-          // legacy row, which is what the refusal message tells them to do.
-          ...(body.code !== undefined ? await authorStamp(c) : {}),
+          ...restamp,
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
         .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));

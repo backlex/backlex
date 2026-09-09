@@ -363,8 +363,9 @@ killed at 31 minutes. It is not the analogue of `--max-old-space-size`.
 ##### The program is mostly not our code — and it was carrying two of some of it
 
 `--checkers` decides how the work is split. This decides how much work there
-is. The server project's program is **2503 files**, of which ~800 are ours; the
-rest are dependency `.d.ts`. TypeScript 7 dropped `--listFiles`, but the
+is. The server project's program is ~2560 files, of which ~800 are ours; the
+rest are dependency `.d.ts`. (The number moves with every dependency bump —
+measure it, do not quote this one.) TypeScript 7 dropped `--listFiles`, but the
 incremental state file still holds the whole list, which makes this a one-liner:
 
     python3 -c "import json;print(len(json.load(open('apps/web/node_modules/.cache/tsc/.tsbuildinfo.server'))['fileNames']))"
@@ -388,27 +389,49 @@ tsconfig at all.
 
 collapses it. Measured on the server program, before → after:
 
-| | before | after |
+| measured 2026-09-09, before the same day's dependency bumps | before | after |
 |---|---|---|
 | files in program | 2607 | **2503** |
 | `@types/node` | 148 (two majors) | **80** |
 | `undici-types` | 79 (two majors) | **42** |
+
+Those counts are of that tree, not of today's. Re-running the pin A/B after the
+advisory bumps gave 2542 without the pin against 2561 with it — the direction
+inverts, because removing the resolution while keeping the `@types/bun` 1.4.0
+pin resolves 22.20.1 + 24.13.3 rather than the original 22.20.1 + 25.6.0, and
+one copy of a newer major is larger than two copies of older ones. The lesson is
+the process, not the number: read `fileNames` out of the tsbuildinfo for the
+tree in front of you.
 
 Both `ProcessExits` narrowings are deleted and `child.on(...)` typechecks
 unaided — that, not the file count, is the proof the split is gone. **Do not
 remove the resolution**; if a workspace genuinely needs a different major,
 declare it there rather than dropping the pin.
 
+**This is a correctness fix, not a measured speed-up, and the attempt to prove
+otherwise is worth recording.** An A/B on the pin alone — cold server project,
+`--checkers 2`, box otherwise idle — read 96.2s / 3.54 GB without it against
+89.6s / 2.52 GB with it, which looks like a 7% / 29% win. A second run of the
+*identical* configuration then landed at **52.3s / 4.08 GB**. Run-to-run spread
+on the same input is therefore ~41% in wall clock and ~62% in peak RSS, which
+swallows any effect this change could have. The Go checker's GC adapts to
+whatever memory is free, and on an 8 GB box under compressor pressure that
+dominates everything else.
+
+So: do not quote a wall-clock figure from a single run on this machine, in
+either direction. Anything under about 2x needs many repetitions to say at all,
+and the file count above is the only part of this that is deterministic.
+
 The same file list explains the rest of the weight, and those parts are
 load-bearing: `drizzle-orm` (327), `kysely` (251, a drizzle peer), `better-auth`
-(127), `graphql` (102), `zod` (95). The duplicated Node typings were the only
-free win in the list.
+(127), `graphql` (102), `zod` (95).
 
-Whole-repo cold after all of it, on the 8 GB box with nothing else running:
-`bun run typecheck` → **359s real / 169s user / 3.14 GB peak RSS**, zero errors,
-21 workspaces plus both `astro check` passes plus the new root `scripts/`
-project. `bun run typecheck:tests` cold, alone → **767s real / 197s user / 2.58
-GB**, zero errors.
+For scale rather than for comparison — single runs, so subject to everything
+the paragraph above says: whole-repo `bun run typecheck` cold on the 8 GB box
+with nothing else running landed at 359s / 3.14 GB, and `bun run
+typecheck:tests` cold and alone at 767s / 2.58 GB. Both zero errors, 21
+workspaces plus both `astro check` passes plus the root `scripts/` project.
+Treat these as order-of-magnitude, not as a baseline to diff against.
 
 **`typecheck:tests` now takes the machine-wide lock too**, and that is not
 theoretical tidying. It used to be a bare `bun run --cwd apps/web

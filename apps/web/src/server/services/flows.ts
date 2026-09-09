@@ -21,6 +21,7 @@ import { loadCollection, type CollectionRow } from "./items/collection-loader";
 import { deserializeRow } from "./items/serialize";
 import { deletedFilter, queryAll, whereOf } from "./items/sql-helpers";
 import { runFunction } from "./sandbox";
+import { authorBindings } from "./functions";
 import { sendTemplatedEmail } from "./email";
 import { renderDocument } from "./documents";
 import { createSignatureRequest } from "./signatures";
@@ -1687,6 +1688,7 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         code: string;
         timeoutMs: number;
         active: boolean | number;
+        authorKind?: "operator" | "tenant" | null;
       }>;
     const fn = rows[0];
     if (!fn) throw new FlowOpError(`function "${name}" not found`);
@@ -1694,7 +1696,11 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     const input = op.input !== undefined ? interpolate(op.input, ctx) : ctx.data;
     const result = await runFunction(
       fn.code,
-      { ctx: ctx.ctx, auth: ctx.authSubject },
+      // The author travels with the code, so calling a function THROUGH a flow
+      // cannot launder its trust level — a flow is admin-authored, and without
+      // this the op would be a way to run a tenant's function in the soft
+      // sandbox by naming it.
+      { ctx: ctx.ctx, auth: ctx.authSubject, ...authorBindings({ name, authorKind: fn.authorKind }) },
       { data: input, last: ctx.last },
       fn.timeoutMs,
     );

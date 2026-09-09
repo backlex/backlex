@@ -14,6 +14,25 @@ export interface SandboxBindings {
    *  set its own) so a downstream service — including a call back into this API
    *  — continues the same trace. Absent for triggers without a trace context. */
   traceparent?: string;
+  /**
+   * Who wrote the code about to run, from `functions.author_kind`.
+   *
+   * The soft sandbox (`bun-worker`) hands user code `node:fs`, `node:process`
+   * and `Bun.spawnSync`, so "may this code have the host" is a question about
+   * its AUTHOR, not about the deployment. Until `functions` recorded one there
+   * was nothing to ask, which is why the answer had to be a deployment-wide
+   * flag. See `sandbox/index.ts::selectProvider`. #335.
+   *
+   * `undefined` means the caller is not running a stored `functions` row — a
+   * flow's inline code, an extension hook, an auth hook — all of which are
+   * authored through their own admin-gated surfaces and have no author column
+   * either. Those keep the deployment's answer; narrowing them is a separate
+   * change with its own schema, and pretending otherwise here would be a gate
+   * that reads as covering four surfaces while covering one.
+   */
+  authorKind?: "operator" | "tenant" | null;
+  /** Function name, for the refusal message. Diagnostics only. */
+  functionName?: string;
 }
 
 export interface SandboxResult {

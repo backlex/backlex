@@ -596,6 +596,9 @@ export const functions = sqliteTable(
     code: text("code").notNull(),
     timeoutMs: integer("timeout_ms").notNull().default(5000),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /** Who wrote this code — see the pg twin for the whole argument. */
+    createdBy: text("created_by"),
+    authorKind: text("author_kind"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

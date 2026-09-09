@@ -71,6 +71,49 @@ least-privilege service.
 An unrecognised value reads as `auto`, so a typo cannot silently downgrade
 isolation.
 
+### bun-worker is enforced per AUTHOR, not per deployment
+
+`FUNCTIONS_SANDBOX=bun-worker` used to grant host access to **every** function
+on the instance, and it had to: `functions` recorded `tenant_id` and no author,
+so there was nothing narrower to key the rule by.
+
+The table now records one. `functions.author_kind` is `operator` or `tenant`,
+decided at write time by `isInstanceOperator` — deliberately **not** the
+workspace `admin` role, since `POST /api/tenants` hands that to anyone who
+creates a workspace. Under `bun-worker`:
+
+| author | provider |
+|---|---|
+| `operator` | bun-worker (host access) |
+| `tenant` | quickjs |
+| *unrecorded* (row predates the column) | bun-worker, plus a warning naming it |
+
+Three things worth knowing:
+
+- **An unrecorded author keeps the soft sandbox.** Backfilling those to
+  `tenant` would be the safe-sounding label and would break every existing
+  function on upgrade — quickjs has no host I/O at all. So they run as they
+  always have and log `sandbox-legacy-author` once per function, naming it.
+  **Re-saving the function's code stamps an author** and clears the warning.
+- **The author travels with the code.** A non-code edit — a timeout bump, an
+  `active` toggle — does not re-attribute it, so an operator touching a
+  tenant's function cannot promote it. Writing the body is authorship; that is
+  the adoption path.
+- **`FUNCTIONS_SANDBOX_TRUST_ALL_AUTHORS=1` opts out**, restoring the old
+  deployment-wide meaning. It exists for one real shape: functions written by
+  an automation holding an API key. `isInstanceOperator` refuses a key identity
+  by design — a scoped machine key must not escalate into the SQL console — so
+  such a row is stamped `tenant` and would otherwise lose host access.
+
+Nothing here applies to `remote-http` or `quickjs`: both are already isolated
+from the host, so an author's trust level buys nothing there.
+
+The clamp covers **stored functions**. A flow's inline `run-script`, an
+extension hook and an auth hook are authored through their own admin-gated
+surfaces and have no author column, so they keep the deployment's answer.
+Calling a stored function *through* a flow does carry its author, so the flow
+op is not a way to launder one.
+
 ## Triggers
 
 | Trigger | Pattern                | Fires on                                            |
@@ -122,6 +165,42 @@ FUNCTIONS_FETCH_ALLOW=api.example.com,*.cdn.io
 `*` allows any host (development only). Empty string disables outbound
 fetch. Each comma-separated entry matches the host exactly OR matches
 any subdomain (e.g. `cdn.io` allows `assets.cdn.io`).
+
+The **scheme** is checked before the `*` short-circuit, and before anything
+else, because the list is about hosts and a scheme is not a host:
+`new URL("file://api.example.com/etc/passwd").host` is `api.example.com`.
+
+### Narrowing it per workspace
+
+That env list is deployment-wide, so one operator decision bound every tenant
+on the instance — a multi-tenant host could not let workspace A reach a partner
+API that workspace B must not.
+
+A workspace can now narrow it, through the `functionsFetchAllow` app setting:
+
+```bash
+PATCH /api/admin/settings   { "functionsFetchAllow": ["api.example.com"] }
+```
+
+**It can only ever take hosts away.** The env list is the ceiling and the two
+are intersected, so:
+
+| workspace setting | effective list |
+|---|---|
+| `null` (default) | the deployment list, unchanged |
+| `[]` | nothing — outbound fetch is off for this workspace |
+| `["api.example.com"]` | that host, if the ceiling already covered it |
+| `["*"]` | the deployment list — **not** everything |
+
+`null` and `[]` are different answers on purpose: `null` means "this workspace
+has not chosen", which is what every existing workspace has, and `[]` is a
+choice. An entry the ceiling does not cover is dropped rather than refused, so
+tightening the deployment list cannot break a workspace's remaining hosts.
+
+Naming a subdomain of a permitted host is a narrowing and is kept —
+`isAllowedFetch` already admits `api.example.com` under a ceiling of
+`example.com`, so writing the subdomain takes hosts away rather than adding
+any.
 
 ## Permissions
 

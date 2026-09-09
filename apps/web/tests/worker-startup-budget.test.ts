@@ -272,6 +272,19 @@ describe("worker startup budget", () => {
     // `middleware/session.ts` is the importer and it already pulled in both
     // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
     // dynamic import would bite on.
-    expect(kib).toBeLessThan(8465);
+    //
+    // Raised 8465 → 8485 on 2026-09-10, measured at 8474. ZERO new modules:
+    // #335 edited files already on the eager path — `env.ts`,
+    // `routes/functions.ts`, `services/sandbox/{index,types,host-bridge}.ts`,
+    // `services/{functions,flows,jobs,settings}.ts` — and the two SQL migration
+    // files it adds are text the bundle already excludes.
+    //
+    // Note what did NOT move it. `services/scheduler.ts` is off the startup
+    // path (asserted three tests up, because `cron-parser` → `luxon` is 260 KB
+    // behind a `scheduled()` trigger), so the runner edits there are free. The
+    // ~9 KiB is the argument for why NULL keeps the soft sandbox, and why the
+    // per-workspace fetch list can only narrow — this walk counts source bytes,
+    // so those weigh what the two decision functions do.
+    expect(kib).toBeLessThan(8485);
   });
 });

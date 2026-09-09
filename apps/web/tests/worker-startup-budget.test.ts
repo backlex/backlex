@@ -272,6 +272,24 @@ describe("worker startup budget", () => {
     // `middleware/session.ts` is the importer and it already pulled in both
     // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
     // dynamic import would bite on.
-    expect(kib).toBeLessThan(8465);
+    //
+    // Raised 8465 → 8475 on 2026-09-10, measured at 8466. ONE new module:
+    // `services/schema-reapply.ts` (#317), the daily sweep that brings every
+    // workspace's physical tables forward. Net +1 KiB, because the loop MOVED
+    // there out of `routes/db-admin.ts` rather than being added beside it.
+    //
+    // It is eager through `routes/db-admin.ts`, not through the scheduler —
+    // `services/scheduler.ts` is off the startup path (asserted three tests up)
+    // and its import of this module costs nothing. What it pulls in,
+    // `@backlex/db`'s `applyCollection` and `services/collections-cache`, the
+    // graph already reached, so there is no seam a dynamic import would bite
+    // on.
+    //
+    // A note for whoever merges next, because this file has been bitten by it
+    // before: FOUR branches raised this line in parallel (#345, #315, #335,
+    // #317), each measured and green against its own tree. A per-branch budget
+    // check does not compose — re-measure on the merge rather than taking the
+    // largest of the four.
+    expect(kib).toBeLessThan(8475);
   });
 });

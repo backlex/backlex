@@ -42,6 +42,7 @@ import { pruneConsentRecords } from "./consent-records";
 import { pruneBroadcastMessages } from "./broadcast";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
+import { reapplyAllWorkspaces } from "./schema-reapply";
 import { processMigrationRuns } from "./migrate";
 import { processCdcSinks } from "./cdc";
 import { flushUsage, sweepUsageGauges } from "./usage";
@@ -82,6 +83,11 @@ const SCHEMA_SNAPSHOT_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 // Usage gauge sweep (#12) — per-workspace SUM/COUNT measurements; a coarse
 // half-hourly cadence is plenty for "how big is this workspace" gauges.
 const USAGE_GAUGE_SWEEP_INTERVAL_MS = 30 * 60 * 1000;
+// Schema re-apply (#317) — brings every workspace's physical tables forward to
+// what the running build expects. Daily, because what it responds to is a
+// DEPLOY, and a deploy is not a per-minute event; the pass is additive and
+// idempotent so a converged workspace costs a column read per table.
+const SCHEMA_REAPPLY_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Durable, cross-instance throttle for the periodic sweeps below.
@@ -511,6 +517,40 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       await runScheduledSnapshots({ db: ctx.db, dialect: ctx.dialect }, now);
     } catch (e) {
       console.error("[schema-auto-snapshot] sweep failed", e);
+    }
+  }
+
+  // Schema re-apply: bring every workspace's physical tables forward to what
+  // the running build expects (#317).
+  //
+  // Daily rather than "on upgrade", because there is no upgrade EVENT inside a
+  // tenant runtime to hook — the control plane rolls a Worker forward and the
+  // tenant simply starts running new code. A schedule also self-heals, which
+  // is the case the issue actually found: three of four live tenants were
+  // PAUSED and could not be swept at all, so a one-shot hook would have missed
+  // them and a manual follow-up would have had to be remembered again when
+  // they resumed.
+  //
+  // Safe to run repeatedly: `applyCollection` is additive and idempotent, skips
+  // adopted tables and inactive collections, and on a converged workspace reads
+  // each table's columns and writes nothing.
+  //
+  // `SCHEMA_REAPPLY_SWEEP=off` opts out — for a deployment whose DDL is
+  // change-controlled and must not happen on a timer. The manual endpoint is
+  // still there.
+  if (
+    (env.SCHEMA_REAPPLY_SWEEP ?? "").trim().toLowerCase() !== "off" &&
+    (await claimSweep(ctx, "schema-reapply", SCHEMA_REAPPLY_SWEEP_INTERVAL_MS, now))
+  ) {
+    try {
+      const r = await reapplyAllWorkspaces({ db: ctx.db, dialect: ctx.dialect });
+      if (r.applied > 0 || r.failed > 0) {
+        console.log(
+          `[schema-reapply] ${r.workspaces} workspace(s), ${r.applied} applied, ${r.failed} failed`,
+        );
+      }
+    } catch (e) {
+      console.error("[schema-reapply] sweep failed", e);
     }
   }
 

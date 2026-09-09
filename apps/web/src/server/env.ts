@@ -108,6 +108,24 @@ export interface Env {
    *  and for the same reason: a permissive default meant the guarantee was real
    *  on the deployments that set it and inert everywhere else. */
   PERMISSION_WRITE_CHECK?: string;
+  /**
+   * `"off"` disables the daily schema re-apply sweep (#317).
+   *
+   * `cronTick` otherwise brings every workspace's physical tables forward to
+   * what the running build expects, once a day. The pass is additive and
+   * idempotent — it never drops or rewrites a column, skips adopted tables and
+   * inactive collections, and on a converged workspace reads each table's
+   * columns and writes nothing.
+   *
+   * It is ON by default because the alternative was demonstrated not to work:
+   * every feature that adds a column owes the same sweep, running it was a
+   * per-release chore, and when #317 came to check, three of four live tenants
+   * had never had it and the fourth needed it without anyone noticing.
+   *
+   * Set `off` where DDL is change-controlled and must not happen on a timer.
+   * `POST /api/admin/db/schema/reapply` still runs it on demand.
+   */
+  SCHEMA_REAPPLY_SWEEP?: string;
   /** `"off"` skips the `PRAGMA foreign_keys = ON` the Bun SQLite client now
    *  issues. The pragma is defence in depth, not a fix — D1 and Postgres
    *  enforce unconditionally — but an existing self-host may hold rows that
@@ -804,6 +822,7 @@ export const STRING_ENV_KEYS = [
   "OWNER_EMAIL",
   "WORKSPACE_CREATION",
   "PLANE_GUARD",
+  "SCHEMA_REAPPLY_SWEEP",
   "DB_FK_ENFORCE",
   "PERMISSION_WRITE_CHECK",
   "DEMO_MODE",

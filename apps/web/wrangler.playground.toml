@@ -49,9 +49,10 @@ AUTH_PLUGINS = "passkey,magic-link,email-otp"
 DEMO_MODE = "1"
 SEED_TEMPLATE = "ecommerce"
 # The two containment guards, same as the control worker — see the long
-# note in wrangler.toml. A PUBLIC demo is the one deploy where a stranger
-# is genuinely poking at the plane boundary, so leaving it in `warn` here
-# would be the wrong way round.
+# note in wrangler.toml. Both default to `enforce` now, so these lines are
+# redundant and deliberately kept: a PUBLIC demo is the one deploy where a
+# stranger is genuinely poking at the plane boundary, and this is the file
+# somebody checks to see what it is running.
 PLANE_GUARD = "enforce"
 PERMISSION_WRITE_CHECK = "enforce"
 

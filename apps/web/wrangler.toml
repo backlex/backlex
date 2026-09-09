@@ -105,12 +105,20 @@ PLANE_GUARD = "enforce"
 # hand over a row it could never see afterwards. This makes the condition judge
 # the row a write PROPOSES.
 #
-# Both defaulted to `warn` so an existing integration writing cross-scope rows
-# would be visible in the logs before it was broken. That window is closed
-# because there are no third-party customers on this instance — the only test
-# tenant is the maintainer's own account. A deployment with real customers
-# should run `warn` first and grep for `plane-violation` / `permission-write-check`
-# with `"allowed"` before setting these.
+# Redundant since the default became `enforce` too (#334, 2026-09) — kept for
+# the same reason as `PLANE_GUARD` above. This paragraph used to open "Both
+# defaulted to `warn`", which described how the two shipped and stopped being
+# true for either of them.
+#
+# `warn` is now the MIGRATION setting rather than the resting state, and the
+# order matters for a deployment with real customers: set it, run the Advisor's
+# `permission-write-check` rule over a representative window, widen the
+# conditions it names, then unset it. That rule is what made the default safe to
+# flip — it answers "would enforcing refuse anything this workspace actually
+# does?" from recorded spans instead of from a guess. See `docs/advisor.md`.
+#
+# There are no third-party customers on THIS instance — the only test tenant is
+# the maintainer's own account — so it was set here directly.
 #
 # NOTE these do not close the whole hole: a write whose every condition uses a
 # relation path the in-memory evaluator cannot judge is skipped in BOTH modes

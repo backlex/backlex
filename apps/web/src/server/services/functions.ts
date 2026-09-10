@@ -19,7 +19,26 @@ export interface FunctionRow {
   code: string;
   timeoutMs: number;
   active: boolean | number;
+  /** Who wrote the code. `null` on a row that predates the column — see
+   *  `services/sandbox/index.ts::selectProvider`. */
+  authorKind?: "operator" | "tenant" | null;
 }
+
+/**
+ * The author facts every run of a stored function must carry.
+ *
+ * One helper rather than four copies, because the whole point of the column is
+ * that a caller which forgets it silently grants the soft sandbox — the exact
+ * shape of defect this repo has written down as "a guarantee is only as wide as
+ * its callers". `runEventFunctions`, the scheduler, the job runner and the
+ * admin invoke route all go through this.
+ */
+export const authorBindings = (
+  fn: Pick<FunctionRow, "name" | "authorKind">,
+): { authorKind: "operator" | "tenant" | null; functionName: string } => ({
+  authorKind: fn.authorKind ?? null,
+  functionName: fn.name,
+});
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -61,7 +80,12 @@ export const invokeFunction = async (
   bindings: SandboxBindings,
   data: unknown,
 ): Promise<SandboxResult> => {
-  return runFunction(fn.code, bindings, data, fn.timeoutMs);
+  return runFunction(
+    fn.code,
+    { ...bindings, ...authorBindings(fn) },
+    data,
+    fn.timeoutMs,
+  );
 };
 
 export const runEventFunctions = async (
@@ -88,7 +112,7 @@ export const runEventFunctions = async (
       try {
         const result = await runFunction(
           fn.code,
-          { ctx, auth: { ...auth, tenantId } },
+          { ctx, auth: { ...auth, tenantId }, ...authorBindings(fn) },
           payload,
           fn.timeoutMs,
         );

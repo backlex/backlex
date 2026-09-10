@@ -273,6 +273,60 @@ describe("worker startup budget", () => {
     // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
     // dynamic import would bite on.
     //
+    // Raised 8465 → 8480 on 2026-09-10, measured at 8471 across 638 modules.
+    // ZERO new modules: #345's method granularity edited three files that were
+    // already eager — `lib/route-planes.ts`, `middleware/plane-firewall.ts`,
+    // `services/app-orgs.ts` — and the ~6 KiB is almost entirely the comment
+    // arguing why a qualified entry can only narrow, and why an org slugged
+    // `invites` had to be refused at write time. This walk counts source bytes,
+    // so that argument weighs what the three lines of matcher do.
+    //
+    // A count with no new module is the cheapest kind of raise to grant and the
+    // easiest to grant carelessly, so the check that matters is the one above:
+    // `eager.size` moved by nothing, and there is no seam a dynamic import
+    // would bite on.
+    //
+    // Raised 8465 → 8480 on 2026-09-10, measured at 8469. ZERO new modules:
+    // #315 added the polymorphic-reference sweep to two files that were already
+    // eager (`packages/db/src/field-types.ts`, `services/items/on-delete.ts`)
+    // plus one line of zod in `routes/collections.ts`. The ecommerce template
+    // itself is NOT counted — `templates/catalog.ts` is behind `templates/lazy`
+    // and this file asserts that two tests up, which is why 68 lines of
+    // commerce schema move this number by nothing.
+    //
+    // Most of the ~4 KiB is the argument for why `cascade` is the only action a
+    // polymorphic ref supports and why the read side re-checks the sibling
+    // column. This walk counts source bytes, so that weighs what the DELETE
+    // does.
+    //
+    // MERGE NOTE, 2026-09-10: the two raises above were measured on separate
+    // branches (8471 and 8469) and BOTH landed on 8480. Together they measure
+    // **8479** — one KiB under, which is the composition failure this file
+    // already records once (`8306 exists only in the merge`) arriving again and
+    // being caught this time. Two more branches raising this line are in flight
+    // (#335, #317); each has to re-measure on ITS merge rather than take the
+    // largest of the four, and the number stays 8480 here because 8479 is what
+    // this tree actually costs.
+    //
+    // Raised 8480 → 8500 on 2026-09-10, measured at 8492 ON THE MERGE. ZERO new modules:
+    // #335 edited files already on the eager path — `env.ts`,
+    // `routes/functions.ts`, `services/sandbox/{index,types,host-bridge}.ts`,
+    // `services/{functions,flows,jobs,settings}.ts` — and the two SQL migration
+    // files it adds are text the bundle already excludes.
+    //
+    // Note what did NOT move it. `services/scheduler.ts` is off the startup
+    // path (asserted three tests up, because `cron-parser` → `luxon` is 260 KB
+    // behind a `scheduled()` trigger), so the runner edits there are free. The
+    // ~9 KiB is the argument for why NULL keeps the soft sandbox, and why the
+    // per-workspace fetch list can only narrow — this walk counts source bytes,
+    // so those weigh what the two decision functions do.
+    //
+    // 8485 was this branch's own number, measured at 8474 in isolation. The
+    // MERGE measures 8492 — the third time in one day that a per-branch figure
+    // did not survive contact with the others, which is the thing the note
+    // above is about. One branch (#317) is still in flight and will have to do
+    // this again.
+    //
     // Raised 8465 → 8475 on 2026-09-10, measured at 8466. ONE new module:
     // `services/schema-reapply.ts` (#317), the daily sweep that brings every
     // workspace's physical tables forward. Net +1 KiB, because the loop MOVED
@@ -290,6 +344,23 @@ describe("worker startup budget", () => {
     // #317), each measured and green against its own tree. A per-branch budget
     // check does not compose — re-measure on the merge rather than taking the
     // largest of the four.
-    expect(kib).toBeLessThan(8475);
+    //
+    // FINAL of the four, 2026-09-10. This branch measured 8466 alone and set
+    // 8475; the merged tree measures **8497 across 639 modules** — the one new
+    // module (`services/schema-reapply.ts`) plus the three branches that landed
+    // ahead of it. Ceiling stays 8500, which is 3 KiB of headroom, so the next
+    // change to an eager file will trip this and should.
+    //
+    // ONE THING THIS NUMBER IS NOT, and it cost a red deploy to establish:
+    // `Workers Builds` rejected PR #367 with CF 10021 (`Script startup exceeded
+    // CPU time limit`) and a RETRIGGER OF THE SAME COMMIT succeeded. The only
+    // delta against main there was comment, which the bundler strips. So this
+    // source-byte figure is a proxy for reachability, NOT for the limit CF
+    // enforces — measured on that tree, the BUILT eager graph was 29 modules /
+    // 6128 KiB / 240.5 ms compile + top-level on this machine's V8, which
+    // `measure-startup.mjs` puts at roughly 2-3x that on Cloudflare. That is
+    // the band this file's header already records as intermittently rejected.
+    // Raising this line does not buy startup headroom and never did.
+    expect(kib).toBeLessThan(8500);
   });
 });

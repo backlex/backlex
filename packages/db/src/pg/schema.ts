@@ -734,6 +734,33 @@ export const functions = pgTable(
     code: text("code").notNull(),
     timeoutMs: integer("timeout_ms").notNull().default(5000),
     active: boolean("active").notNull().default(true),
+    /**
+     * Who wrote this code, and which side of the operator boundary they were
+     * on when they did.
+     *
+     * The table recorded `tenant_id` and nothing else, which is why the soft
+     * sandbox had to be a DEPLOYMENT flag: `FUNCTIONS_SANDBOX=bun-worker`
+     * grants host access to every function on the instance, because nothing in
+     * the schema could say which of them the operator wrote. On a multi-tenant
+     * self-host "author a function" and "run commands on the API host" were the
+     * same permission. #335.
+     *
+     * `author_kind` is `"operator"` / `"tenant"`, decided at write time by
+     * `isInstanceOperator` — deliberately not the workspace `admin` role, which
+     * `POST /api/tenants` hands to anyone who creates a workspace.
+     *
+     * NULL means the row predates the column, and that is the whole backfill
+     * decision rather than an omission. Backfilling to `"tenant"` is the safe
+     * label and would drop every existing function on a `bun-worker`
+     * deployment to the in-isolate sandbox, which has no host I/O at all — so
+     * an upgrade would break working code with a value nobody wrote.
+     * Backfilling to `"operator"` asserts something untrue about rows nobody
+     * can now attribute. NULL says what is actually known, keeps those rows on
+     * the behaviour they have today, and lets the run path warn about them by
+     * name instead of guessing.
+     */
+    createdBy: text("created_by"),
+    authorKind: text("author_kind"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

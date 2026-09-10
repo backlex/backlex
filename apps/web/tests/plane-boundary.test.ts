@@ -482,6 +482,58 @@ describe("declared `either` — an app-plane 200 here is the intended contract",
 });
 
 // ---------------------------------------------------------------------------
+// The carve-outs: one prefix, two answers, separated by the METHOD.
+// ---------------------------------------------------------------------------
+
+describe("a method-qualified `public` entry admits the read and still refuses the write", () => {
+  test("GET /api/workspace-config answers an app-plane bearer; PUT does not", async () => {
+    // `GET /` is what the operator SIGN-IN page renders itself from — name,
+    // logo, which login methods to draw — and it carries no gate because nobody
+    // loading a sign-in screen has a session. Declared `platform`, the firewall
+    // refused a caller holding an app-plane cookie on the same origin, and the
+    // screen has no branding without this. Same shape as the /api/tenants/invite
+    // 403 #350 fixed.
+    //
+    // What makes it expressible is that `PUT /` shares the PATH. The pair is
+    // asserted together on purpose: a fix that opened the prefix would pass the
+    // first line and fail the second, and the whole risk of adding a method
+    // dimension to an enforcing guard lives in that second line.
+    const read = await cast.endUserA.fetch("/api/workspace-config");
+    expect(read.status, "endUserA GET /api/workspace-config").toBe(200);
+
+    const write = await cast.endUserA.fetch(
+      "/api/workspace-config",
+      json("PUT", { name: "hijacked" }),
+    );
+    expect(write.status, "endUserA PUT /api/workspace-config").toBe(403);
+    expect((await errorOf(write)).message).toBe("Operator access required");
+
+    // `exact`, so the carve-out does not run downhill. `/raw` is the operator's
+    // unredacted read and stays refused on the plane.
+    const raw = await cast.endUserA.fetch("/api/workspace-config/raw");
+    expect(raw.status, "endUserA GET /api/workspace-config/raw").toBe(403);
+  });
+
+  test("a workspace invite is readable by its token from either plane", async () => {
+    // The mirror of the same defect: declared `app`, the firewall refused an
+    // OPERATOR who clicked a workspace invite link. Holding the token is the
+    // authorization, so neither plane is the wrong one — but `POST
+    // …/invites/accept` under the same prefix still needs an app-plane session,
+    // and that is what the method qualification keeps.
+    const res = await cast.ownerA.fetch(`/api/t/${cast.tenantA.slug}/orgs/invites/nonexistent`);
+    // 404, not 403: the plane firewall let it through and the handler answered
+    // that no such invite exists. A 403 here is the regression this pins.
+    expect(res.status, "ownerA GET an org invite by token").toBe(404);
+
+    const accept = await cast.ownerA.fetch(
+      `/api/t/${cast.tenantA.slug}/orgs/invites/accept`,
+      json("POST", { token: "nonexistent" }),
+    );
+    expect(accept.status, "ownerA POST accept — still app-plane only").toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // The opposite direction — and it already holds.
 // ---------------------------------------------------------------------------
 

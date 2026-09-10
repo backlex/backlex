@@ -6,7 +6,7 @@ import type { AuthSubject } from "@backlex/core";
 import { runFunction } from "./sandbox";
 import { buildContext } from "../context";
 import type { Env } from "../env";
-import type { FunctionRow } from "./functions";
+import { authorBindings, type FunctionRow } from "./functions";
 import { listCronFlows, runFlowById, resumeContinuation } from "./flows";
 
 // cron-parser is CJS — importing the named `parseExpression` directly breaks on
@@ -228,7 +228,7 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
         // or no workspace at all.
         const result = await runFunction(
           fn.code,
-          { ctx, auth: { ...SYSTEM_AUTH, tenantId: fn.tenantId } },
+          { ctx, auth: { ...SYSTEM_AUTH, tenantId: fn.tenantId }, ...authorBindings(fn) },
           { firedAt: now.toISOString(), pattern: fn.pattern },
           fn.timeoutMs,
         );

@@ -326,6 +326,41 @@ describe("worker startup budget", () => {
     // did not survive contact with the others, which is the thing the note
     // above is about. One branch (#317) is still in flight and will have to do
     // this again.
+    //
+    // Raised 8465 → 8475 on 2026-09-10, measured at 8466. ONE new module:
+    // `services/schema-reapply.ts` (#317), the daily sweep that brings every
+    // workspace's physical tables forward. Net +1 KiB, because the loop MOVED
+    // there out of `routes/db-admin.ts` rather than being added beside it.
+    //
+    // It is eager through `routes/db-admin.ts`, not through the scheduler —
+    // `services/scheduler.ts` is off the startup path (asserted three tests up)
+    // and its import of this module costs nothing. What it pulls in,
+    // `@backlex/db`'s `applyCollection` and `services/collections-cache`, the
+    // graph already reached, so there is no seam a dynamic import would bite
+    // on.
+    //
+    // A note for whoever merges next, because this file has been bitten by it
+    // before: FOUR branches raised this line in parallel (#345, #315, #335,
+    // #317), each measured and green against its own tree. A per-branch budget
+    // check does not compose — re-measure on the merge rather than taking the
+    // largest of the four.
+    //
+    // FINAL of the four, 2026-09-10. This branch measured 8466 alone and set
+    // 8475; the merged tree measures **8497 across 639 modules** — the one new
+    // module (`services/schema-reapply.ts`) plus the three branches that landed
+    // ahead of it. Ceiling stays 8500, which is 3 KiB of headroom, so the next
+    // change to an eager file will trip this and should.
+    //
+    // ONE THING THIS NUMBER IS NOT, and it cost a red deploy to establish:
+    // `Workers Builds` rejected PR #367 with CF 10021 (`Script startup exceeded
+    // CPU time limit`) and a RETRIGGER OF THE SAME COMMIT succeeded. The only
+    // delta against main there was comment, which the bundler strips. So this
+    // source-byte figure is a proxy for reachability, NOT for the limit CF
+    // enforces — measured on that tree, the BUILT eager graph was 29 modules /
+    // 6128 KiB / 240.5 ms compile + top-level on this machine's V8, which
+    // `measure-startup.mjs` puts at roughly 2-3x that on Cloudflare. That is
+    // the band this file's header already records as intermittently rejected.
+    // Raising this line does not buy startup headroom and never did.
     expect(kib).toBeLessThan(8500);
   });
 });

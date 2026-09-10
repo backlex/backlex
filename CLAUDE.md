@@ -168,6 +168,8 @@ git branch -d <feat/branch-name>
 
 **`git push` runs the full pre-push suite (~5-6 min): lint + typecheck + `bun test` + `build:targets`.** Give the command a generous timeout — never `--no-verify`.
 
+**A red gate leaves `.gate-test-results.xml` at the repo root** (gitignored, overwritten each run). Read it instead of scrolling back: it carries every failure's message, file and line, plus `tests=` per suite — which is the one figure that separates a failing ASSERTION from a worker that died partway through a file and took the rest with it. #316 was investigated three times and twice ended at *"I lost the failure text"*, because the retry goes green and the terminal has moved on. Redirecting the push to a log as well (`git push > push.log 2>&1`) still helps for the non-test jobs.
+
 **A merge to `main` publishes the docs and the worker template. It does NOT publish anything to npm.** That asymmetry is how `backlex` on npm ended up **eight weeks and 131 commits** behind the repo while fifteen doc pages described the newer client: a feature commit ships `docs/<feature>.md`, its sidebar entry and the SDK namespace together, so merging puts the documentation live the same day and leaves the package behind. It is not a broken pipeline — the tag machinery fired **51 times** in that window, all at `worker-v*`. `backlex-v*` and `cli-v*` both stopped on 2026-07-03, and nothing noticed because **no test, build or example consumes the published artifact** (the examples use `workspace:*`, i.e. source).
 
 So, when a change touches a publishable package:

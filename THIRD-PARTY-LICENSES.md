@@ -135,7 +135,7 @@ Regenerate with `bun scripts/gen-third-party-licenses.ts`.
 - `js-base64@3.7.8`
 - `moo@0.5.3`
 - `qs@6.16.0`
-- `smol-toml@1.6.1`
+- `smol-toml@1.8.0`
 - `source-map-js@1.2.1`
 - `source-map@0.6.1`
 - `source-map@0.7.6`

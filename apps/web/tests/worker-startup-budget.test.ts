@@ -285,6 +285,28 @@ describe("worker startup budget", () => {
     // easiest to grant carelessly, so the check that matters is the one above:
     // `eager.size` moved by nothing, and there is no seam a dynamic import
     // would bite on.
+    //
+    // Raised 8465 → 8480 on 2026-09-10, measured at 8469. ZERO new modules:
+    // #315 added the polymorphic-reference sweep to two files that were already
+    // eager (`packages/db/src/field-types.ts`, `services/items/on-delete.ts`)
+    // plus one line of zod in `routes/collections.ts`. The ecommerce template
+    // itself is NOT counted — `templates/catalog.ts` is behind `templates/lazy`
+    // and this file asserts that two tests up, which is why 68 lines of
+    // commerce schema move this number by nothing.
+    //
+    // Most of the ~4 KiB is the argument for why `cascade` is the only action a
+    // polymorphic ref supports and why the read side re-checks the sibling
+    // column. This walk counts source bytes, so that weighs what the DELETE
+    // does.
+    //
+    // MERGE NOTE, 2026-09-10: the two raises above were measured on separate
+    // branches (8471 and 8469) and BOTH landed on 8480. Together they measure
+    // **8479** — one KiB under, which is the composition failure this file
+    // already records once (`8306 exists only in the merge`) arriving again and
+    // being caught this time. Two more branches raising this line are in flight
+    // (#335, #317); each has to re-measure on ITS merge rather than take the
+    // largest of the four, and the number stays 8480 here because 8479 is what
+    // this tree actually costs.
     expect(kib).toBeLessThan(8480);
   });
 });

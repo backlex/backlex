@@ -786,6 +786,33 @@ export interface FieldDef {
    */
   onDelete?: "set_null" | "cascade" | "no_action";
   /**
+   * Mark this column as the ROW ID half of a polymorphic reference: it holds
+   * the id of a row in whichever collection the sibling column named by
+   * `collectionField` names.
+   *
+   * A polymorphic table cannot use `relation`, because `to` is one collection
+   * and the whole point is that it is many. So nothing cleaned these rows up:
+   * a translations / attachments / comments-style table keeps its rows forever
+   * after the record they describe is deleted, joining to nothing, surfacing
+   * nowhere, and never collected. The first symptom is a translations table
+   * larger than the catalogue it describes.
+   *
+   * Pairs with {@link onDelete}, and only `"cascade"` is meaningful: the row
+   * exists to describe something, so when that something goes the row is
+   * garbage, and `set_null` would leave a row pointing at nothing — usually
+   * violating its own `required` in the process. `enforceOnDeleteTriggers`
+   * deletes the matching rows in the same pass it runs the relation triggers.
+   *
+   * The reference is NOT enforced on write. `collection` is a slug and
+   * `row_id` is free text, so a row may name something that does not exist —
+   * which is inherent to the shape and is why the cleanup is a sweep on delete
+   * rather than a foreign key.
+   */
+  polymorphicRef?: {
+    /** Sibling column on the SAME collection holding the target's slug. */
+    collectionField: string;
+  };
+  /**
    * Display formatting hint — purely how the admin RENDERS the value in lists /
    * detail views. Never touches storage, the API, sorting or filtering (those
    * always use the raw value). Number options apply to `integer` / `number`;
@@ -1878,14 +1905,50 @@ export const validateFields = (fields: FieldDef[]): void => {
         throw new Error(`Field "${f.name}": "${prop}: ${kind}" requires a text or uuid field`);
       }
     }
-    // ON DELETE actions apply to relation / relation_many FKs.
+    // ON DELETE actions apply to relation / relation_many FKs — and to the row
+    // id of a polymorphic reference, which is the same referential action over
+    // a target the schema cannot name up front.
     if (
       f.onDelete &&
       f.onDelete !== "no_action" &&
       f.type !== "relation" &&
-      f.type !== "relation_many"
+      f.type !== "relation_many" &&
+      !f.polymorphicRef
     ) {
-      throw new Error(`Field "${f.name}": "onDelete" only applies to a relation field`);
+      throw new Error(
+        `Field "${f.name}": "onDelete" only applies to a relation field or a polymorphicRef`,
+      );
+    }
+    if (f.polymorphicRef) {
+      // A polymorphic row id is a plain string column. `uuid` is allowed
+      // because a workspace whose ids are uuids may as well say so, but the
+      // reference itself is never DB-enforced either way.
+      if (f.type !== "text" && f.type !== "uuid") {
+        throw new Error(`Field "${f.name}": "polymorphicRef" requires a text or uuid field`);
+      }
+      if (!f.polymorphicRef.collectionField) {
+        throw new Error(`Field "${f.name}": "polymorphicRef.collectionField" is required`);
+      }
+      if (f.polymorphicRef.collectionField === f.name) {
+        throw new Error(
+          `Field "${f.name}": "polymorphicRef.collectionField" must name a DIFFERENT column`,
+        );
+      }
+      // `set_null` on a column whose whole content is the reference leaves a
+      // row describing nothing, and on the usual `required: true` shape it
+      // cannot even be written. Refuse it rather than emit a statement that
+      // fails at delete time, on somebody's production data.
+      if (f.onDelete && f.onDelete !== "cascade" && f.onDelete !== "no_action") {
+        throw new Error(
+          `Field "${f.name}": a polymorphicRef supports "onDelete: cascade" only — a row that describes a deleted record has nothing left to point at`,
+        );
+      }
+      const sibling = fields.find((o) => o.name === f.polymorphicRef?.collectionField);
+      if (!sibling) {
+        throw new Error(
+          `Field "${f.name}": "polymorphicRef.collectionField" names "${f.polymorphicRef.collectionField}", which is not a field on this collection`,
+        );
+      }
     }
     if (f.interface === "dropdown" && getChoiceValues(f).length === 0) {
       throw new Error(

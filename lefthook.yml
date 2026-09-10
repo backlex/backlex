@@ -139,6 +139,16 @@ pre-push:
     # (~6s total when caches are warm; cold first run ~15s).
     - name: build:targets
       run: bun run --no-orphans build:targets
+    # What Cloudflare actually refuses a deploy for, in MILLISECONDS. Runs
+    # straight after `build:targets` because it reads the BUILT worker bundle
+    # that step just produced — the byte ceiling in
+    # `worker-startup-budget.test.ts` walks source instead, and on 2026-09-10
+    # the two came apart completely while CF rejected a build for 10021. #372.
+    #
+    # Median of five runs, ~2s. One sample is not evidence here: a single run
+    # per arm once showed a 19% improvement that three runs per arm erased.
+    - name: startup:budget
+      run: bun run --no-orphans startup:budget
     - name: typecheck
       run: bun run --no-orphans typecheck
     # `typecheck` does NOT cover apps/web/tests — that is a separate tsconfig

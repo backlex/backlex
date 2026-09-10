@@ -72,7 +72,14 @@ export const planeFirewall: MiddlewareHandler<AppBindings> = async (c, next) => 
   if (!auth?.userId) return next();
 
   const path = new URL(c.req.url).pathname;
-  const entry = planeFor(path);
+  // The METHOD is passed because three entries are method-qualified: a prefix
+  // can serve a route that is public by design beside one that is the
+  // operator's, and `GET /api/workspace-config` (what the sign-in page renders
+  // itself from) against `PUT /api/workspace-config` (what writes it) is the
+  // case. Dropping the argument here would not open anything — an unmethodded
+  // lookup falls through to the broader, stricter entry — it would re-refuse
+  // the callers those carve-outs exist for.
+  const entry = planeFor(path, c.req.method);
   // No entry means the path is outside the /api surface this table covers
   // (`/health`, `/embed/*`, the SPA fallback). `route-plane-registry.test.ts`
   // is what guarantees a NEW /api mount cannot land here silently — this

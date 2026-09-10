@@ -1,5 +1,27 @@
 import type { SchemaTemplate } from "../types";
+
 import { bool, C, ch, computedMoneyIn, computedNum, date, email, flag, flow, geo, half, hint, image, int, moneyIn, ms, notes, num, parent, pct, phone, position, rating, rel, relMany, rollup, sec, select, seq, slugField, stacked, tabbed, tags, text, ts, url, userLink, when } from "../dsl";
+
+/**
+ * The handle the system a row was IMPORTED from knows it by.
+ *
+ * Saleor puts `ModelWithExternalReference` on both `Product` and
+ * `ProductVariant`, and the need shows up the first time anything is synced in
+ * from another catalogue: without it the only stable-looking key is `slug`,
+ * which is a URL and therefore something marketing renames — so a rename
+ * imports the product a second time.
+ *
+ * Deliberately NOT unique. Two importers may key the same catalogue
+ * differently, and a template that refuses the second one turns a merge into a
+ * support ticket. Indexed, because every read of it is "have I seen this row
+ * before?". #315.
+ */
+const external_id = () =>
+  text("external_id", {
+    indexed: true,
+    label: "External ID",
+    description: "The id this row carries in the system it was imported from. An importer keys on this so a slug rename does not create a duplicate.",
+  });
 
 /**
  * The commerce model, read off the three platforms that publish theirs.
@@ -201,10 +223,24 @@ export const ecommerce: SchemaTemplate = {
       // so nobody expects `GET /api/items/products` to answer in French.
       slug: "translations", group: "Storefront", singular: "Translation", plural: "Translations", fts: true,
       fields: [
-        hint("translations_shape", "One row per translated field. The storefront reads by collection + row + locale; nothing here rewrites an API response on its own."),
+        hint("translations_shape", "One row per translated field. The storefront reads by collection + row + locale; nothing here rewrites an API response on its own. A row is removed automatically when the record it describes is deleted."),
         ...half(
           text("collection", { required: true, indexed: true, description: "Collection slug, e.g. products." }),
-          text("row_id", { required: true, indexed: true, label: "Row ID" }),
+          // The polymorphic reference, declared so the engine collects these.
+          //
+          // Nothing removed them before: `collection` + `row_id` cannot be a
+          // relation — the target is a VALUE, not a schema fact — so a deleted
+          // product left its translated name and description behind
+          // permanently. They joined to nothing, surfaced nowhere and were
+          // never collected, and the first symptom is a translations table
+          // larger than the catalogue it describes. #315.
+          text("row_id", {
+            required: true,
+            indexed: true,
+            label: "Row ID",
+            polymorphicRef: { collectionField: "collection" },
+            onDelete: "cascade",
+          }),
         ),
         ...half(
           text("field", { required: true, description: "Column name being translated, e.g. name or description." }),
@@ -544,6 +580,7 @@ export const ecommerce: SchemaTemplate = {
           hint("products_stock", "Totalled across every location this product is stocked in, and refused as input. Stock is entered per (variant, location) on Inventory levels — a product with no variants has nowhere to hold any, and reads zero."),
           ...half(text("sku", { unique: true, label: "SKU" }), text("barcode", { label: "Barcode" })),
           ...half(text("gtin", { label: "GTIN" }), text("mpn", { label: "MPN" })),
+          external_id(),
           ...half(
             rollup(
               "stock",
@@ -674,6 +711,10 @@ export const ecommerce: SchemaTemplate = {
           ...half(text("title", { label: "Title" }), position("product")),
           ...half(text("sku", { unique: true, label: "SKU" }), text("barcode", { label: "Barcode" })),
           ...half(text("gtin", { label: "GTIN" }), text("mpn", { label: "MPN" })),
+          // On the variant as well as the product, because a variant is the
+          // unit an external catalogue actually addresses — Saleor carries the
+          // reference on both for the same reason.
+          external_id(),
         ]),
         sec("Pricing", [
           // Money with its own denomination, like everywhere else amounts are
@@ -1542,7 +1583,24 @@ export const ecommerce: SchemaTemplate = {
           ...half(moneyIn("total_shipping", { label: "Shipping" }), moneyIn("total_discounts", { label: "Discounts" })),
           ...half(moneyIn("gift_card_total", { label: "Paid by gift card" }), moneyIn("total_fees", { label: "Fees" })),
           ...half(moneyIn("total", { label: "Total" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
-          num("exchange_rate", { default: 1, validation: { min: 0 }, label: "Rate to store currency", description: "What the order's currency was worth against the store default when it was placed." }),
+          ...half(
+            num("exchange_rate", { default: 1, validation: { min: 0 }, label: "Rate to store currency", description: "What the order's currency was worth against the store default when it was placed." }),
+            // The other half of "an amount only means something with its
+            // denomination". `channels.prices_include_tax` says whether a price
+            // list is gross — but a channel is EDITED, and flipping one from
+            // tax-inclusive to tax-exclusive silently re-reads every order
+            // already in this table: `line_total` was a gross figure and
+            // becomes a net one. An invoice reprinted afterwards shows a
+            // different net for the same sale, with nothing in the row to
+            // explain why. That is a legitimate change for a market moving to
+            // net B2B pricing, which is exactly why it must not rewrite
+            // history. #315.
+            bool("prices_include_tax", {
+              default: false,
+              label: "Prices included tax",
+              description: "Snapshot of the channel's tax posture at checkout. Whether the line amounts on this order are gross — never edit it to change how an existing order is read.",
+            }),
+          ),
         ]),
         sec("Meta", [
           tags("tags"),
@@ -1560,8 +1618,8 @@ export const ecommerce: SchemaTemplate = {
         ]),
       ),
       samples: [
-        { customer: { ref: "customers:0" }, email: "jordan@example.com", state: "completed", status: "paid", fulfillment_status: "fulfilled", channel: { ref: "channels:0" }, shipping_address: { ref: "addresses:0" }, shipping_rate: { ref: "shipping_rates:0" }, subtotal: 43, total_shipping: 6.5, total: 49.5, currency: "USD", exchange_rate: 1, placed_at: ms("2026-01-12") },
-        { customer: { ref: "customers:1" }, email: "sam@example.com", state: "open", status: "pending", fulfillment_status: "unfulfilled", channel: { ref: "channels:0" }, subtotal: 18, total: 18, currency: "USD", exchange_rate: 1, placed_at: ms("2026-01-14") },
+        { customer: { ref: "customers:0" }, email: "jordan@example.com", state: "completed", status: "paid", fulfillment_status: "fulfilled", channel: { ref: "channels:0" }, shipping_address: { ref: "addresses:0" }, shipping_rate: { ref: "shipping_rates:0" }, subtotal: 43, total_shipping: 6.5, total: 49.5, currency: "USD", exchange_rate: 1, prices_include_tax: false, placed_at: ms("2026-01-12") },
+        { customer: { ref: "customers:1" }, email: "sam@example.com", state: "open", status: "pending", fulfillment_status: "unfulfilled", channel: { ref: "channels:0" }, subtotal: 18, total: 18, currency: "USD", exchange_rate: 1, prices_include_tax: false, placed_at: ms("2026-01-14") },
       ],
     },
     {

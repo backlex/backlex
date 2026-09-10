@@ -144,8 +144,31 @@ export interface OrgInviteRow {
  *  `uniqueOrgSlug` then suffixes. */
 export const slugifyOrgName = (name: string): string => slugify(name, 48) || "org";
 
+/**
+ * Slugs an org may not take, because `/:slug/orgs/:orgId` shares its shape with
+ * routes that put a LITERAL segment in the same position.
+ *
+ * `findOrg` resolves `:orgId` by id **or slug**, and the slug is caller-chosen,
+ * so an org slugged `invites` makes `/orgs/invites/<x>` structurally identical
+ * to `/orgs/invites/:token`. Today Hono picks the literal route because
+ * `app-orgs-public.ts` registers it first — which means such an org is already
+ * partly unreachable, a defect on its own — and anything reasoning about these
+ * paths WITHOUT running the router (the plane firewall reads a path prefix, not
+ * a matched route) cannot tell the two apart at all.
+ *
+ * Refusing the collision at write time is the fix that does not depend on
+ * registration order. Kept next to `slugifyOrgName` so a new literal segment
+ * under `/orgs/` is added here at the same time.
+ */
+export const RESERVED_ORG_SLUGS: readonly string[] = ["invites", "accept", "set-active"];
+
 /** First free slug in this workspace: `base`, then `base-2`, `base-3`, …
- *  Bounded so a pathological collision run can't spin. */
+ *  Bounded so a pathological collision run can't spin.
+ *
+ *  A RESERVED base is treated as taken rather than refused, because on this
+ *  path the caller did not choose it — naming an organization "Invites" is
+ *  perfectly reasonable and gets `invites-2`. The refusal is only for a slug
+ *  somebody asked for by name. */
 const uniqueOrgSlug = async (
   ctx: DbCtx,
   tenantId: string,
@@ -155,6 +178,7 @@ const uniqueOrgSlug = async (
   const t = tablesFor(ctx.dialect);
   for (let i = 1; i <= 50; i++) {
     const candidate = i === 1 ? base : `${base}-${i}`;
+    if (RESERVED_ORG_SLUGS.includes(candidate)) continue;
     const rows = (await (ctx.db as any)
       .select({ id: t.orgs.id })
       .from(t.orgs)
@@ -532,6 +556,9 @@ export const createOrg = async (
   let slug: string;
   if (input.slug) {
     slug = slugifyOrgName(input.slug);
+    if (RESERVED_ORG_SLUGS.includes(slug)) {
+      throw new AppError("VALIDATION", `"${slug}" is reserved and cannot be used as an organization slug`);
+    }
     const clash = (await (ctx.db as any)
       .select({ id: t.orgs.id })
       .from(t.orgs)
@@ -607,6 +634,9 @@ export const updateOrg = async (
   }
   if (patch.slug !== undefined) {
     const slug = slugifyOrgName(patch.slug);
+    if (RESERVED_ORG_SLUGS.includes(slug)) {
+      throw new AppError("VALIDATION", `"${slug}" is reserved and cannot be used as an organization slug`);
+    }
     const free = await uniqueOrgSlug(ctx, tenantId, slug, org.id);
     if (free !== slug)
       throw new AppError("CONFLICT", `An organization with the slug "${slug}" already exists`);

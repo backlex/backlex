@@ -55,7 +55,7 @@ import {
 import { planeFor } from "../src/server/lib/route-planes";
 import { makeHarness, type TestHarness } from "./setup";
 
-const planeOf = (p: string) => planeFor(p)?.plane;
+const planeOf = (p: string, m: string) => planeFor(p, m)?.plane;
 
 describe("routes whose gate the router can see", () => {
   let h: TestHarness;
@@ -124,7 +124,7 @@ describe("routes whose gate the router can see", () => {
  * and two of them are the defects the original sweep shipped with.
  */
 describe("the gate matcher itself", () => {
-  const anyPlane = () => undefined;
+  const anyPlane = (): string | undefined => undefined;
   const gate = (path: string, method = "GET"): RouteEntry => ({
     path,
     method,
@@ -179,6 +179,19 @@ describe("the gate matcher itself", () => {
       (p) => (p === "/api/open" ? "public" : "platform"),
     );
     expect(r.ungated).toEqual(["GET /api/closed"]);
+  });
+
+  test("`public` is asked per METHOD, so a public GET does not excuse the PUT beside it", () => {
+    // `ROUTE_PLANES` can qualify an entry by method — `GET /api/workspace-config`
+    // is what the sign-in page renders itself from, `PUT` is what writes it. If
+    // this scan asked the table by path alone it would either report the public
+    // GET as ungated forever, or (worse, if the table were flattened to make it
+    // stop) excuse an operator write.
+    const r = scanRouteGates(
+      [bare("/api/cfg", "GET"), bare("/api/cfg", "PUT")],
+      (p, m) => (p === "/api/cfg" && m === "GET" ? "public" : "platform"),
+    );
+    expect(r.ungated).toEqual(["PUT /api/cfg"]);
   });
 
   test("routes outside /api, /mcp, /s3 and /.well-known are not in scope", () => {

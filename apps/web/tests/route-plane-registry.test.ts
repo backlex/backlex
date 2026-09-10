@@ -20,7 +20,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { makeHarness, type TestHarness } from "./setup";
-import { ROUTE_PLANES, planeFor, type RoutePlane } from "../src/server/lib/route-planes";
+import { ROUTE_PLANES, applies, planeFor, type RoutePlane } from "../src/server/lib/route-planes";
 import { requirePermission } from "../src/server/middleware/permission";
 
 /** Paths served by the app that are deliberately outside the /api surface. */
@@ -37,6 +37,8 @@ const NON_API = (path: string): boolean =>
 describe("route-plane registry: every /api mount declares a plane", () => {
   let h: TestHarness;
   let paths: string[];
+  /** The same routes with their METHOD, for the entries qualified by one. */
+  let routes: { path: string; method: string }[];
 
   beforeAll(() => {
     h = makeHarness();
@@ -44,9 +46,11 @@ describe("route-plane registry: every /api mount declares a plane", () => {
     // middleware chain. Middleware entries are the bare wildcards, and a
     // route's own path is what we care about.
     const seen = new Set<string>();
-    for (const r of (h.app as unknown as { routes: { path: string }[] }).routes) {
+    routes = [];
+    for (const r of (h.app as unknown as { routes: { path: string; method: string }[] }).routes) {
       if (r.path === "*" || r.path === "/*") continue;
       seen.add(r.path);
+      routes.push({ path: r.path, method: r.method });
     }
     paths = [...seen].sort();
   });
@@ -87,21 +91,70 @@ describe("route-plane registry: every /api mount declares a plane", () => {
   test("every declared prefix is actually mounted (the registry has no fiction in it)", () => {
     // The reverse direction. A prefix that names nothing is a dead declaration
     // that will read as coverage forever.
-    // Mirrors `planeFor`'s segment matching, wildcard included — a literal
-    // `startsWith` would report `/api/t/*/auth` dead even though it covers a
-    // dozen live routes.
-    const covers = (prefix: string, path: string): boolean => {
-      const pp = prefix.split("/");
-      const sp = path.split("/");
-      if (sp.length < pp.length) return false;
-      return pp.every((seg, i) => (seg === "*" ? Boolean(sp[i]) : seg === sp[i]));
-    };
+    //
+    // `applies` is the REAL matcher, imported rather than mirrored. This test
+    // used to carry its own copy of the segment matching, and the copy
+    // disagreed the moment `exact` stopped meaning string equality — it
+    // reported a live entry dead. An entry is reachable exactly when the
+    // matcher would pick it, so asking the matcher is not only shorter, it is
+    // the question. It also covers the qualification for free: a carve-out
+    // naming a method nobody serves (`{ methods: ["PATCH"] }` on a GET-only
+    // prefix) is fiction, and a prefix-only check would have blessed it.
     const dead = ROUTE_PLANES.filter((entry) => {
       if (entry.prefix === "/api") return false; // the fallback, always "live"
-      return !paths.some((p) => covers(entry.prefix, p));
-    }).map((e) => e.prefix);
+      return !routes.some((r) => applies(entry, r.path, r.method));
+    }).map((e) => `${e.methods ? `${e.methods.join("|")} ` : ""}${e.prefix}${e.exact ? " (exact)" : ""}`);
 
     expect(dead, `declared but never mounted:\n${dead.join("\n")}`).toEqual([]);
+  });
+
+  test("a method-qualified entry narrows, and the base entry still answers for the rest", () => {
+    // The `/api/workspace-config` prefix serves a public read that the SIGN-IN
+    // page makes and an operator write, at the same path. This is the one shape
+    // a prefix-keyed table cannot express, and the reason `methods` / `exact`
+    // exist — so it is asserted directly rather than inferred from the count in
+    // route-gate-scan.test.ts.
+    expect(planeFor("/api/workspace-config", "GET")?.plane).toBe("public" satisfies RoutePlane);
+    expect(planeFor("/api/workspace-config", "PUT")?.plane).toBe("platform" satisfies RoutePlane);
+    // `exact`, so the carve-out does not run downhill into paths it was not
+    // written for. `/raw` is the operator's unredacted read.
+    expect(planeFor("/api/workspace-config/raw", "GET")?.plane).toBe("platform" satisfies RoutePlane);
+    // …while the branding assets the sign-in page loads have a prefix of their
+    // own, and needed no new dimension at all.
+    expect(planeFor("/api/workspace-config/asset/logo", "GET")?.plane).toBe("public" satisfies RoutePlane);
+    expect(planeFor("/api/workspace-config/asset/logo", "POST")?.plane).toBe("platform" satisfies RoutePlane);
+
+    // Same split under /api/t: reading an invite by its token runs before the
+    // visitor has anything, accepting it does not.
+    expect(planeFor("/api/t/acme/orgs/invites/tok_x", "GET")?.plane).toBe("public" satisfies RoutePlane);
+    expect(planeFor("/api/t/acme/orgs/invites/accept", "POST")?.plane).toBe("app" satisfies RoutePlane);
+    // An org's OWN invite list is a different path shape and keeps `app`.
+    expect(planeFor("/api/t/acme/orgs/org_1/invites", "GET")?.plane).toBe("app" satisfies RoutePlane);
+  });
+
+  test("the invite carve-out cannot be widened by an org slug", () => {
+    // `findOrg` resolves `:orgId` by id OR SLUG, and the slug is caller-chosen.
+    // Without the depth pin an org slugged `invites` would drag every path
+    // under `/orgs/invites/` into a `public` declaration written for one
+    // token lookup — the firewall reads a path prefix and never learns which
+    // route Hono actually matched, so it would drop a layer off routes that
+    // are not this one.
+    expect(planeFor("/api/t/acme/orgs/invites/org_1/members", "GET")?.plane).toBe(
+      "app" satisfies RoutePlane,
+    );
+    expect(planeFor("/api/t/acme/orgs/invites/invites", "GET")?.plane).toBe(
+      "public" satisfies RoutePlane, // same depth as the token lookup — this IS the token lookup
+    );
+    expect(planeFor("/api/t/acme/orgs/invites", "GET")?.plane).toBe("app" satisfies RoutePlane);
+  });
+
+  test("omitting the method returns the BROADER entry, never the carve-out", () => {
+    // `planeFor(path)` still has callers, and the safe direction for one that
+    // does not know the method is the stricter answer. A qualified entry must
+    // not be reachable without naming the method it was qualified for —
+    // otherwise dropping the argument anywhere would silently publish a route.
+    expect(planeFor("/api/workspace-config")?.plane).toBe("platform" satisfies RoutePlane);
+    expect(planeFor("/api/t/acme/orgs/invites/tok_x")?.plane).toBe("app" satisfies RoutePlane);
   });
 
   test("the control-plane surfaces this audit turns on are declared platform", () => {
@@ -154,14 +207,40 @@ describe("route-plane registry: every /api mount declares a plane", () => {
     expect(unexplained, `\`either\` with no justification:\n${unexplained.join("\n")}`).toEqual([]);
   });
 
-  test("no prefix is declared twice", () => {
+  test("no prefix is declared twice under the same qualification", () => {
+    // Two entries MAY share a prefix, but only when one narrows the other by
+    // method or by `exact` — that is what a carve-out is. Two entries with the
+    // same prefix and the same qualification are a genuine duplicate: the sort
+    // picks one by tie-break and the other is dead text that reads as a
+    // declaration.
     const seen = new Set<string>();
     const dupes: string[] = [];
     for (const e of ROUTE_PLANES) {
-      if (seen.has(e.prefix)) dupes.push(e.prefix);
-      seen.add(e.prefix);
+      const key = `${e.methods ? [...e.methods].sort().join("|") : "*"} ${e.prefix}${e.exact ? " exact" : ""}`;
+      if (seen.has(key)) dupes.push(key);
+      seen.add(key);
     }
     expect(dupes).toEqual([]);
+  });
+
+  test("a carve-out is strictly narrower than the entry it shares a prefix with", () => {
+    // The property that makes `methods` / `exact` safe to add to an ENFORCING
+    // guard: a qualified entry can only ever take requests AWAY from the base
+    // entry, never add any. So every prefix declared more than once must have
+    // exactly one unqualified entry to fall back to — a set of carve-outs with
+    // no base would leave whatever they do not match falling through to a
+    // SHORTER prefix, and the shortest of all is `/api`, which is `public`.
+    const byPrefix = new Map<string, typeof ROUTE_PLANES>();
+    for (const e of ROUTE_PLANES) {
+      byPrefix.set(e.prefix, [...(byPrefix.get(e.prefix) ?? []), e]);
+    }
+    const baseless = [...byPrefix]
+      .filter(([, es]) => es.length > 1 && !es.some((e) => !e.methods && !e.exact))
+      .map(([p]) => p);
+    expect(
+      baseless,
+      `these prefixes are declared only by carve-outs, so anything they do not match falls through to a shorter prefix:\n${baseless.join("\n")}`,
+    ).toEqual([]);
   });
 });
 

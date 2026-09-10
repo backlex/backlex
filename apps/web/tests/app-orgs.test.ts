@@ -106,6 +106,41 @@ describe("app-orgs — admin CRUD", () => {
     expect(clash.status).toBe(409);
   });
 
+  test("a slug that collides with a literal route segment is refused", async () => {
+    // `findOrg` resolves `:orgId` by id OR slug, so an org slugged `invites`
+    // makes `/orgs/invites/<x>` structurally identical to the token lookup at
+    // `/orgs/invites/:token`. Hono picks the literal route because
+    // `app-orgs-public.ts` registers it first — which means such an org was
+    // already partly unreachable — and the PLANE FIREWALL, which reads a path
+    // prefix and never learns which route matched, could not tell them apart
+    // at all.
+    //
+    // Refused at write time so neither of those depends on registration order.
+    for (const slug of ["invites", "accept", "set-active"]) {
+      const res = await h.fetch("/api/app-orgs", json("POST", { name: "Collide", slug }));
+      expect(res.status, `POST /api/app-orgs slug=${slug}`).toBe(422);
+      expect(((await res.json()) as { error: { message: string } }).error.message).toContain(
+        "reserved",
+      );
+    }
+
+    // The same rule on rename — otherwise the create check is a formality.
+    const ok = await h.fetch("/api/app-orgs", json("POST", { name: "Renamable" }));
+    expect(ok.status).toBe(201);
+    const org = ((await ok.json()) as { data: { id: string } }).data;
+    const renamed = await h.fetch(
+      `/api/app-orgs/${org.id}`,
+      json("PATCH", { slug: "invites" }),
+    );
+    expect(renamed.status, "PATCH to a reserved slug").toBe(422);
+
+    // Derived slugs are unaffected — a workspace really can have an org called
+    // "Invites", it just does not get that handle.
+    const derived = await h.fetch("/api/app-orgs", json("POST", { name: "Invites" }));
+    expect(derived.status).toBe(201);
+    expect(((await derived.json()) as { data: { slug: string } }).data.slug).not.toBe("invites");
+  });
+
   test("get resolves by id or slug; list carries member counts", async () => {
     const created = await h.fetch("/api/app-orgs", json("POST", { name: "Globex" }));
     const org = ((await created.json()) as { data: { id: string; slug: string } }).data;

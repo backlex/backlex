@@ -272,6 +272,19 @@ describe("worker startup budget", () => {
     // `middleware/session.ts` is the importer and it already pulled in both
     // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
     // dynamic import would bite on.
-    expect(kib).toBeLessThan(8465);
+    //
+    // Raised 8465 → 8480 on 2026-09-10, measured at 8471 across 638 modules.
+    // ZERO new modules: #345's method granularity edited three files that were
+    // already eager — `lib/route-planes.ts`, `middleware/plane-firewall.ts`,
+    // `services/app-orgs.ts` — and the ~6 KiB is almost entirely the comment
+    // arguing why a qualified entry can only narrow, and why an org slugged
+    // `invites` had to be refused at write time. This walk counts source bytes,
+    // so that argument weighs what the three lines of matcher do.
+    //
+    // A count with no new module is the cheapest kind of raise to grant and the
+    // easiest to grant carelessly, so the check that matters is the one above:
+    // `eager.size` moved by nothing, and there is no seam a dynamic import
+    // would bite on.
+    expect(kib).toBeLessThan(8480);
   });
 });

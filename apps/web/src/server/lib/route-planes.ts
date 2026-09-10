@@ -63,12 +63,59 @@ export interface RoutePlaneEntry {
    * it today. Names the decision the enforcement phase has to make.
    */
   revisit?: string;
+  /**
+   * Restrict this entry to these HTTP methods (upper-case). Omitted, it answers
+   * for every method — which is the right default and should stay the common
+   * case.
+   *
+   * WHY THIS EXISTS, AND WHY IT IS A NARROWING ONLY
+   *
+   * The table models `prefix → plane`; a router models `(method, path) →
+   * handler`. Where a prefix serves one route that is public by design and
+   * another that is the operator's, the coarser model cannot say so.
+   * `/api/workspace-config` is the case: `GET /` is what the SIGN-IN page reads
+   * for the workspace's name and branding, while `PUT /` writes it. One prefix,
+   * two answers, and declaring the prefix `public` to fix the first would open
+   * the second.
+   *
+   * A qualified entry can only ever make FEWER requests match it. A request it
+   * does not match falls through to the next-most-specific entry, so removing
+   * one of these can only widen what the entry admitted — never narrow it — and
+   * the entry it falls through to is the unqualified one that was already
+   * there. That is the property that keeps this safe to add to an ENFORCING
+   * guard: the base declaration stays, and this carves an exception out of it.
+   *
+   * Reach for it only when a prefix genuinely serves both answers. A public
+   * route that has a path of its own gets a prefix of its own instead — that
+   * is what `/api/tenants/invite` did in #350, and it stays the cheaper move.
+   */
+  methods?: readonly string[];
+  /**
+   * Match only paths of the prefix's own DEPTH, never anything beneath it.
+   *
+   * Every other entry is inherited downward, which is normally what you want —
+   * a new `/api/admin/*` mount picks up `platform` without touching this file.
+   * For a PUBLIC exception that inheritance points the wrong way: a new route
+   * added under it would become unauthenticated because of a decision taken
+   * about a different route. `exact` stops that at the depth the exception was
+   * written for.
+   *
+   * Depth rather than string equality, so it composes with `*`. For a
+   * wildcard-free prefix the two are the same thing; for
+   * `/api/t/*​/orgs/invites/*` only depth can say "the token lookup, and not
+   * whatever somebody mounts under it later".
+   */
+  exact?: boolean;
 }
 
 /**
  * Ordered longest-prefix-wins. `planeFor` sorts by descending prefix length, so
  * declaration order here is for humans; `/api/admin/settings` beats `/api`
  * regardless of where each sits in the list.
+ *
+ * Three entries additionally carry `methods` / `exact`. Those are carve-outs
+ * from the broader entry directly below them and are consulted first; see
+ * `RoutePlaneEntry.methods` for why a qualified entry can only ever narrow.
  */
 export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   // ── public ──────────────────────────────────────────────────────────────
@@ -112,6 +159,32 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
     note: "A workspace's OWN auth surface: sign-up, sign-in, SAML ACS, LDAP bind, magic link, token refresh, invite accept. Nobody reaching it has an app-plane session yet — acquiring one is the point — and the caller's browser may well be holding a platform cookie from the dashboard on the same origin. Declaring the whole of /api/t as `app` made every one of these a violation, which is how the warn window earned its keep.",
   },
   {
+    // Reading an invite by its token, before the invitee has any session at
+    // all — `routes/app-orgs-public.ts` calls this out in its header as the one
+    // route there that runs for a visitor with nothing. Holding the token IS
+    // the authorization, and the response is the inviting org's name plus the
+    // email it was sent to, both of which the holder already has.
+    //
+    // GET only, and that is what makes this expressible: `POST
+    // /orgs/invites/accept` sits at the same depth and DOES need an app-plane
+    // session, so it falls through to `/api/t` below. Declaring the prefix
+    // outright would have taken the accept route with it.
+    //
+    // Pinned to this exact DEPTH, and that is load-bearing rather than tidy.
+    // `findOrg` resolves `:orgId` by id **or slug**, and the slug is
+    // caller-chosen — so without the pin an org slugged `invites` would put
+    // `/orgs/invites/<x>/…` under a `public` declaration and quietly remove the
+    // firewall layer from routes that are not this one. `RESERVED_ORG_SLUGS`
+    // now refuses that slug at write time as well; both halves, because the
+    // firewall reads a path prefix and never sees which route Hono matched.
+    prefix: "/api/t/*/orgs/invites/*",
+    methods: ["GET"],
+    exact: true,
+    plane: "public",
+    note:
+      "Token-addressed invite lookup. Declared separately because `app` was refusing the platform plane: an operator signed in to the dashboard who clicks a workspace invite link got a 403, which is the mirror image of the defect #350 fixed on /api/tenants/invite. #345.",
+  },
+  {
     prefix: "/api/t",
     plane: "app",
     note: "The rest of the per-workspace end-user surface: orgs, agents. tenantMiddleware pins these to the workspace stamped on the session and ignores X-Backlex-Tenant.",
@@ -141,7 +214,31 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   { prefix: "/api/api-keys", plane: "platform", note: "Mints pak_ keys, which session.ts resolves on the PLATFORM plane. An app-plane caller reaching this laundered itself across the boundary." },
   { prefix: "/api/activity", plane: "platform", note: "The audit log." },
   { prefix: "/api/admin", plane: "platform", note: "Every /api/admin/* mount. Longest-prefix means each specific one below is redundant, which is the point: a new /api/admin/* mount inherits the right answer without touching this file." },
-  { prefix: "/api/workspace-config", plane: "platform", note: "Workspace-level configuration the operator edits." },
+  {
+    // The sign-in page's own read: the workspace name, logo and which login
+    // methods to draw. Its handler says so — "public so the login page…" — and
+    // it carries no gate, correctly, because nobody loading a sign-in screen
+    // has a session yet.
+    //
+    // `exact` + GET, because the prefix serves three other routes that are the
+    // operator's: `PUT /` writes this configuration, and `GET /raw` returns it
+    // unredacted. Both fall through to the `platform` entry below.
+    prefix: "/api/workspace-config",
+    methods: ["GET"],
+    exact: true,
+    plane: "public",
+    note:
+      "What the sign-in page renders itself from. Declared public because `platform` refused an app-plane bearer: a workspace end-user whose browser holds an app-plane cookie on the same origin got a 403 loading the operator sign-in screen, and the screen has no branding without this. #345.",
+  },
+  {
+    // The logo/favicon bytes the route above names. Same reasoning, one level
+    // down; GET-only so an upload route added here would not inherit `public`.
+    prefix: "/api/workspace-config/asset",
+    methods: ["GET"],
+    plane: "public",
+    note: "Branding assets the sign-in page loads. Read-only by design — the operator's write path is PUT /api/workspace-config.",
+  },
+  { prefix: "/api/workspace-config", plane: "platform", note: "Workspace-level configuration the operator edits — PUT / and GET /raw. The two public reads are declared above." },
   { prefix: "/api/collections", plane: "platform", note: "Schema DDL. Already carries requirePlatformMw on its write routes (DDL_GATE)." },
   { prefix: "/mcp", plane: "platform", note: "Tenant MCP transport. Its tools replay the control-plane router through makeInternalFetch, so it inherits whatever that surface allows." },
 
@@ -267,10 +364,21 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
  * `/api/t` even though a longer literal like `/api/workspace-config` would win
  * on characters. Ties break on length, which keeps the ordering stable and puts
  * a literal segment ahead of a wildcard of the same depth.
+ *
+ * `exact` and `methods` break the tie BEFORE length, so a qualified entry is
+ * consulted ahead of the unqualified one at the same prefix — which is the
+ * whole point of a carve-out. It matters only for two entries that share a
+ * prefix; everywhere else the qualification fields are absent and the ordering
+ * is exactly what it was.
  */
 const depth = (p: string): number => p.split("/").filter(Boolean).length;
+/** How narrow an entry is, ahead of prefix length. Higher is consulted first. */
+const qualifiers = (e: RoutePlaneEntry): number => (e.exact ? 2 : 0) + (e.methods ? 1 : 0);
 const BY_LENGTH: readonly RoutePlaneEntry[] = [...ROUTE_PLANES].sort(
-  (a, b) => depth(b.prefix) - depth(a.prefix) || b.prefix.length - a.prefix.length,
+  (a, b) =>
+    depth(b.prefix) - depth(a.prefix) ||
+    qualifiers(b) - qualifiers(a) ||
+    b.prefix.length - a.prefix.length,
 );
 
 /**
@@ -298,6 +406,34 @@ const covers = (prefix: string, path: string): boolean => {
 };
 
 /**
+ * Does a qualified entry answer for this request?
+ *
+ * Both checks are AND-ed onto `covers`, and both can only REJECT — an entry
+ * that says nothing about methods answers for all of them, which is why adding
+ * this dimension changed no existing entry's behaviour.
+ *
+ * A caller that does not know the method (`planeFor(path)`) skips every
+ * method-qualified entry and falls through to the unqualified one. That is the
+ * safe direction on purpose: the unqualified entry is the stricter of the pair
+ * here, so an unmethodded lookup can under-report a public exception but can
+ * never invent one.
+ *
+ * Exported so `route-plane-registry.test.ts` can ask "would this entry ever be
+ * picked?" with the REAL matcher instead of a copy of it. The copy it used to
+ * carry disagreed the moment `exact` stopped meaning string equality, which is
+ * the whole argument against mirroring a matcher in its own test.
+ */
+export const applies = (
+  entry: RoutePlaneEntry,
+  path: string,
+  method: string | undefined,
+): boolean => {
+  if (entry.exact && depth(entry.prefix) !== depth(path)) return false;
+  if (entry.methods && (!method || !entry.methods.includes(method.toUpperCase()))) return false;
+  return covers(entry.prefix, path);
+};
+
+/**
  * The declared plane for a concrete request path.
  *
  * Matches on a path SEGMENT boundary, so `/api/tenants-lookalike` does not
@@ -307,10 +443,15 @@ const covers = (prefix: string, path: string): boolean => {
  *
  * Longest prefix wins, counted in SEGMENTS rather than characters, so a
  * wildcard entry is not penalised for the slug it stands in for.
+ *
+ * `method` is optional and every caller that HAS one should pass it — without
+ * it the three method-qualified entries cannot match, and the lookup returns
+ * the broader declaration those carve out of. See `applies` for why that
+ * direction is the safe one.
  */
-export const planeFor = (path: string): RoutePlaneEntry | null => {
+export const planeFor = (path: string, method?: string): RoutePlaneEntry | null => {
   for (const entry of BY_LENGTH) {
-    if (covers(entry.prefix, path)) return entry;
+    if (applies(entry, path, method)) return entry;
   }
   return null;
 };

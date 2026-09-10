@@ -117,7 +117,7 @@ gh pr merge <n> --merge                   # only once every check is green
 
 | Stage | Wall clock | Money |
 |---|---|---|
-| Local pre-push gate (lint + typecheck + test + build:targets) | **~3 min** | your machine |
+| Local pre-push gate (lint + typecheck + test + build:targets + startup:budget) | **~3 min** | your machine |
 | `test.yml` on the PR | **~8.5 min** | free — the repo is **public**, so Actions minutes are not billed |
 | `test.yml` again on the merge push | **~8.5 min** | free |
 | Cloudflare deploy of the merged commit | **~1.5 min** | included |
@@ -166,7 +166,7 @@ bun scripts/cleanup-worktrees.ts
 git branch -d <feat/branch-name>
 ```
 
-**`git push` runs the full pre-push suite (~5-6 min): lint + typecheck + `bun test` + `build:targets`.** Give the command a generous timeout — never `--no-verify`.
+**`git push` runs the full pre-push suite (~5-6 min): lint + `build:targets` + `startup:budget` + typecheck + `bun test`.** Give the command a generous timeout — never `--no-verify`.
 
 **A red gate leaves `.gate-test-results.xml` at the repo root** (gitignored, overwritten each run). Read it instead of scrolling back: it carries every failure's message, file and line, plus `tests=` per suite — which is the one figure that separates a failing ASSERTION from a worker that died partway through a file and took the rest with it. #316 was investigated three times and twice ended at *"I lost the failure text"*, because the retry goes green and the terminal has moved on. Redirecting the push to a log as well (`git push > push.log 2>&1`) still helps for the non-test jobs.
 
@@ -196,6 +196,13 @@ After pushing, report the test.yml run URL back to the user. Don't claim "deploy
 **Agent worktrees are collected on merge.** Parallel agent sessions each get a worktree under `.claude/worktrees/`, nothing removes them when the session ends, and each carries its own `node_modules` — left alone the directory reaches tens of GB. `lefthook.yml`'s `post-merge` job runs `scripts/cleanup-worktrees.ts`, which removes only worktrees that are orphaned, or merged into `main` + clean + idle for an hour; a dirty or unmerged tree is reported and kept. Note that a worktree's `.git` is an **absolute** path into `.git/worktrees/`, so moving or renaming the repo orphans every one of them at once — after such a move they are unreadable by git and only `rm` clears them.
 
 **Do not use `wrangler deployments list` to confirm a deploy.** It is stale for Workers Builds deploys (the native git integration this repo uses) and will show a days-old deployment while the new bundle is already serving. `scripts/verify-deploy.ts` checks behaviourally instead: it probes `/health` (**not** `/api/health`, which is a 404 that reads exactly like "deploy hasn't landed"), walks the entry chunks *and the lazy chunks they reference* (admin pages are lazy — grepping `index.html`'s chunks alone finds nothing), and fails if a marker you know is new is absent. Pick a marker that exists only in the commit just shipped: a new provider id, a brand hex, a fresh route path.
+
+**A CF deploy can also be refused outright for STARTUP time — error 10021, `Script startup exceeded CPU time limit`** — and this worker sits close enough to that line to be rejected intermittently. On 2026-09-10 a build was refused and a retrigger of the **same commit** succeeded (#372). Two guards exist and they measure different things; keep both:
+
+- `apps/web/tests/worker-startup-budget.test.ts` counts **source bytes** of the eager graph, comments included. It catches something becoming *reachable*.
+- `bun run startup:budget` (`scripts/check-startup-budget.ts`) measures **milliseconds** on the BUILT bundle — median of five runs, in the pre-push gate and CI's `build` job. It catches something becoming *expensive*.
+
+They are not the same event, and on that date they came apart completely: four merges moved the byte figure 8465 → 8497 KiB while the thing CF measures was untouched by almost all of it. Removing the single largest removable chunk (404 KiB of MCP tool definitions) measured **zero** improvement across three runs per arm. Declarative modules are cheap however large; what costs is code that RUNS at import — measured, ~85 ms of V8 compile plus ~82 ms of vendor top-level execution (zod/drizzle/hono building and registering schemas). **Raising the byte ceiling never bought startup headroom.** Profile with `node apps/web/scripts/measure-startup.mjs --profile` and read it by URL, not by chunk name.
 
 **Almost none of a CF build is compilation — it is the D1 migration step.** Measured on a green 16.0-minute build: migrations ran 0.5m → 15.5m, then the whole `vite build` took **12 seconds** (`backlex_admin` env 2.37 s + client env 9.02 s). If a build ever creeps back toward the runner's 31-minute kill, read the migration timestamps first; the bundler is not where the minutes go.
 

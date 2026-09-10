@@ -192,6 +192,22 @@ jobs:
       - name: Build all targets
         run: bun run build:targets
 
+      # What Cloudflare actually refuses a deploy for, and the only check here
+      # that measures it. `worker-startup-budget.test.ts` guards a budget too,
+      # but it counts SOURCE BYTES of the eager graph, comments included — not
+      # the quantity CF enforces. On 2026-09-10 the two came apart completely:
+      # four merges moved the byte figure while a build was refused with error
+      # 10021 (`Script startup exceeded CPU time limit`) and a retrigger of the
+      # SAME commit succeeded. #372.
+      #
+      # Reads the BUILT worker bundle the step above produced, so it belongs
+      # here rather than in `bun test`. Median of five runs (~2s); the median
+      # is written to the job summary on every run, green or red, because the
+      # ceiling starts deliberately loose and wants a real CI baseline before
+      # it is tightened.
+      - name: Worker startup budget (milliseconds, not bytes)
+        run: bun run startup:budget
+
       # The published SDK. Nothing else in this workflow compiles it — until
       # now it was built for the first time inside publish-backlex.yml, which
       # only runs on a `backlex-v*` tag. So when tsup's declaration step broke

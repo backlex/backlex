@@ -361,6 +361,13 @@ describe("worker startup budget", () => {
     // `measure-startup.mjs` puts at roughly 2-3x that on Cloudflare. That is
     // the band this file's header already records as intermittently rejected.
     // Raising this line does not buy startup headroom and never did.
+    //
+    // The millisecond half now has its own guard: `bun run startup:budget`
+    // (`scripts/check-startup-budget.ts`), which runs in the pre-push gate and
+    // in CI's `build` job because it reads the BUILT bundle rather than source.
+    // Keep both. This one catches something becoming REACHABLE; that one
+    // catches it becoming EXPENSIVE, and the two are not the same event — a
+    // 404 KiB module that only declares object literals costs 1.5 ms.
     expect(kib).toBeLessThan(8500);
   });
 });

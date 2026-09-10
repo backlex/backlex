@@ -56,6 +56,21 @@ export interface AppSettings {
    *  managed cloud the `USAGE_LIMIT_*` env keys override field-by-field
    *  (plan injection) — see `services/usage.ts::resolveUsageLimits`. */
   usageLimits: UsageLimits;
+  /**
+   * Hosts THIS workspace's sandboxed functions may `ctx.fetch`.
+   *
+   * `FUNCTIONS_FETCH_ALLOW` is deployment-wide, so one operator decision bound
+   * every tenant on the instance: a multi-tenant host could not let workspace A
+   * reach a partner API that workspace B must not. This narrows it per
+   * workspace — `resolveFetchAllow` intersects the two, and the env list is the
+   * CEILING, so a workspace can only ever take hosts away. #335.
+   *
+   * `null` is not the same as `[]`, and the difference is the whole reason this
+   * is nullable. `null` = "this workspace has not chosen", which inherits the
+   * deployment list unchanged and is what every existing workspace has. `[]` is
+   * a choice, and means no outbound fetch at all.
+   */
+  functionsFetchAllow: string[] | null;
 }
 
 /** Workspace usage-limit knobs. `null` = unlimited for that dimension. */
@@ -112,6 +127,9 @@ export const APP_SETTINGS_DEFAULTS: AppSettings = {
   schemaSnapshotSchedule: "off",
   schemaSnapshotKeepLast: 7,
   usageLimits: { ...USAGE_LIMITS_DEFAULTS },
+  // `null`, not `[]` — see the field's doc. Defaulting to an empty list would
+  // silently switch off `ctx.fetch` for every workspace that never set one.
+  functionsFetchAllow: null,
 };
 
 const isStringArray = (v: unknown): v is string[] =>
@@ -292,6 +310,11 @@ export const loadAppSettings = async (
       )
         out.schemaSnapshotKeepLast = Math.min(50, Math.max(1, Math.floor(value)));
       else if (key === "usageLimits") out.usageLimits = parseUsageLimits(value);
+      // A stored `null` is a legitimate value here (inherit the deployment
+      // list), so this arm accepts the array shape only and leaves the default
+      // in place otherwise — which is the same answer.
+      else if (key === "functionsFetchAllow" && isStringArray(value))
+        out.functionsFetchAllow = value.map((h) => h.trim()).filter(Boolean);
     }
     if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
       out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";

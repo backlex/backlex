@@ -307,6 +307,25 @@ describe("worker startup budget", () => {
     // (#335, #317); each has to re-measure on ITS merge rather than take the
     // largest of the four, and the number stays 8480 here because 8479 is what
     // this tree actually costs.
-    expect(kib).toBeLessThan(8480);
+    //
+    // Raised 8480 → 8500 on 2026-09-10, measured at 8492 ON THE MERGE. ZERO new modules:
+    // #335 edited files already on the eager path — `env.ts`,
+    // `routes/functions.ts`, `services/sandbox/{index,types,host-bridge}.ts`,
+    // `services/{functions,flows,jobs,settings}.ts` — and the two SQL migration
+    // files it adds are text the bundle already excludes.
+    //
+    // Note what did NOT move it. `services/scheduler.ts` is off the startup
+    // path (asserted three tests up, because `cron-parser` → `luxon` is 260 KB
+    // behind a `scheduled()` trigger), so the runner edits there are free. The
+    // ~9 KiB is the argument for why NULL keeps the soft sandbox, and why the
+    // per-workspace fetch list can only narrow — this walk counts source bytes,
+    // so those weigh what the two decision functions do.
+    //
+    // 8485 was this branch's own number, measured at 8474 in isolation. The
+    // MERGE measures 8492 — the third time in one day that a per-branch figure
+    // did not survive contact with the others, which is the thing the note
+    // above is about. One branch (#317) is still in flight and will have to do
+    // this again.
+    expect(kib).toBeLessThan(8500);
   });
 });

@@ -51,24 +51,33 @@ const RUNS = 5;
 /**
  * Ceiling for the MEDIAN, in milliseconds.
  *
- * **Deliberately loose, and it should be tightened.** This machine's median is
- * ~215 ms; a GitHub runner's V8 is a different machine and its baseline is not
- * on record yet, so a tight number picked from a laptop would be a flake
- * factory — which is the exact defect #364 had just finished removing from this
- * suite when this was written.
+ * MEASURED BASELINES, both on record rather than guessed:
  *
- * The median is PRINTED on every run, green or red, and written to the job
- * summary in CI. So the first few CI runs put the real baseline on record and
- * tightening this is a one-line change with a measured number behind it. Until
- * then 900 ms still catches the class of regression that matters: what would
- * actually threaten 10021 is a package moving back into the eager graph —
- * better-auth (1.3 MB), the AI SDK (860 KB), the migration bundles (338 KB) —
- * and each of those roughly doubles the figure rather than nudging it.
+ *   ~215 ms  this dev machine (M-series, node/V8)
+ *    317 ms  a GitHub `ubuntu-latest` runner — 316.6 median, samples
+ *            305.8 / 315.3 / 316.6 / 316.7 / 334.6, a 9% spread within one run
+ *
+ * 600 is 1.9x the CI baseline. **It is a compromise, and the reason is worth
+ * knowing before anybody calls it arbitrary:** the regression this wants to
+ * catch and the host noise it must tolerate are the same order of magnitude. A
+ * big package re-entering the eager graph — better-auth (1.3 MB), the AI SDK
+ * (860 KB) — adds roughly the baseline again, so ~630 ms on CI. A genuinely
+ * slow runner could plausibly reach 1.5x, so ~475 ms. Those two are 150 ms
+ * apart, which is not much of a gap to put a threshold in.
+ *
+ * So this bound is set to sit above the noise rather than snugly under the
+ * regression, following #364's answer to exactly this shape: a bound generous
+ * enough that only a real change trips it beats a tight one that trips on a
+ * busy host. **The trend line is the better signal** — the median is printed on
+ * every run and written to the CI job summary green or red, so a creep from 317
+ * toward 450 is visible long before this number is reached.
  *
  * Do NOT raise this to make a red run green. Unlike the byte ceiling next door,
- * a number here going up means the deploy got closer to being refused.
+ * a number here going up means the deploy got closer to being refused — and by
+ * the measurement in `measure-startup.mjs`'s header (CF runs 2-3x the local
+ * figure), this worker is already inside the band where 10021 has been observed.
  */
-const MAX_MS = 900;
+const MAX_MS = 600;
 
 /**
  * Below this the harness is not measuring the worker.

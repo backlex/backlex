@@ -116,12 +116,12 @@ authorization server for `/mcp`, powered by better-auth's `mcp` plugin
 1. An unauthenticated `POST /mcp` answers `401` with a
    `WWW-Authenticate: Bearer resource_metadata="…"` challenge, pointing
    at `/.well-known/oauth-protected-resource` (root-mounted in
-   `server/routes/mcp-oauth.ts`, RFC 9728).
+   `server/routes/mcp/oauth.ts`, RFC 9728).
 2. The client discovers the endpoints via
    `/.well-known/oauth-authorization-server`, registers itself
    dynamically (`POST /api/auth/mcp/register`, RFC 7591), and starts a
    PKCE authorize flow at `GET /api/auth/mcp/authorize`.
-3. A consent gate in `mcp-oauth.ts` forces `prompt=consent` for any
+3. A consent gate in `mcp/oauth.ts` forces `prompt=consent` for any
    client the signed-in user hasn't already granted the requested
    scopes — the plugin alone would mint the code silently, which open
    dynamic registration makes unacceptable. The admin approves on the

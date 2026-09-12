@@ -75,7 +75,7 @@ import { ldapAdminRoutes } from "./routes/ldap-admin";
 import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
 import { MCP_ADMIN_MOUNT, MCP_TENANT_MOUNT } from "./mcp/mounts";
 import { jwksRoutes } from "./routes/jwks";
-import { mcpAuthorizeConsentGate, mcpOAuthWellKnownRoutes } from "./routes/mcp-oauth";
+import { mcpAuthorizeConsentGate, mcpOAuthWellKnownRoutes } from "./routes/mcp/oauth";
 import { meRoutes } from "./routes/me";
 import { metricsRoutes } from "./routes/metrics";
 import { usageRoutes } from "./routes/usage";

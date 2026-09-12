@@ -26,7 +26,7 @@ import { Hono, type MiddlewareHandler } from "hono";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq } from "drizzle-orm";
-import type { AppBindings } from "../app";
+import type { AppBindings } from "../../app";
 
 /** Scope the plugin grants implicitly when a client omits `scope`. Mirrors
  *  the oidc-provider `defaultScope` ("openid"). */

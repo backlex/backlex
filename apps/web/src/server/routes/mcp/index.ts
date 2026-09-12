@@ -1,12 +1,12 @@
 import { Hono, type MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import type { Env } from "../env";
-import { requireUser } from "../middleware/session";
-import { handleMcpRequest } from "../mcp/http";
-import { allTools } from "../mcp/tools";
-import type { McpMode, McpServerWiring } from "../mcp/types";
-import { rateLimitOk } from "../lib/rate-limit";
+import type { AppBindings } from "../../app";
+import type { Env } from "../../env";
+import { requireUser } from "../../middleware/session";
+import { handleMcpRequest } from "../../mcp/http";
+import { allTools } from "../../mcp/tools";
+import type { McpMode, McpServerWiring } from "../../mcp/types";
+import { rateLimitOk } from "../../lib/rate-limit";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -41,7 +41,7 @@ const requireUserWithOAuthChallenge: MiddlewareHandler<AppBindings> = async (
 const MCP_WINDOW_MS = 60_000;
 const MCP_MAX_PER_MIN = 120;
 
-import { type ClientAddressEnv, clientAddressKey } from "../lib/client-address";
+import { type ClientAddressEnv, clientAddressKey } from "../../lib/client-address";
 const ipOf = (req: Request, env: ClientAddressEnv): string =>
   clientAddressKey(req, env);
 

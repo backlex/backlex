@@ -656,7 +656,7 @@ const runHandler = async (
 /** Admin-only Ask AI surface. Mounted at `/api/admin/ai` so the same admin-
  *  role gate that protects MCP applies here too. The parent app + env are
  *  closed over so the /run handler can issue in-process sub-fetches against
- *  the same Hono instance (identical pattern to `mcp.ts`). */
+ *  the same Hono instance (identical pattern to `mcp/index.ts`). */
 export const aiAskRoutes = (app: Hono<AppBindings>, env: Env) =>
   new Hono<AppBindings>()
     .post("/plan", requireUser, requireAdmin, (c) => planHandler(c, app, env))

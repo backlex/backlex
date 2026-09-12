@@ -262,7 +262,7 @@ describe("repeat visits are cheap", () => {
 
     const { weakETag, weakHash } = await import("../src/server/lib/etag");
     const { TRACKER_JS } = await import("../src/server/services/analytics-tracker");
-    const { TAG_RUNTIME_JS } = await import("../src/server/services/tag-runtime");
+    const { TAG_RUNTIME_JS } = await import("../src/server/services/tag-manager/runtime");
     const { CONSENT_BANNER_JS } = await import("../src/server/services/consent-banner-bundle");
     const published = await getPublishedArtifact(db, SITE);
 
@@ -315,7 +315,7 @@ describe("the per-site file is geo-blind", () => {
     // the body, which is precisely the bug it exists to catch. Clearing it
     // makes both requests take the compile path, where the difference would be.
     const { invalidateContainer } = await import(
-      "../src/server/services/tag-container-cache"
+      "../src/server/services/tag-manager/container-cache"
     );
     const withCountry = async (country: string) => {
       invalidateContainer(SITE);
@@ -366,7 +366,7 @@ describe("the per-site script has two paths and one handler", () => {
 
   test("both paths return the same body and the same ETag", async () => {
     const { invalidateContainer } = await import(
-      "../src/server/services/tag-container-cache"
+      "../src/server/services/tag-manager/container-cache"
     );
     // Cleared between the two, or the second is served the first's memo entry
     // and agrees with itself no matter what the handler does.

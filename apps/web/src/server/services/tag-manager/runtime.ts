@@ -28,7 +28,7 @@
  * grant selectively; a nonce-carrying element works under a strict policy.
  * `document.write` is never used — after load it destroys the page.
  */
-import { TAG_RUNTIME_TEMPLATES_JS } from "./tag-runtime-templates";
+import { TAG_RUNTIME_TEMPLATES_JS } from "./runtime-templates";
 
 const HEAD = String.raw`
 // container is the compiled document. There is deliberately no second

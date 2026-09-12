@@ -3576,7 +3576,7 @@ export const tagTriggers = sqliteTable(
     tenantId: text("tenant_id"),
     siteId: text("site_id").notNull(),
     name: text("name").notNull(),
-    /** Closed vocabulary — `services/tag-conditions.ts::TRIGGER_TYPES`. */
+    /** Closed vocabulary — `services/tag-manager/conditions.ts::TRIGGER_TYPES`. */
     type: text("type").notNull(),
     /** Type-specific settings: a CSS selector, a scroll threshold, a timer
      *  interval, a custom event name. Checked against the type on write and
@@ -3602,7 +3602,7 @@ export const tagDefinitions = sqliteTable(
     /** `template` | `custom_html` | `custom_js` | `image_pixel` |
      *  `backlex_event`. */
     kind: text("kind").notNull().default("template"),
-    /** Registry id when `kind = 'template'` — `services/tag-templates.ts`. */
+    /** Registry id when `kind = 'template'` — `services/tag-manager/templates.ts`. */
     templateId: text("template_id"),
     /** Operator-supplied parameters, validated against the template's own
      *  schema. For a custom tag this is where the code lives. */

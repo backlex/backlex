@@ -25,8 +25,8 @@ import { logActivity } from "../services/activity";
 import {
   TAG_TEMPLATES,
   cspAdditionsForTemplates,
-} from "../services/tag-templates";
-import { SCROLL_THRESHOLDS, TAG_FIELDS, TRIGGER_TYPES } from "../services/tag-conditions";
+} from "../services/tag-manager/templates";
+import { SCROLL_THRESHOLDS, TAG_FIELDS, TRIGGER_TYPES } from "../services/tag-manager/conditions";
 import {
   FIRE_RULES,
   TAG_KINDS,

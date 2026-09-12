@@ -1,7 +1,7 @@
 /**
  * The per-isolate memo in front of the public consent-config endpoint.
  *
- * Its own module for the reason `tag-container-cache.ts` is: the route owns the
+ * Its own module for the reason `tag-manager/container-cache.ts` is: the route owns the
  * cache but the SERVICE knows when it is stale. Saving a policy changes what
  * should be served, and without a way to say so an operator edits their wording,
  * immediately reloads their site, and sees the old text — which reads exactly

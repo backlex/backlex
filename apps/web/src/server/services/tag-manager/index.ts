@@ -31,20 +31,20 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { hashToken } from "./shared-links";
-import { invalidateContainer } from "./tag-container-cache";
+import { hashToken } from "../shared-links";
+import { invalidateContainer } from "./container-cache";
 import {
   CONSENT_CATEGORIES,
   type ConsentCategory,
   getTagTemplate,
   parseTemplateParams,
-} from "./tag-templates";
+} from "./templates";
 import {
   type TagConditionNode,
   type TriggerConfig,
   parseTagCondition,
   parseTriggerConfig,
-} from "./tag-conditions";
+} from "./conditions";
 
 export interface TagDbCtx {
   db: unknown;

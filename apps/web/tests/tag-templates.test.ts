@@ -22,7 +22,7 @@ import {
   cspAdditionsForTemplates,
   getTagTemplate,
   parseTemplateParams,
-} from "../src/server/services/tag-templates";
+} from "../src/server/services/tag-manager/templates";
 
 describe("registry invariants", () => {
   test("ids are unique, stable slugs", () => {

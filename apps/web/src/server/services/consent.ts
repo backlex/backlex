@@ -39,7 +39,7 @@ import { invalidateConsentConfig } from "./consent-config-cache";
 // or a change to what GPC governs — waits out the container TTL before any
 // visitor sees it, which reads to an operator exactly like a save that did
 // not take.
-import { invalidateContainer } from "./tag-container-cache";
+import { invalidateContainer } from "./tag-manager/container-cache";
 import { hashToken } from "./shared-links";
 
 export interface ConsentDbCtx {
@@ -465,7 +465,7 @@ export const consentConfigBody = (cfg: ConsentConfig): string => JSON.stringify(
 
 /** SHA-256 hex of the canonical bytes, via the digest this repo already has —
  *  rather than adding a second implementation, which is the same call
- *  `tag-manager.ts` made for its container hash. */
+ *  `tag-manager/index.ts` made for its container hash. */
 export const hashConsentConfig = (cfg: ConsentConfig): Promise<string> =>
   hashToken(consentConfigBody(cfg));
 
@@ -628,7 +628,7 @@ export const getPublishedConsentConfig = async (
  * that exists, reads back correctly, and does nothing.
  *
  * Called once per container-cache MISS — a MINUTE per site per origin, not the
- * fifteen the browser cache runs for (`tag-container-cache.ts` memoises for
+ * fifteen the browser cache runs for (`tag-manager/container-cache.ts` memoises for
  * `TTL_MS = 60_000`; `CONTAINER_MAX_AGE` is the other number) —
  * beside the artifact read that is already there.
  */

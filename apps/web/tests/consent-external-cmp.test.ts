@@ -40,7 +40,7 @@
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { TRACKER_JS } from "../src/server/services/analytics-tracker";
-import { TAG_RUNTIME_JS } from "../src/server/services/tag-runtime";
+import { TAG_RUNTIME_JS } from "../src/server/services/tag-manager/runtime";
 
 const w = globalThis as unknown as Record<string, any>;
 const ORIGINAL_URL = "http://localhost:5173/";

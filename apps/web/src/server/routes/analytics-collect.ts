@@ -44,7 +44,7 @@ import { getSiteById, recordWebEvents } from "../services/analytics";
 import { dailyVisitorId } from "../services/analytics-identity";
 import { enrichmentFromRequest, parseUserAgent } from "../services/analytics-enrich";
 import { TRACKER_BOOT_JS, TRACKER_JS } from "../services/analytics-tracker";
-import { TAG_RUNTIME_JS, safeJson } from "../services/tag-runtime";
+import { TAG_RUNTIME_JS, safeJson } from "../services/tag-manager/runtime";
 import { CONSENT_BANNER_JS } from "../services/consent-banner-bundle";
 import { getPublishedConsentConfig, getTagConsentSettings } from "../services/consent";
 import { getPublishedArtifact } from "../services/tag-manager";
@@ -52,7 +52,7 @@ import { ifNoneMatch, weakETag, weakHash } from "../lib/etag";
 import {
   getContainerEntry,
   setContainerEntry,
-} from "../services/tag-container-cache";
+} from "../services/tag-manager/container-cache";
 import { getConsentEntry, setConsentEntry } from "../services/consent-config-cache";
 
 /**
@@ -257,7 +257,7 @@ export const perSiteScriptHandler = async (c: Context<AppBindings>) => {
     // query instead of the three the old ordering paid before returning
     // nothing.
     //
-    // Deliberately NOT memoised: `tag-container-cache.ts` evicts with a
+    // Deliberately NOT memoised: `tag-manager/container-cache.ts` evicts with a
     // wholesale `memo.clear()` at 200 entries rather than LRU, so admitting
     // caller-chosen keys would let 200 random ids flush every hot site on the
     // isolate.
@@ -318,7 +318,7 @@ export const perSiteScriptHandler = async (c: Context<AppBindings>) => {
     // these two settings is about the banner. A site that shows no banner can
     // still have filed backlex's own tag as strictly necessary, or still want
     // GPC to stop every tag. One extra query per container-cache miss, which
-    // is once per site per origin per MINUTE — `tag-container-cache.ts`
+    // is once per site per origin per MINUTE — `tag-manager/container-cache.ts`
     // memoises for `TTL_MS = 60_000`. The fifteen minutes elsewhere in this
     // file is `CONTAINER_MAX_AGE`, the BROWSER's cache, which is a different
     // number about a different cache.

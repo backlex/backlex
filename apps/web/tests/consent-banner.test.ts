@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CONSENT_BANNER_JS } from "../src/server/services/consent-banner-bundle";
 import { TRACKER_JS } from "../src/server/services/analytics-tracker";
-import { TAG_RUNTIME_JS } from "../src/server/services/tag-runtime";
+import { TAG_RUNTIME_JS } from "../src/server/services/tag-manager/runtime";
 import { WORDING_KEYS } from "../src/server/services/consent";
 import { BUILTIN_STRINGS } from "../src/client/consent-banner/strings";
 import { buildBanner, emit } from "../../../scripts/gen-consent-banner";

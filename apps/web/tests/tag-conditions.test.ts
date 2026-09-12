@@ -25,7 +25,7 @@ import {
   TRIGGER_TYPES,
   parseTagCondition,
   parseTriggerConfig,
-} from "../src/server/services/tag-conditions";
+} from "../src/server/services/tag-manager/conditions";
 
 const ok = (input: unknown) => parseTagCondition(input);
 const bad = (input: unknown) => expect(() => parseTagCondition(input)).toThrow();

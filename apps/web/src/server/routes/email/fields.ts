@@ -2,12 +2,12 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { type SQL, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import { parseEmailForField } from "@backlex/db";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { requirePermission } from "../middleware/permission";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { collectionFromParam, loadCollection } from "../services/items/collection-loader";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { requirePermission } from "../../middleware/permission";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { collectionFromParam, loadCollection } from "../../services/items/collection-loader";
 import {
   deletedFilter,
   execute,
@@ -15,7 +15,7 @@ import {
   queryAll,
   tenantFilter,
   whereOf,
-} from "../services/items/sql-helpers";
+} from "../../services/items/sql-helpers";
 
 /**
  * Normalizing the email addresses that were already there.

@@ -283,7 +283,7 @@ The instances are **cached per isolate** in
 cache is a 50-entry LRU with a 5-minute TTL plus explicit invalidation
 through `invalidateTenantAuth(tenantId)`. The admin routes that mutate
 auth-relevant config — `routes/auth-admin.ts` (PATCH `auth_config`),
-`routes/email-config.ts` (PUT) and `routes/workspace-config.ts` — all
+`routes/email/config.ts` (PUT) and `routes/workspace-config.ts` — all
 call it so the next request rebuilds with the new state. **TTL is the
 fallback** for changes made on a different isolate (Workers run a
 fleet of them); explicit invalidation is the fast path for the same

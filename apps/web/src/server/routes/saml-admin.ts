@@ -1,6 +1,6 @@
 /**
  * SAML provider admin CRUD. Admin-only, scoped to the active workspace.
- * Mounted at `/api/admin/saml`. Mirrors `routes/email-config.ts` in shape:
+ * Mounted at `/api/admin/saml`. Mirrors `routes/email/config.ts` in shape:
  * read returns sanitized rows (no cert PEM, just a flag), writes accept
  * plaintext PEM that the service layer encrypts before storing.
  *

@@ -176,7 +176,7 @@ Files:
 
 - `services/email/config.ts` — `loadEmailConfigRow`,
   `resolveEmailAdapter`. Mirrors `services/auth-config.ts`.
-- `routes/email-config.ts` — admin-only `GET` / `PUT` / `POST /test`.
+- `routes/email/config.ts` — admin-only `GET` / `PUT` / `POST /test`.
   Secrets are write-only; `GET` returns only `secretsSet` flags. A
   `PUT` invalidates `getTenantAuth`'s cache via
   `invalidateTenantAuth`.

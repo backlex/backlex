@@ -160,7 +160,7 @@ guides; this list is everything else.
   applies scheduled publishes inside `cronTick`. See `docs/draft-publish.md`.
 - **Notifications** (`routes/notifications.ts`) — in-app
   notification feed; activity/flows write into it.
-- **Email templates** (`routes/email-templates.ts`) — per-tenant
+- **Email templates** (`routes/email/templates.ts`) — per-tenant
   overrides for transactional templates; pairs with the
   per-workspace email config in `docs/api-keys-and-email.md`.
 - **Direct messaging** (`routes/messaging.ts`, `services/messaging/index.ts`)

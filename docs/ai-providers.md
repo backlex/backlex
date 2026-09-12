@@ -133,7 +133,7 @@ variable an operator would set, not its value.
 |---|---|
 | Ask AI (`routes/ai-ask.ts`) | request body → workspace config → `anthropic/claude-haiku-4-5` |
 | Agents (`services/agents/runner.ts`) | agent row → workspace config → `anthropic/claude-sonnet-5` |
-| Auto-translate (`services/i18n-translate.ts`) | workspace config → provider default |
+| Auto-translate (`services/i18n/translate.ts`) | workspace config → provider default |
 | `ai.*` MCP tools (`mcp/http.ts`) | per-tool → provider default |
 | Settings · AI "Test key" | workspace config — it proves the config that will actually run |
 

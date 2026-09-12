@@ -3,7 +3,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
-import { loadAppSettings } from "./settings";
+import { loadAppSettings } from "../settings";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.i18nStrings : sqlite.schema.i18nStrings;

@@ -47,8 +47,8 @@ guides; this list is everything else.
   `services/shared-links.ts`) — unauthenticated endpoints used by
   signed share-link URLs and the public i18n bundle. Never apply
   `requirePermission` here; gate via the share-link token instead.
-- **i18n strings** (`routes/i18n.ts`, `services/i18n.ts`,
-  `services/i18n-translate.ts`) — content-translation system
+- **i18n strings** (`routes/i18n.ts`, `services/i18n/index.ts`,
+  `services/i18n/translate.ts`) — content-translation system
   (multilingual values for user-managed collections), distinct from
   the admin SPA's Lingui chrome translations.
 

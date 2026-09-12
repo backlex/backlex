@@ -1,6 +1,6 @@
 /**
  * AI auto-translate — the mocked HAPPY path of
- * `services/i18n-translate.ts::autoTranslateBatch` through
+ * `services/i18n/translate.ts::autoTranslateBatch` through
  * `POST /api/admin/i18n/_auto-translate`.
  *
  * The service now generates through the shared `callClaude` path (AI SDK), so

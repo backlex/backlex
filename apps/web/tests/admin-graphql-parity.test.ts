@@ -5,7 +5,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
  * GraphQL twins for the admin surfaces that were REST-only until 2026-07:
  * outbound webhooks, i18n strings, and the file-storage metadata plane.
  * Each mirrors its REST route through the same service helpers
- * (services/webhooks.ts, services/i18n.ts, services/storage/files.ts), so
+ * (services/webhooks.ts, services/i18n/index.ts, services/storage/files.ts), so
  * these specs pin scoping + validation parity rather than re-testing the
  * underlying behavior (covered by the REST specs).
  */

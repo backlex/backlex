@@ -1,7 +1,7 @@
 import { AppError } from "@backlex/core";
-import { callClaude } from "../mcp/ai-client";
-import type { Env } from "../env";
-import type { AiMeterSink } from "../mcp/ai-client";
+import { callClaude } from "../../mcp/ai-client";
+import type { Env } from "../../env";
+import type { AiMeterSink } from "../../mcp/ai-client";
 
 /**
  * Auto-translate a batch of source strings into a target locale.

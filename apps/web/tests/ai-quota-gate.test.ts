@@ -55,7 +55,7 @@ const EXEMPT: Record<string, { gatedIn?: string; why: string }> = {
     gatedIn: "src/server/services/agents/send.ts",
     why: "The mention router is deliberately context-free — it takes its meter as a parameter rather than building one — so it has no workspace to ask about. The budget is asked at the seam that does have one, immediately before it is called.",
   },
-  "src/server/services/i18n-translate.ts": {
+  "src/server/services/i18n/translate.ts": {
     gatedIn: "src/server/routes/i18n.ts",
     why: "Same shape as the mention router: the service takes `meter` as a required parameter and knows nothing of the request. The route owns the context and asks there, once, before the first of however many batches the run needs.",
   },

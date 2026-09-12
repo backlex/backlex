@@ -14,7 +14,7 @@ import {
   loadMatrix,
   upsertI18nString,
 } from "../services/i18n";
-import { autoTranslateBatch } from "../services/i18n-translate";
+import { autoTranslateBatch } from "../services/i18n/translate";
 import { loadAppSettings } from "../services/settings";
 import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai/config";
 import { hasDirectAiCredential } from "../mcp/ai-client";

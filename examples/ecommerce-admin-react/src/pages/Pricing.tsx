@@ -8,7 +8,7 @@
  */
 import { useMemo, useState } from "react";
 import type { PriceList, Variant } from "../lib/backlex";
-import { backlex, channels, priceLists, prices, products, variants } from "../lib/backlex";
+import { ADMIN_LOCALE, backlex, channels, priceLists, prices, products, variants } from "../lib/backlex";
 import { errText, useAsync, useToast } from "../lib/hooks";
 import { fmtDate, fmtMoney } from "../lib/money";
 import {
@@ -235,7 +235,7 @@ function AddPrice({ listId, onClose, onDone }: { listId: string; onClose: () => 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const prods = useAsync(() => products.list({ limit: 200, status: "all", sort: ["name"] }).then((r) => r.data), []);
+  const prods = useAsync(() => products.list({ limit: 200, status: "all", sort: ["name"], locale: ADMIN_LOCALE }).then((r) => r.data), []);
   const vars = useAsync(
     () =>
       productId

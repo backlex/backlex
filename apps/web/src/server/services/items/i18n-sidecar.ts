@@ -434,8 +434,69 @@ export const buildLocalizedSelects = (
   });
 };
 
+/**
+ * {@link buildLocalizedSelects}, correlated to an ARBITRARY row reference.
+ *
+ * That one hard-codes the base table twice — the aggregate correlates on
+ * `<physicalTable>.<pk>`, and the single-locale arm reads `i18n_req.<field>`,
+ * an alias joined against the base row. Neither is reachable from inside an
+ * expanded object, whose row sits behind a `rel_*` alias. So `expand` emitted
+ * `rel_category.name`, there is no such column, and every `?expand=` into a
+ * collection with a localized field was an unconditional "no such column".
+ *
+ * Both arms are correlated subqueries, the single-locale one included: a JOIN
+ * would need another alias per expand hop, while a subquery on the sidecar's
+ * `(row_id, locale)` primary key cannot multiply rows. `json()` on SQLite
+ * because these nest inside a `json_object(…)` and a nested aggregate is TEXT
+ * there — without it the map arrives double-encoded.
+ */
+export const buildLocalizedRefs = (
+  defs: FieldDef[],
+  dialect: "pg" | "sqlite",
+  opts: {
+    /** Physical table of the collection the fields belong to. */
+    physicalTable: string;
+    /** SQL referencing that row's primary key — e.g. `rel_category.id`. */
+    rowRef: SQL;
+    locale: string | null;
+    defaultLocale: string | null;
+  },
+): Map<string, SQL> => {
+  const out = new Map<string, SQL>();
+  if (defs.length === 0) return out;
+  const sidecar = sql.identifier(i18nTableName(opts.physicalTable));
+  const t = sql.identifier("t");
+  const rowMatch = sql`${t}.${sql.identifier("row_id")} = ${opts.rowRef}`;
+
+  if (isSingleLocale(opts.locale)) {
+    const pick = (f: FieldDef, loc: string): SQL =>
+      sql`(SELECT ${t}.${sql.identifier(f.name)} FROM ${sidecar} ${t} WHERE ${rowMatch} AND ${t}.${sql.identifier("locale")} = ${loc})`;
+    const def = opts.defaultLocale;
+    for (const f of defs) {
+      const req = pick(f, opts.locale as string);
+      out.set(f.name, def && def !== opts.locale ? sql`COALESCE(${req}, ${pick(f, def)})` : req);
+    }
+    return out;
+  }
+
+  for (const f of defs) {
+    const col = sql`${t}.${sql.identifier(f.name)}`;
+    const val =
+      dialect === "sqlite" && (f.type === "json" || f.type === "relation_many")
+        ? sql`json(${col})`
+        : col;
+    const agg =
+      dialect === "pg"
+        ? sql`jsonb_object_agg(${t}.${sql.identifier("locale")}, ${val})`
+        : sql`json_group_object(${t}.${sql.identifier("locale")}, ${val})`;
+    const scalar = sql`(SELECT ${agg} FROM ${sidecar} ${t} WHERE ${rowMatch})`;
+    out.set(f.name, dialect === "sqlite" ? sql`json(${scalar})` : scalar);
+  }
+  return out;
+};
+
 /** Parse a full-map aggregate value into a `{locale: deserialized}` object. */
-const deserializeLocaleMap = (
+export const deserializeLocaleMap = (
   v: unknown,
   type: FieldDef["type"],
   dialect: "pg" | "sqlite",

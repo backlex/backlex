@@ -171,8 +171,16 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const geoFieldNames = new Set(
         collection.fields.filter((f: FieldDef) => f.type === "geo").map((f: FieldDef) => f.name),
       );
+      // `q.expand.length` is in the condition because an EXPANDED collection can
+      // carry localized fields when this one does not — `products.category`
+      // pointing at a localized `categories` is exactly that shape. Gating on
+      // the base collection alone left the expanded object's fallback null while
+      // the base row had one, so the same field resolved differently depending
+      // on which side of the relation it was read from.
       const defaultLocale =
-        locale && locale !== "*" && hasLocalizedField(collection.fields)
+        locale &&
+        locale !== "*" &&
+        (hasLocalizedField(collection.fields) || q.expand.length > 0)
           ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
           : null;
 
@@ -504,7 +512,10 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         extraJoins: expandJoins,
         selects: expandSelects,
         plans: expandPlans,
-      } = await resolveExpands(ctx, auth, collection, expandOne, joinMap, q.expandSubs);
+      } = await resolveExpands(ctx, auth, collection, expandOne, joinMap, q.expandSubs, {
+        locale,
+        defaultLocale,
+      });
       const manyPlans = await resolveManyExpands(
         ctx,
         auth,
@@ -1104,7 +1115,7 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         // parse + camelCase + timestamp-deserialize it here so the
         // wire shape matches `GET /api/items/<target>/<id>`.
         if (expandPlans.length > 0) {
-          applyExpandToRow(out, r, expandPlans, ctx.dialect);
+          applyExpandToRow(out, r, expandPlans, ctx.dialect, { locale, defaultLocale });
         }
         return out;
       });

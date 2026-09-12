@@ -9,7 +9,7 @@
 import { useState } from "react";
 import type { ComparisonObj } from "backlex";
 import type { Category, Product } from "../lib/backlex";
-import { brands, categories, productTypes, products } from "../lib/backlex";
+import { ADMIN_LOCALE, brands, categories, productTypes, products } from "../lib/backlex";
 import { errText, useAsync, useToast } from "../lib/hooks";
 import { fmtMoney, fmtNumber } from "../lib/money";
 import {
@@ -41,7 +41,7 @@ export function Products({ go }: { go: (to: string) => void }) {
   const [creating, setCreating] = useState(false);
   const toast = useToast();
 
-  const cats = useAsync(() => categories.list({ sort: ["position"], limit: 200 }).then((r) => r.data), []);
+  const cats = useAsync(() => categories.list({ sort: ["position"], limit: 200, locale: ADMIN_LOCALE }).then((r) => r.data), []);
 
   const list = useAsync(async () => {
     // Typed as the condition leaf map rather than `Record<string, unknown>`:
@@ -60,6 +60,8 @@ export function Products({ go }: { go: (to: string) => void }) {
       offset,
       meta: "filter_count",
       expand: ["category", "brand"],
+      // Collapse the localized fields to one language — see ADMIN_LOCALE.
+      locale: ADMIN_LOCALE,
     });
   }, [q, status, categoryId, sort, offset]);
 
@@ -250,7 +252,7 @@ function NewProduct({
   const [err, setErr] = useState("");
 
   const types = useAsync(() => productTypes.list({ limit: 100 }).then((r) => r.data), []);
-  const brandList = useAsync(() => brands.list({ limit: 100 }).then((r) => r.data), []);
+  const brandList = useAsync(() => brands.list({ limit: 100, locale: ADMIN_LOCALE }).then((r) => r.data), []);
 
   async function submit() {
     setBusy(true);
@@ -265,7 +267,9 @@ function NewProduct({
         product_type: type || undefined,
         brand: brand || undefined,
         status: "active",
-      });
+      // `name` is localized: naming the locale writes the string as THAT
+      // language's value instead of being read as a full per-locale map.
+      }, { locale: ADMIN_LOCALE });
       // A versioned collection creates a DRAFT; publishing is a separate,
       // deliberate act, which is why it is a checkbox and not a side effect.
       if (publishNow) await products.publish(data.id);

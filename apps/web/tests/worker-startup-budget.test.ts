@@ -368,6 +368,21 @@ describe("worker startup budget", () => {
     // Keep both. This one catches something becoming REACHABLE; that one
     // catches it becoming EXPENSIVE, and the two are not the same event — a
     // 404 KiB module that only declares object literals costs 1.5 ms.
-    expect(kib).toBeLessThan(8500);
+    // Raised 8500 → 8515 on 2026-09-13, measured at 8504 — and this is the
+    // "next change to an eager file" the note above predicted would trip it.
+    // #377: `?expand=` into a collection with a `localized` field was an
+    // unconditional 500 (`no such column: rel_category.name`), because the
+    // expand builder read every target field off the join alias and a localized
+    // field has no column there. The growth is `buildLocalizedRefs` in
+    // `services/items/i18n-sidecar.ts` plus the locale plumbing in
+    // `services/items/expand.ts`.
+    //
+    // Nothing new became REACHABLE, which is the only thing this line measures
+    // (see the paragraph above on why it is not a startup-time proxy):
+    // `i18n-sidecar.ts` was already imported by both `routes/items/list.ts` and
+    // `routes/items/read.ts`, and the nine "not on the startup path" guards are
+    // green. `bun run startup:budget` — the half that reads the BUILT bundle —
+    // is the one to watch if this ever stops being true.
+    expect(kib).toBeLessThan(8515);
   });
 });

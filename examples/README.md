@@ -48,3 +48,14 @@ commands, and list it in this table.
    (API + admin on `http://localhost:5173`).
 2. `cd examples/<name>` and follow its README — typically `cp .env.example .env`,
    set a value or two, then `bun run dev`.
+
+**Tired of typing credentials?** Every example's `.env.example` ends with an
+optional pre-fill block — set `VITE_DEMO_EMAIL` + `VITE_DEMO_PASSWORD` (or
+`DEMO_EMAIL` / `DEMO_PASSWORD` in `nextjs-app`, which reads them on the server)
+and the sign-in form opens already filled in. Both must be set or neither
+applies. Unset is the default, so nothing about this reaches a build that did
+not ask for it — which is the difference between this and the product's own
+[demo mode](../docs/demo-mode.md), where the **server** publishes the
+credentials because only a server knows an instance is a playground.
+`react-router-app` has no sign-in form at all (it authenticates with an API key
+that never leaves the server), so it has nothing to pre-fill.

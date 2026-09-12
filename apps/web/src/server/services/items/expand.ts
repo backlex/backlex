@@ -1,6 +1,12 @@
 import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
+import { isLocalized } from "@backlex/db";
+import {
+  buildLocalizedRefs,
+  deserializeLocaleMap,
+  isSingleLocale,
+} from "./i18n-sidecar";
 import type { Ctx } from "../../context";
 import { resolvePermission } from "../permissions";
 import { loadCollection, type CollectionRow } from "./collection-loader";
@@ -76,6 +82,46 @@ export const buildExpandObject = (
   const args = cols.flatMap((c) => [sql`${c.key}`, c.ref]);
   const objectExpr = sql`${builder}(${sql.join(args, sql`, `)})`;
   return sql`CASE WHEN ${baseFkRef} IS NULL THEN NULL ELSE ${objectExpr} END`;
+};
+
+/**
+ * How an expanded object renders the target's `localized` fields. Carried, not
+ * derived: only the request knows it, and the modes differ in SHAPE — a named
+ * locale yields the native value, no locale the `{locale: value}` map, which is
+ * what the unexpanded row yields in each case.
+ */
+export interface ExpandLocaleOpts {
+  locale: string | null;
+  defaultLocale: string | null;
+}
+
+/** No localization requested — the shape callers had before `?locale=`. */
+export const NO_EXPAND_LOCALE: ExpandLocaleOpts = { locale: null, defaultLocale: null };
+
+/**
+ * Column references for one expand target. A `localized` field resolves against
+ * the target's sidecar; a plain `alias.<field>` would name a column that does
+ * not exist. Everything else keeps the direct reference, so the subquery is
+ * paid only where it is needed.
+ */
+const targetColRefs = (
+  target: CollectionRow,
+  alias: string,
+  dialect: "pg" | "sqlite",
+  localeOpts: ExpandLocaleOpts,
+): ((f: { name: string }) => SQL) => {
+  const aliasId = sql.identifier(alias);
+  const localizedDefs = target.fields.filter(isLocalized);
+  if (localizedDefs.length === 0) {
+    return (f) => sql`${aliasId}.${sql.identifier(f.name)}`;
+  }
+  const refs = buildLocalizedRefs(localizedDefs, dialect, {
+    physicalTable: target.physicalTable,
+    rowRef: sql`${aliasId}.${sql.identifier(target.pkColumn)}`,
+    locale: localeOpts.locale,
+    defaultLocale: localeOpts.defaultLocale,
+  });
+  return (f) => refs.get(f.name) ?? sql`${aliasId}.${sql.identifier(f.name)}`;
 };
 
 export const buildExpandSelect = (
@@ -173,6 +219,9 @@ export const resolveExpands = async (
    * absent ⇒ whole readable row (the `expand=` param default).
    */
   subFields: Map<string, Set<string>> = new Map(),
+  /** How to render the targets' `localized` fields. Defaults to the full-map
+   *  shape, which is what a request with no `?locale=` asks for. */
+  localeOpts: ExpandLocaleOpts = NO_EXPAND_LOCALE,
 ): Promise<{ extraJoins: SQL[]; selects: SQL[]; plans: ExpandPlan[] }> => {
   if (expand.length === 0) {
     return { extraJoins: [], selects: [], plans: [] };
@@ -288,10 +337,11 @@ export const resolveExpands = async (
       const phys = target.ownerIdColumn ?? "owner_id";
       cols.push({ key: "owner_id", ref: sql`${aliasId}.${sql.identifier(phys)}` });
     }
+    const refOf = targetColRefs(target, alias, ctx.dialect, localeOpts);
     for (const f of target.fields) {
       if (targetPerm.fields && !targetPerm.fields.has(f.name)) continue;
       if (!wants(f.name)) continue;
-      cols.push({ key: f.name, ref: sql`${aliasId}.${sql.identifier(f.name)}` });
+      cols.push({ key: f.name, ref: refOf(f) });
     }
     // Chained expansion: `?expand=order_id.customer_id` inlines the customer
     // INSIDE the order. Each further hop is another LEFT JOIN sharing the
@@ -310,6 +360,7 @@ export const resolveExpands = async (
       joinMap,
       extraJoins,
       cols,
+      localeOpts,
     );
 
     const outputCol = `__expand_${head}`;
@@ -345,6 +396,7 @@ const resolveExpandChildren = async (
   joinMap: Map<string, { alias: string; target: CollectionRow }>,
   extraJoins: SQL[],
   cols: Array<{ key: string; ref: SQL }>,
+  localeOpts: ExpandLocaleOpts,
 ): Promise<ExpandNode[]> => {
   const bySegment = new Map<string, string[][]>();
   for (const tail of tails) {
@@ -421,9 +473,10 @@ const resolveExpandChildren = async (
         ref: sql`${aliasId}.${sql.identifier(target.ownerIdColumn ?? "owner_id")}`,
       });
     }
+    const refOf = targetColRefs(target, alias, ctx.dialect, localeOpts);
     for (const f of target.fields) {
       if (perm.fields && !perm.fields.has(f.name)) continue;
-      childCols.push({ key: f.name, ref: sql`${aliasId}.${sql.identifier(f.name)}` });
+      childCols.push({ key: f.name, ref: refOf(f) });
     }
 
     const grandchildren = await resolveExpandChildren(
@@ -436,6 +489,7 @@ const resolveExpandChildren = async (
       joinMap,
       extraJoins,
       childCols,
+      localeOpts,
     );
 
     // Nested under the parent's own FK column, so a null FK on the PARENT row
@@ -482,6 +536,9 @@ export const applyExpandToRow = (
   raw: Record<string, unknown>,
   plans: ExpandPlan[],
   dialect: "pg" | "sqlite",
+  /** Must match what `resolveExpands` was given — it decides whether a
+   *  localized value arrives as a native value or a `{locale: value}` map. */
+  localeOpts: ExpandLocaleOpts = NO_EXPAND_LOCALE,
 ): void => {
   for (const plan of plans) {
     const v = raw[plan.outputCol];
@@ -506,7 +563,7 @@ export const applyExpandToRow = (
       out[plan.head] = null;
       continue;
     }
-    out[plan.head] = shapeExpanded(obj, plan.target, plan.children, dialect);
+    out[plan.head] = shapeExpanded(obj, plan.target, plan.children, dialect, localeOpts);
   }
 };
 
@@ -626,6 +683,7 @@ const shapeExpanded = (
   target: CollectionRow,
   children: ExpandNode[],
   dialect: "pg" | "sqlite",
+  localeOpts: ExpandLocaleOpts = NO_EXPAND_LOCALE,
 ): Record<string, unknown> => {
   const expanded: Record<string, unknown> = {};
   // System keys → camelCase, matching the top-level row shape that
@@ -638,11 +696,21 @@ const shapeExpanded = (
     expanded.updatedAt = deserialize(obj.updated_at, "timestamp", dialect);
   }
   if ("owner_id" in obj) expanded.ownerId = obj.owner_id ?? null;
+  const singleLocale = isSingleLocale(localeOpts.locale);
   for (const f of target.fields) {
     if (!(f.name in obj)) continue;
     // Permission `fields` allow-list was already enforced at SELECT
     // emission time, so anything present here is allowed.
-    expanded[f.name] = deserializeField(obj[f.name], f, dialect, obj, target.fields);
+    //
+    // A localized field arrives in whichever shape the SELECT asked for: the
+    // native value under a named locale, the `{locale: value}` map otherwise.
+    // Running the map through `deserializeField` would coerce the whole object
+    // to one value of the field's type — the same mis-read `deserializeRow`
+    // avoids by skipping localized fields entirely.
+    expanded[f.name] =
+      isLocalized(f) && !singleLocale
+        ? deserializeLocaleMap(obj[f.name], f.type, dialect)
+        : deserializeField(obj[f.name], f, dialect, obj, target.fields);
   }
   // Nested expands replace the FK value under the same key, exactly as the top
   // level replaces `order_id` with the order.
@@ -659,7 +727,7 @@ const shapeExpanded = (
       nested = raw as Record<string, unknown>;
     }
     expanded[child.key] = nested
-      ? shapeExpanded(nested, child.target, child.children, dialect)
+      ? shapeExpanded(nested, child.target, child.children, dialect, localeOpts)
       : null;
   }
   return expanded;

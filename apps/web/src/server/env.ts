@@ -96,7 +96,7 @@ export interface Env {
    *  breaks a working application for somebody who changed nothing. What made
    *  the flip safe was the advisor rule that answers "would enforcing refuse
    *  anything this workspace actually does?" from recorded spans rather than
-   *  from a guess — see `services/advisor.ts` and `docs/advisor.md`.
+   *  from a guess — see `services/advisor/index.ts` and `docs/advisor.md`.
    *
    *  `warn` is now the MIGRATION setting, not the resting state: set it, run
    *  the advisor's `permission-write-check` rule over a representative window,

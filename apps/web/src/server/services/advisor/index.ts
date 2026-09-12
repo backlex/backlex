@@ -11,7 +11,7 @@
  *    fire on a workspace with zero traffic, because they reason about the
  *    schema alone.
  *  - **runtime, traffic-derived** (v2) — aggregate the `spans` rows the request
- *    middleware already writes (`services/advisor-insights.ts`) and flag what
+ *    middleware already writes (`services/advisor/insights.ts`) and flag what
  *    actually happened: endpoints whose p95 is slow, endpoints returning 5xx,
  *    and columns real list traffic filters/sorts on that have no index. Every
  *    such finding quotes the observed numbers and the window they came from.
@@ -35,21 +35,21 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
-import type { Env } from "../env";
-import { loadEmailConfigRow } from "./email-config";
-import { loadSmsConfigRow } from "./sms-config";
-import { loadPushConfigRow } from "./push-config";
-import { selectSmsSpec } from "../lib/sms-select";
-import { selectPushSpec } from "../lib/push-select";
-import { cloudConfigured } from "../lib/cloud-report";
-import { loadBackupConfig } from "./backup";
-import { recordActivity } from "./activity";
+import type { Env } from "../../env";
+import { loadEmailConfigRow } from "../email-config";
+import { loadSmsConfigRow } from "../sms-config";
+import { loadPushConfigRow } from "../push-config";
+import { selectSmsSpec } from "../../lib/sms-select";
+import { selectPushSpec } from "../../lib/push-select";
+import { cloudConfigured } from "../../lib/cloud-report";
+import { loadBackupConfig } from "../backup";
+import { recordActivity } from "../activity";
 import {
   type RuntimeInsights,
   collectionFromPath,
   loadRuntimeInsights,
-} from "./advisor-insights";
-import { assertNotDemo } from "./demo";
+} from "./insights";
+import { assertNotDemo } from "../demo";
 
 export type AdvisorKind = "security" | "performance";
 export type AdvisorLevel = "error" | "warn" | "info";

@@ -33,8 +33,8 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
-import type { Env } from "../env";
-import { traceSampleRate } from "./traces";
+import type { Env } from "../../env";
+import { traceSampleRate } from "../traces";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.spans : sqlite.schema.spans;

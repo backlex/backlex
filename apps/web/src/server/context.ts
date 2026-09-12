@@ -213,7 +213,7 @@ export interface Ctx {
    * `warn`, reads this, widens the conditions it names, and unsets it. So the write path appends here, the
    * span middleware folds it into the span's `attributes`, and the
    * `permission-write-check` rule counts them over the window. See
-   * `services/advisor.ts` and issue #334.
+   * `services/advisor/index.ts` and issue #334.
    *
    * Set by the request middleware (`app.ts`) as a FRESH array per request.
    * `buildContext` is memoized per isolate, so a collector that defaulted

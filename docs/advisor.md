@@ -14,7 +14,7 @@ computed from real DB / env / span data; no statistics are fabricated.
     the traffic-derived rules are computed from.
   - `POST /api/admin/advisor/apply` — carry out a finding's remediation.
 - **Runs on demand.** There is no server cron or cache — the rules engine
-  (`apps/web/src/server/services/advisor.ts`) executes on every request. The
+  (`apps/web/src/server/services/advisor/index.ts`) executes on every request. The
   page header shows `Last run: <local time>` from the response's
   `generatedAt` field.
 - **Tenant-scoped.** Findings only reflect the caller's active workspace.

@@ -14,7 +14,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import {
   collectionFromPath,
   normalizeRoutePath,
-} from "../src/server/services/advisor-insights";
+} from "../src/server/services/advisor/insights";
 import { advisorIndexName } from "../src/server/services/advisor";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };

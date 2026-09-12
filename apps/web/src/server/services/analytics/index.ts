@@ -130,7 +130,7 @@ const elapsedMsSql = (dialect: "pg" | "sqlite", a: string, b: string) =>
     : sql.raw(`(${b} - ${a})`);
 
 /** Run a raw query against either dialect, normalising to a plain row array
- *  (mirrors `services/advisor.ts::runRaw`). */
+ *  (mirrors `services/advisor/index.ts::runRaw`). */
 const runRaw = async <T>(
   db: any,
   dialect: "pg" | "sqlite",

@@ -349,7 +349,7 @@ Cloudflare so the Worker (not Static Assets `_headers`) controls their CSP.
 
 ## Surfaces
 
-Everything goes through one service (`services/forms.ts`):
+Everything goes through one service (`services/forms/index.ts`):
 
 | Surface | Entry |
 |---|---|

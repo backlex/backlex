@@ -897,7 +897,7 @@ const LEGACY_PLAINTEXT_MSG = "[app-orgs] legacy plaintext invite token accepted"
  * That matters because the token is a bearer credential: whoever holds it is
  * seated in the org at the invited role, `admin` included. So it is no longer
  * readable at rest — `token_hash` holds a SHA-256 digest, the same scheme
- * `services/form-invites.ts` and `services/shared-links.ts` already use, and
+ * `services/forms/invites.ts` and `services/shared-links.ts` already use, and
  * the lookup hashes what arrives rather than comparing secrets.
  *
  * `app_org_invites.token` is NOT NULL and cannot cheaply be relaxed (see the

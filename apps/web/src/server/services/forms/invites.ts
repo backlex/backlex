@@ -28,8 +28,8 @@ import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { Ctx } from "../context";
-import { hashToken } from "./shared-links";
+import type { Ctx } from "../../context";
+import { hashToken } from "../shared-links";
 
 const invitesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.formInvites : sqlite.schema.formInvites;

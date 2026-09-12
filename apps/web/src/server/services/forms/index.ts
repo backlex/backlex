@@ -24,7 +24,7 @@
  * are rejected at definition time AND re-filtered at read/submit time, so a
  * stale form definition can never leak or write a field that later became
  * ineligible. File blocks never accept a raw storage key — submits only take
- * the signed ticket minted by the public upload endpoint (`form-uploads.ts`),
+ * the signed ticket minted by the public upload endpoint (`forms/uploads.ts`),
  * so an anonymous submitter can't point a row at someone else's object.
  */
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
@@ -32,13 +32,13 @@ import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { getChoices, type FieldDef } from "@backlex/db";
-import type { Ctx } from "../context";
-import type { CaptchaProvider } from "./captcha";
-import type { CollectionRow } from "./items/collection-loader";
-import { loadCollection } from "./items/collection-loader";
-import { deleteFormDrafts } from "./form-drafts";
-import { deleteFormInvites } from "./form-invites";
-import { hashToken } from "./shared-links";
+import type { Ctx } from "../../context";
+import type { CaptchaProvider } from "../captcha";
+import type { CollectionRow } from "../items/collection-loader";
+import { loadCollection } from "../items/collection-loader";
+import { deleteFormDrafts } from "./drafts";
+import { deleteFormInvites } from "./invites";
+import { hashToken } from "../shared-links";
 
 const formTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.forms : sqlite.schema.forms;
@@ -207,7 +207,7 @@ export interface FormSettings {
   /** Only a visitor holding an unspent invite may answer (`/f/<token>?i=…`). */
   inviteOnly?: boolean;
   /** Keep what someone has filled in so far, so they can come back to it.
-   *  See `services/form-drafts.ts` for what identifies "someone". */
+   *  See `services/forms/drafts.ts` for what identifies "someone". */
   saveProgress?: boolean;
   /** What the page says once the form is closed. Falls back to a default. */
   closedMessage?: string;
@@ -1023,7 +1023,7 @@ export const resolveFormLocale = (form: FormRow, lang: string | null): string =>
 };
 
 /** Default + ceiling for one anonymous form upload when the env doesn't say
- *  otherwise (`FORM_UPLOAD_MAX_BYTES`). Lives here so `form-uploads.ts` and
+ *  otherwise (`FORM_UPLOAD_MAX_BYTES`). Lives here so `forms/uploads.ts` and
  *  the definition builder agree without a circular import. */
 export const FORM_UPLOAD_DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 

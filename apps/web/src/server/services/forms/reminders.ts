@@ -1,18 +1,18 @@
 /**
  * A second mail to whoever hasn't answered.
  *
- * Minting the fresh links is `form-invites.ts`'s job; deciding that a reminder
+ * Minting the fresh links is `forms/invites.ts`'s job; deciding that a reminder
  * is allowed at all, and putting it in an envelope, is this one's. It lives
  * beside them rather than inside the REST handler so the GraphQL twin runs the
  * same guard and sends the same mail — a surface that re-implements either ends
  * up with its own opinion about when a form is still open.
  */
 import { AppError } from "@backlex/core";
-import type { Ctx } from "../context";
-import { sendTemplatedEmail } from "./email";
-import { formAvailability, type FormRow } from "./forms";
-import { markInviteSent, remindFormInvites, type MintedInvite } from "./form-invites";
-import { escapeHtml } from "./signatures";
+import type { Ctx } from "../../context";
+import { sendTemplatedEmail } from "../email";
+import { formAvailability, type FormRow } from "./index";
+import { markInviteSent, remindFormInvites, type MintedInvite } from "./invites";
+import { escapeHtml } from "../signatures";
 
 export interface RemindOptions {
   /** Narrow to specific invites; absent ⇒ everyone still outstanding. */

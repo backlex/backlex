@@ -25,8 +25,8 @@
 import { and, eq, lt, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { Ctx } from "../context";
-import { hashToken } from "./shared-links";
+import type { Ctx } from "../../context";
+import { hashToken } from "../shared-links";
 
 const draftsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.formDrafts : sqlite.schema.formDrafts;

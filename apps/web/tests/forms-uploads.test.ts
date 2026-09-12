@@ -233,7 +233,7 @@ describe("public form file uploads", () => {
   test("sweep deletes stale pending uploads but keeps consumed ones", async () => {
     const { buildContext } = await import("../src/server/context");
     const { sweepStaleFormUploads } = await import(
-      "../src/server/services/form-uploads"
+      "../src/server/services/forms/uploads"
     );
     const ctx = await buildContext(h.env);
 

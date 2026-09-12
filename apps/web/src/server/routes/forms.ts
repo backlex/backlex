@@ -18,8 +18,8 @@ import {
   updateForm,
   type FormRow,
 } from "../services/forms";
-import { formResults } from "../services/forms-results";
-import { sendFormReminders } from "../services/form-reminders";
+import { formResults } from "../services/forms/results";
+import { sendFormReminders } from "../services/forms/reminders";
 import {
   createFormInvites,
   deleteFormInvite,
@@ -28,7 +28,7 @@ import {
   MAX_INVITES_PER_CALL,
   type FormInviteRow,
   type MintedInvite,
-} from "../services/form-invites";
+} from "../services/forms/invites";
 import { sendTemplatedEmail } from "../services/email";
 import { escapeHtml } from "../services/signatures";
 

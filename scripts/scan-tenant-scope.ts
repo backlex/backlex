@@ -170,7 +170,7 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/traces.ts", symbol: "pruneOldSpans", reason: "Retention sweep over trace spans, bounded by createdAt." },
   { file: "apps/web/src/server/services/broadcast.ts", symbol: "pruneBroadcastMessages", reason: "Retention sweep over channel history, bounded by day." },
   { file: "apps/web/src/server/services/consent/records.ts", symbol: "pruneConsentRecords", reason: "Retention sweep over consent records, bounded by createdAt." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "sweepStaleFormDrafts", reason: "Retention sweep over abandoned form drafts, bounded by updatedAt." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "sweepStaleFormDrafts", reason: "Retention sweep over abandoned form drafts, bounded by updatedAt." },
   { file: "apps/web/src/server/services/uploads.ts", symbol: "sweepExpiredUploads", reason: "Aborts pending uploads past expiresAt. Cron-driven; no request tenant." },
   { file: "apps/web/src/server/services/flow-schedules.ts", symbol: "pruneScheduleFires", reason: "Retention sweep over schedule fire records, bounded by fireAt." },
   { file: "apps/web/src/server/services/flow-schedules.ts", symbol: "listScheduleFlows", reason: "The cron tick has to see every active scheduled flow in the database to know which are due." },
@@ -193,17 +193,17 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   // need an answer the call does not have yet.
   { file: "apps/web/src/server/services/api-keys.ts", symbol: "findApiKey", reason: "Resolves a pak_ key by its hash. This is how the request's workspace is determined in the first place." },
   { file: "apps/web/src/server/services/s3/credentials.ts", symbol: "resolveS3Credential", reason: "Resolves an SigV4 access key id to its credential row, which carries the workspace the S3 request runs in." },
-  { file: "apps/web/src/server/services/forms.ts", symbol: "resolveFormToken", reason: "Resolves a public form's token hash; the row it returns is what tells the hosted form which workspace it belongs to." },
+  { file: "apps/web/src/server/services/forms/index.ts", symbol: "resolveFormToken", reason: "Resolves a public form's token hash; the row it returns is what tells the hosted form which workspace it belongs to." },
   { file: "apps/web/src/server/services/dashboards.ts", symbol: "resolveEmbedToken", reason: "Resolves a dashboard embed token hash; the row carries the workspace the embed renders for." },
   { file: "apps/web/src/server/services/shared-links.ts", symbol: "resolveSharedLink", reason: "Resolves a shared-record link by token hash; the token is the whole grant." },
   { file: "apps/web/src/server/services/approvals.ts", symbol: "resolveByToken", reason: "Reads the request row an approver's emailed token already resolved to." },
   { file: "apps/web/src/server/services/signatures.ts", symbol: "resolveSignerToken", reason: "Reads the signature request a signer's token already resolved to." },
   { file: "apps/web/src/server/services/integration-webhooks.ts", symbol: "findByToken", reason: "Resolves an inbound webhook token to its sync row, which carries the workspace to write into." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "checkFormInvite", reason: "Resolves an invite by token hash, additionally narrowed to the form the request named." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "checkFormInvite", reason: "Resolves an invite by token hash, additionally narrowed to the form the request named." },
   { file: "apps/web/src/server/services/invites.ts", symbol: "findInviteByToken", reason: "Resolves a workspace invite by its token (hashed, plus the legacy plaintext column). An invitee has no workspace until this call answers." },
   { file: "apps/web/src/server/routes/tenant-auth.ts", symbol: "revokeAppSession", reason: "Deletes an app-plane session by its bearer token. Holding the token is the authorisation." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "loadFormDraft", reason: "Keyed on (formId, keyHash) — the draft key is a secret held by the submitting browser." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "deleteFormDraft", reason: "Keyed on (formId, keyHash), same grant as loadFormDraft." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "loadFormDraft", reason: "Keyed on (formId, keyHash) — the draft key is a secret held by the submitting browser." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "deleteFormDraft", reason: "Keyed on (formId, keyHash), same grant as loadFormDraft." },
   { file: "apps/web/src/server/lib/third-party-jwt.ts", symbol: "loadProviderByIssuer", reason: "Maps a JWT `iss` to the provider row that trusts it, and the row supplies the workspace. NOTE: with limit(1), two workspaces trusting the SAME issuer resolve to whichever row comes back first — a registration-time uniqueness question, not a missing predicate." },
 
   // ── Reads back a row it has just written ────────────────────────────────
@@ -242,11 +242,11 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/approvals.ts", symbol: "expireRequest", reason: "Reads the request id that expireDueRequests selected." },
   { file: "apps/web/src/server/services/approvals.ts", symbol: "expireDueRequests", reason: "Cron: expires every pending request past expiresAt across the database." },
   { file: "apps/web/src/server/services/signatures.ts", symbol: "declineDocument", reason: "Compare-and-set on the request the signer's token already resolved to." },
-  { file: "apps/web/src/server/services/forms.ts", symbol: "recordFormSubmission", reason: "Increments the counter of the form row resolveFormToken already resolved from the submitted token." },
-  { file: "apps/web/src/server/services/forms.ts", symbol: "recordFormBlocked", reason: "Increments the blocked counter of the same token-resolved form row." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "consumeFormInvite", reason: "Compare-and-set on the invite checkFormInvite resolved from the submitted token." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "releaseFormInvite", reason: "Undoes consumeFormInvite for the same invite id when the submission fails." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "markInviteSent", reason: "Stamps sentAt on an invite the scoped create/remind path just wrote." },
+  { file: "apps/web/src/server/services/forms/index.ts", symbol: "recordFormSubmission", reason: "Increments the counter of the form row resolveFormToken already resolved from the submitted token." },
+  { file: "apps/web/src/server/services/forms/index.ts", symbol: "recordFormBlocked", reason: "Increments the blocked counter of the same token-resolved form row." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "consumeFormInvite", reason: "Compare-and-set on the invite checkFormInvite resolved from the submitted token." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "releaseFormInvite", reason: "Undoes consumeFormInvite for the same invite id when the submission fails." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "markInviteSent", reason: "Stamps sentAt on an invite the scoped create/remind path just wrote." },
   { file: "apps/web/src/server/services/api-keys.ts", symbol: "touchLastUsed", reason: "Stamps lastUsedAt on the key row findApiKey just resolved for this request." },
   { file: "apps/web/src/server/services/s3/credentials.ts", symbol: "touchS3Credential", reason: "Stamps lastUsedAt on the credential row resolveS3Credential just resolved." },
   { file: "apps/web/src/server/services/sso-provisioning.ts", symbol: "touchExternalIdentity", reason: "Stamps last-seen data on the external identity row the SSO callback just matched." },
@@ -307,10 +307,10 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "memberRole", reason: "Reached by (orgId, appUserId); the org was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "ownerCount", reason: "Counts the owners of one organization, by orgId, for an org the caller resolved with a tenant predicate." },
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "sessionActiveOrg", reason: "Reads activeOrgId off the app session id the caller is authenticated as." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "deleteFormDrafts", reason: "Cascades to the drafts of one form, by formId, when that form is deleted under a scoped query." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "countFormDrafts", reason: "Counts the saved drafts of one form, by formId, for a form the caller resolved with a tenant predicate." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "remindFormInvites", reason: "Inserts fresh token rows for invites of a form the caller resolved with tenantId." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "deleteFormInvites", reason: "Cascades to a form's invites and their tokens, by formId, when that form is deleted." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "deleteFormDrafts", reason: "Cascades to the drafts of one form, by formId, when that form is deleted under a scoped query." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "countFormDrafts", reason: "Counts the saved drafts of one form, by formId, for a form the caller resolved with a tenant predicate." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "remindFormInvites", reason: "Inserts fresh token rows for invites of a form the caller resolved with tenantId." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "deleteFormInvites", reason: "Cascades to a form's invites and their tokens, by formId, when that form is deleted." },
   { file: "apps/web/src/server/services/consent/index.ts", symbol: "getPolicyForSite", reason: "Reached by siteId, joined to the analytics site row that owns it." },
   { file: "apps/web/src/server/services/consent/index.ts", symbol: "deletePolicyForDeletedSite", reason: "Cascades a site's policy and versions by siteId, called only from the scoped site delete." },
   { file: "apps/web/src/server/services/consent/records.ts", symbol: "deleteSiteRecords", reason: "Cascades a site's consent records by siteId, called only from the scoped site delete." },
@@ -1162,7 +1162,7 @@ export const hasTenantPredicate = (
  * The write is unscoped in isolation, but it is unreachable for a foreign row:
  * the read one line up was given BOTH the key and the tenant, and returning
  * early on a miss is the containment. `jobs.ts` does this three times,
- * `forms.ts`, `uploads.ts`, `documents.ts`, `signatures.ts` and `app-orgs.ts`
+ * `forms/index.ts`, `uploads.ts`, `documents.ts`, `signatures.ts` and `app-orgs.ts`
  * all do it, and hand-allowlisting ~90 instances of one idiom would produce a
  * ledger that says the same sentence ninety times — which is a ledger nobody
  * reads, and therefore no ledger at all.

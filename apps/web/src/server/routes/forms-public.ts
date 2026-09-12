@@ -34,7 +34,7 @@ import {
   checkFormInvite,
   consumeFormInvite,
   releaseFormInvite,
-} from "../services/form-invites";
+} from "../services/forms/invites";
 import {
   deleteFormDraft,
   formDraftCookieName,
@@ -43,13 +43,13 @@ import {
   newFormDraftSecret,
   saveFormDraft,
   FORM_DRAFT_MAX_BYTES,
-} from "../services/form-drafts";
+} from "../services/forms/drafts";
 import {
   consumeFormUploadTicket,
   formUploadPolicy,
   matchesAccept,
   storeFormUpload,
-} from "../services/form-uploads";
+} from "../services/forms/uploads";
 import { assertDeclaredLengthWithin } from "../services/storage/limit-stream";
 import { DEMO_BLOCKED_MESSAGE, isDemoMode } from "../services/demo";
 import { assertStorageWithinLimit } from "../services/usage";

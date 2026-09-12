@@ -22,11 +22,11 @@
 import { AppError } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
 import { getChoices, type FieldDef } from "@backlex/db";
-import type { Ctx } from "../context";
-import { loadCollection } from "./items/collection-loader";
-import { runItemsAggregate } from "./items/aggregate";
-import { exposedBlocks, resolveScale, type FormRow } from "./forms";
-import { countFormDrafts } from "./form-drafts";
+import type { Ctx } from "../../context";
+import { loadCollection } from "../items/collection-loader";
+import { runItemsAggregate } from "../items/aggregate";
+import { exposedBlocks, resolveScale, type FormRow } from "./index";
+import { countFormDrafts } from "./drafts";
 
 /** How a block's answers are summarised. */
 export type FormResultKind =

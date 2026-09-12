@@ -103,7 +103,7 @@ test("pg: a second save replaces the draft rather than forking it", async () => 
 test("pg: the stale sweep's timestamp comparison parses", async () => {
   if (skipped()) return;
   const { buildContext } = await import("../src/server/context");
-  const { sweepStaleFormDrafts } = await import("../src/server/services/form-drafts");
+  const { sweepStaleFormDrafts } = await import("../src/server/services/forms/drafts");
   const ctx = (await buildContext(harness!.env)) as any;
   // Nothing is stale yet, so the assertion is that it RUNS: the bound value is
   // a Date here and a number on SQLite, and only one of those parses.

@@ -19,12 +19,12 @@
  */
 import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
-import type { Env } from "../env";
-import type { Ctx } from "../context";
-import { FORM_UPLOAD_DEFAULT_MAX_BYTES } from "./forms";
-import { filesTable } from "./storage/folders";
-import { physicalKey } from "./storage/keys";
-import { baseContentType } from "./storage/content-type";
+import type { Env } from "../../env";
+import type { Ctx } from "../../context";
+import { FORM_UPLOAD_DEFAULT_MAX_BYTES } from "./index";
+import { filesTable } from "../storage/folders";
+import { physicalKey } from "../storage/keys";
+import { baseContentType } from "../storage/content-type";
 
 const TICKET_PREFIX = "fut_";
 /** How long a ticket stays valid between upload and submit. */

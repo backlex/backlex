@@ -1,6 +1,6 @@
 /**
  * SCIM admin config. Admin-only, scoped to the active workspace. Mounted at
- * `/api/admin/scim`. Distinct from `routes/scim.ts`, which is the RFC 7644
+ * `/api/admin/scim`. Distinct from `routes/scim/index.ts`, which is the RFC 7644
  * surface the IdP itself calls with a bearer token.
  *
  *   - `GET    /`         — current config (never the token)
@@ -11,18 +11,18 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
 import {
   deleteScimConfig,
   getScimConfig,
   issueScimToken,
   updateScimConfig,
-} from "../services/scim";
-import { logActivity } from "../services/activity";
-import { defaultHook } from "../lib/openapi-router";
-import { readJsonOr } from "../lib/body";
+} from "../../services/scim";
+import { logActivity } from "../../services/activity";
+import { defaultHook } from "../../lib/openapi-router";
+import { readJsonOr } from "../../lib/body";
 
 const ConfigView = z
   .object({

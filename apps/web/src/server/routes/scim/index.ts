@@ -15,8 +15,8 @@
  */
 import { Hono } from "hono";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { keepAliveCtx } from "../services/activity";
+import type { AppBindings } from "../../app";
+import { keepAliveCtx } from "../../services/activity";
 import {
   createScimUser,
   deactivateScimUser,
@@ -34,8 +34,8 @@ import {
   serviceProviderConfig,
   touchScimConfig,
   type ScimPatchOp,
-} from "../services/scim";
-import { readJsonOr } from "../lib/body";
+} from "../../services/scim";
+import { readJsonOr } from "../../lib/body";
 
 const SCIM_CONTENT_TYPE = "application/scim+json; charset=utf-8";
 

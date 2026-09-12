@@ -37,7 +37,7 @@ import { authAdminRoutes } from "./auth/admin";
 import { samlAdminRoutes } from "./sso/saml-admin";
 import { oidcAdminRoutes } from "./sso/oidc-admin";
 import { thirdPartyAuthAdminRoutes } from "./third-party-auth-admin";
-import { scimAdminRoutes } from "./scim-admin";
+import { scimAdminRoutes } from "./scim/admin";
 import { syncHooksRoutes } from "./sync-hooks";
 import { authHooksRoutes } from "./auth-hooks";
 import { realtimeChannelsRoutes } from "./realtime/channels";

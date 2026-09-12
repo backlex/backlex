@@ -4,7 +4,7 @@
  *
  * The control-plane better-auth instance loads its plugin set once per isolate
  * from `env.AUTH_PLUGINS` and is never rebuilt, so before the HTTP-edge gate in
- * routes/auth.ts a magic-link / email-OTP provider toggled off in admin would
+ * routes/auth/index.ts a magic-link / email-OTP provider toggled off in admin would
  * still mint sessions. These tests lock that gate in.
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";

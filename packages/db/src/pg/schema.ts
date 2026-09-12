@@ -2506,7 +2506,7 @@ export const i18nStrings = pgTable(
  * distinction is the whole point: a NULL is indistinguishable from a row whose
  * tenant column was simply never filled in, and readers that could not tell the
  * two apart spread one admin's branding over every workspace's settings. The
- * repo already wrote `'_global'` from several call sites (`routes/auth-admin.ts`,
+ * repo already wrote `'_global'` from several call sites (`routes/auth/admin.ts`,
  * the email/push/SMS selectors) while others wrote NULL for the same tier, so
  * the two representations of "global" coexisted in one table.
  * `20260829120000_app_settings_global_sentinel` collapses them.

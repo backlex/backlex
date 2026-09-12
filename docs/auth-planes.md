@@ -282,7 +282,7 @@ The instances are **cached per isolate** in
 `apps/web/src/server/services/tenant-auth.ts::getTenantAuth`. The
 cache is a 50-entry LRU with a 5-minute TTL plus explicit invalidation
 through `invalidateTenantAuth(tenantId)`. The admin routes that mutate
-auth-relevant config — `routes/auth-admin.ts` (PATCH `auth_config`),
+auth-relevant config — `routes/auth/admin.ts` (PATCH `auth_config`),
 `routes/email/config.ts` (PUT) and `routes/workspace-config.ts` — all
 call it so the next request rebuilds with the new state. **TTL is the
 fallback** for changes made on a different isolate (Workers run a
@@ -370,7 +370,7 @@ email/password + social, all reached under `/api/auth/*`:
   built once per isolate from `AUTH_PLUGINS` and never rebuilt, so an
   admin disabling `magic` / `emailOtp` in Auth Settings can't tear the
   plugin down. The sign-in router
-  (`apps/web/src/server/routes/auth.ts`) closes the gap at the HTTP
+  (`apps/web/src/server/routes/auth/index.ts`) closes the gap at the HTTP
   edge: a request to a magic-link / email-OTP endpoint whose provider
   is explicitly `enabled: false` returns 403 before reaching the
   handler. (The workspace plane already rebuilds its plugin list from
@@ -389,7 +389,7 @@ email/password + social, all reached under `/api/auth/*`:
 
   `app-only` is the usual shape: staff go through the company IdP while
   the app's customers keep the login they signed up with. Enforcement is
-  at the HTTP edge on both mounts (`routes/auth.ts` for the platform
+  at the HTTP edge on both mounts (`routes/auth/index.ts` for the platform
   plane, `routes/tenant-auth.ts` for the app plane) and covers **every**
   password path — `sign-in/email`, `sign-up/email`, and
   `forget`/`reset-password` — because a sign-up mints a session directly
@@ -607,7 +607,7 @@ curl -X POST https://api.backlex.example.com/api/collections \
 
 **2. Operator enables Google + magic-link for Acme.**
 
-PATCH `/api/admin/auth` (route in `apps/web/src/server/routes/auth-admin.ts`) writes the `auth_config`
+PATCH `/api/admin/auth` (route in `apps/web/src/server/routes/auth/admin.ts`) writes the `auth_config`
 row and invalidates the cached `getTenantAuth(acme)`. Next sign-in
 request through `/api/t/acme/auth/*` builds a fresh better-auth
 instance with the new providers.

@@ -11,7 +11,7 @@
  * isolate that served the revoke. Cloudflare spawns isolates at colo scale, and
  * every OTHER one keeps serving the revoked cookie until its own entry lapses.
  *
- * That is the half `routes/auth-admin.ts` says it "cannot close from here".
+ * That is the half `routes/auth/admin.ts` says it "cannot close from here".
  * This closes it.
  *
  * HOW, AND WHY IT IS NOT A DURABLE OBJECT

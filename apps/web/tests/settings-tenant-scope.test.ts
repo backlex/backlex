@@ -91,7 +91,7 @@ interface SurfaceBody {
 }
 
 /** The unauthenticated platform sign-in surface — what a browser sitting on the
- *  admin login screen actually fetches (`routes/auth-public.ts`, which calls
+ *  admin login screen actually fetches (`routes/auth/public.ts`, which calls
  *  `resolvePlatformAuthSurface`). No cookie, no bearer, no tenant header. */
 const readPublicSurface = async (): Promise<SurfaceBody["data"]> => {
   const res = await cast.anon("/api/auth/providers");

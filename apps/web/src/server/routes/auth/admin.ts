@@ -4,15 +4,15 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { invalidateSession } from "../services/permissions/cache";
-import { bumpRevocationEpoch } from "../services/revocation-epoch";
-import { encryptSecret } from "../lib/crypto";
-import { invalidateTenantAuth } from "../services/tenant-auth";
-import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { assertTenantMember, requireTenant } from "../services/roles/guards";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { invalidateSession } from "../../services/permissions/cache";
+import { bumpRevocationEpoch } from "../../services/revocation-epoch";
+import { encryptSecret } from "../../lib/crypto";
+import { invalidateTenantAuth } from "../../services/tenant-auth";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { assertTenantMember, requireTenant } from "../../services/roles/guards";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"

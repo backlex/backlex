@@ -5,7 +5,7 @@
  *
  *   - the server's own `PublicProvider` (`services/auth-config.ts`) — 7 kinds
  *   - the published SDK's (`packages/client/src/core.ts`) — 5, and no `loginUrl`
- *   - the OpenAPI schema (`routes/auth-public.ts`) — neither field at all,
+ *   - the OpenAPI schema (`routes/auth/public.ts`) — neither field at all,
  *     `.passthrough()` keeping the RESPONSE right while the CONTRACT stayed
  *     three fields wide, and the ten polyglot SDKs are generated from that.
  *
@@ -46,7 +46,7 @@ const kindUnion = (src: string, iface: string): string[] => {
 describe("the provider list means the same thing on both sides of the wire", () => {
   const serverSrc = read(join(REPO, "apps", "web", "src", "server", "services", "auth-config.ts"));
   const sdkSrc = read(join(REPO, "packages", "client", "src", "core.ts"));
-  const routeSrc = read(join(REPO, "apps", "web", "src", "server", "routes", "auth-public.ts"));
+  const routeSrc = read(join(REPO, "apps", "web", "src", "server", "routes", "auth", "public.ts"));
 
   test("every hand-written copy of the union types what the server can emit", () => {
     // Order too: these are read top-to-bottom by a human deciding what to

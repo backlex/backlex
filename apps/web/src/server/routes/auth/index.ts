@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { disabledAuthProviderForPath, passwordLoginBlocked } from "../services/auth-config";
+import type { AppBindings } from "../../app";
+import { disabledAuthProviderForPath, passwordLoginBlocked } from "../../services/auth-config";
 
 /**
  * better-auth ships its own router. We mount it at /api/auth/* and let it

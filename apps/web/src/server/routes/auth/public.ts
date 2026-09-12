@@ -1,8 +1,8 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import type { AppBindings } from "../app";
-import { errorResponses } from "../lib/openapi";
-import { resolvePlatformAuthSurface } from "../services/auth-config";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { errorResponses } from "../../lib/openapi";
+import { resolvePlatformAuthSurface } from "../../services/auth-config";
+import { defaultHook } from "../../lib/openapi-router";
 
 /**
  * Public, unauthenticated discovery endpoint for a workspace's auth surface —

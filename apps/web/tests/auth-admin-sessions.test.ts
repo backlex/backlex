@@ -1,7 +1,7 @@
 /**
  * `POST /api/admin/auth/sessions/revoke-others` — "sign out my other devices".
  *
- * `routes/auth-admin.ts` had no spec of its own, and this is the endpoint on it
+ * `routes/auth/admin.ts` had no spec of its own, and this is the endpoint on it
  * whose failure modes are silent in both directions. It walks the caller's
  * sessions, keeps the one the request arrived on, and deletes the rest:
  *
@@ -40,7 +40,7 @@
  * **This harness is a single process, so its timings are a LOWER bound.** The
  * inner cache is a module-level `TtlLru` with no shared store behind it — per
  * isolate on Workers — and `revoke-others` clears only the isolate that served
- * it (`routes/auth-admin.ts` says so at the call site). Anything measured here
+ * it (`routes/auth/admin.ts` says so at the call site). Anything measured here
  * about how fast a revocation propagates therefore describes one isolate, and
  * a conclusion like "disabling `cookieCache` makes revocation immediate" is
  * true in this file and false in production, where every other isolate still

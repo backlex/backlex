@@ -46,7 +46,7 @@ export const authAdminApi = {
    * Sign out every session but this one.
    *
    * `apiKeys` is a QUERY flag rather than a body because this is a bodyless
-   * POST — see `routes/auth-admin.ts` for why giving it a body is the shape
+   * POST — see `routes/auth/admin.ts` for why giving it a body is the shape
    * that 500'd live in this repo twice.
    *
    * The response always reports `apiKeys`: the keys the caller still holds

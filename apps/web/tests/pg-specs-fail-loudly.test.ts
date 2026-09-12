@@ -24,7 +24,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 
 const TESTS = resolve(import.meta.dir);
 
@@ -33,10 +33,13 @@ const TESTS = resolve(import.meta.dir);
  *  on `-pg.test.ts` would have missed the one file that started all this. */
 const SELF = "pg-specs-fail-loudly.test.ts";
 
+// Recursive, and `name` is the path under tests/: specs live in folders, and a
+// flat listing would lose every one of them while the census floor below still
+// passed on whatever happened to sit at the top level.
 const pgSpecs = (): { name: string; source: string }[] =>
-  readdirSync(TESTS)
+  (readdirSync(TESTS, { recursive: true }) as string[])
     // This file names every pattern it forbids, so it matches its own census.
-    .filter((n) => n.endsWith(".test.ts") && n !== SELF)
+    .filter((n) => n.endsWith(".test.ts") && basename(n) !== SELF)
     .map((name) => ({ name, source: readFileSync(resolve(TESTS, name), "utf8") }))
     .filter(
       (f) =>
@@ -47,7 +50,7 @@ const pgSpecs = (): { name: string; source: string }[] =>
 
 describe("pg specs fail loudly", () => {
   test("the census is not empty, or this whole file is theatre", () => {
-    const names = pgSpecs().map((f) => f.name);
+    const names = pgSpecs().map((f) => basename(f.name));
     // A rule that scans nothing passes forever. Seventeen today; the floor is
     // deliberately below that so adding or merging a spec is not a chore, and
     // deliberately above zero so a rename that breaks the glob is caught.

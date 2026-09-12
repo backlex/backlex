@@ -494,7 +494,9 @@ const collectionClientMembers = new Set(
   [...interfaceBody(coreSrc, "CollectionClient").matchAll(/^ {2}(\w+)[<(]/gm)].map((m) => m[1]!),
 );
 
-const surfacesTests = readdirSync(TESTS_DIR)
+// Recursive: surfaces specs live in domain folders, and a flat listing would
+// lose them while the `>= 45` floor below read the loss as a broken scan at best.
+const surfacesTests = (readdirSync(TESTS_DIR, { recursive: true }) as string[])
   .filter((f) => f.endsWith("-surfaces.test.ts"))
   .map((f) => ({ file: f, src: read(join(TESTS_DIR, f)) }));
 

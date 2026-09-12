@@ -27,18 +27,18 @@ import {
  */
 import { Hono, type Context } from "hono";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { rateLimitOk } from "../lib/rate-limit";
-import { assertWorkspaceRequestQuota, setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
+import type { AppBindings } from "../../app";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { assertWorkspaceRequestQuota, setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
 import {
   decryptProviderConfig,
   getProviderByPublicId,
   getProviderByToken,
   receiveWebhook,
   type PaymentProviderRow,
-} from "../services/payments";
-import { log } from "../lib/log";
+} from "../../services/payments";
+import { log } from "../../lib/log";
 
 /** A busy Stripe account bursts on subscription renewals, so the per-endpoint
  *  ceiling is generous; the per-IP one is what blunts a guessing attack. */

@@ -18,12 +18,12 @@ import {
 } from "@backlex/integrations/payments";
 import { PAYMENT_CHECKOUT_MODES } from "@backlex/integrations/checkout";
 import { PAYMENT_REFUND_SUPPORT, REFUND_REASONS } from "@backlex/integrations/refunds";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { logActivity, requestMeta } from "../services/activity";
-import { enqueueJob } from "../services/jobs";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { logActivity, requestMeta } from "../../services/activity";
+import { enqueueJob } from "../../services/jobs";
 import {
   connectProvider,
   createPaymentCheckout,
@@ -35,7 +35,7 @@ import {
   reconcileProvider,
   refundPayment,
   rotateWebhookToken,
-} from "../services/payments";
+} from "../../services/payments";
 
 const tags = ["payments"];
 

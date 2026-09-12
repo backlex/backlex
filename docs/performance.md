@@ -255,7 +255,7 @@ Attributing check time per file, without double-counting nested spans:
 | `routes/booking/index.ts` | 31.7s | 20.4% |
 | `routes/scim-admin.ts` | 10.4s | 6.7% |
 | `routes/roles/users.ts` | 10.4s | 6.7% |
-| `routes/payments.ts` | 7.8s | 5.1% |
+| `routes/payments/index.ts` | 7.8s | 5.1% |
 
 All of them are long `.openapi(createRoute({…}), handler)` chains. Every link
 widens the router's generic type, so cost grows super-linearly with chain

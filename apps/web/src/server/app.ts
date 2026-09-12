@@ -91,7 +91,7 @@ import { jobsRoutes } from "./routes/jobs";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
 import { paymentsRoutes } from "./routes/payments";
-import { paymentsPublicRoutes } from "./routes/payments-public";
+import { paymentsPublicRoutes } from "./routes/payments/public";
 import { integrationsPublicRoutes } from "./routes/integrations/public";
 import { dashboardsRoutes } from "./routes/dashboards";
 import { kpisRoutes } from "./routes/kpis";
@@ -1218,7 +1218,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/payments", paymentsRoutes);
   // Public payment-provider webhook receiver — no `requireUser`. The path
   // token resolves the workspace and the provider HMAC authenticates the body
-  // (see routes/payments-public.ts).
+  // (see routes/payments/public.ts).
   app.route("/api/payments", paymentsPublicRoutes);
   // Public integration-webhook receiver — same shape, one level over: the path
   // token resolves the subscription and the endpoint's own secret authenticates

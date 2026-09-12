@@ -63,7 +63,7 @@ guides; this list is everything else.
   broadcast notification; reset on success or manual resume). SDK receiver
   helper: `verifyWebhook` from `backlex/webhook`. The trigger route is
   the inbound side that flows/functions hook into. See `docs/webhooks.md`.
-- **Payments** (`routes/payments.ts`, `routes/payments-public.ts`,
+- **Payments** (`routes/payments/index.ts`, `routes/payments/public.ts`,
   `services/payments.ts`, `@backlex/integrations/payments`) — inbound sync from
   Stripe / Polar / Lemon Squeezy, the mirror image of Webhooks above. The public
   receiver verifies the provider HMAC over the RAW body, dedupes on the

@@ -168,8 +168,8 @@ guides; this list is everything else.
   `dispatchSms` are the single source of truth the REST route and the
   GraphQL mutations both call, so validation and the admin-or-self gate
   cannot drift between them.
-- **Push** (`routes/device-tokens.ts`, `routes/push-config.ts`,
-  `routes/push-templates.ts`, `services/messaging/push.ts`) — device registry,
+- **Push** (`routes/device-tokens.ts`, `routes/push/config.ts`,
+  `routes/push/templates.ts`, `services/messaging/push.ts`) — device registry,
   per-workspace transport, and `sendTemplatedPush`, the twin of
   `sendTemplatedEmail`: a key resolves tenant-then-global and literal
   title/body are its fallback. See `docs/push-messaging.md`.

@@ -3,21 +3,21 @@ import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { enforceIpRateLimit } from "../lib/auth-rate-limit";
-import { PUSH_PROVIDER_IDS } from "../lib/push-select";
-import { GLOBAL_PUSH_CONFIG_ID, PUSH_SECRET_KEYS } from "../services/messaging/push-config";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
+import { enforceIpRateLimit } from "../../lib/auth-rate-limit";
+import { PUSH_PROVIDER_IDS } from "../../lib/push-select";
+import { GLOBAL_PUSH_CONFIG_ID, PUSH_SECRET_KEYS } from "../../services/messaging/push-config";
 import {
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
   tenantKey,
-} from "../services/provider-config";
-import { sendPushToUsers } from "../services/messaging/push";
-import { invalidateAllPushCaches, invalidatePushCache } from "../context";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/provider-config";
+import { sendPushToUsers } from "../../services/messaging/push";
+import { invalidateAllPushCaches, invalidatePushCache } from "../../context";
+import { defaultHook } from "../../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.pushConfig : sqlite.schema.pushConfig;

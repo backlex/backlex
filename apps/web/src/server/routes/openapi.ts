@@ -78,8 +78,8 @@ import { bookingPublicRoutes } from "./booking/public";
 // why it kept being forgotten — `openapi-subapp-coverage.test.ts` now derives
 // the set from `app.ts` instead of trusting this file to be complete.
 import { approvalsRoutes } from "./approvals";
-import { pushTemplatesRoutes } from "./push-templates";
-import { pushConfigRoutes } from "./push-config";
+import { pushTemplatesRoutes } from "./push/templates";
+import { pushConfigRoutes } from "./push/config";
 import { smsConfigRoutes } from "./sms-config";
 import { aiConfigRoutes } from "./ai-config";
 import { platformSamlAdminRoutes } from "./platform-saml-admin";

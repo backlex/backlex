@@ -2,7 +2,7 @@
  * Push templates, from the store to the wire.
  *
  * The store shipped with a CRUD API, an admin table, and no send path: outside
- * `push-templates.ts` nothing in the tree read `push_templates`, and the only
+ * `push/templates.ts` nothing in the tree read `push_templates`, and the only
  * code that rendered one was that route's own `/send-test`. So an operator
  * could author a template, preview it, and never send it — while
  * `docs/push-messaging.md` said it was "rendered at send time, same as email

@@ -4,7 +4,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
  * OpenAPI spec endpoints — `GET /api/openapi.json` / `GET /api/openapi.yaml`
- * (routes/openapi.ts). Pins the admin-only gate (401 anon / 403 non-admin),
+ * (routes/openapi/index.ts). Pins the admin-only gate (401 anon / 403 non-admin),
  * the static half of the doc (sub-app mounts composed into full paths), and
  * the dynamic per-collection half (services/openapi-dynamic.ts::
  * buildDynamicCollectionPaths): a just-created collection must appear in the
@@ -186,7 +186,7 @@ describe("openapi spec endpoints", () => {
 /**
  * The committed static spec must stay byte-stable across builds.
  *
- * `routes/openapi-metadata.ts::loadMetadata()` imports its `*.openapi` modules
+ * `routes/openapi/metadata.ts::loadMetadata()` imports its `*.openapi` modules
  * through `Promise.all`, and each registers paths as a top-level side effect —
  * so registry order follows import-resolution order and varies run to run.
  * `scripts/gen-openapi-static.ts` sorts `paths` and `components.schemas` on

@@ -2,7 +2,7 @@
  * Every route group the app mounts is either in the published OpenAPI document
  * or listed below with the reason it is not.
  *
- * `SUBAPPS` in `routes/openapi.ts` is hand-maintained, so a new `app.route(…)`
+ * `SUBAPPS` in `routes/openapi/index.ts` is hand-maintained, so a new `app.route(…)`
  * joins the API and never joins its contract — silently, because nothing
  * compares the two. Measured when this test was written: 110 mounts, 89 in
  * SUBAPPS, 19 absent from the spec. Among the absent were `/api/agents`,

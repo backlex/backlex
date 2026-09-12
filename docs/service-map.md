@@ -37,7 +37,7 @@ guides; this list is everything else.
   `services/graphql.ts`) — schema auto-generated from collections.
   Uses the L1 permission cache so deep queries don't N+1 the
   resolver. See `docs/graphql.md`.
-- **OpenAPI** (`routes/openapi.ts`, `routes/openapi-metadata.ts`,
+- **OpenAPI** (`routes/openapi/index.ts`, `routes/openapi/metadata.ts`,
   `services/openapi-dynamic.ts`) — spec generated dynamically from
   collection schemas + per-route `.openapi(...)` decorators
   (`@hono/zod-openapi`); a new route shows up automatically if you

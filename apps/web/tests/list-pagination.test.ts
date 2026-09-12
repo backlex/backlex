@@ -9,7 +9,7 @@
  *   246  distinct GET routes in the running Hono route table
  *   187  of them described by the app's own OpenAPI document
  *    59  described nowhere in it — plain-Hono mounts whose sub-app never reached
- *        `routes/openapi.ts`'s SUBAPPS list. `/api/agents`,
+ *        `routes/openapi/index.ts`'s SUBAPPS list. `/api/agents`,
  *        `/api/admin/migrate/runs`, `/api/admin/schema/snapshots`,
  *        `/api/scim/v2/Users` and `/api/t/:slug/orgs` are all list endpoints that
  *        no published contract mentions.
@@ -236,7 +236,7 @@ const OPAQUE_RESPONSES: readonly string[] = [
 
 /**
  * GET routes the OpenAPI document does not describe, because their sub-app is
- * not in `routes/openapi.ts`'s SUBAPPS list. The guard cannot read a response
+ * not in `routes/openapi/index.ts`'s SUBAPPS list. The guard cannot read a response
  * shape it was never given, so each one is classified here by hand.
  *
  * The reasons are the point. "list, unpaged" ones are the same defect as
@@ -631,7 +631,7 @@ describe("list pagination — the inventory this guard runs on", () => {
           `GET ${path} is not in the OpenAPI document, so this guard cannot read what it ` +
             `returns. Three fixes, in order of preference: regenerate the committed spec ` +
             `(\`bun run --cwd apps/web gen:openapi-static\`) if the route is new; register its ` +
-            `sub-app in routes/openapi.ts's SUBAPPS list if it was never described; or add it ` +
+            `sub-app in routes/openapi/index.ts's SUBAPPS list if it was never described; or add it ` +
             `to UNDOCUMENTED_GETS here with a one-line reason it cannot return an unbounded ` +
             `collection.`,
         );

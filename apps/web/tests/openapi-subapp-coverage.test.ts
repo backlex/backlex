@@ -1,5 +1,5 @@
 /**
- * `SUBAPPS` (routes/openapi.ts) is a hand-maintained allowlist of which mounted
+ * `SUBAPPS` (routes/openapi/index.ts) is a hand-maintained allowlist of which mounted
  * sub-apps appear in the OpenAPI document. A route group can be fully annotated
  * with `createRoute` + schemas and still be invisible to `/api/openapi`, the API
  * explorer, the docs and SDK codegen simply because nobody added a line to that

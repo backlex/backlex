@@ -1,252 +1,225 @@
-# Backlex
+<div align="center">
 
-Open-source ([Apache-2.0](#license)) **AI-native backend** you can self-host or
-run at the edge. One codebase on Bun / Node / Deno that also deploys to
-Cloudflare Workers, Vercel, Netlify, Deno Deploy, AWS Lambda, Google Cloud and
-Azure — on PostgreSQL or SQLite / D1.
+<img src="apps/site/public/favicon.svg" width="72" height="72" alt="" />
 
-An open-source alternative to Supabase, Firebase, Directus, Appwrite, Strapi and
-AWS Amplify: every feature lives in the Apache-2.0 core — no Enterprise tier for
-SSO, audit logs, or permissions. Agents reach your data through a built-in MCP
-server, scoped by the same permissions DSL as everything else.
+# backlex
 
-```
-Dynamic schema · Adopt existing tables · Permissions DSL · REST + GraphQL
-Realtime (SSE) · Reactive live queries · Offline-first sync · Full-text + vector search
-AI agents · Built-in MCP server · Edge functions (sandbox) · Flows · Durable jobs · Cron
-Storage + folders + image transforms · Resumable uploads · Draft/publish · Feature flags
-Push + SMS messaging · Webhooks · Embedded BI dashboards · Audit logs · Tracing · Backup/restore
-Multi-tenant workspaces · SSO (SAML/LDAP) · Passkey · Advisor · Admin UI · Typed SDK · CLI · Type gen
-```
+**The open-source, AI-native backend that runs anywhere.**
 
-## Stack
+Describe your data in plain language or define it yourself — get REST, GraphQL,
+realtime, auth, storage, functions and a built-in MCP server over your own
+database, on Bun, Node, Deno, Cloudflare Workers, Vercel, Netlify, AWS Lambda,
+Google Cloud or Azure.
 
-| Layer       | Tech                                                                  |
-|-------------|-----------------------------------------------------------------------|
-| API         | [Hono](https://hono.dev) — one app on Bun / Node / Deno + Workers, Vercel, Netlify, Lambda, GCP, Azure |
-| ORM         | [Drizzle](https://orm.drizzle.team) v1 beta — PG + SQLite/D1          |
-| Auth        | [better-auth](https://better-auth.com) — email, OAuth (Google/GitHub/Apple), magic-link, OTP, passkey, SAML 2.0 SSO, LDAP/AD |
-| Storage     | local FS (Bun dev) / Cloudflare R2 (Workers) / S3-compatible (any runtime: AWS, R2, B2, MinIO, Spaces, Wasabi) |
-| Vectors     | `pgvector` (PG) / Cloudflare Vectorize (Workers)                      |
-| Realtime    | SSE in Bun / Durable Objects on Workers                               |
-| Sandbox     | Bun worker thread / QuickJS-WASM / remote HTTP executor               |
-| Image       | `Bun.Image` (Bun) / Cloudflare Image Resizing (Workers) / passthrough |
-| GraphQL     | graphql-yoga, schema auto-generated from collections                  |
-| Admin UI    | Vite + React + shadcn/ui + Tailwind v4                                |
-| Monorepo    | Bun workspaces                                                        |
+[Website](https://backlex.com) ·
+[Docs](https://backlex.com/docs) ·
+[Live playground](https://play.backlex.com) ·
+[Cloud](https://cloud.backlex.com) ·
+[Examples](examples)
 
-## Layout
+[![Test](https://github.com/backlex/backlex/actions/workflows/test.yml/badge.svg)](https://github.com/backlex/backlex/actions/workflows/test.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/backlex?label=npm%20backlex)](https://www.npmjs.com/package/backlex)
 
-```
-apps/
-  web/      One app — Hono API + Vite + React admin SPA in a single bundle
-            (server/ + client/ + entries/{bun,worker,vercel,netlify}.ts)
-packages/
-  core/     Shared types + adapter interfaces
-  db/       Drizzle schemas + dynamic-schema applier + permission compiler
-  auth/     better-auth wrapper (email + OAuth + plugins + passkey)
-  ui/       shadcn radix-luma component library
-  client/   Typed SDK (browser + Node)
-  cli/      `backlex` CLI (migrate, gen-types)
-```
+<img src="apps/site/public/og.png" alt="backlex — ask the AI for a backend; it ships with AI agents, an MCP server, REST + GraphQL, realtime, search, auth, audit logs and more" width="820" />
+
+</div>
+
+## Why backlex
+
+- **Everything is in the open core.** SSO (SAML / LDAP), audit logs, row- and
+  field-level permissions, backups, tracing — all Apache-2.0. There is no
+  Enterprise tier to unlock them.
+- **One codebase, every runtime.** The same Hono app self-hosts on Bun / Node /
+  Deno and deploys to seven serverless and edge platforms, on PostgreSQL or
+  SQLite / Cloudflare D1. The build matrix is checked on every push.
+- **Your data model, live.** Create a collection and backlex runs `CREATE TABLE`
+  against your database — no redeploy. Or point it at tables you already have
+  and it wraps them without DDL.
+- **AI that obeys your permissions.** Agents reach your data through the
+  built-in MCP server, scoped by the same permissions DSL that filters REST,
+  GraphQL and realtime — an MCP client never sees a row its key can't read.
+
+An alternative to Supabase, Firebase, Directus, Appwrite, Strapi and AWS
+Amplify — see the side-by-side comparisons:
+[Supabase](https://backlex.com/vs-supabase) ·
+[Firebase](https://backlex.com/vs-firebase) ·
+[Directus](https://backlex.com/vs-directus) ·
+[Appwrite](https://backlex.com/vs-appwrite) ·
+[Strapi](https://backlex.com/vs-strapi) ·
+[AWS Amplify](https://backlex.com/vs-aws-amplify).
+
+## Features
+
+**Data**
+- [Dynamic schema](docs/index.md#your-first-collection), [schema templates](docs/templates.md), [snapshots, diff and branching](docs/schema-versions.md)
+- [Adopt existing tables](docs/adopting-tables.md) or [import a database](docs/migrating-in.md) from Postgres, MySQL, SQLite, MongoDB, Firestore or DynamoDB
+- Rich field types — [money](docs/money.md), [geo](docs/geo.md), [rollups](docs/rollups.md), [sequences](docs/sequences.md), [slugs](docs/slugs.md), [validation](docs/field-validation.md), [status transitions](docs/status-transitions.md)
+- [Draft / publish](docs/draft-publish.md), revisions, [backup & restore](docs/backup-restore.md)
+
+**APIs**
+- [REST](docs/querying.md) with filter / sort / expand / projection, [GraphQL](docs/graphql.md) generated from the same metadata, OpenAPI 3.1
+- [Realtime (SSE)](docs/realtime.md), [live queries](docs/reactive-queries.md), [offline-first sync](docs/offline-sync.md), [change data capture](docs/cdc.md)
+- [Full-text](docs/full-text-search.md), [vector and hybrid search](docs/vector-search.md)
+
+**Auth & security**
+- Email, OAuth, magic link, OTP, passkey, 2FA, [SAML 2.0 and LDAP / AD](docs/sso.md)
+- [Permissions DSL](docs/permissions.md) compiled to SQL — and to [Postgres RLS](docs/rls.md) if you want it in the database
+- [Audit logs](docs/audit-logs.md), [GDPR erasure](docs/erasure.md), [OAuth provider](docs/oauth-provider.md), [organizations / teams](docs/app-organizations.md)
+
+**Logic**
+- [Sandboxed functions](docs/sandbox.md), visual [flows](docs/flows.md), [durable jobs](docs/jobs.md) with retry and dead-letter, cron
+- [Webhooks](docs/webhooks.md), [integrations](docs/integrations.md), [payments sync](docs/payments.md), [approvals](docs/approvals.md)
+- [Push](docs/push-messaging.md) and [SMS](docs/sms-messaging.md) messaging, [PDF documents](docs/documents.md), [e-signature](docs/e-signature.md)
+
+**AI**
+- [Built-in MCP server](docs/mcp.md) for Claude, Cursor and any MCP client
+- [AI agents](docs/agents.md) with DSL-scoped tools and per-thread vector memory
+- [Ask AI](docs/ask-ai.md) — type a question in the admin, review the tool call it proposes, run it
+
+**Operate**
+- Admin UI with grid, Kanban, gallery and calendar [views](docs/item-views.md)
+- [Storage](docs/storage.md) with image transforms, [resumable uploads](docs/resumable-uploads.md), an [S3-compatible endpoint](docs/s3.md)
+- [Feature flags](docs/feature-flags.md), [embedded dashboards](docs/embedded-dashboards.md), [forms](docs/forms.md), [tracing](docs/tracing.md), [usage metering](docs/usage-metering.md), [advisor](docs/advisor.md)
 
 ## Quick start
 
-Prereqs: Bun ≥ 1.1.
+Try it without installing anything at **[play.backlex.com](https://play.backlex.com)**,
+or run it locally (requires [Bun](https://bun.sh) ≥ 1.4):
 
 ```bash
+git clone https://github.com/backlex/backlex && cd backlex
 bun install
 cp apps/web/.dev.vars.example apps/web/.dev.vars
-
-# Apply migrations to local SQLite (default for dev)
-bun run db:migrate:sqlite
-
-# Start Vite + Cloudflare miniflare in one process on :5173
-# (admin SPA + Worker bundled — no separate API port, no proxy)
-bun run dev
+bun run db:migrate:d1   # the dev server runs on miniflare, so it reads a local D1
+bun run dev             # admin UI + API on http://localhost:5173
 ```
 
-Sign up the first user at `http://localhost:5173/sign-up` — they automatically
-get the `admin` role. Subsequent sign-ups get `authenticated`.
+Open <http://localhost:5173/sign-up> — the first account becomes the admin.
+Then follow [Getting started](docs/index.md) to create your first collection.
 
-## DB selection (auto)
-
-The API picks a database based on bindings/env in this order:
-
-1. `D1` binding (Cloudflare Workers) → D1 SQLite
-2. `DATABASE_URL` → Postgres via `postgres-js`
-3. otherwise → Bun SQLite at `./.data/backlex.sqlite`
-
-## Deploy targets
-
-| Target           | Database                | Storage                       | Realtime        | Sandbox        |
-|------------------|-------------------------|-------------------------------|-----------------|----------------|
-| Bun (self-host)  | SQLite or Postgres      | local fs / S3 (`Bun.S3Client`)| in-proc + SSE   | Worker thread  |
-| Cloudflare Workers | D1 or Hyperdrive→PG  | R2 / S3 (`aws4fetch`)         | Durable Objects | QuickJS / remote HTTP |
-| Vercel Edge      | Postgres (Neon HTTP)    | S3 (`aws4fetch`)              | SSE             | QuickJS        |
-| Netlify Edge     | Postgres (Neon HTTP)    | S3 (`aws4fetch`)              | SSE             | QuickJS        |
-
-Set `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` (and
-optionally `S3_ENDPOINT` for non-AWS) and the storage adapter picks the
-S3 path automatically. See [Storage on edge](docs/deployment.md#storage-on-edge).
-
-### Bun (self-host)
+## Use it from your app
 
 ```bash
-APP_URL=https://your.app DATABASE_URL=postgres://... \
-  AUTH_SECRET=$(openssl rand -hex 32) \
-  bun run --cwd apps/web dev:bun
+npm i backlex
 ```
 
-### Cloudflare Workers
+```ts
+import { createClient } from "backlex";
+
+const backlex = createClient({ url: "https://api.your.app", workspace: "acme" });
+
+await backlex.auth.signUp({ email, password, name });
+
+await backlex.from("todos").create({ title: "Hello", done: false });
+const { data } = await backlex.from("todos").list({ sort: ["-created_at"] });
+
+const off = backlex.subscribe("items:todos", (e) => console.log(e.event, e.data));
+```
+
+Official SDKs for **TypeScript, Python, Go, Rust, Swift, Kotlin, Java, .NET,
+Dart, Ruby and PHP** ([`sdks/`](sdks)), React bindings
+([`docs/client-react.md`](docs/client-react.md)) and a CLI
+(`npm i -g @backlex/cli`, [`docs/sdk-and-cli.md`](docs/sdk-and-cli.md)).
+
+Connect an AI client to the same workspace — every tool call runs as the key
+you give it:
 
 ```bash
-cd apps/web
-wrangler d1 create backlex          # paste id into wrangler.toml
-wrangler r2 bucket create backlex-files
-wrangler vectorize create backlex-embeddings --dimensions=1536 --metric=cosine
-wrangler secret put AUTH_SECRET
-wrangler d1 migrations apply backlex --remote
-wrangler deploy
+curl https://your.app/mcp \
+  -H 'Authorization: Bearer pak_…' -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
-Optional: run the out-of-isolate function executor (`templates/fn-exec-server`)
-on Fly / Railway / a VM for DB-aware functions, then set `FUNCTIONS_EXEC_URL`
-+ `SANDBOX_RPC_TOKEN` + `SELF_URL` on the Worker so the `remote-http` sandbox
-provider routes there. Without it, functions run in the in-isolate QuickJS-WASM
-sandbox (sync only, no `ctx.*` host I/O).
+Claude Desktop / Cursor configuration: [`docs/mcp.md`](docs/mcp.md).
 
-### Vercel
+## Deploy
 
-`vercel.json` at the repo root deploys both admin (static) and API (edge).
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/backlex/backlex&env=APP_URL,AUTH_SECRET,DATABASE_URL,DATABASE_DRIVER,S3_BUCKET,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,CRON_SECRET&envDescription=Backlex%20runtime%20secrets%20(Postgres%2C%20S3%2C%20auth)&envLink=https://github.com/backlex/backlex/blob/main/docs/deployment.md)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/backlex/backlex)
+
+| Target | Database | Guide |
+|---|---|---|
+| Bun / Node.js (self-host) | PostgreSQL, or SQLite (Bun) / libSQL (Node) | [Bun](docs/deployment.md#bun-self-host) · [Node.js](docs/deployment.md#nodejs-self-host-no-bun) |
+| Deno / Deno Deploy | PostgreSQL, or libSQL (Deno) | [Deno](docs/deployment.md#deno-self-host-experimental) · [Deno Deploy](docs/deployment.md#deno-deploy-managed) |
+| Cloudflare Workers | D1, or PostgreSQL via Hyperdrive | [Guide](docs/deployment.md#cloudflare-workers) |
+| Vercel · Netlify | PostgreSQL | [Vercel](docs/deployment.md#vercel) · [Netlify](docs/deployment.md#netlify) |
+| AWS Lambda · Google Cloud · Azure | PostgreSQL | [Lambda](docs/deployment.md#aws-lambda-serverless) · [Cloud Functions](docs/deployment.md#google-cloud-functions-2nd-gen) · [Azure](docs/deployment.md#azure-functions-v4) |
+
+The database is picked from the environment — a `D1` binding, then
+`DATABASE_URL`, otherwise a local SQLite file. Storage, realtime, image
+transforms, email and the function sandbox each have per-runtime adapters —
+see [Deployment](docs/deployment.md) for the environment variables and runtime
+caveats.
+
+Prefer not to run it yourself? [backlex Cloud](https://cloud.backlex.com) is the
+same Apache-2.0 backlex, managed on Cloudflare's network — and exports as a
+portable SQL dump whenever you want to leave.
+
+## How it works
+
+```mermaid
+flowchart LR
+  clients["Apps · SDKs · CLI<br/>AI agents · MCP clients"] --> api
+  subgraph api["backlex (Hono)"]
+    direction TB
+    surfaces["REST · GraphQL · Realtime · MCP"] --> perms["Permissions DSL<br/>(compiled to SQL)"]
+    perms --> services["Collections · Auth · Storage · Functions<br/>Flows · Jobs · Agents"]
+  end
+  services --> adapters["Runtime adapters"]
+  adapters --> db[("PostgreSQL · SQLite · D1")]
+  adapters --> blob[("Local FS · S3 · R2")]
+```
+
+Every surface shares one permissions compiler: a role's condition becomes a SQL
+filter for REST, GraphQL and MCP, and an in-memory predicate for realtime
+events — same operators, same `$user` / `$tenant` variables. Runtime-specific code stays behind adapter
+interfaces in `@backlex/core`; `apps/web/src/server/context.ts` picks the
+implementations from bindings and env. More in
+[Architecture](docs/architecture.md).
+
+| Layer | Built on |
+|---|---|
+| API | [Hono](https://hono.dev) |
+| Database | [Drizzle ORM](https://orm.drizzle.team) — PostgreSQL, SQLite, D1 |
+| Auth | [better-auth](https://better-auth.com) |
+| GraphQL | graphql-yoga |
+| Admin UI | React, Vite, Tailwind CSS v4, shadcn/ui |
+
+## Repository
+
+```
+apps/
+  web/        API + admin SPA (one bundle)
+  docs/       documentation site (Astro Starlight)
+  site/       backlex.com
+packages/
+  core/       shared types + adapter contracts
+  db/         dual-dialect schema, schema applier, permission compiler
+  auth/       better-auth wrapper          auth-ui/   auth screens
+  client/     TypeScript SDK (npm: backlex) cli/       backlex CLI
+  ui/         design system                migrate/   database import
+  integrations/  provider registry
+sdks/         Python, Go, Rust, Swift, Kotlin, Java, .NET, Dart, Ruby, PHP
+examples/     React, Next.js and React Router apps built on the SDK
+docs/         guides (served at backlex.com/docs)
+```
+
+## Contributing
 
 ```bash
-vercel link
-vercel env add DATABASE_URL    # Postgres URL (Neon recommended for edge)
-vercel env add AUTH_SECRET
-vercel deploy --prod
+bun run dev         # admin + API with hot reload
+bun run test        # test suite (fresh SQLite per spec, no external services)
+bun run typecheck
+bun run lint
 ```
 
-Cron triggers (`* * * * *` in `vercel.json`) hit `/api/_cron/tick` and call
-the same `cronTick` the Bun scheduler uses.
+Issues and pull requests are welcome. Start with
+[Architecture](docs/architecture.md) and [Testing](docs/testing.md); the
+[`examples/`](examples) apps are the quickest way to see a change end to end.
 
-### Netlify
-
-`netlify.toml` at the repo root mirrors the Vercel layout — admin SPA +
-edge function for `/api/*` + scheduled function for cron.
-
-```bash
-netlify init
-netlify env:set DATABASE_URL postgres://...
-netlify env:set AUTH_SECRET $(openssl rand -hex 32)
-netlify deploy --prod
-```
-
-## API surface
-
-```
-GET    /health
-*      /api/auth/**             better-auth (email, OAuth, magic-link, OTP, passkey)
-GET    /.well-known/jwks.json  public signing keys for app-plane access tokens
-GET    /api/api-keys            list
-POST   /api/api-keys            create — secret returned once
-DELETE /api/api-keys/:id        revoke
-GET    /api/collections         list (active by default; ?include_archived=true)
-POST   /api/collections         unified: managed (CREATE TABLE c_<prefix>_<slug>) or adopted (metadata only)
-PATCH  /api/collections/:slug   additive ALTER TABLE; no-op on adopted
-DELETE /api/collections/:slug   DROP TABLE on managed; soft-archive on adopted
-POST   /api/collections/:slug/restore  un-archive an adopted collection
-GET    /api/admin/adopt/tables  list tables eligible for adoption
-POST   /api/admin/adopt/inspect inspect columns + FKs of a candidate table
-GET    /api/items/:slug         filter / sort / fields / expand / q / locale / limit / offset / meta
-GET    /api/items/:slug/:id     (also accepts ?expand=)
-POST   /api/items/:slug
-PATCH  /api/items/:slug/:id
-DELETE /api/items/:slug/:id
-GET    /api/storage             list (permission-filtered)
-PUT    /api/storage/:key        upload (raw body, ?folderId=)
-GET    /api/storage/:key        download (?width &height &format &fit &quality for image transforms)
-DELETE /api/storage/:key
-GET    /api/folders             list
-POST   /api/folders             create
-GET    /api/activity            list activity entries
-GET    /api/revisions/:collection/:itemId
-POST   /api/revisions/:id/revert
-GET    /api/realtime/items:<slug>/subscribe   permission-filtered change feed (SSE, with Last-Event-ID resume)
-GET    /api/realtime/collections/subscribe    admin-only schema events (SSE)
-GET    /api/realtime/presence:<name>/subscribe  signed-in members roster (SSE)
-*      /api/realtime/:channel/{subscribe,publish}   free-form (no filter; publish rate-limited)
-POST   /api/realtime/items:<slug>/test-publish     admin-only synthetic event injector
-GET    /api/webhooks            admin
-POST   /api/webhooks            admin
-GET    /api/flows               admin
-POST   /api/flows               admin
-GET    /api/functions           admin
-POST   /api/functions           admin
-POST   /api/functions/:name/invoke
-GET    /api/roles               admin
-POST   /api/roles               admin
-GET    /api/permissions
-DELETE /api/permissions/:id     admin
-GET    /api/users               admin
-POST   /api/users/:id/roles     admin
-GET    /api/account/preferences per-user locale/timezone (resolved + raw)
-PATCH  /api/account/preferences update per-user locale/timezone
-GET    /api/admin/saml/providers  admin — list per-tenant SAML providers
-GET    /api/admin/ldap-config   admin — per-tenant LDAP config (secrets write-only)
-GET    /api/admin/email-config  admin — per-workspace email transport
-GET    /api/admin/advisor       admin — schema + permissions lint findings + score
-GET    /api/admin/settings      admin — workspace settings (whitelist PATCH)
-POST   /api/t/<slug>/auth/saml/<provider>/{login,acs,metadata,slo}  per-tenant SAML
-POST   /api/t/<slug>/auth/ldap/sign-in        per-tenant LDAP sign-in
-POST   /api/t/<slug>/auth/token/refresh       refresh-token → access-token JWT
-GET    /api/i18n                workspace content translations
-GET    /api/notifications       per-user notification feed
-GET    /api/comments            per-item comment threads
-GET    /api/metrics             admin — overview KPIs / charts
-GET    /api/activity            audit log (admin sees all; others own rows)
-*      /api/graphql             GraphQL (queries + mutations)
-GET    /api/openapi             OpenAPI 3.1 description of the public surface
-GET    /api/_cron/tick          internal — used by Vercel/Netlify cron
-POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote-http executor
-```
-
-## Documentation
-
-- [Getting started](docs/getting-started.md) — first user, first collection, first item
-- [Deployment](docs/deployment.md) — self-host (Bun / Node / Deno) or deploy to Cloudflare, Vercel, Netlify, Deno Deploy, AWS Lambda, Google Cloud & Azure
-- [Permissions DSL](docs/permissions.md) — operators, variables, examples
-- [Querying items](docs/querying.md) — filter / sort / projection / expand / locale / meta
-- [Adopting tables](docs/adopting-tables.md) — wrap an existing table without DDL
-- [Functions / sandbox](docs/functions.md) — three providers, RPC bridge, security
-- [SDK + CLI](docs/sdk-and-cli.md) — the `backlex` TypeScript SDK + the `backlex` CLI
-- [MCP server](docs/mcp.md) — expose a workspace to Claude / Cursor / agents, scoped per key
-- [AI agents](docs/agents.md) — reason→act loop, DSL-scoped tools, per-thread vector memory
-- [Vector + full-text search](docs/vector-search.md) — pgvector / Vectorize, auto-embed on write
-- [GraphQL](docs/graphql.md) — auto-schema, relations, mutations
-- [Realtime](docs/realtime.md) — channels, permission filtering, hosting
-- [Storage](docs/storage.md) — adapters, image transforms, signed URLs
-- [SSO + LDAP](docs/sso.md) — per-tenant SAML 2.0, LDAP / Active Directory
-- [Advisor](docs/advisor.md) — automated lint over schema, permissions, config
-- [Locale + timezone](docs/locale-timezone.md) — workspace + per-user preferences
-- [Admin SPA translation](docs/admin-i18n.md) — Lingui catalogs for the admin chrome
-- [Adapter pattern](docs/architecture.md) — runtime-agnostic interfaces
-- [Design system](docs/DESIGN.md) — admin tokens, layout principles, component contracts, voice
-
-## Adapter pattern
-
-Cross-runtime concerns live behind interfaces in `@backlex/core/adapters`:
-
-- `StorageAdapter` — `fsStorage` (Bun dev) / `r2Storage` (Workers) / `bunS3Storage` (Bun + S3) / `s3FetchStorage` (any runtime + S3)
-- `VectorAdapter` — `pgvectorAdapter` (PG) / `vectorizeAdapter` (Workers)
-- `RealtimeAdapter` — in-proc + SSE (Bun) / Durable Object + WS (Workers)
-- `EmailAdapter` — `consoleEmail` (dev) / `resendEmail` / `sendgridEmail` / `mailgunEmail` / `sesEmail` (HTTP APIs, any runtime) / `smtpEmail` (nodemailer, not on Workers) — pick via `EMAIL_PROVIDER`, or use per-workspace `email_config`
-- `SamlAdapter` — `samlify` (works on all runtimes via `nodejs_compat` on Workers); per-tenant configs in `saml_providers`
-- `LdapAdapter` — `ldapts` (Bun / Vercel / Netlify); Workers fall through to a throwing shim — use SAML there
-- `ImageAdapter` — `bunImage` (`Bun.Image`) / `cfImage` (CF Image Resize) / `passthroughImage`
-
-`apps/web/src/server/context.ts` picks the right adapter based on bindings/env.
+Found a vulnerability? Please report it privately — see [SECURITY.md](SECURITY.md).
 
 ## License
 
-Apache-2.0
+[Apache-2.0](LICENSE). Third-party notices: [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).

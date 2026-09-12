@@ -170,3 +170,164 @@ describe("ON DELETE: relation_many + chaining", () => {
     expect(await get("c_leaf", c.id)).toBe(404); // chained
   });
 });
+
+/**
+ * Polymorphic references — a `(collection, row_id)` pair, which is what a
+ * translations / attachments / comments table settles on.
+ *
+ * It cannot be a `relation`: `to` names ONE collection and the whole point is
+ * that the target is a value. So nothing collected these rows, and a deleted
+ * product left its translated name and description behind permanently. The
+ * first symptom is a translations table larger than the catalogue it
+ * describes. #315.
+ */
+describe("ON DELETE: polymorphic references", () => {
+  let h: TestHarness;
+  const post = (body: unknown): RequestInit => ({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const create = async (slug: string, body: unknown) => {
+    const r = await h.fetch(`/api/items/${slug}`, post(body));
+    return { status: r.status, body: (await r.json()) as any };
+  };
+  const get = async (slug: string, id: string) =>
+    (await h.fetch(`/api/items/${slug}/${id}`)).status;
+  const del = async (slug: string, id: string) =>
+    (await h.fetch(`/api/items/${slug}/${id}`, { method: "DELETE" })).status;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    for (const slug of ["poly_products", "poly_pages"]) {
+      await h.fetch("/api/collections", post({ slug, fields: [{ name: "name", type: "text" }] }));
+    }
+    await h.fetch(
+      "/api/collections",
+      post({
+        slug: "poly_translations",
+        fields: [
+          { name: "collection", type: "text", required: true, indexed: true },
+          {
+            name: "row_id",
+            type: "text",
+            required: true,
+            indexed: true,
+            polymorphicRef: { collectionField: "collection" },
+            onDelete: "cascade",
+          },
+          { name: "locale", type: "text" },
+          { name: "value", type: "text" },
+        ],
+      }),
+    );
+    // The same shape WITHOUT the declaration, so these tests can tell "the
+    // sweep ran" apart from "deleting a row happens to remove everything that
+    // mentions its id".
+    await h.fetch(
+      "/api/collections",
+      post({
+        slug: "poly_untouched",
+        fields: [
+          { name: "collection", type: "text" },
+          { name: "row_id", type: "text" },
+        ],
+      }),
+    );
+  });
+  afterAll(() => h.cleanup());
+
+  test("deleting the described row removes its rows, and only its rows", async () => {
+    const productA = (await create("poly_products", { name: "A" })).body.data;
+    const productB = (await create("poly_products", { name: "B" })).body.data;
+    const page = (await create("poly_pages", { name: "P" })).body.data;
+
+    const forA = (
+      await create("poly_translations", {
+        collection: "poly_products",
+        row_id: productA.id,
+        locale: "tr",
+        value: "A-tr",
+      })
+    ).body.data;
+    const forB = (
+      await create("poly_translations", {
+        collection: "poly_products",
+        row_id: productB.id,
+        locale: "tr",
+        value: "B-tr",
+      })
+    ).body.data;
+    // A row naming a different COLLECTION. The reason the sweep matches on the
+    // pair rather than on the id: ids are unique per collection, not across
+    // them, and an adopted table can carry whatever id scheme it likes.
+    const forPage = (
+      await create("poly_translations", {
+        collection: "poly_pages",
+        row_id: page.id,
+        locale: "tr",
+        value: "P-tr",
+      })
+    ).body.data;
+    const undeclared = (
+      await create("poly_untouched", { collection: "poly_products", row_id: productA.id })
+    ).body.data;
+
+    expect(await del("poly_products", productA.id)).toBe(200);
+
+    expect(await get("poly_translations", forA.id)).toBe(404);
+    expect(await get("poly_translations", forB.id)).toBe(200);
+    expect(await get("poly_translations", forPage.id)).toBe(200);
+    // No declaration, no sweep. Without this line the spec would still pass if
+    // the engine deleted every row that merely mentions the id.
+    expect(await get("poly_untouched", undeclared.id)).toBe(200);
+  });
+
+  test("a row whose collection matches but whose id does not is left alone", async () => {
+    const keep = (await create("poly_products", { name: "Keep" })).body.data;
+    const drop = (await create("poly_products", { name: "Drop" })).body.data;
+    const tKeep = (
+      await create("poly_translations", {
+        collection: "poly_products",
+        row_id: keep.id,
+        locale: "de",
+        value: "keep",
+      })
+    ).body.data;
+
+    expect(await del("poly_products", drop.id)).toBe(200);
+    expect(await get("poly_translations", tKeep.id)).toBe(200);
+  });
+
+  test("a cascaded child takes its own polymorphic rows with it", async () => {
+    // Why the polymorphic pass runs INSIDE `enforceOnDeleteTriggers` rather
+    // than beside it: a relation cascade re-enters the function for every row
+    // it deletes, so a child's translations are collected by the child's own
+    // pass. Beside it, they would outlive the record they describe by one hop.
+    await h.fetch(
+      "/api/collections",
+      post({
+        slug: "poly_variants",
+        fields: [
+          { name: "name", type: "text" },
+          { name: "product", type: "relation", to: "poly_products", onDelete: "cascade" },
+        ],
+      }),
+    );
+    const product = (await create("poly_products", { name: "Parent" })).body.data;
+    const variant = (await create("poly_variants", { name: "V", product: product.id })).body.data;
+    const forVariant = (
+      await create("poly_translations", {
+        collection: "poly_variants",
+        row_id: variant.id,
+        locale: "fr",
+        value: "V-fr",
+      })
+    ).body.data;
+
+    expect(await del("poly_products", product.id)).toBe(200);
+    expect(await get("poly_variants", variant.id)).toBe(404);
+    expect(await get("poly_translations", forVariant.id)).toBe(404);
+  });
+});

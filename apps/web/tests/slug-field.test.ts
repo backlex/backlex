@@ -117,22 +117,65 @@ describe("slug fold", () => {
     // The fold runs on the write path over a value a client controls, and every
     // step of it is linear. Before the cap, folding a five-megabyte longtext
     // spent ~230ms of CPU to produce eighty characters.
+    //
+    // A RATIO, not a millisecond ceiling, and the difference is the whole point
+    // of this rewrite. "Constant work" is a claim about how cost scales with
+    // input — which is exactly what a ratio measures and what an absolute bound
+    // does not. The old `< 50ms` measured the HOST: it failed at 131ms on a
+    // loaded machine where every other gate job also inflated 5-7x, twice in
+    // one day, each time costing a full re-run of a ~4 minute suite for a
+    // regression that was not there (#316).
+    //
+    // Both halves are timed the same way in the same process microseconds
+    // apart, so contention scales them together and cancels. Without the cap
+    // the ratio is ~30,000x — three orders of magnitude past the bound below —
+    // so nothing about the detection is weakened by dropping the clock.
+    const small = "Ürün Kataloğu! ".repeat(10);
     const huge = "Ürün Kataloğu! ".repeat(300_000);
-    const t0 = performance.now();
-    const out = slugify(huge);
-    const ms = performance.now() - t0;
-    expect(out.length).toBeLessThanOrEqual(80);
-    expect(ms).toBeLessThan(50);
+
+    // Warm both paths first: the very first call pays JIT and allocation costs
+    // that belong to neither input, and on a fast baseline that alone can
+    // dominate the ratio.
+    slugify(small);
+    slugify(huge);
+
+    const cost = (input: string): number => {
+      const t0 = performance.now();
+      slugify(input);
+      return performance.now() - t0;
+    };
+    // Best-of-three on each: a single sample can catch a GC pause, and the
+    // minimum is the closest thing to the work actually done.
+    const timeOf = (input: string) => Math.min(cost(input), cost(input), cost(input));
+    const smallMs = timeOf(small);
+    const hugeMs = timeOf(huge);
+
+    expect(slugify(huge).length).toBeLessThanOrEqual(80);
+    // `+ 2` is a floor, not slack: `smallMs` can legitimately round to ~0 on a
+    // fast machine, and a pure ratio against zero is unsatisfiable however
+    // correct the code is.
+    expect(
+      hugeMs,
+      `folding 4.5 MB took ${hugeMs.toFixed(2)}ms against ${smallMs.toFixed(2)}ms for 150 bytes — ` +
+        "that is not constant work, so the input cap in `slugify` is gone",
+    ).toBeLessThan(smallMs * 25 + 2);
   });
 
   test("SLUG_RE does not backtrack on an adversarial near-match", () => {
     // `^[a-z0-9]+(?:-[a-z0-9]+)*$` has nested quantifiers; the mandatory `-`
     // between groups is what keeps it linear. Pinned so a "simplification" that
     // makes the separator optional is caught here rather than in production.
+    //
+    // The bound is deliberately loose. What this catches is CATASTROPHIC
+    // backtracking, which on 20,000 groups does not take 60ms instead of 40 —
+    // it takes longer than anyone waits. So any ceiling far below "hangs"
+    // detects it equally well, and a tight one only adds false reds on a busy
+    // host (#316). Raised from 50ms for that reason, not because anything got
+    // slower.
     const evil = `${"a-".repeat(20_000)}!`;
     const t0 = performance.now();
     expect(SLUG_RE.test(evil)).toBe(false);
-    expect(performance.now() - t0).toBeLessThan(50);
+    expect(performance.now() - t0).toBeLessThan(2_000);
   });
 
   test("a base already ending in digits is not mistaken for a suffix", () => {

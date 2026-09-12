@@ -107,6 +107,11 @@ const PROBES: Record<string, unknown> = {
   collectionGroups: ["Content", "Operations"],
   schemaSnapshotSchedule: "weekly",
   schemaSnapshotKeepLast: 12,
+  // Narrows `FUNCTIONS_FETCH_ALLOW` for this workspace. The probe is the
+  // STORED value, which is what `settings.get` reports — what a function is
+  // actually allowed to reach is the intersection with the deployment ceiling,
+  // and `sandbox-policy-scope.test.ts` is where that is asserted.
+  functionsFetchAllow: ["api.example.com"],
 };
 
 const advertised = Object.keys(patchSettings.inputSchema.properties ?? {});

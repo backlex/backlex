@@ -27,6 +27,18 @@ const {
 // matches the slash-free URL Cloudflare actually serves and the sitemap emits.
 const cleanPath = Astro.url.pathname.replace(/(?:index)?\.html$/, "");
 const canonical = new URL(cleanPath || "/", Astro.site).href;
+
+// og:image must be absolute — every scraper fetches it out of page context, and
+// a root-relative path is simply dropped. Source + regeneration for the card
+// itself: apps/site/scripts/og-card.html and render-og.mjs.
+//
+// `twitter:card` below is `summary_large_image`, which is what renders the
+// 1.91:1 card 1200x630 is cut for. Plain `summary` shows a small square
+// thumbnail, and until this commit the site declared `summary` with no image at
+// all — so sharing a backlex.com link produced a text-only card and the artwork
+// never appeared. An attached image beats a card either way, so a post that
+// uploads the PNG directly was never affected.
+const ogImage = new URL("/og.png", Astro.site).href;
 ---
 <!doctype html>
 <html lang="en">
@@ -48,9 +60,14 @@ const canonical = new URL(cleanPath || "/", Astro.site).href;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Backlex — ask the AI for a backend. It ships with all of this." />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

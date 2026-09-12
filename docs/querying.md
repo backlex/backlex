@@ -180,8 +180,17 @@ wrong.
 
 :::note
 **Upgrading an existing workspace.** A collection gains its companion columns
-the next time its schema is applied — and nothing applies a schema on its own,
-so a workspace that upgrades keeps the old behaviour until you ask for it:
+the next time its schema is applied.
+
+**A daily sweep does this for you.** `cronTick` re-applies every managed
+collection in every workspace on the deployment, once a day, so a workspace
+that upgrades converges on its own — including one that was paused through the
+release and resumes later, which is the case that made the old
+run-it-by-hand-per-release arrangement unreliable. Set
+`SCHEMA_REAPPLY_SWEEP=off` where DDL is change-controlled and must not happen
+on a timer.
+
+To do it now rather than wait for the sweep:
 
 ```
 POST /api/admin/db/schema/reapply
@@ -196,6 +205,12 @@ single count, so one unapplyable table does not read as a failed upgrade.
 The backfill itself is resumable and idempotent: it only touches a NULL
 companion beside a non-NULL source, so a table too large to finish in one pass
 continues on the next call.
+
+A collection listed under `failed` is **not** always a resume case. One that
+cannot be applied at all — a metadata/table divergence, say — fails identically
+on every retry, and the daily sweep names it in a `schema-reapply-failed` warn
+carrying the workspace and every failing slug rather than letting it become a
+number nobody reads.
 :::
 
 ### Free-text search (`q`)

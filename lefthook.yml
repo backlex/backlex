@@ -139,6 +139,16 @@ pre-push:
     # (~6s total when caches are warm; cold first run ~15s).
     - name: build:targets
       run: bun run --no-orphans build:targets
+    # What Cloudflare actually refuses a deploy for, in MILLISECONDS. Runs
+    # straight after `build:targets` because it reads the BUILT worker bundle
+    # that step just produced — the byte ceiling in
+    # `worker-startup-budget.test.ts` walks source instead, and on 2026-09-10
+    # the two came apart completely while CF rejected a build for 10021. #372.
+    #
+    # Median of five runs, ~2s. One sample is not evidence here: a single run
+    # per arm once showed a 19% improvement that three runs per arm erased.
+    - name: startup:budget
+      run: bun run --no-orphans startup:budget
     - name: typecheck
       run: bun run --no-orphans typecheck
     # `typecheck` does NOT cover apps/web/tests — that is a separate tsconfig
@@ -191,8 +201,26 @@ pre-push:
     # running the typecheck BESIDE the suite; this parallelises inside the test
     # job, which runs alone. sys time only went 42s -> 93s, nowhere near the
     # 241s that motivated serialising the hook.
+    #
+    # `--reporter=junit --reporter-outfile` writes a durable record of the run
+    # to `.gate-test-results.xml` (gitignored) AND still streams the ordinary
+    # console output — verified, it is additive, not a replacement.
+    #
+    # It exists for #316. That issue has been investigated three times and twice
+    # the investigation ended at the same sentence: *I lost the failure text.*
+    # A red gate scrolls, the retry goes green, and the one artefact that would
+    # have identified it is gone. Both comments landed on the same workaround —
+    # `git push > push.log 2>&1` — which works and which nobody remembers to do
+    # on the push that actually fails.
+    #
+    # JUnit rather than a plain log because of what #316 is trying to tell
+    # apart. Its diagnostic signature is that the TOTAL MOVES: a failing
+    # assertion leaves the count where it was, while a worker dying partway
+    # through a file takes that file's remaining tests with it. The XML carries
+    # `tests=` per suite and per file, so that comparison is a diff rather than
+    # a recollection.
     - name: test
-      run: bun test --no-orphans --timeout 30000 --parallel=4 --no-isolate --timings=.github/test-timings.json
+      run: bun test --no-orphans --timeout 30000 --parallel=4 --no-isolate --timings=.github/test-timings.json --reporter=junit --reporter-outfile=.gate-test-results.xml
 
 # Post-merge: reclaim agent worktrees. Parallel agent sessions each get a
 # worktree under `.claude/worktrees/` and nothing removes them when the session

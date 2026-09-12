@@ -2,11 +2,8 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { sql } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import { applyCollection, type FieldDef, MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@backlex/db";
-import { eq } from "drizzle-orm";
-import * as pg from "@backlex/db/pg";
-import * as sqlite from "@backlex/db/sqlite";
-import { invalidateTenantCollections } from "../services/collections-cache";
+import { MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@backlex/db";
+import { reapplyWorkspaceSchema } from "../services/schema-reapply";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import {
@@ -176,10 +173,6 @@ const BackupConfigSchema = z
     }),
   })
   .openapi("BackupConfig");
-
-/** The `collections` metadata table for the active dialect. */
-const collectionsTableFor = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
 /** Ceiling on the SQL text carried into the audit payload — see
  *  {@link logSqlRun}. */
@@ -859,6 +852,12 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
    * Reports per collection rather than a single count: a workspace with one
    * unapplyable table must not read as a failed upgrade, and a backfill that
    * did not finish has to SAY so instead of being counted as done.
+   *
+   * **`cronTick` now runs the same pass daily across every workspace** (#317) —
+   * running this by hand after a release is no longer the only thing standing
+   * between a workspace and a column it is owed. This route stays because an
+   * operator who has just fixed a failing collection wants the answer NOW and
+   * wants to READ it, which a cron log is not.
    */
   .openapi(
     createRoute({
@@ -895,48 +894,10 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!tenantId) {
         throw new AppError("VALIDATION", "Re-apply requires an active workspace");
       }
-      const t = collectionsTableFor(ctx.dialect);
-      const rows = (await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.tenantId, tenantId))) as Record<string, unknown>[];
-
-      let applied = 0;
-      let skipped = 0;
-      const failed: { slug: string; error: string }[] = [];
-      for (const r of rows) {
-        const slug = String(r.slug ?? "");
-        // Adopted tables are somebody else's; an inactive collection is one the
-        // workspace has taken out of service. Neither is ours to DDL.
-        if (r.adopted === true || r.adopted === 1 || (r.status ?? "active") !== "active") {
-          skipped += 1;
-          continue;
-        }
-        try {
-          await applyCollection(ctx.db as any, ctx.dialect, {
-            table: String(r.physicalTable ?? r.physical_table ?? ""),
-            fields: (r.fields ?? []) as FieldDef[],
-            pkType: (r.pkType ?? r.pk_type ?? "uuid") as "uuid" | "text" | "integer",
-            ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
-            tenantScoped: (r.tenantScoped ?? r.tenant_scoped) !== false,
-            versioned: Boolean(r.versioned),
-            hasCreatedAt: (r.hasCreatedAt ?? r.has_created_at) !== false,
-            hasUpdatedAt: (r.hasUpdatedAt ?? r.has_updated_at) !== false,
-            softDelete: Boolean(r.softDelete ?? r.soft_delete),
-            fts: Boolean(r.fts),
-            adopted: false,
-          });
-          applied += 1;
-        } catch (e) {
-          // One unapplyable table must not cost the rest of the workspace its
-          // upgrade — and it must not be silently counted as applied either.
-          failed.push({ slug, error: (e as Error).message.slice(0, 200) });
-        }
-      }
-      // The loader caches which companion columns a table has; a re-apply that
-      // just added some would otherwise keep answering with the old set until
-      // the entry expired.
-      invalidateTenantCollections(tenantId);
-      return c.json({ data: { applied, skipped, failed } });
+      // The loop lives in `services/schema-reapply.ts` because the scheduled
+      // sweep runs the same one. Two copies of a DDL pass would drift, and the
+      // half that drifted would be the one nobody reads — the cron.
+      const result = await reapplyWorkspaceSchema(ctx, tenantId);
+      return c.json({ data: result });
     },
   );

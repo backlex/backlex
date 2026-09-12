@@ -272,25 +272,117 @@ describe("worker startup budget", () => {
     // `middleware/session.ts` is the importer and it already pulled in both
     // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
     // dynamic import would bite on.
-    // Raised 8465 → 8480 on 2026-09-12, measured at 8468. No new module: the
-    // growth is inside two files the graph already reached — `buildLocalizedRefs`
-    // in `services/items/i18n-sidecar.ts` and the locale plumbing in
-    // `services/items/expand.ts` (#377). `?expand=` into a collection with a
-    // `localized` field had been an unconditional 500 because the expand builder
-    // read every target field off the join alias, and a localized field has no
-    // column there.
     //
-    // Nothing new became REACHABLE, which is the assertion that matters: the
-    // importer is `expand.ts`, and `i18n-sidecar.ts` was already pulled in by
-    // both `routes/items/list.ts` and `routes/items/read.ts`. The nine
-    // "not on the startup path" guards above are all still green, so this is
-    // bytes, not surface.
+    // Raised 8465 → 8480 on 2026-09-10, measured at 8471 across 638 modules.
+    // ZERO new modules: #345's method granularity edited three files that were
+    // already eager — `lib/route-planes.ts`, `middleware/plane-firewall.ts`,
+    // `services/app-orgs.ts` — and the ~6 KiB is almost entirely the comment
+    // arguing why a qualified entry can only narrow, and why an org slugged
+    // `invites` had to be refused at write time. This walk counts source bytes,
+    // so that argument weighs what the three lines of matcher do.
     //
-    // It is bytes AND it is mostly prose again — the first pass measured 8469
-    // and trimming the two new doc comments bought exactly 1 KiB. That is the
-    // standing tax of this walk counting source bytes; worth restating because
-    // startup is at the CF ceiling (#372), so a raise here is not free even
-    // when nothing new is reached.
-    expect(kib).toBeLessThan(8480);
+    // A count with no new module is the cheapest kind of raise to grant and the
+    // easiest to grant carelessly, so the check that matters is the one above:
+    // `eager.size` moved by nothing, and there is no seam a dynamic import
+    // would bite on.
+    //
+    // Raised 8465 → 8480 on 2026-09-10, measured at 8469. ZERO new modules:
+    // #315 added the polymorphic-reference sweep to two files that were already
+    // eager (`packages/db/src/field-types.ts`, `services/items/on-delete.ts`)
+    // plus one line of zod in `routes/collections.ts`. The ecommerce template
+    // itself is NOT counted — `templates/catalog.ts` is behind `templates/lazy`
+    // and this file asserts that two tests up, which is why 68 lines of
+    // commerce schema move this number by nothing.
+    //
+    // Most of the ~4 KiB is the argument for why `cascade` is the only action a
+    // polymorphic ref supports and why the read side re-checks the sibling
+    // column. This walk counts source bytes, so that weighs what the DELETE
+    // does.
+    //
+    // MERGE NOTE, 2026-09-10: the two raises above were measured on separate
+    // branches (8471 and 8469) and BOTH landed on 8480. Together they measure
+    // **8479** — one KiB under, which is the composition failure this file
+    // already records once (`8306 exists only in the merge`) arriving again and
+    // being caught this time. Two more branches raising this line are in flight
+    // (#335, #317); each has to re-measure on ITS merge rather than take the
+    // largest of the four, and the number stays 8480 here because 8479 is what
+    // this tree actually costs.
+    //
+    // Raised 8480 → 8500 on 2026-09-10, measured at 8492 ON THE MERGE. ZERO new modules:
+    // #335 edited files already on the eager path — `env.ts`,
+    // `routes/functions.ts`, `services/sandbox/{index,types,host-bridge}.ts`,
+    // `services/{functions,flows,jobs,settings}.ts` — and the two SQL migration
+    // files it adds are text the bundle already excludes.
+    //
+    // Note what did NOT move it. `services/scheduler.ts` is off the startup
+    // path (asserted three tests up, because `cron-parser` → `luxon` is 260 KB
+    // behind a `scheduled()` trigger), so the runner edits there are free. The
+    // ~9 KiB is the argument for why NULL keeps the soft sandbox, and why the
+    // per-workspace fetch list can only narrow — this walk counts source bytes,
+    // so those weigh what the two decision functions do.
+    //
+    // 8485 was this branch's own number, measured at 8474 in isolation. The
+    // MERGE measures 8492 — the third time in one day that a per-branch figure
+    // did not survive contact with the others, which is the thing the note
+    // above is about. One branch (#317) is still in flight and will have to do
+    // this again.
+    //
+    // Raised 8465 → 8475 on 2026-09-10, measured at 8466. ONE new module:
+    // `services/schema-reapply.ts` (#317), the daily sweep that brings every
+    // workspace's physical tables forward. Net +1 KiB, because the loop MOVED
+    // there out of `routes/db-admin.ts` rather than being added beside it.
+    //
+    // It is eager through `routes/db-admin.ts`, not through the scheduler —
+    // `services/scheduler.ts` is off the startup path (asserted three tests up)
+    // and its import of this module costs nothing. What it pulls in,
+    // `@backlex/db`'s `applyCollection` and `services/collections-cache`, the
+    // graph already reached, so there is no seam a dynamic import would bite
+    // on.
+    //
+    // A note for whoever merges next, because this file has been bitten by it
+    // before: FOUR branches raised this line in parallel (#345, #315, #335,
+    // #317), each measured and green against its own tree. A per-branch budget
+    // check does not compose — re-measure on the merge rather than taking the
+    // largest of the four.
+    //
+    // FINAL of the four, 2026-09-10. This branch measured 8466 alone and set
+    // 8475; the merged tree measures **8497 across 639 modules** — the one new
+    // module (`services/schema-reapply.ts`) plus the three branches that landed
+    // ahead of it. Ceiling stays 8500, which is 3 KiB of headroom, so the next
+    // change to an eager file will trip this and should.
+    //
+    // ONE THING THIS NUMBER IS NOT, and it cost a red deploy to establish:
+    // `Workers Builds` rejected PR #367 with CF 10021 (`Script startup exceeded
+    // CPU time limit`) and a RETRIGGER OF THE SAME COMMIT succeeded. The only
+    // delta against main there was comment, which the bundler strips. So this
+    // source-byte figure is a proxy for reachability, NOT for the limit CF
+    // enforces — measured on that tree, the BUILT eager graph was 29 modules /
+    // 6128 KiB / 240.5 ms compile + top-level on this machine's V8, which
+    // `measure-startup.mjs` puts at roughly 2-3x that on Cloudflare. That is
+    // the band this file's header already records as intermittently rejected.
+    // Raising this line does not buy startup headroom and never did.
+    //
+    // The millisecond half now has its own guard: `bun run startup:budget`
+    // (`scripts/check-startup-budget.ts`), which runs in the pre-push gate and
+    // in CI's `build` job because it reads the BUILT bundle rather than source.
+    // Keep both. This one catches something becoming REACHABLE; that one
+    // catches it becoming EXPENSIVE, and the two are not the same event — a
+    // 404 KiB module that only declares object literals costs 1.5 ms.
+    // Raised 8500 → 8515 on 2026-09-13, measured at 8504 — and this is the
+    // "next change to an eager file" the note above predicted would trip it.
+    // #377: `?expand=` into a collection with a `localized` field was an
+    // unconditional 500 (`no such column: rel_category.name`), because the
+    // expand builder read every target field off the join alias and a localized
+    // field has no column there. The growth is `buildLocalizedRefs` in
+    // `services/items/i18n-sidecar.ts` plus the locale plumbing in
+    // `services/items/expand.ts`.
+    //
+    // Nothing new became REACHABLE, which is the only thing this line measures
+    // (see the paragraph above on why it is not a startup-time proxy):
+    // `i18n-sidecar.ts` was already imported by both `routes/items/list.ts` and
+    // `routes/items/read.ts`, and the nine "not on the startup path" guards are
+    // green. `bun run startup:budget` — the half that reads the BUILT bundle —
+    // is the one to watch if this ever stops being true.
+    expect(kib).toBeLessThan(8515);
   });
 });

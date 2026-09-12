@@ -573,6 +573,81 @@ describe("ecommerce model", () => {
     }
   });
 
+  test("an order records whether ITS prices included tax, not just its channel's", async () => {
+    // `channels.prices_include_tax` says whether a price list is gross, and a
+    // channel is EDITED. Flipping one from tax-inclusive to tax-exclusive
+    // silently re-reads every order already in the table — `line_total` was a
+    // gross figure and becomes a net one, so an invoice reprinted afterwards
+    // shows a different net for the same sale with nothing in the row to
+    // explain why. That is a legitimate change for a market moving to net B2B
+    // pricing, which is exactly why it must not rewrite history. #315.
+    const orders = await get("orders?limit=20");
+    expect(orders.data.length).toBeGreaterThan(0);
+    for (const o of orders.data) expect(o).toHaveProperty("prices_include_tax");
+
+    const channels = await get("channels?limit=20");
+    const gross = channels.data.find((c) => c.prices_include_tax === true);
+    expect(gross, "the seed needs a tax-inclusive channel for this to mean anything").toBeDefined();
+
+    const placed = await post("orders", {
+      email: "posture@example.com",
+      channel: gross!.id,
+      subtotal: 100,
+      total: 100,
+      currency: "EUR",
+      prices_include_tax: true,
+    });
+    expect(placed.status).toBe(201);
+    const order = ((await placed.json()) as { data: Record<string, unknown> }).data;
+    expect(order.prices_include_tax).toBe(true);
+
+    // The channel changes its mind. The order does not.
+    const flipped = await patch("channels", String(gross!.id), { prices_include_tax: false });
+    expect(flipped.status).toBe(200);
+    expect((await one("orders", order.id)).prices_include_tax).toBe(true);
+  });
+
+  test("a product and a variant each carry the id their source system knows them by", async () => {
+    // Without it the only stable-looking key an importer has is `slug`, which
+    // is a URL and therefore something marketing renames — so a rename imports
+    // the product a second time. Saleor puts the reference on both `Product`
+    // and `ProductVariant`, and a marketplace addresses the VARIANT. #315.
+    const made = await post("products", {
+      name: "Imported Tee",
+      slug: "imported-tee",
+      price: 12,
+      currency: "USD",
+      external_id: "shopify:gid://Product/1",
+    });
+    expect(made.status).toBe(201);
+    const product = ((await made.json()) as { data: Record<string, unknown> }).data;
+    expect(product.external_id).toBe("shopify:gid://Product/1");
+
+    const variant = await post("product_variants", {
+      product: product.id,
+      title: "M",
+      price: 12,
+      currency: "USD",
+      external_id: "shopify:gid://Variant/9",
+    });
+    expect(variant.status).toBe(201);
+
+    // Not unique — two importers may key the same catalogue differently, and a
+    // template that refuses the second one turns a merge into a support ticket.
+    const second = await post("products", {
+      name: "Imported Tee (other feed)",
+      slug: "imported-tee-2",
+      price: 12,
+      currency: "USD",
+      external_id: "shopify:gid://Product/1",
+    });
+    expect(second.status).toBe(201);
+
+    // …and it is what an importer looks a row up by.
+    const found = await get(`products?${where({ external_id: { _eq: "shopify:gid://Product/1" } })}`);
+    expect(found.data.length).toBe(2);
+  });
+
   test("a partly-shipped order can say which line was in the box", async () => {
     const shipped = await get("fulfillment_items?limit=20");
     expect(shipped.data.length).toBeGreaterThan(0);

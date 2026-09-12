@@ -98,6 +98,26 @@ const SettingsInput = z
     /** Automatic schema-snapshot cadence + retention (#9). */
     schemaSnapshotSchedule: z.enum(["off", "daily", "weekly"]).optional(),
     schemaSnapshotKeepLast: z.number().int().min(1).max(50).optional(),
+    /**
+     * Hosts this workspace's sandboxed functions may `ctx.fetch` (#335).
+     *
+     * NARROWS `FUNCTIONS_FETCH_ALLOW`, never widens it — the env list is the
+     * ceiling and `resolveFetchAllow` intersects the two, so a workspace admin
+     * writing `*` here gets the deployment's list, not everything.
+     *
+     * `null` clears the choice and inherits the deployment list; `[]` is a
+     * choice and means no outbound fetch at all. Both are accepted, and they
+     * mean different things.
+     */
+    functionsFetchAllow: z
+      .array(z.string().min(1).max(253))
+      .max(100)
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "Hosts this workspace's functions may fetch. Narrows FUNCTIONS_FETCH_ALLOW; never widens it. `null` inherits the deployment list, `[]` disables outbound fetch.",
+      }),
   })
   .strict()
   .refine(

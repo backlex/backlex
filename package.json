@@ -30,6 +30,7 @@
     "build:site": "bun run --cwd apps/site build",
     "build:examples": "bun run --filter '@backlex-examples/*' build",
     "build:targets": "bun scripts/build-targets.ts",
+    "startup:budget": "bun scripts/check-startup-budget.ts",
     "build:node": "bun scripts/build-node.ts",
     "start:node": "node apps/web/dist/node/server.mjs",
     "build:lambda": "bun scripts/build-lambda.ts",

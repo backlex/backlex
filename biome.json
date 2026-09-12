@@ -18,7 +18,7 @@
       "!**/.wrangler",
       "!**/node_modules",
       "!**/drizzle",
-      "!**/.claude",
+      "!.claude",
       "!**/tsconfig*.json",
       "!apps/web/src/server/services/consent-banner-bundle.ts"
     ]

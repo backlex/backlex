@@ -7,7 +7,7 @@ import type { Ctx } from "../context";
 import type { DbCtx } from "./seed";
 import type { Env } from "../env";
 import { buildContext } from "../context";
-import { findByName } from "./functions";
+import { authorBindings, findByName } from "./functions";
 import { runFunction } from "./sandbox";
 import { deliverWebhookById } from "./webhooks";
 import { deliverIntegrationById } from "./integrations";
@@ -362,7 +362,7 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     if (!fn) throw new Error(`function '${name}' not found`);
     const result = await runFunction(
       fn.code,
-      { ctx, auth: { ...SYSTEM_AUTH, tenantId: job.tenantId } },
+      { ctx, auth: { ...SYSTEM_AUTH, tenantId: job.tenantId }, ...authorBindings(fn) },
       job.payload.input ?? {},
       fn.timeoutMs,
     );

@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, eq } from "drizzle-orm";
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -14,11 +14,36 @@ import {
   type FunctionRow,
 } from "../services/functions";
 import { logActivity } from "../services/activity";
+import { isInstanceOperator } from "../services/roles/guards";
 import { defaultHook } from "../lib/openapi-router";
 import { readJsonOr } from "../lib/body";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
+
+/**
+ * Who is writing this code, recorded on the row.
+ *
+ * `isInstanceOperator` rather than the workspace `admin` role, deliberately:
+ * `POST /api/tenants` grants `admin` to whoever creates a workspace, so that
+ * role name cannot separate "the person who runs this deployment" from "a
+ * customer who signed up". An API-key identity is never an operator either —
+ * the guard says so and means it, and a scoped machine key must not be able to
+ * mint code that runs with host access.
+ *
+ * Stamped at WRITE time rather than resolved at run time because the answer can
+ * change: an operator can lose the role, a workspace can be handed over, and
+ * `OWNER_EMAIL` can move. What must not change is the trust level of code that
+ * is already on disk. See `services/sandbox/index.ts` for what reads it.
+ */
+const authorStamp = async (
+  c: Context<AppBindings>,
+): Promise<{ createdBy: string | null; authorKind: "operator" | "tenant" }> => {
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  const operator = await isInstanceOperator(ctx, auth);
+  return { createdBy: auth?.userId ?? null, authorKind: operator ? "operator" : "tenant" };
+};
 
 const FunctionInput = z
   .object({
@@ -252,6 +277,7 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         code: body.code,
         timeoutMs: body.timeoutMs ?? 5000,
         active: body.active ?? true,
+        ...(await authorStamp(c)),
       });
       const created = {
         id,
@@ -300,6 +326,18 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const { id } = c.req.valid("param");
       await loadOwnFunction(ctx, tenantId, id);
       const t = tableFor(ctx.dialect);
+      // Re-stamped when the CODE changes, and only then. The author of a
+      // function is whoever wrote what it runs — renaming it or switching it
+      // off is not authorship, and re-attributing on those would let an
+      // operator toggling `active` silently promote a tenant's code into the
+      // soft sandbox. Re-saving the body IS how an operator adopts a legacy
+      // row, which is what the refusal message tells them to do.
+      //
+      // Resolved BEFORE the chain rather than awaited inside `.set()`: an
+      // `await` in the middle of a Drizzle chain is hard to read and, more to
+      // the point, `scan-tenant-scope.ts` reads this file as source — it lost
+      // sight of the `.where` below and reported this update as unscoped.
+      const restamp = body.code !== undefined ? await authorStamp(c) : {};
       await (ctx.db as any)
         .update(t)
         .set({
@@ -309,6 +347,7 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           ...(body.code !== undefined ? { code: body.code } : {}),
           ...(body.timeoutMs !== undefined ? { timeoutMs: body.timeoutMs } : {}),
           ...(body.active !== undefined ? { active: body.active } : {}),
+          ...restamp,
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
         .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));

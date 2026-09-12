@@ -117,6 +117,16 @@ const SETTINGS_PROPERTIES: Record<string, Record<string, unknown>> = {
     type: "integer",
     description: "How many scheduled schema snapshots to retain (1-50).",
   },
+  functionsFetchAllow: {
+    type: ["array", "null"],
+    items: { type: "string" },
+    description:
+      "Hosts this workspace's sandboxed functions may reach with `ctx.fetch`. " +
+      "NARROWS the deployment's FUNCTIONS_FETCH_ALLOW and can never widen it — " +
+      "`[\"*\"]` means everything the deployment permits, not everything. `null` " +
+      "clears the choice and inherits the deployment list; `[]` is a choice, and " +
+      "switches outbound fetch off for this workspace.",
+  },
 };
 
 export const patchSettings: McpTool = {

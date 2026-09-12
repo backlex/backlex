@@ -16,6 +16,7 @@ import { resolvePermission } from "../permissions";
 import { sendPushToUsers } from "../push";
 import { fetchOutbound } from "../storage/hosts";
 import { resolveAiRuntime } from "../ai-config";
+import { loadAppSettings } from "../settings";
 import { aiMeterForTenant, assertAiQuota } from "../usage";
 import { aiAvailable, callClaude } from "../../mcp/ai-client";
 import type { Ctx } from "../../context";
@@ -126,6 +127,49 @@ export const isAllowedFetch = (rawUrl: string, allowlist: string[]): boolean => 
   return allowlist.some((host) => u.host === host || u.host.endsWith(`.${host}`));
 };
 
+/** Split a comma-separated host list the way the env var is written. */
+export const parseHostList = (raw: string | null | undefined): string[] =>
+  (raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+/**
+ * The hosts THIS workspace's functions may reach.
+ *
+ * `FUNCTIONS_FETCH_ALLOW` is deployment-wide, so one operator decision bound
+ * every tenant on the instance and a multi-tenant host could not let workspace
+ * A reach a partner API that workspace B must not. #335.
+ *
+ * The workspace list NARROWS the deployment one; it can never widen it. Each
+ * workspace entry survives only if the ceiling already covered it, using the
+ * same host matching `isAllowedFetch` does — so naming a subdomain of a
+ * permitted host is a narrowing and is kept, and naming anything else is
+ * dropped rather than refused, because a stale entry left over from a
+ * tightened ceiling must not take the whole list down with it.
+ *
+ * `null` (the default) means the workspace has not chosen, and inherits the
+ * ceiling unchanged — which is the behaviour every existing deployment has
+ * today. An EMPTY array is a choice, and means no outbound fetch at all; that
+ * distinction is the reason the setting is nullable rather than defaulting to
+ * `[]`.
+ */
+export const resolveFetchAllow = (
+  ceiling: string[],
+  workspace: string[] | null | undefined,
+): string[] => {
+  if (!workspace) return ceiling;
+  if (ceiling.length === 0) return [];
+  // `*` on the workspace side means "everything the deployment permits", not
+  // "everything" — otherwise a workspace admin could write one character and
+  // undo the ceiling the setting exists to enforce.
+  if (workspace.includes("*")) return ceiling;
+  if (ceiling.includes("*")) return workspace;
+  return workspace.filter((host) =>
+    ceiling.some((c) => host === c || host.endsWith(`.${c}`)),
+  );
+};
+
 /**
  * The workspace an op is acting on, or a refusal.
  *
@@ -161,10 +205,15 @@ export const dispatchRpc = async (
   if (op === "fetch") {
     const url = String(args.url ?? "");
     const init = args.init as RequestInit | undefined;
-    const allowlist = (bindings.ctx.env.FUNCTIONS_FETCH_ALLOW ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    // Deployment ceiling, narrowed by this workspace's own list when it has
+    // one. Read per invocation rather than cached on the bindings because a
+    // long-lived cron trigger must pick up a tightened list on its next run,
+    // not on the next process.
+    const ceiling = parseHostList(bindings.ctx.env.FUNCTIONS_FETCH_ALLOW);
+    const settings = bindings.auth.tenantId
+      ? await loadAppSettings(bindings.ctx.db, bindings.ctx.dialect, bindings.auth.tenantId)
+      : null;
+    const allowlist = resolveFetchAllow(ceiling, settings?.functionsFetchAllow ?? null);
     if (!isAllowedFetch(url, allowlist)) {
       throw new Error(`URL not in fetch allow-list: ${url}`);
     }

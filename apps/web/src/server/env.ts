@@ -108,6 +108,24 @@ export interface Env {
    *  and for the same reason: a permissive default meant the guarantee was real
    *  on the deployments that set it and inert everywhere else. */
   PERMISSION_WRITE_CHECK?: string;
+  /**
+   * `"off"` disables the daily schema re-apply sweep (#317).
+   *
+   * `cronTick` otherwise brings every workspace's physical tables forward to
+   * what the running build expects, once a day. The pass is additive and
+   * idempotent — it never drops or rewrites a column, skips adopted tables and
+   * inactive collections, and on a converged workspace reads each table's
+   * columns and writes nothing.
+   *
+   * It is ON by default because the alternative was demonstrated not to work:
+   * every feature that adds a column owes the same sweep, running it was a
+   * per-release chore, and when #317 came to check, three of four live tenants
+   * had never had it and the fourth needed it without anyone noticing.
+   *
+   * Set `off` where DDL is change-controlled and must not happen on a timer.
+   * `POST /api/admin/db/schema/reapply` still runs it on demand.
+   */
+  SCHEMA_REAPPLY_SWEEP?: string;
   /** `"off"` skips the `PRAGMA foreign_keys = ON` the Bun SQLite client now
    *  issues. The pragma is defence in depth, not a fix — D1 and Postgres
    *  enforce unconditionally — but an existing self-host may hold rows that
@@ -582,8 +600,24 @@ export interface Env {
    *  function author gets the API host's env and shell. Set it only where the
    *  people who author functions are the people who run the deployment — a
    *  single-tenant self-host or a dev box — never where `POST /api/tenants` is
-   *  open. `quickjs` pins the safe in-isolate sandbox explicitly. */
+   *  open. `quickjs` pins the safe in-isolate sandbox explicitly.
+   *
+   *  Since `functions.author_kind` exists, `bun-worker` is enforced PER AUTHOR
+   *  rather than deployment-wide: a function whose author was not the instance
+   *  operator falls back to `quickjs`. A row that predates the column keeps the
+   *  soft sandbox and says so in a warning. See
+   *  `services/sandbox/index.ts::selectProvider`. */
   FUNCTIONS_SANDBOX?: string;
+  /** Opt OUT of the per-author clamp above: `"1"` restores
+   *  `FUNCTIONS_SANDBOX=bun-worker`'s old deployment-wide meaning.
+   *
+   *  It exists for one real deployment shape — functions written by an
+   *  automation holding an API key. `isInstanceOperator` refuses a key identity
+   *  by design (a scoped machine key must not escalate into the SQL console),
+   *  so such a row is stamped `tenant` and would otherwise lose host access on
+   *  upgrade. Setting this says "every author on this instance is the
+   *  operator", which is the same claim `bun-worker` itself already makes. */
+  FUNCTIONS_SANDBOX_TRUST_ALL_AUTHORS?: string;
   /** npm registry base URL extension installs resolve against. Defaults to
    *  https://registry.npmjs.org; point at a private registry mirror to gate
    *  which packages `POST /api/extensions/install` may pull. */
@@ -804,6 +838,7 @@ export const STRING_ENV_KEYS = [
   "OWNER_EMAIL",
   "WORKSPACE_CREATION",
   "PLANE_GUARD",
+  "SCHEMA_REAPPLY_SWEEP",
   "DB_FK_ENFORCE",
   "PERMISSION_WRITE_CHECK",
   "DEMO_MODE",
@@ -937,6 +972,7 @@ export const STRING_ENV_KEYS = [
   "FUNCTIONS_FETCH_ALLOW",
   "FUNCTIONS_EXEC_URL",
   "FUNCTIONS_SANDBOX",
+  "FUNCTIONS_SANDBOX_TRUST_ALL_AUTHORS",
   "EXTENSIONS_NPM_REGISTRY",
   "GRAPHQL_MAX_DEPTH",
   "GRAPHQL_MAX_COST",

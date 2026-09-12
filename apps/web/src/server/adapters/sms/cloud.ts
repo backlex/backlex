@@ -1,7 +1,7 @@
 import { AppError } from "@backlex/core";
 import type { SMSAdapter, SMSMessage, SMSSendResult } from "@backlex/core/adapters";
-import type { Env } from "../env";
-import { cloudPost } from "../lib/cloud-report";
+import type { Env } from "../../env";
+import { cloudPost } from "../../lib/cloud-report";
 
 /**
  * Managed-cloud SMS adapter. On a provisioned cloud project the customer brings

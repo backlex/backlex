@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { cloudEmbeddingAdapter } from "../src/server/adapters/embedding.cloud";
+import { cloudEmbeddingAdapter } from "../src/server/adapters/embedding/cloud";
 import type { Env } from "../src/server/env";
 import { asFetch } from "./helpers/fetch-stub";
 

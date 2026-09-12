@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { vectorizeAdapter, type VectorizeIndexMap } from "../src/server/adapters/vector.cf";
+import { vectorizeAdapter, type VectorizeIndexMap } from "../src/server/adapters/vector/cf";
 
 // Minimal in-memory stand-in for a Cloudflare VectorizeIndex. A vector `id` is
 // the index-wide key (namespace is only a filter) — exactly the model the

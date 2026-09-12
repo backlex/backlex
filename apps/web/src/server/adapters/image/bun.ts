@@ -26,7 +26,7 @@ import type { ImageAdapter, ImageTransform } from "@backlex/core";
  *   it is spelled out here so a future default flip cannot silently start
  *   serving every phone photo's thumbnail sideways. (sharp is the backend
  *   where this was genuinely missing — see the `.rotate()` call in
- *   `image.sharp.ts`, which is what brought the two into agreement.)
+ *   `sharp.ts`, which is what brought the two into agreement.)
  *
  * Available on the instance and deliberately unused for now, so nobody has to
  * re-read the docs to find them: `metadata()` probes {width,height,format}

@@ -1,5 +1,5 @@
 /**
- * Unit test for the Bun image adapter (`adapters/image.bun.ts`).
+ * Unit test for the Bun image adapter (`adapters/image/bun.ts`).
  *
  * This is the transform backend on self-hosted Bun, and it is the one that
  * decodes bytes a tenant uploaded — reached through `?width=` on a stored
@@ -14,7 +14,7 @@
 import { describe, expect, test } from "bun:test";
 import { AppError, MAX_SOURCE_PIXELS } from "@backlex/core";
 import sharp from "sharp";
-import { bunImage } from "../src/server/adapters/image.bun";
+import { bunImage } from "../src/server/adapters/image/bun";
 
 const adapter = bunImage();
 if (!adapter) throw new Error("Bun.Image missing — this suite runs on Bun");

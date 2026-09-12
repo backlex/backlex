@@ -10,7 +10,7 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
-import { escapeLdapFilter } from "../src/server/adapters/ldap.ldapts";
+import { escapeLdapFilter } from "../src/server/adapters/ldap/ldapts";
 import { __setLdapAdapterFactoryForTests } from "../src/server/lib/auth-select";
 import type { LdapAdapter, LdapAttributes } from "@backlex/core/adapters";
 

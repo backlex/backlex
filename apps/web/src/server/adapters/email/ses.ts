@@ -1,6 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import type { EmailAdapter } from "@backlex/core";
-import { rawMimeBase64 } from "../lib/mime";
+import { rawMimeBase64 } from "../../lib/mime";
 
 /**
  * Amazon SES v2 send-email API (`POST /v2/email/outbound-emails`). Requests

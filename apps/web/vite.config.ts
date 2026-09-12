@@ -230,7 +230,7 @@ const workerManualChunks = (id: string): string | undefined => {
   }
   // The SAML subsystem (samlify + its X.509/ASN.1/RSA graph) — reached only
   // through the dynamically-imported samlify adapter (lib/auth-select →
-  // adapters/saml.samlify), used on-demand when a workspace resolves a SAML
+  // adapters/saml/samlify), used on-demand when a workspace resolves a SAML
   // provider.
   if (
     id.includes("/node_modules/samlify/") ||

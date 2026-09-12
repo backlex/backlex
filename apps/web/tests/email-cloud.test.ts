@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { cloudEmailAdapter } from "../src/server/adapters/email.cloud";
+import { cloudEmailAdapter } from "../src/server/adapters/email/cloud";
 import type { Env } from "../src/server/env";
 import { asFetch } from "./helpers/fetch-stub";
 

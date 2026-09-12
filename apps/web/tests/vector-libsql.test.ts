@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import { libsqlVectorAdapter } from "../src/server/adapters/vector.libsql";
+import { libsqlVectorAdapter } from "../src/server/adapters/vector/libsql";
 import type { SqliteDb } from "@backlex/db/sqlite";
 
 // Exercises the libSQL / Turso native-vector path end-to-end against a real

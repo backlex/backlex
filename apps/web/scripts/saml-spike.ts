@@ -15,7 +15,7 @@
  * `node:crypto`. Cloudflare Workers expose those under the
  * `nodejs_compat` flag (apps/web/wrangler.toml: compatibility_date
  * `2025-01-01` + `compatibility_flags = ["nodejs_compat"]`). The adapter
- * (`apps/web/src/server/adapters/saml.samlify.ts`) is therefore expected
+ * (`apps/web/src/server/adapters/saml/samlify.ts`) is therefore expected
  * to load on Workers. If a future Workers runtime drops a primitive that
  * samlify needs, swap in the Web-Crypto-based verifier per the plan.
  */

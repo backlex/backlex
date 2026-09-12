@@ -13,8 +13,8 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { iletimerkeziSms } from "../src/server/adapters/sms.iletimerkezi";
-import { netgsmSms } from "../src/server/adapters/sms.netgsm";
+import { iletimerkeziSms } from "../src/server/adapters/sms/iletimerkezi";
+import { netgsmSms } from "../src/server/adapters/sms/netgsm";
 import { selectSmsSpec } from "../src/server/lib/sms-select";
 import type { Env } from "../src/server/env";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";

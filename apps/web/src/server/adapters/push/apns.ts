@@ -1,5 +1,5 @@
 import type { PushAdapter, PushMessage, PushSendResult } from "@backlex/core/adapters";
-import { signJwt } from "../lib/push-crypto";
+import { signJwt } from "../../lib/push-crypto";
 
 /**
  * Apple Push Notification service, token-based auth (provider JWT, ES256 from

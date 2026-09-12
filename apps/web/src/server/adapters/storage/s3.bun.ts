@@ -1,5 +1,5 @@
 import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
-import { s3FetchStorage } from "./storage.s3.fetch";
+import { s3FetchStorage } from "./s3.fetch";
 
 export interface BunS3Config {
   bucket: string;

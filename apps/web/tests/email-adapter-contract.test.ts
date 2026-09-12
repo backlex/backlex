@@ -21,11 +21,11 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import type { EmailAdapter, EmailMessage } from "@backlex/core/adapters";
-import { resendEmail } from "../src/server/adapters/email.resend";
-import { sendgridEmail } from "../src/server/adapters/email.sendgrid";
-import { mailgunEmail } from "../src/server/adapters/email.mailgun";
-import { sesEmail } from "../src/server/adapters/email.ses";
-import { consoleEmail } from "../src/server/adapters/email.console";
+import { resendEmail } from "../src/server/adapters/email/resend";
+import { sendgridEmail } from "../src/server/adapters/email/sendgrid";
+import { mailgunEmail } from "../src/server/adapters/email/mailgun";
+import { sesEmail } from "../src/server/adapters/email/ses";
+import { consoleEmail } from "../src/server/adapters/email/console";
 import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
@@ -163,9 +163,9 @@ describe("EmailAdapter conformance — console", () => {
 describe("the suite covers the backends that exist", () => {
   test("every email adapter file is either exercised or named as absent", async () => {
     const { readdirSync } = await import("node:fs");
-    const files = readdirSync(new URL("../src/server/adapters", import.meta.url))
-      .filter((f) => /^email\..*\.ts$/.test(f))
-      .map((f) => f.replace(/^email\.|\.ts$/g, ""))
+    const files = readdirSync(new URL("../src/server/adapters/email", import.meta.url))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => f.replace(/\.ts$/, ""))
       .sort();
     expect(files).toEqual(["cloud", "console", "mailgun", "resend", "sendgrid", "ses", "smtp"]);
 

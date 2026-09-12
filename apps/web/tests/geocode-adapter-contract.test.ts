@@ -2,7 +2,7 @@
  * One conformance suite, run against every geocoding backend.
  *
  * `GeocodeAdapter.geocode()` answers `GeocodeResult | null`, and the whole
- * contract turns on what `null` MEANS. `geocode.google.ts` states it in its own
+ * contract turns on what `null` MEANS. `geocode/google.ts` states it in its own
  * header: a provider failure "must throw, or a workspace with an expired key
  * would quietly record every [address] as unlocatable".
  *
@@ -22,10 +22,10 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import type { GeocodeAdapter } from "@backlex/core/adapters";
-import { googleGeocode } from "../src/server/adapters/geocode.google";
-import { mapboxGeocode } from "../src/server/adapters/geocode.mapbox";
-import { nominatimGeocode } from "../src/server/adapters/geocode.nominatim";
-import { consoleGeocode } from "../src/server/adapters/geocode.console";
+import { googleGeocode } from "../src/server/adapters/geocode/google";
+import { mapboxGeocode } from "../src/server/adapters/geocode/mapbox";
+import { nominatimGeocode } from "../src/server/adapters/geocode/nominatim";
+import { consoleGeocode } from "../src/server/adapters/geocode/console";
 import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
@@ -129,7 +129,7 @@ for (const { label, make, wire } of BACKENDS) {
     });
 
     test("a provider REFUSAL throws — it must never look like not-found", async () => {
-      // The invariant `geocode.google.ts` names in its own header, asserted for
+      // The invariant `geocode/google.ts` names in its own header, asserted for
       // all of them: an expired key, a quota wall or an outage must reach the
       // caller as an error. Returning null here marks a workspace's entire
       // address book unlocatable in one backfill pass, silently, and a re-run
@@ -183,9 +183,9 @@ describe("GeocodeAdapter conformance — console", () => {
 describe("the suite covers the backends that exist", () => {
   test("every geocode adapter file is exercised", async () => {
     const { readdirSync } = await import("node:fs");
-    const files = readdirSync(new URL("../src/server/adapters", import.meta.url))
-      .filter((f) => /^geocode\..*\.ts$/.test(f))
-      .map((f) => f.replace(/^geocode\.|\.ts$/g, ""))
+    const files = readdirSync(new URL("../src/server/adapters/geocode", import.meta.url))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => f.replace(/\.ts$/, ""))
       .sort();
     // All four run here — no exemptions to justify, unlike sms and push.
     expect(files).toEqual(["console", "google", "mapbox", "nominatim"]);

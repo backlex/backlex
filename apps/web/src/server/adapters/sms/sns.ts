@@ -119,7 +119,7 @@ export const snsSms = (cfg: SnsConfig): SMSAdapter => ({
             body,
           });
         } catch {
-          // See the matching note in `sms.twilio.ts`: under `Promise.all` a
+          // See the matching note in `twilio.ts`: under `Promise.all` a
           // thrown fetch discards the verdicts of recipients already sent.
           result.failed++;
           return;

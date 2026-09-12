@@ -4,7 +4,7 @@ import {
   formatOf,
   marginsOf,
   printBackgroundOf,
-} from "./pdf.shared";
+} from "./shared";
 
 /**
  * Cloudflare Browser Rendering, over its REST API.

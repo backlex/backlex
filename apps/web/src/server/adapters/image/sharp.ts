@@ -20,7 +20,7 @@ import type { ImageAdapter, ImageTransform } from "@backlex/core";
  * Unlike `Bun.Image`'s two-value `fit`, sharp's `fit` enum is exactly our
  * `ImageTransform["fit"]` (cover/contain/fill/inside/outside) — no mapping.
  *
- * Kept in lockstep with `image.bun.ts` on the two things that are about the
+ * Kept in lockstep with `image/bun.ts` on the two things that are about the
  * INPUT rather than the transform, because a guard that only covers the
  * self-host runtime is not a guard:
  *

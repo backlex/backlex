@@ -1,7 +1,7 @@
 import { AppError, type PdfAdapter, type PdfPageOptions } from "@backlex/core";
-import type { Env } from "../env";
-import { cloudPost } from "../lib/cloud-report";
-import { assertMargins, formatOf, marginsOf, printBackgroundOf } from "./pdf.shared";
+import type { Env } from "../../env";
+import { cloudPost } from "../../lib/cloud-report";
+import { assertMargins, formatOf, marginsOf, printBackgroundOf } from "./shared";
 
 /**
  * Managed-cloud PDF adapter.
@@ -19,7 +19,7 @@ import { assertMargins, formatOf, marginsOf, printBackgroundOf } from "./pdf.sha
  * comes to them, rather than the credentials going out to every tenant worker:
  * a token in a tenant binding is one sandbox escape away from being someone
  * else's, and it would be the platform's. Same rail as managed AI
- * (`embedding.cloud.ts`) and managed email — `cloudPost` signs with the
+ * (`embedding/cloud.ts`) and managed email — `cloudPost` signs with the
  * project's `CLOUD_REPORT_SECRET`, so an instance can only render as itself.
  *
  * Selected only when the operator has configured nothing themselves: a tenant

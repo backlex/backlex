@@ -3,7 +3,7 @@
  *
  * Four findings, each reproduced against the real code before it was fixed:
  *
- *   1. `adapters/storage.fs.ts` built the multipart temp path by appending a
+ *   1. `adapters/storage/fs.ts` built the multipart temp path by appending a
  *      CALLER-SUPPLIED upload id to an already-root-checked key, so the id's
  *      parent-directory hops were resolved by the kernel and never by the
  *      guard. Two signed S3 requests wrote a file outside the storage root.
@@ -26,7 +26,7 @@ import { readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import { parse } from "graphql";
-import { fsStorage } from "../src/server/adapters/storage.fs";
+import { fsStorage } from "../src/server/adapters/storage/fs";
 import {
   guardLogicalKey,
   guardLogicalPrefix,

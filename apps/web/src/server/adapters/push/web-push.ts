@@ -1,6 +1,6 @@
 import type { PushAdapter, PushMessage, PushSendResult } from "@backlex/core/adapters";
-import { encryptWebPush, importVapidKey, signJwt } from "../lib/push-crypto";
-import { isPrivateHost } from "../services/storage/hosts";
+import { encryptWebPush, importVapidKey, signJwt } from "../../lib/push-crypto";
+import { isPrivateHost } from "../../services/storage/hosts";
 
 /** Endpoint must be https + a public host. Registration already enforces this,
  *  but re-check at send time as defense-in-depth against DNS rebinding and rows
@@ -48,7 +48,7 @@ interface WebPushConfig {
  *
  * `vapidPublicKey` identifies the keypair and `subject` is asserted in the
  * `sub` claim, so both belong in the header's key; the private key never does.
- * Capped like every other per-isolate map here — see `push.apns.ts`.
+ * Capped like every other per-isolate map here — see `apns.ts`.
  */
 const vapidCache = new Map<string, { header: string; exp: number }>();
 const vapidKeys = new Map<string, Promise<CryptoKey>>();

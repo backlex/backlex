@@ -1,12 +1,12 @@
 import type { PdfAdapter } from "@backlex/core";
-import { looksLikePdf } from "./pdf.cf-browser";
+import { looksLikePdf } from "./cf-browser";
 import {
   assertMargins,
   marginsOf,
   printBackgroundOf,
   sizeInches,
   toInches,
-} from "./pdf.shared";
+} from "./shared";
 
 /**
  * Gotenberg — the self-hostable half.

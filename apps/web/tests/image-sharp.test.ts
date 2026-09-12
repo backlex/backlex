@@ -1,5 +1,5 @@
 /**
- * Unit test for the sharp image adapter (`adapters/image.sharp.ts`).
+ * Unit test for the sharp image adapter (`adapters/image/sharp.ts`).
  *
  * The adapter powers image transforms on Node serverless runtimes
  * (Vercel / Netlify), where `Bun.Image` isn't available. `sharpImage()` gates
@@ -11,7 +11,7 @@
 import { describe, expect, test } from "bun:test";
 import { AppError, MAX_SOURCE_PIXELS } from "@backlex/core";
 import sharp from "sharp";
-import { makeSharpAdapter } from "../src/server/adapters/image.sharp";
+import { makeSharpAdapter } from "../src/server/adapters/image/sharp";
 
 type Ctor = Parameters<typeof makeSharpAdapter>[0];
 

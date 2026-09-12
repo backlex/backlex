@@ -27,11 +27,11 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import type { SMSAdapter, SMSSendResult } from "@backlex/core/adapters";
-import { twilioSms } from "../src/server/adapters/sms.twilio";
-import { netgsmSms } from "../src/server/adapters/sms.netgsm";
-import { iletimerkeziSms } from "../src/server/adapters/sms.iletimerkezi";
-import { snsSms } from "../src/server/adapters/sms.sns";
-import { consoleSms } from "../src/server/adapters/sms.console";
+import { twilioSms } from "../src/server/adapters/sms/twilio";
+import { netgsmSms } from "../src/server/adapters/sms/netgsm";
+import { iletimerkeziSms } from "../src/server/adapters/sms/iletimerkezi";
+import { snsSms } from "../src/server/adapters/sms/sns";
+import { consoleSms } from "../src/server/adapters/sms/console";
 import { asFetch } from "./helpers/fetch-stub";
 
 const realFetch = globalThis.fetch;
@@ -219,9 +219,9 @@ for (const { label, make, wire, perNumber } of BACKENDS) {
 describe("the suite covers the backends that exist", () => {
   test("every sms adapter file is either exercised or named as absent", async () => {
     const { readdirSync } = await import("node:fs");
-    const files = readdirSync(new URL("../src/server/adapters", import.meta.url))
-      .filter((f) => /^sms\..*\.ts$/.test(f))
-      .map((f) => f.replace(/^sms\.|\.ts$/g, ""))
+    const files = readdirSync(new URL("../src/server/adapters/sms", import.meta.url))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => f.replace(/\.ts$/, ""))
       .sort();
     expect(files).toEqual(["cloud", "console", "iletimerkezi", "netgsm", "sns", "twilio"]);
 

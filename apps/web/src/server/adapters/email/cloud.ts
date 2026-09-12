@@ -1,7 +1,7 @@
 import { AppError } from "@backlex/core";
 import type { EmailAdapter, EmailMessage } from "@backlex/core/adapters";
-import type { Env } from "../env";
-import { cloudPost } from "../lib/cloud-report";
+import type { Env } from "../../env";
+import { cloudPost } from "../../lib/cloud-report";
 
 /**
  * Managed-cloud email adapter. On a provisioned cloud project the customer

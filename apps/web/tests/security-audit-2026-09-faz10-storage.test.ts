@@ -37,7 +37,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { AppError } from "@backlex/core";
-import { fsStorage } from "../src/server/adapters/storage.fs";
+import { fsStorage } from "../src/server/adapters/storage/fs";
 import {
   assertDeclaredLengthWithin,
   limitStream,

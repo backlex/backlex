@@ -1,5 +1,5 @@
 import type { PushAdapter, PushMessage, PushSendResult } from "@backlex/core/adapters";
-import { signJwt } from "../lib/push-crypto";
+import { signJwt } from "../../lib/push-crypto";
 
 /**
  * Firebase Cloud Messaging via the HTTP v1 API. Auth is a short-lived OAuth2

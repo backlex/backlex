@@ -3,9 +3,9 @@
  * Silently ignoring it is the one thing it may not do.
  *
  * Three of the five adapters honour it — Vectorize passes it through
- * (`vector.cf.ts`), Qdrant AND-s `match: { value }` per key, Pinecone maps each
- * key to `{ $eq: value }`. The two that did not were `vector.pg.ts` and
- * `vector.libsql.ts`: both destructured `{ values, topK, namespace }` and never
+ * (`vector/cf.ts`), Qdrant AND-s `match: { value }` per key, Pinecone maps each
+ * key to `{ $eq: value }`. The two that did not were `vector/pg.ts` and
+ * `vector/libsql.ts`: both destructured `{ values, topK, namespace }` and never
  * read `filter`, so a caller narrowing by metadata got the WHOLE namespace back
  * with no error. Those two are exactly the stores `docs/vector-search.md` calls
  * "works out of the box", and both `POST /api/vector/search` and the
@@ -32,8 +32,8 @@ import { drizzle as drizzlePg } from "drizzle-orm/pglite";
 import type { VectorAdapter } from "@backlex/core/adapters";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
-import { libsqlVectorAdapter } from "../src/server/adapters/vector.libsql";
-import { pgvectorAdapter } from "../src/server/adapters/vector.pg";
+import { libsqlVectorAdapter } from "../src/server/adapters/vector/libsql";
+import { pgvectorAdapter } from "../src/server/adapters/vector/pg";
 
 const DIM = 1024;
 /** One-hot vectors give clean, orthogonal cosines so ranking never decides a

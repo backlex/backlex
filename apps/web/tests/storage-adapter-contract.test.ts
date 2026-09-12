@@ -29,8 +29,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { StorageAdapter } from "@backlex/core/adapters";
-import { fsStorage } from "../src/server/adapters/storage.fs";
-import { r2Storage } from "../src/server/adapters/storage.r2";
+import { fsStorage } from "../src/server/adapters/storage/fs";
+import { r2Storage } from "../src/server/adapters/storage/r2";
 
 /**
  * An in-memory R2Bucket, modelled on the binding's documented surface.
@@ -181,7 +181,7 @@ for (const [label, make] of BACKENDS) {
       // `?prefix=` straight to this method. R2 matched the one key; the fs
       // backend resolved the prefix to a FILE and `readdir` threw ENOTDIR, so
       // the same request was a 200 on a Cloudflare deploy and a 500 on a
-      // self-hosted one. Found by this suite, fixed in storage.fs.ts.
+      // self-hosted one. Found by this suite, fixed in storage/fs.ts.
       const s = make();
       const ns = `contract/${label}/exact-${Date.now()}`;
       await s.put({ key: `${ns}/one.txt`, body: "one" });
@@ -227,9 +227,9 @@ describe("the conformance suite covers the backends that exist", () => {
     // so. This fails the day one appears, which is the only moment anyone is
     // in a position to write its entry.
     const { readdirSync } = await import("node:fs");
-    const files = readdirSync(new URL("../src/server/adapters", import.meta.url))
-      .filter((f) => /^storage\..*\.ts$/.test(f))
-      .map((f) => f.replace(/^storage\.|\.ts$/g, ""));
+    const files = readdirSync(new URL("../src/server/adapters/storage", import.meta.url))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => f.replace(/\.ts$/, ""));
     expect(files.sort()).toEqual(["fs", "r2", "s3.bun", "s3.fetch"]);
 
     // The two S3 backends are NOT covered here, and the reason is honest: both

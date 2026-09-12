@@ -5,8 +5,8 @@ import {
   type EmbedRequest,
   type EmbedResult,
 } from "@backlex/core";
-import type { Env } from "../env";
-import { cloudPost } from "../lib/cloud-report";
+import type { Env } from "../../env";
+import { cloudPost } from "../../lib/cloud-report";
 
 /**
  * Managed-cloud embedding adapter. On a provisioned cloud project the customer

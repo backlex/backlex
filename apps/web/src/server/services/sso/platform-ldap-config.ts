@@ -16,7 +16,7 @@ import type { SqliteDb } from "@backlex/db/sqlite";
 import type { LdapAdapter } from "@backlex/core/adapters";
 import { decryptSecret } from "../../lib/crypto";
 import { buildLdapAdapter } from "../../lib/auth-select";
-import type { LdapSpec } from "../../adapters/ldap.ldapts";
+import type { LdapSpec } from "../../adapters/ldap/ldapts";
 import type { Env } from "../../env";
 
 /** Fixed PK of the singleton platform LDAP config row. */

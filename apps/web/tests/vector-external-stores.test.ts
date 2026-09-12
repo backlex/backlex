@@ -9,8 +9,8 @@
  * model has no index.
  */
 import { describe, expect, test } from "bun:test";
-import { pineconeVectorAdapter } from "../src/server/adapters/vector.pinecone";
-import { qdrantVectorAdapter } from "../src/server/adapters/vector.qdrant";
+import { pineconeVectorAdapter } from "../src/server/adapters/vector/pinecone";
+import { qdrantVectorAdapter } from "../src/server/adapters/vector/qdrant";
 
 interface Call {
   url: string;

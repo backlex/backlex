@@ -24,8 +24,8 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import type { PushAdapter, PushMessage, PushSendResult, PushToken } from "@backlex/core/adapters";
-import { multiPush } from "../src/server/adapters/push.multi";
-import { consolePush } from "../src/server/adapters/push.console";
+import { multiPush } from "../src/server/adapters/push/multi";
+import { consolePush } from "../src/server/adapters/push/console";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -166,9 +166,9 @@ describe("PushAdapter conformance — multi (the aggregator)", () => {
 describe("the suite covers the backends that exist", () => {
   test("every push adapter file is either exercised or named as absent", async () => {
     const { readdirSync } = await import("node:fs");
-    const files = readdirSync(new URL("../src/server/adapters", import.meta.url))
-      .filter((f) => /^push\..*\.ts$/.test(f))
-      .map((f) => f.replace(/^push\.|\.ts$/g, ""))
+    const files = readdirSync(new URL("../src/server/adapters/push", import.meta.url))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => f.replace(/\.ts$/, ""))
       .sort();
     expect(files).toEqual(["apns", "cloud", "console", "fcm", "multi", "web-push"]);
 

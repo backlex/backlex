@@ -31,10 +31,10 @@
  * would refuse is refused here identically.
  */
 import { Hono } from "hono";
-import type { AppBindings } from "../app";
-import { keepAliveCtx } from "../services/activity";
-import type { Ctx } from "../context";
-import { buildContext } from "../context";
+import type { AppBindings } from "../../app";
+import { keepAliveCtx } from "../../services/activity";
+import type { Ctx } from "../../context";
+import { buildContext } from "../../context";
 import {
   UNSIGNED_PAYLOAD,
   decodeAwsChunked,
@@ -42,24 +42,24 @@ import {
   parseSigV4,
   sha256Hex,
   verifySigV4,
-} from "../services/s3/sigv4";
+} from "../../services/s3/sigv4";
 import {
   resolveS3Credential,
   touchS3Credential,
   withinPrefix,
   type S3CredentialRow,
-} from "../services/s3/credentials";
+} from "../../services/s3/credentials";
 import {
   guardLogicalKey,
   guardLogicalPrefix,
   physicalKey,
   stripTenantPrefix,
-} from "../services/storage/keys";
-import { bucketFor, deleteEverywhere } from "../services/storage/bucket-for";
-import { aclForKey } from "../services/storage/files";
-import { assertStorageWithinLimit } from "../services/usage";
-import { filesTable } from "../services/storage/folders";
-import { xml, xmlError, escapeXml } from "../services/s3/xml";
+} from "../../services/storage/keys";
+import { bucketFor, deleteEverywhere } from "../../services/storage/bucket-for";
+import { aclForKey } from "../../services/storage/files";
+import { assertStorageWithinLimit } from "../../services/usage";
+import { filesTable } from "../../services/storage/folders";
+import { xml, xmlError, escapeXml } from "../../services/s3/xml";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { eq } from "drizzle-orm";
@@ -498,7 +498,7 @@ s3Routes.all("/*", async (c) => {
  * a filename — this check exists so a hostile id is refused as a 400 by the
  * endpoint that accepted it, rather than as a 500 from inside the adapter.
  */
-import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+import { type ClientAddressEnv, clientAddress } from "../../lib/client-address";
 const UPLOAD_ID_MAX = 1024;
 const isPlausibleUploadId = (id: string): boolean =>
   id.length > 0 &&

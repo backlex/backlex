@@ -2,7 +2,7 @@
  * The two write doors and the reader must agree about what a credential
  * `prefix` is.
  *
- * A stored prefix is not decoration: `routes/s3.ts` computes
+ * A stored prefix is not decoration: `routes/s3/index.ts` computes
  * `effective = requestPrefix.startsWith(scope) ? requestPrefix : scope` and
  * hands the result to `guardLogicalPrefix`. So a prefix the write door accepted
  * but the reader refuses is not a cosmetic disagreement — it makes every LIST

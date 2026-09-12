@@ -42,7 +42,7 @@ import { syncHooksRoutes } from "./sync-hooks";
 import { authHooksRoutes } from "./auth-hooks";
 import { realtimeChannelsRoutes } from "./realtime/channels";
 import { rlsRoutes } from "./rls";
-import { s3CredentialsRoutes } from "./s3-credentials";
+import { s3CredentialsRoutes } from "./s3/credentials";
 import { captchaRoutes } from "./captcha";
 import { impersonationRoutes } from "./impersonation";
 import { signingKeysRoutes } from "./signing-keys";

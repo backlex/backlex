@@ -120,7 +120,7 @@ export const fsStorage = (root: string): StorageAdapter => {
     async list(prefix = "") {
       // `prefix` is a STRING prefix, not a directory path — that is what the
       // `StorageAdapter` contract means and what R2 and S3 do. Treating it as a
-      // directory diverges in two reachable ways, and `routes/s3.ts` hands this
+      // directory diverges in two reachable ways, and `routes/s3/index.ts` hands this
       // a caller-supplied value straight from `?prefix=`:
       //
       //   - a full object key (`aws s3 ls s3://b/a/file.txt`, which is legal
@@ -135,7 +135,7 @@ export const fsStorage = (root: string): StorageAdapter => {
       //
       // The cost: a prefix with no `/` at all walks the whole root before
       // filtering, where R2 answers from an index. Bounded in practice — the
-      // only caller, `routes/s3.ts`, passes `physicalKey(tenantId, …)`, which
+      // only caller, `routes/s3/index.ts`, passes `physicalKey(tenantId, …)`, which
       // always carries a tenant segment — but worth knowing before this is
       // called from somewhere new.
       let dir = path(prefix);

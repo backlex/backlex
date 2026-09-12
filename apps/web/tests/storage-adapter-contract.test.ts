@@ -177,7 +177,7 @@ for (const [label, make] of BACKENDS) {
     });
 
     test("a full object key is a valid prefix — it lists that one object", async () => {
-      // `aws s3 ls s3://bucket/a/file.txt` is legal S3 and `routes/s3.ts` hands
+      // `aws s3 ls s3://bucket/a/file.txt` is legal S3 and `routes/s3/index.ts` hands
       // `?prefix=` straight to this method. R2 matched the one key; the fs
       // backend resolved the prefix to a FILE and `readdir` threw ENOTDIR, so
       // the same request was a 200 on a Cloudflare deploy and a 500 on a

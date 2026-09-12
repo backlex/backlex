@@ -122,7 +122,7 @@ import { authHooksRoutes } from "./routes/auth-hooks";
 import { realtimeChannelsRoutes } from "./routes/realtime/channels";
 import { rlsRoutes } from "./routes/rls";
 import { s3Routes } from "./routes/s3";
-import { s3CredentialsRoutes } from "./routes/s3-credentials";
+import { s3CredentialsRoutes } from "./routes/s3/credentials";
 import { captchaRoutes } from "./routes/captcha";
 import { impersonationRoutes } from "./routes/impersonation";
 import { signingKeysRoutes } from "./routes/signing-keys";
@@ -1163,7 +1163,7 @@ export const createApp = (env: Env) => {
   // token and no workspace header, and running it through a gate built for
   // those would either reject it or resolve the wrong workspace. Its own
   // handler authenticates from the signature and derives the workspace from
-  // the credential. See routes/s3.ts.
+  // the credential. See routes/s3/index.ts.
   app.route("/s3", s3Routes);
   app.route("/api/admin/erasure", erasureRoutes);
   // SCIM itself is NOT session/api-key authenticated — the IdP presents the

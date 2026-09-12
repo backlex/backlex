@@ -140,7 +140,7 @@ test(
   "the retention prune compares timestamps correctly against timestamptz",
   async () => {
     if (!harness) return;
-    const { pruneConsentRecords } = await import("../src/server/services/consent-records");
+    const { pruneConsentRecords } = await import("../src/server/services/consent/records");
     const { buildContext } = await import("../src/server/context");
     const ctx = await buildContext(harness.env);
     const db = { db: ctx.db, dialect: ctx.dialect } as never;

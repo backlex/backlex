@@ -17,7 +17,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { recordActivity, requestMeta } from "../services/activity";
-import { listConsentRecords } from "../services/consent-records";
+import { listConsentRecords } from "../services/consent/records";
 import {
   BANNER_POSITIONS,
   OPTIONAL_CATEGORIES,

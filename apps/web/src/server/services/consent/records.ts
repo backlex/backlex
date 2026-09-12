@@ -1,7 +1,7 @@
 /**
  * Cookie consent — the evidence half.
  *
- * Its own module rather than more of `services/consent.ts`, because that one
+ * Its own module rather than more of `services/consent/index.ts`, because that one
  * opens by saying it "does not store a visitor's answer… a policy is edited, a
  * visitor's answer is evidence and must never change under it." Two lifetimes,
  * two modules.
@@ -28,12 +28,12 @@
 import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { Env } from "../env";
+import type { Env } from "../../env";
 import {
   OPTIONAL_CATEGORIES,
   type ConsentDbCtx,
   type OptionalCategory,
-} from "./consent";
+} from "./index";
 
 const recordsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.consentRecords : sqlite.schema.consentRecords;

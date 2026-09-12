@@ -55,7 +55,7 @@ import {
   getPublishedConsentConfig,
   type OptionalCategory,
 } from "../services/consent";
-import { getConsentEntry, setConsentEntry } from "../services/consent-config-cache";
+import { getConsentEntry, setConsentEntry } from "../services/consent/config-cache";
 import {
   CONSENT_RECORD_SOURCES,
   SUBJECT_ID_RE,
@@ -63,7 +63,7 @@ import {
   deleteSubjectRecords,
   recordConsent,
   type ConsentRecordSource,
-} from "../services/consent-records";
+} from "../services/consent/records";
 import { recordActivity } from "../services/activity";
 
 /**

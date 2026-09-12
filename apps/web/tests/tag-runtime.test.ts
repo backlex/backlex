@@ -10,7 +10,7 @@
 import { describe, expect, test } from "bun:test";
 import { TAG_RUNTIME_JS } from "../src/server/services/tag-manager/runtime";
 import { TRACKER_JS } from "../src/server/services/analytics/tracker";
-import { CONSENT_BANNER_JS } from "../src/server/services/consent-banner-bundle";
+import { CONSENT_BANNER_JS } from "../src/server/services/consent/banner-bundle";
 import { TAG_TEMPLATE_IDS } from "../src/server/services/tag-manager/templates";
 
 describe("it is real JavaScript", () => {

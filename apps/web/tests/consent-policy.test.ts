@@ -76,7 +76,7 @@ describe("the vocabulary", () => {
     // THIS module's copy, so renaming the tag manager's alone failed nothing —
     // `tag-templates.test.ts` merely checks each template's categories are
     // members of that same local list, which stays true after a rename. The
-    // sentence in `consent.ts`'s header claimed a guarantee no test provided.
+    // sentence in `services/consent/index.ts`'s header claimed a guarantee no test provided.
     expect([...TAG_MANAGER_CATEGORIES]).toEqual([...CONSENT_CATEGORIES]);
   });
 

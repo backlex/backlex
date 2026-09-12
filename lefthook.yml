@@ -54,7 +54,7 @@ pre-commit:
       # A glob that matches nothing skips SILENTLY, which in the hook output
       # reads exactly like a job that ran and passed.
       glob: "apps/web/src/client/consent-banner/*"
-      run: bun scripts/gen-consent-banner.ts && git diff --exit-code apps/web/src/server/services/consent-banner-bundle.ts
+      run: bun scripts/gen-consent-banner.ts && git diff --exit-code apps/web/src/server/services/consent/banner-bundle.ts
     # Third of the same shape, and it exists because the failure already
     # happened: `apps/web`'s `build` regenerates the static OpenAPI doc before
     # every vite build, so a route added without regenerating leaves the

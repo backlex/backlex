@@ -45,7 +45,7 @@ import { dailyVisitorId } from "../services/analytics/identity";
 import { enrichmentFromRequest, parseUserAgent } from "../services/analytics/enrich";
 import { TRACKER_BOOT_JS, TRACKER_JS } from "../services/analytics/tracker";
 import { TAG_RUNTIME_JS, safeJson } from "../services/tag-manager/runtime";
-import { CONSENT_BANNER_JS } from "../services/consent-banner-bundle";
+import { CONSENT_BANNER_JS } from "../services/consent/banner-bundle";
 import { getPublishedConsentConfig, getTagConsentSettings } from "../services/consent";
 import { getPublishedArtifact } from "../services/tag-manager";
 import { ifNoneMatch, weakETag, weakHash } from "../lib/etag";
@@ -53,7 +53,7 @@ import {
   getContainerEntry,
   setContainerEntry,
 } from "../services/tag-manager/container-cache";
-import { getConsentEntry, setConsentEntry } from "../services/consent-config-cache";
+import { getConsentEntry, setConsentEntry } from "../services/consent/config-cache";
 
 /**
  * Per-(site, IP) budget.

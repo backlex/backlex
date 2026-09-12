@@ -38,7 +38,7 @@ import { listConnectedProviders } from "./payments";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { pruneAnalyticsEvents, pruneErrorEvents } from "./analytics";
-import { pruneConsentRecords } from "./consent-records";
+import { pruneConsentRecords } from "./consent/records";
 import { pruneBroadcastMessages } from "./broadcast";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";

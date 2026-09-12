@@ -27,7 +27,7 @@ import {
   listConsentRecords,
   pruneConsentRecords,
   recordConsent,
-} from "../src/server/services/consent-records";
+} from "../src/server/services/consent/records";
 
 let h: TestHarness;
 let db: never;
@@ -230,7 +230,7 @@ describe("append-only", () => {
     // so a naive scan fails against a correct file. A check that cries wolf on
     // its own documentation is a check people delete.
     const raw = readFileSync(
-      resolve(import.meta.dir, "..", "src", "server", "services", "consent-records.ts"),
+      resolve(import.meta.dir, "..", "src", "server", "services", "consent", "records.ts"),
       "utf8",
     );
     const code = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");

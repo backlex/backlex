@@ -133,7 +133,7 @@ describe("SDK surface", () => {
   });
 
   test("records reaches the visitor decisions, and never the IP digest", async () => {
-    const { recordConsent } = await import("../src/server/services/consent-records");
+    const { recordConsent } = await import("../src/server/services/consent/records");
     const { buildContext } = await import("../src/server/context");
     const { getSiteById } = await import("../src/server/services/analytics");
     const ctx = await buildContext(sdk.env);
@@ -402,7 +402,7 @@ describe("the obligation the banner phase inherits", () => {
   test("the wording contract is written down where the next author will read it", () => {
     // Not decoration: if this sentence is deleted, the check below loses the
     // only thing telling someone WHY it exists.
-    const svc = read("apps/web/src/server/services/consent.ts");
+    const svc = read("apps/web/src/server/services/consent/index.ts");
     expect(svc).toContain("textContent");
     expect(svc).toContain("NOT escaped here");
   });

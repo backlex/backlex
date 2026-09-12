@@ -41,7 +41,7 @@ import {
   suggestedWording,
   type ConsentPolicyInput,
 } from "../consent";
-import { listConsentRecords } from "../consent-records";
+import { listConsentRecords } from "../consent/records";
 
 /** Consent configuration is workspace-wide, like the analytics settings it sits
  *  beside — the same admin gate. */

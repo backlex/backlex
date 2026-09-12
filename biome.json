@@ -20,7 +20,7 @@
       "!**/drizzle",
       "!.claude",
       "!**/tsconfig*.json",
-      "!apps/web/src/server/services/consent-banner-bundle.ts"
+      "!apps/web/src/server/services/consent/banner-bundle.ts"
     ]
   },
   "linter": {

@@ -16,7 +16,7 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CONSENT_BANNER_JS } from "../src/server/services/consent-banner-bundle";
+import { CONSENT_BANNER_JS } from "../src/server/services/consent/banner-bundle";
 import { TRACKER_JS } from "../src/server/services/analytics/tracker";
 import { TAG_RUNTIME_JS } from "../src/server/services/tag-manager/runtime";
 import { WORDING_KEYS } from "../src/server/services/consent";
@@ -164,7 +164,7 @@ describe("the generated bundle matches its source", () => {
     // the half that actually holds.
     const fresh = emit(await buildBanner());
     const onDisk = readFileSync(
-      resolve(ROOT, "apps/web/src/server/services/consent-banner-bundle.ts"),
+      resolve(ROOT, "apps/web/src/server/services/consent/banner-bundle.ts"),
       "utf8",
     );
     expect(fresh === onDisk ? "in sync" : "STALE — run: bun scripts/gen-consent-banner.ts").toBe(
@@ -179,7 +179,7 @@ describe("the generated bundle matches its source", () => {
     // that were ever "simplified" to a template literal, the bundle would ship
     // silently corrupted.
     const raw = readFileSync(
-      resolve(ROOT, "apps/web/src/server/services/consent-banner-bundle.ts"),
+      resolve(ROOT, "apps/web/src/server/services/consent/banner-bundle.ts"),
       "utf8",
     );
     expect(raw).toContain('export const CONSENT_BANNER_JS: string = "');
@@ -788,7 +788,7 @@ describe("the locale a visitor is actually shown", () => {
   });
 
   test("a language nobody authored falls back to the operator's default", () => {
-    // NOT to our built-in German. `services/consent.ts` calls substituting text
+    // NOT to our built-in German. `services/consent/index.ts` calls substituting text
     // an operator never reviewed "the same mistake as defaulting the posture".
     speak("de-DE", "de");
     bootBanner(withTr);

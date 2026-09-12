@@ -69,7 +69,7 @@ export const setConsentEntry = (siteId: string, entry: ConsentConfigEntry): void
 /**
  * Drop a site's entry.
  *
- * Called from every write path in `services/consent.ts` — save, delete, and the
+ * Called from every write path in `services/consent/index.ts` — save, delete, and the
  * site-deletion cascade. Deletion matters as much as saving: without it a
  * removed policy keeps being served from the memo for a minute after the row is
  * gone, on somebody's live site.

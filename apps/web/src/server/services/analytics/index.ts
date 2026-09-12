@@ -42,7 +42,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { hashToken } from "../shared-links";
 import { deletePolicyForDeletedSite } from "../consent";
-import { deleteSiteRecords } from "../consent-records";
+import { deleteSiteRecords } from "../consent/records";
 
 export interface AnalyticsDbCtx {
   db: unknown;

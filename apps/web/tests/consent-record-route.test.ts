@@ -17,7 +17,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { buildContext } from "../src/server/context";
 import { getSiteById } from "../src/server/services/analytics";
 import { listConsentVersions, savePolicy } from "../src/server/services/consent";
-import { listConsentRecords } from "../src/server/services/consent-records";
+import { listConsentRecords } from "../src/server/services/consent/records";
 
 let h: TestHarness;
 let db: never;

@@ -33,14 +33,14 @@ import { AppError } from "@backlex/core";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { invalidateConsentConfig } from "./consent-config-cache";
+import { invalidateConsentConfig } from "./config-cache";
 // The per-site FILE bakes the artifact and the tag settings into its body,
 // so a policy write invalidates that memo too. Without it a wording edit —
 // or a change to what GPC governs — waits out the container TTL before any
 // visitor sees it, which reads to an operator exactly like a save that did
 // not take.
-import { invalidateContainer } from "./tag-manager/container-cache";
-import { hashToken } from "./shared-links";
+import { invalidateContainer } from "../tag-manager/container-cache";
+import { hashToken } from "../shared-links";
 
 export interface ConsentDbCtx {
   db: unknown;

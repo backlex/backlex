@@ -37,7 +37,7 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ENTRY = resolve(REPO_ROOT, "apps/web/src/client/consent-banner/index.ts");
-const OUT = resolve(REPO_ROOT, "apps/web/src/server/services/consent-banner-bundle.ts");
+const OUT = resolve(REPO_ROOT, "apps/web/src/server/services/consent/banner-bundle.ts");
 
 export const buildBanner = async (): Promise<string> => {
   const built = await Bun.build({

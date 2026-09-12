@@ -17,7 +17,7 @@
  *
  * ── The posture before a decision is the operator's, not ours ─────────────
  * `undecided: "block"` denies every optional category until the visitor
- * chooses. `"allow"` grants them. `consent.ts` refuses to default that field
+ * chooses. `"allow"` grants them. `services/consent/index.ts` refuses to default that field
  * for exactly this reason, and this is the code that finally honours it.
  *
  * ── What this stores, and what that costs ─────────────────────────────────

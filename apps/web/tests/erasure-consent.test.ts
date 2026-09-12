@@ -20,7 +20,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { buildContext } from "../src/server/context";
 import { getSiteById } from "../src/server/services/analytics";
 import { savePolicy } from "../src/server/services/consent";
-import { recordConsent } from "../src/server/services/consent-records";
+import { recordConsent } from "../src/server/services/consent/records";
 import { ERASURE_SURFACES } from "../src/server/services/erasure";
 
 const BASE = "/api/admin/erasure";

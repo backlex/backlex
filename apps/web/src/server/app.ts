@@ -49,7 +49,7 @@ import { apiKeysRoutes } from "./routes/api-keys";
 import { appUsersRoutes } from "./routes/app-users";
 import { appOrgsRoutes } from "./routes/app-orgs";
 import { appAgentsPublicRoutes } from "./routes/app-agents-public";
-import { appOrgsPublicRoutes } from "./routes/app-orgs-public";
+import { appOrgsPublicRoutes } from "./routes/app-orgs/public";
 import { authRoutes } from "./routes/auth";
 import { authAdminRoutes } from "./routes/auth-admin";
 import { authPublicRoutes } from "./routes/auth-public";

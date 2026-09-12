@@ -539,7 +539,7 @@ describe("a method-qualified `public` entry admits the read and still refuses th
 
 describe("a platform cookie is not an app-plane credential", () => {
   test("GET /api/t/:slug/orgs rejects a platform session", async () => {
-    // `app-orgs-public.ts::requireAppUser` tests `auth.plane !== "app"`
+    // `app-orgs/public.ts::requireAppUser` tests `auth.plane !== "app"`
     // explicitly — the app plane always had the gate the platform plane did
     // not. It is now reached SECOND: the firewall refuses a platform caller on
     // an `app`-declared prefix first, so the status moved from 401

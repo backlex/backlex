@@ -151,7 +151,7 @@ export const slugifyOrgName = (name: string): string => slugify(name, 48) || "or
  * `findOrg` resolves `:orgId` by id **or slug**, and the slug is caller-chosen,
  * so an org slugged `invites` makes `/orgs/invites/<x>` structurally identical
  * to `/orgs/invites/:token`. Today Hono picks the literal route because
- * `app-orgs-public.ts` registers it first — which means such an org is already
+ * `app-orgs/public.ts` registers it first — which means such an org is already
  * partly unreachable, a defect on its own — and anything reasoning about these
  * paths WITHOUT running the router (the plane firewall reads a path prefix, not
  * a matched route) cannot tell the two apart at all.
@@ -1062,7 +1062,7 @@ export const createOrgInvite = async (
   if (!email) throw new AppError("VALIDATION", "Email is required");
   const role: OrgRole = input.role ?? "member";
   // Same rule as `updateMember`, and here for the same stated reason: an admin
-  // must not be able to mint an owner. It used to live in `app-orgs-public.ts`
+  // must not be able to mint an owner. It used to live in `app-orgs/public.ts`
   // alone, so the ONE surface that happened to call it was the only one the
   // rule applied to — and `addMember` below shows how easily the next caller
   // arrives without it. A null actor is the operator, deliberately outside the

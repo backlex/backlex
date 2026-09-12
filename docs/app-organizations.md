@@ -269,8 +269,8 @@ includes it, so an org admin can't replay somebody else's link.
 | Piece | File |
 |---|---|
 | Service (all guards) | `apps/web/src/server/services/app-orgs.ts` |
-| Admin routes | `apps/web/src/server/routes/app-orgs.ts` |
-| End-user routes | `apps/web/src/server/routes/app-orgs-public.ts` |
+| Admin routes | `apps/web/src/server/routes/app-orgs/index.ts` |
+| End-user routes | `apps/web/src/server/routes/app-orgs/public.ts` |
 | Active-org resolution | `apps/web/src/server/middleware/tenant.ts` |
 | Org-scoped role merge | `apps/web/src/server/services/permissions/index.ts` |
 | DSL variables | `packages/db/src/permission.ts` |

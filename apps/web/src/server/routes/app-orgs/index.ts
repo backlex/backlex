@@ -1,10 +1,10 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   addMember,
   createOrg,
@@ -18,7 +18,7 @@ import {
   revokeOrgInvite,
   updateMember,
   updateOrg,
-} from "../services/app-orgs";
+} from "../../services/app-orgs";
 
 /**
  * Control-plane administration of app-plane organizations. Admin-only and
@@ -26,7 +26,7 @@ import {
  * customers have formed.
  *
  * The end-user-facing half (create your own org, invite a colleague, switch
- * which org you're acting in) lives in `routes/app-orgs-public.ts` under
+ * which org you're acting in) lives in `routes/app-orgs/public.ts` under
  * `/api/t/{slug}/orgs`. Both call the same service, so the guards can't be
  * bypassed by picking a surface.
  */

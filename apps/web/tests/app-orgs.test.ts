@@ -110,7 +110,7 @@ describe("app-orgs — admin CRUD", () => {
     // `findOrg` resolves `:orgId` by id OR slug, so an org slugged `invites`
     // makes `/orgs/invites/<x>` structurally identical to the token lookup at
     // `/orgs/invites/:token`. Hono picks the literal route because
-    // `app-orgs-public.ts` registers it first — which means such an org was
+    // `app-orgs/public.ts` registers it first — which means such an org was
     // already partly unreachable — and the PLANE FIREWALL, which reads a path
     // prefix and never learns which route matched, could not tell them apart
     // at all.
@@ -1065,7 +1065,7 @@ describe("app-orgs — the plane boundary", () => {
     }
 
     // Two checks agree here rather than one: `requireAppUser` in
-    // routes/app-orgs-public.ts tests `auth.plane !== "app"` explicitly, and
+    // routes/app-orgs/public.ts tests `auth.plane !== "app"` explicitly, and
     // the firewall tests the route's declared plane. The app plane always had
     // the gate the control plane was missing.
   });

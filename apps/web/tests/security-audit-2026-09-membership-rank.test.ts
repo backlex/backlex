@@ -28,7 +28,7 @@
  * ordinary act of a founder inviting a co-owner.
  *
  * The org plane is in the second block. Its rule existed, but only in
- * `routes/app-orgs-public.ts` — one surface's route handler — while the
+ * `routes/app-orgs/public.ts` — one surface's route handler — while the
  * identical rule for `updateMember` lives in the service with a comment saying
  * it is there "so GraphQL/MCP/CLI can't route around it". It has moved to join
  * it, and `addMember`, which had no such rule at all, now has one too.

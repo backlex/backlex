@@ -160,7 +160,7 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   },
   {
     // Reading an invite by its token, before the invitee has any session at
-    // all — `routes/app-orgs-public.ts` calls this out in its header as the one
+    // all — `routes/app-orgs/public.ts` calls this out in its header as the one
     // route there that runs for a visitor with nothing. Holding the token IS
     // the authorization, and the response is the inviting org's name plus the
     // email it was sent to, both of which the holder already has.

@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { findTenantBySlugOrId } from "../services/tenant-auth";
+import type { AppBindings } from "../../app";
+import { findTenantBySlugOrId } from "../../services/tenant-auth";
 import {
   acceptOrgInvite,
   createOrg,
@@ -19,9 +19,9 @@ import {
   setActiveOrg,
   updateMember,
   updateOrg,
-} from "../services/app-orgs";
-import { readJsonOr } from "../lib/body";
-import { appUserOf, requireAppUserMw } from "../middleware/app-user";
+} from "../../services/app-orgs";
+import { readJsonOr } from "../../lib/body";
+import { appUserOf, requireAppUserMw } from "../../middleware/app-user";
 
 /**
  * End-user-facing organization surface, mounted at `/api/t/:slug/orgs`.

@@ -32,7 +32,7 @@ import { sendSmsToNumbers, sendSmsToUsers } from "../messaging/sms";
 import { connectedIntegrationIdByKind, deliverIntegrationByKind } from "../integrations";
 import { runTask } from "../integrations/tasks";
 import { createPaymentCheckout, refundPayment } from "../payments";
-import { createItem, updateItem } from "../items-helpers";
+import { createItem, updateItem } from "../items/helpers";
 import { enqueueTask, type ResumePayload } from "../scheduled-tasks";
 import { recordActivity } from "../activity";
 import { fetchOutbound } from "../storage/hosts";

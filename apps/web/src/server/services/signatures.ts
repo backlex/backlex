@@ -35,7 +35,7 @@ import { AppError, renderTemplate, type PdfPageOptions } from "@backlex/core";
 import type { Ctx } from "../context";
 import { MAX_PDF_BYTES, resolveTemplate, safeFilename } from "./documents";
 import { hashToken } from "./shared-links";
-import { updateItem } from "./items-helpers";
+import { updateItem } from "./items/helpers";
 import { sendTemplatedEmail } from "./email";
 
 type AnyDb = any;

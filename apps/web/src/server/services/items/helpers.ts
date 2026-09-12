@@ -3,18 +3,18 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import { rangeOrderError, validateValue, type FieldDef } from "@backlex/db";
-import type { Ctx } from "../context";
-import { serializeColumns } from "./items/serialize";
-import { readFoldColumns } from "./items/collection-loader";
-import { canonicalizeMoneyFields } from "./items/money-fields";
-import { canonicalizeEmailFields } from "./items/email-fields";
-import { canonicalizeUrlFields } from "./items/url-fields";
-import { canonicalizePhoneFields } from "./items/phone-fields";
+import type { Ctx } from "../../context";
+import { serializeColumns } from "./serialize";
+import { readFoldColumns } from "./collection-loader";
+import { canonicalizeMoneyFields } from "./money-fields";
+import { canonicalizeEmailFields } from "./email-fields";
+import { canonicalizeUrlFields } from "./url-fields";
+import { canonicalizePhoneFields } from "./phone-fields";
 import {
   assertInitialStates,
   assertTransitions,
   transitionFieldsOf,
-} from "./items/transitions";
+} from "./transitions";
 
 /**
  * Slim shared helpers for dynamic-collection rows. The HTTP routes in
@@ -98,7 +98,7 @@ export const loadCollection = async (
  * through here, so those were not edge cases. One implementation, one set of
  * fixes.
  */
-export { serialize } from "./items/serialize";
+export { serialize } from "./serialize";
 
 export const validateRow = (
   data: Record<string, unknown>,
@@ -262,7 +262,7 @@ export const createItem = async (
  *
  * The graph is data integrity, so it applies here exactly as it does to a
  * request from a person; the ROLE gate does not, because there is no person —
- * hence `roles: null`. See `./items/transitions` for that split.
+ * hence `roles: null`. See `./transitions` for that split.
  *
  * Costs one SELECT, and only when the collection actually has a lifecycle field
  * the patch is touching: a transition needs the value being moved out of, and

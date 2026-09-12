@@ -110,7 +110,7 @@ export const collectionsTable = (dialect: "pg" | "sqlite") =>
  * database that will not describe itself degrades to the old behaviour instead
  * of compiling a WHERE against columns nobody has confirmed.
  *
- * Exported because the slim admin-trust loader in `items-helpers.ts` needs the
+ * Exported because the slim admin-trust loader in `items/helpers.ts` needs the
  * same answer for its own writes, and a second copy of this is how the two
  * loaders would drift back apart.
  */

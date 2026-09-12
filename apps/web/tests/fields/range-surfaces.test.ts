@@ -165,7 +165,7 @@ describe("date ranges — multi-surface parity", () => {
     // Every caller goes through `rangeOrderError`, so this is the whole rule.
     expect(rangeOrderError("a", { end: "b" }, { a: 2, b: 1 })).toBeTruthy();
     const src = readFileSync(
-      resolve(import.meta.dir, "../../src/server/services/items-helpers.ts"),
+      resolve(import.meta.dir, "../../src/server/services/items/helpers.ts"),
       "utf8",
     );
     expect(src).toContain("rangeOrderError");

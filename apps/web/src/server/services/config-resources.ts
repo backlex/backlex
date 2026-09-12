@@ -36,7 +36,7 @@ import type { ConfigItem } from "@backlex/db";
 import { SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { nowFor } from "./items-helpers";
+import { nowFor } from "./items/helpers";
 
 type Dialect = "pg" | "sqlite";
 export interface ConfigCtx {

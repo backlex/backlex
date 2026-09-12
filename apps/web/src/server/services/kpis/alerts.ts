@@ -32,7 +32,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import { SYSTEM_ROLES } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
-import { nowFor } from "../items-helpers";
+import { nowFor } from "../items/helpers";
 import { type KpiResult, type KpiRow, runKpi } from "./index";
 
 const kpisTable = (dialect: "pg" | "sqlite") =>

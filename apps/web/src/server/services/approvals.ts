@@ -51,7 +51,7 @@ import {
 } from "@backlex/core";
 import type { Ctx } from "../context";
 import { hashToken } from "./shared-links";
-import { updateItem } from "./items-helpers";
+import { updateItem } from "./items/helpers";
 import { sendTemplatedEmail } from "./email";
 import { escapeHtml, normalizeEmail } from "./signatures";
 import { deleteTask, enqueueTask, type ResumePayload } from "./scheduled-tasks";

@@ -81,7 +81,7 @@ import {
   tenantFilter,
   whereOf,
 } from "./items/sql-helpers";
-import { updateItem } from "./items-helpers";
+import { updateItem } from "./items/helpers";
 import { ingestRows } from "./migrate/ingest";
 
 type DbCtx = Pick<Ctx, "db" | "dialect">;

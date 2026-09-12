@@ -15,7 +15,7 @@
  *
  * There are TWO write paths and they have separate loaders: the items service
  * (`items/collection-loader.ts`, which introspects) and the slim admin-trust
- * one in `items-helpers.ts` behind flows / booking / payments / signatures /
+ * one in `items/helpers.ts` behind flows / booking / payments / signatures /
  * approvals (which did not). Both are driven here, through the product rather
  * than by calling the helper, because "a function can be called" is not the
  * property at issue.

@@ -5,7 +5,7 @@ import type { FieldDef } from "@backlex/db";
 import { AppError } from "@backlex/core";
 import { assignAppUserRoleByName, type DbCtx } from "./seed";
 import { invalidateUserRoles } from "./permissions/cache";
-import { nowFor } from "./items-helpers";
+import { nowFor } from "./items/helpers";
 
 /**
  * Portal links — per-workspace auto-link rules between "person" collections

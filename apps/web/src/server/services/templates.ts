@@ -48,7 +48,7 @@ import {
   isVectorizable,
   type VectorizeMeta,
 } from "./vectorize";
-import { nowFor } from "./items-helpers";
+import { nowFor } from "./items/helpers";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
 import { ensureSystemRoles, type DbCtx } from "./seed";

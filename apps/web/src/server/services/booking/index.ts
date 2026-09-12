@@ -61,7 +61,7 @@ import {
   DEFAULT_BOOKING_FIELD_MAP,
   ensureBookingCollection,
 } from "./collection";
-import { createItem, updateItem } from "../items-helpers";
+import { createItem, updateItem } from "../items/helpers";
 import { sendTemplatedEmail } from "../email";
 import { dispatchEventHandlers } from "../events";
 import { loadCollection } from "../items/collection-loader";

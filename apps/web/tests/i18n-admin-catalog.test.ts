@@ -2,9 +2,9 @@ import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
- * i18n catalog surface — admin CRUD at `/api/admin/i18n` (routes/i18n.ts)
+ * i18n catalog surface — admin CRUD at `/api/admin/i18n` (routes/i18n/index.ts)
  * plus the public, unauthenticated read side at `/api/i18n` (routes/
- * i18n-public.ts). Pins the row/matrix shapes, the 201-vs-200 upsert split,
+ * i18n/public.ts). Pins the row/matrix shapes, the 201-vs-200 upsert split,
  * bulk upsert, delete, the admin gate (401 anon / 403 non-admin), and that
  * the public bundle serves what the admin published — without auth.
  */

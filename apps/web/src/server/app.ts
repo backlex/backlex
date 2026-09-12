@@ -68,7 +68,7 @@ import { foldersRoutes } from "./routes/folders";
 import { functionsRoutes } from "./routes/functions";
 import { extensionsRoutes } from "./routes/extensions";
 import { i18nRoutes } from "./routes/i18n";
-import { i18nPublicRoutes } from "./routes/i18n-public";
+import { i18nPublicRoutes } from "./routes/i18n/public";
 import { integrationsRoutes } from "./routes/integrations";
 import { itemsRoutes } from "./routes/items";
 import { ldapAdminRoutes } from "./routes/ldap-admin";

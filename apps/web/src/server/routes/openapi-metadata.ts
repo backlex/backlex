@@ -14,7 +14,7 @@ export const loadMetadata = async (): Promise<void> => {
   if (loaded) return;
   await Promise.all([
     import("./graphql.openapi"),
-    import("./i18n-public.openapi"),
+    import("./i18n/public.openapi"),
     // Hand-authored path items for plain-Hono mounts that have no
     // openAPIRegistry (buildStaticDoc would otherwise skip them entirely).
     import("./collections.openapi"),

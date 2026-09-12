@@ -140,7 +140,7 @@ export const loadMatrix = async (
 };
 
 // ── Shared surface helpers ───────────────────────────────────────────────────
-// REST (routes/i18n.ts) and GraphQL (services/graphql/i18n.ts) both call
+// REST (routes/i18n/index.ts) and GraphQL (services/graphql/i18n.ts) both call
 // these so the upsert-by-(key,locale) and tenant-vs-global scoping rules live
 // in one place.
 

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import type { AppBindings } from "../app";
-import { loadAppSettings } from "../services/settings";
-import { resolveLocaleStrings } from "../services/i18n";
+import type { AppBindings } from "../../app";
+import { loadAppSettings } from "../../services/settings";
+import { resolveLocaleStrings } from "../../services/i18n";
 
 /**
  * Public, unauthenticated i18n read surface — feeds end-user apps and the

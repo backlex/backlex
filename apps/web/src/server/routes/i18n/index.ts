@@ -4,24 +4,24 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { assertAiQuota } from "../services/usage";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { assertAiQuota } from "../../services/usage";
 import {
   bulkUpsertI18nStrings,
   deleteI18nString,
   listI18nStrings,
   loadMatrix,
   upsertI18nString,
-} from "../services/i18n";
-import { autoTranslateBatch } from "../services/i18n/translate";
-import { loadAppSettings } from "../services/settings";
-import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai/config";
-import { hasDirectAiCredential } from "../mcp/ai-client";
-import { cloudConfigured } from "../lib/cloud-report";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { aiMeterFor } from "../lib/usage-meter";
+} from "../../services/i18n";
+import { autoTranslateBatch } from "../../services/i18n/translate";
+import { loadAppSettings } from "../../services/settings";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../../services/ai/config";
+import { hasDirectAiCredential } from "../../mcp/ai-client";
+import { cloudConfigured } from "../../lib/cloud-report";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { aiMeterFor } from "../../lib/usage-meter";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.i18nStrings : sqlite.schema.i18nStrings;

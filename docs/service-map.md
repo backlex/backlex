@@ -42,12 +42,12 @@ guides; this list is everything else.
   collection schemas + per-route `.openapi(...)` decorators
   (`@hono/zod-openapi`); a new route shows up automatically if you
   decorate it.
-- **Public surfaces** (`routes/i18n-public.ts`,
+- **Public surfaces** (`routes/i18n/public.ts`,
   `routes/shared-public.ts`, `routes/shared-links.ts`,
   `services/shared-links.ts`) — unauthenticated endpoints used by
   signed share-link URLs and the public i18n bundle. Never apply
   `requirePermission` here; gate via the share-link token instead.
-- **i18n strings** (`routes/i18n.ts`, `services/i18n/index.ts`,
+- **i18n strings** (`routes/i18n/index.ts`, `services/i18n/index.ts`,
   `services/i18n/translate.ts`) — content-translation system
   (multilingual values for user-managed collections), distinct from
   the admin SPA's Lingui chrome translations.

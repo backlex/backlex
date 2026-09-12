@@ -83,7 +83,7 @@ import { notificationsRoutes } from "./routes/notifications";
 import { deviceTokensRoutes } from "./routes/device-tokens";
 import { pushConfigRoutes } from "./routes/push/config";
 import { pushTemplatesRoutes } from "./routes/push/templates";
-import { phoneNumbersRoutes } from "./routes/phone-numbers";
+import { phoneNumbersRoutes } from "./routes/phone/numbers";
 import { smsConfigRoutes } from "./routes/sms-config";
 import { aiConfigRoutes } from "./routes/ai-config";
 import { messagingRoutes } from "./routes/messaging";

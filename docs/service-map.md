@@ -173,7 +173,7 @@ guides; this list is everything else.
   per-workspace transport, and `sendTemplatedPush`, the twin of
   `sendTemplatedEmail`: a key resolves tenant-then-global and literal
   title/body are its fallback. See `docs/push-messaging.md`.
-- **SMS** (`routes/phone-numbers.ts`, `routes/sms-config.ts`,
+- **SMS** (`routes/phone/numbers.ts`, `routes/sms-config.ts`,
   `services/messaging/sms.ts`) — number registry read at send time by
   `sendSmsToUsers`, and cleaned up by `services/erasure.ts`. See
   `docs/sms-messaging.md`.

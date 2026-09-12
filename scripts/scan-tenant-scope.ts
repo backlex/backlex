@@ -340,9 +340,9 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/routes/device-tokens.ts", symbol: "GET /", reason: "Lists the caller's own push registrations, filtered on auth.userId. A device token belongs to a person, not to a workspace." },
   { file: "apps/web/src/server/routes/device-tokens.ts", symbol: "POST /", reason: "Upserts one of the caller's own device tokens, matched on (userId, platform, token) and then written back by that row's id." },
   { file: "apps/web/src/server/routes/device-tokens.ts", symbol: "DELETE /{id}", reason: "Deletes one of the caller's own device tokens, guarded on (id, auth.userId)." },
-  { file: "apps/web/src/server/routes/phone-numbers.ts", symbol: "GET /", reason: "Lists the caller's own SMS numbers, filtered on auth.userId." },
-  { file: "apps/web/src/server/routes/phone-numbers.ts", symbol: "POST /", reason: "Upserts one of the caller's own numbers, matched on (userId, phoneNumber) and then written back by that row's id." },
-  { file: "apps/web/src/server/routes/phone-numbers.ts", symbol: "DELETE /{id}", reason: "Deletes one of the caller's own numbers, guarded on (id, auth.userId)." },
+  { file: "apps/web/src/server/routes/phone/numbers.ts", symbol: "GET /", reason: "Lists the caller's own SMS numbers, filtered on auth.userId." },
+  { file: "apps/web/src/server/routes/phone/numbers.ts", symbol: "POST /", reason: "Upserts one of the caller's own numbers, matched on (userId, phoneNumber) and then written back by that row's id." },
+  { file: "apps/web/src/server/routes/phone/numbers.ts", symbol: "DELETE /{id}", reason: "Deletes one of the caller's own numbers, guarded on (id, auth.userId)." },
 
   // ── The lookup that ESTABLISHES the workspace ──────────────────────────
   { file: "apps/web/src/server/routes/webhook-trigger.ts", symbol: "tableFor", reason: "Unauthenticated inbound webhook: the flow id in the URL is resolved first, and the flow row is what tells the request which workspace it runs in. The file's own header says so." },

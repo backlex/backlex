@@ -101,7 +101,7 @@ import { dashboardsPublicRoutes } from "./dashboards/public";
 import { approvalsPublicRoutes } from "./approvals/public";
 import { signaturesPublicRoutes } from "./signatures/public";
 import { deviceTokensRoutes } from "./device-tokens";
-import { phoneNumbersRoutes } from "./phone-numbers";
+import { phoneNumbersRoutes } from "./phone/numbers";
 import { messagingRoutes } from "./messaging";
 import { jobsRoutes } from "./jobs";
 import { extensionsRoutes } from "./extensions";

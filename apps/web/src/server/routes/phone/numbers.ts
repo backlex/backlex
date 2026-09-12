@@ -3,10 +3,10 @@ import { and, desc, eq } from "drizzle-orm";
 import { AppError, E164_PATTERN } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.phoneNumbers : sqlite.schema.phoneNumbers;

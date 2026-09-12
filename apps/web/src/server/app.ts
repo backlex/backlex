@@ -99,7 +99,7 @@ import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
 import { formsRoutes } from "./routes/forms";
 import { formsPublicRoutes } from "./routes/forms-public";
-import { approvalsPublicRoutes } from "./routes/approvals-public";
+import { approvalsPublicRoutes } from "./routes/approvals/public";
 import { signaturesPublicRoutes } from "./routes/signatures-public";
 import { approvalsRoutes } from "./routes/approvals";
 import { signaturesRoutes } from "./routes/signatures";

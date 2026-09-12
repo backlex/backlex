@@ -10,16 +10,16 @@ import {
   SYSTEM_ROLES,
   type ApprovalPolicy,
 } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   cancelRequest,
   createApprovalRequest,
   getApprovalRequest,
   listApprovalRequests,
-} from "../services/approvals";
+} from "../../services/approvals";
 
 /**
  * Approval requests, from the operator's side.
@@ -27,7 +27,7 @@ import {
  * Admin-only, for the same reason signature requests are: raising one commits
  * the workspace to mailing named people a bearer link, and settling one can
  * patch a row and resume arbitrary flow operations. The approver's side needs
- * no account at all and lives in `routes/approvals-public.ts`.
+ * no account at all and lives in `routes/approvals/public.ts`.
  */
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {

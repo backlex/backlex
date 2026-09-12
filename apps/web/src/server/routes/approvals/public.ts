@@ -1,18 +1,18 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError, MAX_REASON } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { rateLimitOk } from "../lib/rate-limit";
-import { setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
+import type { AppBindings } from "../../app";
+import { PUBLIC_SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
 import {
   markViewed,
   recordDecision,
   resolveByToken,
   toDecisionView,
   type ResolvedApprover,
-} from "../services/approvals";
+} from "../../services/approvals";
 
 /**
  * The approver's side — public, unauthenticated, mounted at `/api/public/approve`.

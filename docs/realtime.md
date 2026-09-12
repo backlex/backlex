@@ -144,7 +144,7 @@ client must attach to `<ablyPrefix><channel>`, not to the bare channel.
 Every one of those fan-outs keys its room on a **topic** — the (workspace,
 channel) pair — rather than on the channel alone: the Durable Object's
 `idFromName`, the Upstash stream key, the in-process `Map` key and the Ably room
-name are all derived the same way (`services/realtime-topic.ts`).
+name are all derived the same way (`services/realtime/topic.ts`).
 
 The server still chooses different fan-out paths under the hood (in-proc
 Map on Bun, Durable Object on Workers), but every subscriber sees the

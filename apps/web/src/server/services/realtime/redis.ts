@@ -17,7 +17,7 @@
  * through `renderEventForMeta` (the same filter the in-process fan-out uses), so
  * the two transports can't drift on what a subscriber is allowed to see.
  */
-import type { Env } from "../env";
+import type { Env } from "../../env";
 
 /** Stream key per channel. */
 const streamKey = (channel: string) => `rt:${channel}`;

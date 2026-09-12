@@ -37,8 +37,8 @@ import {
   redisPublish,
   redisRealtimeEnabled,
   redisReadSince,
-} from "../services/realtime-redis";
-import { type ChannelAddress, topicFor } from "../services/realtime-topic";
+} from "../services/realtime/redis";
+import { type ChannelAddress, topicFor } from "../services/realtime/topic";
 import { rateLimitOk } from "../lib/rate-limit";
 import { isStatelessEdge } from "../lib/runtime";
 import { defaultHook } from "../lib/openapi-router";
@@ -76,7 +76,7 @@ import {
   ablyRoom,
   ablyRoomPrefixFor,
   signalScopeAllowsConditional,
-} from "../services/realtime-signal";
+} from "../services/realtime/signal";
 import { readJson } from "../lib/body";
 
 /** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
@@ -312,7 +312,7 @@ const gateForChannel = async (
       );
     }
     // Signal-only data plane (`signal:items:<slug>`) — see
-    // services/realtime-signal.ts for why it exists and what it deliberately
+    // services/realtime/signal.ts for why it exists and what it deliberately
     // does NOT carry. Two gates apply:
     //
     //  1. the same `read` permission a native `items:*` subscribe requires; and
@@ -479,7 +479,7 @@ const gateForChannel = async (
  * ── Identity refresh on a held subscription ────────────────────────────────
  *
  * `gateForChannel` runs ONCE, at subscribe time, and its answer is frozen into
- * the subscription's `meta`. `services/realtime-filter.ts` then evaluates every
+ * the subscription's `meta`. `services/realtime/filter.ts` then evaluates every
  * event against that frozen `authSubject` — and `packages/db/src/permission.ts`
  * resolves `$org.id`, `$org.role` and `$user.orgs` straight out of it.
  *
@@ -581,7 +581,7 @@ const refreshGate = async (
         //
         // `appSessionLive` is imported rather than reimplemented. The read path
         // and the stream disagreeing about whether a credential is still valid
-        // is exactly the two-paths drift `services/realtime-filter.ts` was
+        // is exactly the two-paths drift `services/realtime/filter.ts` was
         // written to prevent for conditions.
         //
         // An impersonation subscriber is exempt for the same reason it is on

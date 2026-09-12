@@ -17,7 +17,7 @@
  * published into one room. `renderItemEvent` could not stop it: it applies the
  * SUBSCRIBER's row conditions, and a workspace admin has none.
  *
- * The fix puts the workspace in the ROUTING KEY (`services/realtime-topic.ts`)
+ * The fix puts the workspace in the ROUTING KEY (`services/realtime/topic.ts`)
  * and leaves the channel name alone, because that name is also the trigger key
  * webhooks/flows/integrations match on, the SDK's `subscribe()` argument and
  * the admin's channel list. Renaming it would have broken every configured
@@ -59,9 +59,9 @@
 import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import { matchesCondition } from "@backlex/db";
 import type { AuthSubject, Condition } from "@backlex/core";
-import { eventIsForSubscriber } from "../src/server/services/realtime-filter";
-import { parseTopic, topicFor } from "../src/server/services/realtime-topic";
-import { ablyRoom, ablyRoomPrefix } from "../src/server/services/realtime-signal";
+import { eventIsForSubscriber } from "../src/server/services/realtime/filter";
+import { parseTopic, topicFor } from "../src/server/services/realtime/topic";
+import { ablyRoom, ablyRoomPrefix } from "../src/server/services/realtime/signal";
 import { buildTwoPlaneCast, json, type TwoPlaneCast } from "./fixtures/two-plane-cast";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 

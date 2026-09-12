@@ -8,7 +8,7 @@ import type { AuthSubject } from "@backlex/core";
 import {
   computeTransition,
   rowPasses,
-} from "../src/server/services/realtime-filter";
+} from "../src/server/services/realtime/filter";
 
 const auth: AuthSubject = {
   userId: "u1",

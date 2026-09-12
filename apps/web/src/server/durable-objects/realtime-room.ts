@@ -3,7 +3,7 @@ import {
   eventIsForSubscriber,
   renderItemEvent,
   stripBefore,
-} from "../services/realtime-filter";
+} from "../services/realtime/filter";
 
 interface Meta {
   authSubject: AuthSubject;
@@ -25,7 +25,7 @@ interface Attachment {
   presence: PresenceIdentity | null;
   /**
    * The workspace this socket was gated in. A room is already addressed per
-   * workspace (`services/realtime-topic.ts` keys `idFromName`), so this is the
+   * workspace (`services/realtime/topic.ts` keys `idFromName`), so this is the
    * same answer asked a second time at delivery — it is what stops a frame that
    * somehow reached the wrong room from being fanned out of it.
    *

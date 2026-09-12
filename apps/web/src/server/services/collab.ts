@@ -16,7 +16,7 @@ import type {
   CollabTransportKind,
 } from "@backlex/core";
 import type { Env } from "../env";
-import { redisRealtimeEnabled } from "./realtime-redis";
+import { redisRealtimeEnabled } from "./realtime/redis";
 import { isNetlify, isStatelessEdge, isVercel } from "../lib/runtime";
 
 export const COLLAB_PREFIX = "collab:";

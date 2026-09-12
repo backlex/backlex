@@ -809,7 +809,7 @@ const matchesInner = (
     // the SQL above answer the same question. Left unqualified (no dialect),
     // it keeps JS semantics — which is what every caller had before, so nothing
     // silently narrows for one that has not been told which store it stands in
-    // for. `realtime-filter.ts` is told, because that is where a disagreement
+    // for. `realtime/filter.ts` is told, because that is where a disagreement
     // becomes a row delivered over a socket that REST would have withheld.
     // Mirrors the SQL exactly. Where a folded companion exists the SQL compares
     // pre-folded values, and `foldSearch(raw)` is BY CONSTRUCTION the value in

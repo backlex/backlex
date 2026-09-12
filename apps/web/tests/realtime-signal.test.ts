@@ -20,7 +20,7 @@ import {
   parseSignalChannel,
   signalChannel,
   signalScopeAllowsConditional,
-} from "../src/server/services/realtime-signal";
+} from "../src/server/services/realtime/signal";
 import type { Env } from "../src/server/env";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };

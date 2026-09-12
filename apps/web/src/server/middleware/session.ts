@@ -238,7 +238,7 @@ export interface AppSessionOwner {
  * `routes/realtime.ts`, which re-asks it on the heartbeat of a held SSE stream.
  * It has to be this function and not a copy: the read path and the stream
  * disagreeing about whether a session is live is the same two-paths-drift that
- * `services/realtime-filter.ts` exists to prevent for conditions. Note that
+ * `services/realtime/filter.ts` exists to prevent for conditions. Note that
  * `getCachedAppSessionOwner` is NOT a substitute for a long-lived stream —
  * nothing repopulates that entry after the request middleware's one call, and
  * `invalidateAppSessions` DELETES rather than caching `null`, so it cannot tell

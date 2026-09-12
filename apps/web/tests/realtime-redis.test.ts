@@ -1,6 +1,6 @@
 /**
  * Unit test for the Upstash Redis realtime transport wire logic
- * (`services/realtime-redis.ts`). Mocks `fetch` to assert the exact Redis
+ * (`services/realtime/redis.ts`). Mocks `fetch` to assert the exact Redis
  * commands sent over the Upstash REST API and the parsing of their replies.
  *
  * The live SSE-on-Lambda behaviour (poll loop, reconnect) is integration-level
@@ -14,7 +14,7 @@ import {
   redisPublish,
   redisRealtimeEnabled,
   redisReadSince,
-} from "../src/server/services/realtime-redis";
+} from "../src/server/services/realtime/redis";
 
 const env = {
   UPSTASH_REDIS_REST_URL: "https://example.upstash.io",

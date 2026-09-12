@@ -12,7 +12,7 @@ import {
   type ChannelStats,
   getLocalChannelStats,
 } from "../services/events";
-import { topicFor } from "../services/realtime-topic";
+import { topicFor } from "../services/realtime/topic";
 import { isStatelessEdge } from "../lib/runtime";
 import { defaultHook } from "../lib/openapi-router";
 

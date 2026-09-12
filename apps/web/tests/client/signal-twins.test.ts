@@ -70,7 +70,7 @@ describe("signal transport — the admin and the SDK agree", () => {
     // The third copy, and the one that decides whether either listener hears
     // anything at all.
     const server = readFileSync(
-      join(REPO, "apps", "web", "src", "server", "services", "realtime-signal.ts"),
+      join(REPO, "apps", "web", "src", "server", "services", "realtime", "signal.ts"),
       "utf8",
     );
     expect(server).toContain("signal:items:");

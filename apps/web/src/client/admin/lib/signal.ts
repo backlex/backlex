@@ -11,7 +11,7 @@
  * permission-filtered window it was already showing. No row data crosses this
  * pipe — which is precisely why it can ride a hosted pub/sub at all.
  *
- * See `apps/web/src/server/services/realtime-signal.ts` for the server half and
+ * See `apps/web/src/server/services/realtime/signal.ts` for the server half and
  * the metadata trade-off that bounds who may subscribe.
  */
 

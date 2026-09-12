@@ -46,9 +46,9 @@
  * timing isn't sensitive.
  */
 import type { ItemSignal, ItemsConfig, ItemsTransportKind } from "@backlex/core";
-import type { Env } from "../env";
-import { redisRealtimeEnabled } from "./realtime-redis";
-import { isNetlify, isStatelessEdge, isVercel } from "../lib/runtime";
+import type { Env } from "../../env";
+import { redisRealtimeEnabled } from "./redis";
+import { isNetlify, isStatelessEdge, isVercel } from "../../lib/runtime";
 
 /** Namespace root. Every `signal:*` channel must resolve to a known shape —
  *  an unrecognised one is rejected, never treated as a free-form channel. */

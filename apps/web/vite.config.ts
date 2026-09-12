@@ -222,7 +222,7 @@ const workerManualChunks = (id: string): string | undefined => {
     return undefined;
   }
   // The postgres.js wire driver — reached ONLY through the dynamically-imported
-  // `#postgres-driver` (services/migrate.ts — server-side external-DB
+  // `#postgres-driver` (services/migrate/index.ts — server-side external-DB
   // migration). D1-only instances never load it. (The static `postgres`
   // specifier is stubbed separately via resolve.alias above.)
   if (id.includes("/node_modules/postgres/")) {

@@ -189,7 +189,7 @@ export const MAX_BATCH = 500;
  * bound params, so a multi-row insert has to be split — a 500-event batch is
  * 7,500 params and fails outright with `too many SQL variables`. Postgres
  * allows far more, but one conservative constant keeps the chunking
- * dialect-free (same reasoning and value as `services/migrate-ingest.ts`).
+ * dialect-free (same reasoning and value as `services/migrate/ingest.ts`).
  */
 const PARAM_BUDGET = 90;
 

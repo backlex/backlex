@@ -42,7 +42,7 @@ import {
 import type { Ctx } from "../../context";
 import { loadCollection } from "../items/collection-loader";
 import { guardedIntegrationFetch } from "./fetch";
-import { ingestRows } from "../migrate-ingest";
+import { ingestRows } from "../migrate/ingest";
 import { queryAll } from "../items/sql-helpers";
 import { connectionConfigFor } from "./credentials";
 import { enqueueJob } from "../jobs";

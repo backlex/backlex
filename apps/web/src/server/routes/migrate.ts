@@ -3,14 +3,14 @@
  *
  *   Phase 1 — `POST /ingest/:slug`: bulk, PK-preserving, idempotent row copy
  *   into a managed collection, driven by the `backlex import-db` CLI pump
- *   (side-effect-free by design; see services/migrate-ingest.ts).
+ *   (side-effect-free by design; see services/migrate/ingest.ts).
  *
  *   Phase 2 — server-side connector for sources the SERVER can reach:
  *     - `GET/POST /sources`, `DELETE /sources/:id`, `POST /sources/:id/test`
  *     - `GET /sources/:id/tables`, `POST /sources/:id/plan`
  *     - `GET/POST /runs`, `GET /runs/:id`, `POST /runs/:id/cancel|resume`
  *   Runs execute in bounded slices on the scheduler tick (lease-reclaimed,
- *   resumable); see services/migrate.ts.
+ *   resumable); see services/migrate/index.ts.
  *
  * Mounted at `/api/admin/migrate` from `app.ts`. Same operator gate as the
  * other schema-mutating surfaces (`/api/collections` DDL, `/api/admin/db`):
@@ -24,7 +24,7 @@ import { requireUser } from "../middleware/session";
 import { requireAdminMw, requirePlatformMw } from "../services/roles/guards";
 import { logActivity } from "../services/activity";
 import { loadCollection } from "../services/items/collection-loader";
-import { INGEST_MAX_ROWS, ingestRows } from "../services/migrate-ingest";
+import { INGEST_MAX_ROWS, ingestRows } from "../services/migrate/ingest";
 import {
   buildSourcePlan,
   cancelRun,

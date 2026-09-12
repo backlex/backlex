@@ -26,7 +26,7 @@ function parsePart(tok: string): number | null {
  * top and one address has dozens of names.
  *
  * Shared by both guards below, deliberately. A second hand-written matcher is
- * how `services/migrate.ts` ended up with eleven regexes that `2130706433`,
+ * how `services/migrate/index.ts` ended up with eleven regexes that `2130706433`,
  * `0x7f000001` and `[::ffff:127.0.0.1]` all walked straight past while
  * `net.connect` resolved every one of them to loopback — and how this very
  * function's first draft still missed `0x7f000001`, because it had inherited

@@ -35,13 +35,13 @@ import {
   type SourceConnector,
   type SourceQuery,
 } from "@backlex/migrate";
-import type { Ctx } from "../context";
-import { decryptSecret, encryptSecret } from "../lib/crypto";
-import { isPrivateHost } from "./storage/hosts";
-import { assertNotDemo } from "./demo";
-import { invalidateTenantCollections } from "./collections/cache";
-import { loadCollection } from "./items/collection-loader";
-import { ingestRows } from "./migrate-ingest";
+import type { Ctx } from "../../context";
+import { decryptSecret, encryptSecret } from "../../lib/crypto";
+import { isPrivateHost } from "../storage/hosts";
+import { assertNotDemo } from "../demo";
+import { invalidateTenantCollections } from "../collections/cache";
+import { loadCollection } from "../items/collection-loader";
+import { ingestRows } from "./ingest";
 
 const sourcesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.externalSources : sqlite.schema.externalSources;

@@ -626,7 +626,7 @@ is nullable for SDK and server-side traffic.
 - Batch inserts are chunked to ~90 bound parameters per statement. D1 caps a
   statement at ~100, so an unchunked 500-event insert fails outright with
   `too many SQL variables`. Same budget and reasoning as
-  `services/migrate-ingest.ts`.
+  `services/migrate/ingest.ts`.
 - `error_groups.id` is derived deterministically from
   `(tenantId, fingerprint)`, which lets ingest upsert with a single atomic
   `ON CONFLICT (id)` — no check-then-insert race, and no reliance on a unique

@@ -580,7 +580,7 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   }
 
   // External-DB migration runs: advance at most one due run by one bounded
-  // slice per tick (lease-reclaimed, cursor-resumable — services/migrate.ts).
+  // slice per tick (lease-reclaimed, cursor-resumable — services/migrate/index.ts).
   // NOT throttled beyond the tick itself: a user is actively watching the
   // progress panel, and an idle sweep is a single indexed SELECT.
   try {

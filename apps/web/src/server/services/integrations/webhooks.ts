@@ -48,7 +48,7 @@ import {
 import type { Ctx } from "../../context";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../../lib/crypto";
 import { loadCollection } from "../items/collection-loader";
-import { ingestRows } from "../migrate-ingest";
+import { ingestRows } from "../migrate/ingest";
 import { queryAll } from "../items/sql-helpers";
 import { connectionConfigFor, decryptConfig, type ConnectionRow } from "./credentials";
 import {

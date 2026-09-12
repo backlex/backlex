@@ -50,7 +50,7 @@ import {
 } from "@backlex/integrations";
 import type { Ctx } from "../../context";
 import { loadCollection } from "../items/collection-loader";
-import { ingestRows } from "../migrate-ingest";
+import { ingestRows } from "../migrate/ingest";
 import { queryAll } from "../items/sql-helpers";
 import { LISTING_VARIANT_GROUP, type SyncRow } from "./syncs";
 import { connectionConfigFor, type ConnectionRow } from "./credentials";

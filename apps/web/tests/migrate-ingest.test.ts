@@ -1,7 +1,7 @@
 /**
  * External-DB migration — ingest endpoint + pkType foundation.
  *
- * Contract under test (see services/migrate-ingest.ts + docs/migrating-in.md):
+ * Contract under test (see services/migrate/ingest.ts + docs/migrating-in.md):
  *   • `POST /api/collections` accepts `pkType: uuid|text|integer` for managed
  *     creates; integer-keyed collections require the PK in item POST bodies.
  *   • `POST /api/admin/migrate/ingest/:slug` preserves source PKs and

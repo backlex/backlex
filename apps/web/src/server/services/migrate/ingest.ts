@@ -24,9 +24,9 @@ import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
 import { foldColumn, foldStored, hasFoldColumn } from "@backlex/db";
-import type { Ctx } from "../context";
-import type { CollectionRow } from "./items/collection-loader";
-import { execute, queryAll } from "./items/sql-helpers";
+import type { Ctx } from "../../context";
+import type { CollectionRow } from "../items/collection-loader";
+import { execute, queryAll } from "../items/sql-helpers";
 
 export interface IngestFailure {
   /** Index into the request's `rows` array. */

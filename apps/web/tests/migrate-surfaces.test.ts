@@ -2,7 +2,7 @@
  * Multi-surface parity gate for external-DB migration: the same semantic
  * operations (sources list/create, plan, run lifecycle) must work through
  * REST, SDK (`client.migrate.*`), GraphQL, and MCP (`migrate.*`) — and all
- * of them funnel into services/migrate.ts (guards live once).
+ * of them funnel into services/migrate/index.ts (guards live once).
  * REST itself is exercised in depth by migrate-server.test.ts.
  */
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";

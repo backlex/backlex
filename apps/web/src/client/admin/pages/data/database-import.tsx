@@ -1,7 +1,7 @@
 // Database import — server-side external-DB migration (docs/migrating-in.md).
 // Saved source connections (URLs masked), a table-pick → plan-review wizard,
 // and the runs list with live per-table progress (poll while active). The
-// heavy lifting happens in services/migrate.ts on the scheduler tick; this
+// heavy lifting happens in services/migrate/index.ts on the scheduler tick; this
 // page only starts/cancels/resumes runs and watches state.
 import type { PushToast } from "../../types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

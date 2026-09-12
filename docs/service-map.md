@@ -236,8 +236,8 @@ guides; this list is everything else.
   `services/items/csv.ts`) — `GET /:slug/export?format=json|csv` (reuses the
   list read-filter stack) and `POST /:slug/import` (per-row `performCreate`,
   system columns stripped, errors captured). SDK `exportItems`/`importItems`.
-- **External-DB migration** (`routes/migrate.ts` + `services/migrate.ts` +
-  `services/migrate-ingest.ts`) — `POST /api/admin/migrate/ingest/:slug`
+- **External-DB migration** (`routes/migrate.ts` + `services/migrate/index.ts` +
+  `services/migrate/ingest.ts`) — `POST /api/admin/migrate/ingest/:slug`
   (bulk, PK-preserving, idempotent, side-effect-free row copy; D1
   param-budget chunking; the CLI pump's write path) + the server-side
   connector: `/sources` CRUD (URL encrypted at rest + SSRF guard),

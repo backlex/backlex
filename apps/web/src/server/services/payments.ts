@@ -82,7 +82,7 @@ import {
   whereOf,
 } from "./items/sql-helpers";
 import { updateItem } from "./items-helpers";
-import { ingestRows } from "./migrate-ingest";
+import { ingestRows } from "./migrate/ingest";
 
 type DbCtx = Pick<Ctx, "db" | "dialect">;
 // The PgDb|SqliteDb union can't be queried without per-dialect narrowing; both

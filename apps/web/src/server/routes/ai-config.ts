@@ -13,7 +13,7 @@ import { defaultHook } from "../lib/openapi-router";
 import {
   GLOBAL_AI_CONFIG_ID,
   resolveAiRuntime,
-} from "../services/ai-config";
+} from "../services/ai/config";
 import {
   mergeConfigSecrets,
   readOwnConfigRow,
@@ -27,7 +27,7 @@ import {
   AI_PROVIDER_IDS,
   isAiSecretKey,
   modelsForProvider,
-} from "../services/ai-providers";
+} from "../services/ai/providers";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.aiConfig : sqlite.schema.aiConfig;
@@ -40,7 +40,7 @@ const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   await next();
 };
 
-// Registry-driven, so adding a provider to `services/ai-providers.ts` widens
+// Registry-driven, so adding a provider to `services/ai/providers.ts` widens
 // the accepted enum without touching this file.
 const AiProvider = z.enum(AI_PROVIDER_IDS as [string, ...string[]]);
 

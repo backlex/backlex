@@ -3477,7 +3477,7 @@ export const emailConfig = pgTable(
  * the deployment's behaviour (cloud gateway on cloud, env keys on self-host).
  *
  * `provider` is `inherit` or an id from the server's provider registry
- * (`apps/web/src/server/services/ai-providers.ts`) — today `gateway` (Vercel AI
+ * (`apps/web/src/server/services/ai/providers.ts`) — today `gateway` (Vercel AI
  * Gateway, multi-provider), `anthropic`, `openai`, `google`. `secrets` holds
  * the encrypted key material under that registry's per-provider key names
  * (`gatewayKey`, `anthropicKey`, `openaiKey`, `googleKey`) and is never

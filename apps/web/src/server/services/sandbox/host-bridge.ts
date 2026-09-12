@@ -15,7 +15,7 @@ import {
 import { resolvePermission } from "../permissions";
 import { sendPushToUsers } from "../messaging/push";
 import { fetchOutbound } from "../storage/hosts";
-import { resolveAiRuntime } from "../ai-config";
+import { resolveAiRuntime } from "../ai/config";
 import { loadAppSettings } from "../settings";
 import { aiMeterForTenant, assertAiQuota } from "../usage";
 import { aiAvailable, callClaude } from "../../mcp/ai-client";

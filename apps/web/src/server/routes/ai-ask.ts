@@ -23,7 +23,7 @@ import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { callClaude, extractJson } from "../mcp/ai-client";
-import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai/config";
 import { allTools } from "../mcp/tools";
 import { aiMeterFor } from "../lib/usage-meter";
 import { assertAiQuota } from "../services/usage";

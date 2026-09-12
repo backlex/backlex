@@ -27,7 +27,7 @@ import { approvalGate } from "./approval-gate";
 import { stableStringify } from "./canonical-args";
 import { resolveKind } from "../../mcp/kind";
 import type { ModelMessage } from "ai";
-import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai/config";
 import { publishEvent } from "../events";
 import type { Ctx } from "../../context";
 import {

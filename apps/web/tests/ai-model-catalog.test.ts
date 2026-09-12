@@ -19,14 +19,14 @@ import { buildContext } from "../src/server/context";
 import {
   GLOBAL_AI_CONFIG_ID,
   resolveAiRuntime,
-} from "../src/server/services/ai-config";
+} from "../src/server/services/ai/config";
 import {
   AI_MODELS,
   AI_PROVIDERS,
   getAiProvider,
   isAiSecretKey,
   modelsForProvider,
-} from "../src/server/services/ai-providers";
+} from "../src/server/services/ai/providers";
 import { resolveModelId, resolveAiCredential } from "../src/server/mcp/ai-client";
 import { encryptSecret } from "../src/server/lib/crypto";
 import type { Env } from "../src/server/env";

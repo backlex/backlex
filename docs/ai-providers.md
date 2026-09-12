@@ -11,8 +11,8 @@ Two files own it:
 
 | File | Owns |
 |---|---|
-| `apps/web/src/server/services/ai-providers.ts` | The provider **registry** + the model **catalog** |
-| `apps/web/src/server/services/ai-config.ts` | `resolveAiRuntime()` — turns stored config into `{ env, model, provider }` |
+| `apps/web/src/server/services/ai/providers.ts` | The provider **registry** + the model **catalog** |
+| `apps/web/src/server/services/ai/config.ts` | `resolveAiRuntime()` — turns stored config into `{ env, model, provider }` |
 
 `apps/web/src/server/mcp/ai-client.ts` is the transport (Vercel AI Gateway or a
 vendor SDK). It is not where provider knowledge lives.

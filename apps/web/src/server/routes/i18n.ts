@@ -16,7 +16,7 @@ import {
 } from "../services/i18n";
 import { autoTranslateBatch } from "../services/i18n-translate";
 import { loadAppSettings } from "../services/settings";
-import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai/config";
 import { hasDirectAiCredential } from "../mcp/ai-client";
 import { cloudConfigured } from "../lib/cloud-report";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";

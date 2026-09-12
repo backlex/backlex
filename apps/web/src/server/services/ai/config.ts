@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { Env } from "../env";
-import { decryptSecret } from "../lib/crypto";
-import { getAiProvider, type AiProviderId } from "./ai-providers";
+import type { Env } from "../../env";
+import { decryptSecret } from "../../lib/crypto";
+import { getAiProvider, type AiProviderId } from "./providers";
 
 /**
  * Tenant id of the instance-wide `ai_config` row — the fallback used when a
@@ -24,7 +24,7 @@ export {
   isAiSecretKey,
   type AiProviderDef,
   type AiProviderId,
-} from "./ai-providers";
+} from "./providers";
 
 /** Secret key name, e.g. `gatewayKey`. Kept loose (`string`) because the set is
  *  registry-driven and grows without a type change at every callsite. */

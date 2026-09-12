@@ -36,7 +36,7 @@ import { createItem, updateItem } from "../items-helpers";
 import { enqueueTask, type ResumePayload } from "../scheduled-tasks";
 import { recordActivity } from "../activity";
 import { fetchOutbound } from "../storage/hosts";
-import { resolveAiRuntime } from "../ai-config";
+import { resolveAiRuntime } from "../ai/config";
 import { aiMeterForTenant, assertAiQuota } from "../usage";
 import { aiAvailable, callClaude } from "../../mcp/ai-client";
 import type { ClaudeRequest, ClaudeResponse } from "../../mcp/ai-client";

@@ -307,7 +307,7 @@ export interface Env {
    *  workspace BYO config — it is deliberately NOT part of the ambient
    *  auto-detect chain (see `AI_PROVIDER`). */
   GOOGLE_GENERATIVE_AI_API_KEY?: string;
-  /** Force which entry of the AI provider registry (`services/ai-providers.ts`)
+  /** Force which entry of the AI provider registry (`services/ai/providers.ts`)
    *  generation runs on: `gateway` | `anthropic` | `openai` | `google`.
    *
    *  Without it, credentials are auto-detected in the historical order

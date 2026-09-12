@@ -73,6 +73,24 @@ function AuthGate() {
  */
 const STORE_CURRENCY = "USD";
 
+/**
+ * The one language this storefront renders in.
+ *
+ * The template's `products.name` / `description` (and `categories.name` /
+ * `description`) are **localized** fields, so a read that names no locale gets
+ * the whole per-locale map back — `{ en: "Canvas Tote" }`, not a string. React
+ * refuses to render an object as a child, so the shop turned into a white
+ * screen with `Objects are not valid as a React child (found: object with keys
+ * {en})`. It is not a type error either: the row type says `string`, and the
+ * server is answering the question that was actually asked.
+ *
+ * So every read below says which language it wants and every write says which
+ * language it is writing. A real multi-language storefront would pick this from
+ * the visitor rather than pin it — `examples/blog-react` has that switcher, and
+ * it is the same one argument.
+ */
+const STORE_LOCALE = "en";
+
 // Sort modes map directly onto the query builder's `orderBy` argument.
 type Sort = "newest" | "price-asc" | "price-desc";
 type Stats = { count: number; avg: number };
@@ -185,6 +203,8 @@ function Store({ user }: { user: ExampleUser }) {
         return f.and(...conds);
       })
       .orderBy(orderKey)
+      // Collapse the localized fields to one language — see STORE_LOCALE.
+      .locale(STORE_LOCALE)
       .limit(100)
       .toQuery();
   }, [category, sort, minPrice]);
@@ -198,7 +218,7 @@ function Store({ user }: { user: ExampleUser }) {
   // Load the category list once (template `categories` collection).
   const refreshCategories = useCallback(async () => {
     try {
-      const res = await categories.query().orderBy("name").limit(100).list();
+      const res = await categories.query().orderBy("name").locale(STORE_LOCALE).limit(100).list();
       setCats(res.data);
     } catch {
       // Collection absent (template not applied yet) — non-fatal.
@@ -850,7 +870,10 @@ function ProductComposer({
         category: category || undefined,
         description: description.trim() || undefined,
         featured_image: imageKey,
-      });
+      // `name` and `description` are localized. Naming the locale here writes
+      // the string as THAT language's value; omitting it would make the server
+      // read the plain string as a full per-locale map and reject it.
+      }, { locale: STORE_LOCALE });
       // 3. The template's `products` is a versioned collection, so a new row
       //    starts as a draft. Publish it so it's live in the storefront (this is
       //    the SDK's draft → publish flow in one line).

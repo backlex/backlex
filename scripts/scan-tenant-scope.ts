@@ -318,11 +318,11 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "getStagedRow", reason: "Reached by (collection.id, itemId); the collection row was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "stagedIdsFor", reason: "Reached by (collection.id, ids), same contract as getStagedRow." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "deleteStagedRow", reason: "Reached by (collection.id, itemId), same contract as getStagedRow." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "loadBusy", reason: "Reads the occupying bookings of one resource, by resource.id; the resource row was resolved with a tenant predicate by the caller." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "releaseLapsedHolds", reason: "Releases lapsed holds on one resource, by resourceId." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "insertIntoSeat", reason: "Inserts the booking row whose values the scoped caller assembled (tenantId included in `values`)." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "claimSlot", reason: "Withdraws the caller's OWN booking row by the id it just inserted — this is the loser's rollback in the insert-then-verify race." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "stamp", reason: "Writes back to the BookingRow recordBooking was handed, by that row's id." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "loadBusy", reason: "Reads the occupying bookings of one resource, by resource.id; the resource row was resolved with a tenant predicate by the caller." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "releaseLapsedHolds", reason: "Releases lapsed holds on one resource, by resourceId." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "insertIntoSeat", reason: "Inserts the booking row whose values the scoped caller assembled (tenantId included in `values`)." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "claimSlot", reason: "Withdraws the caller's OWN booking row by the id it just inserted — this is the loser's rollback in the insert-then-verify race." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "stamp", reason: "Writes back to the BookingRow recordBooking was handed, by that row's id." },
 
   // ── Deployment-level, not workspace-level ──────────────────────────────
   { file: "apps/web/src/server/services/signing-keys.ts", symbol: "listRows", reason: "JWT signing keys are a property of the DEPLOYMENT: signingKeys.tenantId is nullable, the JWKS endpoint is per-origin, and every workspace's tokens are verified against the same key set." },
@@ -347,15 +347,15 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   // ── The lookup that ESTABLISHES the workspace ──────────────────────────
   { file: "apps/web/src/server/routes/webhook-trigger.ts", symbol: "tableFor", reason: "Unauthenticated inbound webhook: the flow id in the URL is resolved first, and the flow row is what tells the request which workspace it runs in. The file's own header says so." },
   { file: "apps/web/src/server/services/analytics/index.ts", symbol: "getSiteById", reason: "The public collect endpoint resolves the site id a browser sent; the row it returns carries tenantId, which is how the ingest is attributed. There is no workspace to scope by before this answers." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "resolveResourceToken", reason: "Resolves a public booking page's token hash to its resource row, which supplies the workspace." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "resolveManageToken", reason: "Resolves a customer's manage-link token hash to their booking row. The token is the whole grant — see the file header." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "resolveResourceToken", reason: "Resolves a public booking page's token hash to its resource row, which supplies the workspace." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "resolveManageToken", reason: "Resolves a customer's manage-link token hash to their booking row. The token is the whole grant — see the file header." },
 
   // ── More instance-wide maintenance, and rows just written ──────────────
   { file: "apps/web/src/server/services/analytics/index.ts", symbol: "pruneAnalyticsEvents", reason: "Retention sweep over analytics events, bounded by ts." },
   { file: "apps/web/src/server/services/analytics/index.ts", symbol: "pruneErrorEvents", reason: "Retention sweep over error events, and the group rows left with no surviving occurrence. Bounded by ts / lastSeen." },
   { file: "apps/web/src/server/services/extensions.ts", symbol: "listCronExtensionHooks", reason: "The cron tick has to see every enabled extension with a cron hook; each extension row carries its own tenantId." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "createBooking", reason: "Reads back the booking row it just inserted, by the id it just minted, to return the stored shape." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "cancelBooking", reason: "Compare-and-set on the ResolvedBooking it was handed, guarded on the current status so two racing cancellations produce one cancellation." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "createBooking", reason: "Reads back the booking row it just inserted, by the id it just minted, to return the stored shape." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "cancelBooking", reason: "Compare-and-set on the ResolvedBooking it was handed, guarded on the current status so two racing cancellations produce one cancellation." },
 
   // ── SUSPECT — not cleared, reported in the Phase 9 findings ────────────
   // These are here so the guard can be green while the question stays open.
@@ -900,7 +900,7 @@ export const collectHelpers = (masked: string): Map<string, Binding> => {
  * What `name` refers to AT `index` — the nearest preceding declaration wins.
  *
  * File-wide first-wins is not good enough, for a specific reason:
- * `services/booking.ts` binds `const t = …` to three DIFFERENT tables in three
+ * `services/booking/index.ts` binds `const t = …` to three DIFFERENT tables in three
  * different functions, and only two of the three carry a tenant column. A
  * file-wide map would attribute every query in that file to whichever came
  * first — which is worse than not resolving it, because it reports confidently

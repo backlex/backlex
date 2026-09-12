@@ -29,10 +29,10 @@ import { applyCollection, type FieldDef } from "@backlex/db";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq } from "drizzle-orm";
-import { createManagedCollection } from "./collections";
-import { invalidateTenantCollections } from "./collections-cache";
-import { loadCollection } from "./items/collection-loader";
-import type { DbCtx } from "./seed";
+import { createManagedCollection } from "../collections";
+import { invalidateTenantCollections } from "../collections-cache";
+import { loadCollection } from "../items/collection-loader";
+import type { DbCtx } from "../seed";
 
 /**
  * Not `bookings`: three of the schema templates already ship a collection under

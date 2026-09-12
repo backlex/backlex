@@ -2,7 +2,7 @@
  * Multi-surface parity for availability & booking.
  *
  * The point of this gate is not that the surfaces exist — it is that they share
- * ONE implementation. Every one funnels through `services/booking.ts`, so the
+ * ONE implementation. Every one funnels through `services/booking/index.ts`, so the
  * rules that decide the whole feature's behaviour hold identically everywhere:
  * the capacity guarantee, the derived statuses, and the fact that only the
  * public path is confined to the published grid.

@@ -18,7 +18,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
-import { BOOKING_COLLECTION_SLUG } from "../src/server/services/booking-collection";
+import { BOOKING_COLLECTION_SLUG } from "../src/server/services/booking/collection";
 
 const BASE = "/api/admin/booking";
 

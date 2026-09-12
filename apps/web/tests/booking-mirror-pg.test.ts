@@ -22,7 +22,7 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { makeHarnessPgOrFail, type PgTestHarness } from "./setup-pg";
 import { PGLITE_BOOT_TIMEOUT_MS, PGLITE_TEST_TIMEOUT_MS } from "./setup";
-import { BOOKING_COLLECTION_SLUG } from "../src/server/services/booking-collection";
+import { BOOKING_COLLECTION_SLUG } from "../src/server/services/booking/collection";
 
 let harness: PgTestHarness | undefined;
 

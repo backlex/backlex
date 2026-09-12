@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import type { Discount } from "../lib/backlex";
-import { backlex, categories, discounts, products } from "../lib/backlex";
+import { ADMIN_LOCALE, backlex, categories, discounts, products } from "../lib/backlex";
 import { errText, useAsync, useToast } from "../lib/hooks";
 import { fmtDate, fmtMoney, fmtNumber, fromLocalInput, toLocalInput } from "../lib/money";
 import {
@@ -324,8 +324,8 @@ function RulesEditor({ discountId, rules: rows, onChanged }: { discountId: strin
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
-  const prods = useAsync(() => products.list({ limit: 200, status: "all", sort: ["name"] }).then((r) => r.data), []);
-  const cats = useAsync(() => categories.list({ limit: 200 }).then((r) => r.data), []);
+  const prods = useAsync(() => products.list({ limit: 200, status: "all", sort: ["name"], locale: ADMIN_LOCALE }).then((r) => r.data), []);
+  const cats = useAsync(() => categories.list({ limit: 200, locale: ADMIN_LOCALE }).then((r) => r.data), []);
 
   const needsRelation = attribute === "product" || attribute === "category";
 

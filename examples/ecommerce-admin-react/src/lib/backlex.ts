@@ -245,6 +245,26 @@ export type Price = {
   max_quantity?: number | null;
 } & Row;
 
+/**
+ * The one language this back-office reads and writes.
+ *
+ * The template's `products.name`/`description`, `categories.name`/`description`
+ * and `brands.name` are **localized** fields. A read that names no locale is
+ * answered with the whole per-locale map — `{ en: "Canvas Tote", tr: … }`, not a
+ * string — and every screen here renders those straight into a cell, a heading
+ * or an `<option>`. React refuses an object as a child, so the page goes blank:
+ * `Objects are not valid as a React child (found: object with keys {en, tr})`.
+ *
+ * `tsc` cannot see it. The row types below say `name: string`, and the server is
+ * answering exactly the question that was asked.
+ *
+ * A merchant back-office arguably wants to EDIT every language rather than pin
+ * one; that is a bigger feature than this example is. Pinning it makes the
+ * choice visible instead of implicit — `examples/blog-react` shows the
+ * per-locale editor, and it is the same one argument.
+ */
+export const ADMIN_LOCALE = "en";
+
 // ── Handles ─────────────────────────────────────────────────────────────────
 export const products = backlex.from<Product>("products");
 export const variants = backlex.from<Variant>("product_variants");

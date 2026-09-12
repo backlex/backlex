@@ -11,6 +11,7 @@
 import { useMemo, useState } from "react";
 import type { InventoryLevel, OptionValue, Product, ProductOption, Variant, VariantOptionValue } from "../lib/backlex";
 import {
+  ADMIN_LOCALE,
   brands,
   categories,
   channels,
@@ -75,7 +76,7 @@ export function ProductDetail({ id, go }: { id: string; go: (to: string) => void
   const [tab, setTab] = useState<Tab>("details");
   const toast = useToast();
 
-  const prod = useAsync(() => products.one(id).then((r) => r.data), [id]);
+  const prod = useAsync(() => products.one(id, { locale: ADMIN_LOCALE }).then((r) => r.data), [id]);
 
   if (prod.error) {
     return (
@@ -197,8 +198,8 @@ function Details({ p, onSaved }: { p: Product; onSaved: () => void }) {
   const [err, setErr] = useState("");
   const toast = useToast();
 
-  const cats = useAsync(() => categories.list({ limit: 200, sort: ["position"] }).then((r) => r.data), []);
-  const brandList = useAsync(() => brands.list({ limit: 200 }).then((r) => r.data), []);
+  const cats = useAsync(() => categories.list({ limit: 200, sort: ["position"], locale: ADMIN_LOCALE }).then((r) => r.data), []);
+  const brandList = useAsync(() => brands.list({ limit: 200, locale: ADMIN_LOCALE }).then((r) => r.data), []);
   const types = useAsync(() => productTypes.list({ limit: 200 }).then((r) => r.data), []);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -226,7 +227,8 @@ function Details({ p, onSaved }: { p: Product; onSaved: () => void }) {
         product_type: form.product_type || null,
         min_purchase_qty: Number(form.min_purchase_qty),
         max_purchase_qty: form.max_purchase_qty === "" ? null : Number(form.max_purchase_qty),
-      });
+      // `name` and `description` are localized — same reason as the create.
+      }, { locale: ADMIN_LOCALE });
       toast("Saved.");
       onSaved();
     } catch (e) {

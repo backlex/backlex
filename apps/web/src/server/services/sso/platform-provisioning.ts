@@ -1,7 +1,7 @@
 /**
  * Federated identity provisioning for the CONTROL PLANE operator pool
  * (`users` + `user_roles` + `platform_external_identities`). Fork of
- * `services/sso-provisioning.ts` targeting the platform plane.
+ * `services/sso/provisioning.ts` targeting the platform plane.
  *
  * Used by the platform SAML ACS handler and the platform LDAP sign-in flow.
  * Given an IdP-asserted subject, return the matching `users.id`, creating it
@@ -30,8 +30,8 @@ import {
   ensureSystemRoles,
   ensureTenantMembership,
   userCount,
-} from "./seed";
-import { invalidateUserRoles } from "./permissions-cache";
+} from "../seed";
+import { invalidateUserRoles } from "../permissions-cache";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 

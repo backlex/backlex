@@ -1,6 +1,6 @@
 /**
  * Instance-global LDAP / Active Directory data layer for the CONTROL PLANE
- * (admin dashboard operators). Fork of `services/ldap-config.ts` as a SINGLETON
+ * (admin dashboard operators). Fork of `services/sso/ldap-config.ts` as a SINGLETON
  * (one row, PK id = `'singleton'`) — admin SSO is not workspace-scoped.
  * Identities provisioned by this config land in `users`.
  *
@@ -14,10 +14,10 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { LdapAdapter } from "@backlex/core/adapters";
-import { decryptSecret } from "../lib/crypto";
-import { buildLdapAdapter } from "../lib/auth-select";
-import type { LdapSpec } from "../adapters/ldap.ldapts";
-import type { Env } from "../env";
+import { decryptSecret } from "../../lib/crypto";
+import { buildLdapAdapter } from "../../lib/auth-select";
+import type { LdapSpec } from "../../adapters/ldap.ldapts";
+import type { Env } from "../../env";
 
 /** Fixed PK of the singleton platform LDAP config row. */
 export const PLATFORM_LDAP_ID = "singleton";

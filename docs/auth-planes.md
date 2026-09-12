@@ -104,7 +104,7 @@ Load-bearing details worth pinning:
     `tenant_id` FK to `tenants` has no instance-global slot). In practice the
     `external_identities.plane = "platform"` path is therefore unused — app-plane
     federation only. See `routes/platform-auth.ts` and
-    `services/platform-sso-provisioning.ts`. Runtime caveat: LDAP can't run on
+    `services/sso/platform-provisioning.ts`. Runtime caveat: LDAP can't run on
     Cloudflare Workers, so on cloud projects only platform SAML is available.
 
 ### Cloud-brokered SSO (handoff)

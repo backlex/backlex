@@ -19,10 +19,10 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { LdapAdapter } from "@backlex/core/adapters";
-import { decryptSecret } from "../lib/crypto";
-import { buildLdapAdapter } from "../lib/auth-select";
-import type { LdapSpec } from "../adapters/ldap.ldapts";
-import type { Env } from "../env";
+import { decryptSecret } from "../../lib/crypto";
+import { buildLdapAdapter } from "../../lib/auth-select";
+import type { LdapSpec } from "../../adapters/ldap.ldapts";
+import type { Env } from "../../env";
 
 /** Sentinel id for the instance-wide LDAP override row. */
 export const GLOBAL_LDAP_CONFIG_ID = "_global";

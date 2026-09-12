@@ -17,7 +17,7 @@ import {
   listOidcProviders,
   loadOidcProvidersForAuth,
   updateOidcProvider,
-} from "../src/server/services/oidc-providers";
+} from "../src/server/services/sso/oidc-providers";
 import { makeHarness, type TestHarness } from "./setup";
 
 let h: TestHarness;

@@ -31,7 +31,7 @@ import {
   sanitizeForResponse,
   updateSamlProvider,
   buildAcsAndMetadataUrls,
-} from "../services/saml-providers";
+} from "../services/sso/saml-providers";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { fetchOutbound } from "../services/storage/hosts";
 import { defaultHook } from "../lib/openapi-router";

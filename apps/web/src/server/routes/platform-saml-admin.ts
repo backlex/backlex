@@ -33,7 +33,7 @@ import {
   resolvePlatformSamlProvider,
   sanitizeForResponse,
   updatePlatformSamlProvider,
-} from "../services/platform-saml-providers";
+} from "../services/sso/platform-saml-providers";
 
 /** Feature flag only — authorization is `requireOperatorMw`, ahead of it in
  *  `GATE`. The order is deliberate: a caller who may not configure control-plane

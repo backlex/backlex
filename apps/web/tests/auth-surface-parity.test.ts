@@ -25,7 +25,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { createOidcProvider, updateOidcProvider } from "../src/server/services/oidc-providers";
+import { createOidcProvider, updateOidcProvider } from "../src/server/services/sso/oidc-providers";
 import { resolveAuthSurface } from "../src/server/services/auth-config";
 import { makeHarness, type TestHarness } from "./setup";
 

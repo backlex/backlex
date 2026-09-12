@@ -232,7 +232,7 @@ describe("worker startup budget", () => {
     //
     // Raised 8300 → 8350 on 2026-09-06, measured at 8306 across 632 modules.
     // Four new modules totalling 17.5 KiB — `mcp/mounts.ts` (1.7 KiB),
-    // `middleware/credential-scope.ts` (5.9 KiB), `services/saml-binding.ts`
+    // `middleware/credential-scope.ts` (5.9 KiB), `services/sso/saml-binding.ts`
     // (4.9 KiB), `lib/client-address.ts` (4.9 KiB) — and the remaining ~36 KiB
     // is comment on the eager files those two phases touched. Every one of the
     // four imports only what the graph already reached (`mcp/internal-fetch`,

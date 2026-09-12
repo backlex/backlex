@@ -35,12 +35,12 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
-import { assignAppUserRoleByName, ensureSystemRoles } from "./seed";
-import { invalidateUserRoles } from "./permissions-cache";
-import { autoLinkAppUser } from "./portal-links";
-import { runBeforeUserCreatedHook } from "./auth-hooks";
+import { assignAppUserRoleByName, ensureSystemRoles } from "../seed";
+import { invalidateUserRoles } from "../permissions-cache";
+import { autoLinkAppUser } from "../portal-links";
+import { runBeforeUserCreatedHook } from "../auth-hooks";
 import { SYSTEM_ROLES } from "@backlex/core";
-import type { Env } from "../env";
+import type { Env } from "../../env";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 

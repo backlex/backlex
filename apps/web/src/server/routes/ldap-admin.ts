@@ -28,7 +28,7 @@ import {
   resolveLdapAdapter,
   sanitizeForResponse,
   type LdapConfigRow,
-} from "../services/ldap-config";
+} from "../services/sso/ldap-config";
 import {
   mergeConfigSecrets,
   readOwnConfigRow,

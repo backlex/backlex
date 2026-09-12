@@ -27,7 +27,7 @@ import {
   resolvePlatformLdapAdapter,
   sanitizeForResponse,
   type PlatformLdapConfigRow,
-} from "../services/platform-ldap-config";
+} from "../services/sso/platform-ldap-config";
 import {
   type ConfigRowKey,
   mergeConfigSecrets,

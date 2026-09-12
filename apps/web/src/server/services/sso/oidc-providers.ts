@@ -17,9 +17,9 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
-import type { Env } from "../env";
-import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
-import { fetchOutbound } from "./storage/hosts";
+import type { Env } from "../../env";
+import { decryptSecret, encryptSecret, isEncryptedSecret } from "../../lib/crypto";
+import { fetchOutbound } from "../storage/hosts";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 type AnyDb = any;

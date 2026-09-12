@@ -27,7 +27,7 @@ import {
   discoverOidcEndpoints,
   listOidcProviders,
   updateOidcProvider,
-} from "../services/oidc-providers";
+} from "../services/sso/oidc-providers";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { logActivity } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";

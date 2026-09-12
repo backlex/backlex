@@ -249,7 +249,7 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/forms/invites.ts", symbol: "markInviteSent", reason: "Stamps sentAt on an invite the scoped create/remind path just wrote." },
   { file: "apps/web/src/server/services/api-keys.ts", symbol: "touchLastUsed", reason: "Stamps lastUsedAt on the key row findApiKey just resolved for this request." },
   { file: "apps/web/src/server/services/s3/credentials.ts", symbol: "touchS3Credential", reason: "Stamps lastUsedAt on the credential row resolveS3Credential just resolved." },
-  { file: "apps/web/src/server/services/sso-provisioning.ts", symbol: "touchExternalIdentity", reason: "Stamps last-seen data on the external identity row the SSO callback just matched." },
+  { file: "apps/web/src/server/services/sso/provisioning.ts", symbol: "touchExternalIdentity", reason: "Stamps last-seen data on the external identity row the SSO callback just matched." },
   { file: "apps/web/src/server/services/impersonation.ts", symbol: "resolveImpersonation", reason: "Reads an impersonation grant by the id carried in the impersonation cookie; the row's own tenantId is what the session then adopts." },
   { file: "apps/web/src/server/middleware/session.ts", symbol: "appSessionOwner", reason: "Reads the app session row the bearer token's own `sid` names, joined to its user. Deliberately unscoped: it is what TELLS the caller which tenant this credential belongs to, and the caller refuses the token unless the row's userId/tenantId match the token's `sub`/`tid`. Scoping it by the claimed tenant would make the claim check itself." },
   // ---------------------------------------------------------------------

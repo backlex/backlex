@@ -15,7 +15,7 @@
  * Both keyed the replay row on `assertion.id`, which the contract documented
  * as the AssertionID and the adapter filled from the `<samlp:Response>`
  * envelope. Default provider config is
- * `wantSignedAssertions: true` (`services/saml-providers.ts`), so only the
+ * `wantSignedAssertions: true` (`services/sso/saml-providers.ts`), so only the
  * `<Assertion>` is signed — the envelope and its `@ID` are not. Measured
  * against the real app: POST a valid signed response, get a session; POST the
  * exact same bytes, get `401 SAML assertion replay detected`; change the one

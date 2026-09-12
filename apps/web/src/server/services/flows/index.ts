@@ -16,30 +16,30 @@ import {
   icsContentType,
 } from "@backlex/core";
 import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backlex/core";
-import type { Ctx } from "../context";
-import { loadCollection, type CollectionRow } from "./items/collection-loader";
-import { deserializeRow } from "./items/serialize";
-import { deletedFilter, queryAll, whereOf } from "./items/sql-helpers";
-import { runFunction } from "./sandbox";
-import { authorBindings } from "./functions";
-import { sendTemplatedEmail } from "./email";
-import { renderDocument } from "./documents";
-import { createSignatureRequest } from "./signatures";
-import { createApprovalRequest } from "./approvals";
-import { deliverReport } from "./reports";
-import { sendPushToUsers, sendTemplatedPush } from "./push";
-import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
-import { connectedIntegrationIdByKind, deliverIntegrationByKind } from "./integrations";
-import { runTask } from "./integrations/tasks";
-import { createPaymentCheckout, refundPayment } from "./payments";
-import { createItem, updateItem } from "./items-helpers";
-import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
-import { recordActivity } from "./activity";
-import { fetchOutbound } from "./storage/hosts";
-import { resolveAiRuntime } from "./ai-config";
-import { aiMeterForTenant, assertAiQuota } from "./usage";
-import { aiAvailable, callClaude } from "../mcp/ai-client";
-import type { ClaudeRequest, ClaudeResponse } from "../mcp/ai-client";
+import type { Ctx } from "../../context";
+import { loadCollection, type CollectionRow } from "../items/collection-loader";
+import { deserializeRow } from "../items/serialize";
+import { deletedFilter, queryAll, whereOf } from "../items/sql-helpers";
+import { runFunction } from "../sandbox";
+import { authorBindings } from "../functions";
+import { sendTemplatedEmail } from "../email";
+import { renderDocument } from "../documents";
+import { createSignatureRequest } from "../signatures";
+import { createApprovalRequest } from "../approvals";
+import { deliverReport } from "../reports";
+import { sendPushToUsers, sendTemplatedPush } from "../push";
+import { sendSmsToNumbers, sendSmsToUsers } from "../sms";
+import { connectedIntegrationIdByKind, deliverIntegrationByKind } from "../integrations";
+import { runTask } from "../integrations/tasks";
+import { createPaymentCheckout, refundPayment } from "../payments";
+import { createItem, updateItem } from "../items-helpers";
+import { enqueueTask, type ResumePayload } from "../scheduled-tasks";
+import { recordActivity } from "../activity";
+import { fetchOutbound } from "../storage/hosts";
+import { resolveAiRuntime } from "../ai-config";
+import { aiMeterForTenant, assertAiQuota } from "../usage";
+import { aiAvailable, callClaude } from "../../mcp/ai-client";
+import type { ClaudeRequest, ClaudeResponse } from "../../mcp/ai-client";
 
 /** Inline-sleep cap. Anything longer is enqueued so the worker isn't
  *  blocked for minutes/hours at a time. Shared with the save-time `foreach`
@@ -655,7 +655,7 @@ const generateForFlow = async (
  * template into a database write per run.
  *
  * Takes `unknown` rather than `string` for the reason every guard in
- * `flow-validation.ts` does: GraphQL stores `operations` as an opaque JSON
+ * `validation.ts` does: GraphQL stores `operations` as an opaque JSON
  * scalar, so a saved op's field is only a string on the REST path.
  */
 const clip = (s: unknown, max = 80): string => {

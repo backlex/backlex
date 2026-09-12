@@ -10,8 +10,8 @@ import {
   validateScheduleSpec,
 } from "@backlex/core";
 import { taskFor, taskOutputsProblem, taskSettingsProblem } from "@backlex/integrations";
-import type { Ctx } from "../context";
-import { loadCollection } from "./items/collection-loader";
+import type { Ctx } from "../../context";
+import { loadCollection } from "../items/collection-loader";
 
 /**
  * Everything a flow has to satisfy before it is stored, in one place.

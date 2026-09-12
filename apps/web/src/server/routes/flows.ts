@@ -3,7 +3,7 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, ConditionSchema, OPERATION_TYPES, OperationSchema, SYSTEM_ROLES } from "@backlex/core";
-import { assertFlowShape } from "../services/flow-validation";
+import { assertFlowShape } from "../services/flows/validation";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";

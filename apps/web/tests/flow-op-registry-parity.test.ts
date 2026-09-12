@@ -48,7 +48,7 @@ const quoted = (s: string) => [...s.matchAll(/"([^"]+)"/g)].map((m) => m[1] as s
 // ---------------------------------------------------------------------------
 
 const CORE = read("packages", "core", "src", "flows.ts");
-const EXEC = read("apps", "web", "src", "server", "services", "flows.ts");
+const EXEC = read("apps", "web", "src", "server", "services", "flows", "index.ts");
 const GRAPH = read("apps", "web", "src", "client", "admin", "pages", "automation", "flow-graph.ts");
 const BUILDER = read("apps", "web", "src", "client", "admin", "pages", "automation", "flow-builder.tsx");
 const FLOWS_PAGE = read("apps", "web", "src", "client", "admin", "pages", "automation", "flows.tsx");

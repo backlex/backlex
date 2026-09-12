@@ -75,7 +75,7 @@ guides; this list is everything else.
   `payments.reconcile` job per connected provider. Mirrored across REST, the SDK
   (`client.payments.*`), GraphQL, MCP (`payments.*`) and the CLI.
   See `docs/payments.md`.
-- **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual
+- **Flows** (`routes/flows.ts`, `services/flows/index.ts`) — visual
   workflow builder. Trigger keys are `event` / `cron` / `webhook` /
   `manual`; operations are a serialized DSL evaluated server-side.
   Admin-scoped CRUD + run is mirrored across REST, the SDK

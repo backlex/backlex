@@ -20,7 +20,7 @@
  *
  * **Not asserted: E164 validation.** The contract exports `E164_PATTERN` and no
  * adapter imports it, which looks like an omission and is not — malformed
- * numbers are refused upstream (`routes/phone-numbers.ts`, `services/flows.ts`)
+ * numbers are refused upstream (`routes/phone-numbers.ts`, `services/flows/index.ts`)
  * and `invalidNumbers` means "the carrier says this number is dead", which is a
  * different thing that only the provider can know. Demanding validation here
  * would be inventing a requirement rather than checking one.

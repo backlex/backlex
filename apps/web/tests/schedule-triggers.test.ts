@@ -34,7 +34,7 @@ import {
 } from "@backlex/core";
 import { createClient } from "../../../packages/client/src/index";
 import { buildContext, type Ctx } from "../src/server/context";
-import { runDueScheduleFlows, pruneScheduleFires } from "../src/server/services/flow-schedules";
+import { runDueScheduleFlows, pruneScheduleFires } from "../src/server/services/flows/schedules";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const JSON_HEADERS = { "content-type": "application/json" };

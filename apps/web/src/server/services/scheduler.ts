@@ -21,7 +21,7 @@ const parseExpression = (
     ) => { next(): CronDate; prev(): CronDate };
   }
 ).parseExpression;
-import { pruneScheduleFires, runDueScheduleFlows } from "./flow-schedules";
+import { pruneScheduleFires, runDueScheduleFlows } from "./flows/schedules";
 import { runKpiAlerts } from "./kpi-alerts";
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { expireDueRequests, expireRequest } from "./approvals";

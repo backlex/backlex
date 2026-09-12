@@ -16,7 +16,7 @@
  *
  * Under `documents/<tenant>/<uuid>/<name>.pdf`, the same prefix a
  * `document.render` op writes to. That is not tidiness: `emailAttachments` in
- * `services/flows.ts` refuses to attach a key outside the running workspace's
+ * `services/flows/index.ts` refuses to attach a key outside the running workspace's
  * document prefix, and that check is what stops a flow mailing out another
  * tenant's contract. Writing reports anywhere else would mean either a second
  * prefix in that guard or a report that cannot be attached by a later `email`

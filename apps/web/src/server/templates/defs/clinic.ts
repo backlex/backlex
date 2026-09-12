@@ -297,7 +297,7 @@ export const clinic: SchemaTemplate = {
    * Read this before adding a rule here.
    *
    * **A flow notification with no `userId` is a BROADCAST to the whole
-   * workspace.** There is no role targeting — `services/flows.ts` writes one
+   * workspace.** There is no role targeting — `services/flows/index.ts` writes one
    * row scoped to the tenant, and everybody in it can read the title and body.
    * This template's entire shape is a Reception role that deliberately cannot
    * see visit notes, vitals, labs or prescriptions; putting a test name, a

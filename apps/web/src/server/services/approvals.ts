@@ -715,7 +715,7 @@ const sendOutcomeMail = async (
 /**
  * Resume the flow that parked itself here.
  *
- * The import is dynamic because `flows.ts` imports THIS module for the
+ * The import is dynamic because `flows/index.ts` imports THIS module for the
  * `approval.request` op — a static import back would be a cycle. By the time a
  * decision arrives both modules are long initialised, so the await costs
  * nothing beyond the first call.

@@ -53,6 +53,17 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 (`user_roles` has a composite PK on `(user_id, role_id)` — there's no `id` column.)
 
+**Stop retyping it.** `cp apps/web/.env.development.local.example
+apps/web/.env.development.local` and the admin sign-in form opens pre-filled on
+`bun run dev`. Two independent guards keep it there: Vite loads
+`.env.development.*` only in development mode, and `src/client/lib/dev-signin.ts`
+is behind `import.meta.env.DEV`, which is the literal `false` in every build —
+so a production bundle has neither the values nor the branch that reads them.
+The examples have the same affordance from their own `.env` (`VITE_DEMO_EMAIL` /
+`VITE_DEMO_PASSWORD`); see `examples/README.md`. Neither is demo mode — that one
+is server-side on purpose (`docs/demo-mode.md`), because only a server knows
+whether an instance is a shared playground or somebody's real data.
+
 ## Workflow: branch → merge → auto-deploy
 
 Every working session runs on its own branch. Merging into `main` triggers two independent paths:

@@ -8,6 +8,7 @@ import {
   type SignInCopy,
 } from "@backlex/auth-ui";
 import { DemoSignInButton } from "@/components/demo-banner";
+import { DEV_SIGN_IN } from "@/lib/dev-signin";
 import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
 import { PlatformSso, useHasPlatformSso } from "@/components/platform-sso";
 import { notifyError } from "@/lib/error";
@@ -142,6 +143,9 @@ export const SignIn = () => {
           <SocialButtons callbackURL={next} />
         </>
       }
+      // Local-dev pre-fill only — `null` in every build. See `dev-signin.ts`.
+      initialEmail={DEV_SIGN_IN?.email}
+      initialPassword={DEV_SIGN_IN?.password}
       hasSocials={hasSocials || Boolean(surface?.demo)}
       ssoButtons={<PlatformSso callbackURL={next} />}
       hasSso={hasSso}

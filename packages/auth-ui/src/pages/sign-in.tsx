@@ -108,6 +108,14 @@ export interface SignInPageProps extends AuthWiring {
   hasSso?: boolean;
   /** Called after a successful sign-in. Default: `window.location.href = next`. */
   onSignedIn?: (next: string) => void;
+  /** Seed the email/password fields. For a LOCAL DEVELOPMENT convenience only —
+   *  the OSS admin passes these behind `import.meta.env.DEV`, so no build
+   *  carries them. This is not the playground affordance: demo mode publishes
+   *  its credentials from the SERVER (`surface.demo`) and renders a one-click
+   *  button, because only a server knows an instance is a playground. A prop
+   *  cannot know that, which is why it stays the consumer's decision. */
+  initialEmail?: string;
+  initialPassword?: string;
 }
 
 /**
@@ -132,9 +140,11 @@ export const SignInPage = ({
   ssoButtons,
   hasSso = false,
   onSignedIn,
+  initialEmail,
+  initialPassword,
 }: SignInPageProps) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(initialEmail ?? "");
+  const [password, setPassword] = useState(initialPassword ?? "");
   const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"email" | "passkey" | "twofactor" | null>(null);

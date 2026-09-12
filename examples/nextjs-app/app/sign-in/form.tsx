@@ -12,7 +12,12 @@ const initialState: ActionState = {};
  * Action, so the credentials post to the server and the resulting session token
  * is written to an httpOnly cookie there. No token ever touches client state.
  */
-export function SignInForm() {
+export function SignInForm({
+  demo,
+}: {
+  /** Pre-fill from the server's `DEMO_EMAIL`/`DEMO_PASSWORD` — see `page.tsx`. */
+  demo?: { email: string; password: string } | null;
+}) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [state, formAction, pending] = useActionState(signInAction, initialState);
 
@@ -38,6 +43,7 @@ export function SignInForm() {
             name="email"
             type="email"
             required
+            defaultValue={demo?.email}
             placeholder="you@example.com"
           />
         </Field>
@@ -48,10 +54,18 @@ export function SignInForm() {
             type="password"
             required
             minLength={8}
+            defaultValue={demo?.password}
             placeholder="••••••••"
           />
         </Field>
 
+        {demo && !state.error && (
+          <p className="text-xs text-ink-muted">
+            Filled in from <code className="font-mono">DEMO_EMAIL</code> /{" "}
+            <code className="font-mono">DEMO_PASSWORD</code> in this example&apos;s{" "}
+            <code className="font-mono">.env</code>.
+          </p>
+        )}
         {state.error && <ErrorLine msg={state.error} />}
 
         <button type="submit" className={primaryBtnCls + " w-full"} disabled={pending}>

@@ -1,5 +1,6 @@
 import { type FormEvent, type ReactNode, useState } from "react";
 import { BacklexError, type BacklexClient } from "backlex";
+import { DEMO } from "./env";
 import { Button, Field, inputCls } from "./ui";
 
 /** The signed-in end user, as every example renders them. */
@@ -28,8 +29,12 @@ export function AuthForm({
   onAuthed?: (user: ExampleUser) => void;
 }) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Pre-filled when the example's own `.env` names a demo account, empty
+  // otherwise. Initial state rather than an effect: these values are replaced
+  // at build time, so there is nothing to react to, and seeding state in an
+  // effect would flash an empty field first.
+  const [email, setEmail] = useState(DEMO?.email ?? "");
+  const [password, setPassword] = useState(DEMO?.password ?? "");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -94,6 +99,13 @@ export function AuthForm({
             placeholder="••••••••"
           />
         </Field>
+        {DEMO && !error && (
+          <p className="text-xs text-ink-dim">
+            Filled in from <code className="font-mono">VITE_DEMO_EMAIL</code> /{" "}
+            <code className="font-mono">VITE_DEMO_PASSWORD</code> in this example's{" "}
+            <code className="font-mono">.env</code>.
+          </p>
+        )}
         {error && <p className="text-sm text-bad">{error}</p>}
         <Button type="submit" variant="primary" disabled={busy} className="w-full py-2">
           {busy ? (mode === "sign-up" ? "Creating account…" : "Signing in…") : mode === "sign-up" ? "Sign up" : "Sign in"}

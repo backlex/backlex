@@ -17,4 +17,4 @@
 export * from "./ui";
 export { AuthForm, Centered, type ExampleUser } from "./AuthForm";
 export { SetupCheck } from "./SetupCheck";
-export { API_URL, ENV, WORKSPACE, missingRequired, type EnvSpec } from "./env";
+export { API_URL, DEMO, ENV, WORKSPACE, missingRequired, type EnvSpec } from "./env";

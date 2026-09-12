@@ -5,7 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { backlex } from "./lib/backlex";
 import { ToastHost, errText } from "./lib/hooks";
 import { segments, useRoute } from "./lib/router";
-import { AuthGateSkeleton, Button, cx, Field, Icon, inputCls, type IconName } from "@backlex-examples/shared";
+import { AuthGateSkeleton, Button, cx, DEMO, Field, Icon, inputCls, type IconName } from "@backlex-examples/shared";
 import { Dashboard } from "./pages/Dashboard";
 import { Products } from "./pages/Products";
 import { ProductDetail } from "./pages/ProductDetail";
@@ -69,8 +69,10 @@ export function App() {
 }
 
 function SignIn({ onDone }: { onDone: (u: Me) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // Pre-filled when this example's `.env` names a demo account — see
+  // `DEMO` in @backlex-examples/shared for why the gate lives there.
+  const [email, setEmail] = useState(DEMO?.email ?? "");
+  const [password, setPassword] = useState(DEMO?.password ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -113,6 +115,13 @@ function SignIn({ onDone }: { onDone: (u: Me) => void }) {
             autoComplete="current-password"
           />
         </Field>
+        {DEMO ? (
+          <p className="text-xs text-ink-dim">
+            Filled in from <code className="font-mono">VITE_DEMO_EMAIL</code> /{" "}
+            <code className="font-mono">VITE_DEMO_PASSWORD</code> in this example's{" "}
+            <code className="font-mono">.env</code>.
+          </p>
+        ) : null}
         {err ? <p className="rounded-control border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">{err}</p> : null}
         <Button type="submit" variant="primary" disabled={busy} className="w-full">
           {busy ? "Signing in…" : "Sign in"}

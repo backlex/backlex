@@ -4,15 +4,15 @@
  *
  * Admin-only throughout: these are cross-user product metrics, the same
  * reasoning that gates `/api/admin/traces`. The write side lives in
- * `routes/analytics-ingest.ts`.
+ * `routes/analytics/ingest.ts`.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { installSnippet } from "../services/install-snippet";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { installSnippet } from "../../services/install-snippet";
 import {
   ERROR_STATUSES,
   MAX_FUNNEL_STEPS,
@@ -41,7 +41,7 @@ import {
   updateErrorGroup,
   updateSegment,
   updateSite,
-} from "../services/analytics";
+} from "../../services/analytics";
 
 const TAGS = ["analytics"];
 

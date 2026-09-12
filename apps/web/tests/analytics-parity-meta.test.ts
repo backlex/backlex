@@ -27,7 +27,7 @@ const SDK = read("packages/client/src/clients/analytics.ts");
 const GQL = read("apps/web/src/server/services/graphql/analytics.ts");
 const MCP = read("apps/web/src/server/mcp/tools/analytics.ts");
 const CLI = read("packages/cli/src/analytics.ts");
-const REST = read("apps/web/src/server/routes/analytics.ts");
+const REST = read("apps/web/src/server/routes/analytics/index.ts");
 
 /**
  * Every analytics verb, and what it is called on each surface.

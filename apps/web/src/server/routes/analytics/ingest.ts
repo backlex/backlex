@@ -25,19 +25,19 @@
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { rateLimitOk } from "../lib/rate-limit";
-import { setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
-import { enrichmentFromRequest } from "../services/analytics/enrich";
+import type { AppBindings } from "../../app";
+import { PUBLIC_SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
+import { enrichmentFromRequest } from "../../services/analytics/enrich";
 import {
   MAX_BATCH,
   recordErrors,
   recordEvents,
   resolveIngestKey,
-} from "../services/analytics";
+} from "../../services/analytics";
 import type { Context } from "hono";
 
 const TAGS = ["analytics"];

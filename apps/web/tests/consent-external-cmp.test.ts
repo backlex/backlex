@@ -5,7 +5,7 @@
  * measurement found it already shipped — by accident, as a consequence of two
  * decisions taken for other reasons:
  *
- *  1. `analytics-collect.ts` seeds the grant map (`w` / `d`) ONLY when a banner
+ *  1. `analytics/collect.ts` seeds the grant map (`w` / `d`) ONLY when a banner
  *     is compiled into the same file. Its own comment says so. A site with no
  *     backlex policy therefore starts with `grants` EMPTY.
  *  2. `consentGranted()` falls past both grant-map rungs when the map is empty
@@ -266,7 +266,7 @@ describe("the same signal reaches every tag the tag manager compiles", () => {
 
 describe("the boundary: a backlex banner shadows the external manager", () => {
   test("a seeded grant map wins over Consent Mode, which is why both must not run", () => {
-    // `d` is what `analytics-collect.ts` compiles in when a banner is present:
+    // `d` is what `analytics/collect.ts` compiles in when a banner is present:
     // the operator's undecided posture, as a TOTAL map. `consentGranted` reads
     // it at rung 2 and returns before `stateFor` is ever called.
     //

@@ -7,7 +7,7 @@
  * point at something immutable.
  *
  * A plain `Hono` sub-app rather than an `OpenAPIHono` one, the same call
- * `analytics-collect.ts` makes: there is no JSON request body to describe, the
+ * `analytics/collect.ts` makes: there is no JSON request body to describe, the
  * caller is a browser on somebody else's origin rather than an API consumer,
  * and the admin half of consent is already documented on `routes/consent.ts`.
  *

@@ -145,7 +145,7 @@ describe("size", () => {
     //
     // ── The max over REACHABLE compositions, not a sum ─────────────────────
     // The parts are chosen per site by the same two booleans `bodyFingerprint`
-    // keys its four constants on (routes/analytics-collect.ts). Summing every
+    // keys its four constants on (routes/analytics/collect.ts). Summing every
     // constant would bound a body no visitor is ever served, which is the same
     // class of error as the one above — a number that is not a measurement of
     // anything.

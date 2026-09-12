@@ -41,8 +41,8 @@ import { consentRoutes } from "./routes/consent";
 import { consentPublicRoutes } from "./routes/consent-public";
 import { isPerSiteScript, isPublicSubresource } from "./lib/public-paths";
 import { EMBED_CSP, isFramablePage, isFramablePath, isPublicFormPage, STRICT_CSP } from "./lib/security-headers";
-import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics-collect";
-import { analyticsIngestRoutes } from "./routes/analytics-ingest";
+import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics/collect";
+import { analyticsIngestRoutes } from "./routes/analytics/ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
 import { agentsRoutes } from "./routes/agents";
 import { apiKeysRoutes } from "./routes/api-keys";
@@ -857,7 +857,7 @@ export const createApp = (env: Env) => {
   //    customer domains that are not on any allowlist, and `sendBeacon` cannot
   //    send a header or survive a preflight. The route answers `ACAO: *`
   //    WITHOUT credentials and is append-only; it can never read a row back.
-  //    See `routes/analytics-collect.ts` for what replaces the origin check.
+  //    See `routes/analytics/collect.ts` for what replaces the origin check.
   //  - `/api/consent/config` — what a cookie banner on a customer's own domain
   //    reads to know what to show. Read-only, session-free, and it returns only
   //    what the operator publishes to their own visitors; the projection behind

@@ -93,7 +93,7 @@ import { tracesRoutes } from "./traces";
 import { analyticsRoutes } from "./analytics";
 import { tagManagerRoutes } from "./tag-manager";
 import { consentRoutes } from "./consent";
-import { analyticsIngestRoutes } from "./analytics-ingest";
+import { analyticsIngestRoutes } from "./analytics/ingest";
 import { flagsPublicRoutes, flagsAdminRoutes } from "./feature-flags";
 import { sharedLinksRoutes } from "./shared-links";
 import { sharedPublicRoutes } from "./shared-public";

@@ -207,8 +207,8 @@ guides; this list is everything else.
   covers both static schema-derived rules and traffic-derived ones computed
   from recorded spans; `POST /apply` carries out a finding's remediation by
   re-deriving the statement server-side. See `docs/advisor.md`.
-- **Product analytics + crash reporting** (`routes/analytics.ts`,
-  `routes/analytics-ingest.ts`, `services/analytics/index.ts`) — the tracked-event
+- **Product analytics + crash reporting** (`routes/analytics/index.ts`,
+  `routes/analytics/ingest.ts`, `services/analytics/index.ts`) — the tracked-event
   stream plus fingerprinted error groups. Ingest is append-only and
   authenticated by a publishable `alk_` key, an API key or a session; the
   admin reads (overview / funnel / retention / errors) are admin-only.

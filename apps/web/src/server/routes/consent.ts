@@ -1,7 +1,7 @@
 /**
  * Admin cookie-consent surface — the policy a site publishes.
  *
- * Mounted separately from `routes/analytics.ts` rather than nested under
+ * Mounted separately from `routes/analytics/index.ts` rather than nested under
  * `/sites/{id}/consent`, because consent outgrows measurement: the visitor
  * records, the preference centre and the published artifact all hang off this
  * group and none of them are analytics. The site id is still the key — a

@@ -85,7 +85,7 @@ describe("what an unknown id learns, and what it does not", () => {
    * This USED to assert that an unknown id and a registered-but-unconfigured
    * one were byte-identical, so nobody could tell a real site from a guess.
    * That property is deliberately gone, and the trade is written down where it
-   * is made (`analytics-collect.ts`, the "registered site is ALWAYS served"
+   * is made (`analytics/collect.ts`, the "registered site is ALWAYS served"
    * comment): a registered site whose script file was empty had no analytics
    * and no error to read, which cost more than the oracle did.
    *
@@ -302,7 +302,7 @@ describe("repeat visits are cheap", () => {
  * sent, so no cache can key on it. Whoever missed the cache first would fix the
  * posture for everyone behind it. This is the tripwire against the next person
  * "finishing" the phase by wiring `enrichmentFromRequest` into the handler,
- * which is one import away — `analytics-collect.ts` already imports it for the
+ * which is one import away — `analytics/collect.ts` already imports it for the
  * write path.
  */
 describe("the per-site file is geo-blind", () => {
@@ -431,7 +431,7 @@ describe("the per-site script has two paths and one handler", () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const root = join(import.meta.dir, "..", "src", "server");
-    for (const f of ["routes/tag-manager.ts", "routes/analytics.ts"]) {
+    for (const f of ["routes/tag-manager.ts", "routes/analytics/index.ts"]) {
       const src = readFileSync(join(root, f), "utf8");
       expect(`${f} rebuilds the snippet: ${/script defer src=/.test(src)}`).toBe(
         `${f} rebuilds the snippet: false`,

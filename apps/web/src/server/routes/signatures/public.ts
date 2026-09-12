@@ -1,11 +1,11 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { rateLimitOk } from "../lib/rate-limit";
-import { setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
+import type { AppBindings } from "../../app";
+import { PUBLIC_SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
 import {
   MAX_DECLINE_REASON,
   MAX_SIGNATURE_TEXT,
@@ -16,7 +16,7 @@ import {
   signDocument,
   signerView,
   type ResolvedSigner,
-} from "../services/signatures";
+} from "../../services/signatures";
 
 /**
  * The signer's side — public, unauthenticated, mounted at `/api/public/sign`.

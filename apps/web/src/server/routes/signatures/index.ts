@@ -1,10 +1,10 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   MAX_EXPIRY_DAYS,
   MAX_SIGNERS,
@@ -16,7 +16,7 @@ import {
   resendSignatureInvite,
   signatureDocument,
   voidSignatureRequest,
-} from "../services/signatures";
+} from "../../services/signatures";
 
 /**
  * Signature requests, from the operator's side.
@@ -24,7 +24,7 @@ import {
  * Admin-only, for the same reason document templates are: the body being sent
  * out is interpolated HTML handed to a browser, and the act itself commits the
  * workspace to something. The signer's side needs no account at all and lives
- * in `routes/signatures-public.ts`.
+ * in `routes/signatures/public.ts`.
  */
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {

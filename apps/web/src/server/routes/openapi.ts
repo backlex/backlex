@@ -99,7 +99,7 @@ import { sharedLinksRoutes } from "./shared-links";
 import { sharedPublicRoutes } from "./shared-public";
 import { dashboardsPublicRoutes } from "./dashboards/public";
 import { approvalsPublicRoutes } from "./approvals/public";
-import { signaturesPublicRoutes } from "./signatures-public";
+import { signaturesPublicRoutes } from "./signatures/public";
 import { deviceTokensRoutes } from "./device-tokens";
 import { phoneNumbersRoutes } from "./phone-numbers";
 import { messagingRoutes } from "./messaging";

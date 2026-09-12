@@ -26,7 +26,7 @@
  * payload carries `runAs: {userId, tenantId}` and NOTHING else: roles,
  * membership and the compiled `perm.whereSql` are resolved again here, when the
  * work actually runs. A serialized filter would still be enforcing the grant the
- * user held when they pressed the button. See `services/jobs-run-as.ts`.
+ * user held when they pressed the button. See `services/jobs/run-as.ts`.
  *
  * **Three callers are refused rather than queued** (`assertQueueable`): API
  * keys, app-plane end-users and impersonation sessions. Each carries a narrowing
@@ -35,25 +35,25 @@
  * same reason (`services/agents/send.ts`).
  */
 import { AppError } from "@backlex/core";
-import type { Ctx } from "../context";
-import type { JobRow, JobType } from "./jobs";
-import { enqueueJob, runJobInline } from "./jobs";
-import { progressReporterFor, type ProgressReporter } from "./job-progress";
-import { requireRunAs, resolveRunAsAdmin, resolveRunAsAuth, type RunAs } from "./jobs-run-as";
-import { resolvePermission } from "./permissions";
-import { recordActivity } from "./activity";
-import { loadCollection } from "./items/collection-loader";
-import { backfillFts, isSearchable } from "./fts";
-import { embedAndUpsertBatch, isVectorizable } from "./vectorize";
-import { refreshCollectionRollups } from "./items/rollup";
-import { recordAndRunBackup, restoreBackupById, getBackupScoped } from "./backup";
+import type { Ctx } from "../../context";
+import type { JobRow, JobType } from "./index";
+import { enqueueJob, runJobInline } from "./index";
+import { progressReporterFor, type ProgressReporter } from "./progress";
+import { requireRunAs, resolveRunAsAdmin, resolveRunAsAuth, type RunAs } from "./run-as";
+import { resolvePermission } from "../permissions";
+import { recordActivity } from "../activity";
+import { loadCollection } from "../items/collection-loader";
+import { backfillFts, isSearchable } from "../fts";
+import { embedAndUpsertBatch, isVectorizable } from "../vectorize";
+import { refreshCollectionRollups } from "../items/rollup";
+import { recordAndRunBackup, restoreBackupById, getBackupScoped } from "../backup";
 import {
   geoFieldOrThrow,
   requireGeocodeProvider,
   runGeoBackfill,
   type GeoBackfillResult,
-} from "./geo-backfill";
-import { queryAll } from "./items/sql-helpers";
+} from "../geo-backfill";
+import { queryAll } from "../items/sql-helpers";
 import { sql } from "drizzle-orm";
 
 export type LongRunningJobType =

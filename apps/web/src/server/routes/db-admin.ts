@@ -18,7 +18,7 @@ import {
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { requireOperatorMw } from "../services/roles/guards";
-import { assertQueueable, startLongJob } from "../services/jobs-long-running";
+import { assertQueueable, startLongJob } from "../services/jobs/long-running";
 import { keepAlive, logActivity } from "../services/activity";
 
 /** Workspace-scoped admin. Enough for the backup routes below, which all run

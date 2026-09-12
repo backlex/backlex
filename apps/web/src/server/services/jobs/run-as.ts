@@ -29,9 +29,9 @@
  */
 import type { AuthSubject } from "@backlex/core";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { Ctx } from "../context";
-import { loadUserEmail } from "../middleware/session";
-import { resolveTenantAccess } from "../middleware/tenant";
+import type { Ctx } from "../../context";
+import { loadUserEmail } from "../../middleware/session";
+import { resolveTenantAccess } from "../../middleware/tenant";
 
 /** Stamped from the enqueuing request. A client never supplies it. */
 export interface RunAs {

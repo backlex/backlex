@@ -177,8 +177,8 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/scheduler.ts", symbol: "cronTick", reason: "Loads every cron-triggered function in the database. This IS the scheduler; a tenant predicate would need a workspace nobody supplied." },
   { file: "apps/web/src/server/services/scheduled-tasks.ts", symbol: "claimDueTasks", reason: "Claims due tasks across the database; each claimed row carries its own tenantId, which the runner then uses." },
   { file: "apps/web/src/server/services/scheduled-tasks.ts", symbol: "deleteTask", reason: "Deletes a task by the id claimDueTasks just returned." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "claimDueJobs", reason: "The queue worker claims due jobs across the database; each job row carries the tenantId the handler then runs under." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "sweep", reason: "Retention sweep inside pruneFinishedJobs, bounded by status + updatedAt." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "claimDueJobs", reason: "The queue worker claims due jobs across the database; each job row carries the tenantId the handler then runs under." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "sweep", reason: "Retention sweep inside pruneFinishedJobs, bounded by status + updatedAt." },
   { file: "apps/web/src/server/services/kpi-alerts.ts", symbol: "runKpiAlerts", reason: "Evaluates every KPI with an alert operator set; the alert then fires into the KPI row's own workspace." },
   { file: "apps/web/src/server/services/cdc.ts", symbol: "processCdcSinks", reason: "Round-robins every enabled CDC sink in the database; each sink row carries its tenantId." },
   { file: "apps/web/src/server/services/items/scheduled-publish.ts", symbol: "publishDueItems", reason: "Cron: finds every versioned collection with scheduled publishes due. Each collection row carries its tenantId." },
@@ -219,9 +219,9 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/backup.ts", symbol: "recordAndRunBackup", reason: "Marks the backup row it created in this same call, by the id it was handed with the tenantId beside it." },
   { file: "apps/web/src/server/services/backup.ts", symbol: "startManualBackup", reason: "Re-reads the row it just inserted for this workspace, by that row's id." },
   { file: "apps/web/src/server/services/backup.ts", symbol: "getBackupScoped", reason: "Reads by id, then compares the row's tenantId to the caller's in application code before returning it. The check exists; it is simply not in the SQL." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "claimJobById", reason: "Compare-and-set on (id, status) after a scoped read; the status guard is what makes the claim exclusive." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "runJob", reason: "Writes the outcome of the job row it was handed, by that row's id. The row came from claimDueJobs / claimJobById." },
-  { file: "apps/web/src/server/services/job-progress.ts", symbol: "reportJobProgress", reason: "Writes progress for the job the worker currently holds, by that job's id." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "claimJobById", reason: "Compare-and-set on (id, status) after a scoped read; the status guard is what makes the claim exclusive." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "runJob", reason: "Writes the outcome of the job row it was handed, by that row's id. The row came from claimDueJobs / claimJobById." },
+  { file: "apps/web/src/server/services/jobs/progress.ts", symbol: "reportJobProgress", reason: "Writes progress for the job the worker currently holds, by that job's id." },
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "setActiveOrg", reason: "Clears activeOrgId on the app session id the caller is authenticated as; the org it would have set was resolved against tenantId first." },
 
   // ── Acts on a row object its caller already resolved ────────────────────
@@ -1161,7 +1161,7 @@ export const hasTenantPredicate = (
  *
  * The write is unscoped in isolation, but it is unreachable for a foreign row:
  * the read one line up was given BOTH the key and the tenant, and returning
- * early on a miss is the containment. `jobs.ts` does this three times,
+ * early on a miss is the containment. `jobs/index.ts` does this three times,
  * `forms/index.ts`, `uploads.ts`, `documents.ts`, `signatures.ts` and `app-orgs.ts`
  * all do it, and hand-allowlisting ~90 instances of one idiom would produce a
  * ledger that says the same sentence ninety times — which is a ledger nobody

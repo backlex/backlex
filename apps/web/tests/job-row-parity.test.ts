@@ -25,7 +25,7 @@ import { getTableColumns } from "drizzle-orm";
 import * as sqlite from "@backlex/db/sqlite";
 import * as pg from "@backlex/db/pg";
 
-const SOURCE = resolve(import.meta.dir, "../src/server/services/jobs.ts");
+const SOURCE = resolve(import.meta.dir, "../src/server/services/jobs/index.ts");
 
 /**
  * Pull the aliased property names out of the `JOB_RETURNING` template.
@@ -38,7 +38,7 @@ const SOURCE = resolve(import.meta.dir, "../src/server/services/jobs.ts");
 const returningProperties = (): string[] => {
   const src = readFileSync(SOURCE, "utf8");
   const block = src.match(/const JOB_RETURNING = sql`([\s\S]*?)`;/);
-  if (!block?.[1]) throw new Error("JOB_RETURNING not found in services/jobs.ts");
+  if (!block?.[1]) throw new Error("JOB_RETURNING not found in services/jobs/index.ts");
   const props: string[] = [];
   // The `}` closes the template interpolation, so it sits between the
   // identifier call and its `AS` alias.
@@ -71,7 +71,7 @@ describe("job row parity across dialects", () => {
   });
 
   test("JobRow declares everything the claim returns", () => {
-    const src = readFileSync(resolve(import.meta.dir, "../src/server/services/jobs.ts"), "utf8");
+    const src = readFileSync(resolve(import.meta.dir, "../src/server/services/jobs/index.ts"), "utf8");
     const iface = src.match(/export interface JobRow \{([\s\S]*?)\n\}/);
     expect(iface?.[1]).toBeTruthy();
     const declared = [...iface![1]!.matchAll(/^\s{2}([A-Za-z]+)[?]?:/gm)].map((m) => m[1]!);

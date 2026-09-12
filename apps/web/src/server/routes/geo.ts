@@ -13,7 +13,7 @@ import {
   requireGeocodeProvider,
   runGeoBackfill,
 } from "../services/geo-backfill";
-import { startLongJob } from "../services/jobs-long-running";
+import { startLongJob } from "../services/jobs/long-running";
 import { keepAlive } from "../services/activity";
 
 /**

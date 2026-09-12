@@ -20,7 +20,7 @@
 import { eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { Ctx } from "../context";
+import type { Ctx } from "../../context";
 
 export interface JobProgress {
   /** Units finished so far. Whatever the handler counts in — tables, batches,

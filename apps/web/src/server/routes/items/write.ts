@@ -8,7 +8,7 @@ import { resolvePermission } from "../../services/permissions";
 import { deleteStagedRow, getStagedRow } from "../../services/items/staged";
 import { publishEvent } from "../../services/events";
 import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../../services/activity";
-import { startLongJob } from "../../services/jobs-long-running";
+import { startLongJob } from "../../services/jobs/long-running";
 import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
 import {
   collectionFromParam,

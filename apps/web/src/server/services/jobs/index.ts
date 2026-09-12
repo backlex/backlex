@@ -3,21 +3,21 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AuthSubject } from "@backlex/core";
 import type { PaymentRecordKind } from "@backlex/integrations/payments";
-import type { Ctx } from "../context";
-import type { DbCtx } from "./seed";
-import type { Env } from "../env";
-import { buildContext } from "../context";
-import { authorBindings, findByName } from "./functions";
-import { runFunction } from "./sandbox";
-import { deliverWebhookById } from "./webhooks";
-import { deliverIntegrationById } from "./integrations";
-import { runSync } from "./integrations/syncs";
-import { pollListingBatchRow } from "./integrations/listings";
-import { runTask } from "./integrations/tasks";
-import { reconcileProvider } from "./payments";
-import { publishEvent } from "./events";
-import { recordActivity } from "./activity";
-import type { JobProgress } from "./job-progress";
+import type { Ctx } from "../../context";
+import type { DbCtx } from "../seed";
+import type { Env } from "../../env";
+import { buildContext } from "../../context";
+import { authorBindings, findByName } from "../functions";
+import { runFunction } from "../sandbox";
+import { deliverWebhookById } from "../webhooks";
+import { deliverIntegrationById } from "../integrations";
+import { runSync } from "../integrations/syncs";
+import { pollListingBatchRow } from "../integrations/listings";
+import { runTask } from "../integrations/tasks";
+import { reconcileProvider } from "../payments";
+import { publishEvent } from "../events";
+import { recordActivity } from "../activity";
+import type { JobProgress } from "./progress";
 
 const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
 
@@ -46,7 +46,7 @@ export type JobType =
    *  presses a button for and then has to wait on. They ran inline in the
    *  request until this queue could carry them, which meant the six operations
    *  most likely to exceed a request deadline were the six with no retry, no
-   *  cancel and no dead-letter. See `services/jobs-long-running.ts`. */
+   *  cancel and no dead-letter. See `services/jobs/long-running.ts`. */
   | "db.backup"
   | "db.restore"
   | "collection.reindex"
@@ -74,7 +74,7 @@ export interface JobRow {
   claimedAt: Date | number | null;
   lastError: string | null;
   result: unknown;
-  /** See `services/job-progress.ts`. NULL = has not reported, which is NOT the
+  /** See `services/jobs/progress.ts`. NULL = has not reported, which is NOT the
    *  same as 0%. */
   progress: JobProgress | null;
   createdAt: Date | number;
@@ -494,8 +494,8 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     // app. Imported lazily to keep `app.ts → routes → jobs` acyclic, the same
     // way the app defers its own optional route modules.
     const [{ createApp }, { runQueuedAgentTurn }] = await Promise.all([
-      import("../app"),
-      import("./agents/async-run"),
+      import("../../app"),
+      import("../agents/async-run"),
     ]);
     const app = createApp(ctx.env) as unknown as Parameters<
       typeof runQueuedAgentTurn
@@ -517,7 +517,7 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     if (!p.agentId || !p.threadId) {
       throw new Error("agent.distill_memory job has an invalid payload");
     }
-    const { distillSemantic, parseMemoryScope } = await import("./agents/memory");
+    const { distillSemantic, parseMemoryScope } = await import("../agents/memory");
     return await distillSemantic(ctx, {
       tenantId: job.tenantId,
       agentId: p.agentId,
@@ -539,7 +539,7 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     if (!job.tenantId) throw new Error(`${job.type} job missing tenantId`);
     // Lazy, to keep `jobs → jobs-long-running → jobs` acyclic: the handlers
     // enqueue continuations, so they import `enqueueJob` from this module.
-    const { runLongRunningJob } = await import("./jobs-long-running");
+    const { runLongRunningJob } = await import("./long-running");
     return await runLongRunningJob(ctx, job);
   }
   throw new Error(`unknown job type '${job.type}'`);

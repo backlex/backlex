@@ -63,7 +63,7 @@ import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 import { backfillFts, ftsIndexSignature, isSearchable } from "../services/fts";
 import { backfillNewlyLocalized } from "../services/items/i18n-sidecar";
 import { loadAppSettings } from "../services/settings";
-import { startLongJob } from "../services/jobs-long-running";
+import { startLongJob } from "../services/jobs/long-running";
 import { readJson } from "../lib/body";
 
 const DurationPartsSchema = z

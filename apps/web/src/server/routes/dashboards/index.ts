@@ -1,10 +1,10 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   createDashboard,
   deleteDashboard,
@@ -14,8 +14,8 @@ import {
   runDashboard,
   shareDashboard,
   updateDashboard,
-} from "../services/dashboards";
-import { deliverReport } from "../services/reports";
+} from "../../services/dashboards";
+import { deliverReport } from "../../services/reports";
 
 const DashboardInput = z
   .object({

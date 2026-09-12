@@ -353,7 +353,7 @@ const publicUrls = (token: string) => ({
 
 /**
  * Admin CRUD for public forms. Mounted at `/api/admin/forms`, admin-gated
- * (mirrors `routes/dashboards.ts`). The plaintext token is returned exactly
+ * (mirrors `routes/dashboards/index.ts`). The plaintext token is returned exactly
  * once (create / rotate); list and detail responses never expose it or its
  * hash.
  */

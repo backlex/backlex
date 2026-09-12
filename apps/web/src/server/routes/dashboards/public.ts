@@ -1,12 +1,12 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
-import { rateLimitOk } from "../lib/rate-limit";
-import { assertWorkspaceRequestQuota, setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
-import { resolveEmbedToken, runDashboardPublic } from "../services/dashboards";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { PUBLIC_SECURITY, errorResponses } from "../../lib/openapi";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { assertWorkspaceRequestQuota, setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
+import { resolveEmbedToken, runDashboardPublic } from "../../services/dashboards";
+import { defaultHook } from "../../lib/openapi-router";
 
 /** One request here fans out into a query per panel, and the embed token is
  *  public by design (it ships inside third-party pages), so the endpoint is a

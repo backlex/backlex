@@ -96,7 +96,7 @@ import { integrationsPublicRoutes } from "./routes/integrations-public";
 import { dashboardsRoutes } from "./routes/dashboards";
 import { kpisRoutes } from "./routes/kpis";
 import { schemaVersionsRoutes } from "./routes/schema-versions";
-import { dashboardsPublicRoutes } from "./routes/dashboards-public";
+import { dashboardsPublicRoutes } from "./routes/dashboards/public";
 import { formsRoutes } from "./routes/forms";
 import { formsPublicRoutes } from "./routes/forms-public";
 import { approvalsPublicRoutes } from "./routes/approvals/public";

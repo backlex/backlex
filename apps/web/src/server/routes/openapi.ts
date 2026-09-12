@@ -97,7 +97,7 @@ import { analyticsIngestRoutes } from "./analytics/ingest";
 import { flagsPublicRoutes, flagsAdminRoutes } from "./feature-flags";
 import { sharedLinksRoutes } from "./shared-links";
 import { sharedPublicRoutes } from "./shared-public";
-import { dashboardsPublicRoutes } from "./dashboards-public";
+import { dashboardsPublicRoutes } from "./dashboards/public";
 import { approvalsPublicRoutes } from "./approvals/public";
 import { signaturesPublicRoutes } from "./signatures-public";
 import { deviceTokensRoutes } from "./device-tokens";

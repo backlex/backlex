@@ -54,6 +54,24 @@ export default defineConfig({
         Search: "./src/components/Search.astro",
       },
       head: [
+        // Social card. Starlight emits og:title/og:description per page but no
+        // image, so a shared /docs link renders as a text-only card the same
+        // way the marketing pages did. The asset lives in apps/site/public and
+        // both apps are served by the one `backlex-website` Worker, so this
+        // absolute URL resolves from /docs too. Source + regeneration:
+        // apps/site/scripts/og-card.html, render-og.mjs.
+        {
+          tag: "meta",
+          attrs: { property: "og:image", content: "https://backlex.com/og.png" },
+        },
+        {
+          tag: "meta",
+          attrs: { name: "twitter:card", content: "summary_large_image" },
+        },
+        {
+          tag: "meta",
+          attrs: { name: "twitter:image", content: "https://backlex.com/og.png" },
+        },
         {
           tag: "link",
           attrs: { rel: "preconnect", href: "https://fonts.googleapis.com" },

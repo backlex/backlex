@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Backlex — Open Graph card source</title>
+<!--
+  SOURCE OF TRUTH for apps/site/public/og.png. Edit here, then regenerate:
+      bun apps/site/scripts/render-og.mjs
+
+  Every size on this card was measured against its DELIVERED size, not chosen
+  by eye here. X renders feed media at 510px wide, i.e. 42.5%, so the 26px list
+  rows arrive at 11px and the 88px headline at 37px. An earlier draft used 15px
+  rows: they arrived at 6px, which is not small type but no type at all.
+  Re-measure before changing any size.
+
+  The palette, the Saturn mark and the gradient are lifted from
+  src/pages/index.astro and src/styles/global.css — keep them in step.
+-->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@200;300;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0A0814; }
+  .card {
+    position: relative; width: 1200px; height: 630px; overflow: hidden;
+    background: #0A0814; font-family: 'Lexend', system-ui, sans-serif;
+  }
+  .neb, .stars { position: absolute; inset: 0; }
+  .neb {
+    background-image:
+      radial-gradient(620px 620px at 92% -6%, rgba(124,92,255,.32), transparent 62%),
+      radial-gradient(540px 540px at -8% 44%, rgba(255,122,89,.15), transparent 62%),
+      radial-gradient(600px 600px at 52% 126%, rgba(86,72,200,.24), transparent 62%);
+  }
+  .stars {
+    opacity: .5;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,.55) .8px, transparent 1px),
+      radial-gradient(circle, rgba(255,255,255,.30) .7px, transparent 1px),
+      radial-gradient(circle, rgba(231,222,255,.42) .9px, transparent 1.2px);
+    background-size: 137px 91px, 83px 127px, 211px 173px;
+    background-position: 11px 23px, 47px 8px, 90px 60px;
+  }
+  .saturn { position: absolute; right: -300px; top: -360px; width: 880px; height: 880px; opacity: .55; }
+  .brand { position: absolute; left: 64px; top: 52px; display: flex; align-items: center; gap: 9px; }
+  .brand span { font-weight: 600; font-size: 22px; letter-spacing: -.01em; color: #F6F4FE; }
+  .credit {
+    position: absolute; right: 64px; top: 56px;
+    font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    font-size: 21px; letter-spacing: .16em; text-transform: uppercase; color: #8E89A8;
+  }
+  .head { position: absolute; left: 64px; right: 64px; top: 108px; }
+  .head div { font-weight: 200; font-size: 88px; line-height: 1.03; letter-spacing: -.04em; color: #F6F4FE; }
+  .head .grad {
+    background-image: linear-gradient(100deg, #b9a3ff 8%, #ff9d83 52%, #b9a3ff 92%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .rule {
+    position: absolute; left: 64px; right: 64px; top: 326px; height: 1px;
+    background: linear-gradient(90deg, rgba(255,157,131,.5), rgba(185,163,255,.18) 60%, transparent);
+  }
+  /* Nine rows start at 352px and run 36px each, so the ninth is cut by the
+     bottom edge on purpose — the list is meant to read as unfinished. */
+  .list {
+    position: absolute; left: 64px; right: 64px; top: 352px;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .col { font-weight: 300; font-size: 26px; line-height: 36px; color: #D6D1E4; letter-spacing: -.015em; }
+  .col div { white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="neb"></div>
+  <div class="stars"></div>
+
+  <svg class="saturn" viewBox="0 0 440 440" aria-hidden="true">
+    <defs>
+      <radialGradient id="planet" cx="35%" cy="28%" r="72%">
+        <stop offset="0%" stop-color="#cdbcff"/>
+        <stop offset="50%" stop-color="#7c5cff"/>
+        <stop offset="100%" stop-color="#2c1a66"/>
+      </radialGradient>
+      <clipPath id="front"><rect x="0" y="220" width="440" height="220"/></clipPath>
+    </defs>
+    <g transform="rotate(-22 220 220)">
+      <ellipse cx="220" cy="220" rx="130" ry="78" fill="none" stroke="rgba(255,255,255,.11)" stroke-width="1.1"/>
+      <ellipse cx="220" cy="220" rx="165" ry="99" fill="none" stroke="rgba(255,157,131,.30)" stroke-width="2.1"/>
+      <ellipse cx="220" cy="220" rx="200" ry="120" fill="none" stroke="rgba(185,163,255,.14)" stroke-width="1.1"/>
+    </g>
+    <circle cx="220" cy="220" r="80" fill="url(#planet)"/>
+    <g transform="rotate(-22 220 220)" clip-path="url(#front)">
+      <ellipse cx="220" cy="220" rx="130" ry="78" fill="none" stroke="rgba(255,255,255,.11)" stroke-width="1.1"/>
+      <ellipse cx="220" cy="220" rx="165" ry="99" fill="none" stroke="rgba(255,181,158,.52)" stroke-width="2.1"/>
+      <ellipse cx="220" cy="220" rx="200" ry="120" fill="none" stroke="rgba(185,163,255,.14)" stroke-width="1.1"/>
+    </g>
+  </svg>
+
+  <div class="brand">
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+      <defs>
+        <radialGradient id="mark" cx="36%" cy="30%" r="72%">
+          <stop offset="0%" stop-color="#e9e1ff"/>
+          <stop offset="55%" stop-color="#7c5cff"/>
+          <stop offset="100%" stop-color="#3a2384"/>
+        </radialGradient>
+        <clipPath id="markFront"><rect x="0" y="16" width="32" height="16"/></clipPath>
+      </defs>
+      <g transform="rotate(-22 16 16)"><ellipse cx="16" cy="16" rx="13" ry="5" fill="none" stroke="#ff9d83" stroke-opacity=".9" stroke-width="1.8"/></g>
+      <circle cx="16" cy="16" r="7" fill="url(#mark)"/>
+      <g transform="rotate(-22 16 16)" clip-path="url(#markFront)"><ellipse cx="16" cy="16" rx="13" ry="5" fill="none" stroke="#ffb59e" stroke-width="1.8"/></g>
+    </svg>
+    <span>backlex</span>
+  </div>
+
+  <div class="credit">Built-in MCP server</div>
+
+  <div class="head">
+    <div>Ask the AI for a backend.</div>
+    <div class="grad">It ships with all of this.</div>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="list">
+    <div class="col">
+      <div>AI agents</div>
+      <div>Built-in MCP server</div>
+      <div>Ask AI, plain language</div>
+      <div>Vector + hybrid search</div>
+      <div>Full-text search</div>
+      <div style="opacity:.81">Dynamic schema</div>
+      <div style="opacity:.62">Adopt existing tables</div>
+      <div style="opacity:.42">Permissions DSL</div>
+      <div style="opacity:.23">Row-level security</div>
+    </div>
+    <div class="col">
+      <div>REST + GraphQL</div>
+      <div>Realtime over SSE</div>
+      <div>Offline-first sync</div>
+      <div>Change data capture</div>
+      <div>Durable job queue</div>
+      <div style="opacity:.81">Flows</div>
+      <div style="opacity:.62">Edge functions</div>
+      <div style="opacity:.42">Storage + transforms</div>
+      <div style="opacity:.23">Payments</div>
+    </div>
+    <div class="col">
+      <div>Audit logs</div>
+      <div>Distributed tracing</div>
+      <div>Usage metering</div>
+      <div>SAML SSO + LDAP</div>
+      <div>Passkey</div>
+      <div style="opacity:.81">OAuth provider</div>
+      <div style="opacity:.62">Embedded dashboards</div>
+      <div style="opacity:.42">Feature flags</div>
+      <div style="opacity:.23">Backup + restore</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -63,7 +63,7 @@ import { revisionsRoutes } from "./revisions";
 import { meRoutes } from "./me";
 import { accountRoutes } from "./account";
 import { formsRoutes } from "./forms";
-import { formsPublicRoutes } from "./forms-public";
+import { formsPublicRoutes } from "./forms/public";
 import { documentsRoutes } from "./documents";
 import { emailFieldRoutes } from "./email-fields";
 import { geoRoutes } from "./geo";

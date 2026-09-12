@@ -21,7 +21,7 @@
  * makes the browser drop the whole cookie on any http page, so local dev and
  * any customer still on plain http would silently store nothing and re-ask
  * every visitor on every page. The repo has written this down twice already
- * (`routes/forms-public.ts`, `middleware/tenant.ts`); this follows the SDK's
+ * (`routes/forms/public.ts`, `middleware/tenant.ts`); this follows the SDK's
  * token store, which gets it right in code.
  */
 export interface Decision {

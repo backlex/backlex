@@ -1,16 +1,16 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { rateLimitOk } from "../lib/rate-limit";
-import { setMeterTenant } from "../lib/usage-meter";
-import { elapsedMs, requestMeta } from "../services/activity";
-import { loadCollection } from "../services/items/collection-loader";
+import type { AppBindings } from "../../app";
+import { PUBLIC_SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { setMeterTenant } from "../../lib/usage-meter";
+import { elapsedMs, requestMeta } from "../../services/activity";
+import { loadCollection } from "../../services/items/collection-loader";
 import {
   performCreate,
   type WriteEnv,
-} from "../services/items/write";
+} from "../../services/items/write";
 import {
   assertChoices,
   assertConsents,
@@ -28,13 +28,13 @@ import {
   resolveFormToken,
   verifyTurnstile,
   type FormRow,
-} from "../services/forms";
-import { enforceCaptcha, loadCaptchaConfig } from "../services/captcha";
+} from "../../services/forms";
+import { enforceCaptcha, loadCaptchaConfig } from "../../services/captcha";
 import {
   checkFormInvite,
   consumeFormInvite,
   releaseFormInvite,
-} from "../services/forms/invites";
+} from "../../services/forms/invites";
 import {
   deleteFormDraft,
   formDraftCookieName,
@@ -43,16 +43,16 @@ import {
   newFormDraftSecret,
   saveFormDraft,
   FORM_DRAFT_MAX_BYTES,
-} from "../services/forms/drafts";
+} from "../../services/forms/drafts";
 import {
   consumeFormUploadTicket,
   formUploadPolicy,
   matchesAccept,
   storeFormUpload,
-} from "../services/forms/uploads";
-import { assertDeclaredLengthWithin } from "../services/storage/limit-stream";
-import { DEMO_BLOCKED_MESSAGE, isDemoMode } from "../services/demo";
-import { assertStorageWithinLimit } from "../services/usage";
+} from "../../services/forms/uploads";
+import { assertDeclaredLengthWithin } from "../../services/storage/limit-stream";
+import { DEMO_BLOCKED_MESSAGE, isDemoMode } from "../../services/demo";
+import { assertStorageWithinLimit } from "../../services/usage";
 
 const TAGS = ["forms"];
 

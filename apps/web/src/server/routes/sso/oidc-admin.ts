@@ -1,7 +1,7 @@
 /**
  * Generic OIDC / OAuth2 provider admin CRUD. Admin-only, scoped to the active
  * workspace. Mounted at `/api/admin/oidc`. The generic twin of
- * `routes/saml-admin.ts`: reads never include the client secret (only a
+ * `routes/sso/saml-admin.ts`: reads never include the client secret (only a
  * presence flag), writes accept plaintext that the service encrypts.
  *
  * Endpoints:
@@ -18,19 +18,19 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../../lib/openapi";
 import {
   createOidcProvider,
   deleteOidcProvider,
   discoverOidcEndpoints,
   listOidcProviders,
   updateOidcProvider,
-} from "../services/sso/oidc-providers";
-import { invalidateTenantAuth } from "../services/tenant-auth";
-import { logActivity } from "../services/activity";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/sso/oidc-providers";
+import { invalidateTenantAuth } from "../../services/tenant-auth";
+import { logActivity } from "../../services/activity";
+import { defaultHook } from "../../lib/openapi-router";
 
 const ProviderView = z
   .object({

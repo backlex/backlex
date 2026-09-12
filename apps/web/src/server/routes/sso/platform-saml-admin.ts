@@ -16,14 +16,14 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { requireOperatorMw } from "../services/roles/guards";
-import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
-import { isPlatformSsoEnabled } from "../lib/platform-sso";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { requireOperatorMw } from "../../services/roles/guards";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../../lib/openapi";
+import { isPlatformSsoEnabled } from "../../lib/platform-sso";
 import { parseMetadataXml } from "./saml-admin";
-import { fetchOutbound } from "../services/storage/hosts";
-import { defaultHook } from "../lib/openapi-router";
+import { fetchOutbound } from "../../services/storage/hosts";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   buildPlatformAcsAndMetadataUrls,
   createPlatformSamlProvider,
@@ -33,7 +33,7 @@ import {
   resolvePlatformSamlProvider,
   sanitizeForResponse,
   updatePlatformSamlProvider,
-} from "../services/sso/platform-saml-providers";
+} from "../../services/sso/platform-saml-providers";
 
 /** Feature flag only — authorization is `requireOperatorMw`, ahead of it in
  *  `GATE`. The order is deliberate: a caller who may not configure control-plane

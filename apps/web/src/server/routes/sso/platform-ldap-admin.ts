@@ -15,26 +15,26 @@ import type { MiddlewareHandler } from "hono";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { requireOperatorMw } from "../services/roles/guards";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { isEdgeRuntime } from "../lib/runtime";
-import { isPlatformSsoEnabled } from "../lib/platform-sso";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { requireOperatorMw } from "../../services/roles/guards";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { isEdgeRuntime } from "../../lib/runtime";
+import { isPlatformSsoEnabled } from "../../lib/platform-sso";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   PLATFORM_LDAP_ID,
   resolvePlatformLdapAdapter,
   sanitizeForResponse,
   type PlatformLdapConfigRow,
-} from "../services/sso/platform-ldap-config";
+} from "../../services/sso/platform-ldap-config";
 import {
   type ConfigRowKey,
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
-} from "../services/provider-config";
-import { readJson } from "../lib/body";
+} from "../../services/provider-config";
+import { readJson } from "../../lib/body";
 
 /** This table is an INSTANCE-wide singleton keyed on a fixed `id`, not one row
  *  per workspace — the one config in the family that is not tenant-scoped. It

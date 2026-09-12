@@ -19,25 +19,25 @@ import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { isEdgeRuntime } from "../lib/runtime";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { isEdgeRuntime } from "../../lib/runtime";
 import {
   GLOBAL_LDAP_CONFIG_ID,
   resolveLdapAdapter,
   sanitizeForResponse,
   type LdapConfigRow,
-} from "../services/sso/ldap-config";
+} from "../../services/sso/ldap-config";
 import {
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
   tenantKey,
-} from "../services/provider-config";
-import { invalidateTenantAuth } from "../services/tenant-auth";
-import { defaultHook } from "../lib/openapi-router";
-import { readJson } from "../lib/body";
+} from "../../services/provider-config";
+import { invalidateTenantAuth } from "../../services/tenant-auth";
+import { defaultHook } from "../../lib/openapi-router";
+import { readJson } from "../../lib/body";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.ldapConfigs : sqlite.schema.ldapConfigs;

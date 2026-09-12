@@ -19,9 +19,9 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../../lib/openapi";
 import {
   createSamlProvider,
   deleteSamlProvider,
@@ -31,10 +31,10 @@ import {
   sanitizeForResponse,
   updateSamlProvider,
   buildAcsAndMetadataUrls,
-} from "../services/sso/saml-providers";
-import { invalidateTenantAuth } from "../services/tenant-auth";
-import { fetchOutbound } from "../services/storage/hosts";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/sso/saml-providers";
+import { invalidateTenantAuth } from "../../services/tenant-auth";
+import { fetchOutbound } from "../../services/storage/hosts";
+import { defaultHook } from "../../lib/openapi-router";
 
 const requireAdmin = (auth: { roles: string[] }) => {
   if (!auth.roles.includes(SYSTEM_ROLES.admin))

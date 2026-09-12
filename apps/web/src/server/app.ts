@@ -71,7 +71,7 @@ import { i18nRoutes } from "./routes/i18n";
 import { i18nPublicRoutes } from "./routes/i18n/public";
 import { integrationsRoutes } from "./routes/integrations";
 import { itemsRoutes } from "./routes/items";
-import { ldapAdminRoutes } from "./routes/ldap-admin";
+import { ldapAdminRoutes } from "./routes/sso/ldap-admin";
 import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
 import { MCP_ADMIN_MOUNT, MCP_TENANT_MOUNT } from "./mcp/mounts";
 import { jwksRoutes } from "./routes/jwks";
@@ -113,9 +113,9 @@ import {
   rolesRoutes,
   usersRoutes,
 } from "./routes/roles";
-import { samlAdminRoutes } from "./routes/saml-admin";
+import { samlAdminRoutes } from "./routes/sso/saml-admin";
 import { thirdPartyAuthAdminRoutes } from "./routes/third-party-auth-admin";
-import { oidcAdminRoutes } from "./routes/oidc-admin";
+import { oidcAdminRoutes } from "./routes/sso/oidc-admin";
 import { scimAdminRoutes } from "./routes/scim-admin";
 import { syncHooksRoutes } from "./routes/sync-hooks";
 import { authHooksRoutes } from "./routes/auth-hooks";
@@ -132,8 +132,8 @@ import { dynamicRegistrationGate } from "./lib/oauth-registration-gate";
 import { captchaMiddleware } from "./lib/captcha-middleware";
 import { erasureRoutes } from "./routes/erasure";
 import { scimRoutes } from "./routes/scim";
-import { platformSamlAdminRoutes } from "./routes/platform-saml-admin";
-import { platformLdapAdminRoutes } from "./routes/platform-ldap-admin";
+import { platformSamlAdminRoutes } from "./routes/sso/platform-saml-admin";
+import { platformLdapAdminRoutes } from "./routes/sso/platform-ldap-admin";
 import { sandboxRpcRoutes } from "./routes/sandbox-rpc";
 import { settingsRoutes } from "./routes/settings";
 import { sharedLinksRoutes } from "./routes/shared-links";

@@ -14,7 +14,7 @@ import type { SchemaTemplate } from "./types";
  * So the rule is: **outside `templates/`, import the catalog only through this
  * module.** Types are free (`import type` is erased and creates no edge); only
  * value imports cost anything. `apps/web/scripts/measure-startup.mjs` measures
- * what the graph costs, and `apps/web/tests/worker-startup-budget.test.ts`
+ * what the graph costs, and `apps/web/tests/repo/worker-startup-budget.test.ts`
  * fails when it grows past its recorded budget.
  *
  * The dynamic import is memoised by the module registry itself, so the second

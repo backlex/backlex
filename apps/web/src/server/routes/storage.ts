@@ -578,7 +578,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   // alongside sibling `/:key{.+}` catch-alls — the suffix route then misses
   // on 3+ segment keys (`a/b/c.txt/sign` → 404) even though plain Hono
   // handles it fine. The prefix form has no such ambiguity. See
-  // `tests/storage-sign.test.ts` for the regression that locks this in.
+  // `tests/storage/storage-sign.test.ts` for the regression that locks this in.
   .post("/_sign/:key{.+}", requirePermission(filesCollection, "read"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");

@@ -21,7 +21,7 @@
  *
  * Reading the names off the Drizzle schema removes the maintenance step
  * entirely: a table that exists is a table that is covered, on the commit that
- * adds it. `tests/security-audit-2026-09-adoption-blocklist.test.ts` asserts the
+ * adds it. `tests/security/security-audit-2026-09-adoption-blocklist.test.ts` asserts the
  * derivation still sees every table, so a drizzle upgrade that breaks `is()`
  * fails loudly instead of quietly returning an empty set.
  *

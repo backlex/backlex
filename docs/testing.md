@@ -44,7 +44,7 @@ in milliseconds per file.
 
 ```bash
 bun test                 # all suites
-bun test tests/auth.test.ts   # single suite
+bun test tests/auth/auth.test.ts   # single suite
 ```
 
 ### The Postgres dialect (`*-pg.test.ts`, ~18 specs)
@@ -67,7 +67,7 @@ cannot take, a dependency bump), and it has been one before: a positional
 skip is why it survived.
 
 One helper does this for every spec — `makeHarnessPgOrFail(tag)` in
-`tests/setup-pg.ts` — and `tests/pg-specs-fail-loudly.test.ts` is the gate that
+`tests/setup-pg.ts` — and `tests/repo/pg-specs-fail-loudly.test.ts` is the gate that
 keeps the eighteenth copy from reintroducing a private `catch`. To skip the pg
 dialect deliberately:
 

@@ -152,7 +152,7 @@ Settings · AI's **test key** action is the one exemption. It generates sixteen
 tokens to prove a key an admin has just typed actually works, and gating it
 would stop an out-of-budget workspace fixing the very credential it needs —
 the same lockout the request cap already refuses to create when it exempts
-platform-admin sessions. `apps/web/tests/ai-quota-gate.test.ts` is a source
+platform-admin sessions. `apps/web/tests/ai/ai-quota-gate.test.ts` is a source
 scan that fails when a new generating file neither asks nor writes down why it
 does not.
 
@@ -210,9 +210,9 @@ Per-key limits ride the API-keys surface: `POST /api/api-keys` accepts
 `rateLimitPerMinute` / `monthlyQuota` (admin-only), and
 `PATCH /api/api-keys/:id/limits` updates them.
 
-The parity gate is `apps/web/tests/usage-surfaces.test.ts`; enforcement edges
+The parity gate is `apps/web/tests/usage/usage-surfaces.test.ts`; enforcement edges
 (quota 429s, admin exemption, storage/row fences, gauge sweep, env pinning)
-are pinned in `apps/web/tests/usage.test.ts`.
+are pinned in `apps/web/tests/usage/usage.test.ts`.
 
 ## Freshness & precision (deliberate trade-offs)
 

@@ -357,7 +357,7 @@ export const createAuth = async (
       //
       // **This is the lever for "sign out my other devices" latency, and the
       // number is not 60 seconds.** Measured against the shipped config
-      // (`apps/web/tests/auth-admin-sessions.test.ts`): a revoked device still
+      // (`apps/web/tests/auth/auth-admin-sessions.test.ts`): a revoked device still
       // gets 200 on `/api/me` immediately after `revoke-others`, with nothing
       // cleared, because this blob answers our routes too — not just
       // better-auth's own `/api/auth/*`. Worse, a request it answers is written

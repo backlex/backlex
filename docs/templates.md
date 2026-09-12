@@ -316,7 +316,7 @@ Templates live under `apps/web/src/server/templates/`, one file per vertical:
 | `catalog.ts` | the entry point — `TEMPLATES`, `getTemplate`, `templateSummaries` |
 
 Adding a vertical is a new `defs/<id>.ts` plus one line in `defs/index.ts`;
-`tests/templates-catalog.test.ts` fails if a definition is inlined into the
+`tests/templates/templates-catalog.test.ts` fails if a definition is inlined into the
 index instead, or if a def file outlives the template it named.
 Hard constraints:
 
@@ -384,7 +384,7 @@ Four things worth knowing:
 
 The shapes live in `templates/types.ts` (`TemplateFlow`, `TemplateDocument`,
 `TemplateForm`, `TemplateAgent`, `TemplateFlag`, `TemplateChannel`); the rules
-`tests/templates-bundles.test.ts` enforces:
+`tests/templates/templates-bundles.test.ts` enforces:
 
 - **Flows** may use only self-contained ops (see *Applying* above). Anything
   needing a transport or a renderer must be `active: false`. Every collection
@@ -474,5 +474,5 @@ audited.
 Two renderer behaviours the rules exist to respect: in tabs mode **every field
 must carry a group** (an ungrouped one lands in an implicit "General" tab), and
 the tabs branch returns before the collapsible one, so **fold flags are ignored
-when `sectionsAsTabs` is set**. `tests/templates-layout.test.ts` enforces all of
+when `sectionsAsTabs` is set**. `tests/templates/templates-layout.test.ts` enforces all of
 this, so a layout that would silently render wrong fails in CI.

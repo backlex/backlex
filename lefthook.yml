@@ -45,7 +45,7 @@ pre-commit:
     # This hook is the fast feedback, NOT the guarantee. Its glob watches the
     # SOURCES, so hand-editing the generated file or editing the generator
     # itself never triggers it, and `--no-verify` skips it entirely. The
-    # guarantee is `apps/web/tests/consent-banner.test.ts`, which re-runs the same
+    # guarantee is `apps/web/tests/consent/consent-banner.test.ts`, which re-runs the same
     # comparison inside `bun test` and therefore inside CI.
     - name: consent-banner-in-sync
       # NOT `**/*.ts`: these sources sit directly in the directory with no
@@ -69,7 +69,7 @@ pre-commit:
     # that ran and passed.
     #
     # The guarantee is the twin in
-    # `apps/web/tests/openapi-subapp-coverage.test.ts`, which runs in CI and has
+    # `apps/web/tests/openapi/openapi-subapp-coverage.test.ts`, which runs in CI and has
     # none of this hook's holes.
     - name: openapi-spec-in-sync
       glob:
@@ -82,7 +82,7 @@ pre-commit:
 # broken main and the deploy workflow. Same checks the workflow runs —
 # any green-here / red-there divergence is a CI bug.
 #
-# That sentence used to be aspirational. `apps/web/tests/prepush-ci-parity.test.ts`
+# That sentence used to be aspirational. `apps/web/tests/repo/prepush-ci-parity.test.ts`
 # now enforces it: it reads test.yml's `test` and `build` jobs and this file,
 # and fails when CI runs a script the hook does not. It was written because the
 # claim was FALSE — the hook was missing `typecheck:tests`, `build:examples`

@@ -2,7 +2,7 @@
  * The CLI's user-facing command list, in one place.
  *
  * Kept out of `bin/backlex.ts` so it can be read without running the CLI —
- * `apps/web/tests/cli-release-drift.test.ts` parses it to compare the commands
+ * `apps/web/tests/cli/cli-release-drift.test.ts` parses it to compare the commands
  * this build offers against the ones the published `@backlex/cli` actually has.
  * Importing the bin would print this text and dispatch a command.
  */

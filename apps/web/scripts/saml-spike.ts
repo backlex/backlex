@@ -6,7 +6,7 @@
  *   bun run apps/web/scripts/saml-spike.ts
  *
  * The script is also the reference fixture pattern used by
- * `apps/web/tests/saml.test.ts`. It generates an RSA keypair on the fly,
+ * `apps/web/tests/sso/saml.test.ts`. It generates an RSA keypair on the fly,
  * signs an Assertion with `xml-crypto` (samlify's signing dep), embeds it
  * in a SAML Response, then verifies the Response via samlify's
  * `ServiceProvider.parseLoginResponse`.

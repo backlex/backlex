@@ -8,7 +8,7 @@
  * of the SAME commit succeeded. The worker straddles the limit, so every push
  * is a coin flip. Issue #372.
  *
- * `apps/web/tests/worker-startup-budget.test.ts` already guards a budget, but
+ * `apps/web/tests/repo/worker-startup-budget.test.ts` already guards a budget, but
  * it counts SOURCE BYTES of the eager graph, comments included. That is not the
  * quantity CF enforces, and the two came apart completely the same day: four
  * merges moved the source figure 8465 → 8497 KiB while the thing CF measures

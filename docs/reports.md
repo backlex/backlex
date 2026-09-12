@@ -174,5 +174,5 @@ The response:
   label.
 - `apps/web/src/server/services/reports.ts` — `deliverReport`: run, build,
   render, store, mail. Every surface calls this one function.
-- `apps/web/tests/report-delivery.test.ts`,
-  `apps/web/tests/reports-surfaces.test.ts` — the behaviour and the parity gate.
+- `apps/web/tests/dashboards/report-delivery.test.ts`,
+  `apps/web/tests/dashboards/reports-surfaces.test.ts` — the behaviour and the parity gate.

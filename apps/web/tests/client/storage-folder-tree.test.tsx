@@ -11,7 +11,7 @@
  * five are missing.
  *
  * The server side of this endpoint is covered by
- * `tests/storage-folder-counts.test.ts` (including that the count is filtered
+ * `tests/storage/storage-folder-counts.test.ts` (including that the count is filtered
  * by permission). This is the half that spec cannot see.
  */
 import { afterEach, describe, expect, mock, test } from "bun:test";

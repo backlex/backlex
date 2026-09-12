@@ -198,7 +198,7 @@ definition gets wrong the first time:
   downtime, scrap, backlogs. Without it the delta badge colours by sign alone
   and a worsening figure renders green.
 
-`apps/web/tests/template-kpis.test.ts` walks every bundled definition against
+`apps/web/tests/templates/template-kpis.test.ts` walks every bundled definition against
 its template's real field list, then applies all 25 templates and evaluates
 every KPI each one seeded. A KPI naming a column that does not exist is not a
 type error — it is a tile that fails on somebody's dashboard — so it is caught
@@ -311,4 +311,4 @@ return the rows outside it and say nothing about it.
 | CLI | `backlex kpis <list\|get\|run\|create\|update\|delete>` |
 | Admin | the **KPIs** page under Observability |
 
-`apps/web/tests/kpis-surfaces.test.ts` is the gate that keeps them in step.
+`apps/web/tests/kpis/kpis-surfaces.test.ts` is the gate that keeps them in step.

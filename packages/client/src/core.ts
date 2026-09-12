@@ -143,7 +143,7 @@ export interface AuthSession {
  *
  * `kind` is kept in step with the server's own union (`PublicProvider` in
  * `apps/web/src/server/services/auth-config.ts`) by
- * `apps/web/tests/auth-surface-parity.test.ts`. It had drifted: the server
+ * `apps/web/tests/auth/auth-surface-parity.test.ts`. It had drifted: the server
  * emitted `saml`, `ldap` and `oidc` while this typed five kinds and no
  * `loginUrl`, so an application narrowing on `kind` dropped every SSO provider
  * its types had never heard of — silently, because the values were there.

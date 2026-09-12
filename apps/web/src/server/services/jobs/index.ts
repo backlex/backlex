@@ -128,7 +128,7 @@ const tableFor = (dialect: "pg" | "sqlite") =>
  * `undefined` on Postgres and populated on SQLite. Nothing read them at the
  * time; a handler that resumes from `job.progress` would work on SQLite, start
  * from zero on Postgres, and the suite — which runs on SQLite — would agree
- * with it. `tests/job-row-parity.test.ts` pins the two shapes together.
+ * with it. `tests/jobs/job-row-parity.test.ts` pins the two shapes together.
  */
 const JOB_RETURNING = sql`${sql.identifier("id")},
                 ${sql.identifier("tenant_id")} AS "tenantId",

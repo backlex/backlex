@@ -172,7 +172,7 @@ export interface WriteEnv {
    *
    * The response is a READ. The write grant authorises the write; it does not
    * authorise reading the result back. See
-   * `tests/mutation-response-projection.test.ts`.
+   * `tests/items/mutation-response-projection.test.ts`.
    *
    * Required rather than optional on purpose — a caller that forgets it should
    * not silently inherit either answer.

@@ -17,7 +17,7 @@
  * They had also already drifted where they did exist: `_headers` omitted the
  * `https://static.cloudflareinsights.com` that `app.ts` allows, so the two
  * halves of the same deployment disagreed about the policy. One constant, three
- * consumers, and `apps/web/tests/security-headers-parity.test.ts` fails if any
+ * consumers, and `apps/web/tests/security/security-headers-parity.test.ts` fails if any
  * of them stops agreeing.
  */
 
@@ -120,7 +120,7 @@ export const isPublicFormPage = (path: string): boolean => PUBLIC_FORM_PAGE.test
 
 /**
  * `public/_headers` (Cloudflare Pages / Netlify), rendered from the constants
- * above. `apps/web/tests/security-headers-parity.test.ts` compares this to the
+ * above. `apps/web/tests/security/security-headers-parity.test.ts` compares this to the
  * file on disk, so the two cannot drift the way they already had.
  */
 export const renderHeadersFile = (): string =>

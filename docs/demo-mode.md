@@ -92,4 +92,4 @@ after the cause is fixed instead of at the next hour boundary.
   (`wrangler d1 execute <name>` resolves the name against the *account*, not the
   config — a stale `D1_DATABASE_NAME` override silently migrates a different
   database and still exits 0.)
-- Tests: `apps/web/tests/demo-mode.test.ts`.
+- Tests: `apps/web/tests/settings/demo-mode.test.ts`.

@@ -819,7 +819,7 @@ export interface Env {
  * (bun/node/vercel/netlify/deno/gcp/lambda/azure) no longer hand-list a stale
  * subset — historically each one mapped ~34 of ~100 keys, silently dropping
  * SMTP/SES/push/SMS/OWNER_EMAIL/SSRF/AI-gateway/embedding/retention/job/upload
- * knobs. `tests/env-parity.test.ts` parses the interface and fails if a new
+ * knobs. `tests/runtime/env-parity.test.ts` parses the interface and fails if a new
  * string field is added without being listed here. The `satisfies` clause
  * guarantees every entry is a real `Env` key.
  */

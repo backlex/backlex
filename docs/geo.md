@@ -255,7 +255,7 @@ The CLI loops for you and prints progress as it goes.
 | MCP | `geo.geocode`, `geo.reverse`, `geo.backfill` (proximity goes through `collections-list`'s filter — one way to ask, not two) |
 | CLI | `backlex collections backfill-geo <slug> <field>` |
 
-`apps/web/tests/geo-surfaces.test.ts` is the gate that keeps them in step.
+`apps/web/tests/fields/geo-surfaces.test.ts` is the gate that keeps them in step.
 
 ## In the admin
 

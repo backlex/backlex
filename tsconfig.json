@@ -13,7 +13,7 @@
   // this file: `apps/docs` / `apps/site` typecheck through `astro check` on a
   // pinned 5.9 compiler and must not be pulled into a 7.0 `tsc -b`, and every
   // `examples/*` runs its own. What
-  // `apps/web/tests/tsconfig-project-coverage.test.ts` enforces is the weaker,
+  // `apps/web/tests/repo/tsconfig-project-coverage.test.ts` enforces is the weaker,
   // true invariant — every project is reached by SOME runner, and every source
   // file by some project.
   //

@@ -10,7 +10,7 @@
  * middleware.
  *
  * `app.ts` mounts the two routers with these very constants, and
- * `tests/security-audit-2026-09-token-scope.test.ts` re-derives the list from
+ * `tests/security/security-audit-2026-09-token-scope.test.ts` re-derives the list from
  * `app.ts`'s source so a third MCP mount cannot land without appearing here.
  * The alternative — a hand-written list in the guard — is the shape that
  * covered 46 of 131 tables in Faz 2.

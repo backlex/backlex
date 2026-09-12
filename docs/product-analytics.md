@@ -510,8 +510,8 @@ Both streams are pruned by the daily cron sweep:
 ## Surfaces
 
 Mirrors the multi-surface parity rule (REST + SDK + GraphQL + MCP + CLI). The
-parity gate is `apps/web/tests/analytics-surfaces.test.ts`; the Postgres twin of
-the funnel/retention SQL is pinned in `apps/web/tests/analytics-pg.test.ts`.
+parity gate is `apps/web/tests/analytics/analytics-surfaces.test.ts`; the Postgres twin of
+the funnel/retention SQL is pinned in `apps/web/tests/analytics/analytics-pg.test.ts`.
 
 ### REST
 

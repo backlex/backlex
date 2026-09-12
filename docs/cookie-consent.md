@@ -181,7 +181,7 @@ against a document backlex can produce. Your CMP's decision is yours to
 evidence; backlex records nothing about it, sets no `blx_consent` cookie, and
 sends `c: null` on the wire rather than claiming a consent it did not obtain.
 
-All of the above is pinned by `apps/web/tests/consent-external-cmp.test.ts`,
+All of the above is pinned by `apps/web/tests/consent/consent-external-cmp.test.ts`,
 which boots the real tag and the real container in a DOM and watches what
 leaves. It exists because this behaviour was an accident of two unrelated
 decisions before it was a promise, and an accident is one refactor away from

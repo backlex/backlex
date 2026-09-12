@@ -4,7 +4,7 @@
  *
  * `compact-d1-ledger.ts` is a script — importing it runs it — and the risky
  * part of that script is not its plumbing but these four statements. Splitting
- * them out is what lets `packages/db/tests/ledger-compaction.test.ts` prove the
+ * them out is what lets `packages/db/tests/db/ledger-compaction.test.ts` prove the
  * dedupe keeps exactly one row per hash, keeps the *earliest* one, and that the
  * guard then rejects a duplicate insert.
  */
@@ -17,7 +17,7 @@ export const LEDGER_GUARD_INDEX = "__drizzle_migrations_hash_unique";
  * contain a space: on the Cloudflare runner a spaced element arrived split
  * into four tokens (`Unknown arguments: hash, FROM, __drizzle_migrations;`).
  * `/**\/` is a comment SQLite treats as whitespace, so the statement stays one
- * token. Pinned by `apps/web/tests/migrate-d1-ledger.test.ts`.
+ * token. Pinned by `apps/web/tests/db/migrate-d1-ledger.test.ts`.
  */
 export const LEDGER_COUNT_SQL =
   `SELECT/**/COUNT(*)/**/AS/**/total,COUNT(DISTINCT/**/hash)/**/AS/**/hashes/**/FROM/**/__drizzle_migrations;`;

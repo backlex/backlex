@@ -131,7 +131,7 @@ export const serializeField = (
  * INSERT: the failure is silent, it is per-write-path, and this codebase has
  * already been bitten by exactly that shape — a sidecar value that three of the
  * four writers maintained.
- * `apps/web/tests/fold-write-paths.test.ts` walks every path and proves it.
+ * `apps/web/tests/search/fold-write-paths.test.ts` walks every path and proves it.
  *
  * `present` is the companion columns the physical table ACTUALLY has, and it is
  * REQUIRED rather than optional on purpose. The field type says which columns a

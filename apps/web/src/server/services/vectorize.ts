@@ -308,7 +308,7 @@ export const isVectorizable = (meta: VectorizeMeta, env: Pick<Env, "EMBEDDING_DE
  * degraded to full-text with no error. `routes/vector.ts::scopeNs` builds the
  * same join on top of this (it adds its own auth check and a no-namespace
  * fallback the write path has no use for). Pinned by
- * `tests/vector-namespace-parity.test.ts`.
+ * `tests/vector/vector-namespace-parity.test.ts`.
  */
 export const vectorNamespace = (slug: string, tenantId: string | null): string =>
   tenantId ? `${tenantId}:${slug}` : slug;

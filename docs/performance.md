@@ -665,7 +665,7 @@ other half.
 | compile + top-level (local V8) | ~330 ms | **~280 ms** |
 | a deploy's reported startup | 635-928 ms | expect ~0.85x |
 
-`apps/web/tests/worker-startup-budget.test.ts` holds it: it walks static imports
+`apps/web/tests/repo/worker-startup-budget.test.ts` holds it: it walks static imports
 from the worker entry in **source** (so it runs with nothing built) and fails if
 any of the three returns, or if the graph outgrows its recorded budget. Being
 source-level it is blind to the chunking half — that is what the script measures.

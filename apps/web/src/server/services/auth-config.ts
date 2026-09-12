@@ -65,7 +65,7 @@ export interface PublicProvider {
   id: AuthProviderKey | string;
   /**
    * Kept in step with `PublicProvider["kind"]` in `packages/client/src/core.ts`
-   * by `apps/web/tests/auth-surface-parity.test.ts`. The two drifted for three
+   * by `apps/web/tests/auth/auth-surface-parity.test.ts`. The two drifted for three
    * kinds and a whole field once already; an application that renders buttons
    * off this list silently drops every provider its types have never heard of.
    */

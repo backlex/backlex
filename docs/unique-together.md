@@ -117,7 +117,7 @@ would I reach for a reconciliation script?"
 
 The bundled templates are held to that: every collection with exactly two
 required relations either declares `uniqueWith` or is named in
-`apps/web/tests/template-join-tables.test.ts` as a deliberate exception **with
+`apps/web/tests/templates/template-join-tables.test.ts` as a deliberate exception **with
 the reason written out**. A new one that does neither fails the suite.
 
 ## When the database is the one that refuses

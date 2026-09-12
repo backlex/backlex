@@ -143,7 +143,7 @@ for no technical reason. It now goes through `callClaude` like everything else.
 
 ## Tests
 
-`apps/web/tests/ai-model-catalog.test.ts` covers the registry invariants, the
+`apps/web/tests/ai/ai-model-catalog.test.ts` covers the registry invariants, the
 credential chain (including the `OPENAI_API_KEY` non-promotion), bare-id
 normalization, cross-vendor fallback, the three-level resolution order, unknown
 providers degrading instead of throwing, and the guarantee that no secret —

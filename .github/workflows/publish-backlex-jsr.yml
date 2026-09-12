@@ -41,7 +41,7 @@ jobs:
       # 0. That is how `backlex-v0.4.0` and `backlex-v0.4.1` each ran this
       # workflow, each published nothing, and each reported GREEN: `jsr.json`
       # had drifted to 0.3.3 while package.json moved on. The drift itself is
-      # now pinned by apps/web/tests/sdk-exports.test.ts, but the exit code
+      # now pinned by apps/web/tests/sdk/sdk-exports.test.ts, but the exit code
       # still says "fine" for the one outcome that means nothing shipped, so a
       # re-run of an old tag would be just as silent.
       #

@@ -382,7 +382,7 @@ export const setCachedOrgMemberships = (
  *
  * Lowering it here does not fix that — `cookieCache.maxAge` in `packages/auth`
  * is the outer lever, and it costs a real session read on every route.
- * `tests/auth-admin-sessions.test.ts` pins both halves.
+ * `tests/auth/auth-admin-sessions.test.ts` pins both halves.
  */
 export interface CachedSession {
   userId: string;
@@ -429,7 +429,7 @@ export const setCachedSession = (token: string, v: CachedSession): void =>
  * And clearing it does not stay cleared: the next request that `cookieCache`
  * answers re-populates this cache under the same bare-token key, so the two
  * windows compound to ~90s rather than nesting inside 60. See
- * `tests/auth-admin-sessions.test.ts`, which pins both halves rather than
+ * `tests/auth/auth-admin-sessions.test.ts`, which pins both halves rather than
  * pretending either is gone.
  *
  * **Do not reach for a shared revocation signal to fix this — measure first.**

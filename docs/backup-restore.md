@@ -329,7 +329,7 @@ await backlex.backups.setConfig({ schedule: "daily", retain: 14 });
 ## Other surfaces
 
 Backup/restore has full multi-surface parity (gate:
-`apps/web/tests/backup-surfaces.test.ts`):
+`apps/web/tests/backup/backup-surfaces.test.ts`):
 
 - **GraphQL** — `backups` / `backupConfig` queries; `runBackup(label)`,
   `restoreBackup(id, confirm: true, overwrite, onlyTables)`,

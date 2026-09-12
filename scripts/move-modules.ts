@@ -42,7 +42,8 @@ import { fileURLToPath } from "node:url";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CODE = /\.(tsx?|mts|cts|m?js|cjs)$/;
 const TEXT = /\.(tsx?|mts|cts|m?js|cjs|json|jsonc|md|mdx|ya?ml|toml|sh|astro|html)$/;
-const SKIP = new Set(["bun.lock", "deno.lock", "THIRD-PARTY-LICENSES.md"]);
+// This file is skipped too: its comments name example files, which are not references.
+const SKIP = new Set(["bun.lock", "deno.lock", "THIRD-PARTY-LICENSES.md", "scripts/move-modules.ts"]);
 
 type Style = "exact" | "bare" | "dir" | "js";
 type Edit = { start: number; end: number; text: string; kind: "relative" | "path" | "name" };
@@ -75,8 +76,13 @@ for (const pair of pairs) {
 const moved = new Set(moves.values());
 const after = new Set([...tracked].filter((f) => !moves.has(f)).concat([...moved]));
 const newPath = (f: string) => moves.get(f) ?? f;
-const basenames = new Map<string, number>();
-for (const f of tracked) basenames.set(posix.basename(f), (basenames.get(posix.basename(f)) ?? 0) + 1);
+const countNames = (files: Iterable<string>) => {
+  const counts = new Map<string, number>();
+  for (const f of files) counts.set(posix.basename(f), (counts.get(posix.basename(f)) ?? 0) + 1);
+  return counts;
+};
+const basenames = countNames(tracked);
+const basenamesAfter = countNames(after);
 /** Every directory holding a tracked file, plus the root — targets for anchored folder paths. */
 const dirs = new Set<string>(["."]);
 for (const f of tracked) for (let d = posix.dirname(f); d !== "."; d = posix.dirname(d)) dirs.add(d);
@@ -273,16 +279,16 @@ for (const file of tracked) {
     const name = posix.basename(from);
     const sibling = posix.dirname(file) === posix.dirname(from);
     if (!sibling && basenames.get(name) !== 1) continue;
-    // Prose, not a specifier: `index.ts` alone says nothing, so it keeps its folder.
+    // Prose, not a specifier: a name that is not unique in the new tree keeps its
+    // folder. `index.ts` alone says nothing, and `form-uploads.ts` → `uploads.ts`
+    // would read as `services/uploads.ts`, a different module.
     const qualified = `${posix.basename(posix.dirname(to))}/${posix.basename(to)}`;
-    const next =
-      posix.basename(to) === "index.ts"
-        ? qualified
-        : sibling
-          ? posix.relative(posix.dirname(newPath(file)), to)
-          : posix.dirname(to) === posix.dirname(from)
-            ? posix.basename(to)
-            : qualified;
+    const short = sibling
+      ? posix.relative(posix.dirname(newPath(file)), to)
+      : posix.dirname(to) === posix.dirname(from)
+        ? posix.basename(to)
+        : qualified;
+    const next = !short.includes("/") && (basenamesAfter.get(short) ?? 0) > 1 ? qualified : short;
     for (const m of text.matchAll(new RegExp(`(?<![\\w./-])${escapeRe(name)}(?![\\w-])`, "g"))) {
       const start = m.index ?? 0;
       const end = start + name.length;

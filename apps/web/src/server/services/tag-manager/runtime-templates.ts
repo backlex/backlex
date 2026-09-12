@@ -1,7 +1,7 @@
 /**
  * Tag manager — the browser half of the vendor template registry.
  *
- * Every template exists twice: as data in `templates.ts` (parameters,
+ * Every template exists twice: as data in `tag-manager/templates.ts` (parameters,
  * origins, consent) and as an init branch here. `tag-runtime.test.ts` asserts
  * the two lists agree, because a template with no branch would be an option the
  * admin offers and nothing honours.

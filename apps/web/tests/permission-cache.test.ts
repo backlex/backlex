@@ -2,7 +2,7 @@
  * Permission cache primitives — TTL, LRU, invalidation. The end-to-end
  * "cache + write path" coverage lives in permissions.test.ts (which now
  * exercises the cache transparently); these are the targeted unit tests for
- * the contract `services/permissions-cache.ts` exposes.
+ * the contract `services/permissions/cache.ts` exposes.
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 import {
@@ -32,7 +32,7 @@ import {
   setCachedTenantResolve,
   setCachedTenantRoleNames,
   sortRoleIds,
-} from "../src/server/services/permissions-cache";
+} from "../src/server/services/permissions/cache";
 
 const mkRoles = (...names: string[]): CachedRoleRow[] =>
   names.map((n, i) => ({ id: `role-${n}-${i}`, name: n, admin: n === "admin" }));

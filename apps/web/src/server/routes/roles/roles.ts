@@ -11,7 +11,7 @@ import { logActivity } from "../../services/activity";
 import {
   invalidateTenantPermissions,
   invalidateTenantRoles,
-} from "../../services/permissions-cache";
+} from "../../services/permissions/cache";
 import {
   requireAdminMw,
   requireTenant,

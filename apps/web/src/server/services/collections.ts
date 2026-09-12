@@ -3,7 +3,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { applyCollection, derivePhysicalTable, tableExists, type FieldDef } from "@backlex/db";
 import { seedOwnerScopedPermissions, type DbCtx } from "./seed";
-import { invalidateTenantPermissions } from "./permissions-cache";
+import { invalidateTenantPermissions } from "./permissions/cache";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;

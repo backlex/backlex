@@ -66,7 +66,7 @@ import { ensureMigrations } from "@backlex/db/auto-migrate";
 import { schema as pgSchema } from "@backlex/db/pg";
 import { schema as sqliteSchema } from "@backlex/db/sqlite";
 import { buildTwoPlaneCast, type TwoPlaneCast } from "./fixtures/two-plane-cast";
-import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
+import { invalidateAllPermissions } from "../src/server/services/permissions/cache";
 import { PGLITE_BOOT_TIMEOUT_MS } from "./setup";
 import { PG_TESTS_OPTIONAL } from "./setup-pg";
 

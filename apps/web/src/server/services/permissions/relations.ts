@@ -5,9 +5,9 @@ import {
   type ColRefResolver,
   type LeafCompiler,
 } from "@backlex/db";
-import type { DbCtx } from "./seed";
-import { loadCollection, type CollectionRow } from "./items/collection-loader";
-import { collectNestedRelationChains } from "./items/permission-rewrite";
+import type { DbCtx } from "../seed";
+import { loadCollection, type CollectionRow } from "../items/collection-loader";
+import { collectNestedRelationChains } from "../items/permission-rewrite";
 
 /**
  * Dotted relation paths in PERMISSION conditions (`employee.app_user_id`)

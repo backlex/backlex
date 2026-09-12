@@ -28,7 +28,7 @@
  * ── what "immediate" means here, and what it does not ───────────────────────
  *
  * `appSessionLive` caches its answer per isolate for 30s (`TTL_MS` in
- * `services/permissions-cache.ts`), and the revocation handlers call
+ * `services/permissions/cache.ts`), and the revocation handlers call
  * `invalidateAppSessions` so the isolate that SERVED the revocation evicts at
  * once. The whole suite runs in one process against one in-memory cache, so
  * every "immediate" below is the in-process guarantee: the isolate that
@@ -48,7 +48,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { makeHarness, nextSyntheticIp, seedAdmin, type TestHarness } from "./setup";
-import { setCachedAppSessionOwner } from "../src/server/services/permissions-cache";
+import { setCachedAppSessionOwner } from "../src/server/services/permissions/cache";
 import { EPOCH_TTL_MS } from "../src/server/services/revocation-epoch";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };

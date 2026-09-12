@@ -4,7 +4,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { FieldDef } from "@backlex/db";
 import { AppError } from "@backlex/core";
 import { assignAppUserRoleByName, type DbCtx } from "./seed";
-import { invalidateUserRoles } from "./permissions-cache";
+import { invalidateUserRoles } from "./permissions/cache";
 import { nowFor } from "./items-helpers";
 
 /**

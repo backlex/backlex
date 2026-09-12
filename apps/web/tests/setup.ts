@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { createApp } from "../src/server/app";
 import type { Env } from "../src/server/env";
-import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
+import { invalidateAllPermissions } from "../src/server/services/permissions/cache";
 
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
 const MIGRATIONS = resolve(ROOT, "packages/db/drizzle/sqlite");

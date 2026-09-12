@@ -20,14 +20,14 @@ import {
   type LeafCompiler,
 } from "@backlex/db";
 import { sql } from "drizzle-orm";
-import { loadCollection } from "./items/collection-loader";
-import { loadAppSettings } from "./settings";
-import { resolveOrgContext, type OrgContext } from "./app-orgs";
-import type { DbCtx } from "./seed";
+import { loadCollection } from "../items/collection-loader";
+import { loadAppSettings } from "../settings";
+import { resolveOrgContext, type OrgContext } from "../app-orgs";
+import type { DbCtx } from "../seed";
 import {
   buildPermissionRelationLeaf,
   conditionHasDottedKey,
-} from "./permission-relations";
+} from "./relations";
 import {
   type CachedRoleRow,
   type CachedStaticPermission,
@@ -36,7 +36,7 @@ import {
   setCachedRoles,
   setCachedStaticPermission,
   sortRoleIds,
-} from "./permissions-cache";
+} from "./cache";
 
 type RoleRow = CachedRoleRow;
 

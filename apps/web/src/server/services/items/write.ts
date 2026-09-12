@@ -52,7 +52,7 @@ import {
   readBackPositions,
   sameScope,
 } from "./order";
-import { judgeableCondition } from "../permission-relations";
+import { judgeableCondition } from "../permissions/relations";
 import { loadAppSettings } from "../settings";
 import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
 import { applySlugs, resolveSlugsForWrite, slugFieldsOf } from "./slug";
@@ -463,7 +463,7 @@ const assertNotReadOnlyImpersonation = (env: WriteEnv, action: string): void => 
  * names, so the write check can judge the same thing the read filter does.
  *
  * The read side compiles such a key to a correlated read of the sidecar at the
- * workspace default locale (`services/permissions.ts`). This is that rule on
+ * workspace default locale (`services/permissions/index.ts`). This is that rule on
  * the write path: the value from THIS write if it set the default locale,
  * otherwise the one already stored.
  */

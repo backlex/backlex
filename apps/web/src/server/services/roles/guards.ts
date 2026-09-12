@@ -5,7 +5,7 @@ import type { AppBindings } from "../../app";
 import {
   getCachedTenantRoleNames,
   setCachedTenantRoleNames,
-} from "../permissions-cache";
+} from "../permissions/cache";
 import { ensureDefaultTenant, type DbCtx } from "../seed";
 import { tableFor } from "./tables";
 

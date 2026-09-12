@@ -30,7 +30,7 @@ import {
   getCachedRoles,
   setCachedMembership,
   setCachedRoles,
-} from "../src/server/services/permissions-cache";
+} from "../src/server/services/permissions/cache";
 import type { DbCtx } from "../src/server/services/seed";
 import { buildTwoPlaneCast, type TwoPlaneCast } from "./fixtures/two-plane-cast";
 

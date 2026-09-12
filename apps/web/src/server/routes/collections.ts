@@ -42,7 +42,7 @@ import {
   setCachedCollections,
   setCachedGroupOrder,
 } from "../services/collections-cache";
-import { invalidateTenantPermissions } from "../services/permissions-cache";
+import { invalidateTenantPermissions } from "../services/permissions/cache";
 import { countDropImpact, snapshotBeforeDrop } from "../services/backup";
 import { loadCollection } from "../services/items/collection-loader";
 import {

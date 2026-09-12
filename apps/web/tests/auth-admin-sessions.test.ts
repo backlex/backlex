@@ -19,7 +19,7 @@
  * — better-auth's `cookieCache`, a signed 60-second copy of the session that it
  * answers `getSession` from without reading the database. Underneath it,
  * `middleware/session.ts` keeps a per-isolate `TtlLru` keyed on the signed
- * token (`permissions-cache.ts`, TTL 30s). Deleting the row therefore does not
+ * token (`permissions/cache.ts`, TTL 30s). Deleting the row therefore does not
  * stop a device that still holds a live `session_data` blob; it stops it from
  * renewing once that blob lapses. So a "device is signed out" assertion has to
  * be made against the credential that outlives the cache — the session token on
@@ -58,7 +58,7 @@ import {
   __cacheStats,
   invalidateAllPermissions,
   setCachedSession,
-} from "../src/server/services/permissions-cache";
+} from "../src/server/services/permissions/cache";
 import { __resetEpochMemo, EPOCH_TTL_MS } from "../src/server/services/revocation-epoch";
 
 /**

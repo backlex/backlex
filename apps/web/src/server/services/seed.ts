@@ -9,7 +9,7 @@ import {
   getCachedTenantResolve,
   invalidateTenantMembership,
   setCachedTenantResolve,
-} from "./permissions-cache";
+} from "./permissions/cache";
 
 export interface DbCtx {
   db: PgDb | SqliteDb;
@@ -60,7 +60,7 @@ export const ensureDefaultTenant = async (ctx: DbCtx): Promise<string> => {
   // it pays the D1 Sessions setup (~12-22ms in traces vs <0.2ms SQL). The
   // default tenant id is permanent once created, so cache it in the shared
   // tenant-resolve cache (same one tenantBySlugOrId uses) → warm requests on the
-  // default path make zero D1 calls. See services/permissions-cache.
+  // default path make zero D1 calls. See services/permissions/cache.
   const cached = getCachedTenantResolve(DEFAULT_TENANT_SLUG);
   if (cached) return cached;
   const t = tablesFor(ctx.dialect);

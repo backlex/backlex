@@ -36,7 +36,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import { assignAppUserRoleByName, ensureSystemRoles } from "../seed";
-import { invalidateUserRoles } from "../permissions-cache";
+import { invalidateUserRoles } from "../permissions/cache";
 import { autoLinkAppUser } from "../portal-links";
 import { runBeforeUserCreatedHook } from "../auth-hooks";
 import { SYSTEM_ROLES } from "@backlex/core";

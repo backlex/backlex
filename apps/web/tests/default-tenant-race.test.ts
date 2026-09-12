@@ -20,7 +20,7 @@ import {
   DEFAULT_TENANT_SLUG,
   type DbCtx,
 } from "../src/server/services/seed";
-import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
+import { invalidateAllPermissions } from "../src/server/services/permissions/cache";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
 describe("default-tenant creation race", () => {

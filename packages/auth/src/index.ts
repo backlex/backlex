@@ -361,7 +361,7 @@ export const createAuth = async (
       // gets 200 on `/api/me` immediately after `revoke-others`, with nothing
       // cleared, because this blob answers our routes too — not just
       // better-auth's own `/api/auth/*`. Worse, a request it answers is written
-      // into `services/permissions-cache`'s 30s per-isolate cache under the
+      // into `services/permissions/cache`'s 30s per-isolate cache under the
       // bare-token key, so the two windows COMPOUND: the last warm request at
       // t=59s keeps the token accepted to roughly t=89s.
       //
@@ -374,7 +374,7 @@ export const createAuth = async (
       //   enabled: false   immediate in the revoking isolate, <=30s elsewhere
       //
       // Disabling it alone is 90s -> 30s, not 90s -> 0. The residue is the
-      // per-isolate `TtlLru` in `services/permissions-cache`, which has no
+      // per-isolate `TtlLru` in `services/permissions/cache`, which has no
       // shared store behind it: `revoke-others` clears only the isolate that
       // served it, and any other isolate holding the session keeps serving it
       // until its own 30s TTL lapses.

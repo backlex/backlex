@@ -98,7 +98,7 @@ const HEARTBEAT_MS = 25_000;
 let heartbeatMs: number = HEARTBEAT_MS;
 /** Test-only override for {@link HEARTBEAT_MS}. Pass `null` to restore the
  *  production period. Named with the `__` prefix the other test hooks in this
- *  codebase use (`services/permissions-cache.ts::__cacheStats`) so it reads as
+ *  codebase use (`services/permissions/cache.ts::__cacheStats`) so it reads as
  *  what it is at every call site. */
 export const __setRealtimeHeartbeatMs = (ms: number | null): void => {
   heartbeatMs = ms ?? HEARTBEAT_MS;
@@ -549,7 +549,7 @@ const sameMeta = (
  * gate itself.
  *
  * Every lookup underneath rides the same per-isolate caches the REST path uses
- * (`services/permissions-cache.ts`, 30s TTL with explicit invalidation from the
+ * (`services/permissions/cache.ts`, 30s TTL with explicit invalidation from the
  * mutating routes), so a refresh on an unchanged subscription is a handful of
  * map hits, and the isolate that served the revoke sees it on the very next
  * beat.

@@ -10,7 +10,7 @@ import { logActivity } from "../../services/activity";
 import {
   invalidateTenantMembership,
   invalidateUserRoles,
-} from "../../services/permissions-cache";
+} from "../../services/permissions/cache";
 import {
   assertTenantMember,
   requireAdminMw,

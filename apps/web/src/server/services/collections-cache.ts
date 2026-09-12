@@ -8,7 +8,7 @@
  *
  * (imports a type-only reference to `CollectionRow`, erased at compile time.)
  *
- * Same model as {@link ../services/permissions-cache}: module-level state =
+ * Same model as {@link ../services/permissions/cache}: module-level state =
  * one Map per isolate (fine on CF Workers and Bun). Mutating routes call
  * {@link invalidateTenantCollections} for same-isolate freshness; `TTL_MS` is
  * the cross-isolate convergence ceiling — a sibling isolate keeps a stale list

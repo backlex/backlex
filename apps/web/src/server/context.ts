@@ -76,7 +76,7 @@ import { resolvePushAdapter } from "./services/messaging/push-config";
 import { resolveSmsAdapter } from "./services/messaging/sms-config";
 import { publishEvent } from "./services/events";
 import { acceptInviteForUser, hasValidInvite } from "./services/invites";
-import { invalidateUserRoles } from "./services/permissions-cache";
+import { invalidateUserRoles } from "./services/permissions/cache";
 import {
   assignRoleByName,
   ensureDefaultTenant,

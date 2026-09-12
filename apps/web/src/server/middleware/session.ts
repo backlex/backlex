@@ -15,7 +15,7 @@ import {
   getCachedSession,
   setCachedAppSessionOwner,
   setCachedSession,
-} from "../services/permissions-cache";
+} from "../services/permissions/cache";
 import { revocationEpoch } from "../services/revocation-epoch";
 
 import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
@@ -407,7 +407,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // Cookie session resolution, with a per-isolate cache keyed on the signed
   // `*.session_token` cookie. better-auth's getSession costs ~2 D1 round-trips,
   // so without this cache every authenticated request paid the DB hit. See
-  // services/permissions-cache `CachedSession` for the safety rationale (key is
+  // services/permissions/cache `CachedSession` for the safety rationale (key is
   // the signed cookie; TTL < better-auth's 60s cookieCache).
   //
   // This comment used to say better-auth's own `cookieCache` "only

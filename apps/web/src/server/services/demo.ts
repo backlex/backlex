@@ -8,7 +8,7 @@ import type { Env } from "../env";
 import type { Ctx } from "../context";
 import { invalidateTenantCollections } from "./collections-cache";
 import { deleteEverywhere } from "./storage/bucket-for";
-import { invalidateAllPermissions } from "./permissions-cache";
+import { invalidateAllPermissions } from "./permissions/cache";
 import {
   type DbCtx,
   ensureDefaultTenant,

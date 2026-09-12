@@ -6,7 +6,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { invalidateSession } from "../services/permissions-cache";
+import { invalidateSession } from "../services/permissions/cache";
 import { bumpRevocationEpoch } from "../services/revocation-epoch";
 import { encryptSecret } from "../lib/crypto";
 import { invalidateTenantAuth } from "../services/tenant-auth";

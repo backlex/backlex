@@ -249,7 +249,7 @@ guides; this list is everything else.
 
 ## Cross-cutting helpers worth knowing
 
-- `services/permissions-cache.ts` — per-request L1 cache on top of
+- `services/permissions/cache.ts` — per-request L1 cache on top of
   the permissions resolver. Bulk loops hit it for free, no opt-in
   needed.
 - `services/cors-origins.ts` — per-tenant allow-list reused by SAML

@@ -31,7 +31,7 @@ import {
   ensureTenantMembership,
   userCount,
 } from "../seed";
-import { invalidateUserRoles } from "../permissions-cache";
+import { invalidateUserRoles } from "../permissions/cache";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 

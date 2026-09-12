@@ -356,7 +356,7 @@ describe("long-running ops — the durable queue", () => {
       });
       expect(wiped.status).toBe(200);
       const { invalidateAllPermissions } = await import(
-        "../src/server/services/permissions-cache"
+        "../src/server/services/permissions/cache"
       );
       invalidateAllPermissions();
 
@@ -433,7 +433,7 @@ describe("long-running ops — the durable queue", () => {
       const grant = await h.fetch(`/api/users/${staffId}/roles`, json({ roleId }));
       expect(grant.status).toBe(200);
       const { invalidateAllPermissions } = await import(
-        "../src/server/services/permissions-cache"
+        "../src/server/services/permissions/cache"
       );
       invalidateAllPermissions();
 

@@ -24,7 +24,7 @@ import {
   invalidateTenantOrgs,
   invalidateUserRoles,
   setCachedOrgMemberships,
-} from "./permissions-cache";
+} from "./permissions/cache";
 
 /**
  * App-plane organizations ("teams") — the B2B grouping level *inside* one

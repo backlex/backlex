@@ -27,7 +27,7 @@ import { assertMayActOn, WORKSPACE_RANK } from "./membership-guards";
 import {
   invalidateTenantMembership,
   invalidateUserRoles,
-} from "./permissions-cache";
+} from "./permissions/cache";
 import type { DbCtx } from "./seed";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>

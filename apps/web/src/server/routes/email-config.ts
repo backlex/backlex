@@ -8,7 +8,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { EMAIL_PROVIDER_IDS } from "../lib/email-select";
-import { GLOBAL_EMAIL_CONFIG_ID } from "../services/email-config";
+import { GLOBAL_EMAIL_CONFIG_ID } from "../services/email/config";
 import {
   mergeConfigSecrets,
   readOwnConfigRow,

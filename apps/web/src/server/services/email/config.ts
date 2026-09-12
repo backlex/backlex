@@ -4,8 +4,8 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { EmailAdapter } from "@backlex/core/adapters";
-import { decryptSecret } from "../lib/crypto";
-import { buildEmailAdapter, type EmailSpec } from "../lib/email-select";
+import { decryptSecret } from "../../lib/crypto";
+import { buildEmailAdapter, type EmailSpec } from "../../lib/email-select";
 
 /** Tenant id of the instance-wide override row — the level below a workspace's
  *  own row and above the deployment env adapter. Mirrors `auth_config`. */

@@ -1,5 +1,5 @@
 /**
- * Per-tenant SAML provider data layer. Mirrors `services/email-config.ts`:
+ * Per-tenant SAML provider data layer. Mirrors `services/email/config.ts`:
  *
  *   - reads degrade to `null` when the table isn't migrated yet (so a fresh
  *     deployment doesn't 500 the admin page);

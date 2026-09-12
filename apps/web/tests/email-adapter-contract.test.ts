@@ -10,7 +10,7 @@
  * What rides on that: invitations, password resets, approval requests and
  * signature invites. Every one of them is a flow where the user is now waiting
  * for a message that will never arrive, and the operator's log says it was
- * sent. `services/email.ts` is the only place that could retry, and it retries
+ * sent. `services/email/index.ts` is the only place that could retry, and it retries
  * on a throw.
  *
  * The second thing asserted here is quieter: the message has to reach the wire.

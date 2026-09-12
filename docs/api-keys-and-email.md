@@ -174,7 +174,7 @@ blank/incomplete row) falls through.
 
 Files:
 
-- `services/email-config.ts` — `loadEmailConfigRow`,
+- `services/email/config.ts` — `loadEmailConfigRow`,
   `resolveEmailAdapter`. Mirrors `services/auth-config.ts`.
 - `routes/email-config.ts` — admin-only `GET` / `PUT` / `POST /test`.
   Secrets are write-only; `GET` returns only `secretsSet` flags. A

@@ -36,7 +36,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Env } from "../../env";
-import { loadEmailConfigRow } from "../email-config";
+import { loadEmailConfigRow } from "../email/config";
 import { loadSmsConfigRow } from "../messaging/sms-config";
 import { loadPushConfigRow } from "../messaging/push-config";
 import { selectSmsSpec } from "../../lib/sms-select";

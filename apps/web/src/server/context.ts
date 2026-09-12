@@ -71,7 +71,7 @@ import {
   isXataPgUrl,
 } from "./lib/runtime";
 import { loadPolicy } from "./services/auth-config";
-import { resolveEmailAdapter } from "./services/email-config";
+import { resolveEmailAdapter } from "./services/email/config";
 import { resolvePushAdapter } from "./services/messaging/push-config";
 import { resolveSmsAdapter } from "./services/messaging/sms-config";
 import { publishEvent } from "./services/events";

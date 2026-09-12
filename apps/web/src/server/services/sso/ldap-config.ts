@@ -1,6 +1,6 @@
 /**
  * Per-tenant LDAP / Active Directory data layer. Mirrors
- * `services/email-config.ts`:
+ * `services/email/config.ts`:
  *
  *   - one row per tenant (PK `tenant_id`), with the `_global` sentinel
  *     used as the instance-wide fallback;

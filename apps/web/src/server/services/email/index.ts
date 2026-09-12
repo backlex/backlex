@@ -2,7 +2,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError, renderTemplate, htmlToText, type EmailAttachment } from "@backlex/core";
-import type { Ctx } from "../context";
+import type { Ctx } from "../../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.emailTemplates : sqlite.schema.emailTemplates;

@@ -161,7 +161,7 @@ describe("reading orders", () => {
     const last = recorder([{ json: { count: 1, results: [receipt()] } }]);
     const done = await pull(last.fetchImpl);
     // The engine's only end-of-run signal is `cursor === null` (see
-    // `integration-syncs.ts`). This provider ALSO returns `complete` and
+    // `integrations/syncs.ts`). This provider ALSO returns `complete` and
     // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
     expect(done.cursor).toBeNull();
     expect(done.cursor).toBeNull();

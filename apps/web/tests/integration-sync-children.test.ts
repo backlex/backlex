@@ -54,7 +54,7 @@ const ok = async (method: string, path: string, body?: unknown) => {
 };
 
 const runInline = async (syncId: string) => {
-  const { runSync } = await import("../src/server/services/integration-syncs");
+  const { runSync } = await import("../src/server/services/integrations/syncs");
   const { buildContext } = await import("../src/server/context");
   const ctx = await buildContext(h.env);
   const tenantId = (

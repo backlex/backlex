@@ -17,9 +17,9 @@
  */
 import { AppError } from "@backlex/core";
 import { type IntegrationKind, OAUTH_ACCESS_TOKEN_KEY, providerFor, SECRET_KEYS } from "@backlex/integrations";
-import type { Ctx } from "../context";
-import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
-import { ensureAccessToken } from "./integrations-oauth";
+import type { Ctx } from "../../context";
+import { decryptSecret, encryptSecret, isEncryptedSecret } from "../../lib/crypto";
+import { ensureAccessToken } from "./oauth";
 
 const secretKeys = (kind: string) => new Set<string>(SECRET_KEYS[kind as IntegrationKind] ?? []);
 

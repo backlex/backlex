@@ -23,7 +23,7 @@ import {
   resumeIntegration,
 } from "../services/integrations";
 import { logActivity } from "../services/activity";
-import { beginOAuth, completeOAuth, oauthRedirectUri } from "../services/integrations-oauth";
+import { beginOAuth, completeOAuth, oauthRedirectUri } from "../services/integrations/oauth";
 import {
   createSync,
   deleteSync,
@@ -33,7 +33,7 @@ import {
   SYNC_DIRECTIONS,
   type SyncDirection,
   updateSync,
-} from "../services/integration-syncs";
+} from "../services/integrations/syncs";
 import {
   deleteListingMap,
   listListingBatches,
@@ -43,14 +43,14 @@ import {
   runListingSync,
   searchListingRegistry,
   upsertListingMap,
-} from "../services/integration-listings";
-import { listTaskRuns, runTask } from "../services/integration-tasks";
+} from "../services/integrations/listings";
+import { listTaskRuns, runTask } from "../services/integrations/tasks";
 import {
   disableWebhook,
   enableWebhook,
   listDeliveries,
   updateWebhookEvents,
-} from "../services/integration-webhooks";
+} from "../services/integrations/webhooks";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 

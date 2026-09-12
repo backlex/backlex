@@ -237,7 +237,7 @@ describe("cross-workspace access", () => {
 
 describe("running a sync", () => {
   const runInline = async (syncId: string, fetchImpl: unknown) => {
-    const { runSync } = await import("../src/server/services/integration-syncs");
+    const { runSync } = await import("../src/server/services/integrations/syncs");
     const { buildContext } = await import("../src/server/context");
     const ctx = await buildContext(h.env);
     const tenantId = (
@@ -460,7 +460,7 @@ describe("updating a sync", () => {
 
 describe("scheduling", () => {
   const enqueue = async () => {
-    const { enqueueDueSyncs } = await import("../src/server/services/integration-syncs");
+    const { enqueueDueSyncs } = await import("../src/server/services/integrations/syncs");
     const { buildContext } = await import("../src/server/context");
     return enqueueDueSyncs(await buildContext(h.env));
   };
@@ -503,7 +503,7 @@ describe("scheduling", () => {
     // only way across would be the handler falling back to "no tenant". It
     // must refuse instead — this is the fail-open shape that matters here.
     const sync = await makeSync();
-    const { runSync } = await import("../src/server/services/integration-syncs");
+    const { runSync } = await import("../src/server/services/integrations/syncs");
     const { buildContext } = await import("../src/server/context");
     const ctx = await buildContext(h.env);
     await expect(runSync(ctx, "some-other-tenant", sync.id)).rejects.toThrow(/not found/i);
@@ -643,7 +643,7 @@ describe("multi-surface parity", () => {
 // re-read every time — which still "works", and is why it needs a test.
 describe("a source that resumes incrementally", () => {
   const runInline = async (syncId: string, fetchImpl: unknown) => {
-    const { runSync } = await import("../src/server/services/integration-syncs");
+    const { runSync } = await import("../src/server/services/integrations/syncs");
     const { buildContext } = await import("../src/server/context");
     const ctx = await buildContext(h.env);
     const tid = (
@@ -718,7 +718,7 @@ describe("push: mirroring a collection out", () => {
   };
 
   const runInline = async (syncId: string, fetchImpl: unknown) => {
-    const { runSync } = await import("../src/server/services/integration-syncs");
+    const { runSync } = await import("../src/server/services/integrations/syncs");
     const { buildContext } = await import("../src/server/context");
     const ctx = await buildContext(h.env);
     const tid = (

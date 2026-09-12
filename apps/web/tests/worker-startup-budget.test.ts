@@ -250,7 +250,7 @@ describe("worker startup budget", () => {
     // `lib/security-headers.ts` (7.4 KiB, the CSP/XFO/HSTS constants the Hono
     // middleware, `public/_headers` and the Vercel build config now all read
     // from one place), `services/storage/limit-stream.ts` (2.4 KiB) and
-    // `services/integrations-fetch.ts` (1.6 KiB). The remaining ~40 KiB is
+    // `services/integrations/fetch.ts` (1.6 KiB). The remaining ~40 KiB is
     // comment: 1,803 net lines across the eager files the sweep touched, and
     // this walk counts source bytes, so a paragraph explaining a fail-open
     // compiler weighs the same as the code that closed it.

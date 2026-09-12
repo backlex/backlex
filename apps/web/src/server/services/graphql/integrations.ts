@@ -14,7 +14,7 @@ import {
 } from "graphql";
 import { JSONScalar, type GqlCtx } from "./core";
 import { requireFlowAdmin } from "./flows";
-import { beginOAuth } from "../integrations-oauth";
+import { beginOAuth } from "../integrations/oauth";
 import {
   createSync,
   deleteSync,
@@ -22,7 +22,7 @@ import {
   runSync,
   updateSync,
   type CreateSyncInput,
-} from "../integration-syncs";
+} from "../integrations/syncs";
 import {
   deleteListingMap,
   listListingBatches,
@@ -30,14 +30,14 @@ import {
   readListingAttributes,
   readListingCategories,
   upsertListingMap,
-} from "../integration-listings";
-import { listTaskRuns, runTask } from "../integration-tasks";
+} from "../integrations/listings";
+import { listTaskRuns, runTask } from "../integrations/tasks";
 import {
   disableWebhook,
   enableWebhook,
   listDeliveries,
   updateWebhookEvents,
-} from "../integration-webhooks";
+} from "../integrations/webhooks";
 import {
   connectIntegration,
   disconnectIntegration,
@@ -49,7 +49,7 @@ import { recordActivity } from "../activity";
 
 // ── Third-party integrations ─────────────────────────────────────────────────
 // Admin-scoped surface mirroring REST `/api/admin/integrations`. Every call
-// funnels through services/integrations.ts, so the tenant guards, the
+// funnels through services/integrations/index.ts, so the tenant guards, the
 // encryption-at-rest of secret config, and the circuit breaker are shared
 // rather than re-implemented here — re-writing a guard per surface is exactly
 // how one of them ends up missing it.

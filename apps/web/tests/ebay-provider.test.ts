@@ -173,7 +173,7 @@ describe("orders", () => {
     expect(rec.children!.lines![0]!.externalId).toBe("li-1");
     // Nothing more to fetch, so the watermark may move.
     // The engine's only end-of-run signal is `cursor === null` (see
-    // `integration-syncs.ts`). This provider ALSO returns `complete` and
+    // `integrations/syncs.ts`). This provider ALSO returns `complete` and
     // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
     expect(page.cursor).toBeNull();
   });

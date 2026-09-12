@@ -5,7 +5,7 @@
  * bol, ebay, etsy and otto returned `complete: !more` and `resumeAt:
  * Date.now()` — neither name is in the contract, nothing reads either, and both
  * type-check because they are extra properties on a returned object literal.
- * So `integration-syncs.ts` found `page.resumeToken` undefined, stored `null`,
+ * So `integrations/syncs.ts` found `page.resumeToken` undefined, stored `null`,
  * and every run re-read the whole `lookbackDays` window for ever. Not data loss
  * (writes are upserts by `externalId`) — just wasted provider quota on a
  * rate-limited API, permanently. See #318.

@@ -1,6 +1,6 @@
 /**
  * The one place a stored connection becomes credentials a provider can call
- * with — `services/integration-credentials.ts`.
+ * with — `services/integrations/credentials.ts`.
  *
  * Every path that reaches a provider has to do the same two things: decrypt the
  * secret config fields, and renew the OAuth access token before handing it over.
@@ -100,7 +100,7 @@ const mockToken = (body: unknown, status = 200) => {
 
 const resolve = async (id: string) => {
   const { buildContext } = await import("../src/server/context");
-  const { connectionConfigFor } = await import("../src/server/services/integration-credentials");
+  const { connectionConfigFor } = await import("../src/server/services/integrations/credentials");
   const ctx = await buildContext(h.env);
   return connectionConfigFor(ctx, connectionRow(id), h.env.AUTH_SECRET as string);
 };
@@ -204,7 +204,7 @@ describe("resolving a connection's credentials", () => {
     const mock = mockToken({ access_token: "loser-access", refresh_token: "loser-refresh", expires_in: 3600 });
     try {
       const { buildContext } = await import("../src/server/context");
-      const { connectionConfigFor } = await import("../src/server/services/integration-credentials");
+      const { connectionConfigFor } = await import("../src/server/services/integrations/credentials");
       const ctx = await buildContext(h.env);
       // The caller still gets a usable token — the one it just obtained is
       // valid for this call. What it must NOT do is put its refresh token back
@@ -225,7 +225,7 @@ describe("the chokepoint is the only way in", () => {
     // and nothing could have told anyone. A sixth is coming (eBay, Etsy and
     // Allegro all connect over OAuth), so the rule is enforced rather than
     // remembered: `ensureAccessToken` is reached through
-    // `integration-credentials.ts` or not at all.
+    // `integrations/credentials.ts` or not at all.
     // Liveness first. The scan below reports SUCCESS when it matches nothing,
     // so a rename of `ensureAccessToken` would retire this rule silently and
     // look identical to a repo that obeys it. Verified 2026-08-30 by renaming
@@ -241,14 +241,14 @@ describe("the chokepoint is the only way in", () => {
     const scanned = (readdirSync(SERVICES, { recursive: true }) as string[]).filter((f) => f.endsWith(".ts"));
     expect(`services scanned: ${scanned.length > 100}`).toBe("services scanned: true");
     expect(
-      `integration-credentials.ts still defines ensureAccessToken: ${readFileSync(
-        join(SERVICES, "integration-credentials.ts"),
+      `integrations/credentials.ts still defines ensureAccessToken: ${readFileSync(
+        join(SERVICES, "integrations/credentials.ts"),
         "utf8",
       ).includes("ensureAccessToken")}`,
-    ).toBe("integration-credentials.ts still defines ensureAccessToken: true");
+    ).toBe("integrations/credentials.ts still defines ensureAccessToken: true");
 
     const offenders = scanned
-      .filter((f) => f !== "integrations-oauth.ts" && f !== "integration-credentials.ts")
+      .filter((f) => f !== "integrations/oauth.ts" && f !== "integrations/credentials.ts")
       .filter((f) => readFileSync(join(SERVICES, f), "utf8").includes("ensureAccessToken"));
     expect(offenders).toEqual([]);
   });
@@ -259,11 +259,11 @@ describe("the chokepoint is the only way in", () => {
     // reaches a provider, goes through the chokepoint" — and a scan would go
     // quiet the moment a new runner arrived under a name the pattern missed.
     for (const file of [
-      "integrations.ts",
-      "integration-syncs.ts",
-      "integration-tasks.ts",
-      "integration-webhooks.ts",
-      "integration-listings.ts",
+      "integrations/index.ts",
+      "integrations/syncs.ts",
+      "integrations/tasks.ts",
+      "integrations/webhooks.ts",
+      "integrations/listings.ts",
     ]) {
       const src = readFileSync(join(SERVICES, file), "utf8");
       expect(src).toContain("connectionConfigFor");

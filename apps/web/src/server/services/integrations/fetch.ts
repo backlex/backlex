@@ -1,6 +1,6 @@
 import type { FetchLike } from "@backlex/integrations";
-import type { Env } from "../env";
-import { fetchOutbound } from "./storage/hosts";
+import type { Env } from "../../env";
+import { fetchOutbound } from "../storage/hosts";
 
 /**
  * The `FetchLike` every call into `@backlex/integrations` should carry.

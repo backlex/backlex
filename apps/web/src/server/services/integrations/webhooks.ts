@@ -1,7 +1,7 @@
 /**
  * Inbound webhooks — a provider calling us, landing where a pull would.
  *
- * The receiving half of `integration-syncs.ts`. That file walks a provider on a
+ * The receiving half of `syncs.ts`. That file walks a provider on a
  * schedule; this one is walked BY the provider, and everything downstream of the
  * verdict is deliberately the same code: same mapping, same `ingestSourceRecords`,
  * same namespaced ids. A delivery about an order the poll already imported
@@ -45,12 +45,12 @@ import {
   type FetchLike,
   type WebhookRecord,
 } from "@backlex/integrations";
-import type { Ctx } from "../context";
-import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
-import { loadCollection } from "./items/collection-loader";
-import { ingestRows } from "./migrate-ingest";
-import { queryAll } from "./items/sql-helpers";
-import { connectionConfigFor, decryptConfig, type ConnectionRow } from "./integration-credentials";
+import type { Ctx } from "../../context";
+import { decryptSecret, encryptSecret, isEncryptedSecret } from "../../lib/crypto";
+import { loadCollection } from "../items/collection-loader";
+import { ingestRows } from "../migrate-ingest";
+import { queryAll } from "../items/sql-helpers";
+import { connectionConfigFor, decryptConfig, type ConnectionRow } from "./credentials";
 import {
   getSyncRow,
   ingestSourceRecords,
@@ -59,7 +59,7 @@ import {
   webhookPathFor,
   type PublicSync,
   type SyncRow,
-} from "./integration-syncs";
+} from "./syncs";
 
 type AnyDb = any;
 

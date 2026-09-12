@@ -1550,7 +1550,7 @@ export const schemaBranches = pgTable(
 
 /** Saved external-database connections for server-side migration (the admin
  *  "Database import" wizard). `url` is encrypted at rest with AUTH_SECRET
- *  (same envelope as integration configs — services/integrations.ts) and is
+ *  (same envelope as integration configs — services/integrations/index.ts) and is
  *  always masked on the API; only the copy executor decrypts it. Deleting a
  *  source cascades to its runs (history is meaningless without the source). */
 export const externalSources = pgTable(

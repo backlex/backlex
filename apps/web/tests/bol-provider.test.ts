@@ -159,7 +159,7 @@ describe("orders", () => {
     // bol identifies a product by EAN — there is no seller SKU on an order.
     expect(rec.children!.lines![0]!.data.ean).toBe("8718526018349");
     // The engine's only end-of-run signal is `cursor === null` (see
-    // `integration-syncs.ts`), and that is still what this asserts on. It used
+    // `integrations/syncs.ts`), and that is still what this asserts on. It used
     // to also note that the provider returned `complete` and `resumeAt`,
     // neither of which `SourcePullPage` declares and neither of which anything
     // read — so the resume never engaged. Fixed in #318; the round trip is

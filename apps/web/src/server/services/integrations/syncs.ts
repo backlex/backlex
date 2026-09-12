@@ -1,7 +1,7 @@
 /**
  * Scheduled pulls from a source integration into a collection.
  *
- * The mirror image of `services/integrations.ts`: that one fans events out, this
+ * The mirror image of `services/integrations/index.ts`: that one fans events out, this
  * one draws rows in. Both share the connection row, its encrypted config, and
  * the OAuth token machinery.
  *
@@ -39,13 +39,13 @@ import {
   type FetchLike,
   type SourceRecord,
 } from "@backlex/integrations";
-import type { Ctx } from "../context";
-import { loadCollection } from "./items/collection-loader";
-import { guardedIntegrationFetch } from "./integrations-fetch";
-import { ingestRows } from "./migrate-ingest";
-import { queryAll } from "./items/sql-helpers";
-import { connectionConfigFor } from "./integration-credentials";
-import { enqueueJob } from "./jobs";
+import type { Ctx } from "../../context";
+import { loadCollection } from "../items/collection-loader";
+import { guardedIntegrationFetch } from "./fetch";
+import { ingestRows } from "../migrate-ingest";
+import { queryAll } from "../items/sql-helpers";
+import { connectionConfigFor } from "./credentials";
+import { enqueueJob } from "../jobs";
 
 type AnyDb = any;
 

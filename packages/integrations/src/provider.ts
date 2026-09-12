@@ -1179,7 +1179,7 @@ export function defineProvider<Id extends string>(p: IntegrationProvider<Id>): I
  *
  * They live in the same `config` blob as the provider's own fields, so the
  * prefix has to be one no provider would choose. Nothing outside
- * services/integrations-oauth.ts may write them: they are stripped from admin
+ * services/integrations/oauth.ts may write them: they are stripped from admin
  * input and carried over untouched when an admin edits the rest of the config,
  * so "this token came from the provider" stays true.
  */

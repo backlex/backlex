@@ -23,11 +23,11 @@ import {
   type FetchLike,
   type IntegrationEvent,
 } from "@backlex/integrations";
-import type { Ctx } from "../context";
-import type { Env } from "../env";
-import { connectionConfigFor, encryptConfig } from "./integration-credentials";
-import { guardedIntegrationFetch } from "./integrations-fetch";
-import { enqueueJob } from "./jobs";
+import type { Ctx } from "../../context";
+import type { Env } from "../../env";
+import { connectionConfigFor, encryptConfig } from "./credentials";
+import { guardedIntegrationFetch } from "./fetch";
+import { enqueueJob } from "../jobs";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 // The PgDb|SqliteDb union can't be queried without per-dialect narrowing; the

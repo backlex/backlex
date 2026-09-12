@@ -2,7 +2,7 @@
  * Putting a workspace's products on sale at a marketplace, and reading back
  * what the marketplace made of them.
  *
- * The third runner, after the pull and the push in `integration-syncs.ts`, and
+ * The third runner, after the pull and the push in `syncs.ts`, and
  * the first one that is not a mirror. A pull and a push both finish when the
  * last row moves; a publish finishes minutes or hours later, at the far end,
  * one unit at a time, with a verdict a person has to read. That gap is the
@@ -48,14 +48,14 @@ import {
   type ListingVariant,
   type ListingVerdict,
 } from "@backlex/integrations";
-import type { Ctx } from "../context";
-import { loadCollection } from "./items/collection-loader";
-import { ingestRows } from "./migrate-ingest";
-import { queryAll } from "./items/sql-helpers";
-import { LISTING_VARIANT_GROUP, type SyncRow } from "./integration-syncs";
-import { connectionConfigFor, type ConnectionRow } from "./integration-credentials";
-import { guardedIntegrationFetch } from "./integrations-fetch";
-import { enqueueJob } from "./jobs";
+import type { Ctx } from "../../context";
+import { loadCollection } from "../items/collection-loader";
+import { ingestRows } from "../migrate-ingest";
+import { queryAll } from "../items/sql-helpers";
+import { LISTING_VARIANT_GROUP, type SyncRow } from "./syncs";
+import { connectionConfigFor, type ConnectionRow } from "./credentials";
+import { guardedIntegrationFetch } from "./fetch";
+import { enqueueJob } from "../jobs";
 
 type AnyDb = any;
 

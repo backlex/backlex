@@ -154,7 +154,7 @@ describe("orders", () => {
     expect(rec.children!.lines![0]!.data.sku).toBe("SKU-1");
     expect(rec.children!.lines![0]!.data.offerId).toBe("1234");
     // The engine's only end-of-run signal is `cursor === null` (see
-    // `integration-syncs.ts`). This provider ALSO returns `complete` and
+    // `integrations/syncs.ts`). This provider ALSO returns `complete` and
     // `resumeAt`, and `SourcePullPage` declares neither — so both are inert.
     expect(page.cursor).toBeNull();
   });

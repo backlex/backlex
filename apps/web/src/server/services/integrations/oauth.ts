@@ -36,9 +36,9 @@ import {
   providerFor,
   type IntegrationOAuth,
 } from "@backlex/integrations";
-import type { Ctx } from "../context";
-import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
-import { fetchOutbound } from "./storage/hosts";
+import type { Ctx } from "../../context";
+import { decryptSecret, encryptSecret, isEncryptedSecret } from "../../lib/crypto";
+import { fetchOutbound } from "../storage/hosts";
 
 type AnyDb = any;
 

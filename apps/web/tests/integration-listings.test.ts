@@ -19,7 +19,7 @@ import {
   pollListingBatchRow,
   runListingSync,
   upsertListingMap,
-} from "../src/server/services/integration-listings";
+} from "../src/server/services/integrations/listings";
 
 const BASE = "/api/admin/integrations";
 const realFetch = globalThis.fetch;

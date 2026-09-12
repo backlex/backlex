@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { INTEGRATION_KINDS } from "@backlex/integrations";
 import { createClient } from "../../../packages/client/src/index";
 import { integrationsTools } from "../src/server/mcp/tools/integrations";
-import { SYNC_DIRECTIONS } from "../src/server/services/integration-syncs";
+import { SYNC_DIRECTIONS } from "../src/server/services/integrations/syncs";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const SECRET = "https://hooks.slack.com/services/TOP-SECRET-VALUE";

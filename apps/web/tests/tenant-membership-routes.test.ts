@@ -303,7 +303,7 @@ describe("tenant members: the instance operator stands outside the ladder", () =
 
     // Not because the operator outranks anybody here — they hold no
     // membership row in workspace A at all, which is the null actor
-    // `membership-guards.ts` puts outside the ladder on purpose.
+    // `membership/guards.ts` puts outside the ladder on purpose.
     const rows = await listMembers(cast.operator.fetch, cast.tenantA.id);
     expect(
       rows.some((m) => m.email.toLowerCase() === cast.operator.email.toLowerCase()),

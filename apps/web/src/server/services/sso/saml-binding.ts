@@ -6,7 +6,7 @@
  * one at `/api/t/<slug>/auth/saml/<provider>/acs` (`routes/tenant-auth.ts`) and
  * the platform one at `/api/auth/saml/<provider>/acs`
  * (`routes/platform-auth.ts`). They had byte-identical replay code and the
- * identical defect, which is the same shape `services/membership-guards.ts`
+ * identical defect, which is the same shape `services/membership/guards.ts`
  * exists to prevent: two implementations of one invariant drift, and the drift
  * is silent because each plane's tests only exercise its own copy.
  *

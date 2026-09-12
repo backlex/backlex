@@ -14,7 +14,7 @@ import {
   ORG_RANK,
   assertMayActOn as sharedMayActOn,
   assertNotLastOwner as sharedNotLastOwner,
-} from "./membership-guards";
+} from "./membership/guards";
 import { log } from "../lib/log";
 import { resolveAssignableRoles } from "./app-user-invites";
 import { hashToken } from "./shared-links";
@@ -307,7 +307,7 @@ const assertMayActOn = (
   targetAppUserId: string,
   targetRole: OrgRole,
 ): void =>
-  // Delegated to `services/membership-guards.ts`, which is the same rule the
+  // Delegated to `services/membership/guards.ts`, which is the same rule the
   // PLATFORM plane now runs. It lived only here, and the plane that supervises
   // this one had no equivalent at all — an admin could delete a workspace's
   // sole owner with one unconfirmed click. Two implementations of one invariant

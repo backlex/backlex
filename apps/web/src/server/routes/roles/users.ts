@@ -21,7 +21,7 @@ import {
   isWorkspaceLadderRole,
   standingToRbacRole,
 } from "../../services/invites";
-import { assertMayGrant, WORKSPACE_RANK } from "../../services/membership-guards";
+import { assertMayGrant, WORKSPACE_RANK } from "../../services/membership/guards";
 import { ensureRoleInTenant } from "../../services/roles/role-checks";
 import { getRoleByName } from "../../services/seed";
 import {

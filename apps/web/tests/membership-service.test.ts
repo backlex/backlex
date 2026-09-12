@@ -1,5 +1,5 @@
 /**
- * `services/membership.ts` — the one removal both eviction routes call.
+ * `services/membership/index.ts` — the one removal both eviction routes call.
  *
  * The assertion this file exists for is the CROSS-WORKSPACE one. Removing a
  * member has to drop their RBAC bindings, and the obvious way to write that

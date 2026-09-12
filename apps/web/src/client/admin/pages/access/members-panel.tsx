@@ -61,7 +61,7 @@ const PALETTE: [string, ...string[]] = [
 
 /**
  * The workspace membership ladder, mirrored from
- * `server/services/membership-guards.ts::WORKSPACE_RANK`.
+ * `server/services/membership/guards.ts::WORKSPACE_RANK`.
  *
  * Restated rather than imported because that module lives on the server and
  * throws `AppError`; pulling it into the SPA bundle would drag the server's

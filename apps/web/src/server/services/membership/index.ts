@@ -23,12 +23,12 @@ import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, count, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
-import { assertMayActOn, WORKSPACE_RANK } from "./membership-guards";
+import { assertMayActOn, WORKSPACE_RANK } from "./guards";
 import {
   invalidateTenantMembership,
   invalidateUserRoles,
-} from "./permissions/cache";
-import type { DbCtx } from "./seed";
+} from "../permissions/cache";
+import type { DbCtx } from "../seed";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -51,7 +51,7 @@ const nowFor = (dialect: "pg" | "sqlite"): Date | number =>
   dialect === "pg" ? new Date() : Date.now();
 
 /** The person performing the removal, as a membership row. `null` is the
- *  control plane acting on behalf of nobody — see `membership-guards.ts`. */
+ *  control plane acting on behalf of nobody — see `membership/guards.ts`. */
 export interface MembershipActor {
   id: string;
   role: string;

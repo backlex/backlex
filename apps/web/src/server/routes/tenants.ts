@@ -27,7 +27,7 @@ import {
   assertMayActOn,
   assertMayGrant,
   WORKSPACE_RANK,
-} from "../services/membership-guards";
+} from "../services/membership/guards";
 import {
   invalidateTenantMembership,
   invalidateTenantResolve,

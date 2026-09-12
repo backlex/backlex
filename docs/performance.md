@@ -287,7 +287,7 @@ physical memory and paged less. That is the same effect the baseline's
 machine more than half of the wall clock is paging, not compiling.**
 
 So chain length is not the lever it looks like, at least at 15→7+8 on this
-tree. Don't re-attempt it on `routes/integrations.ts` (26 links) expecting a
+tree. Don't re-attempt it on `routes/integrations/index.ts` (26 links) expecting a
 win. The lever that is actually measurable here is physical memory — the same
 constraint that makes the TypeScript 7 port look slower than 6.0 below until its
 checker count is pinned.

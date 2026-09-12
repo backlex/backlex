@@ -22,12 +22,12 @@
  */
 import { Hono } from "hono";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { rateLimitOk } from "../lib/rate-limit";
-import { assertWorkspaceRequestQuota, setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
-import { receiveDelivery, tenantForWebhookToken } from "../services/integrations/webhooks";
-import { log } from "../lib/log";
+import type { AppBindings } from "../../app";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { assertWorkspaceRequestQuota, setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
+import { receiveDelivery, tenantForWebhookToken } from "../../services/integrations/webhooks";
+import { log } from "../../lib/log";
 
 /** A marketplace bursts when a seller's catalogue moves, so the per-endpoint
  *  ceiling is generous; the per-IP one is what blunts a guessing attack. */

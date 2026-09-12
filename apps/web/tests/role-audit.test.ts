@@ -3,7 +3,7 @@
  *
  * `routes/roles/{roles,permissions,users}.ts` carried **zero**
  * `logActivity` calls while `routes/collections.ts` had 10 and
- * `routes/integrations.ts` 15 — so creating a role, granting a permission,
+ * `routes/integrations/index.ts` 15 — so creating a role, granting a permission,
  * handing someone the admin role, suspending an account and resetting a
  * user's second factor all happened with no trace. Those are precisely the
  * events an incident review starts from.

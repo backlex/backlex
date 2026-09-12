@@ -130,3 +130,100 @@ describe("expand relation_many", () => {
     expect(res.status).toBe(422);
   });
 });
+
+/**
+ * `?expand=` into a collection that has a `localized` field.
+ *
+ * This combination was an unconditional 500 — `SQLITE_ERROR: no such column:
+ * rel_category.name`. The expand builder read every target field off the join
+ * alias, and a localized field has no column there: its values live in
+ * `<target>__i18n`, one row per locale. The base row's own reader had always
+ * known that; the expand reader had never been told.
+ *
+ * Two features that each worked, never driven together — `items-expand.test.ts`
+ * contained zero occurrences of `localized` before this block, which is exactly
+ * why a guaranteed 500 shipped.
+ *
+ * Asserts the SHAPE in both modes, because they differ and both are load-bearing:
+ * a named locale collapses to the native value, no locale yields the
+ * `{locale: value}` map — the same two shapes the unexpanded row returns, which
+ * is the property that makes an expanded object substitutable for a second read.
+ */
+describe("expand into a localized target", () => {
+  let h: TestHarness;
+  let bookId: string;
+
+  const json = async (method: string, path: string, body?: unknown) => {
+    const res = await h.fetch(path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!res.ok) throw new Error(`${method} ${path} → ${res.status} ${await res.text()}`);
+    return res.json();
+  };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+
+    await json("POST", "/api/collections", {
+      slug: "genres",
+      fields: [
+        // The localized one — and `code` beside it, so the assertion can tell
+        // "the sidecar was read" apart from "the whole object came back empty".
+        { name: "name", type: "text", localized: true, required: true },
+        { name: "code", type: "text" },
+      ],
+    });
+    await json("POST", "/api/collections", {
+      slug: "books",
+      fields: [
+        { name: "title", type: "text", required: true },
+        { name: "genre", type: "relation", to: "genres" },
+      ],
+    });
+
+    const genre = await json("POST", "/api/items/genres", {
+      name: { en: "Fiction", tr: "Kurgu" },
+      code: "FIC",
+    });
+    bookId = (
+      await json("POST", "/api/items/books", { title: "Dune", genre: genre.data.id })
+    ).data.id;
+  });
+
+  afterAll(async () => {
+    await h.cleanup();
+  });
+
+  test("a named locale collapses the expanded object's localized field", async () => {
+    const res = await json("GET", "/api/items/books?expand=genre&locale=en");
+    const row = res.data[0];
+    expect(row.genre.name).toBe("Fiction");
+    expect(row.genre.code).toBe("FIC");
+  });
+
+  test("the other locale is the other value, not a fallback to the first", async () => {
+    const res = await json("GET", "/api/items/books?expand=genre&locale=tr");
+    expect(res.data[0].genre.name).toBe("Kurgu");
+  });
+
+  test("no locale yields the full per-locale map, matching an unexpanded read", async () => {
+    const res = await json("GET", "/api/items/books?expand=genre");
+    // An object, NOT the JSON string SQLite hands back for a nested aggregate —
+    // without the `json()` wrapper this arrives double-encoded.
+    expect(res.data[0].genre.name).toEqual({ en: "Fiction", tr: "Kurgu" });
+  });
+
+  test("the by-id read path expands the same way as the list path", async () => {
+    const res = await json("GET", `/api/items/books/${bookId}?expand=genre&locale=tr`);
+    expect(res.data.genre.name).toBe("Kurgu");
+  });
+
+  test("a null relation still expands to null, not an object of nulls", async () => {
+    await json("POST", "/api/items/books", { title: "Untitled" });
+    const res = await json("GET", "/api/items/books?expand=genre&locale=en&sort=-created_at");
+    expect(res.data[0].genre).toBeNull();
+  });
+});

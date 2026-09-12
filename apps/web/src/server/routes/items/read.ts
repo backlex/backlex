@@ -224,12 +224,27 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const expandOne = expand.filter((h) => !isManyHead(h));
       const expandManyHeads = expand.filter(isManyHead);
 
+      // Hoisted above `resolveExpands`, which needs it: an expanded target can
+      // carry `localized` fields, and those are read from its sidecar with the
+      // requested locale rather than off the join alias (there is no column
+      // there). It was parsed further down, after the ETag short-circuit.
+      const locale = c.req.query("locale") ?? null;
+      // `expandOne.length` for the same reason as the list path: the base
+      // collection having no localized field says nothing about the target's.
+      const defaultLocale =
+        locale && locale !== "*" && (hasLocalizedField(collection.fields) || expandOne.length > 0)
+          ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
+          : null;
+
       const joinMap = new Map<string, { alias: string; target: CollectionRow }>();
       const {
         extraJoins: expandJoins,
         selects: expandSelects,
         plans: expandPlans,
-      } = await resolveExpands(ctx, auth, collection, expandOne, joinMap);
+      } = await resolveExpands(ctx, auth, collection, expandOne, joinMap, new Map(), {
+        locale,
+        defaultLocale,
+      });
       const manyPlans = await resolveManyExpands(
         ctx,
         auth,
@@ -357,11 +372,6 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           return c.body(null, 304);
         }
       }
-      const locale = c.req.query("locale") ?? null;
-      const defaultLocale =
-        locale && locale !== "*" && hasLocalizedField(collection.fields)
-          ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
-          : null;
       const localizedDefs = sidecarFields(collection.fields);
       const base = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);
       // Sidecar (`localized`) fields: one small second query for this id, then
@@ -390,7 +400,7 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // allow-list still can't expand it — parseQuery's source-perm gate
       // above rejects that case first.
       if (expandPlans.length > 0) {
-        applyExpandToRow(projected, rows[0], expandPlans, ctx.dialect);
+        applyExpandToRow(projected, rows[0], expandPlans, ctx.dialect, { locale, defaultLocale });
         // The JOIN carries the target's tenant id and nothing else — the row
         // condition, soft-delete and draft visibility are applied here. See
         // `clampExpandedRows`.

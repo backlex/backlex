@@ -272,6 +272,25 @@ describe("worker startup budget", () => {
     // `middleware/session.ts` is the importer and it already pulled in both
     // `@backlex/db/pg` and `@backlex/db/sqlite` on line 1-2. There is no seam a
     // dynamic import would bite on.
-    expect(kib).toBeLessThan(8465);
+    // Raised 8465 → 8480 on 2026-09-12, measured at 8468. No new module: the
+    // growth is inside two files the graph already reached — `buildLocalizedRefs`
+    // in `services/items/i18n-sidecar.ts` and the locale plumbing in
+    // `services/items/expand.ts` (#377). `?expand=` into a collection with a
+    // `localized` field had been an unconditional 500 because the expand builder
+    // read every target field off the join alias, and a localized field has no
+    // column there.
+    //
+    // Nothing new became REACHABLE, which is the assertion that matters: the
+    // importer is `expand.ts`, and `i18n-sidecar.ts` was already pulled in by
+    // both `routes/items/list.ts` and `routes/items/read.ts`. The nine
+    // "not on the startup path" guards above are all still green, so this is
+    // bytes, not surface.
+    //
+    // It is bytes AND it is mostly prose again — the first pass measured 8469
+    // and trimming the two new doc comments bought exactly 1 KiB. That is the
+    // standing tax of this walk counting source bytes; worth restating because
+    // startup is at the CF ceiling (#372), so a raise here is not free even
+    // when nothing new is reached.
+    expect(kib).toBeLessThan(8480);
   });
 });

@@ -219,7 +219,7 @@ describe("destructive schema guard", () => {
  * The guard is not route-local.
  *
  * `POST /api/schema/apply` reaches the same `dropField` through
- * `services/schema-versions.ts::executeDiff`, and it is reachable from REST, the
+ * `services/schema/versions.ts::executeDiff`, and it is reachable from REST, the
  * SDK, the CLI, MCP and GraphQL. Before this wave its only safety net was
  * `captureSnapshot`, which records the schema SHAPE and none of the data — so an
  * apply that dropped a column was exactly as unrecoverable as the route was, and

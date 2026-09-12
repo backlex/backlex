@@ -328,7 +328,7 @@ describe("worker startup budget", () => {
     // this again.
     //
     // Raised 8465 → 8475 on 2026-09-10, measured at 8466. ONE new module:
-    // `services/schema-reapply.ts` (#317), the daily sweep that brings every
+    // `services/schema/reapply.ts` (#317), the daily sweep that brings every
     // workspace's physical tables forward. Net +1 KiB, because the loop MOVED
     // there out of `routes/db-admin.ts` rather than being added beside it.
     //
@@ -347,7 +347,7 @@ describe("worker startup budget", () => {
     //
     // FINAL of the four, 2026-09-10. This branch measured 8466 alone and set
     // 8475; the merged tree measures **8497 across 639 modules** — the one new
-    // module (`services/schema-reapply.ts`) plus the three branches that landed
+    // module (`services/schema/reapply.ts`) plus the three branches that landed
     // ahead of it. Ceiling stays 8500, which is 3 KiB of headroom, so the next
     // change to an eager file will trip this and should.
     //

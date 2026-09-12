@@ -14,7 +14,7 @@ import {
   listBranches as listSchemaBranches,
   listSnapshots as listSchemaSnapshots,
   type SchemaRef,
-} from "../schema-versions";
+} from "../schema/versions";
 import { cloneCollection as cloneCollectionService } from "../collections";
 import { invalidateTenantCollections } from "../collections/cache";
 

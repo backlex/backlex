@@ -191,7 +191,7 @@ Two dual-dialect tables (`packages/db/src/{pg,sqlite}/schema.ts`):
   `(tenant_id, name)`.
 
 The pure diff engine lives in `packages/db/src/schema-diff.ts` (`diffSchema`); the
-orchestration in `apps/web/src/server/services/schema-versions.ts`.
+orchestration in `apps/web/src/server/services/schema/versions.ts`.
 
 ## What an apply saves before it destroys anything
 

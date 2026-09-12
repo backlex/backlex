@@ -23,7 +23,7 @@ import {
   pruneScheduledSnapshots,
   runScheduledSnapshots,
   updateBranchHead,
-} from "../src/server/services/schema-versions";
+} from "../src/server/services/schema/versions";
 import { makeHarness, type TestHarness } from "./setup";
 
 // dual-dialect db union — sqlite handle here.

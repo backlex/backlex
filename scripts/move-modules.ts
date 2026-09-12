@@ -77,11 +77,20 @@ const after = new Set([...tracked].filter((f) => !moves.has(f)).concat([...moved
 const newPath = (f: string) => moves.get(f) ?? f;
 const basenames = new Map<string, number>();
 for (const f of tracked) basenames.set(posix.basename(f), (basenames.get(posix.basename(f)) ?? 0) + 1);
+/** Every directory holding a tracked file, plus the root — targets for anchored folder paths. */
+const dirs = new Set<string>(["."]);
+for (const f of tracked) for (let d = posix.dirname(f); d !== "."; d = posix.dirname(d)) dirs.add(d);
 
-function resolveSpec(from: string, spec: string, files: Set<string>): { target: string; style: Style } | null {
+function resolveSpec(
+  from: string,
+  spec: string,
+  files: Set<string>,
+  folders = false,
+): { target: string; style: Style | "folder" } | null {
   const base = posix.normalize(posix.join(posix.dirname(from), spec));
   if (base.startsWith("..")) return null;
   if (files.has(base)) return { target: base, style: "exact" };
+  if (folders && dirs.has(base.replace(/\/$/, ""))) return { target: base.replace(/\/$/, ""), style: "folder" };
   for (const ext of [".ts", ".tsx", ".d.ts", ".mts", ".js", ".mjs"]) {
     if (files.has(base + ext)) return { target: base + ext, style: "bare" };
   }
@@ -94,10 +103,10 @@ function resolveSpec(from: string, spec: string, files: Set<string>): { target: 
   return null;
 }
 
-function emitSpec(from: string, target: string, style: Style): string {
-  let spec = posix.relative(posix.dirname(from), target);
+function emitSpec(from: string, target: string, style: Style | "folder"): string {
+  let spec = posix.relative(posix.dirname(from), target) || ".";
   if (!spec.startsWith(".")) spec = `./${spec}`;
-  if (style === "exact") return spec;
+  if (style === "exact" || style === "folder") return spec;
   if (style === "js") return spec.replace(/\.tsx?$/, ".js");
   const bare = spec.replace(/(\.d)?\.(tsx?|mts|m?js)$/, "");
   const dir = bare.replace(/\/index$/, "");
@@ -127,6 +136,22 @@ const suffixRules = [...moves].map(([from, to]) => {
 
 const edits = new Map<string, Edit[]>();
 const warnings: string[] = [];
+const loose: string[] = [];
+
+/**
+ * A path anchored on the file's own location but not written as one string:
+ * `resolve(import.meta.dir, "..", "..", "..")`, `join(__dirname, "../src")`,
+ * `new URL("../../../", import.meta.url)`. Both resolve against the directory
+ * the file sits in, so moving the file moves what they point at unless the
+ * segments are recomputed — and a scan rooted one level too shallow usually
+ * finds fewer files rather than failing.
+ */
+const ANCHORED_CALL =
+  /\b(?:resolve|join)\(\s*(?:import\.meta\.dirname|import\.meta\.dir|__dirname|dirname\(\s*fileURLToPath\(\s*import\.meta\.url\s*\)\s*\))((?:\s*,\s*(["'])[^"'`\s]*\2)+)/g;
+const ANCHORED_URL = /new URL\(\s*(["'`])([^"'`]*)\1\s*,\s*import\.meta\.url\s*\)/g;
+const ANCHOR = /import\.meta\.(?:dirname|dir|url)\b|__dirname\b/g;
+/** What makes a relative string a module specifier rather than, say, a traversal payload. */
+const SPECIFIER_CONTEXT = /(?:\bfrom|\bimport|\bimport\(|\brequire\(|\bmock\.module\(|\bexport\s+\*\s+from)\s*$/;
 
 for (const file of tracked) {
   if (SKIP.has(file) || !TEXT.test(file)) continue;
@@ -140,10 +165,55 @@ for (const file of tracked) {
   const claimed: Array<[number, number]> = [];
   const fileMoved = moves.has(file);
 
+  const overlaps = (start: number, end: number) => claimed.some(([s, e]) => start < e && end > s);
+
   if (CODE.test(file)) {
+    for (const m of text.matchAll(ANCHORED_URL)) {
+      const [whole, quote = "", raw = ""] = m;
+      const at = m.index ?? 0;
+      claimed.push([at, at + whole.length]);
+      const start = at + whole.indexOf(quote) + 1;
+      if (raw.includes("${")) {
+        if (fileMoved) warnings.push(`${file}:${lineOf(text, start)} template URL \`${raw}\` was not rewritten`);
+        continue;
+      }
+      const hit = resolveSpec(file, raw, tracked, true);
+      if (!hit) {
+        if (fileMoved) warnings.push(`${file}:${lineOf(text, start)} URL "${raw}" resolves to nothing — check it by hand`);
+        continue;
+      }
+      if (!fileMoved && !moves.has(hit.target)) continue;
+      let next = emitSpec(newPath(file), newPath(hit.target), hit.style);
+      if (raw.endsWith("/") && !next.endsWith("/")) next += "/";
+      if (next !== raw) list.push({ start, end: start + raw.length, text: next, kind: "relative" });
+    }
+
+    for (const m of text.matchAll(ANCHORED_CALL)) {
+      const [whole, argsText = ""] = m;
+      const at = m.index ?? 0;
+      claimed.push([at, at + whole.length]);
+      const args = [...argsText.matchAll(/(["'])([^"'`\s]*)\1/g)].map((a) => a[2] ?? "");
+      const quote = argsText.match(/["']/)?.[0] ?? '"';
+      const joined = posix.join(...args);
+      const hit = joined.startsWith("/") ? null : resolveSpec(file, joined, tracked, true);
+      if (!hit) {
+        if (fileMoved) warnings.push(`${file}:${lineOf(text, at)} \`${whole}\` resolves to nothing — check it by hand`);
+        continue;
+      }
+      if (!fileMoved && !moves.has(hit.target)) continue;
+      const rel = emitSpec(newPath(file), newPath(hit.target), hit.style).replace(/^\.\/(?=.)/, "");
+      const parts = args.length === 1 ? [args[0]?.startsWith("./") && !rel.startsWith(".") ? `./${rel}` : rel] : rel.split("/");
+      const next = `, ${parts.map((p) => quote + p + quote).join(", ")}`;
+      const start = at + whole.length - argsText.length;
+      if (next.replace(/\s/g, "") !== argsText.replace(/\s/g, "")) {
+        list.push({ start, end: at + whole.length, text: next, kind: "relative" });
+      }
+    }
+
     for (const m of text.matchAll(/(["'`])(\.\.?\/[^"'`\s]*)\1/g)) {
       const [, , raw = ""] = m;
       const start = (m.index ?? 0) + 1;
+      if (overlaps(start, start + raw.length)) continue;
       if (raw.includes("${")) {
         // Only a template whose static part lands on a moved file's own
         // directory (or on a name prefix inside it) can be reaching for one.
@@ -164,7 +234,22 @@ for (const file of tracked) {
       claimed.push([start, start + raw.length]);
       if (!fileMoved && !moves.has(hit.target)) continue;
       const next = emitSpec(newPath(file), newPath(hit.target), hit.style) + (query === undefined ? "" : `?${query}`);
-      if (next !== raw) list.push({ start, end: start + raw.length, text: next, kind: "relative" });
+      if (next === raw) continue;
+      list.push({ start, end: start + raw.length, text: next, kind: "relative" });
+      // Rewritten either way — a tracked file was named — but a relative string
+      // outside an import can also be a test's traversal payload, so say where.
+      if (!SPECIFIER_CONTEXT.test(text.slice(Math.max(0, start - 40), start - 1))) {
+        loose.push(`${newPath(file)}:${lineOf(text, start)} "${raw}" → "${next}"`);
+      }
+    }
+
+    if (fileMoved) {
+      for (const m of text.matchAll(ANCHOR)) {
+        const at = m.index ?? 0;
+        if (!overlaps(at, at + m[0].length)) {
+          warnings.push(`${file}:${lineOf(text, at)} \`${m[0]}\` anchors a path this tool did not follow — check it by hand`);
+        }
+      }
     }
   }
 
@@ -255,4 +340,5 @@ console.log(
     `${counts.relative} relative + ${counts.path} path + ${counts.name} name reference(s) in ${output.length} file(s)`,
 );
 if (warnings.length > 0) console.log(`\nnot rewritten — check by hand:\n  ${warnings.join("\n  ")}`);
+if (loose.length > 0) console.log(`\nrewritten outside an import — confirm each is a path:\n  ${loose.join("\n  ")}`);
 if (leftovers.length > 0) console.log(`\nbare mentions of an old file name:\n${leftovers.join("\n")}`);

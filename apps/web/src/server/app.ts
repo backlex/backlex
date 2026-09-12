@@ -103,7 +103,7 @@ import { approvalsPublicRoutes } from "./routes/approvals/public";
 import { signaturesPublicRoutes } from "./routes/signatures-public";
 import { approvalsRoutes } from "./routes/approvals";
 import { signaturesRoutes } from "./routes/signatures";
-import { bookingPublicRoutes } from "./routes/booking-public";
+import { bookingPublicRoutes } from "./routes/booking/public";
 import { bookingRoutes } from "./routes/booking";
 import { realtimeRoutes } from "./routes/realtime";
 import { realtimeAdminRoutes } from "./routes/realtime-admin";

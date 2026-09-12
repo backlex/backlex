@@ -252,7 +252,7 @@ Attributing check time per file, without double-counting nested spans:
 
 | File | Check time | Share |
 |---|---|---|
-| `routes/booking.ts` | 31.7s | 20.4% |
+| `routes/booking/index.ts` | 31.7s | 20.4% |
 | `routes/scim-admin.ts` | 10.4s | 6.7% |
 | `routes/roles/users.ts` | 10.4s | 6.7% |
 | `routes/payments.ts` | 7.8s | 5.1% |
@@ -265,7 +265,7 @@ incremental build.
 ##### Splitting the chains — attempted 2026-08-15, and it did not work
 
 The obvious fix is to break the longest chains into sub-routers, the way
-`routes/items/` already is. It was tried on `routes/booking.ts`: one 15-link
+`routes/items/` already is. It was tried on `routes/booking/index.ts`: one 15-link
 chain became `booking/resources.ts` (7) plus `booking/bookings.ts` (8), mounted
 through `.route("/", …)`. The refactor itself was sound — the generated OpenAPI
 document came out **byte-identical**, and all 114 booking tests passed. It was

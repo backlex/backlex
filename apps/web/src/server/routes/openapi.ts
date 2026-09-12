@@ -70,7 +70,7 @@ import { geoRoutes } from "./geo";
 import { phoneRoutes } from "./phone";
 import { signaturesRoutes } from "./signatures";
 import { bookingRoutes } from "./booking";
-import { bookingPublicRoutes } from "./booking-public";
+import { bookingPublicRoutes } from "./booking/public";
 // The 27 groups below were fully annotated with `createRoute` + schemas and
 // absent from this array, so none of them reached `/api/openapi`, the REST
 // explorer, `docs/service-map.md` or the ten generated polyglot SDKs. Adding a

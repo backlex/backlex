@@ -1,11 +1,11 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { rateLimitOk } from "../lib/rate-limit";
-import { setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
+import type { AppBindings } from "../../app";
+import { PUBLIC_SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
 import {
   cancelBooking,
   createBooking,
@@ -16,7 +16,7 @@ import {
   toBookerView,
   type BookingResourceRow,
   type ResolvedBooking,
-} from "../services/booking";
+} from "../../services/booking";
 
 /**
  * The booker's side — public, unauthenticated, mounted at `/api/public/book`.

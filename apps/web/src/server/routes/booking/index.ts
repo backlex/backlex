@@ -1,10 +1,10 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   BOOKING_STATUSES,
   MAX_QUESTIONS,
@@ -27,7 +27,7 @@ import {
   rotateResourceToken,
   updateResource,
   type BookingStatus,
-} from "../services/booking";
+} from "../../services/booking";
 
 /**
  * Availability and bookings, from the operator's side.
@@ -35,7 +35,7 @@ import {
  * Admin-only: a resource carries a public, unauthenticated page token, and
  * everything on the row is policy about how much of the workspace's time the
  * outside world may take. The booker's side needs no account and lives in
- * `routes/booking-public.ts`.
+ * `routes/booking/public.ts`.
  */
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {

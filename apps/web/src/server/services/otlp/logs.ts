@@ -15,10 +15,10 @@
  * this is in addition, not instead. Losing an export must never mean losing the
  * log.
  */
-import type { Env } from "../env";
-import type { BufferedLog, LogLevel } from "../lib/log";
-import { drainLogBuffer } from "../lib/log";
-import { parseOtlpHeaders } from "./otlp";
+import type { Env } from "../../env";
+import type { BufferedLog, LogLevel } from "../../lib/log";
+import { drainLogBuffer } from "../../lib/log";
+import { parseOtlpHeaders } from "./index";
 
 export const otlpLogsUrl = (endpoint: string): string => {
   const base = endpoint.trim().replace(/\/+$/, "");

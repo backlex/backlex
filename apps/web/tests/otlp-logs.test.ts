@@ -14,7 +14,7 @@ import {
   buildOtlpLogsPayload,
   flushLogsOtlp,
   otlpLogsUrl,
-} from "../src/server/services/otlp-logs";
+} from "../src/server/services/otlp/logs";
 import { configureLogBuffer, configureLogLevel, drainLogBuffer, log } from "../src/server/lib/log";
 
 const ENV = { OTLP_ENDPOINT: "https://otel.example.test", OTLP_HEADERS: "x-api-key=k" };

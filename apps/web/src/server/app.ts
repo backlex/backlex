@@ -18,7 +18,7 @@ import {
 } from "./lib/trace";
 import { recordSpan, traceSampleRate } from "./services/traces";
 import { exportSpanOtlp, otlpEnabled } from "./services/otlp";
-import { flushLogsOtlp } from "./services/otlp-logs";
+import { flushLogsOtlp } from "./services/otlp/logs";
 import { isDemoMode } from "./services/demo";
 import { keepAlive } from "./services/activity";
 import { demoGuardMiddleware } from "./middleware/demo";

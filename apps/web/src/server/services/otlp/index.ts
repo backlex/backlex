@@ -1,5 +1,5 @@
-import type { Env } from "../env";
-import { foldWriteChecks, type SpanInput } from "./traces";
+import type { Env } from "../../env";
+import { foldWriteChecks, type SpanInput } from "../traces";
 
 /**
  * OTLP/HTTP trace exporter (#15, the #4 follow-up). When `OTLP_ENDPOINT` is

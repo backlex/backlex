@@ -36,7 +36,7 @@ export interface Env {
   TRACES_RETENTION_DAYS?: string;
   /** OTLP/HTTP collector base URL (e.g. `https://otel.example.com` — `/v1/traces`
    *  is appended). When set, every persisted span is also exported to the
-   *  external OpenTelemetry collector. Unset → no export. See services/otlp.ts. */
+   *  external OpenTelemetry collector. Unset → no export. See services/otlp/index.ts. */
   OTLP_ENDPOINT?: string;
   /** Optional `key=value,key2=value2` headers for the OTLP export request
    *  (same format as `OTEL_EXPORTER_OTLP_HEADERS`) — auth tokens etc. */

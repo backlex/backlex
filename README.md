@@ -159,12 +159,12 @@ portable SQL dump whenever you want to leave.
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
   clients["Apps · SDKs · CLI<br/>AI agents · MCP clients"] --> api
   subgraph api["backlex (Hono)"]
-    direction TB
-    surfaces["REST · GraphQL · Realtime · MCP"] --> perms["Permissions DSL<br/>(compiled to SQL)"]
-    perms --> services["Collections · Auth · Storage · Functions<br/>Flows · Jobs · Agents"]
+    direction LR
+    surfaces["REST · GraphQL<br/>Realtime · MCP"] --> perms["Permissions DSL<br/>(compiled to SQL)"]
+    perms --> services["Collections · Auth<br/>Storage · Functions<br/>Flows · Jobs · Agents"]
   end
   services --> adapters["Runtime adapters"]
   adapters --> db[("PostgreSQL · SQLite · D1")]

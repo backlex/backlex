@@ -12,7 +12,7 @@
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { buildContext } from "../src/server/context";
-import { evaluateAlert, runKpiAlerts } from "../src/server/services/kpi-alerts";
+import { evaluateAlert, runKpiAlerts } from "../src/server/services/kpis/alerts";
 import type { KpiResult, KpiRow } from "../src/server/services/kpis";
 
 const JSON_HEADERS = { "content-type": "application/json" };

@@ -28,7 +28,7 @@ export interface ApiDashboard {
 }
 
 /** A named KPI definition — the shared formula every surface reads a figure
- *  from. See `services/kpis.ts` for why the definition is stored rather than
+ *  from. See `services/kpis/index.ts` for why the definition is stored rather than
  *  re-spelled per panel. */
 export interface ApiKpi {
   id: string;

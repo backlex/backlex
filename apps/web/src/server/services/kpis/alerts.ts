@@ -31,9 +31,9 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { SYSTEM_ROLES } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
-import type { Ctx } from "../context";
-import { nowFor } from "./items-helpers";
-import { type KpiResult, type KpiRow, runKpi } from "./kpis";
+import type { Ctx } from "../../context";
+import { nowFor } from "../items-helpers";
+import { type KpiResult, type KpiRow, runKpi } from "./index";
 
 const kpisTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.kpis : sqlite.schema.kpis;

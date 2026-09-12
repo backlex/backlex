@@ -22,7 +22,7 @@ const parseExpression = (
   }
 ).parseExpression;
 import { pruneScheduleFires, runDueScheduleFlows } from "./flows/schedules";
-import { runKpiAlerts } from "./kpi-alerts";
+import { runKpiAlerts } from "./kpis/alerts";
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { expireDueRequests, expireRequest } from "./approvals";
 import { enqueueJob, processJobs, pruneFinishedJobs } from "./jobs";

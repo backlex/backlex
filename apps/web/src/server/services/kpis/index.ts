@@ -19,10 +19,10 @@ import type { AuthSubject } from "@backlex/core";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { Ctx } from "../context";
-import { type AggregateOpts, runItemsAggregate } from "./items/aggregate";
-import { serialize } from "./items/serialize";
-import { resolvePermission } from "./permissions";
+import type { Ctx } from "../../context";
+import { type AggregateOpts, runItemsAggregate } from "../items/aggregate";
+import { serialize } from "../items/serialize";
+import { resolvePermission } from "../permissions";
 
 export const KPI_FORMATS = ["number", "money", "percent", "duration"] as const;
 export type KpiFormat = (typeof KPI_FORMATS)[number];

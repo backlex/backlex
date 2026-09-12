@@ -179,7 +179,7 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/scheduled-tasks.ts", symbol: "deleteTask", reason: "Deletes a task by the id claimDueTasks just returned." },
   { file: "apps/web/src/server/services/jobs/index.ts", symbol: "claimDueJobs", reason: "The queue worker claims due jobs across the database; each job row carries the tenantId the handler then runs under." },
   { file: "apps/web/src/server/services/jobs/index.ts", symbol: "sweep", reason: "Retention sweep inside pruneFinishedJobs, bounded by status + updatedAt." },
-  { file: "apps/web/src/server/services/kpi-alerts.ts", symbol: "runKpiAlerts", reason: "Evaluates every KPI with an alert operator set; the alert then fires into the KPI row's own workspace." },
+  { file: "apps/web/src/server/services/kpis/alerts.ts", symbol: "runKpiAlerts", reason: "Evaluates every KPI with an alert operator set; the alert then fires into the KPI row's own workspace." },
   { file: "apps/web/src/server/services/cdc.ts", symbol: "processCdcSinks", reason: "Round-robins every enabled CDC sink in the database; each sink row carries its tenantId." },
   { file: "apps/web/src/server/services/items/scheduled-publish.ts", symbol: "publishDueItems", reason: "Cron: finds every versioned collection with scheduled publishes due. Each collection row carries its tenantId." },
   { file: "apps/web/src/server/services/items/scheduled-publish.ts", symbol: "unpublishDueItems", reason: "Cron twin of publishDueItems: every versioned collection with an unpublish due, each row carrying its own tenantId." },

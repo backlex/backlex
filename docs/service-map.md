@@ -43,7 +43,7 @@ guides; this list is everything else.
   (`@hono/zod-openapi`); a new route shows up automatically if you
   decorate it.
 - **Public surfaces** (`routes/i18n/public.ts`,
-  `routes/shared-public.ts`, `routes/shared-links.ts`,
+  `routes/shared-links/public.ts`, `routes/shared-links/index.ts`,
   `services/shared-links.ts`) — unauthenticated endpoints used by
   signed share-link URLs and the public i18n bundle. Never apply
   `requirePermission` here; gate via the share-link token instead.

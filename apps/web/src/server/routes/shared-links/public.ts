@@ -1,12 +1,12 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
-import { setMeterTenant } from "../lib/usage-meter";
+import { setMeterTenant } from "../../lib/usage-meter";
 import type { FieldDef } from "@backlex/db";
-import type { AppBindings } from "../app";
-import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
-import { loadCollection } from "../services/items/collection-loader";
-import { deserializeRow } from "../services/items/serialize";
+import type { AppBindings } from "../../app";
+import { PUBLIC_SECURITY, errorResponses } from "../../lib/openapi";
+import { loadCollection } from "../../services/items/collection-loader";
+import { deserializeRow } from "../../services/items/serialize";
 import {
   deletedFilter,
   fromOf,
@@ -14,9 +14,9 @@ import {
   queryAll,
   selectStar,
   whereOf,
-} from "../services/items/sql-helpers";
-import { resolveSharedLink } from "../services/shared-links";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/items/sql-helpers";
+import { resolveSharedLink } from "../../services/shared-links";
+import { defaultHook } from "../../lib/openapi-router";
 
 const TAGS = ["shared-links"];
 

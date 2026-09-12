@@ -137,7 +137,7 @@ import { platformLdapAdminRoutes } from "./routes/sso/platform-ldap-admin";
 import { sandboxRpcRoutes } from "./routes/sandbox-rpc";
 import { settingsRoutes } from "./routes/settings";
 import { sharedLinksRoutes } from "./routes/shared-links";
-import { sharedPublicRoutes } from "./routes/shared-public";
+import { sharedPublicRoutes } from "./routes/shared-links/public";
 import { FILES_COLLECTION, storageRoutes } from "./routes/storage";
 import { uploadsRoutes, tusBaseHeaders } from "./routes/uploads";
 import { uploadPolicy } from "./services/uploads";

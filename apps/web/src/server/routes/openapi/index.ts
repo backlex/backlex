@@ -96,7 +96,7 @@ import { consentRoutes } from "../consent";
 import { analyticsIngestRoutes } from "../analytics/ingest";
 import { flagsPublicRoutes, flagsAdminRoutes } from "../feature-flags";
 import { sharedLinksRoutes } from "../shared-links";
-import { sharedPublicRoutes } from "../shared-public";
+import { sharedPublicRoutes } from "../shared-links/public";
 import { dashboardsPublicRoutes } from "../dashboards/public";
 import { approvalsPublicRoutes } from "../approvals/public";
 import { signaturesPublicRoutes } from "../signatures/public";

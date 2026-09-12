@@ -47,7 +47,7 @@ const PublicDashboard = z
  *
  * Degrades to 404 when the token is unknown/revoked or the `dashboards` table
  * hasn't been migrated yet (`resolveEmbedToken` swallows the missing-table
- * error and returns null), mirroring `routes/shared-public.ts`.
+ * error and returns null), mirroring `routes/shared-links/public.ts`.
  */
 export const dashboardsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({

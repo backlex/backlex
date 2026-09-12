@@ -312,7 +312,7 @@ const resolveDraftKey = async (
 
 /**
  * Public, unauthenticated form endpoints. Mounted at `/api/public/forms` with
- * NO `requireUser` — the token is the grant (mirrors `routes/shared-public.ts`).
+ * NO `requireUser` — the token is the grant (mirrors `routes/shared-links/public.ts`).
  * The `/api/public/` prefix also inherits the framable CSP + XFO-strip in
  * app.ts, so the embed page can call these from inside an iframe.
  *

@@ -8,16 +8,16 @@
  * policy governs a site — it just is not owned by the analytics routes.
  *
  * Admin-only, like the rest of the site configuration it sits beside. The
- * public half a browser reaches lives in `routes/consent-public.ts`.
+ * public half a browser reaches lives in `routes/consent/public.ts`.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, errorResponses } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
-import { recordActivity, requestMeta } from "../services/activity";
-import { listConsentRecords } from "../services/consent/records";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, errorResponses } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
+import { recordActivity, requestMeta } from "../../services/activity";
+import { listConsentRecords } from "../../services/consent/records";
 import {
   BANNER_POSITIONS,
   OPTIONAL_CATEGORIES,
@@ -33,7 +33,7 @@ import {
   listConsentVersions,
   suggestedPostures,
   suggestedWording,
-} from "../services/consent";
+} from "../../services/consent";
 
 const TAGS = ["consent"];
 

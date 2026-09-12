@@ -5,7 +5,7 @@
  * The banner runs on the CUSTOMER's origin. backlex is cross-origin to it, so
  * a `Set-Cookie` from any backlex response is a third-party cookie: blocked
  * outright in Safari and Firefox, partitioned in Chrome. The server already
- * assumes this — `routes/consent-public.ts` reads the subject id out of the
+ * assumes this — `routes/consent/public.ts` reads the subject id out of the
  * request BODY rather than a cookie, and sets no cookie at all.
  *
  * Two things follow that read like design choices and are not:

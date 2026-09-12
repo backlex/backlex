@@ -349,7 +349,7 @@ describe("the per-site file is geo-blind", () => {
  *
  * `/api/analytics/tm/<id>.js` named two products (analytics, tag manager) while
  * serving three — the same category error the admin nav carried, and the repo
- * had already argued against it in `routes/consent-public.ts` for the consent
+ * had already argued against it in `routes/consent/public.ts` for the consent
  * config route. `/api/site/<id>.js` is the canonical home.
  *
  * The old path is PERMANENT, not deprecated: it is inside a `<script>` tag on

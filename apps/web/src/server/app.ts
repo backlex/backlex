@@ -38,7 +38,7 @@ import { advisorRoutes } from "./routes/advisor";
 import { analyticsRoutes } from "./routes/analytics";
 import { tagManagerRoutes } from "./routes/tag-manager";
 import { consentRoutes } from "./routes/consent";
-import { consentPublicRoutes } from "./routes/consent-public";
+import { consentPublicRoutes } from "./routes/consent/public";
 import { isPerSiteScript, isPublicSubresource } from "./lib/public-paths";
 import { EMBED_CSP, isFramablePage, isFramablePath, isPublicFormPage, STRICT_CSP } from "./lib/security-headers";
 import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics/collect";
@@ -862,7 +862,7 @@ export const createApp = (env: Env) => {
   //    reads to know what to show. Read-only, session-free, and it returns only
   //    what the operator publishes to their own visitors; the projection behind
   //    it names its columns so the site's operator settings cannot reach the
-  //    body. See `routes/consent-public.ts`.
+  //    body. See `routes/consent/public.ts`.
   //  - `/api/consent/record` — where that banner posts the visitor's decision,
   //    and where the visitor withdraws it. The only write on this list, so it
   //    carries four ceilings rather than one and accepts nothing unless the site

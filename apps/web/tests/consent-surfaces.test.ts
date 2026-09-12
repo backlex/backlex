@@ -437,7 +437,7 @@ describe("the vocabulary is one list, spelled the same everywhere", () => {
   // four a rename that misses one produces a value nothing gates on, which
   // fails OPEN — so they are checked character by character.
   test("REST imports the vocabulary rather than restating it", () => {
-    const rest = read("apps/web/src/server/routes/consent.ts");
+    const rest = read("apps/web/src/server/routes/consent/index.ts");
     const imports = rest.slice(0, rest.indexOf("const TAGS"));
     for (const name of [
       "OPTIONAL_CATEGORIES",
@@ -482,7 +482,7 @@ describe("the vocabulary is one list, spelled the same everywhere", () => {
       `<${SIGNAL_HANDLING.join("|")}>`,
     );
     // REST imports the constant, so it cannot drift at all.
-    expect(read("apps/web/src/server/routes/consent.ts")).toContain(
+    expect(read("apps/web/src/server/routes/consent/index.ts")).toContain(
       "z.enum(SIGNAL_HANDLING)",
     );
   });
@@ -943,7 +943,7 @@ describe("posture presets", () => {
     // route that merely returned altered presets left it green. So the check
     // is structural as well — the preset handler must not so much as mention
     // the only writer.
-    const src = read("apps/web/src/server/routes/consent.ts");
+    const src = read("apps/web/src/server/routes/consent/index.ts");
     const at = src.indexOf('path: "/postures/suggested"');
     expect(at).toBeGreaterThan(-1);
     const handler = src.slice(at);
@@ -1026,7 +1026,7 @@ describe("posture presets", () => {
     // array is how the admin gets dropped from the next feature's parity list
     // by someone reading the title and copying the phrase.
     const pairs: [string, string, string][] = [
-      ["REST", "apps/web/src/server/routes/consent.ts", "/postures/suggested"],
+      ["REST", "apps/web/src/server/routes/consent/index.ts", "/postures/suggested"],
       ["SDK", "packages/client/src/clients/consent.ts", "suggestedPostures"],
       ["GraphQL", "apps/web/src/server/services/graphql/consent.ts", "consentSuggestedPostures"],
       ["MCP", "apps/web/src/server/mcp/tools/consent.ts", "consent.suggested_postures"],

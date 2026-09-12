@@ -9,7 +9,7 @@
  * A plain `Hono` sub-app rather than an `OpenAPIHono` one, the same call
  * `analytics/collect.ts` makes: there is no JSON request body to describe, the
  * caller is a browser on somebody else's origin rather than an API consumer,
- * and the admin half of consent is already documented on `routes/consent.ts`.
+ * and the admin half of consent is already documented on `routes/consent/index.ts`.
  *
  * ── Its own mount, not a route on the collect sub-app ─────────────────────
  * The obvious-looking home was `analyticsCollectRoutes`, since it is already
@@ -42,20 +42,20 @@
  * gets something immutable to point at.
  */
 import { Hono } from "hono";
-import type { AppBindings } from "../app";
-import { ifNoneMatch } from "../lib/etag";
-import { rateLimitOk } from "../lib/rate-limit";
-import { setMeterTenant } from "../lib/usage-meter";
-import { requestMeta } from "../services/activity";
-import { assertWorkspaceRequestQuota } from "../lib/usage-meter";
-import { countryFromRequest } from "../services/analytics/enrich";
+import type { AppBindings } from "../../app";
+import { ifNoneMatch } from "../../lib/etag";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { setMeterTenant } from "../../lib/usage-meter";
+import { requestMeta } from "../../services/activity";
+import { assertWorkspaceRequestQuota } from "../../lib/usage-meter";
+import { countryFromRequest } from "../../services/analytics/enrich";
 import {
   CONSENT_CONFIG_OFF,
   OPTIONAL_CATEGORIES,
   getPublishedConsentConfig,
   type OptionalCategory,
-} from "../services/consent";
-import { getConsentEntry, setConsentEntry } from "../services/consent/config-cache";
+} from "../../services/consent";
+import { getConsentEntry, setConsentEntry } from "../../services/consent/config-cache";
 import {
   CONSENT_RECORD_SOURCES,
   SUBJECT_ID_RE,
@@ -63,8 +63,8 @@ import {
   deleteSubjectRecords,
   recordConsent,
   type ConsentRecordSource,
-} from "../services/consent/records";
-import { recordActivity } from "../services/activity";
+} from "../../services/consent/records";
+import { recordActivity } from "../../services/activity";
 
 /**
  * Per-IP budget.

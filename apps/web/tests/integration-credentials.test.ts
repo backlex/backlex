@@ -232,7 +232,13 @@ describe("the chokepoint is the only way in", () => {
     // the searched symbol: the whole file stayed green. Pin the two halves the
     // scan depends on — that the chokepoint still owns the function, and that
     // the census reaches the service directory at all.
-    const scanned = readdirSync(SERVICES).filter((f) => f.endsWith(".ts"));
+    //
+    // Recursive, because services live in folders too (`items/`, `graphql/`,
+    // `agents/` …). The flat listing stopped at the top level: a planted
+    // `ensureAccessToken` in `services/items/csv.ts` left this test green, and
+    // the liveness count above could not notice, since the top level alone
+    // still clears it.
+    const scanned = (readdirSync(SERVICES, { recursive: true }) as string[]).filter((f) => f.endsWith(".ts"));
     expect(`services scanned: ${scanned.length > 100}`).toBe("services scanned: true");
     expect(
       `integration-credentials.ts still defines ensureAccessToken: ${readFileSync(

@@ -51,8 +51,13 @@ const openApiCapableMounts = (): Map<string, string> => {
     const [, mount, ident] = m as unknown as [string, string, string];
     const file = bySymbol.get(ident);
     if (!file) continue; // built inline, or imported from outside routes/
-    const path = join(SERVER, "routes", `${file}.ts`);
-    if (!existsSync(path)) continue;
+    // A route group can be a folder (`./routes/items` → `items/index.ts`).
+    // This used to try `${file}.ts` alone and `continue` on a miss, so every
+    // folder-shaped group dropped out of the census without a word — an
+    // import that resolves to neither shape cannot compile, so it throws.
+    const base = join(SERVER, "routes", file);
+    const path = [`${base}.ts`, join(base, "index.ts")].find((p) => existsSync(p));
+    if (!path) throw new Error(`app.ts imports ./routes/${file}, which is neither ${file}.ts nor ${file}/index.ts`);
     if (!/new OpenAPIHono/.test(read(path))) continue;
     out.set(mount, ident);
   }

@@ -219,7 +219,7 @@ guides; this list is everything else.
   shared with the dashboard runner + public embed.
 - **Metrics** (`routes/metrics.ts`) — request / error counters +
   time-series rollups for the admin dashboard.
-- **Realtime admin + DB admin** (`routes/realtime-admin.ts`,
+- **Realtime admin + DB admin** (`routes/realtime/admin.ts`,
   `routes/db-admin.ts`) — subscriber counts + test-publish, and
   schema introspection + diagnostics. Realtime admin is admin-only; the DB
   admin routes that span the whole database (`/sql/run`, `/tables`,

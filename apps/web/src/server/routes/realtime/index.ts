@@ -10,18 +10,18 @@ import {
   isAppError,
   normalizeCondition,
 } from "@backlex/core";
-import type { AppBindings } from "../app";
-import type { Ctx } from "../context";
-import type { Env } from "../env";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { resolvePermission } from "../services/permissions";
-import { resolveOrgContext } from "../services/app-orgs";
-import { ORG_HEADER, resolveTenantAccess } from "../middleware/tenant";
-import { appSessionLive } from "../middleware/session";
+import type { AppBindings } from "../../app";
+import type { Ctx } from "../../context";
+import type { Env } from "../../env";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
+import { resolvePermission } from "../../services/permissions";
+import { resolveOrgContext } from "../../services/app-orgs";
+import { ORG_HEADER, resolveTenantAccess } from "../../middleware/tenant";
+import { appSessionLive } from "../../middleware/session";
 import {
   loadCollection,
   type CollectionRow,
-} from "../services/items/collection-loader";
+} from "../../services/items/collection-loader";
 import {
   currentSeq,
   joinPresence,
@@ -31,17 +31,17 @@ import {
   subscribeLocal,
   type ItemEventPayload,
   type SubscriptionMeta,
-} from "../services/events";
+} from "../../services/events";
 import {
   redisLatestId,
   redisPublish,
   redisRealtimeEnabled,
   redisReadSince,
-} from "../services/realtime/redis";
-import { type ChannelAddress, topicFor } from "../services/realtime/topic";
-import { rateLimitOk } from "../lib/rate-limit";
-import { isStatelessEdge } from "../lib/runtime";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/realtime/redis";
+import { type ChannelAddress, topicFor } from "../../services/realtime/topic";
+import { rateLimitOk } from "../../lib/rate-limit";
+import { isStatelessEdge } from "../../lib/runtime";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   AgentPresenceSchema,
   COLLAB_PREFIX,
@@ -53,8 +53,8 @@ import {
   type AblyTokenRequest,
   parseAgentThreadChannel,
   parseCollabChannel,
-} from "../services/collab";
-import { getThread } from "../services/agents/store";
+} from "../../services/collab";
+import { getThread } from "../../services/agents/store";
 import { splitChannel, REPLAY_PAGE_SIZE } from "@backlex/core";
 import {
   buildBroadcastFrame,
@@ -66,7 +66,7 @@ import {
   resolveChannelRule,
   satisfiesAccess,
   type ResolvedChannel,
-} from "../services/broadcast";
+} from "../../services/broadcast";
 import {
   SIGNAL_ROOT,
   itemsConfig,
@@ -76,8 +76,8 @@ import {
   ablyRoom,
   ablyRoomPrefixFor,
   signalScopeAllowsConditional,
-} from "../services/realtime/signal";
-import { readJson } from "../lib/body";
+} from "../../services/realtime/signal";
+import { readJson } from "../../lib/body";
 
 /** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
 const REDIS_POLL_MS = 1_000;
@@ -141,7 +141,7 @@ interface Gate {
   broadcast?: ResolvedChannel;
 }
 
-import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
+import { type ClientAddressEnv, clientAddress } from "../../lib/client-address";
 const clientIp = (c: { req: { raw: Request } }, env: ClientAddressEnv): string =>
   clientAddress(c.req.raw, env) ?? "local";
 

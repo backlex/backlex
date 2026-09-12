@@ -47,7 +47,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 /** The minimum this file needs. Narrower than `Ctx` on purpose: the app-plane
  *  reader (`middleware/session.ts::appSessionOwner`) is handed exactly this
- *  shape by `routes/realtime.ts` and cannot produce a full `Ctx`. */
+ *  shape by `routes/realtime/index.ts` and cannot produce a full `Ctx`. */
 interface EpochCtx {
   db: unknown;
   dialect: "pg" | "sqlite";

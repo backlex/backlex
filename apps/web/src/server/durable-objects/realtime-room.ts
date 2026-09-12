@@ -145,7 +145,7 @@ export class RealtimeRoom {
     if (url.pathname === "/stats") {
       // Read-only diagnostic snapshot. No auth at the DO level — DOs aren't
       // reachable from outside the Worker, so the admin gate runs once at
-      // the route layer (`routes/realtime-admin.ts`) and trusts what the DO
+      // the route layer (`routes/realtime/admin.ts`) and trusts what the DO
       // returns.
       const sockets = this.state.getWebSockets();
       let presenceMembers = 0;

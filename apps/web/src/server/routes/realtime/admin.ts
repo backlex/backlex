@@ -4,17 +4,17 @@ import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { AppBindings } from "../app";
-import type { Env } from "../env";
-import { requireUser } from "../middleware/session";
-import { SECURITY, errorResponses } from "../lib/openapi";
+import type { AppBindings } from "../../app";
+import type { Env } from "../../env";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, errorResponses } from "../../lib/openapi";
 import {
   type ChannelStats,
   getLocalChannelStats,
-} from "../services/events";
-import { topicFor } from "../services/realtime/topic";
-import { isStatelessEdge } from "../lib/runtime";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/events";
+import { topicFor } from "../../services/realtime/topic";
+import { isStatelessEdge } from "../../lib/runtime";
+import { defaultHook } from "../../lib/openapi-router";
 
 /**
  * Read-only diagnostics for the realtime layer. Surfaces per-channel state

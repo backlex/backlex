@@ -188,7 +188,7 @@ export const getLocalChannelStats = (addr: ChannelAddress): ChannelStats => {
  *  Filtered by workspace, because the map holds every workspace's rooms and a
  *  caller is an admin of exactly one.
  *
- *  **No caller today.** `routes/realtime-admin.ts` enumerates from the
+ *  **No caller today.** `routes/realtime/admin.ts` enumerates from the
  *  `collections` table instead, so the comment that used to claim it as this
  *  function's consumer was wrong. Kept because it is the only way to see an
  *  application-owned channel that no table knows about, and corrected here

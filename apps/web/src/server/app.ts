@@ -106,7 +106,7 @@ import { signaturesRoutes } from "./routes/signatures";
 import { bookingPublicRoutes } from "./routes/booking/public";
 import { bookingRoutes } from "./routes/booking";
 import { realtimeRoutes } from "./routes/realtime";
-import { realtimeAdminRoutes } from "./routes/realtime-admin";
+import { realtimeAdminRoutes } from "./routes/realtime/admin";
 import { revisionsRoutes } from "./routes/revisions";
 import {
   permissionsRoutes,
@@ -119,7 +119,7 @@ import { oidcAdminRoutes } from "./routes/oidc-admin";
 import { scimAdminRoutes } from "./routes/scim-admin";
 import { syncHooksRoutes } from "./routes/sync-hooks";
 import { authHooksRoutes } from "./routes/auth-hooks";
-import { realtimeChannelsRoutes } from "./routes/realtime-channels";
+import { realtimeChannelsRoutes } from "./routes/realtime/channels";
 import { rlsRoutes } from "./routes/rls";
 import { s3Routes } from "./routes/s3";
 import { s3CredentialsRoutes } from "./routes/s3-credentials";

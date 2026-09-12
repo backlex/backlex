@@ -29,7 +29,7 @@ export interface RealtimeFilter {
    * Postgres's is locale-aware. Evaluating them with JavaScript's rules made
    * this predicate a SUPERSET of the SQL the REST list ran — so a row could be
    * delivered over a socket that a refetch would not return. Stamped at
-   * subscribe time (`routes/realtime.ts`) and carried in the subscription meta,
+   * subscribe time (`routes/realtime/index.ts`) and carried in the subscription meta,
    * because a Durable Object has no database binding to ask.
    */
   dialect?: "pg" | "sqlite";

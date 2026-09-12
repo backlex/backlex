@@ -8,18 +8,18 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { AppError, MAX_REPLAY_RETENTION_HOURS, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
 import {
   createBroadcastRule,
   deleteBroadcastRule,
   listBroadcastRules,
   updateBroadcastRule,
   type BroadcastRuleInput,
-} from "../services/broadcast";
-import { logActivity } from "../services/activity";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/broadcast";
+import { logActivity } from "../../services/activity";
+import { defaultHook } from "../../lib/openapi-router";
 
 const AccessSchema = z
   .object({

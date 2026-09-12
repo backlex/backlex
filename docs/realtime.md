@@ -271,7 +271,7 @@ never deliver.
 Hono's `streamSSE` exposes `writeSSE` as an async function. Don't call
 it from a synchronous subscriber callback with `void` — the writes get
 batched and the client doesn't see them until the request closes. The
-fix in `routes/realtime.ts` is a queue + wakeable promise: the
+fix in `routes/realtime/index.ts` is a queue + wakeable promise: the
 subscriber callback pushes to a queue, the SSE async loop awaits each
 `writeSSE` explicitly. Don't change this without testing — silent
 non-delivery is the failure mode.

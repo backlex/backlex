@@ -1,7 +1,7 @@
 /**
  * Realtime subscriptions re-resolve WHO is subscribed, on the heartbeat.
  *
- * `routes/realtime.ts` used to gate a subscription exactly once, at subscribe
+ * `routes/realtime/index.ts` used to gate a subscription exactly once, at subscribe
  * time, and freeze the answer into the subscription's `meta`. Every event was
  * then filtered against that frozen `authSubject` — including `$org.id`,
  * `$org.role` and `$user.orgs`, which `packages/db/src/permission.ts` resolves

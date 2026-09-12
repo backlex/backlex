@@ -235,7 +235,7 @@ export interface AppSessionOwner {
  * isolate serving the suspend evicts immediately.
  *
  * EXPORTED (with its liveness-only wrapper {@link appSessionLive}) for
- * `routes/realtime.ts`, which re-asks it on the heartbeat of a held SSE stream.
+ * `routes/realtime/index.ts`, which re-asks it on the heartbeat of a held SSE stream.
  * It has to be this function and not a copy: the read path and the stream
  * disagreeing about whether a session is live is the same two-paths-drift that
  * `services/realtime/filter.ts` exists to prevent for conditions. Note that

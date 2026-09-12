@@ -9,12 +9,12 @@
  */
 import { z } from "zod";
 import { AppError, type AuthSubject } from "@backlex/core";
-import { enforceIpRateLimit } from "../lib/auth-rate-limit";
-import { assertNotDemo } from "./demo";
-import { httpUrl } from "../lib/openapi";
+import { enforceIpRateLimit } from "../../lib/auth-rate-limit";
+import { assertNotDemo } from "../demo";
+import { httpUrl } from "../../lib/openapi";
 import { sendTemplatedPush } from "./push";
 import { sendSmsToUsers } from "./sms";
-import type { Ctx } from "../context";
+import type { Ctx } from "../../context";
 
 /** Per-IP dispatch budgets — the abuse/cost guard (SMS + push cost real money
  *  per message at the provider). Shared by both surfaces via `enforceIpRateLimit`. */

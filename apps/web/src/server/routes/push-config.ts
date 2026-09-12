@@ -8,14 +8,14 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { PUSH_PROVIDER_IDS } from "../lib/push-select";
-import { GLOBAL_PUSH_CONFIG_ID, PUSH_SECRET_KEYS } from "../services/push-config";
+import { GLOBAL_PUSH_CONFIG_ID, PUSH_SECRET_KEYS } from "../services/messaging/push-config";
 import {
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
   tenantKey,
 } from "../services/provider-config";
-import { sendPushToUsers } from "../services/push";
+import { sendPushToUsers } from "../services/messaging/push";
 import { invalidateAllPushCaches, invalidatePushCache } from "../context";
 import { defaultHook } from "../lib/openapi-router";
 

@@ -17,7 +17,7 @@ import {
   SmsSettingsCard,
 } from "../../src/client/admin/pages/settings/messaging-cards";
 import { SMS_PROVIDER_IDS } from "../../src/server/lib/sms-select";
-import { SMS_SECRET_KEYS } from "../../src/server/services/sms-config";
+import { SMS_SECRET_KEYS } from "../../src/server/services/messaging/sms-config";
 import { renderWithProviders } from "./render";
 
 const json = (body: unknown, status = 200) =>

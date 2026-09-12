@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { sendSmsToNumbers } from "../src/server/services/sms";
+import { sendSmsToNumbers } from "../src/server/services/messaging/sms";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import type { FlowRunResult } from "../../../packages/client/src/index";
 

@@ -4,8 +4,8 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { PushAdapter } from "@backlex/core/adapters";
-import { decryptSecret } from "../lib/crypto";
-import { buildPushAdapter, type PushSpec } from "../lib/push-select";
+import { decryptSecret } from "../../lib/crypto";
+import { buildPushAdapter, type PushSpec } from "../../lib/push-select";
 
 /** Tenant id of the instance-wide override row. Mirrors `email_config`. */
 export const GLOBAL_PUSH_CONFIG_ID = "_global";

@@ -8,14 +8,14 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { SMS_PROVIDER_IDS } from "../lib/sms-select";
-import { GLOBAL_SMS_CONFIG_ID, SMS_SECRET_KEYS } from "../services/sms-config";
+import { GLOBAL_SMS_CONFIG_ID, SMS_SECRET_KEYS } from "../services/messaging/sms-config";
 import {
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
   tenantKey,
 } from "../services/provider-config";
-import { sendSmsToUsers } from "../services/sms";
+import { sendSmsToUsers } from "../services/messaging/sms";
 import { invalidateAllSmsCaches, invalidateSmsCache } from "../context";
 import { defaultHook } from "../lib/openapi-router";
 

@@ -72,8 +72,8 @@ import {
 } from "./lib/runtime";
 import { loadPolicy } from "./services/auth-config";
 import { resolveEmailAdapter } from "./services/email-config";
-import { resolvePushAdapter } from "./services/push-config";
-import { resolveSmsAdapter } from "./services/sms-config";
+import { resolvePushAdapter } from "./services/messaging/push-config";
+import { resolveSmsAdapter } from "./services/messaging/sms-config";
 import { publishEvent } from "./services/events";
 import { acceptInviteForUser, hasValidInvite } from "./services/invites";
 import { invalidateUserRoles } from "./services/permissions-cache";

@@ -4,8 +4,8 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { SMSAdapter } from "@backlex/core/adapters";
-import { decryptSecret } from "../lib/crypto";
-import { buildSmsAdapter, type SMSSpec } from "../lib/sms-select";
+import { decryptSecret } from "../../lib/crypto";
+import { buildSmsAdapter, type SMSSpec } from "../../lib/sms-select";
 
 /** Tenant id of the instance-wide override row. Mirrors `push_config`. */
 export const GLOBAL_SMS_CONFIG_ID = "_global";

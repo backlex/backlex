@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import type { PushAdapter, PushMessage } from "@backlex/core/adapters";
-import { sendTemplatedPush } from "../src/server/services/push";
+import { sendTemplatedPush } from "../src/server/services/messaging/push";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const json = (body: unknown, method = "POST"): RequestInit => ({

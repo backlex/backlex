@@ -34,14 +34,14 @@ import { listReadableCollections } from "../services/permissions";
 import { keepAlive, logActivity } from "../services/activity";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { reservedTableReason } from "../services/system-tables";
-import { cascadeSlugRename } from "../services/collection-rename";
+import { cascadeSlugRename } from "../services/collections/rename";
 import {
   getCachedCollections,
   getCachedGroupOrder,
   invalidateTenantCollections,
   setCachedCollections,
   setCachedGroupOrder,
-} from "../services/collections-cache";
+} from "../services/collections/cache";
 import { invalidateTenantPermissions } from "../services/permissions/cache";
 import { countDropImpact, snapshotBeforeDrop } from "../services/backup";
 import { loadCollection } from "../services/items/collection-loader";
@@ -1231,7 +1231,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    * + all metadata (labels, display template, icon/color, flags, kanban
    * config); never copies data. Adopted sources clone into a managed table
    * built from their field definitions. Delegates to
-   * `services/collections.ts::cloneCollection` — the single implementation
+   * `services/collections/index.ts::cloneCollection` — the single implementation
    * shared with GraphQL/SDK/CLI.
    */
   .post("/:slug/clone", ...DDL_GATE, async (c) => {

@@ -25,7 +25,7 @@
  * the answer.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { invalidateTenantCollections } from "../src/server/services/collections-cache";
+import { invalidateTenantCollections } from "../src/server/services/collections/cache";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const json = { "Content-Type": "application/json" };

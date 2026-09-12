@@ -17,7 +17,7 @@
  * is what both cases look like from the table's point of view.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { invalidateTenantCollections } from "../src/server/services/collections-cache";
+import { invalidateTenantCollections } from "../src/server/services/collections/cache";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { buildContext } from "../src/server/context";
 import { restoreBackupById } from "../src/server/services/backup";

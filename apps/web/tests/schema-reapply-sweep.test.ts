@@ -21,7 +21,7 @@ import {
   reapplyAllWorkspaces,
   reapplyWorkspaceSchema,
 } from "../src/server/services/schema-reapply";
-import { invalidateTenantCollections } from "../src/server/services/collections-cache";
+import { invalidateTenantCollections } from "../src/server/services/collections/cache";
 
 const J = { "content-type": "application/json" };
 

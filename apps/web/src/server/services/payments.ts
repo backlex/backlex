@@ -71,7 +71,7 @@ import type { Ctx } from "../context";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
 import { log } from "../lib/log";
 import { createManagedCollection } from "./collections";
-import { invalidateTenantCollections } from "./collections-cache";
+import { invalidateTenantCollections } from "./collections/cache";
 import { loadCollection } from "./items/collection-loader";
 import {
   deletedFilter,

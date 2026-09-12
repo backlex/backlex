@@ -1,5 +1,5 @@
 /**
- * Slug-rename cascade (`services/collection-rename.ts::cascadeSlugRename`),
+ * Slug-rename cascade (`services/collections/rename.ts::cascadeSlugRename`),
  * driven through its real trigger: `PATCH /api/collections/:slug` with a new
  * `slug`. The cascade rewrites the slug everywhere it's stored as data —
  * permissions, revisions, comments, activity, webhook event patterns,

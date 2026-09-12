@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { __collectionsCacheSize } from "../src/server/services/collections-cache";
+import { __collectionsCacheSize } from "../src/server/services/collections/cache";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**

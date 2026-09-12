@@ -9,7 +9,7 @@ import type { Ctx } from "../../context";
 import {
   getCachedCollection,
   setCachedCollection,
-} from "../collections-cache";
+} from "../collections/cache";
 import { unreadableTableReason } from "../system-tables";
 
 export interface CollectionRow {

@@ -40,7 +40,7 @@ import {
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, desc, eq } from "drizzle-orm";
-import { invalidateTenantCollections } from "./collections-cache";
+import { invalidateTenantCollections } from "./collections/cache";
 import { CONFIG_RESOURCES, configResource, loadLiveConfig } from "./config-resources";
 import { invalidateTenantPermissions } from "./permissions/cache";
 import { seedOwnerScopedPermissions } from "./seed";

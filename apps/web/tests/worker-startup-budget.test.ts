@@ -335,7 +335,7 @@ describe("worker startup budget", () => {
     // It is eager through `routes/db-admin.ts`, not through the scheduler —
     // `services/scheduler.ts` is off the startup path (asserted three tests up)
     // and its import of this module costs nothing. What it pulls in,
-    // `@backlex/db`'s `applyCollection` and `services/collections-cache`, the
+    // `@backlex/db`'s `applyCollection` and `services/collections/cache`, the
     // graph already reached, so there is no seam a dynamic import would bite
     // on.
     //

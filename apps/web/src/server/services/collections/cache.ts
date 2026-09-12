@@ -21,8 +21,8 @@
  *
  * @module
  */
-import type { CollectionRow } from "./items/collection-loader";
-import type { RollupDependent } from "./items/rollup";
+import type { CollectionRow } from "../items/collection-loader";
+import type { RollupDependent } from "../items/rollup";
 
 /*
  * A second cache below holds the per-`(tenant, slug)` *single* collection row

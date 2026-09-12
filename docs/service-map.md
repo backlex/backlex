@@ -197,7 +197,7 @@ guides; this list is everything else.
   whitelist (i18n defaults, timezone, …); `workspace-config` is
   per-tenant overrides for runtime knobs.
 - **Roles admin + collection rename** (`routes/roles.ts`,
-  `services/collection-rename.ts`) — roles admin is the editor for
+  `services/collections/rename.ts`) — roles admin is the editor for
   the permission DSL. `collection-rename` is the only safe path to
   rename a collection (renames the physical table + updates
   permission rows in one transaction).

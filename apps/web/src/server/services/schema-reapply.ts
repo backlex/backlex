@@ -34,7 +34,7 @@ import { eq } from "drizzle-orm";
 import { applyCollection, type FieldDef } from "@backlex/db";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { invalidateTenantCollections } from "./collections-cache";
+import { invalidateTenantCollections } from "./collections/cache";
 
 export interface ReapplyResult {
   applied: number;

@@ -288,7 +288,9 @@ for (const file of tracked) {
       : posix.dirname(to) === posix.dirname(from)
         ? posix.basename(to)
         : qualified;
-    const next = !short.includes("/") && (basenamesAfter.get(short) ?? 0) > 1 ? qualified : short;
+    // Prose never climbs: `../embedding/cloud.ts` in a comment reads worse than `embedding/cloud.ts`.
+    const ambiguous = !short.includes("/") && (basenamesAfter.get(short) ?? 0) > 1;
+    const next = ambiguous || short.startsWith("../") ? qualified : short;
     for (const m of text.matchAll(new RegExp(`(?<![\\w./-])${escapeRe(name)}(?![\\w-])`, "g"))) {
       const start = m.index ?? 0;
       const end = start + name.length;

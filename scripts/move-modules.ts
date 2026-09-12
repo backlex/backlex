@@ -277,6 +277,8 @@ for (const file of tracked) {
   // it from anywhere else is reported instead.
   for (const [from, to] of moves) {
     const name = posix.basename(from);
+    // A file that keeps its name is still named correctly by every bare mention.
+    if (name === posix.basename(to)) continue;
     const sibling = posix.dirname(file) === posix.dirname(from);
     if (!sibling && basenames.get(name) !== 1) continue;
     // Prose, not a specifier: a name that is not unique in the new tree keeps its
@@ -327,8 +329,9 @@ for (const file of tracked) {
   } catch {
     continue;
   }
-  for (const from of moves.keys()) {
+  for (const [from, to] of moves) {
     const name = posix.basename(from);
+    if (name === posix.basename(to)) continue;
     for (const m of text.matchAll(new RegExp(`(?<![\\w./-])${escapeRe(name)}(?![\\w-])`, "g"))) {
       leftovers.push(`  ${newPath(file)}:${lineOf(text, m.index ?? 0)} mentions ${name}`);
     }

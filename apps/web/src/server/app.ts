@@ -147,7 +147,7 @@ import { demoRoutes } from "./routes/demo";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { tenantsRoutes } from "./routes/tenants";
 import { vectorRoutes } from "./routes/vector";
-import { webhookTriggerRoutes } from "./routes/webhook-trigger";
+import { webhookTriggerRoutes } from "./routes/webhooks/trigger";
 import { webhooksRoutes } from "./routes/webhooks";
 import { workspaceConfigRoutes } from "./routes/workspace-config";
 import {

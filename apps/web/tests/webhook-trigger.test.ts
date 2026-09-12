@@ -3,7 +3,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
  * Public webhook trigger — `POST /api/webhook/:flowId` (routes/
- * webhook-trigger.ts). The endpoint is deliberately unauthenticated: the
+ * webhooks/trigger.ts). The endpoint is deliberately unauthenticated: the
  * cryptographically-random flow id IS the secret (there is no additional
  * token/signature check today — the route comment defers that to a future
  * `webhook_token` column). Pins:

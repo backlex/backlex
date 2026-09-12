@@ -561,7 +561,7 @@ export const listDeliveries = async (
 };
 
 // ── Shared surface helpers ───────────────────────────────────────────────────
-// REST (routes/webhooks.ts) and GraphQL (services/graphql/webhooks.ts) both
+// REST (routes/webhooks/index.ts) and GraphQL (services/graphql/webhooks.ts) both
 // call these so tenant scoping + the breaker-reset rule live in one place.
 // Activity logging stays surface-specific (REST logs ip/UA via logActivity;
 // GraphQL uses recordActivity).

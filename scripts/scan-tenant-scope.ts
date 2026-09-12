@@ -345,7 +345,7 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/routes/phone/numbers.ts", symbol: "DELETE /{id}", reason: "Deletes one of the caller's own numbers, guarded on (id, auth.userId)." },
 
   // ── The lookup that ESTABLISHES the workspace ──────────────────────────
-  { file: "apps/web/src/server/routes/webhook-trigger.ts", symbol: "tableFor", reason: "Unauthenticated inbound webhook: the flow id in the URL is resolved first, and the flow row is what tells the request which workspace it runs in. The file's own header says so." },
+  { file: "apps/web/src/server/routes/webhooks/trigger.ts", symbol: "tableFor", reason: "Unauthenticated inbound webhook: the flow id in the URL is resolved first, and the flow row is what tells the request which workspace it runs in. The file's own header says so." },
   { file: "apps/web/src/server/services/analytics/index.ts", symbol: "getSiteById", reason: "The public collect endpoint resolves the site id a browser sent; the row it returns carries tenantId, which is how the ingest is attributed. There is no workspace to scope by before this answers." },
   { file: "apps/web/src/server/services/booking/index.ts", symbol: "resolveResourceToken", reason: "Resolves a public booking page's token hash to its resource row, which supplies the workspace." },
   { file: "apps/web/src/server/services/booking/index.ts", symbol: "resolveManageToken", reason: "Resolves a customer's manage-link token hash to their booking row. The token is the whole grant — see the file header." },

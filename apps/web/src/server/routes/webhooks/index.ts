@@ -1,8 +1,8 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import type { AppBindings } from "../app";
-import { requireUser } from "../middleware/session";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
 import {
   createWebhook,
   deleteWebhook,
@@ -11,11 +11,11 @@ import {
   retryDelivery,
   testWebhook,
   updateWebhook,
-} from "../services/webhooks";
-import { logActivity } from "../services/activity";
-import { parsePagination } from "../lib/pagination";
-import { SECURITY, OkSchema, errorResponses, httpUrl } from "../lib/openapi";
-import { defaultHook } from "../lib/openapi-router";
+} from "../../services/webhooks";
+import { logActivity } from "../../services/activity";
+import { parsePagination } from "../../lib/pagination";
+import { SECURITY, OkSchema, errorResponses, httpUrl } from "../../lib/openapi";
+import { defaultHook } from "../../lib/openapi-router";
 
 const WebhookInput = z
   .object({

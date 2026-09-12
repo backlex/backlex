@@ -54,7 +54,7 @@ guides; this list is everything else.
 
 ## Automation
 
-- **Webhooks** (`routes/webhooks.ts`, `routes/webhook-trigger.ts`,
+- **Webhooks** (`routes/webhooks/index.ts`, `routes/webhooks/trigger.ts`,
   `services/webhooks.ts`) — outbound delivery with retry. Each delivery is
   signed three ways: legacy `X-Backlex-Signature` (HMAC of body) plus the
   replay-safe `X-Backlex-Signature-V2` over `{timestamp}.{body}` with

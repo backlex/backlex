@@ -2,7 +2,7 @@
  * The admin form's copy of the site-input rules has to answer the way the
  * server does — and the obvious implementation does not.
  *
- * `services/analytics.ts` refuses a domain, an exclusion pattern or an ignored
+ * `services/analytics/index.ts` refuses a domain, an exclusion pattern or an ignored
  * address that cannot match, and the form mirrors those predicates so it can
  * name the bad entry before the request. A mirror that disagrees is worse than
  * no mirror: it either blocks a value the server would take, or lets one

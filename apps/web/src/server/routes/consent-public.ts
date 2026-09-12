@@ -48,7 +48,7 @@ import { rateLimitOk } from "../lib/rate-limit";
 import { setMeterTenant } from "../lib/usage-meter";
 import { requestMeta } from "../services/activity";
 import { assertWorkspaceRequestQuota } from "../lib/usage-meter";
-import { countryFromRequest } from "../services/analytics-enrich";
+import { countryFromRequest } from "../services/analytics/enrich";
 import {
   CONSENT_CONFIG_OFF,
   OPTIONAL_CATEGORIES,

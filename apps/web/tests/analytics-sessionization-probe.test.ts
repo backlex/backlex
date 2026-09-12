@@ -17,7 +17,7 @@
  * in `analytics-pg.test.ts`, because the gap comparison is the one place this
  * touches the dialect — and it does so through the EXISTING `windowSql`
  * spelling (pg adds an `interval`, SQLite adds an integer), so phase 4 adds no
- * new dialect branch and the module invariant at `services/analytics.ts:16-27`
+ * new dialect branch and the module invariant at `services/analytics/index.ts:16-27`
  * survives.
  *
  * ── Probe 2: the D1 bound-parameter budget ─────────────────────────────
@@ -93,7 +93,7 @@ afterAll(() => h?.cleanup());
 
 /**
  * The gap predicate, spelled per dialect exactly the way `windowSql` already
- * does it in `services/analytics.ts` — pg cannot infer a bound parameter's
+ * does it in `services/analytics/index.ts` — pg cannot infer a bound parameter's
  * type inside interval arithmetic, so the millisecond count is inlined (it is
  * a server-side constant here, never user input).
  */
@@ -174,7 +174,7 @@ test("the widened event row still fits a useful D1 INSERT chunk", async () => {
   // schema rather than hardcoding it is the whole point: this test has to move
   // when someone adds a column, or it is not a guard.
   const columns = Object.keys(getTableColumns(sqliteSchema.analyticsEvents)).length;
-  const PARAM_BUDGET = 90; // must track services/analytics.ts
+  const PARAM_BUDGET = 90; // must track services/analytics/index.ts
   const perStmt = Math.max(1, Math.floor(PARAM_BUDGET / columns));
 
   // At 26 columns this is 3 rows per statement — a full 500-event batch is

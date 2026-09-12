@@ -1,7 +1,7 @@
 // What a website's domain, exclusion patterns and ignored addresses have to
 // look like to do anything.
 //
-// The server is the authority — `services/analytics.ts` refuses the same three
+// The server is the authority — `services/analytics/index.ts` refuses the same three
 // shapes, and REST, GraphQL, the SDK and the CLI all go through it. This exists
 // so the form can say WHICH entry is wrong while it is still on screen, rather
 // than closing optimistically and surfacing a 422 over a page the operator has

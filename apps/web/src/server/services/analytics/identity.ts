@@ -27,10 +27,10 @@
  *    splits in two.
  *  - Rotating `ANALYTICS_SALT` resets every visitor identity at once.
  *  - Cohort retention and multi-day funnels cannot use these ids — see
- *    `durableOnly()` in `analytics.ts`.
+ *    `durableOnly()` in `analytics/index.ts`.
  */
-import type { Env } from "../env";
-import { utcDay } from "./analytics";
+import type { Env } from "../../env";
+import { utcDay } from "./index";
 
 /** `sha256` → lowercase hex. */
 const sha256Hex = async (input: string): Promise<string> => {

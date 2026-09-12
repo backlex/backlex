@@ -7,7 +7,7 @@
  * kinds, which exist precisely to run operator JavaScript and are gated
  * per-site for exactly that reason.
  *
- * ── Why this file may use backslashes and `analytics-tracker.ts` may not ──
+ * ── Why this file may use backslashes and `analytics/tracker.ts` may not ──
  * That one is a plain template literal, where a backslash is eaten before the
  * browser ever sees it — so the tag avoids regexes entirely. These runtime
  * modules are raw literals, which preserve backslashes, so real regexes are

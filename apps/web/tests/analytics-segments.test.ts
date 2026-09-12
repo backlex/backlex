@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { sql } from "drizzle-orm";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { buildContext } from "../src/server/context";
-import { parseSegment } from "../src/server/services/analytics-segments";
+import { parseSegment } from "../src/server/services/analytics/segments";
 import {
   analyticsOverview,
   analyticsSessions,

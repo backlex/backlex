@@ -31,7 +31,7 @@ import {
   deletePolicy,
 } from "../src/server/services/consent";
 import { CONSENT_CATEGORIES as TAG_MANAGER_CATEGORIES } from "../src/server/services/tag-manager/templates";
-import { TRACKER_JS } from "../src/server/services/analytics-tracker";
+import { TRACKER_JS } from "../src/server/services/analytics/tracker";
 
 let h: TestHarness;
 let db: never;

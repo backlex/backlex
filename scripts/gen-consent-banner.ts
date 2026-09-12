@@ -17,7 +17,7 @@
  * times already.
  *
  * ── Why `JSON.stringify` and not a template literal ───────────────────────
- * `analytics-tracker.ts` holds its browser source in a template literal and
+ * `analytics/tracker.ts` holds its browser source in a template literal and
  * pays for it with a rule that the source contain no backtick, no `${` and no
  * backslash — enforced by a test, because a backslash there is eaten before
  * the browser sees it. A MINIFIED bundle contains all three by construction.

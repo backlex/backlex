@@ -251,7 +251,7 @@ const listOrder = (collection: OrderCollection, positionCol: string): SQL => {
 export const MAX_ORDERED_SCOPE = 10_000;
 
 /** Bound-parameter budget per statement — D1 caps at ~100. Same constant and
- *  the same reason as `services/analytics.ts`. */
+ *  the same reason as `services/analytics/index.ts`. */
 const PARAM_BUDGET = 90;
 
 /**

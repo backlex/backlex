@@ -30,19 +30,19 @@
  */
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
-import { classifyChannel, sourceMediumLabel } from "./analytics-channels";
-import { parseUtm } from "./analytics-enrich";
+import { classifyChannel, sourceMediumLabel } from "./channels";
+import { parseUtm } from "./enrich";
 import {
   compileSegment,
   compileSegmentRaw,
   parseSegment,
   type SegmentNode,
-} from "./analytics-segments";
+} from "./segments";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { hashToken } from "./shared-links";
-import { deletePolicyForDeletedSite } from "./consent";
-import { deleteSiteRecords } from "./consent-records";
+import { hashToken } from "../shared-links";
+import { deletePolicyForDeletedSite } from "../consent";
+import { deleteSiteRecords } from "../consent-records";
 
 export interface AnalyticsDbCtx {
   db: unknown;

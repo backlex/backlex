@@ -388,7 +388,7 @@ to the list would leave every historical visit from it reading as Referral
 forever. Deriving it means the whole history reclassifies the moment the rules
 change, which is what anyone comparing quarters actually wants.
 
-The rules themselves live in `services/analytics-channels.ts` as pure
+The rules themselves live in `services/analytics/channels.ts` as pure
 functions with no database, so they are cheap to test and cheap to adjust. An
 explicit paid medium beats whatever the referrer looks like — an ad click and
 an organic result share `google.com` and differ only in the tag, and getting

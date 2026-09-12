@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { TAG_RUNTIME_JS } from "../src/server/services/tag-manager/runtime";
-import { TRACKER_JS } from "../src/server/services/analytics-tracker";
+import { TRACKER_JS } from "../src/server/services/analytics/tracker";
 import { CONSENT_BANNER_JS } from "../src/server/services/consent-banner-bundle";
 import { TAG_TEMPLATE_IDS } from "../src/server/services/tag-manager/templates";
 
@@ -33,7 +33,7 @@ describe("the escaping rules that keep a JS-as-string module survivable", () => 
   });
 
   test("a regex survives with its backslash intact", () => {
-    // The POSITIVE half, and the one that matters. `analytics-tracker.ts` bans
+    // The POSITIVE half, and the one that matters. `analytics/tracker.ts` bans
     // backslashes because a plain template literal eats them, so a regex there
     // ships subtly wrong. These modules are raw literals precisely to lift that
     // ban — asserting the ban is lifted is what proves the lift worked.

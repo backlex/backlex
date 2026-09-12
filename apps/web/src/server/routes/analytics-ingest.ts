@@ -31,7 +31,7 @@ import { defaultHook } from "../lib/openapi-router";
 import { rateLimitOk } from "../lib/rate-limit";
 import { setMeterTenant } from "../lib/usage-meter";
 import { requestMeta } from "../services/activity";
-import { enrichmentFromRequest } from "../services/analytics-enrich";
+import { enrichmentFromRequest } from "../services/analytics/enrich";
 import {
   MAX_BATCH,
   recordErrors,

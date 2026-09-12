@@ -39,7 +39,7 @@
  * `navigator.sendBeacon` rather than `fetch`.
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { TRACKER_JS } from "../src/server/services/analytics-tracker";
+import { TRACKER_JS } from "../src/server/services/analytics/tracker";
 import { TAG_RUNTIME_JS } from "../src/server/services/tag-manager/runtime";
 
 const w = globalThis as unknown as Record<string, any>;

@@ -16,7 +16,7 @@
  *   - `ignoredIps` is an exact `includes` against the request IP, so a label or
  *     a CIDR range never matches anything.
  *
- * The refusals live in `services/analytics.ts`, which is the single writer
+ * The refusals live in `services/analytics/index.ts`, which is the single writer
  * behind REST and GraphQL alike, so both surfaces inherit them. The admin form
  * mirrors the same predicates in `client/admin/lib/site-input.ts` to say which
  * entry is wrong before the request — these tests pin the authority, not the

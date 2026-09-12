@@ -18,7 +18,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
-import { TRACKER_JS } from "../src/server/services/analytics-tracker";
+import { TRACKER_JS } from "../src/server/services/analytics/tracker";
 
 const UA_DESKTOP =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0";

@@ -241,7 +241,7 @@ const clip = (v: string | null): string | null => {
  * absolute URL, because the SDK sends the former and the phase-2 tag sends the
  * latter. Only these three are extracted: `utm_term` and `utm_content` stay in
  * `props`, because no report groups by them and every column is paid for on
- * every write (see `PARAM_BUDGET` in `analytics.ts`).
+ * every write (see `PARAM_BUDGET` in `analytics/index.ts`).
  */
 export const parseUtm = (
   pathOrUrl: string | null | undefined,

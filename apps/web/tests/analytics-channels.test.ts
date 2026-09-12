@@ -12,7 +12,7 @@ import {
   classifyChannel,
   referrerHost,
   sourceMediumLabel,
-} from "../src/server/services/analytics-channels";
+} from "../src/server/services/analytics/channels";
 import {
   analyticsChannels,
   getSiteById,

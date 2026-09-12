@@ -3,7 +3,7 @@
  *
  * ── What this file is, and what it is not ─────────────────────────────────
  * A trigger condition is operator-authored JSON that decides whether a tag
- * fires. It is close kin to `analytics-segments.ts` and copies two things from
+ * fires. It is close kin to `analytics/segments.ts` and copies two things from
  * it deliberately — the closed field allowlist, and the caps — but **not its
  * security argument**, because the two compile to different places.
  *

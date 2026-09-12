@@ -3732,7 +3732,7 @@ export const analyticsEvents = pgTable(
     /** Campaign tagging, read off the landing URL's query string. `utm_term`
      *  and `utm_content` stay in `props`: these three are columns because
      *  reports GROUP BY them, and every added column costs D1 write throughput
-     *  (see `PARAM_BUDGET` in services/analytics.ts). */
+     *  (see `PARAM_BUDGET` in services/analytics/index.ts). */
     utmSource: text("utm_source"),
     utmMedium: text("utm_medium"),
     utmCampaign: text("utm_campaign"),
@@ -3840,7 +3840,7 @@ export const analyticsSites = pgTable(
  * `definition` is an operator-authored predicate tree, and it is the highest-
  * severity input in the analytics feature: it ends up inside a WHERE clause on
  * every report it is applied to. It is validated and compiled by
- * `services/analytics-segments.ts`, which binds every value and looks field
+ * `services/analytics/segments.ts`, which binds every value and looks field
  * names up in a closed allowlist — the blob stored here is never trusted on
  * read, only re-parsed.
  */

@@ -261,7 +261,7 @@ describe("repeat visits are cheap", () => {
     expect(etag).toBeTruthy();
 
     const { weakETag, weakHash } = await import("../src/server/lib/etag");
-    const { TRACKER_JS } = await import("../src/server/services/analytics-tracker");
+    const { TRACKER_JS } = await import("../src/server/services/analytics/tracker");
     const { TAG_RUNTIME_JS } = await import("../src/server/services/tag-manager/runtime");
     const { CONSENT_BANNER_JS } = await import("../src/server/services/consent-banner-bundle");
     const published = await getPublishedArtifact(db, SITE);

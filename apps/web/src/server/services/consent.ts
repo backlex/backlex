@@ -716,7 +716,7 @@ export const listConsentVersions = async (
  * makes and the lifecycle call the analytics service makes cannot be confused
  * for each other.
  *
- * @internal Called from `services/analytics.ts::deleteSite`.
+ * @internal Called from `services/analytics/index.ts::deleteSite`.
  */
 export const deletePolicyForDeletedSite = async (
   ctx: ConsentDbCtx,
@@ -731,7 +731,7 @@ export const deletePolicyForDeletedSite = async (
   // no foreign key to do this — see the table's note — so leaving it out would
   // strand every version row for a site that no longer exists, invisibly and
   // forever. The visitor decisions themselves are removed by the caller, which
-  // owns both tables' lifecycle; see `services/analytics.ts::deleteSite`.
+  // owns both tables' lifecycle; see `services/analytics/index.ts::deleteSite`.
   await (ctx.db as any).delete(v).where(eq(v.siteId, siteId));
   invalidateConsentConfig(siteId);
   invalidateContainer(siteId);

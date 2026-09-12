@@ -465,7 +465,7 @@ export const listOrgs = async (
     // bun:sqlite — which is what the two tests covering this run on. The
     // established shape for the same job is a dialect-branched position
     // function with a plain bound value; see
-    // `services/analytics-segments.ts::containsExpr`, three files over.
+    // `services/analytics/segments.ts::containsExpr`, three files over.
     const needle = opts.q.toLowerCase();
     const contains = (col: typeof t.orgs.name) =>
       ctx.dialect === "pg"

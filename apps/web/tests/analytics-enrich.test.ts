@@ -18,7 +18,7 @@ import {
   countryFromRequest,
   parseUserAgent,
   parseUtm,
-} from "../src/server/services/analytics-enrich";
+} from "../src/server/services/analytics/enrich";
 
 const UA = {
   iphoneSafari:

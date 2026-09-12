@@ -268,7 +268,7 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   // tenant is the answer.
   // ---------------------------------------------------------------------
   { file: "apps/web/src/server/middleware/session.ts", symbol: "findAppSession", reason: "Resolves the opaque app-session bearer to its row by token, joined to its user. The row's own tenantId is what the request then adopts; there is no tenant to filter by until this has answered." },
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "resolveIngestKey", reason: "Answers which workspace owns a public analytics ingest key. Reads the one settings row per workspace and compares hashes in JS; the tenant is the RESULT, so filtering by it would be circular." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "resolveIngestKey", reason: "Answers which workspace owns a public analytics ingest key. Reads the one settings row per workspace and compares hashes in JS; the tenant is the RESULT, so filtering by it would be circular." },
   { file: "apps/web/src/server/services/consent.ts", symbol: "getPublishedConsentConfig", reason: "Public cookie-banner config for a site id that is itself the public identifier, joined to the site so a deleted site stops answering. The tenantId is projected for metering, not for filtering." },
   { file: "apps/web/src/server/services/consent.ts", symbol: "getTagConsentSettings", reason: "Same public site-id lookup as getPublishedConsentConfig. Its own comment explains the projected tenantId: the container route meters the workspace that OWNS the site rather than whichever one tenant middleware resolved." },
   { file: "apps/web/src/server/services/schema-versions.ts", symbol: "runScheduledSnapshots", reason: "A cron that sweeps every workspace which opted into a snapshot cadence. Scanning all tenants is the job; each row's own tenantId is then used to load and act on that workspace alone." },
@@ -346,13 +346,13 @@ export const ALLOWLIST: readonly AllowEntry[] = [
 
   // ── The lookup that ESTABLISHES the workspace ──────────────────────────
   { file: "apps/web/src/server/routes/webhook-trigger.ts", symbol: "tableFor", reason: "Unauthenticated inbound webhook: the flow id in the URL is resolved first, and the flow row is what tells the request which workspace it runs in. The file's own header says so." },
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "getSiteById", reason: "The public collect endpoint resolves the site id a browser sent; the row it returns carries tenantId, which is how the ingest is attributed. There is no workspace to scope by before this answers." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "getSiteById", reason: "The public collect endpoint resolves the site id a browser sent; the row it returns carries tenantId, which is how the ingest is attributed. There is no workspace to scope by before this answers." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "resolveResourceToken", reason: "Resolves a public booking page's token hash to its resource row, which supplies the workspace." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "resolveManageToken", reason: "Resolves a customer's manage-link token hash to their booking row. The token is the whole grant — see the file header." },
 
   // ── More instance-wide maintenance, and rows just written ──────────────
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "pruneAnalyticsEvents", reason: "Retention sweep over analytics events, bounded by ts." },
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "pruneErrorEvents", reason: "Retention sweep over error events, and the group rows left with no surviving occurrence. Bounded by ts / lastSeen." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "pruneAnalyticsEvents", reason: "Retention sweep over analytics events, bounded by ts." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "pruneErrorEvents", reason: "Retention sweep over error events, and the group rows left with no surviving occurrence. Bounded by ts / lastSeen." },
   { file: "apps/web/src/server/services/extensions.ts", symbol: "listCronExtensionHooks", reason: "The cron tick has to see every enabled extension with a cron hook; each extension row carries its own tenantId." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "createBooking", reason: "Reads back the booking row it just inserted, by the id it just minted, to return the stored shape." },
   { file: "apps/web/src/server/services/booking.ts", symbol: "cancelBooking", reason: "Compare-and-set on the ResolvedBooking it was handed, guarded on the current status so two racing cancellations produce one cancellation." },

@@ -1,6 +1,6 @@
 /**
  * Third-party issuer admin CRUD. Admin-only, scoped to the active workspace.
- * Mounted at `/api/admin/third-party-auth`. Shape mirrors `routes/saml-admin.ts`.
+ * Mounted at `/api/admin/third-party-auth`. Shape mirrors `routes/sso/saml-admin.ts`.
  *
  * Endpoints:
  *   - `GET    /providers`          — list

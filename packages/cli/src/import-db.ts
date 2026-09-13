@@ -747,7 +747,7 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
   }
 };
 
-// ── Server-side runs (wrap /api/admin/migrate — services/migrate.ts) ──────
+// ── Server-side runs (wrap /api/admin/migrate — services/migrate/index.ts) ──────
 
 const fail = (what: string, res: { status: number; json: any }): never =>
   die(`${what}: ${res.status} ${JSON.stringify(res.json?.error ?? res.json)}`);

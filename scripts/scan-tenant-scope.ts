@@ -169,17 +169,17 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/revisions.ts", symbol: "pruneOldRevisions", reason: "Retention sweep over revision history, bounded by createdAt." },
   { file: "apps/web/src/server/services/traces.ts", symbol: "pruneOldSpans", reason: "Retention sweep over trace spans, bounded by createdAt." },
   { file: "apps/web/src/server/services/broadcast.ts", symbol: "pruneBroadcastMessages", reason: "Retention sweep over channel history, bounded by day." },
-  { file: "apps/web/src/server/services/consent-records.ts", symbol: "pruneConsentRecords", reason: "Retention sweep over consent records, bounded by createdAt." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "sweepStaleFormDrafts", reason: "Retention sweep over abandoned form drafts, bounded by updatedAt." },
+  { file: "apps/web/src/server/services/consent/records.ts", symbol: "pruneConsentRecords", reason: "Retention sweep over consent records, bounded by createdAt." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "sweepStaleFormDrafts", reason: "Retention sweep over abandoned form drafts, bounded by updatedAt." },
   { file: "apps/web/src/server/services/uploads.ts", symbol: "sweepExpiredUploads", reason: "Aborts pending uploads past expiresAt. Cron-driven; no request tenant." },
-  { file: "apps/web/src/server/services/flow-schedules.ts", symbol: "pruneScheduleFires", reason: "Retention sweep over schedule fire records, bounded by fireAt." },
-  { file: "apps/web/src/server/services/flow-schedules.ts", symbol: "listScheduleFlows", reason: "The cron tick has to see every active scheduled flow in the database to know which are due." },
+  { file: "apps/web/src/server/services/flows/schedules.ts", symbol: "pruneScheduleFires", reason: "Retention sweep over schedule fire records, bounded by fireAt." },
+  { file: "apps/web/src/server/services/flows/schedules.ts", symbol: "listScheduleFlows", reason: "The cron tick has to see every active scheduled flow in the database to know which are due." },
   { file: "apps/web/src/server/services/scheduler.ts", symbol: "cronTick", reason: "Loads every cron-triggered function in the database. This IS the scheduler; a tenant predicate would need a workspace nobody supplied." },
   { file: "apps/web/src/server/services/scheduled-tasks.ts", symbol: "claimDueTasks", reason: "Claims due tasks across the database; each claimed row carries its own tenantId, which the runner then uses." },
   { file: "apps/web/src/server/services/scheduled-tasks.ts", symbol: "deleteTask", reason: "Deletes a task by the id claimDueTasks just returned." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "claimDueJobs", reason: "The queue worker claims due jobs across the database; each job row carries the tenantId the handler then runs under." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "sweep", reason: "Retention sweep inside pruneFinishedJobs, bounded by status + updatedAt." },
-  { file: "apps/web/src/server/services/kpi-alerts.ts", symbol: "runKpiAlerts", reason: "Evaluates every KPI with an alert operator set; the alert then fires into the KPI row's own workspace." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "claimDueJobs", reason: "The queue worker claims due jobs across the database; each job row carries the tenantId the handler then runs under." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "sweep", reason: "Retention sweep inside pruneFinishedJobs, bounded by status + updatedAt." },
+  { file: "apps/web/src/server/services/kpis/alerts.ts", symbol: "runKpiAlerts", reason: "Evaluates every KPI with an alert operator set; the alert then fires into the KPI row's own workspace." },
   { file: "apps/web/src/server/services/cdc.ts", symbol: "processCdcSinks", reason: "Round-robins every enabled CDC sink in the database; each sink row carries its tenantId." },
   { file: "apps/web/src/server/services/items/scheduled-publish.ts", symbol: "publishDueItems", reason: "Cron: finds every versioned collection with scheduled publishes due. Each collection row carries its tenantId." },
   { file: "apps/web/src/server/services/items/scheduled-publish.ts", symbol: "unpublishDueItems", reason: "Cron twin of publishDueItems: every versioned collection with an unpublish due, each row carrying its own tenantId." },
@@ -193,17 +193,17 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   // need an answer the call does not have yet.
   { file: "apps/web/src/server/services/api-keys.ts", symbol: "findApiKey", reason: "Resolves a pak_ key by its hash. This is how the request's workspace is determined in the first place." },
   { file: "apps/web/src/server/services/s3/credentials.ts", symbol: "resolveS3Credential", reason: "Resolves an SigV4 access key id to its credential row, which carries the workspace the S3 request runs in." },
-  { file: "apps/web/src/server/services/forms.ts", symbol: "resolveFormToken", reason: "Resolves a public form's token hash; the row it returns is what tells the hosted form which workspace it belongs to." },
+  { file: "apps/web/src/server/services/forms/index.ts", symbol: "resolveFormToken", reason: "Resolves a public form's token hash; the row it returns is what tells the hosted form which workspace it belongs to." },
   { file: "apps/web/src/server/services/dashboards.ts", symbol: "resolveEmbedToken", reason: "Resolves a dashboard embed token hash; the row carries the workspace the embed renders for." },
   { file: "apps/web/src/server/services/shared-links.ts", symbol: "resolveSharedLink", reason: "Resolves a shared-record link by token hash; the token is the whole grant." },
   { file: "apps/web/src/server/services/approvals.ts", symbol: "resolveByToken", reason: "Reads the request row an approver's emailed token already resolved to." },
   { file: "apps/web/src/server/services/signatures.ts", symbol: "resolveSignerToken", reason: "Reads the signature request a signer's token already resolved to." },
-  { file: "apps/web/src/server/services/integration-webhooks.ts", symbol: "findByToken", reason: "Resolves an inbound webhook token to its sync row, which carries the workspace to write into." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "checkFormInvite", reason: "Resolves an invite by token hash, additionally narrowed to the form the request named." },
+  { file: "apps/web/src/server/services/integrations/webhooks.ts", symbol: "findByToken", reason: "Resolves an inbound webhook token to its sync row, which carries the workspace to write into." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "checkFormInvite", reason: "Resolves an invite by token hash, additionally narrowed to the form the request named." },
   { file: "apps/web/src/server/services/invites.ts", symbol: "findInviteByToken", reason: "Resolves a workspace invite by its token (hashed, plus the legacy plaintext column). An invitee has no workspace until this call answers." },
   { file: "apps/web/src/server/routes/tenant-auth.ts", symbol: "revokeAppSession", reason: "Deletes an app-plane session by its bearer token. Holding the token is the authorisation." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "loadFormDraft", reason: "Keyed on (formId, keyHash) — the draft key is a secret held by the submitting browser." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "deleteFormDraft", reason: "Keyed on (formId, keyHash), same grant as loadFormDraft." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "loadFormDraft", reason: "Keyed on (formId, keyHash) — the draft key is a secret held by the submitting browser." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "deleteFormDraft", reason: "Keyed on (formId, keyHash), same grant as loadFormDraft." },
   { file: "apps/web/src/server/lib/third-party-jwt.ts", symbol: "loadProviderByIssuer", reason: "Maps a JWT `iss` to the provider row that trusts it, and the row supplies the workspace. NOTE: with limit(1), two workspaces trusting the SAME issuer resolve to whichever row comes back first — a registration-time uniqueness question, not a missing predicate." },
 
   // ── Reads back a row it has just written ────────────────────────────────
@@ -219,9 +219,9 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/backup.ts", symbol: "recordAndRunBackup", reason: "Marks the backup row it created in this same call, by the id it was handed with the tenantId beside it." },
   { file: "apps/web/src/server/services/backup.ts", symbol: "startManualBackup", reason: "Re-reads the row it just inserted for this workspace, by that row's id." },
   { file: "apps/web/src/server/services/backup.ts", symbol: "getBackupScoped", reason: "Reads by id, then compares the row's tenantId to the caller's in application code before returning it. The check exists; it is simply not in the SQL." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "claimJobById", reason: "Compare-and-set on (id, status) after a scoped read; the status guard is what makes the claim exclusive." },
-  { file: "apps/web/src/server/services/jobs.ts", symbol: "runJob", reason: "Writes the outcome of the job row it was handed, by that row's id. The row came from claimDueJobs / claimJobById." },
-  { file: "apps/web/src/server/services/job-progress.ts", symbol: "reportJobProgress", reason: "Writes progress for the job the worker currently holds, by that job's id." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "claimJobById", reason: "Compare-and-set on (id, status) after a scoped read; the status guard is what makes the claim exclusive." },
+  { file: "apps/web/src/server/services/jobs/index.ts", symbol: "runJob", reason: "Writes the outcome of the job row it was handed, by that row's id. The row came from claimDueJobs / claimJobById." },
+  { file: "apps/web/src/server/services/jobs/progress.ts", symbol: "reportJobProgress", reason: "Writes progress for the job the worker currently holds, by that job's id." },
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "setActiveOrg", reason: "Clears activeOrgId on the app session id the caller is authenticated as; the org it would have set was resolved against tenantId first." },
 
   // ── Acts on a row object its caller already resolved ────────────────────
@@ -232,24 +232,24 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/sync-hooks.ts", symbol: "applyOutcome", reason: "Writes the failure counter of the SyncHookRow it was handed." },
   { file: "apps/web/src/server/services/cdc.ts", symbol: "recordSuccess", reason: "Writes the cursor of the CdcSinkRow it was handed." },
   { file: "apps/web/src/server/services/cdc.ts", symbol: "recordFailure", reason: "Writes the failure counter of the CdcSinkRow it was handed." },
-  { file: "apps/web/src/server/services/integration-syncs.ts", symbol: "applyRunOutcome", reason: "Writes the run outcome of the SyncRow it was handed." },
-  { file: "apps/web/src/server/services/integration-listings.ts", symbol: "noteRunFailure", reason: "Writes the failure counter of the SyncRow it was handed." },
-  { file: "apps/web/src/server/services/integration-tasks.ts", symbol: "settle", reason: "Settles the task run it was given the id of, immediately after starting it." },
-  { file: "apps/web/src/server/services/integration-webhooks.ts", symbol: "claimDelivery", reason: "Compare-and-set claim on a delivery row the dispatcher just selected." },
-  { file: "apps/web/src/server/services/integration-webhooks.ts", symbol: "settleDelivery", reason: "Settles the delivery it just claimed, by that row's id." },
-  { file: "apps/web/src/server/services/integrations.ts", symbol: "recordDelivery", reason: "Inserts a delivery record for the integration row it was handed; the row's tenantId is spread into the insert via `...input`." },
+  { file: "apps/web/src/server/services/integrations/syncs.ts", symbol: "applyRunOutcome", reason: "Writes the run outcome of the SyncRow it was handed." },
+  { file: "apps/web/src/server/services/integrations/listings.ts", symbol: "noteRunFailure", reason: "Writes the failure counter of the SyncRow it was handed." },
+  { file: "apps/web/src/server/services/integrations/tasks.ts", symbol: "settle", reason: "Settles the task run it was given the id of, immediately after starting it." },
+  { file: "apps/web/src/server/services/integrations/webhooks.ts", symbol: "claimDelivery", reason: "Compare-and-set claim on a delivery row the dispatcher just selected." },
+  { file: "apps/web/src/server/services/integrations/webhooks.ts", symbol: "settleDelivery", reason: "Settles the delivery it just claimed, by that row's id." },
+  { file: "apps/web/src/server/services/integrations/index.ts", symbol: "recordDelivery", reason: "Inserts a delivery record for the integration row it was handed; the row's tenantId is spread into the insert via `...input`." },
   { file: "apps/web/src/server/services/approvals.ts", symbol: "settleRequest", reason: "Compare-and-set on the ApprovalRequestRow it was handed, guarded on (id, status)." },
   { file: "apps/web/src/server/services/approvals.ts", symbol: "expireRequest", reason: "Reads the request id that expireDueRequests selected." },
   { file: "apps/web/src/server/services/approvals.ts", symbol: "expireDueRequests", reason: "Cron: expires every pending request past expiresAt across the database." },
   { file: "apps/web/src/server/services/signatures.ts", symbol: "declineDocument", reason: "Compare-and-set on the request the signer's token already resolved to." },
-  { file: "apps/web/src/server/services/forms.ts", symbol: "recordFormSubmission", reason: "Increments the counter of the form row resolveFormToken already resolved from the submitted token." },
-  { file: "apps/web/src/server/services/forms.ts", symbol: "recordFormBlocked", reason: "Increments the blocked counter of the same token-resolved form row." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "consumeFormInvite", reason: "Compare-and-set on the invite checkFormInvite resolved from the submitted token." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "releaseFormInvite", reason: "Undoes consumeFormInvite for the same invite id when the submission fails." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "markInviteSent", reason: "Stamps sentAt on an invite the scoped create/remind path just wrote." },
+  { file: "apps/web/src/server/services/forms/index.ts", symbol: "recordFormSubmission", reason: "Increments the counter of the form row resolveFormToken already resolved from the submitted token." },
+  { file: "apps/web/src/server/services/forms/index.ts", symbol: "recordFormBlocked", reason: "Increments the blocked counter of the same token-resolved form row." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "consumeFormInvite", reason: "Compare-and-set on the invite checkFormInvite resolved from the submitted token." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "releaseFormInvite", reason: "Undoes consumeFormInvite for the same invite id when the submission fails." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "markInviteSent", reason: "Stamps sentAt on an invite the scoped create/remind path just wrote." },
   { file: "apps/web/src/server/services/api-keys.ts", symbol: "touchLastUsed", reason: "Stamps lastUsedAt on the key row findApiKey just resolved for this request." },
   { file: "apps/web/src/server/services/s3/credentials.ts", symbol: "touchS3Credential", reason: "Stamps lastUsedAt on the credential row resolveS3Credential just resolved." },
-  { file: "apps/web/src/server/services/sso-provisioning.ts", symbol: "touchExternalIdentity", reason: "Stamps last-seen data on the external identity row the SSO callback just matched." },
+  { file: "apps/web/src/server/services/sso/provisioning.ts", symbol: "touchExternalIdentity", reason: "Stamps last-seen data on the external identity row the SSO callback just matched." },
   { file: "apps/web/src/server/services/impersonation.ts", symbol: "resolveImpersonation", reason: "Reads an impersonation grant by the id carried in the impersonation cookie; the row's own tenantId is what the session then adopts." },
   { file: "apps/web/src/server/middleware/session.ts", symbol: "appSessionOwner", reason: "Reads the app session row the bearer token's own `sid` names, joined to its user. Deliberately unscoped: it is what TELLS the caller which tenant this credential belongs to, and the caller refuses the token unless the row's userId/tenantId match the token's `sub`/`tid`. Scoping it by the claimed tenant would make the claim check itself." },
   // ---------------------------------------------------------------------
@@ -268,11 +268,11 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   // tenant is the answer.
   // ---------------------------------------------------------------------
   { file: "apps/web/src/server/middleware/session.ts", symbol: "findAppSession", reason: "Resolves the opaque app-session bearer to its row by token, joined to its user. The row's own tenantId is what the request then adopts; there is no tenant to filter by until this has answered." },
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "resolveIngestKey", reason: "Answers which workspace owns a public analytics ingest key. Reads the one settings row per workspace and compares hashes in JS; the tenant is the RESULT, so filtering by it would be circular." },
-  { file: "apps/web/src/server/services/consent.ts", symbol: "getPublishedConsentConfig", reason: "Public cookie-banner config for a site id that is itself the public identifier, joined to the site so a deleted site stops answering. The tenantId is projected for metering, not for filtering." },
-  { file: "apps/web/src/server/services/consent.ts", symbol: "getTagConsentSettings", reason: "Same public site-id lookup as getPublishedConsentConfig. Its own comment explains the projected tenantId: the container route meters the workspace that OWNS the site rather than whichever one tenant middleware resolved." },
-  { file: "apps/web/src/server/services/schema-versions.ts", symbol: "runScheduledSnapshots", reason: "A cron that sweeps every workspace which opted into a snapshot cadence. Scanning all tenants is the job; each row's own tenantId is then used to load and act on that workspace alone." },
-  { file: "apps/web/src/server/services/tag-manager.ts", symbol: "getPublishedArtifact", reason: "Serves the published tag container for a public site id, joined to the site so a deleted site stops answering. The tenantId comes back so the public route can meter the owning workspace." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "resolveIngestKey", reason: "Answers which workspace owns a public analytics ingest key. Reads the one settings row per workspace and compares hashes in JS; the tenant is the RESULT, so filtering by it would be circular." },
+  { file: "apps/web/src/server/services/consent/index.ts", symbol: "getPublishedConsentConfig", reason: "Public cookie-banner config for a site id that is itself the public identifier, joined to the site so a deleted site stops answering. The tenantId is projected for metering, not for filtering." },
+  { file: "apps/web/src/server/services/consent/index.ts", symbol: "getTagConsentSettings", reason: "Same public site-id lookup as getPublishedConsentConfig. Its own comment explains the projected tenantId: the container route meters the workspace that OWNS the site rather than whichever one tenant middleware resolved." },
+  { file: "apps/web/src/server/services/schema/versions.ts", symbol: "runScheduledSnapshots", reason: "A cron that sweeps every workspace which opted into a snapshot cadence. Scanning all tenants is the job; each row's own tenantId is then used to load and act on that workspace alone." },
+  { file: "apps/web/src/server/services/tag-manager/index.ts", symbol: "getPublishedArtifact", reason: "Serves the published tag container for a public site id, joined to the site so a deleted site stops answering. The tenantId comes back so the public route can meter the owning workspace." },
   { file: "apps/web/src/server/services/third-party-auth.ts", symbol: "assertIssuerFree", reason: "Instance-wide uniqueness check on a JWT issuer. It has to see every workspace's rows to be a uniqueness check at all, and it deliberately reports only that the issuer is taken — naming the holder would leak another tenant's configuration to whoever probes issuers." },
   { file: "apps/web/src/server/routes/tenant-auth.ts", symbol: "consumeVerification", reason: "Deletes the verification row the magic-link/OTP path just matched on its own token." },
   { file: "apps/web/src/server/services/app-user-invites.ts", symbol: "consumeAppUserInvite", reason: "Deletes the verification row the invite-accept path just matched on its own token." },
@@ -307,22 +307,22 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "memberRole", reason: "Reached by (orgId, appUserId); the org was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "ownerCount", reason: "Counts the owners of one organization, by orgId, for an org the caller resolved with a tenant predicate." },
   { file: "apps/web/src/server/services/app-orgs.ts", symbol: "sessionActiveOrg", reason: "Reads activeOrgId off the app session id the caller is authenticated as." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "deleteFormDrafts", reason: "Cascades to the drafts of one form, by formId, when that form is deleted under a scoped query." },
-  { file: "apps/web/src/server/services/form-drafts.ts", symbol: "countFormDrafts", reason: "Counts the saved drafts of one form, by formId, for a form the caller resolved with a tenant predicate." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "remindFormInvites", reason: "Inserts fresh token rows for invites of a form the caller resolved with tenantId." },
-  { file: "apps/web/src/server/services/form-invites.ts", symbol: "deleteFormInvites", reason: "Cascades to a form's invites and their tokens, by formId, when that form is deleted." },
-  { file: "apps/web/src/server/services/consent.ts", symbol: "getPolicyForSite", reason: "Reached by siteId, joined to the analytics site row that owns it." },
-  { file: "apps/web/src/server/services/consent.ts", symbol: "deletePolicyForDeletedSite", reason: "Cascades a site's policy and versions by siteId, called only from the scoped site delete." },
-  { file: "apps/web/src/server/services/consent-records.ts", symbol: "deleteSiteRecords", reason: "Cascades a site's consent records by siteId, called only from the scoped site delete." },
-  { file: "apps/web/src/server/services/consent-records.ts", symbol: "resolveHash", reason: "Reached by (siteId, policyHash) from a visitor's browser; the site id is what identifies the workspace." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "deleteFormDrafts", reason: "Cascades to the drafts of one form, by formId, when that form is deleted under a scoped query." },
+  { file: "apps/web/src/server/services/forms/drafts.ts", symbol: "countFormDrafts", reason: "Counts the saved drafts of one form, by formId, for a form the caller resolved with a tenant predicate." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "remindFormInvites", reason: "Inserts fresh token rows for invites of a form the caller resolved with tenantId." },
+  { file: "apps/web/src/server/services/forms/invites.ts", symbol: "deleteFormInvites", reason: "Cascades to a form's invites and their tokens, by formId, when that form is deleted." },
+  { file: "apps/web/src/server/services/consent/index.ts", symbol: "getPolicyForSite", reason: "Reached by siteId, joined to the analytics site row that owns it." },
+  { file: "apps/web/src/server/services/consent/index.ts", symbol: "deletePolicyForDeletedSite", reason: "Cascades a site's policy and versions by siteId, called only from the scoped site delete." },
+  { file: "apps/web/src/server/services/consent/records.ts", symbol: "deleteSiteRecords", reason: "Cascades a site's consent records by siteId, called only from the scoped site delete." },
+  { file: "apps/web/src/server/services/consent/records.ts", symbol: "resolveHash", reason: "Reached by (siteId, policyHash) from a visitor's browser; the site id is what identifies the workspace." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "getStagedRow", reason: "Reached by (collection.id, itemId); the collection row was resolved with a tenant predicate by the caller." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "stagedIdsFor", reason: "Reached by (collection.id, ids), same contract as getStagedRow." },
   { file: "apps/web/src/server/services/items/staged.ts", symbol: "deleteStagedRow", reason: "Reached by (collection.id, itemId), same contract as getStagedRow." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "loadBusy", reason: "Reads the occupying bookings of one resource, by resource.id; the resource row was resolved with a tenant predicate by the caller." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "releaseLapsedHolds", reason: "Releases lapsed holds on one resource, by resourceId." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "insertIntoSeat", reason: "Inserts the booking row whose values the scoped caller assembled (tenantId included in `values`)." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "claimSlot", reason: "Withdraws the caller's OWN booking row by the id it just inserted — this is the loser's rollback in the insert-then-verify race." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "stamp", reason: "Writes back to the BookingRow recordBooking was handed, by that row's id." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "loadBusy", reason: "Reads the occupying bookings of one resource, by resource.id; the resource row was resolved with a tenant predicate by the caller." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "releaseLapsedHolds", reason: "Releases lapsed holds on one resource, by resourceId." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "insertIntoSeat", reason: "Inserts the booking row whose values the scoped caller assembled (tenantId included in `values`)." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "claimSlot", reason: "Withdraws the caller's OWN booking row by the id it just inserted — this is the loser's rollback in the insert-then-verify race." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "stamp", reason: "Writes back to the BookingRow recordBooking was handed, by that row's id." },
 
   // ── Deployment-level, not workspace-level ──────────────────────────────
   { file: "apps/web/src/server/services/signing-keys.ts", symbol: "listRows", reason: "JWT signing keys are a property of the DEPLOYMENT: signingKeys.tenantId is nullable, the JWKS endpoint is per-origin, and every workspace's tokens are verified against the same key set." },
@@ -340,22 +340,22 @@ export const ALLOWLIST: readonly AllowEntry[] = [
   { file: "apps/web/src/server/routes/device-tokens.ts", symbol: "GET /", reason: "Lists the caller's own push registrations, filtered on auth.userId. A device token belongs to a person, not to a workspace." },
   { file: "apps/web/src/server/routes/device-tokens.ts", symbol: "POST /", reason: "Upserts one of the caller's own device tokens, matched on (userId, platform, token) and then written back by that row's id." },
   { file: "apps/web/src/server/routes/device-tokens.ts", symbol: "DELETE /{id}", reason: "Deletes one of the caller's own device tokens, guarded on (id, auth.userId)." },
-  { file: "apps/web/src/server/routes/phone-numbers.ts", symbol: "GET /", reason: "Lists the caller's own SMS numbers, filtered on auth.userId." },
-  { file: "apps/web/src/server/routes/phone-numbers.ts", symbol: "POST /", reason: "Upserts one of the caller's own numbers, matched on (userId, phoneNumber) and then written back by that row's id." },
-  { file: "apps/web/src/server/routes/phone-numbers.ts", symbol: "DELETE /{id}", reason: "Deletes one of the caller's own numbers, guarded on (id, auth.userId)." },
+  { file: "apps/web/src/server/routes/phone/numbers.ts", symbol: "GET /", reason: "Lists the caller's own SMS numbers, filtered on auth.userId." },
+  { file: "apps/web/src/server/routes/phone/numbers.ts", symbol: "POST /", reason: "Upserts one of the caller's own numbers, matched on (userId, phoneNumber) and then written back by that row's id." },
+  { file: "apps/web/src/server/routes/phone/numbers.ts", symbol: "DELETE /{id}", reason: "Deletes one of the caller's own numbers, guarded on (id, auth.userId)." },
 
   // ── The lookup that ESTABLISHES the workspace ──────────────────────────
-  { file: "apps/web/src/server/routes/webhook-trigger.ts", symbol: "tableFor", reason: "Unauthenticated inbound webhook: the flow id in the URL is resolved first, and the flow row is what tells the request which workspace it runs in. The file's own header says so." },
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "getSiteById", reason: "The public collect endpoint resolves the site id a browser sent; the row it returns carries tenantId, which is how the ingest is attributed. There is no workspace to scope by before this answers." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "resolveResourceToken", reason: "Resolves a public booking page's token hash to its resource row, which supplies the workspace." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "resolveManageToken", reason: "Resolves a customer's manage-link token hash to their booking row. The token is the whole grant — see the file header." },
+  { file: "apps/web/src/server/routes/webhooks/trigger.ts", symbol: "tableFor", reason: "Unauthenticated inbound webhook: the flow id in the URL is resolved first, and the flow row is what tells the request which workspace it runs in. The file's own header says so." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "getSiteById", reason: "The public collect endpoint resolves the site id a browser sent; the row it returns carries tenantId, which is how the ingest is attributed. There is no workspace to scope by before this answers." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "resolveResourceToken", reason: "Resolves a public booking page's token hash to its resource row, which supplies the workspace." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "resolveManageToken", reason: "Resolves a customer's manage-link token hash to their booking row. The token is the whole grant — see the file header." },
 
   // ── More instance-wide maintenance, and rows just written ──────────────
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "pruneAnalyticsEvents", reason: "Retention sweep over analytics events, bounded by ts." },
-  { file: "apps/web/src/server/services/analytics.ts", symbol: "pruneErrorEvents", reason: "Retention sweep over error events, and the group rows left with no surviving occurrence. Bounded by ts / lastSeen." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "pruneAnalyticsEvents", reason: "Retention sweep over analytics events, bounded by ts." },
+  { file: "apps/web/src/server/services/analytics/index.ts", symbol: "pruneErrorEvents", reason: "Retention sweep over error events, and the group rows left with no surviving occurrence. Bounded by ts / lastSeen." },
   { file: "apps/web/src/server/services/extensions.ts", symbol: "listCronExtensionHooks", reason: "The cron tick has to see every enabled extension with a cron hook; each extension row carries its own tenantId." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "createBooking", reason: "Reads back the booking row it just inserted, by the id it just minted, to return the stored shape." },
-  { file: "apps/web/src/server/services/booking.ts", symbol: "cancelBooking", reason: "Compare-and-set on the ResolvedBooking it was handed, guarded on the current status so two racing cancellations produce one cancellation." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "createBooking", reason: "Reads back the booking row it just inserted, by the id it just minted, to return the stored shape." },
+  { file: "apps/web/src/server/services/booking/index.ts", symbol: "cancelBooking", reason: "Compare-and-set on the ResolvedBooking it was handed, guarded on the current status so two racing cancellations produce one cancellation." },
 
   // ── SUSPECT — not cleared, reported in the Phase 9 findings ────────────
   // These are here so the guard can be green while the question stays open.
@@ -900,7 +900,7 @@ export const collectHelpers = (masked: string): Map<string, Binding> => {
  * What `name` refers to AT `index` — the nearest preceding declaration wins.
  *
  * File-wide first-wins is not good enough, for a specific reason:
- * `services/booking.ts` binds `const t = …` to three DIFFERENT tables in three
+ * `services/booking/index.ts` binds `const t = …` to three DIFFERENT tables in three
  * different functions, and only two of the three carry a tenant column. A
  * file-wide map would attribute every query in that file to whichever came
  * first — which is worse than not resolving it, because it reports confidently
@@ -1161,8 +1161,8 @@ export const hasTenantPredicate = (
  *
  * The write is unscoped in isolation, but it is unreachable for a foreign row:
  * the read one line up was given BOTH the key and the tenant, and returning
- * early on a miss is the containment. `jobs.ts` does this three times,
- * `forms.ts`, `uploads.ts`, `documents.ts`, `signatures.ts` and `app-orgs.ts`
+ * early on a miss is the containment. `jobs/index.ts` does this three times,
+ * `forms/index.ts`, `uploads.ts`, `documents.ts`, `signatures.ts` and `app-orgs.ts`
  * all do it, and hand-allowlisting ~90 instances of one idiom would produce a
  * ledger that says the same sentence ninety times — which is a ledger nobody
  * reads, and therefore no ledger at all.

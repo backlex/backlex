@@ -69,7 +69,7 @@ function useCategoryLabels(): Record<string, string> {
  *  are called "English"/"Turkish" or `en`/`tr`. */
 const BUILTIN_LOCALES = ["en", "tr"] as const;
 
-/** What `parseTheme` (server/services/consent.ts:312) will keep: the same
+/** What `parseTheme` (server/services/consent/index.ts:312) will keep: the same
  *  character set, the same `url(` refusal and the same 60-character cap. Kept
  *  in step with it deliberately — the server is still the check; this only lets
  *  the field say so before the save, because a rejected value is dropped there
@@ -377,7 +377,7 @@ export function ConsentPolicyDialog({
   /**
    * The eighteen strings the banner renders, in the order it renders them.
    *
-   * Mirrors `WORDING_KEYS` in `services/consent.ts`, which is a CLOSED list
+   * Mirrors `WORDING_KEYS` in `services/consent/index.ts`, which is a CLOSED list
    * precisely so this form can be generated from it rather than drifting from it.
    * `consent-surfaces.test.ts` fails if the two stop agreeing — a key the policy
    * accepts but no field writes is a string an operator can never set, and a
@@ -564,7 +564,7 @@ export function ConsentPolicyDialog({
    *
    * It never calls `savePolicy`. The operator watches four controls move and
    * presses Save themselves, which is the whole reason there is no endpoint
-   * that applies one — see `suggestedPostures()` in `services/consent.ts`.
+   * that applies one — see `suggestedPostures()` in `services/consent/index.ts`.
    */
   const applyPreset = (id: string) => {
     const preset = presets.find((p) => p.id === id);

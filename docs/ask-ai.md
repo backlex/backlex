@@ -116,12 +116,12 @@ authorization server for `/mcp`, powered by better-auth's `mcp` plugin
 1. An unauthenticated `POST /mcp` answers `401` with a
    `WWW-Authenticate: Bearer resource_metadata="…"` challenge, pointing
    at `/.well-known/oauth-protected-resource` (root-mounted in
-   `server/routes/mcp-oauth.ts`, RFC 9728).
+   `server/routes/mcp/oauth.ts`, RFC 9728).
 2. The client discovers the endpoints via
    `/.well-known/oauth-authorization-server`, registers itself
    dynamically (`POST /api/auth/mcp/register`, RFC 7591), and starts a
    PKCE authorize flow at `GET /api/auth/mcp/authorize`.
-3. A consent gate in `mcp-oauth.ts` forces `prompt=consent` for any
+3. A consent gate in `mcp/oauth.ts` forces `prompt=consent` for any
    client the signed-in user hasn't already granted the requested
    scopes — the plugin alone would mint the code silently, which open
    dynamic registration makes unacceptable. The admin approves on the
@@ -136,7 +136,7 @@ authorization server for `/mcp`, powered by better-auth's `mcp` plugin
 
 To connect from claude.ai: Settings → Connectors → **Add custom
 connector** → paste `${origin}/mcp` → approve the consent screen.
-End-to-end coverage lives in `tests/mcp-oauth.test.ts`.
+End-to-end coverage lives in `tests/mcp/mcp-oauth.test.ts`.
 
 ## Requirements
 
@@ -253,7 +253,7 @@ existing popover behaviour is unchanged.
 |---|---|
 | `apps/web/src/server/routes/ai-ask.ts` | The two POST handlers + the read-leaning whitelist. |
 | `apps/web/src/client/admin/pages/ask-ai/index.tsx` | The page. Replaces the design's mock `planForPrompt` with the two real fetches. |
-| `apps/web/tests/ai-ask.test.ts` | Contract tests — UNAVAILABLE branch, unknown tool, happy-path run + activity row, 401/403 gates. |
+| `apps/web/tests/ai/ai-ask.test.ts` | Contract tests — UNAVAILABLE branch, unknown tool, happy-path run + activity row, 401/403 gates. |
 
 See also: [MCP (Model Context Protocol)](/docs/mcp/) for the underlying
 tool roster and per-key guards.

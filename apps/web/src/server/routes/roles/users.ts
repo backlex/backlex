@@ -10,7 +10,7 @@ import { logActivity } from "../../services/activity";
 import {
   invalidateTenantMembership,
   invalidateUserRoles,
-} from "../../services/permissions-cache";
+} from "../../services/permissions/cache";
 import {
   assertTenantMember,
   requireAdminMw,
@@ -21,7 +21,7 @@ import {
   isWorkspaceLadderRole,
   standingToRbacRole,
 } from "../../services/invites";
-import { assertMayGrant, WORKSPACE_RANK } from "../../services/membership-guards";
+import { assertMayGrant, WORKSPACE_RANK } from "../../services/membership/guards";
 import { ensureRoleInTenant } from "../../services/roles/role-checks";
 import { getRoleByName } from "../../services/seed";
 import {

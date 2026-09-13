@@ -17,7 +17,7 @@ import type { McpTool, ToolResult } from "../types";
  * invite lifecycle. That gap is what the house rule "REST + SDK + GraphQL + MCP
  * + CLI" exists to stop, and it is closed here for the two surfaces this area
  * actually reaches (the SDK deferral for the admin plane is argued in
- * `apps/web/tests/sdk-surfaces.test.ts` and deliberately left standing).
+ * `apps/web/tests/sdk/sdk-surfaces.test.ts` and deliberately left standing).
  */
 
 /** Forward the REST response as-is so upstream codes reach the caller intact —

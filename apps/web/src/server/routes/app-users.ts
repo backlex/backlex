@@ -7,7 +7,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { invalidateAppSessions, invalidateUserRoles } from "../services/permissions-cache";
+import { invalidateAppSessions, invalidateUserRoles } from "../services/permissions/cache";
 import { bumpRevocationEpoch } from "../services/revocation-epoch";
 import { inviteAppUser, resolveAssignableRoles } from "../services/app-user-invites";
 import { removeAppUserFromAllOrgs } from "../services/app-orgs";

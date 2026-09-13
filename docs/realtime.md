@@ -144,7 +144,7 @@ client must attach to `<ablyPrefix><channel>`, not to the bare channel.
 Every one of those fan-outs keys its room on a **topic** — the (workspace,
 channel) pair — rather than on the channel alone: the Durable Object's
 `idFromName`, the Upstash stream key, the in-process `Map` key and the Ably room
-name are all derived the same way (`services/realtime-topic.ts`).
+name are all derived the same way (`services/realtime/topic.ts`).
 
 The server still chooses different fan-out paths under the hood (in-proc
 Map on Bun, Durable Object on Workers), but every subscriber sees the
@@ -271,7 +271,7 @@ never deliver.
 Hono's `streamSSE` exposes `writeSSE` as an async function. Don't call
 it from a synchronous subscriber callback with `void` — the writes get
 batched and the client doesn't see them until the request closes. The
-fix in `routes/realtime.ts` is a queue + wakeable promise: the
+fix in `routes/realtime/index.ts` is a queue + wakeable promise: the
 subscriber callback pushes to a queue, the SSE async loop awaits each
 `writeSSE` explicitly. Don't change this without testing — silent
 non-delivery is the failure mode.

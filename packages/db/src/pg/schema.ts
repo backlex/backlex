@@ -1550,7 +1550,7 @@ export const schemaBranches = pgTable(
 
 /** Saved external-database connections for server-side migration (the admin
  *  "Database import" wizard). `url` is encrypted at rest with AUTH_SECRET
- *  (same envelope as integration configs — services/integrations.ts) and is
+ *  (same envelope as integration configs — services/integrations/index.ts) and is
  *  always masked on the API; only the copy executor decrypts it. Deleting a
  *  source cascades to its runs (history is meaningless without the source). */
 export const externalSources = pgTable(
@@ -2506,7 +2506,7 @@ export const i18nStrings = pgTable(
  * distinction is the whole point: a NULL is indistinguishable from a row whose
  * tenant column was simply never filled in, and readers that could not tell the
  * two apart spread one admin's branding over every workspace's settings. The
- * repo already wrote `'_global'` from several call sites (`routes/auth-admin.ts`,
+ * repo already wrote `'_global'` from several call sites (`routes/auth/admin.ts`,
  * the email/push/SMS selectors) while others wrote NULL for the same tier, so
  * the two representations of "global" coexisted in one table.
  * `20260829120000_app_settings_global_sentinel` collapses them.
@@ -3477,7 +3477,7 @@ export const emailConfig = pgTable(
  * the deployment's behaviour (cloud gateway on cloud, env keys on self-host).
  *
  * `provider` is `inherit` or an id from the server's provider registry
- * (`apps/web/src/server/services/ai-providers.ts`) — today `gateway` (Vercel AI
+ * (`apps/web/src/server/services/ai/providers.ts`) — today `gateway` (Vercel AI
  * Gateway, multi-provider), `anthropic`, `openai`, `google`. `secrets` holds
  * the encrypted key material under that registry's per-provider key names
  * (`gatewayKey`, `anthropicKey`, `openaiKey`, `googleKey`) and is never
@@ -3732,7 +3732,7 @@ export const analyticsEvents = pgTable(
     /** Campaign tagging, read off the landing URL's query string. `utm_term`
      *  and `utm_content` stay in `props`: these three are columns because
      *  reports GROUP BY them, and every added column costs D1 write throughput
-     *  (see `PARAM_BUDGET` in services/analytics.ts). */
+     *  (see `PARAM_BUDGET` in services/analytics/index.ts). */
     utmSource: text("utm_source"),
     utmMedium: text("utm_medium"),
     utmCampaign: text("utm_campaign"),
@@ -3840,7 +3840,7 @@ export const analyticsSites = pgTable(
  * `definition` is an operator-authored predicate tree, and it is the highest-
  * severity input in the analytics feature: it ends up inside a WHERE clause on
  * every report it is applied to. It is validated and compiled by
- * `services/analytics-segments.ts`, which binds every value and looks field
+ * `services/analytics/segments.ts`, which binds every value and looks field
  * names up in a closed allowlist — the blob stored here is never trusted on
  * read, only re-parsed.
  */
@@ -4149,7 +4149,7 @@ export const tagTriggers = pgTable(
     tenantId: text("tenant_id"),
     siteId: text("site_id").notNull(),
     name: text("name").notNull(),
-    /** Closed vocabulary — `services/tag-conditions.ts::TRIGGER_TYPES`. */
+    /** Closed vocabulary — `services/tag-manager/conditions.ts::TRIGGER_TYPES`. */
     type: text("type").notNull(),
     /** Type-specific settings: a CSS selector, a scroll threshold, a timer
      *  interval, a custom event name. Checked against the type on write and
@@ -4175,7 +4175,7 @@ export const tagDefinitions = pgTable(
     /** `template` | `custom_html` | `custom_js` | `image_pixel` |
      *  `backlex_event`. */
     kind: text("kind").notNull().default("template"),
-    /** Registry id when `kind = 'template'` — `services/tag-templates.ts`. */
+    /** Registry id when `kind = 'template'` — `services/tag-manager/templates.ts`. */
     templateId: text("template_id"),
     /** Operator-supplied parameters, validated against the template's own
      *  schema. For a custom tag this is where the code lives. */

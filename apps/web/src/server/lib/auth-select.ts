@@ -15,7 +15,7 @@
  * either configure SAML or run the app on Bun / a Node host.
  */
 import type { LdapAdapter, SamlAdapter } from "@backlex/core/adapters";
-import { type LdapSpec, ldaptsLdapAdapter } from "../adapters/ldap.ldapts";
+import { type LdapSpec, ldaptsLdapAdapter } from "../adapters/ldap/ldapts";
 import { isEdgeRuntime, isStatelessEdge } from "./runtime";
 
 /**
@@ -37,7 +37,7 @@ export const buildSamlAdapter = async (): Promise<SamlAdapter | undefined> => {
     );
     return undefined;
   }
-  const { samlifySamlAdapter } = await import("../adapters/saml.samlify");
+  const { samlifySamlAdapter } = await import("../adapters/saml/samlify");
   return samlifySamlAdapter();
 };
 

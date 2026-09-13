@@ -71,7 +71,7 @@ import type { Ctx } from "../context";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
 import { log } from "../lib/log";
 import { createManagedCollection } from "./collections";
-import { invalidateTenantCollections } from "./collections-cache";
+import { invalidateTenantCollections } from "./collections/cache";
 import { loadCollection } from "./items/collection-loader";
 import {
   deletedFilter,
@@ -81,13 +81,13 @@ import {
   tenantFilter,
   whereOf,
 } from "./items/sql-helpers";
-import { updateItem } from "./items-helpers";
-import { ingestRows } from "./migrate-ingest";
+import { updateItem } from "./items/helpers";
+import { ingestRows } from "./migrate/ingest";
 
 type DbCtx = Pick<Ctx, "db" | "dialect">;
 // The PgDb|SqliteDb union can't be queried without per-dialect narrowing; both
 // dialects' columns are query-compatible, so queries go through this hatch
-// (same shape as services/integrations.ts and services/webhooks.ts).
+// (same shape as services/integrations/index.ts and services/webhooks.ts).
 type AnyDb = any;
 
 const providersTable = (dialect: "pg" | "sqlite") =>

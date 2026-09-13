@@ -5,7 +5,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { Ctx } from "../context";
 import { log } from "../lib/log";
 import type { DbCtx } from "./seed";
-import { invalidateUserRoles } from "./permissions-cache";
+import { invalidateUserRoles } from "./permissions/cache";
 import { linkPersonRow } from "./portal-links";
 import { hashToken } from "./shared-links";
 

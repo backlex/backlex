@@ -166,7 +166,7 @@ greedy matcher when a literal-suffix route sits alongside sibling catch-alls,
 which made `…/a/b/c.txt/sign` 404 on keys of three or more segments. The
 sentinel prefix has no such ambiguity, so the key stays the *last* thing in the
 path. This page and the generated OpenAPI spec both advertised the suffix form
-for a while; it never worked. See `tests/storage-sign.test.ts`.
+for a while; it never worked. See `tests/storage/storage-sign.test.ts`.
 :::
 
 ### Request

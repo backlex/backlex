@@ -17,7 +17,7 @@
  * times already.
  *
  * ── Why `JSON.stringify` and not a template literal ───────────────────────
- * `analytics-tracker.ts` holds its browser source in a template literal and
+ * `analytics/tracker.ts` holds its browser source in a template literal and
  * pays for it with a rule that the source contain no backtick, no `${` and no
  * backslash — enforced by a test, because a backslash there is eaten before
  * the browser sees it. A MINIFIED bundle contains all three by construction.
@@ -26,7 +26,7 @@
  *
  * ── Drift ─────────────────────────────────────────────────────────────────
  * `lefthook.yml` regenerates and `git diff --exit-code`s this on commit, and
- * `apps/web/tests/consent-banner.test.ts` re-runs the same comparison inside
+ * `apps/web/tests/consent/consent-banner.test.ts` re-runs the same comparison inside
  * `bun test`, so CI catches what a `--no-verify` push would carry through. The hook alone
  * is not enough: its glob watches the SOURCES, so editing this generator or the
  * generated file by hand never triggers it.
@@ -37,7 +37,7 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ENTRY = resolve(REPO_ROOT, "apps/web/src/client/consent-banner/index.ts");
-const OUT = resolve(REPO_ROOT, "apps/web/src/server/services/consent-banner-bundle.ts");
+const OUT = resolve(REPO_ROOT, "apps/web/src/server/services/consent/banner-bundle.ts");
 
 export const buildBanner = async (): Promise<string> => {
   const built = await Bun.build({

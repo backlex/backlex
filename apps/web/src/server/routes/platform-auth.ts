@@ -5,7 +5,7 @@
  *
  * Mirror of the workspace flow (`routes/tenant-auth.ts`) with three deltas:
  *   - no tenant resolution — admin SSO is instance-global;
- *   - identities provision into `users` (see `platform-sso-provisioning.ts`);
+ *   - identities provision into `users` (see `sso/platform-provisioning.ts`);
  *   - sign-in mints a better-auth COOKIE session (via `mintPlatformSession`)
  *     instead of issuing a bearer token — the dashboard is cookie-authed.
  *
@@ -31,13 +31,13 @@ import { cloudConfigured } from "../lib/cloud-report";
 import { verifyHandoffToken } from "../lib/cloud-handoff";
 import {
   resolvePlatformSamlProvider,
-} from "../services/platform-saml-providers";
-import { resolvePlatformLdapAdapter } from "../services/platform-ldap-config";
-import { provisionPlatformUser } from "../services/platform-sso-provisioning";
+} from "../services/sso/platform-saml-providers";
+import { resolvePlatformLdapAdapter } from "../services/sso/platform-ldap-config";
+import { provisionPlatformUser } from "../services/sso/platform-provisioning";
 import {
   assertAssertionBoundToAcs,
   samlReplayIdentity,
-} from "../services/saml-binding";
+} from "../services/sso/saml-binding";
 import { readJsonOr } from "../lib/body";
 
 type DbCtx = { db: unknown; dialect: "pg" | "sqlite" };

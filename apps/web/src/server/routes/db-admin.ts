@@ -3,7 +3,7 @@ import type { MiddlewareHandler } from "hono";
 import { sql } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import { MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@backlex/db";
-import { reapplyWorkspaceSchema } from "../services/schema-reapply";
+import { reapplyWorkspaceSchema } from "../services/schema/reapply";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import {
@@ -18,7 +18,7 @@ import {
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { requireOperatorMw } from "../services/roles/guards";
-import { assertQueueable, startLongJob } from "../services/jobs-long-running";
+import { assertQueueable, startLongJob } from "../services/jobs/long-running";
 import { keepAlive, logActivity } from "../services/activity";
 
 /** Workspace-scoped admin. Enough for the backup routes below, which all run
@@ -894,7 +894,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!tenantId) {
         throw new AppError("VALIDATION", "Re-apply requires an active workspace");
       }
-      // The loop lives in `services/schema-reapply.ts` because the scheduled
+      // The loop lives in `services/schema/reapply.ts` because the scheduled
       // sweep runs the same one. Two copies of a DDL pass would drift, and the
       // half that drifted would be the one nobody reads — the cron.
       const result = await reapplyWorkspaceSchema(ctx, tenantId);

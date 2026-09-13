@@ -34,7 +34,7 @@ import {
   AI_PROVIDERS,
   getAiProvider,
   type AiProviderId,
-} from "../services/ai-providers";
+} from "../services/ai/providers";
 import type { Env } from "../env";
 
 const DEFAULT_GATEWAY_MODEL = "anthropic/claude-haiku-4-5";
@@ -363,7 +363,7 @@ const generate = async (
   // A direct provider key wins over the managed cloud gateway. On self-host
   // that's the deployment's env key; on managed cloud it only appears when a
   // workspace brought its own key (overlaid via applyAiOverride from
-  // services/ai-config), which is exactly the opt-out from the metered/capped
+  // services/ai/config), which is exactly the opt-out from the metered/capped
   // platform gateway. With no direct key, a cloud project falls back to the
   // gateway; self-host with no key throws the helpful "set a key" error below.
   const hasDirectKey = hasDirectAiCredential(env);

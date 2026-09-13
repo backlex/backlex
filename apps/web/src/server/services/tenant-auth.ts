@@ -11,10 +11,10 @@ import type { Env } from "../env";
 import type { DbCtx } from "./seed";
 import { decryptSecret } from "../lib/crypto";
 import { loadAuthConfigRow } from "./auth-config";
-import { resolveEmailAdapter } from "./email-config";
+import { resolveEmailAdapter } from "./email/config";
 import { envExtraOrigins, redirectUrlOrigins } from "./cors-origins";
 import { autoLinkAppUser } from "./portal-links";
-import { loadOidcProvidersForAuth } from "./oidc-providers";
+import { loadOidcProvidersForAuth } from "./sso/oidc-providers";
 import { runBeforeUserCreatedHook, runSendEmailHook } from "./auth-hooks";
 
 /** Parse a session-lifetime string like `30d` / `24h` / `90m` / `3600s` into

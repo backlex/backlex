@@ -56,7 +56,7 @@ const SHA_VARS = [
 ] as const;
 
 /** Mirrors `paths-ignore` in `.github/workflows/test.yml`. Pinned against the
- *  real workflow by `apps/web/tests/predeploy-gate.test.ts` — the failure mode
+ *  real workflow by `apps/web/tests/repo/predeploy-gate.test.ts` — the failure mode
  *  otherwise is a docs-only push that this script decides is missing a run. */
 const IGNORED_PATH_PATTERNS = [/\.md$/i, /^docs\//, /^apps\/docs\//, /^LICENSE$/];
 

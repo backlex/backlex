@@ -9,7 +9,7 @@ import { requireUser } from "../../middleware/session";
 import { logActivity } from "../../services/activity";
 import {
   invalidateTenantPermissions,
-} from "../../services/permissions-cache";
+} from "../../services/permissions/cache";
 import {
   requireAdminMw,
   requireTenant,

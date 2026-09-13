@@ -18,7 +18,7 @@ import {
 } from "./lib/trace";
 import { recordSpan, traceSampleRate } from "./services/traces";
 import { exportSpanOtlp, otlpEnabled } from "./services/otlp";
-import { flushLogsOtlp } from "./services/otlp-logs";
+import { flushLogsOtlp } from "./services/otlp/logs";
 import { isDemoMode } from "./services/demo";
 import { keepAlive } from "./services/activity";
 import { demoGuardMiddleware } from "./middleware/demo";
@@ -38,52 +38,52 @@ import { advisorRoutes } from "./routes/advisor";
 import { analyticsRoutes } from "./routes/analytics";
 import { tagManagerRoutes } from "./routes/tag-manager";
 import { consentRoutes } from "./routes/consent";
-import { consentPublicRoutes } from "./routes/consent-public";
+import { consentPublicRoutes } from "./routes/consent/public";
 import { isPerSiteScript, isPublicSubresource } from "./lib/public-paths";
 import { EMBED_CSP, isFramablePage, isFramablePath, isPublicFormPage, STRICT_CSP } from "./lib/security-headers";
-import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics-collect";
-import { analyticsIngestRoutes } from "./routes/analytics-ingest";
+import { analyticsCollectRoutes, siteScriptRoutes } from "./routes/analytics/collect";
+import { analyticsIngestRoutes } from "./routes/analytics/ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
 import { agentsRoutes } from "./routes/agents";
 import { apiKeysRoutes } from "./routes/api-keys";
 import { appUsersRoutes } from "./routes/app-users";
 import { appOrgsRoutes } from "./routes/app-orgs";
 import { appAgentsPublicRoutes } from "./routes/app-agents-public";
-import { appOrgsPublicRoutes } from "./routes/app-orgs-public";
+import { appOrgsPublicRoutes } from "./routes/app-orgs/public";
 import { authRoutes } from "./routes/auth";
-import { authAdminRoutes } from "./routes/auth-admin";
-import { authPublicRoutes } from "./routes/auth-public";
+import { authAdminRoutes } from "./routes/auth/admin";
+import { authPublicRoutes } from "./routes/auth/public";
 import { platformAuthRoutes } from "./routes/platform-auth";
 import { collectionsRoutes } from "./routes/collections";
 import { commentsRoutes } from "./routes/comments";
 import { dbAdminRoutes } from "./routes/db-admin";
-import { emailConfigRoutes } from "./routes/email-config";
-import { emailTemplatesRoutes } from "./routes/email-templates";
+import { emailConfigRoutes } from "./routes/email/config";
+import { emailTemplatesRoutes } from "./routes/email/templates";
 import { documentsRoutes } from "./routes/documents";
 import { geoRoutes } from "./routes/geo";
-import { emailFieldRoutes } from "./routes/email-fields";
+import { emailFieldRoutes } from "./routes/email/fields";
 import { phoneRoutes } from "./routes/phone";
 import { flowsRoutes } from "./routes/flows";
 import { foldersRoutes } from "./routes/folders";
 import { functionsRoutes } from "./routes/functions";
 import { extensionsRoutes } from "./routes/extensions";
 import { i18nRoutes } from "./routes/i18n";
-import { i18nPublicRoutes } from "./routes/i18n-public";
+import { i18nPublicRoutes } from "./routes/i18n/public";
 import { integrationsRoutes } from "./routes/integrations";
 import { itemsRoutes } from "./routes/items";
-import { ldapAdminRoutes } from "./routes/ldap-admin";
+import { ldapAdminRoutes } from "./routes/sso/ldap-admin";
 import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
 import { MCP_ADMIN_MOUNT, MCP_TENANT_MOUNT } from "./mcp/mounts";
 import { jwksRoutes } from "./routes/jwks";
-import { mcpAuthorizeConsentGate, mcpOAuthWellKnownRoutes } from "./routes/mcp-oauth";
+import { mcpAuthorizeConsentGate, mcpOAuthWellKnownRoutes } from "./routes/mcp/oauth";
 import { meRoutes } from "./routes/me";
 import { metricsRoutes } from "./routes/metrics";
 import { usageRoutes } from "./routes/usage";
 import { notificationsRoutes } from "./routes/notifications";
 import { deviceTokensRoutes } from "./routes/device-tokens";
-import { pushConfigRoutes } from "./routes/push-config";
-import { pushTemplatesRoutes } from "./routes/push-templates";
-import { phoneNumbersRoutes } from "./routes/phone-numbers";
+import { pushConfigRoutes } from "./routes/push/config";
+import { pushTemplatesRoutes } from "./routes/push/templates";
+import { phoneNumbersRoutes } from "./routes/phone/numbers";
 import { smsConfigRoutes } from "./routes/sms-config";
 import { aiConfigRoutes } from "./routes/ai-config";
 import { messagingRoutes } from "./routes/messaging";
@@ -91,38 +91,38 @@ import { jobsRoutes } from "./routes/jobs";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
 import { paymentsRoutes } from "./routes/payments";
-import { paymentsPublicRoutes } from "./routes/payments-public";
-import { integrationsPublicRoutes } from "./routes/integrations-public";
+import { paymentsPublicRoutes } from "./routes/payments/public";
+import { integrationsPublicRoutes } from "./routes/integrations/public";
 import { dashboardsRoutes } from "./routes/dashboards";
 import { kpisRoutes } from "./routes/kpis";
 import { schemaVersionsRoutes } from "./routes/schema-versions";
-import { dashboardsPublicRoutes } from "./routes/dashboards-public";
+import { dashboardsPublicRoutes } from "./routes/dashboards/public";
 import { formsRoutes } from "./routes/forms";
-import { formsPublicRoutes } from "./routes/forms-public";
-import { approvalsPublicRoutes } from "./routes/approvals-public";
-import { signaturesPublicRoutes } from "./routes/signatures-public";
+import { formsPublicRoutes } from "./routes/forms/public";
+import { approvalsPublicRoutes } from "./routes/approvals/public";
+import { signaturesPublicRoutes } from "./routes/signatures/public";
 import { approvalsRoutes } from "./routes/approvals";
 import { signaturesRoutes } from "./routes/signatures";
-import { bookingPublicRoutes } from "./routes/booking-public";
+import { bookingPublicRoutes } from "./routes/booking/public";
 import { bookingRoutes } from "./routes/booking";
 import { realtimeRoutes } from "./routes/realtime";
-import { realtimeAdminRoutes } from "./routes/realtime-admin";
+import { realtimeAdminRoutes } from "./routes/realtime/admin";
 import { revisionsRoutes } from "./routes/revisions";
 import {
   permissionsRoutes,
   rolesRoutes,
   usersRoutes,
 } from "./routes/roles";
-import { samlAdminRoutes } from "./routes/saml-admin";
+import { samlAdminRoutes } from "./routes/sso/saml-admin";
 import { thirdPartyAuthAdminRoutes } from "./routes/third-party-auth-admin";
-import { oidcAdminRoutes } from "./routes/oidc-admin";
-import { scimAdminRoutes } from "./routes/scim-admin";
+import { oidcAdminRoutes } from "./routes/sso/oidc-admin";
+import { scimAdminRoutes } from "./routes/scim/admin";
 import { syncHooksRoutes } from "./routes/sync-hooks";
 import { authHooksRoutes } from "./routes/auth-hooks";
-import { realtimeChannelsRoutes } from "./routes/realtime-channels";
+import { realtimeChannelsRoutes } from "./routes/realtime/channels";
 import { rlsRoutes } from "./routes/rls";
 import { s3Routes } from "./routes/s3";
-import { s3CredentialsRoutes } from "./routes/s3-credentials";
+import { s3CredentialsRoutes } from "./routes/s3/credentials";
 import { captchaRoutes } from "./routes/captcha";
 import { impersonationRoutes } from "./routes/impersonation";
 import { signingKeysRoutes } from "./routes/signing-keys";
@@ -132,12 +132,12 @@ import { dynamicRegistrationGate } from "./lib/oauth-registration-gate";
 import { captchaMiddleware } from "./lib/captcha-middleware";
 import { erasureRoutes } from "./routes/erasure";
 import { scimRoutes } from "./routes/scim";
-import { platformSamlAdminRoutes } from "./routes/platform-saml-admin";
-import { platformLdapAdminRoutes } from "./routes/platform-ldap-admin";
+import { platformSamlAdminRoutes } from "./routes/sso/platform-saml-admin";
+import { platformLdapAdminRoutes } from "./routes/sso/platform-ldap-admin";
 import { sandboxRpcRoutes } from "./routes/sandbox-rpc";
 import { settingsRoutes } from "./routes/settings";
 import { sharedLinksRoutes } from "./routes/shared-links";
-import { sharedPublicRoutes } from "./routes/shared-public";
+import { sharedPublicRoutes } from "./routes/shared-links/public";
 import { FILES_COLLECTION, storageRoutes } from "./routes/storage";
 import { uploadsRoutes, tusBaseHeaders } from "./routes/uploads";
 import { uploadPolicy } from "./services/uploads";
@@ -147,7 +147,7 @@ import { demoRoutes } from "./routes/demo";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { tenantsRoutes } from "./routes/tenants";
 import { vectorRoutes } from "./routes/vector";
-import { webhookTriggerRoutes } from "./routes/webhook-trigger";
+import { webhookTriggerRoutes } from "./routes/webhooks/trigger";
 import { webhooksRoutes } from "./routes/webhooks";
 import { workspaceConfigRoutes } from "./routes/workspace-config";
 import {
@@ -857,12 +857,12 @@ export const createApp = (env: Env) => {
   //    customer domains that are not on any allowlist, and `sendBeacon` cannot
   //    send a header or survive a preflight. The route answers `ACAO: *`
   //    WITHOUT credentials and is append-only; it can never read a row back.
-  //    See `routes/analytics-collect.ts` for what replaces the origin check.
+  //    See `routes/analytics/collect.ts` for what replaces the origin check.
   //  - `/api/consent/config` — what a cookie banner on a customer's own domain
   //    reads to know what to show. Read-only, session-free, and it returns only
   //    what the operator publishes to their own visitors; the projection behind
   //    it names its columns so the site's operator settings cannot reach the
-  //    body. See `routes/consent-public.ts`.
+  //    body. See `routes/consent/public.ts`.
   //  - `/api/consent/record` — where that banner posts the visitor's decision,
   //    and where the visitor withdraws it. The only write on this list, so it
   //    carries four ceilings rather than one and accepts nothing unless the site
@@ -1163,7 +1163,7 @@ export const createApp = (env: Env) => {
   // token and no workspace header, and running it through a gate built for
   // those would either reject it or resolve the wrong workspace. Its own
   // handler authenticates from the signature and derives the workspace from
-  // the credential. See routes/s3.ts.
+  // the credential. See routes/s3/index.ts.
   app.route("/s3", s3Routes);
   app.route("/api/admin/erasure", erasureRoutes);
   // SCIM itself is NOT session/api-key authenticated — the IdP presents the
@@ -1218,11 +1218,11 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/payments", paymentsRoutes);
   // Public payment-provider webhook receiver — no `requireUser`. The path
   // token resolves the workspace and the provider HMAC authenticates the body
-  // (see routes/payments-public.ts).
+  // (see routes/payments/public.ts).
   app.route("/api/payments", paymentsPublicRoutes);
   // Public integration-webhook receiver — same shape, one level over: the path
   // token resolves the subscription and the endpoint's own secret authenticates
-  // the delivery (see routes/integrations-public.ts).
+  // the delivery (see routes/integrations/public.ts).
   app.route("/api/integrations", integrationsPublicRoutes);
   // Public flow-trigger endpoint — POST /api/webhook/:flowId fires the
   // matching `webhook`-triggered flow. Distinct path from /api/webhooks

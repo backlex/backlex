@@ -142,7 +142,7 @@ CLI surface (those are request/response). The React binding is
 [`backlex/react`](./client-react.md), which wraps `liveQuery` as `useLiveQuery`.
 
 Which subsystems reach the SDK at all — and the written reason for each one
-that does not — is a registry in `apps/web/tests/sdk-surfaces.test.ts`. That is
+that does not — is a registry in `apps/web/tests/sdk/sdk-surfaces.test.ts`. That is
 the canonical record of parity exceptions rather than this page: an entry there
 costs a sentence of reasoning and names the wave it is revisited in, so an
 absent client is a decision on the record instead of a silence. Aggregates aren't reactive — use a

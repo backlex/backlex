@@ -11,8 +11,8 @@ Two files own it:
 
 | File | Owns |
 |---|---|
-| `apps/web/src/server/services/ai-providers.ts` | The provider **registry** + the model **catalog** |
-| `apps/web/src/server/services/ai-config.ts` | `resolveAiRuntime()` — turns stored config into `{ env, model, provider }` |
+| `apps/web/src/server/services/ai/providers.ts` | The provider **registry** + the model **catalog** |
+| `apps/web/src/server/services/ai/config.ts` | `resolveAiRuntime()` — turns stored config into `{ env, model, provider }` |
 
 `apps/web/src/server/mcp/ai-client.ts` is the transport (Vercel AI Gateway or a
 vendor SDK). It is not where provider knowledge lives.
@@ -133,7 +133,7 @@ variable an operator would set, not its value.
 |---|---|
 | Ask AI (`routes/ai-ask.ts`) | request body → workspace config → `anthropic/claude-haiku-4-5` |
 | Agents (`services/agents/runner.ts`) | agent row → workspace config → `anthropic/claude-sonnet-5` |
-| Auto-translate (`services/i18n-translate.ts`) | workspace config → provider default |
+| Auto-translate (`services/i18n/translate.ts`) | workspace config → provider default |
 | `ai.*` MCP tools (`mcp/http.ts`) | per-tool → provider default |
 | Settings · AI "Test key" | workspace config — it proves the config that will actually run |
 
@@ -143,7 +143,7 @@ for no technical reason. It now goes through `callClaude` like everything else.
 
 ## Tests
 
-`apps/web/tests/ai-model-catalog.test.ts` covers the registry invariants, the
+`apps/web/tests/ai/ai-model-catalog.test.ts` covers the registry invariants, the
 credential chain (including the `OPENAI_API_KEY` non-promotion), bare-id
 normalization, cross-vendor fallback, the three-level resolution order, unknown
 providers degrading instead of throwing, and the guarantee that no secret —

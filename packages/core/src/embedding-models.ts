@@ -2,9 +2,9 @@
  * Single source of truth for every embedding model the system supports.
  *
  * Adding a model means: pick a key, fill in this row, then the embedding
- * router (apps/web/src/server/adapters/embedding.router.ts), the Vectorize
- * binding map (apps/web/src/server/adapters/vector.cf.ts) and the pgvector
- * table map (apps/web/src/server/adapters/vector.pg.ts) all pick it up
+ * router (apps/web/src/server/adapters/embedding/router.ts), the Vectorize
+ * binding map (apps/web/src/server/adapters/vector/cf.ts) and the pgvector
+ * table map (apps/web/src/server/adapters/vector/pg.ts) all pick it up
  * from here.
  *
  * Vectors from different models live in different vector spaces — they

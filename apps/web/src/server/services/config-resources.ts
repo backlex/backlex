@@ -36,7 +36,7 @@ import type { ConfigItem } from "@backlex/db";
 import { SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { nowFor } from "./items-helpers";
+import { nowFor } from "./items/helpers";
 
 type Dialect = "pg" | "sqlite";
 export interface ConfigCtx {
@@ -46,7 +46,7 @@ export interface ConfigCtx {
 
 const S = (d: Dialect) => (d === "pg" ? pg.schema : sqlite.schema);
 // The Pg/Sqlite Drizzle union has no shared callable surface — the same reason
-// `schema-versions.ts` declares `type AnyDb = any` and `routes/items.ts` casts
+// `schema/versions.ts` declares `type AnyDb = any` and `routes/items.ts` casts
 // at each call site. Matching that rather than inventing a narrower shim, which
 // is what the first attempt here did: it typed the return as a callable record
 // and every query chain resolved to `never`.

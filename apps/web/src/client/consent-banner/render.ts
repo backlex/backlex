@@ -2,7 +2,7 @@
  * The banner's DOM, built on a page backlex does not own.
  *
  * ── `textContent`, everywhere, and why it is a constraint rather than taste ─
- * `services/consent.ts` stores operator wording UNESCAPED, deliberately:
+ * `services/consent/index.ts` stores operator wording UNESCAPED, deliberately:
  * "Escaping at this boundary would mean storing `&amp;` in what a lawyer
  * reviews, so the obligation lands on the banner instead." Every operator
  * string in this file is therefore assigned with `textContent`, and
@@ -234,7 +234,7 @@ export const mount = (o: RenderOptions): Banner => {
   if (o.policyUrl) {
     body.appendChild(document.createTextNode(" "));
     const a = el("a", "blx-link");
-    // `href` is operator-supplied. `services/consent.ts` validates it as a URL
+    // `href` is operator-supplied. `services/consent/index.ts` validates it as a URL
     // on save, but this is the point where a `javascript:` value would execute,
     // so it is checked again here rather than trusted across a boundary.
     const href = String(o.policyUrl);

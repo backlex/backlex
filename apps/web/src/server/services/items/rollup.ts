@@ -11,7 +11,7 @@ import {
 import type { AuthSubject, Condition } from "@backlex/core";
 import { AppError } from "@backlex/core";
 import type { Ctx } from "../../context";
-import { getCachedRollupDeps, setCachedRollupDeps } from "../collections-cache";
+import { getCachedRollupDeps, setCachedRollupDeps } from "../collections/cache";
 import { collectionsTable, loadCollection, type CollectionRow } from "./collection-loader";
 import { execute } from "./sql-helpers";
 

@@ -15,7 +15,7 @@
  * magic-link and verify-email caps, and every unauthenticated public limiter
  * (forms, booking, analytics, inbound hooks, payments, public dashboards,
  * webhook triggers, consent, realtime, MCP) were void on three of the four
- * targets. `services/consent-records.ts` already carried a comment saying so.
+ * targets. `services/consent/records.ts` already carried a comment saying so.
  *
  * The first XFF hop is the same mistake in a second costume. `x-forwarded-for`
  * grows left-to-right as it crosses proxies, so element [0] is the value the

@@ -3032,7 +3032,7 @@ export const emailConfig = sqliteTable(
  * Per-workspace bring-your-own AI provider key — SQLite mirror of the pg
  * `ai_config` table. See the pg schema for the full contract. `provider` and
  * the `secrets` key names are driven by the server's provider registry
- * (`apps/web/src/server/services/ai-providers.ts`), so adding a provider needs
+ * (`apps/web/src/server/services/ai/providers.ts`), so adding a provider needs
  * no migration here — `secrets` is an opaque encrypted JSON blob.
  */
 export const aiConfig = sqliteTable(
@@ -3272,7 +3272,7 @@ export const analyticsEvents = sqliteTable(
     /** Campaign tagging, read off the landing URL's query string. `utm_term`
      *  and `utm_content` stay in `props`: these three are columns because
      *  reports GROUP BY them, and every added column costs D1 write throughput
-     *  (see `PARAM_BUDGET` in services/analytics.ts). */
+     *  (see `PARAM_BUDGET` in services/analytics/index.ts). */
     utmSource: text("utm_source"),
     utmMedium: text("utm_medium"),
     utmCampaign: text("utm_campaign"),
@@ -3382,7 +3382,7 @@ export const analyticsSites = sqliteTable(
  * `definition` is an operator-authored predicate tree, and it is the highest-
  * severity input in the analytics feature: it ends up inside a WHERE clause on
  * every report it is applied to. It is validated and compiled by
- * `services/analytics-segments.ts`, which binds every value and looks field
+ * `services/analytics/segments.ts`, which binds every value and looks field
  * names up in a closed allowlist — the blob stored here is never trusted on
  * read, only re-parsed.
  */
@@ -3576,7 +3576,7 @@ export const tagTriggers = sqliteTable(
     tenantId: text("tenant_id"),
     siteId: text("site_id").notNull(),
     name: text("name").notNull(),
-    /** Closed vocabulary — `services/tag-conditions.ts::TRIGGER_TYPES`. */
+    /** Closed vocabulary — `services/tag-manager/conditions.ts::TRIGGER_TYPES`. */
     type: text("type").notNull(),
     /** Type-specific settings: a CSS selector, a scroll threshold, a timer
      *  interval, a custom event name. Checked against the type on write and
@@ -3602,7 +3602,7 @@ export const tagDefinitions = sqliteTable(
     /** `template` | `custom_html` | `custom_js` | `image_pixel` |
      *  `backlex_event`. */
     kind: text("kind").notNull().default("template"),
-    /** Registry id when `kind = 'template'` — `services/tag-templates.ts`. */
+    /** Registry id when `kind = 'template'` — `services/tag-manager/templates.ts`. */
     templateId: text("template_id"),
     /** Operator-supplied parameters, validated against the template's own
      *  schema. For a custom tag this is where the code lives. */

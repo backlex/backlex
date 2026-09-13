@@ -4,7 +4,7 @@
  * The policy's `wording` is authoritative and is resolved per key, not per
  * locale block: an operator who translated the title and nothing else gets
  * their title and our everything-else, rather than falling off a cliff into
- * English. `consent.ts` refuses to fill these gaps server-side on purpose —
+ * English. `services/consent/index.ts` refuses to fill these gaps server-side on purpose —
  * "It is a SUGGESTION, not a fallback: nothing reads this at serve time" —
  * so the fallback has to live here, in the thing that renders.
  *
@@ -16,7 +16,7 @@
  * object for that reason, and because the banner is a standalone browser
  * bundle that must not drag `@lingui/core` onto a customer's page.
  *
- * The keys are `WORDING_KEYS` from `services/consent.ts`, and a test pins that
+ * The keys are `WORDING_KEYS` from `services/consent/index.ts`, and a test pins that
  * the two lists stay identical — a key the server accepts but the banner
  * cannot render is a string an operator writes and no visitor ever sees.
  */
@@ -70,7 +70,7 @@ export const BUILTIN_STRINGS: Record<string, Strings> = {
  *
  * Matches the base tag before the region subtag, so `tr-TR` finds `tr` and
  * `pt-BR` finds neither and lands on English. Nothing here validates that the
- * policy's `defaultLocale` appears in its own `wording` — `consent.ts` does not
+ * policy's `defaultLocale` appears in its own `wording` — `services/consent/index.ts` does not
  * cross-check the two either — so this must answer for a locale that has no
  * block at all.
  */
@@ -85,7 +85,7 @@ export const builtinFor = (locale: string | undefined): Strings => {
  *
  * ── Only ever a block the OPERATOR authored ───────────────────────────────
  * This picks between `wording` blocks and nothing else. It will not select a
- * language that exists only as a built-in, because `services/consent.ts` says
+ * language that exists only as a built-in, because `services/consent/index.ts` says
  * the rule for that case plainly: silently substituting text an operator never
  * reviewed "is the same mistake as defaulting the posture". A visitor whose
  * browser asks for German on a site with English and Turkish blocks therefore

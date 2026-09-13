@@ -17,7 +17,7 @@ export function b64(s: string): string | null {
  * plain http, and refusing it here would break those deployments without adding
  * any containment: what decides whether a host is reachable at all is the SSRF
  * guard on the `FetchLike` the engine is handed
- * (`services/integrations-fetch.ts`), which sees the finished URL and applies
+ * (`services/integrations/fetch.ts`), which sees the finished URL and applies
  * the deployment's actual policy. The name promises a default, not a
  * guarantee — read it as "https unless told otherwise".
  */

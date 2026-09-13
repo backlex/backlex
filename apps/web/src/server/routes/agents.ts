@@ -3,7 +3,7 @@
  * turn endpoint that runs an agent against a thread. Admin-only (platform
  * plane), mounted at `/api/agents`.
  *
- * Like `mcp.ts` and `ai-ask.ts`, this is a factory that closes over the parent
+ * Like `mcp/index.ts` and `ai-ask.ts`, this is a factory that closes over the parent
  * Hono `app` + `env` so the run loop can issue in-process sub-fetches against
  * the same REST surface (carrying the caller's identity), which is how agent
  * tool calls inherit the permission DSL.

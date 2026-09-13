@@ -159,7 +159,7 @@ export const nowFor = (dialect: "pg" | "sqlite") =>
  * happens to survive onto the top-level message, so the tests were green; on D1
  * the words live on `cause`, so **every unique violation on a live collection
  * write answered 500 instead of 409**, and every FK violation 500 instead of
- * 422. `booking.ts` learned this the hard way and grew its own chain walk; this
+ * 422. `services/booking/index.ts` learned this the hard way and grew its own chain walk; this
  * is that walk, moved down here so there is one copy and the twin can go.
  *
  * Depth-capped because a cause chain can be cyclic, and stringified per link

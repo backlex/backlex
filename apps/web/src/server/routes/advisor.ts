@@ -5,7 +5,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { applyAdvisorFix, runAdvisorChecks } from "../services/advisor";
-import { loadRuntimeInsights } from "../services/advisor-insights";
+import { loadRuntimeInsights } from "../services/advisor/insights";
 import { requestMeta } from "../services/activity";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -126,7 +126,7 @@ const daysQuery = z.object({
 /**
  * Advisor — automated security + performance lint over live workspace state.
  * Admin-only. Every finding is computed from real DB / env state in
- * `services/advisor.ts`; these routes just resolve the tenant scope and
+ * `services/advisor/index.ts`; these routes just resolve the tenant scope and
  * delegate.
  */
 export const advisorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })

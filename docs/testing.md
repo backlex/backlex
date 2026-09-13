@@ -37,14 +37,16 @@ serves traffic incorrectly on at least one platform.
 
 ## Layer 1 — `bun test` (business logic)
 
-Lives in `apps/web/tests/*.test.ts`. The harness in `tests/setup.ts`
+Lives in `apps/web/tests/<domain>/*.test.ts` — one folder per server domain
+(`items/`, `auth/`, `payments/` …), plus `repo/` for the specs that guard the
+repository itself and `security/` for audits and scanners. The harness in `tests/setup.ts`
 spins up a fresh temp SQLite per spec and calls `app.fetch(req)`
 in-process — no network, no real DB host, no Worker isolate. Runs
 in milliseconds per file.
 
 ```bash
 bun test                 # all suites
-bun test tests/auth.test.ts   # single suite
+bun test tests/auth/auth.test.ts   # single suite
 ```
 
 ### The Postgres dialect (`*-pg.test.ts`, ~18 specs)
@@ -67,7 +69,7 @@ cannot take, a dependency bump), and it has been one before: a positional
 skip is why it survived.
 
 One helper does this for every spec — `makeHarnessPgOrFail(tag)` in
-`tests/setup-pg.ts` — and `tests/pg-specs-fail-loudly.test.ts` is the gate that
+`tests/setup-pg.ts` — and `tests/repo/pg-specs-fail-loudly.test.ts` is the gate that
 keeps the eighteenth copy from reintroducing a private `catch`. To skip the pg
 dialect deliberately:
 
@@ -243,7 +245,7 @@ migrations just ran against).
 
 | When you're adding... | Put it in... |
 |---|---|
-| Business logic, route handler, service | `apps/web/tests/<feature>.test.ts` (Layer 1) |
+| Business logic, route handler, service | `apps/web/tests/<domain>/<feature>.test.ts` (Layer 1) |
 | Schema change / new migration | covered by Layer 1's `pg-smoke` + `setup.ts::makeHarness` |
 | New deploy target | new entry in `scripts/build-targets.ts` (Layer 2) |
 | Runtime-specific behavior (cookie, cron, adapter) | new step in `apps/web/tests/smoke/contract.ts` (Layer 3) |

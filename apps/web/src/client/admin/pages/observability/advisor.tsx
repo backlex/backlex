@@ -1,7 +1,7 @@
 // Advisor page — security + performance checks, plus the runtime insights the
 // traffic-derived performance rules are computed from.
 //
-// Findings come from GET /api/admin/advisor (services/advisor.ts) — every
+// Findings come from GET /api/admin/advisor (services/advisor/index.ts) — every
 // check is computed from live DB / env state, the score is server-computed,
 // and `generatedAt` is one honest per-run timestamp. The page runs the check
 // on demand (there is no server cron/cache). Dismiss is persisted to

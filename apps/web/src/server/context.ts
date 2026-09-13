@@ -22,42 +22,42 @@ import type {
 } from "@backlex/core/adapters";
 import { createPgClient, type PgDb, type PgDriver } from "@backlex/db/pg";
 import { createD1Client, type SqliteDb } from "@backlex/db/sqlite";
-import { cloudEmailAdapter } from "./adapters/email.cloud";
-import { consoleEmail } from "./adapters/email.console";
-import { cloudPushAdapter } from "./adapters/push.cloud";
-import { cloudSmsAdapter } from "./adapters/sms.cloud";
-import { cloudEmbeddingAdapter } from "./adapters/embedding.cloud";
-import { openaiEmbeddingAdapter } from "./adapters/embedding.openai";
+import { cloudEmailAdapter } from "./adapters/email/cloud";
+import { consoleEmail } from "./adapters/email/console";
+import { cloudPushAdapter } from "./adapters/push/cloud";
+import { cloudSmsAdapter } from "./adapters/sms/cloud";
+import { cloudEmbeddingAdapter } from "./adapters/embedding/cloud";
+import { openaiEmbeddingAdapter } from "./adapters/embedding/openai";
 import {
   embeddingRouter,
   noEmbeddingAdapter,
-} from "./adapters/embedding.router";
-import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
-import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
-import { bunImage } from "./adapters/image.bun";
-import { cfEdgeImage } from "./adapters/image.cf";
-import { netlifyEdgeImage } from "./adapters/image.netlify";
-import { passthroughImage } from "./adapters/image.passthrough";
-import { consoleGeocode } from "./adapters/geocode.console";
-import { googleGeocode } from "./adapters/geocode.google";
-import { mapboxGeocode } from "./adapters/geocode.mapbox";
-import { nominatimGeocode } from "./adapters/geocode.nominatim";
-import { cfBrowserPdf } from "./adapters/pdf.cf-browser";
-import { cloudPdf } from "./adapters/pdf.cloud";
-import { gotenbergPdf } from "./adapters/pdf.gotenberg";
-import { sharpImage } from "./adapters/image.sharp";
-import { wasmImage } from "./adapters/image.photon";
-import { r2Storage } from "./adapters/storage.r2";
-import { bunS3Storage } from "./adapters/storage.s3.bun";
-import { s3FetchStorage } from "./adapters/storage.s3.fetch";
+} from "./adapters/embedding/router";
+import { selfHostEmbeddingAdapter } from "./adapters/embedding/self-host";
+import { workersAiEmbeddingAdapter } from "./adapters/embedding/workers-ai";
+import { bunImage } from "./adapters/image/bun";
+import { cfEdgeImage } from "./adapters/image/cf";
+import { netlifyEdgeImage } from "./adapters/image/netlify";
+import { passthroughImage } from "./adapters/image/passthrough";
+import { consoleGeocode } from "./adapters/geocode/console";
+import { googleGeocode } from "./adapters/geocode/google";
+import { mapboxGeocode } from "./adapters/geocode/mapbox";
+import { nominatimGeocode } from "./adapters/geocode/nominatim";
+import { cfBrowserPdf } from "./adapters/pdf/cf-browser";
+import { cloudPdf } from "./adapters/pdf/cloud";
+import { gotenbergPdf } from "./adapters/pdf/gotenberg";
+import { sharpImage } from "./adapters/image/sharp";
+import { wasmImage } from "./adapters/image/photon";
+import { r2Storage } from "./adapters/storage/r2";
+import { bunS3Storage } from "./adapters/storage/s3.bun";
+import { s3FetchStorage } from "./adapters/storage/s3.fetch";
 import {
   type VectorizeIndexMap,
   vectorizeAdapter,
-} from "./adapters/vector.cf";
-import { pgvectorAdapter } from "./adapters/vector.pg";
-import { libsqlVectorAdapter } from "./adapters/vector.libsql";
-import { pineconeVectorAdapter, type PineconeHostMap } from "./adapters/vector.pinecone";
-import { qdrantVectorAdapter, type QdrantCollectionMap } from "./adapters/vector.qdrant";
+} from "./adapters/vector/cf";
+import { pgvectorAdapter } from "./adapters/vector/pg";
+import { libsqlVectorAdapter } from "./adapters/vector/libsql";
+import { pineconeVectorAdapter, type PineconeHostMap } from "./adapters/vector/pinecone";
+import { qdrantVectorAdapter, type QdrantCollectionMap } from "./adapters/vector/qdrant";
 import type { Env } from "./env";
 import { cloudConfigured, reportToCloud } from "./lib/cloud-report";
 import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
@@ -71,12 +71,12 @@ import {
   isXataPgUrl,
 } from "./lib/runtime";
 import { loadPolicy } from "./services/auth-config";
-import { resolveEmailAdapter } from "./services/email-config";
-import { resolvePushAdapter } from "./services/push-config";
-import { resolveSmsAdapter } from "./services/sms-config";
+import { resolveEmailAdapter } from "./services/email/config";
+import { resolvePushAdapter } from "./services/messaging/push-config";
+import { resolveSmsAdapter } from "./services/messaging/sms-config";
 import { publishEvent } from "./services/events";
 import { acceptInviteForUser, hasValidInvite } from "./services/invites";
-import { invalidateUserRoles } from "./services/permissions-cache";
+import { invalidateUserRoles } from "./services/permissions/cache";
 import {
   assignRoleByName,
   ensureDefaultTenant,
@@ -213,7 +213,7 @@ export interface Ctx {
    * `warn`, reads this, widens the conditions it names, and unsets it. So the write path appends here, the
    * span middleware folds it into the span's `attributes`, and the
    * `permission-write-check` rule counts them over the window. See
-   * `services/advisor.ts` and issue #334.
+   * `services/advisor/index.ts` and issue #334.
    *
    * Set by the request middleware (`app.ts`) as a FRESH array per request.
    * `buildContext` is memoized per isolate, so a collector that defaulted
@@ -937,7 +937,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     // provided from 2025-09-15 onward, so a static edge here fails the upload
     // outright with CF 10021 `No such module "node:fs"` even though the OSS
     // worker (compat date 2026-08-11) resolves it fine.
-    const { fsStorage } = await import("./adapters/storage.fs");
+    const { fsStorage } = await import("./adapters/storage/fs");
     storage = fsStorage("./.data/files");
   }
 

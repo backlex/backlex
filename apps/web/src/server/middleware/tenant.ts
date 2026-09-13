@@ -13,7 +13,7 @@ import {
   setCachedMembership,
   setCachedTenantResolve,
   setCachedTenantRoleNames,
-} from "../services/permissions-cache";
+} from "../services/permissions/cache";
 import { ensureDefaultTenant } from "../services/seed";
 import { resolveOrgContext, type OrgContext } from "../services/app-orgs";
 import { isInstanceOperator } from "../services/roles/guards";
@@ -66,7 +66,7 @@ const loadTenantRoleNames = async (
 ): Promise<string[]> => {
   // Hot path: served from the per-isolate cache, invalidated on role grant/
   // revoke (invalidateUserRoles), role-def change (invalidateTenantRoles), and
-  // membership change (invalidateTenantMembership). See services/permissions-cache.
+  // membership change (invalidateTenantMembership). See services/permissions/cache.
   // Copy on hit so a caller that mutates auth.roles can't corrupt the entry.
   const cacheKey = { tenantId, userId, restrictRoleId };
   const cached = getCachedTenantRoleNames(cacheKey);
@@ -118,7 +118,7 @@ const activeTenantBySlugOrId = async (
   // Per-isolate cache: this runs on every request and is usually the first D1
   // call, so it pays the D1 Sessions setup (~25ms in traces, vs <1ms SQL).
   // slug→id / id→id are stable; caching removes the last uncached round-trip on
-  // the hot path. See services/permissions-cache `tenantResolveCache`.
+  // the hot path. See services/permissions/cache `tenantResolveCache`.
   //
   // Only ACTIVE workspaces are ever written to the cache, and a refusal is
   // never cached, so un-suspending a workspace is felt on the very next

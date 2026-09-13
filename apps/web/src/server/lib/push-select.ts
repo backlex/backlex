@@ -1,9 +1,9 @@
 import type { PushAdapter } from "@backlex/core/adapters";
-import { consolePush } from "../adapters/push.console";
-import { fcmPush } from "../adapters/push.fcm";
-import { apnsPush } from "../adapters/push.apns";
-import { webPush } from "../adapters/push.web-push";
-import { multiPush } from "../adapters/push.multi";
+import { consolePush } from "../adapters/push/console";
+import { fcmPush } from "../adapters/push/fcm";
+import { apnsPush } from "../adapters/push/apns";
+import { webPush } from "../adapters/push/web-push";
+import { multiPush } from "../adapters/push/multi";
 import type { Env } from "../env";
 
 /**

@@ -216,6 +216,6 @@ The admin console does not use these hooks, and that is deliberate rather than
 an omission — see [Architecture](./architecture.md#why-the-admin-keeps-its-own-client).
 
 Which subsystems the SDK covers, and the written reason for each one it does
-not, live in `apps/web/tests/sdk-surfaces.test.ts`. It is the canonical record:
+not, live in `apps/web/tests/sdk/sdk-surfaces.test.ts`. It is the canonical record:
 a deferral there costs a sentence of reasoning and names the wave it is
 revisited in, so an absence is a decision rather than a silence.

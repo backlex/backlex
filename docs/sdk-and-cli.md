@@ -603,7 +603,7 @@ that the code to branch on is `error.code` rather than the HTTP status. Roughly:
 the things that make a first attempt fail for a reason the endpoint does not
 reveal.
 
-`apps/web/tests/agent-skill-drift.test.ts` asserts every claim in it against the
+`apps/web/tests/agents/agent-skill-drift.test.ts` asserts every claim in it against the
 source it describes — the MCP revision, the error-code mapping, the filter
 operators, the traps — because a skill full of stale facts is worse than no
 skill: an agent trusts it, writes confidently wrong code, and nothing fails

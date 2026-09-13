@@ -222,7 +222,7 @@ const workerManualChunks = (id: string): string | undefined => {
     return undefined;
   }
   // The postgres.js wire driver — reached ONLY through the dynamically-imported
-  // `#postgres-driver` (services/migrate.ts — server-side external-DB
+  // `#postgres-driver` (services/migrate/index.ts — server-side external-DB
   // migration). D1-only instances never load it. (The static `postgres`
   // specifier is stubbed separately via resolve.alias above.)
   if (id.includes("/node_modules/postgres/")) {
@@ -230,7 +230,7 @@ const workerManualChunks = (id: string): string | undefined => {
   }
   // The SAML subsystem (samlify + its X.509/ASN.1/RSA graph) — reached only
   // through the dynamically-imported samlify adapter (lib/auth-select →
-  // adapters/saml.samlify), used on-demand when a workspace resolves a SAML
+  // adapters/saml/samlify), used on-demand when a workspace resolves a SAML
   // provider.
   if (
     id.includes("/node_modules/samlify/") ||

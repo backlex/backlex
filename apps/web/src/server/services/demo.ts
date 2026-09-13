@@ -6,9 +6,9 @@ import * as sqlite from "@backlex/db/sqlite";
 import { and, eq, ne } from "drizzle-orm";
 import type { Env } from "../env";
 import type { Ctx } from "../context";
-import { invalidateTenantCollections } from "./collections-cache";
+import { invalidateTenantCollections } from "./collections/cache";
 import { deleteEverywhere } from "./storage/bucket-for";
-import { invalidateAllPermissions } from "./permissions-cache";
+import { invalidateAllPermissions } from "./permissions/cache";
 import {
   type DbCtx,
   ensureDefaultTenant,

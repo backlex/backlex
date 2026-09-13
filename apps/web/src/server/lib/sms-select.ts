@@ -1,9 +1,9 @@
 import type { SMSAdapter } from "@backlex/core/adapters";
-import { consoleSms } from "../adapters/sms.console";
-import { twilioSms } from "../adapters/sms.twilio";
-import { snsSms } from "../adapters/sms.sns";
-import { netgsmSms } from "../adapters/sms.netgsm";
-import { iletimerkeziSms } from "../adapters/sms.iletimerkezi";
+import { consoleSms } from "../adapters/sms/console";
+import { twilioSms } from "../adapters/sms/twilio";
+import { snsSms } from "../adapters/sms/sns";
+import { netgsmSms } from "../adapters/sms/netgsm";
+import { iletimerkeziSms } from "../adapters/sms/iletimerkezi";
 import type { Env } from "../env";
 
 /**

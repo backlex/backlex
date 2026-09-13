@@ -14,7 +14,7 @@
  * include health-check noise; `LOG_LEVEL=silent` to mute everything.
  *
  * When an OTLP collector is configured, lines are ALSO buffered here for
- * `services/otlp-logs.ts` to ship. Buffered rather than sent per line: one HTTP
+ * `services/otlp/logs.ts` to ship. Buffered rather than sent per line: one HTTP
  * request per log entry would cost more than the request being logged. The
  * buffer is bounded and drops the OLDEST entries when full, because in an
  * incident the newest lines are the ones being read.

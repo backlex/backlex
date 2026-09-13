@@ -24,14 +24,14 @@ import {
   type FormInput,
   type FormSettings,
 } from "../forms";
-import { formResults } from "../forms-results";
-import { sendFormReminders } from "../form-reminders";
+import { formResults } from "../forms/results";
+import { sendFormReminders } from "../forms/reminders";
 import {
   createFormInvites,
   deleteFormInvite,
   listFormInvites,
   type FormInviteRow,
-} from "../form-invites";
+} from "../forms/invites";
 
 /** The invite shape a read surface hands out — no token, no hash. Mirrors
  *  `serializeInvite` in the REST route so the two agree. */

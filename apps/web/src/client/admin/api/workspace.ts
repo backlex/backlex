@@ -63,7 +63,7 @@ export const workspaceConfigApi = {
     }),
 };
 
-/** One entry of the server's AI provider registry (`services/ai-providers.ts`).
+/** One entry of the server's AI provider registry (`services/ai/providers.ts`).
  *  Descriptive only — `envKey` is the NAME of an env var, never its value. */
 export interface ApiAiProvider {
   id: string;

@@ -18,7 +18,7 @@ import {
   SYSTEM_ROLES,
 } from "@backlex/core";
 import { runFlowById } from "../flows";
-import { assertFlowShape } from "../flow-validation";
+import { assertFlowShape } from "../flows/validation";
 
 /** yoga masks non-GraphQLError throws — surface AppErrors with their code.
  *  Without this every refusal from `assertFlowShape` would reach the caller as

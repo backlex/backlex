@@ -19,7 +19,7 @@ caller reaches over plain REST, and porting forty of them ten times would be
 forty times the drift. Reach them with an HTTP call and an API key.
 
 **Every client sends the same four request headers**, and each is checked
-against all ten by `apps/web/tests/sdk-header-parity.test.ts`:
+against all ten by `apps/web/tests/sdk/sdk-header-parity.test.ts`:
 
 | Header | Why it has to be everywhere |
 |---|---|

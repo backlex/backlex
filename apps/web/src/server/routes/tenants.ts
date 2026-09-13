@@ -27,12 +27,12 @@ import {
   assertMayActOn,
   assertMayGrant,
   WORKSPACE_RANK,
-} from "../services/membership-guards";
+} from "../services/membership/guards";
 import {
   invalidateTenantMembership,
   invalidateTenantResolve,
   invalidateUserRoles,
-} from "../services/permissions-cache";
+} from "../services/permissions/cache";
 import {
   assignRoleByName,
   DEFAULT_TENANT_SLUG,

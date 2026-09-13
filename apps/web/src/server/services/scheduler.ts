@@ -21,28 +21,28 @@ const parseExpression = (
     ) => { next(): CronDate; prev(): CronDate };
   }
 ).parseExpression;
-import { pruneScheduleFires, runDueScheduleFlows } from "./flow-schedules";
-import { runKpiAlerts } from "./kpi-alerts";
+import { pruneScheduleFires, runDueScheduleFlows } from "./flows/schedules";
+import { runKpiAlerts } from "./kpis/alerts";
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { expireDueRequests, expireRequest } from "./approvals";
 import { enqueueJob, processJobs, pruneFinishedJobs } from "./jobs";
 import { pruneWebhookDeliveries } from "./webhooks";
 import { pruneOldRevisions } from "./revisions";
-import { enqueueDueSyncs } from "./integration-syncs";
-import { enqueueOpenListingBatches } from "./integration-listings";
+import { enqueueDueSyncs } from "./integrations/syncs";
+import { enqueueOpenListingBatches } from "./integrations/listings";
 import { sweepExpiredUploads } from "./uploads";
-import { sweepStaleFormUploads } from "./form-uploads";
-import { sweepStaleFormDrafts } from "./form-drafts";
+import { sweepStaleFormUploads } from "./forms/uploads";
+import { sweepStaleFormDrafts } from "./forms/drafts";
 import { publishDueItems, unpublishDueItems } from "./items/scheduled-publish";
 import { listConnectedProviders } from "./payments";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { pruneAnalyticsEvents, pruneErrorEvents } from "./analytics";
-import { pruneConsentRecords } from "./consent-records";
+import { pruneConsentRecords } from "./consent/records";
 import { pruneBroadcastMessages } from "./broadcast";
 import { maybeRunScheduledBackups } from "./backup";
-import { runScheduledSnapshots } from "./schema-versions";
-import { reapplyAllWorkspaces } from "./schema-reapply";
+import { runScheduledSnapshots } from "./schema/versions";
+import { reapplyAllWorkspaces } from "./schema/reapply";
 import { processMigrationRuns } from "./migrate";
 import { processCdcSinks } from "./cdc";
 import { flushUsage, sweepUsageGauges } from "./usage";
@@ -580,7 +580,7 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   }
 
   // External-DB migration runs: advance at most one due run by one bounded
-  // slice per tick (lease-reclaimed, cursor-resumable — services/migrate.ts).
+  // slice per tick (lease-reclaimed, cursor-resumable — services/migrate/index.ts).
   // NOT throttled beyond the tick itself: a user is actively watching the
   // progress panel, and an idle sweep is a single indexed SELECT.
   try {

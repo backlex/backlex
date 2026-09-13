@@ -21,7 +21,7 @@ import {
 
 // ── i18n strings ─────────────────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/i18n`. Upsert/delete
-// funnel through services/i18n.ts helpers so the (key, locale) upsert and
+// funnel through services/i18n/index.ts helpers so the (key, locale) upsert and
 // tenant-vs-global scoping rules stay in one place.
 
 const I18nStringType = new GraphQLObjectType({

@@ -7,7 +7,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { parsePagination } from "../lib/pagination";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { sendPushToUsers } from "../services/push";
+import { sendPushToUsers } from "../services/messaging/push";
 import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>

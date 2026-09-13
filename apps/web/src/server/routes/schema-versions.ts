@@ -3,7 +3,7 @@
  * Mounted at `/api/admin/schema`. Every route is DDL-gated (signed-in +
  * platform plane + admin) exactly like `/api/collections`, since applying a
  * diff mutates the physical schema. The heavy lifting lives in
- * services/schema-versions.ts; these handlers are thin validate-and-delegate.
+ * services/schema/versions.ts; these handlers are thin validate-and-delegate.
  */
 import { AppError } from "@backlex/core";
 import { Hono } from "hono";
@@ -26,7 +26,7 @@ import {
   listSnapshots,
   type SchemaRef,
   updateBranchHead,
-} from "../services/schema-versions";
+} from "../services/schema/versions";
 import { readJson } from "../lib/body";
 
 const DDL_GATE = [requireUser, requirePlatformMw, requireAdminMw] as const;

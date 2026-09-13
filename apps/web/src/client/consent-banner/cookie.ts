@@ -5,7 +5,7 @@
  * The banner runs on the CUSTOMER's origin. backlex is cross-origin to it, so
  * a `Set-Cookie` from any backlex response is a third-party cookie: blocked
  * outright in Safari and Firefox, partitioned in Chrome. The server already
- * assumes this — `routes/consent-public.ts` reads the subject id out of the
+ * assumes this — `routes/consent/public.ts` reads the subject id out of the
  * request BODY rather than a cookie, and sets no cookie at all.
  *
  * Two things follow that read like design choices and are not:
@@ -21,7 +21,7 @@
  * makes the browser drop the whole cookie on any http page, so local dev and
  * any customer still on plain http would silently store nothing and re-ask
  * every visitor on every page. The repo has written this down twice already
- * (`routes/forms-public.ts`, `middleware/tenant.ts`); this follows the SDK's
+ * (`routes/forms/public.ts`, `middleware/tenant.ts`); this follows the SDK's
  * token store, which gets it right in code.
  */
 export interface Decision {

@@ -13,16 +13,16 @@ import {
   resolveAuthSurface,
 } from "../services/auth-config";
 import { loadPasswordLoginMode } from "../services/settings";
-import { resolveSamlProvider } from "../services/saml-providers";
+import { resolveSamlProvider } from "../services/sso/saml-providers";
 import {
   assertAssertionBoundToAcs,
   samlReplayIdentity,
-} from "../services/saml-binding";
-import { resolveLdapAdapter } from "../services/ldap-config";
-import { provisionAppUser } from "../services/sso-provisioning";
+} from "../services/sso/saml-binding";
+import { resolveLdapAdapter } from "../services/sso/ldap-config";
+import { provisionAppUser } from "../services/sso/provisioning";
 import { consumeAppUserInvite, findAppUserInvite } from "../services/app-user-invites";
 import { assignAppUserRoleByName, ensureSystemRoles } from "../services/seed";
-import { invalidateUserRoles } from "../services/permissions-cache";
+import { invalidateUserRoles } from "../services/permissions/cache";
 import { rateLimitOk } from "../lib/rate-limit";
 import { keepAlive } from "../services/activity";
 import { type JwtEnv, signAccessToken } from "../lib/jwt";

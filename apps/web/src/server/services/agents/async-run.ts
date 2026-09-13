@@ -25,7 +25,7 @@
  * the payload at enqueue time and enforced from there. Without that, a
  * read-only credential (including an OAuth token granted `mcp:read` but not
  * `mcp:write`) could write through an agent by asking it to. See the caution in
- * `docs/agents.md` and `tests/agent-guard-contract.test.ts`.
+ * `docs/agents.md` and `tests/agents/agent-guard-contract.test.ts`.
  */
 import type { Hono } from "hono";
 import { signAgentRunToken } from "../../lib/jwt";

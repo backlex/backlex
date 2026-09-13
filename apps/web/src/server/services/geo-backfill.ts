@@ -23,8 +23,8 @@ import {
 } from "./items/sql-helpers";
 import { serialize } from "./items/serialize";
 import type { SQL } from "drizzle-orm";
-import type { ProgressReporter } from "./job-progress";
-import { noProgress } from "./job-progress";
+import type { ProgressReporter } from "./jobs/progress";
+import { noProgress } from "./jobs/progress";
 
 /** The subset of a loaded collection this needs. */
 export interface GeoBackfillTarget {
@@ -94,7 +94,7 @@ export interface GeoBackfillInput {
    *  queued path passes a budget and re-queues itself for the rest. */
   maxBatches: number;
   /** The caller's row-level `update` condition, resolved for THIS run. Never
-   *  serialized into a job payload — see `services/jobs-run-as.ts`. */
+   *  serialized into a job payload — see `services/jobs/run-as.ts`. */
   permWhere: SQL | null;
   tenantId: string | null;
   roles: string[];

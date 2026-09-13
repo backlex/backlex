@@ -33,8 +33,8 @@ import type {
 import { getTemplateLazy } from "../templates/lazy";
 import type { Ctx } from "../context";
 import { createManagedCollection } from "./collections";
-import { invalidateTenantCollections } from "./collections-cache";
-import { invalidateTenantPermissions } from "./permissions-cache";
+import { invalidateTenantCollections } from "./collections/cache";
+import { invalidateTenantPermissions } from "./permissions/cache";
 import { createAgent } from "./agents/store";
 import { createForm } from "./forms";
 import { refreshCollectionRollups, rollupRefreshAllStatements } from "./items/rollup";
@@ -48,7 +48,7 @@ import {
   isVectorizable,
   type VectorizeMeta,
 } from "./vectorize";
-import { nowFor } from "./items-helpers";
+import { nowFor } from "./items/helpers";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
 import { ensureSystemRoles, type DbCtx } from "./seed";

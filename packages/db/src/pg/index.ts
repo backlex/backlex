@@ -37,7 +37,7 @@ export type PgDriver = "postgres-js" | "neon-http";
  * be observed, and pinning the resolved object is the honest substitute for a
  * behavioural test.
  *
- * `max` and `connect_timeout` mirror what `services/migrate.ts` already passes
+ * `max` and `connect_timeout` mirror what `services/migrate/index.ts` already passes
  * to its own client — a known-good shape, not a new guess.
  *
  * **`statement_timeout` is opt-in and unset by default, deliberately.** This is

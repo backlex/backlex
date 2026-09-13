@@ -395,7 +395,7 @@ export const flow = (
  * These wrap the field-organization primitives (`group`, `width`,
  * `sectionCollapsible` / `sectionCollapsed`, `sectionsAsTabs`, and the
  * presentational `divider` / `notice` types). The house rules the catalog
- * follows, enforced by `tests/templates-layout.test.ts`:
+ * follows, enforced by `tests/templates/templates-layout.test.ts`:
  *
  *   • < 10 storage fields  → flat is fine; the record is one conceptual unit
  *     (a line item, a ledger row) and a lone section header is just noise.

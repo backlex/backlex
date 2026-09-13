@@ -177,7 +177,7 @@ const joinText = (base: string, extra: string): string =>
  * `websearch_to_tsquery` — so this was a SQLite/D1 bug, which is to say it was
  * every managed tenant and every default self-host.
  *
- * Pinned by `apps/web/tests/fts-turkish-dotted-i.test.ts`.
+ * Pinned by `apps/web/tests/search/fts-turkish-dotted-i.test.ts`.
  */
 export const toFtsMatchExpr = (needle: string): string | null => {
   const tokens = needle.match(/[\p{L}\p{N}]+/gu);

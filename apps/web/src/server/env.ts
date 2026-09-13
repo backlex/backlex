@@ -36,7 +36,7 @@ export interface Env {
   TRACES_RETENTION_DAYS?: string;
   /** OTLP/HTTP collector base URL (e.g. `https://otel.example.com` — `/v1/traces`
    *  is appended). When set, every persisted span is also exported to the
-   *  external OpenTelemetry collector. Unset → no export. See services/otlp.ts. */
+   *  external OpenTelemetry collector. Unset → no export. See services/otlp/index.ts. */
   OTLP_ENDPOINT?: string;
   /** Optional `key=value,key2=value2` headers for the OTLP export request
    *  (same format as `OTEL_EXPORTER_OTLP_HEADERS`) — auth tokens etc. */
@@ -96,7 +96,7 @@ export interface Env {
    *  breaks a working application for somebody who changed nothing. What made
    *  the flip safe was the advisor rule that answers "would enforcing refuse
    *  anything this workspace actually does?" from recorded spans rather than
-   *  from a guess — see `services/advisor.ts` and `docs/advisor.md`.
+   *  from a guess — see `services/advisor/index.ts` and `docs/advisor.md`.
    *
    *  `warn` is now the MIGRATION setting, not the resting state: set it, run
    *  the advisor's `permission-write-check` rule over a representative window,
@@ -307,7 +307,7 @@ export interface Env {
    *  workspace BYO config — it is deliberately NOT part of the ambient
    *  auto-detect chain (see `AI_PROVIDER`). */
   GOOGLE_GENERATIVE_AI_API_KEY?: string;
-  /** Force which entry of the AI provider registry (`services/ai-providers.ts`)
+  /** Force which entry of the AI provider registry (`services/ai/providers.ts`)
    *  generation runs on: `gateway` | `anthropic` | `openai` | `google`.
    *
    *  Without it, credentials are auto-detected in the historical order
@@ -819,7 +819,7 @@ export interface Env {
  * (bun/node/vercel/netlify/deno/gcp/lambda/azure) no longer hand-list a stale
  * subset — historically each one mapped ~34 of ~100 keys, silently dropping
  * SMTP/SES/push/SMS/OWNER_EMAIL/SSRF/AI-gateway/embedding/retention/job/upload
- * knobs. `tests/env-parity.test.ts` parses the interface and fails if a new
+ * knobs. `tests/runtime/env-parity.test.ts` parses the interface and fails if a new
  * string field is added without being listed here. The `satisfies` clause
  * guarantees every entry is a real `Env` key.
  */

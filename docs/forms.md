@@ -349,7 +349,7 @@ Cloudflare so the Worker (not Static Assets `_headers`) controls their CSP.
 
 ## Surfaces
 
-Everything goes through one service (`services/forms.ts`):
+Everything goes through one service (`services/forms/index.ts`):
 
 | Surface | Entry |
 |---|---|
@@ -359,15 +359,15 @@ Everything goes through one service (`services/forms.ts`):
 | MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, results, invites, invite, remind_invites, revoke_invite, delete) |
 | CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|results\|invites\|invite\|remind\|revoke-invite\|delete>` |
 
-Parity gate: `apps/web/tests/forms-surfaces.test.ts`; core behaviour:
-`apps/web/tests/forms.test.ts`; matrix grids:
-`apps/web/tests/forms-matrix.test.ts`; survey shapes + results arithmetic:
-`apps/web/tests/forms-results.test.ts` (and `forms-results-pg.test.ts` for the
+Parity gate: `apps/web/tests/forms/forms-surfaces.test.ts`; core behaviour:
+`apps/web/tests/forms/forms.test.ts`; matrix grids:
+`apps/web/tests/forms/forms-matrix.test.ts`; survey shapes + results arithmetic:
+`apps/web/tests/forms/forms-results.test.ts` (and `forms-results-pg.test.ts` for the
 Postgres spelling of the array explode); closing rules:
-`apps/web/tests/forms-availability.test.ts`; invites + reminders:
-`apps/web/tests/form-invites.test.ts` (and `form-invites-pg.test.ts` for the
+`apps/web/tests/forms/forms-availability.test.ts`; invites + reminders:
+`apps/web/tests/forms/form-invites.test.ts` (and `form-invites-pg.test.ts` for the
 Postgres spelling of the reminder join and its batch stamp); saved progress:
-`apps/web/tests/form-drafts.test.ts` (and `form-drafts-pg.test.ts` for the
+`apps/web/tests/forms/form-drafts.test.ts` (and `form-drafts-pg.test.ts` for the
 Postgres spelling of the upsert and the sweep's timestamp bound).
 
 ## Not yet

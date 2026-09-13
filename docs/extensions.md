@@ -203,9 +203,9 @@ declares).
 | MCP | `extensions.list`, `extensions.install`, `extensions.set_enabled`, `extensions.uninstall`, `extensions.invoke_hook` |
 | CLI | `bun backlex extensions <list\|install\|push\|enable\|disable\|uninstall\|invoke>` |
 
-Parity is pinned by `apps/web/tests/extensions-surfaces.test.ts`; the service
+Parity is pinned by `apps/web/tests/extensions/extensions-surfaces.test.ts`; the service
 internals (manifest validation, tar reader, bridge allow-list, asset CSP) by
-`apps/web/tests/extensions.test.ts`.
+`apps/web/tests/extensions/extensions.test.ts`.
 
 ## Limits & backlog
 

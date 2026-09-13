@@ -175,4 +175,4 @@ every rollup column on the collection from the rows it aggregates.
 | Runtime + reverse index + backfill | `apps/web/src/server/services/items/rollup.ts` |
 | Write-path hooks | `apps/web/src/server/services/items/write.ts`, `services/graphql/core.ts` |
 | Admin editor | `apps/web/src/client/admin/fields/field-rollup-editor.tsx` |
-| Tests | `apps/web/tests/rollup-field.test.ts`, `rollup-surfaces.test.ts` |
+| Tests | `apps/web/tests/fields/rollup-field.test.ts`, `rollup-surfaces.test.ts` |

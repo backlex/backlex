@@ -15,7 +15,7 @@ import {
   getCachedSession,
   setCachedAppSessionOwner,
   setCachedSession,
-} from "../services/permissions-cache";
+} from "../services/permissions/cache";
 import { revocationEpoch } from "../services/revocation-epoch";
 
 import { type ClientAddressEnv, clientAddress } from "../lib/client-address";
@@ -235,10 +235,10 @@ export interface AppSessionOwner {
  * isolate serving the suspend evicts immediately.
  *
  * EXPORTED (with its liveness-only wrapper {@link appSessionLive}) for
- * `routes/realtime.ts`, which re-asks it on the heartbeat of a held SSE stream.
+ * `routes/realtime/index.ts`, which re-asks it on the heartbeat of a held SSE stream.
  * It has to be this function and not a copy: the read path and the stream
  * disagreeing about whether a session is live is the same two-paths-drift that
- * `services/realtime-filter.ts` exists to prevent for conditions. Note that
+ * `services/realtime/filter.ts` exists to prevent for conditions. Note that
  * `getCachedAppSessionOwner` is NOT a substitute for a long-lived stream —
  * nothing repopulates that entry after the request middleware's one call, and
  * `invalidateAppSessions` DELETES rather than caching `null`, so it cannot tell
@@ -407,7 +407,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // Cookie session resolution, with a per-isolate cache keyed on the signed
   // `*.session_token` cookie. better-auth's getSession costs ~2 D1 round-trips,
   // so without this cache every authenticated request paid the DB hit. See
-  // services/permissions-cache `CachedSession` for the safety rationale (key is
+  // services/permissions/cache `CachedSession` for the safety rationale (key is
   // the signed cookie; TTL < better-auth's 60s cookieCache).
   //
   // This comment used to say better-auth's own `cookieCache` "only

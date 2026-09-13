@@ -37,7 +37,7 @@ import { recordActivity } from "../activity";
 
 // ── Availability & booking ───────────────────────────────────────────────────
 // Admin-scoped mirror of REST `/api/admin/booking`. Everything funnels through
-// services/booking.ts, so the capacity guarantee, the derived statuses and the
+// services/booking/index.ts, so the capacity guarantee, the derived statuses and the
 // grid check are shared rather than restated — restating a guard per surface is
 // how one of them ends up missing.
 //

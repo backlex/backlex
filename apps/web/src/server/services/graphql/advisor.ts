@@ -9,7 +9,7 @@ import {
   type GraphQLFieldConfig,
 } from "graphql";
 import { applyAdvisorFix, runAdvisorChecks } from "../advisor";
-import { loadRuntimeInsights } from "../advisor-insights";
+import { loadRuntimeInsights } from "../advisor/insights";
 
 // ── Advisor (#20) ────────────────────────────────────────────────────────────
 // Admin-scoped twin of REST `/api/admin/advisor*` + MCP `advisor-*` + SDK

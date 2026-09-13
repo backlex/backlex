@@ -302,7 +302,7 @@ export interface TemplateChannel {
  * Deliberately NOT here: a bundled booking resource.
  *
  * Seeding one provisions the `booking_records` collection automatically
- * (`services/booking-collection.ts`), and the three verticals a booking page
+ * (`services/booking/collection.ts`), and the three verticals a booking page
  * would suit — appointments, clinic, fitness — already ship their own
  * `bookings` / `appointments` collection modelling the same thing. A workspace
  * would open to two records of one appointment, which is confusion rather than

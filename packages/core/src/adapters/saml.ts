@@ -50,7 +50,7 @@ export interface SamlProviderConfig {
 
 /**
  * Output of a verified SAML Response. The route layer is responsible for
- * passing this into provisioning (see services/sso-provisioning.ts) — the
+ * passing this into provisioning (see services/sso/provisioning.ts) — the
  * adapter doesn't touch the database.
  */
 export interface SamlAssertion {

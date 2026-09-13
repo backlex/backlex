@@ -11,7 +11,7 @@
  * isolate that served the revoke. Cloudflare spawns isolates at colo scale, and
  * every OTHER one keeps serving the revoked cookie until its own entry lapses.
  *
- * That is the half `routes/auth-admin.ts` says it "cannot close from here".
+ * That is the half `routes/auth/admin.ts` says it "cannot close from here".
  * This closes it.
  *
  * HOW, AND WHY IT IS NOT A DURABLE OBJECT
@@ -47,7 +47,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 /** The minimum this file needs. Narrower than `Ctx` on purpose: the app-plane
  *  reader (`middleware/session.ts::appSessionOwner`) is handed exactly this
- *  shape by `routes/realtime.ts` and cannot produce a full `Ctx`. */
+ *  shape by `routes/realtime/index.ts` and cannot produce a full `Ctx`. */
 interface EpochCtx {
   db: unknown;
   dialect: "pg" | "sqlite";

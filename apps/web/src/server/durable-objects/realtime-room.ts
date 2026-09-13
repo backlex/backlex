@@ -3,7 +3,7 @@ import {
   eventIsForSubscriber,
   renderItemEvent,
   stripBefore,
-} from "../services/realtime-filter";
+} from "../services/realtime/filter";
 
 interface Meta {
   authSubject: AuthSubject;
@@ -25,7 +25,7 @@ interface Attachment {
   presence: PresenceIdentity | null;
   /**
    * The workspace this socket was gated in. A room is already addressed per
-   * workspace (`services/realtime-topic.ts` keys `idFromName`), so this is the
+   * workspace (`services/realtime/topic.ts` keys `idFromName`), so this is the
    * same answer asked a second time at delivery — it is what stops a frame that
    * somehow reached the wrong room from being fanned out of it.
    *
@@ -145,7 +145,7 @@ export class RealtimeRoom {
     if (url.pathname === "/stats") {
       // Read-only diagnostic snapshot. No auth at the DO level — DOs aren't
       // reachable from outside the Worker, so the admin gate runs once at
-      // the route layer (`routes/realtime-admin.ts`) and trusts what the DO
+      // the route layer (`routes/realtime/admin.ts`) and trusts what the DO
       // returns.
       const sockets = this.state.getWebSockets();
       let presenceMembers = 0;

@@ -16,7 +16,7 @@
  * empty array one line away from being populated. So this table is a single
  * declared answer per prefix, and TWO things read it: the middleware in
  * `middleware/plane-firewall.ts`, which refuses a violation (`PLANE_GUARD`
- * defaults to `enforce`), and `apps/web/tests/route-plane-registry.test.ts`,
+ * defaults to `enforce`), and `apps/web/tests/security/route-plane-registry.test.ts`,
  * which refuses a new mount that declares nothing.
  *
  * The test half is not the lesser half. An UNKNOWN path is admitted in BOTH
@@ -160,7 +160,7 @@ export const ROUTE_PLANES: readonly RoutePlaneEntry[] = [
   },
   {
     // Reading an invite by its token, before the invitee has any session at
-    // all — `routes/app-orgs-public.ts` calls this out in its header as the one
+    // all — `routes/app-orgs/public.ts` calls this out in its header as the one
     // route there that runs for a visitor with nothing. Holding the token IS
     // the authorization, and the response is the inviting org's name plus the
     // email it was sent to, both of which the holder already has.

@@ -263,7 +263,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
    * whole tenant in one unbounded synchronous pass. That is survivable for a
    * column update; this one copies BYTES, and a workspace with fifty thousand
    * objects would exhaust the runtime on the first call. So it takes the shape
-   * `phone.ts`'s normalizer uses: a `files.key` cursor, a small page, and a dry
+   * `phone/index.ts`'s normalizer uses: a `files.key` cursor, a small page, and a dry
    * run — because the first thing anyone sensibly does before moving data is
    * ask what would move.
    *
@@ -578,7 +578,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   // alongside sibling `/:key{.+}` catch-alls — the suffix route then misses
   // on 3+ segment keys (`a/b/c.txt/sign` → 404) even though plain Hono
   // handles it fine. The prefix form has no such ambiguity. See
-  // `tests/storage-sign.test.ts` for the regression that locks this in.
+  // `tests/storage/storage-sign.test.ts` for the regression that locks this in.
   .post("/_sign/:key{.+}", requirePermission(filesCollection, "read"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");

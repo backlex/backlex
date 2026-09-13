@@ -4,8 +4,8 @@ import {
   type IncomingItemEvent,
   renderItemEvent,
   stripBefore,
-} from "./realtime-filter";
-import { type ChannelAddress, parseTopic, topicFor } from "./realtime-topic";
+} from "./realtime/filter";
+import { type ChannelAddress, parseTopic, topicFor } from "./realtime/topic";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
@@ -16,12 +16,12 @@ import { dispatchIntegrations } from "./integrations";
 import { runFlows } from "./flows";
 import { runEventFunctions } from "./functions";
 import { runExtensionEventHooks } from "./extensions";
-import { redisPublish, redisRealtimeEnabled } from "./realtime-redis";
+import { redisPublish, redisRealtimeEnabled } from "./realtime/redis";
 import {
   ablyPublishSignal,
   itemSignalFor,
   itemsTransportKind,
-} from "./realtime-signal";
+} from "./realtime/signal";
 
 export interface ItemEventPayload {
   event: "created" | "updated" | "deleted";
@@ -116,7 +116,7 @@ export const renderEventForMeta = (
     eventTenant,
   );
 
-/** Keyed by TOPIC (`realtime-topic.ts`), never by channel — two workspaces that
+/** Keyed by TOPIC (`realtime/topic.ts`), never by channel — two workspaces that
  *  own a collection of the same name must not share a room. */
 const subscribers = new Map<string, Set<Subscriber>>();
 
@@ -188,7 +188,7 @@ export const getLocalChannelStats = (addr: ChannelAddress): ChannelStats => {
  *  Filtered by workspace, because the map holds every workspace's rooms and a
  *  caller is an admin of exactly one.
  *
- *  **No caller today.** `routes/realtime-admin.ts` enumerates from the
+ *  **No caller today.** `routes/realtime/admin.ts` enumerates from the
  *  `collections` table instead, so the comment that used to claim it as this
  *  function's consumer was wrong. Kept because it is the only way to see an
  *  application-owned channel that no table knows about, and corrected here
@@ -454,7 +454,7 @@ export const publishEvent = async (
   } else if (itemsTransportKind(env) === "ably-signal") {
     // Stateless serverless with Ably and nothing else: the only thing that goes
     // out is an ID-ONLY signal — subscribers read the row back through the
-    // permission-filtered REST path (see services/realtime-signal.ts). Rows
+    // permission-filtered REST path (see services/realtime/signal.ts). Rows
     // themselves NEVER cross this plane, so no per-subscriber filtering is lost.
     const signal = itemSignalFor(addr.channel, payload);
     // Non-row channels (`collections`, agent threads, …) have no signal shape;

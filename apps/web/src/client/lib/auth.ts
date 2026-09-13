@@ -9,7 +9,7 @@ export const auth = createBacklexAuthClient(
 export interface PublicProvider {
   id: string;
   /** The fourth copy of this union, and kept in step with the other three by
-   *  `apps/web/tests/auth-surface-parity.test.ts`. The admin plane never lists
+   *  `apps/web/tests/auth/auth-surface-parity.test.ts`. The admin plane never lists
    *  `oidc` (those rows are loaded into the tenant better-auth instance only),
    *  but a narrower type here is how the last drift started. */
   kind:

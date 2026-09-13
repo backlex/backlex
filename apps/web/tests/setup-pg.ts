@@ -19,7 +19,7 @@ import { schema } from "@backlex/db/pg";
 import { createApp } from "../src/server/app";
 import { __setDbOverrideForTests } from "../src/server/context";
 import { nextSyntheticIp, withSyntheticIp } from "./setup";
-import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
+import { invalidateAllPermissions } from "../src/server/services/permissions/cache";
 import type { Env } from "../src/server/env";
 
 const ROOT = resolve(import.meta.dir, "..", "..", "..");

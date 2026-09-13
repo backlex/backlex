@@ -19,7 +19,7 @@ import { AppError } from "@backlex/core";
  * (stored field metadata, a cached payload) as the caller's fault, hiding our
  * bug behind their error.
  *
- * `apps/web/tests/request-envelope.test.ts` guards both halves: the answers
+ * `apps/web/tests/security/request-envelope.test.ts` guards both halves: the answers
  * this produces, and — by scanning source — that no new route goes without it.
  */
 export const readJson = async <T = unknown>(req: {

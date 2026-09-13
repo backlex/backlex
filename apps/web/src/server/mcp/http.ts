@@ -3,7 +3,7 @@ import { dispatch } from "./dispatch";
 import { RPC_ERR, type McpServerWiring } from "./types";
 import { resolveEra, validateStandardHeaders, type ProtocolRejection } from "./protocol";
 import { isWorkspaceAllowedOrigin } from "../services/cors-origins";
-import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai/config";
 
 /**
  * For an `ai.*` tool call, overlay the workspace's bring-your-own AI key onto

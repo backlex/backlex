@@ -1129,7 +1129,7 @@ export const startManualBackup = async (
  *
  * Deliberately structural rather than the full {@link Ctx}: the two callers
  * that must capture one do not share a context type. `routes/collections.ts`
- * holds a full `Ctx`; `services/schema-versions.ts` has only `{db, dialect}`
+ * holds a full `Ctx`; `services/schema/versions.ts` has only `{db, dialect}`
  * plus whatever its route hands through. Widening one shared parameter beats
  * writing a second snapshot path for the schema-apply route — and a second path
  * is exactly how that route ended up without a data snapshot in the first place.

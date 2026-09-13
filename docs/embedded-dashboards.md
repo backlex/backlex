@@ -109,7 +109,7 @@ instance operator on every surface.
 ## Surfaces
 
 Mirrors the multi-surface parity rule (REST + SDK + GraphQL + MCP + CLI). The
-parity gate is `apps/web/tests/dashboards-surfaces.test.ts`.
+parity gate is `apps/web/tests/dashboards/dashboards-surfaces.test.ts`.
 
 ### REST (`/api/admin/dashboards`, admin-only)
 

@@ -51,7 +51,7 @@ import {
 } from "@backlex/core";
 import type { Ctx } from "../context";
 import { hashToken } from "./shared-links";
-import { updateItem } from "./items-helpers";
+import { updateItem } from "./items/helpers";
 import { sendTemplatedEmail } from "./email";
 import { escapeHtml, normalizeEmail } from "./signatures";
 import { deleteTask, enqueueTask, type ResumePayload } from "./scheduled-tasks";
@@ -715,7 +715,7 @@ const sendOutcomeMail = async (
 /**
  * Resume the flow that parked itself here.
  *
- * The import is dynamic because `flows.ts` imports THIS module for the
+ * The import is dynamic because `flows/index.ts` imports THIS module for the
  * `approval.request` op — a static import back would be a cycle. By the time a
  * decision arrives both modules are long initialised, so the await costs
  * nothing beyond the first call.

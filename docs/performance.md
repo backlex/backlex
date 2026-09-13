@@ -252,10 +252,10 @@ Attributing check time per file, without double-counting nested spans:
 
 | File | Check time | Share |
 |---|---|---|
-| `routes/booking.ts` | 31.7s | 20.4% |
-| `routes/scim-admin.ts` | 10.4s | 6.7% |
+| `routes/booking/index.ts` | 31.7s | 20.4% |
+| `routes/scim/admin.ts` | 10.4s | 6.7% |
 | `routes/roles/users.ts` | 10.4s | 6.7% |
-| `routes/payments.ts` | 7.8s | 5.1% |
+| `routes/payments/index.ts` | 7.8s | 5.1% |
 
 All of them are long `.openapi(createRoute({…}), handler)` chains. Every link
 widens the router's generic type, so cost grows super-linearly with chain
@@ -265,7 +265,7 @@ incremental build.
 ##### Splitting the chains — attempted 2026-08-15, and it did not work
 
 The obvious fix is to break the longest chains into sub-routers, the way
-`routes/items/` already is. It was tried on `routes/booking.ts`: one 15-link
+`routes/items/` already is. It was tried on `routes/booking/index.ts`: one 15-link
 chain became `booking/resources.ts` (7) plus `booking/bookings.ts` (8), mounted
 through `.route("/", …)`. The refactor itself was sound — the generated OpenAPI
 document came out **byte-identical**, and all 114 booking tests passed. It was
@@ -287,7 +287,7 @@ physical memory and paged less. That is the same effect the baseline's
 machine more than half of the wall clock is paging, not compiling.**
 
 So chain length is not the lever it looks like, at least at 15→7+8 on this
-tree. Don't re-attempt it on `routes/integrations.ts` (26 links) expecting a
+tree. Don't re-attempt it on `routes/integrations/index.ts` (26 links) expecting a
 win. The lever that is actually measurable here is physical memory — the same
 constraint that makes the TypeScript 7 port look slower than 6.0 below until its
 checker count is pinned.
@@ -665,7 +665,7 @@ other half.
 | compile + top-level (local V8) | ~330 ms | **~280 ms** |
 | a deploy's reported startup | 635-928 ms | expect ~0.85x |
 
-`apps/web/tests/worker-startup-budget.test.ts` holds it: it walks static imports
+`apps/web/tests/repo/worker-startup-budget.test.ts` holds it: it walks static imports
 from the worker entry in **source** (so it runs with nothing built) and fails if
 any of the three returns, or if the graph outgrows its recorded budget. Being
 source-level it is blind to the chunking half — that is what the script measures.

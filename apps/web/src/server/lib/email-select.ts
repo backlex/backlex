@@ -1,10 +1,10 @@
 import type { EmailAdapter } from "@backlex/core/adapters";
-import { consoleEmail } from "../adapters/email.console";
-import { resendEmail } from "../adapters/email.resend";
-import { sendgridEmail } from "../adapters/email.sendgrid";
-import { mailgunEmail } from "../adapters/email.mailgun";
-import { sesEmail } from "../adapters/email.ses";
-import { smtpEmail } from "../adapters/email.smtp";
+import { consoleEmail } from "../adapters/email/console";
+import { resendEmail } from "../adapters/email/resend";
+import { sendgridEmail } from "../adapters/email/sendgrid";
+import { mailgunEmail } from "../adapters/email/mailgun";
+import { sesEmail } from "../adapters/email/ses";
+import { smtpEmail } from "../adapters/email/smtp";
 import { isCloudflareWorkers, isEdgeRuntime } from "./runtime";
 import type { Env } from "../env";
 

@@ -3,7 +3,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq, isNull } from "drizzle-orm";
 import { log } from "../lib/log";
-import { invalidateTenantMembership, invalidateUserRoles } from "./permissions-cache";
+import { invalidateTenantMembership, invalidateUserRoles } from "./permissions/cache";
 import { assignRoleByName, type DbCtx, ensureSystemRoles, getRoleByName } from "./seed";
 import { hashToken } from "./shared-links";
 

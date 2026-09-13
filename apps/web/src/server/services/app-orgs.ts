@@ -14,7 +14,7 @@ import {
   ORG_RANK,
   assertMayActOn as sharedMayActOn,
   assertNotLastOwner as sharedNotLastOwner,
-} from "./membership-guards";
+} from "./membership/guards";
 import { log } from "../lib/log";
 import { resolveAssignableRoles } from "./app-user-invites";
 import { hashToken } from "./shared-links";
@@ -24,7 +24,7 @@ import {
   invalidateTenantOrgs,
   invalidateUserRoles,
   setCachedOrgMemberships,
-} from "./permissions-cache";
+} from "./permissions/cache";
 
 /**
  * App-plane organizations ("teams") — the B2B grouping level *inside* one
@@ -151,7 +151,7 @@ export const slugifyOrgName = (name: string): string => slugify(name, 48) || "or
  * `findOrg` resolves `:orgId` by id **or slug**, and the slug is caller-chosen,
  * so an org slugged `invites` makes `/orgs/invites/<x>` structurally identical
  * to `/orgs/invites/:token`. Today Hono picks the literal route because
- * `app-orgs-public.ts` registers it first — which means such an org is already
+ * `app-orgs/public.ts` registers it first — which means such an org is already
  * partly unreachable, a defect on its own — and anything reasoning about these
  * paths WITHOUT running the router (the plane firewall reads a path prefix, not
  * a matched route) cannot tell the two apart at all.
@@ -307,7 +307,7 @@ const assertMayActOn = (
   targetAppUserId: string,
   targetRole: OrgRole,
 ): void =>
-  // Delegated to `services/membership-guards.ts`, which is the same rule the
+  // Delegated to `services/membership/guards.ts`, which is the same rule the
   // PLATFORM plane now runs. It lived only here, and the plane that supervises
   // this one had no equivalent at all — an admin could delete a workspace's
   // sole owner with one unconfirmed click. Two implementations of one invariant
@@ -465,7 +465,7 @@ export const listOrgs = async (
     // bun:sqlite — which is what the two tests covering this run on. The
     // established shape for the same job is a dialect-branched position
     // function with a plain bound value; see
-    // `services/analytics-segments.ts::containsExpr`, three files over.
+    // `services/analytics/segments.ts::containsExpr`, three files over.
     const needle = opts.q.toLowerCase();
     const contains = (col: typeof t.orgs.name) =>
       ctx.dialect === "pg"
@@ -897,7 +897,7 @@ const LEGACY_PLAINTEXT_MSG = "[app-orgs] legacy plaintext invite token accepted"
  * That matters because the token is a bearer credential: whoever holds it is
  * seated in the org at the invited role, `admin` included. So it is no longer
  * readable at rest — `token_hash` holds a SHA-256 digest, the same scheme
- * `services/form-invites.ts` and `services/shared-links.ts` already use, and
+ * `services/forms/invites.ts` and `services/shared-links.ts` already use, and
  * the lookup hashes what arrives rather than comparing secrets.
  *
  * `app_org_invites.token` is NOT NULL and cannot cheaply be relaxed (see the
@@ -1062,7 +1062,7 @@ export const createOrgInvite = async (
   if (!email) throw new AppError("VALIDATION", "Email is required");
   const role: OrgRole = input.role ?? "member";
   // Same rule as `updateMember`, and here for the same stated reason: an admin
-  // must not be able to mint an owner. It used to live in `app-orgs-public.ts`
+  // must not be able to mint an owner. It used to live in `app-orgs/public.ts`
   // alone, so the ONE surface that happened to call it was the only one the
   // rule applied to — and `addMember` below shows how easily the next caller
   // arrives without it. A null actor is the operator, deliberately outside the

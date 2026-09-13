@@ -107,7 +107,7 @@ export const guardLogicalKey = (key: string) => {
 /**
  * The same judgement for a LIST prefix, which is not a key.
  *
- * `routes/s3.ts` hands `?prefix=` to the storage adapter without ever building
+ * `routes/s3/index.ts` hands `?prefix=` to the storage adapter without ever building
  * a key from it, and the fs adapter resolves it against the storage root — so
  * an unguarded prefix carrying parent-directory segments made the adapter throw
  * a bare `Error`, i.e. an unhandled 500 rather than a refusal.

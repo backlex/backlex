@@ -2,7 +2,7 @@
  * Third-party issuer configuration + the request-path resolution that turns a
  * verified external token into an `app_users` row.
  *
- * Data layer mirrors `services/saml-providers.ts`: reads degrade to empty when
+ * Data layer mirrors `services/sso/saml-providers.ts`: reads degrade to empty when
  * the table isn't migrated yet, so a fresh deployment renders an empty admin
  * page instead of 500ing. There is no secret to encrypt here — verifying a
  * third-party token needs only public keys, which is precisely what makes this
@@ -19,7 +19,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { clearJwksCache, type JwksFetchEnv, resolveJwksUrl } from "../lib/jwks-cache";
 import { log } from "../lib/log";
 import type { ThirdPartyIdentity, ThirdPartyProvider } from "../lib/third-party-jwt";
-import { provisionAppUser } from "./sso-provisioning";
+import { provisionAppUser } from "./sso/provisioning";
 import type { Env } from "../env";
 
 // The full runtime `Env`, not the narrow `JwksFetchEnv` this file used to

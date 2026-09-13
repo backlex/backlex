@@ -1,0 +1,248 @@
+import { Hono } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import type { AppBindings } from "../../app";
+import { requireUser } from "../../middleware/session";
+import { buildOpenApiDoc } from "../../lib/openapi";
+import { loadMetadata } from "./metadata";
+
+// Each of these is an `OpenAPIHono` sub-app — its `openAPIRegistry` holds
+// the `registerPath` entries declared via `.openapi(createRoute(...))`.
+// We pair each with its mount prefix so we can compose the full path.
+import { apiKeysRoutes } from "../api-keys";
+import { collectionsRoutes } from "../collections";
+import { foldersRoutes } from "../folders";
+import { itemsRoutes } from "../items";
+import { storageRoutes } from "../storage";
+import { vectorRoutes } from "../vector";
+import { realtimeRoutes } from "../realtime";
+import { webhooksRoutes } from "../webhooks";
+import { paymentsRoutes } from "../payments";
+import { commentsRoutes } from "../comments";
+import { notificationsRoutes } from "../notifications";
+import { flowsRoutes } from "../flows";
+import { functionsRoutes } from "../functions";
+import {
+  rolesRoutes,
+  permissionsRoutes,
+  usersRoutes,
+} from "../roles";
+import { appUsersRoutes } from "../app-users";
+import { appOrgsRoutes } from "../app-orgs";
+import { tenantsRoutes } from "../tenants";
+import { emailTemplatesRoutes } from "../email/templates";
+import { emailConfigRoutes } from "../email/config";
+import { workspaceConfigRoutes } from "../workspace-config";
+import { authAdminRoutes } from "../auth/admin";
+import { samlAdminRoutes } from "../sso/saml-admin";
+import { oidcAdminRoutes } from "../sso/oidc-admin";
+import { thirdPartyAuthAdminRoutes } from "../third-party-auth-admin";
+import { scimAdminRoutes } from "../scim/admin";
+import { syncHooksRoutes } from "../sync-hooks";
+import { authHooksRoutes } from "../auth-hooks";
+import { realtimeChannelsRoutes } from "../realtime/channels";
+import { rlsRoutes } from "../rls";
+import { s3CredentialsRoutes } from "../s3/credentials";
+import { captchaRoutes } from "../captcha";
+import { impersonationRoutes } from "../impersonation";
+import { signingKeysRoutes } from "../signing-keys";
+import { oauthClientsRoutes } from "../oauth-clients";
+import { cdcRoutes } from "../cdc";
+import { erasureRoutes } from "../erasure";
+import { integrationsRoutes } from "../integrations";
+import { ldapAdminRoutes } from "../sso/ldap-admin";
+import { adoptRoutes } from "../adopt";
+import { panelsRoutes } from "../panels";
+import { i18nRoutes } from "../i18n";
+import { settingsRoutes } from "../settings";
+import { dbAdminRoutes } from "../db-admin";
+import { metricsRoutes } from "../metrics";
+import { authPublicRoutes } from "../auth/public";
+import { activityRoutes } from "../activity";
+import { revisionsRoutes } from "../revisions";
+import { meRoutes } from "../me";
+import { accountRoutes } from "../account";
+import { formsRoutes } from "../forms";
+import { formsPublicRoutes } from "../forms/public";
+import { documentsRoutes } from "../documents";
+import { emailFieldRoutes } from "../email/fields";
+import { geoRoutes } from "../geo";
+import { phoneRoutes } from "../phone";
+import { signaturesRoutes } from "../signatures";
+import { bookingRoutes } from "../booking";
+import { bookingPublicRoutes } from "../booking/public";
+// The 27 groups below were fully annotated with `createRoute` + schemas and
+// absent from this array, so none of them reached `/api/openapi`, the REST
+// explorer, `docs/service-map.md` or the ten generated polyglot SDKs. Adding a
+// line here is the whole of what documenting a group takes, which is exactly
+// why it kept being forgotten — `openapi-subapp-coverage.test.ts` now derives
+// the set from `app.ts` instead of trusting this file to be complete.
+import { approvalsRoutes } from "../approvals";
+import { pushTemplatesRoutes } from "../push/templates";
+import { pushConfigRoutes } from "../push/config";
+import { smsConfigRoutes } from "../sms-config";
+import { aiConfigRoutes } from "../ai-config";
+import { platformSamlAdminRoutes } from "../sso/platform-saml-admin";
+import { platformLdapAdminRoutes } from "../sso/platform-ldap-admin";
+import { dashboardsRoutes } from "../dashboards";
+import { kpisRoutes } from "../kpis";
+import { usageRoutes } from "../usage";
+import { realtimeAdminRoutes } from "../realtime/admin";
+import { advisorRoutes } from "../advisor";
+import { tracesRoutes } from "../traces";
+import { analyticsRoutes } from "../analytics";
+import { tagManagerRoutes } from "../tag-manager";
+import { consentRoutes } from "../consent";
+import { analyticsIngestRoutes } from "../analytics/ingest";
+import { flagsPublicRoutes, flagsAdminRoutes } from "../feature-flags";
+import { sharedLinksRoutes } from "../shared-links";
+import { sharedPublicRoutes } from "../shared-links/public";
+import { dashboardsPublicRoutes } from "../dashboards/public";
+import { approvalsPublicRoutes } from "../approvals/public";
+import { signaturesPublicRoutes } from "../signatures/public";
+import { deviceTokensRoutes } from "../device-tokens";
+import { phoneNumbersRoutes } from "../phone/numbers";
+import { messagingRoutes } from "../messaging";
+import { jobsRoutes } from "../jobs";
+import { extensionsRoutes } from "../extensions";
+
+// `any` on purpose — `OpenAPIHono<AppBindings>` for each sub-app blows
+// past TypeScript's inference budget on this many entries. Only the
+// runtime `openAPIRegistry.definitions` walk needs to work.
+export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
+  ["/api/api-keys", apiKeysRoutes as unknown as OpenAPIHono<any>],
+  ["/api/collections", collectionsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/folders", foldersRoutes as unknown as OpenAPIHono<any>],
+  ["/api/items", itemsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/storage", storageRoutes as unknown as OpenAPIHono<any>],
+  ["/api/vector", vectorRoutes as unknown as OpenAPIHono<any>],
+  ["/api/realtime", realtimeRoutes as unknown as OpenAPIHono<any>],
+  ["/api/webhooks", webhooksRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/payments", paymentsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/comments", commentsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/notifications", notificationsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/flows", flowsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/functions", functionsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/roles", rolesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/permissions", permissionsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/users", usersRoutes as unknown as OpenAPIHono<any>],
+  ["/api/app-users", appUsersRoutes as unknown as OpenAPIHono<any>],
+  ["/api/app-orgs", appOrgsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/tenants", tenantsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/email-templates", emailTemplatesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/email-config", emailConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/workspace-config", workspaceConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/auth", authAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/saml", samlAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/oidc", oidcAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/third-party-auth", thirdPartyAuthAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/scim", scimAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/sync-hooks", syncHooksRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/auth-hooks", authHooksRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/realtime-channels", realtimeChannelsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/rls", rlsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/s3-credentials", s3CredentialsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/captcha", captchaRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/impersonation", impersonationRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/signing-keys", signingKeysRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/oauth-clients", oauthClientsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/cdc-sinks", cdcRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/erasure", erasureRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/integrations", integrationsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/ldap-config", ldapAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/adopt", adoptRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/panels", panelsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/i18n", i18nRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/settings", settingsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/db", dbAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/metrics", metricsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/auth", authPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/activity", activityRoutes as unknown as OpenAPIHono<any>],
+  ["/api/revisions", revisionsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/me", meRoutes as unknown as OpenAPIHono<any>],
+  ["/api/account", accountRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/forms", formsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/forms", formsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/documents", documentsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/geo", geoRoutes as unknown as OpenAPIHono<any>],
+  // `phone` was registered nowhere until now, so `/api/phone/normalize/{slug}`
+  // was absent from the published spec even though the route has shipped since
+  // #43 — the same one-line omission this entry would have been. Both here.
+  ["/api/phone", phoneRoutes as unknown as OpenAPIHono<any>],
+  ["/api/email", emailFieldRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/signatures", signaturesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/booking", bookingRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/book", bookingPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/approvals", approvalsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/push-templates", pushTemplatesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/push-config", pushConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/sms-config", smsConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/ai-config", aiConfigRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/platform-saml", platformSamlAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/platform-ldap-config", platformLdapAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/dashboards", dashboardsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/kpis", kpisRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/usage", usageRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/realtime", realtimeAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/advisor", advisorRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/traces", tracesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/analytics", analyticsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/tag-manager", tagManagerRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/consent", consentRoutes as unknown as OpenAPIHono<any>],
+  ["/api/analytics", analyticsIngestRoutes as unknown as OpenAPIHono<any>],
+  ["/api/flags", flagsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/feature-flags", flagsAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/shared-links", sharedLinksRoutes as unknown as OpenAPIHono<any>],
+  ["/api/shared", sharedPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/dashboards", dashboardsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/approve", approvalsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/sign", signaturesPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/device-tokens", deviceTokensRoutes as unknown as OpenAPIHono<any>],
+  ["/api/phone-numbers", phoneNumbersRoutes as unknown as OpenAPIHono<any>],
+  ["/api/messaging", messagingRoutes as unknown as OpenAPIHono<any>],
+  ["/api/jobs", jobsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/extensions", extensionsRoutes as unknown as OpenAPIHono<any>],
+];
+
+const requireAdmin = (roles: string[]) => {
+  if (!roles.includes(SYSTEM_ROLES.admin)) {
+    throw new AppError("FORBIDDEN", "Admin role required");
+  }
+};
+
+const baseUrlFor = (req: Request): string => {
+  const url = new URL(req.url);
+  return `${url.protocol}//${url.host}`;
+};
+
+const docFor = async (c: { req: { raw: Request }; get: (k: "ctx") => any }, tenantId: string | null) => {
+  await loadMetadata();
+  return buildOpenApiDoc(c.get("ctx"), tenantId, {
+    baseUrl: baseUrlFor(c.req.raw),
+    subApps: SUBAPPS,
+  });
+};
+
+export const openapiRoutes = new Hono<AppBindings>()
+  .get("/openapi.json", requireUser, async (c) => {
+    const auth = c.get("auth");
+    requireAdmin(auth.roles);
+    const doc = await docFor(c, auth.tenantId ?? null);
+    // No browser caching: the dynamic `/api/items/{slug}` paths must reflect a
+    // just-created collection immediately (the Collections page deep-links here
+    // with `?slug=` right after create). Server-side memoization already makes
+    // regeneration cheap, so revalidating on every request costs little.
+    c.header("Cache-Control", "no-store");
+    return c.json(doc);
+  })
+  .get("/openapi.yaml", requireUser, async (c) => {
+    const auth = c.get("auth");
+    requireAdmin(auth.roles);
+    const doc = await docFor(c, auth.tenantId ?? null);
+    // Dynamic-import `yaml` so it stays out of the worker's cold-start eval —
+    // only this on-demand spec endpoint needs it (see vite.config manualChunks).
+    const { stringify: yamlStringify } = await import("yaml");
+    return new Response(yamlStringify(doc), {
+      headers: { "content-type": "application/yaml; charset=utf-8" },
+    });
+  });

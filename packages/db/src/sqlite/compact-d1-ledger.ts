@@ -39,7 +39,7 @@
  * export helpers is a change to the deploy path in service of a one-off
  * maintenance task. The two invariants that duplication could drift on — a
  * space-free `--command=` and a raised `maxBuffer` — are pinned for BOTH files
- * by `apps/web/tests/migrate-d1-ledger.test.ts`.
+ * by `apps/web/tests/db/migrate-d1-ledger.test.ts`.
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

@@ -388,7 +388,7 @@ to the list would leave every historical visit from it reading as Referral
 forever. Deriving it means the whole history reclassifies the moment the rules
 change, which is what anyone comparing quarters actually wants.
 
-The rules themselves live in `services/analytics-channels.ts` as pure
+The rules themselves live in `services/analytics/channels.ts` as pure
 functions with no database, so they are cheap to test and cheap to adjust. An
 explicit paid medium beats whatever the referrer looks like — an ad click and
 an organic result share `google.com` and differ only in the tag, and getting
@@ -510,8 +510,8 @@ Both streams are pruned by the daily cron sweep:
 ## Surfaces
 
 Mirrors the multi-surface parity rule (REST + SDK + GraphQL + MCP + CLI). The
-parity gate is `apps/web/tests/analytics-surfaces.test.ts`; the Postgres twin of
-the funnel/retention SQL is pinned in `apps/web/tests/analytics-pg.test.ts`.
+parity gate is `apps/web/tests/analytics/analytics-surfaces.test.ts`; the Postgres twin of
+the funnel/retention SQL is pinned in `apps/web/tests/analytics/analytics-pg.test.ts`.
 
 ### REST
 
@@ -626,7 +626,7 @@ is nullable for SDK and server-side traffic.
 - Batch inserts are chunked to ~90 bound parameters per statement. D1 caps a
   statement at ~100, so an unchunked 500-event insert fails outright with
   `too many SQL variables`. Same budget and reasoning as
-  `services/migrate-ingest.ts`.
+  `services/migrate/ingest.ts`.
 - `error_groups.id` is derived deterministically from
   `(tenantId, fingerprint)`, which lets ingest upsert with a single atomic
   `ON CONFLICT (id)` — no check-then-insert race, and no reliance on a unique

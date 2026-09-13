@@ -156,7 +156,7 @@ export const createS3Credential = async (
  * and `guardLogicalKey` already refuses the keys such a prefix would describe),
  * but it leaves the invariant "a stored prefix is a plain key prefix" FALSE,
  * and that is the assumption every future prefix-based filter is entitled to
- * make — the `effective` prefix computation in `routes/s3.ts` already does.
+ * make — the `effective` prefix computation in `routes/s3/index.ts` already does.
  *
  * Refused rather than normalized: normalizing would silently WIDEN the scope,
  * which is the opposite of what an admin editing a scope intends.

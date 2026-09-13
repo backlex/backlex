@@ -238,7 +238,7 @@ export const scanRouteGates = (
  *   · *"an ALL row over a path with concrete routes beneath it is a mount"* —
  *     laundered by `app.all("/api/x/*", handler)` used as a fallback beneath
  *     real routes, which is a shape this codebase already contains
- *     (`routes/auth.ts` is `new Hono().all("/*", …)`).
+ *     (`routes/auth/index.ts` is `new Hono().all("/*", …)`).
  *   · *"an ALL row whose handlers are all NAMED is a mount"* — laundered by any
  *     route handler that is a named function.
  *

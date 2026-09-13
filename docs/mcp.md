@@ -655,5 +655,5 @@ res = (client.from_("orders").query()
 
 See `apps/web/src/server/mcp/` for the implementation —
 `protocol.ts` owns the dual-era rules — and
-`apps/web/tests/mcp.test.ts` plus `apps/web/tests/mcp-protocol-2026.test.ts`
+`apps/web/tests/mcp/mcp.test.ts` plus `apps/web/tests/mcp/mcp-protocol-2026.test.ts`
 for executable contract examples.

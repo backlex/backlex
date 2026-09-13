@@ -7,7 +7,7 @@
  * Mirrors `services/api-keys.ts` for the hash/random helpers and degrades
  * gracefully when the `shared_links` table hasn't been migrated yet (the
  * production D1 migration is a separate manual step) — reads/writes wrapped
- * in try/catch the same way `services/email-config.ts` does.
+ * in try/catch the same way `services/email/config.ts` does.
  */
 import { and, desc, eq, isNull } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";

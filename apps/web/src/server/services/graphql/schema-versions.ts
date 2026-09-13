@@ -14,9 +14,9 @@ import {
   listBranches as listSchemaBranches,
   listSnapshots as listSchemaSnapshots,
   type SchemaRef,
-} from "../schema-versions";
+} from "../schema/versions";
 import { cloneCollection as cloneCollectionService } from "../collections";
-import { invalidateTenantCollections } from "../collections-cache";
+import { invalidateTenantCollections } from "../collections/cache";
 
 // ── Schema versions (migration diffing / schema branching, #9) ──────────────
 // Mirrors REST `/api/admin/schema` + MCP `schema.*` + SDK `client.schema.*` +

@@ -10,7 +10,7 @@
  * and `logActivity` on every mutation so the change has a name attached.
  *
  * The public half — the container a visitor's browser fetches — deliberately
- * does NOT live here. It rides `routes/analytics-collect.ts`, which is already
+ * does NOT live here. It rides `routes/analytics/collect.ts`, which is already
  * outside the credentialed CORS middleware and already answers anonymous
  * requests keyed on nothing but a public site id.
  */
@@ -25,8 +25,8 @@ import { logActivity } from "../services/activity";
 import {
   TAG_TEMPLATES,
   cspAdditionsForTemplates,
-} from "../services/tag-templates";
-import { SCROLL_THRESHOLDS, TAG_FIELDS, TRIGGER_TYPES } from "../services/tag-conditions";
+} from "../services/tag-manager/templates";
+import { SCROLL_THRESHOLDS, TAG_FIELDS, TRIGGER_TYPES } from "../services/tag-manager/conditions";
 import {
   FIRE_RULES,
   TAG_KINDS,

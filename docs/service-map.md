@@ -37,24 +37,24 @@ guides; this list is everything else.
   `services/graphql.ts`) — schema auto-generated from collections.
   Uses the L1 permission cache so deep queries don't N+1 the
   resolver. See `docs/graphql.md`.
-- **OpenAPI** (`routes/openapi.ts`, `routes/openapi-metadata.ts`,
+- **OpenAPI** (`routes/openapi/index.ts`, `routes/openapi/metadata.ts`,
   `services/openapi-dynamic.ts`) — spec generated dynamically from
   collection schemas + per-route `.openapi(...)` decorators
   (`@hono/zod-openapi`); a new route shows up automatically if you
   decorate it.
-- **Public surfaces** (`routes/i18n-public.ts`,
-  `routes/shared-public.ts`, `routes/shared-links.ts`,
+- **Public surfaces** (`routes/i18n/public.ts`,
+  `routes/shared-links/public.ts`, `routes/shared-links/index.ts`,
   `services/shared-links.ts`) — unauthenticated endpoints used by
   signed share-link URLs and the public i18n bundle. Never apply
   `requirePermission` here; gate via the share-link token instead.
-- **i18n strings** (`routes/i18n.ts`, `services/i18n.ts`,
-  `services/i18n-translate.ts`) — content-translation system
+- **i18n strings** (`routes/i18n/index.ts`, `services/i18n/index.ts`,
+  `services/i18n/translate.ts`) — content-translation system
   (multilingual values for user-managed collections), distinct from
   the admin SPA's Lingui chrome translations.
 
 ## Automation
 
-- **Webhooks** (`routes/webhooks.ts`, `routes/webhook-trigger.ts`,
+- **Webhooks** (`routes/webhooks/index.ts`, `routes/webhooks/trigger.ts`,
   `services/webhooks.ts`) — outbound delivery with retry. Each delivery is
   signed three ways: legacy `X-Backlex-Signature` (HMAC of body) plus the
   replay-safe `X-Backlex-Signature-V2` over `{timestamp}.{body}` with
@@ -63,7 +63,7 @@ guides; this list is everything else.
   broadcast notification; reset on success or manual resume). SDK receiver
   helper: `verifyWebhook` from `backlex/webhook`. The trigger route is
   the inbound side that flows/functions hook into. See `docs/webhooks.md`.
-- **Payments** (`routes/payments.ts`, `routes/payments-public.ts`,
+- **Payments** (`routes/payments/index.ts`, `routes/payments/public.ts`,
   `services/payments.ts`, `@backlex/integrations/payments`) — inbound sync from
   Stripe / Polar / Lemon Squeezy, the mirror image of Webhooks above. The public
   receiver verifies the provider HMAC over the RAW body, dedupes on the
@@ -75,7 +75,7 @@ guides; this list is everything else.
   `payments.reconcile` job per connected provider. Mirrored across REST, the SDK
   (`client.payments.*`), GraphQL, MCP (`payments.*`) and the CLI.
   See `docs/payments.md`.
-- **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual
+- **Flows** (`routes/flows.ts`, `services/flows/index.ts`) — visual
   workflow builder. Trigger keys are `event` / `cron` / `webhook` /
   `manual`; operations are a serialized DSL evaluated server-side.
   Admin-scoped CRUD + run is mirrored across REST, the SDK
@@ -122,7 +122,7 @@ guides; this list is everything else.
   `services/scheduled-tasks.ts`) — cron expression parsing +
   delayed-task ledger. Driven by the `scheduled` Worker entry and
   the Vercel/Netlify cron routes.
-- **Job queue** (`routes/jobs.ts`, `services/jobs.ts`) — durable
+- **Job queue** (`routes/jobs.ts`, `services/jobs/index.ts`) — durable
   background jobs (`function` / `webhook.deliver`) with exponential
   backoff, dead-letter, and `runAt` scheduling. `processJobs` drains
   the `jobs` table inside the same `cronTick`; webhook dispatch
@@ -160,21 +160,21 @@ guides; this list is everything else.
   applies scheduled publishes inside `cronTick`. See `docs/draft-publish.md`.
 - **Notifications** (`routes/notifications.ts`) — in-app
   notification feed; activity/flows write into it.
-- **Email templates** (`routes/email-templates.ts`) — per-tenant
+- **Email templates** (`routes/email/templates.ts`) — per-tenant
   overrides for transactional templates; pairs with the
   per-workspace email config in `docs/api-keys-and-email.md`.
-- **Direct messaging** (`routes/messaging.ts`, `services/messaging.ts`)
+- **Direct messaging** (`routes/messaging.ts`, `services/messaging/index.ts`)
   — dispatch-only push + SMS, no in-app row. `dispatchPush` /
   `dispatchSms` are the single source of truth the REST route and the
   GraphQL mutations both call, so validation and the admin-or-self gate
   cannot drift between them.
-- **Push** (`routes/device-tokens.ts`, `routes/push-config.ts`,
-  `routes/push-templates.ts`, `services/push.ts`) — device registry,
+- **Push** (`routes/device-tokens.ts`, `routes/push/config.ts`,
+  `routes/push/templates.ts`, `services/messaging/push.ts`) — device registry,
   per-workspace transport, and `sendTemplatedPush`, the twin of
   `sendTemplatedEmail`: a key resolves tenant-then-global and literal
   title/body are its fallback. See `docs/push-messaging.md`.
-- **SMS** (`routes/phone-numbers.ts`, `routes/sms-config.ts`,
-  `services/sms.ts`) — number registry read at send time by
+- **SMS** (`routes/phone/numbers.ts`, `routes/sms-config.ts`,
+  `services/messaging/sms.ts`) — number registry read at send time by
   `sendSmsToUsers`, and cleaned up by `services/erasure.ts`. See
   `docs/sms-messaging.md`.
 
@@ -184,8 +184,8 @@ guides; this list is everything else.
   `routes/tenants.ts`, `routes/tenant-auth.ts`) — multi-tenant
   end-user pool (distinct from the control-plane admin pool):
   invite flow, tenant switching, per-tenant sign-in routes.
-- **App organizations** (`routes/app-orgs.ts`,
-  `routes/app-orgs-public.ts`, `services/app-orgs.ts`) — the B2B
+- **App organizations** (`routes/app-orgs/index.ts`,
+  `routes/app-orgs/public.ts`, `services/app-orgs.ts`) — the B2B
   grouping level inside a workspace: orgs, membership (owner/admin/
   member), org-scoped workspace roles, invitations, and the active-org
   resolution that binds `$org.id` for the permission DSL. Admin routes
@@ -197,18 +197,18 @@ guides; this list is everything else.
   whitelist (i18n defaults, timezone, …); `workspace-config` is
   per-tenant overrides for runtime knobs.
 - **Roles admin + collection rename** (`routes/roles.ts`,
-  `services/collection-rename.ts`) — roles admin is the editor for
+  `services/collections/rename.ts`) — roles admin is the editor for
   the permission DSL. `collection-rename` is the only safe path to
   rename a collection (renames the physical table + updates
   permission rows in one transaction).
-- **Advisor** (`routes/advisor.ts`, `services/advisor.ts`,
-  `services/advisor-insights.ts`) — security / performance / config rule
+- **Advisor** (`routes/advisor.ts`, `services/advisor/index.ts`,
+  `services/advisor/insights.ts`) — security / performance / config rule
   checks surfaced in the admin UI with fix recommendations. Performance
   covers both static schema-derived rules and traffic-derived ones computed
   from recorded spans; `POST /apply` carries out a finding's remediation by
   re-deriving the statement server-side. See `docs/advisor.md`.
-- **Product analytics + crash reporting** (`routes/analytics.ts`,
-  `routes/analytics-ingest.ts`, `services/analytics.ts`) — the tracked-event
+- **Product analytics + crash reporting** (`routes/analytics/index.ts`,
+  `routes/analytics/ingest.ts`, `services/analytics/index.ts`) — the tracked-event
   stream plus fingerprinted error groups. Ingest is append-only and
   authenticated by a publishable `alk_` key, an API key or a session; the
   admin reads (overview / funnel / retention / errors) are admin-only.
@@ -219,7 +219,7 @@ guides; this list is everything else.
   shared with the dashboard runner + public embed.
 - **Metrics** (`routes/metrics.ts`) — request / error counters +
   time-series rollups for the admin dashboard.
-- **Realtime admin + DB admin** (`routes/realtime-admin.ts`,
+- **Realtime admin + DB admin** (`routes/realtime/admin.ts`,
   `routes/db-admin.ts`) — subscriber counts + test-publish, and
   schema introspection + diagnostics. Realtime admin is admin-only; the DB
   admin routes that span the whole database (`/sql/run`, `/tables`,
@@ -236,8 +236,8 @@ guides; this list is everything else.
   `services/items/csv.ts`) — `GET /:slug/export?format=json|csv` (reuses the
   list read-filter stack) and `POST /:slug/import` (per-row `performCreate`,
   system columns stripped, errors captured). SDK `exportItems`/`importItems`.
-- **External-DB migration** (`routes/migrate.ts` + `services/migrate.ts` +
-  `services/migrate-ingest.ts`) — `POST /api/admin/migrate/ingest/:slug`
+- **External-DB migration** (`routes/migrate.ts` + `services/migrate/index.ts` +
+  `services/migrate/ingest.ts`) — `POST /api/admin/migrate/ingest/:slug`
   (bulk, PK-preserving, idempotent, side-effect-free row copy; D1
   param-budget chunking; the CLI pump's write path) + the server-side
   connector: `/sources` CRUD (URL encrypted at rest + SSRF guard),
@@ -249,7 +249,7 @@ guides; this list is everything else.
 
 ## Cross-cutting helpers worth knowing
 
-- `services/permissions-cache.ts` — per-request L1 cache on top of
+- `services/permissions/cache.ts` — per-request L1 cache on top of
   the permissions resolver. Bulk loops hit it for free, no opt-in
   needed.
 - `services/cors-origins.ts` — per-tenant allow-list reused by SAML

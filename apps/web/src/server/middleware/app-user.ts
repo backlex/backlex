@@ -9,7 +9,7 @@ import { findTenantBySlugOrId } from "../services/tenant-auth";
  * WHY IT IS A MIDDLEWARE
  *
  * This check existed, byte-for-byte identical, as a local
- * `const requireAppUser = async (c) => …` in BOTH `routes/app-orgs-public.ts`
+ * `const requireAppUser = async (c) => …` in BOTH `routes/app-orgs/public.ts`
  * and `routes/app-agents-public.ts`, called from every handler body. The routes
  * were protected; the protection was invisible to anything reading Hono's
  * `app.routes`, which is how twenty `/api/t/:slug/*` entries showed up in the
@@ -18,7 +18,7 @@ import { findTenantBySlugOrId } from "../services/tenant-auth";
  * the correct rule sat written down in another file.
  *
  * Mounted per route rather than on a wildcard, deliberately. One route in
- * `app-orgs-public.ts` — `GET /:slug/orgs/invites/:token` — runs before its
+ * `app-orgs/public.ts` — `GET /:slug/orgs/invites/:token` — runs before its
  * visitor has any session at all, and a wildcard mount would need an exemption
  * list to spare it. An exemption list is the thing this repo has twice found
  * laundering defects; naming the gate on each route that wants it says the same

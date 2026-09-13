@@ -17,7 +17,7 @@ pkg.types = "./dist/index.d.ts";
 // `backlex/token` import documented in docs/auth-planes.md failed for everyone
 // installing from npm while working fine in the monorepo and on JSR. Kept in
 // agreement with package.json / jsr.json / tsup.config.ts by
-// `apps/web/tests/sdk-exports.test.ts`.
+// `apps/web/tests/sdk/sdk-exports.test.ts`.
 pkg.exports = {
   ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
   "./types": { types: "./dist/types.d.ts", default: "./dist/types.js" },

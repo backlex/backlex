@@ -252,7 +252,7 @@ migrations just ran against).
 
 ### A `*-surfaces` spec: what it proves, and what it does not
 
-There are ~70 `apps/web/tests/*-surfaces.test.ts` files and they carry the
+There are ~70 `apps/web/tests/**/*-surfaces.test.ts` files and they carry the
 multi-surface rule — a feature reachable over REST is also reachable over the
 SDK, GraphQL, MCP and the CLI. They are good at that. They prove the five
 surfaces have the same SHAPE.

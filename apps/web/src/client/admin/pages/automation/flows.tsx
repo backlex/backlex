@@ -1,11 +1,13 @@
 // Flows page — trigger → operations list + preview canvas + builder modal
 import type { PushToast } from "../../types";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import type { ScheduleOffsetUnit } from "@backlex/core";
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../../icons";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
 import { FlowBuilder } from "./flow-builder";
 import { compileGraph, decompileGraph, FlowCompileError, type Graph } from "./flow-graph";
+import { readTrigger, type CronCadence } from "./flow-trigger-view";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
 import { api } from "@/lib/api";
@@ -14,6 +16,7 @@ import { FlowsSkeleton } from "../../page-skeletons";
 
 export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast: PushToast; activeFlow?: string | null; setActiveFlow?: (id: string | null) => void }) {
   const { t } = useLingui();
+  const describeTrigger = useTriggerText();
   // Flows load from /api/flows on mount. No mock seed — empty workspace
   // hits the empty-state render path on the right pane.
   type FlowRow = { id: string; name: string; trigger: string; actions: string[]; status: string; runs: number; operations: any[] };
@@ -156,20 +159,31 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
           {flows.length === 0 && (
             <EmptyState size="sm" title={<Trans>No flows yet — click + New flow.</Trans>} />
           )}
-          {flows.map((f) => (
-            <div
-              key={f.id}
-              onClick={() => setActive(f.id)}
-              className={`grid cursor-pointer grid-cols-[24px_1fr_60px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active === f.id ? "bg-accent" : ""}`}
-            >
-              <span><I.Bolt size={14} /></span>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-[13px] font-medium">{f.name}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">{f.trigger}</span>
+          {flows.map((f) => {
+            const trigger = describeTrigger(f.trigger);
+            const TriggerIcon = trigger.icon;
+            return (
+              <div
+                key={f.id}
+                onClick={() => setActive(f.id)}
+                // `minmax(0,1fr)`, not `1fr`: a bare `1fr` floors at the
+                // content's min-content width, so one unbreakable trigger line
+                // widened the column straight under the status badge.
+                className={`grid cursor-pointer grid-cols-[24px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active === f.id ? "bg-accent" : ""}`}
+              >
+                <span title={trigger.title}><TriggerIcon size={14} /></span>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-[13px] font-medium">{f.name}</span>
+                  <span className="truncate text-[11.5px] text-muted-foreground" title={trigger.summary}>
+                    {trigger.title}
+                    {trigger.rowTarget && trigger.target && <> · <span className="font-mono text-[11px]">{trigger.target}</span></>}
+                    {trigger.meta && <> · {trigger.meta}</>}
+                  </span>
+                </div>
+                <Badge variant={f.status === "active" ? "default" : "secondary"}>{f.status}</Badge>
               </div>
-              <Badge variant={f.status === "active" ? "default" : "secondary"}>{f.status}</Badge>
-            </div>
-          ))}
+            );
+          })}
         </Card>
 
         <Card className="gap-4.5 p-[22px]">
@@ -287,7 +301,157 @@ function describeOpShort(op: any): string {
   }
 }
 
+/** A trigger as this page words it. The list row and the preview node both
+ *  read from one of these, so the two never describe a flow differently. */
+type TriggerText = {
+  icon: IconComponent;
+  /** What starts the flow: "Item created", "Every day at 03:00", "3 days before". */
+  title: string;
+  /** The identifier it acts on, set in mono: a collection, `collection.field`, a cron pattern. */
+  target: string | null;
+  /** What qualifies it: a schedule's wall clock and its filter count. */
+  meta: string | null;
+  /** False where the title already says the target in words — a cron cadence
+   *  next to its own pattern would say the same thing twice on one line. */
+  rowTarget: boolean;
+  /** The whole reading on one line, for the tooltip a truncated line needs. */
+  summary: string;
+};
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const clock = (hour: number, minute: number) => `${pad2(hour)}:${pad2(minute)}`;
+const INTL_UNIT: Record<ScheduleOffsetUnit, string> = { minutes: "minute", hours: "hour", days: "day", weeks: "week" };
+
+function useTriggerText(): (trigger: string) => TriggerText {
+  const { t, i18n } = useLingui();
+  const locale = i18n.locale || "en";
+  // Intl carries the plural and the unit word ("1 day" / "3 days", "3 gün"),
+  // which a template string per unit and count would have to spell out.
+  const amount = (value: number, unit: ScheduleOffsetUnit) => {
+    try {
+      return new Intl.NumberFormat(locale, { style: "unit", unit: INTL_UNIT[unit], unitDisplay: "long" }).format(value);
+    } catch {
+      return `${value} ${unit}`;
+    }
+  };
+  // 2024-01-07 was a Sunday, so cron's day 0–6 lands on the matching name.
+  const weekday = (day: number, width: "long" | "short") => {
+    try {
+      return new Intl.DateTimeFormat(locale, { weekday: width, timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 7 + day)));
+    } catch {
+      return String(day);
+    }
+  };
+  const joined = (parts: string[]) => {
+    try {
+      return new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(parts);
+    } catch {
+      return parts.join(", ");
+    }
+  };
+
+  const cadence = (c: CronCadence): string => {
+    switch (c.every) {
+      case "minute": {
+        const n = c.step;
+        return n === 1 ? t`Every minute` : t`Every ${n} minutes`;
+      }
+      case "hour": {
+        const n = c.step;
+        const minute = `:${pad2(c.minute)}`;
+        if (n === 1) return c.minute === 0 ? t`Every hour` : t`Every hour at ${minute}`;
+        return c.minute === 0 ? t`Every ${n} hours` : t`Every ${n} hours at ${minute}`;
+      }
+      case "day": {
+        const time = clock(c.hour, c.minute);
+        return t`Every day at ${time}`;
+      }
+      case "weekdays": {
+        const time = clock(c.hour, c.minute);
+        return t`Weekdays at ${time}`;
+      }
+      case "week": {
+        const time = clock(c.hour, c.minute);
+        const days = joined(c.days.map((d) => weekday(d, c.days.length === 1 ? "long" : "short")));
+        return t`Every ${days} at ${time}`;
+      }
+      case "month": {
+        const time = clock(c.hour, c.minute);
+        const day = c.day;
+        return t`Monthly on day ${day} at ${time}`;
+      }
+    }
+  };
+
+  return (trigger) => {
+    const view = readTrigger(trigger);
+    const text = ((): Omit<TriggerText, "summary"> => {
+      switch (view.kind) {
+        case "item": {
+          const icon = view.event === "created" ? I.Plus : view.event === "updated" ? I.Pencil : view.event === "deleted" ? I.Trash : I.Database;
+          const title =
+            view.event === "created" ? t`Item created`
+            : view.event === "updated" ? t`Item updated`
+            : view.event === "deleted" ? t`Item deleted`
+            : t`Any item change`;
+          return view.collection
+            ? { icon, title, target: view.collection, meta: null, rowTarget: true }
+            : { icon, title, target: null, meta: t`any collection`, rowTarget: true };
+        }
+        case "transition": {
+          const anyValue = t`any`;
+          const target = [view.collection, view.field].filter(Boolean).join(".") || null;
+          const facts = [
+            view.collection ? null : t`any collection`,
+            view.from || view.to ? `${view.from ?? anyValue} → ${view.to ?? anyValue}` : null,
+          ].filter((fact): fact is string => fact !== null);
+          return { icon: I.ArrowRight, title: t`Status change`, target, meta: facts.join(" · ") || null, rowTarget: true };
+        }
+        case "cron":
+          return view.cadence
+            ? { icon: I.Clock, title: cadence(view.cadence), target: view.pattern, meta: null, rowTarget: false }
+            : { icon: I.Clock, title: t`Custom schedule`, target: view.pattern, meta: null, rowTarget: true };
+        case "schedule": {
+          const { collection, field, offset, at, timeZone } = view.spec;
+          const n = amount(offset.value, offset.unit);
+          const title = offset.value === 0 ? t`On the date` : offset.direction === "before" ? t`${n} before` : t`${n} after`;
+          const count = view.filters;
+          const facts = [
+            // A null zone is UTC to the scheduler, so it is said, not implied.
+            at === null ? null : `${clock(Math.floor(at / 60), at % 60)} ${timeZone ?? "UTC"}`,
+            count === 0 ? null : count === 1 ? t`1 filter` : t`${count} filters`,
+          ].filter((fact): fact is string => fact !== null);
+          return { icon: I.CalendarClock, title, target: `${collection}.${field}`, meta: facts.join(" · ") || null, rowTarget: true };
+        }
+        case "webhook":
+          return { icon: I.Webhook, title: t`Incoming webhook`, target: null, meta: null, rowTarget: true };
+        case "signup":
+          return { icon: I.Users, title: t`User signed up`, target: null, meta: null, rowTarget: true };
+        case "manual":
+          return { icon: I.Play, title: t`Run manually`, target: null, meta: null, rowTarget: true };
+        case "event":
+          return { icon: I.Bolt, title: t`Event`, target: view.key, meta: null, rowTarget: true };
+        case "unknown":
+          return { icon: I.AlertTriangle, title: t`Unreadable trigger`, target: view.raw || null, meta: null, rowTarget: true };
+      }
+    })();
+    return { ...text, summary: [text.title, text.target, text.meta].filter(Boolean).join(" · ") };
+  };
+}
+
+/** `orders.placed_at` may break after the dot and nowhere else first, so a long
+ *  pair wraps as two identifiers instead of mid-word. */
+const breakAfterDots = (s: string): ReactNode =>
+  s.split(".").map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 && <>.<wbr /></>}
+      {part}
+    </Fragment>
+  ));
+
 function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operations: any[]; onEdit: () => void }) {
+  const describeTrigger = useTriggerText();
+  const triggerText = describeTrigger(trigger);
   const opKind = (op: any) => (op?.type === "condition" ? "condition" : "action");
   const visible = operations.slice(0, 3);
   const overflow = Math.max(0, operations.length - visible.length);
@@ -312,7 +476,24 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
     >
       <ScrollArea className="size-full" viewportClassName="rounded-surface">
         <div style={{ position: "relative", height: 220, minWidth: contentWidth }}>
-          <FlowNode x={X0} y={Y} kind="trigger" title="trigger" sub={trigger || "—"} />
+          <FlowNode
+            x={X0}
+            y={Y}
+            kind="trigger"
+            title="trigger"
+            sub={triggerText.summary}
+            body={
+              // Clamped line by line: the canvas is 220px tall and this node
+              // starts 80px down, so it has to stay readable in what is left.
+              <>
+                <div className="line-clamp-2 text-[12.5px] font-medium leading-snug text-foreground">{triggerText.title}</div>
+                {triggerText.target && (
+                  <div className="line-clamp-2 font-mono text-[11px] leading-snug text-muted-foreground [overflow-wrap:anywhere]">{breakAfterDots(triggerText.target)}</div>
+                )}
+                {triggerText.meta && <div className="truncate text-[11px] leading-snug text-muted-foreground">{triggerText.meta}</div>}
+              </>
+            }
+          />
           {visible.map((op, i) => {
             const prevX = X0 + i * (NODE_W + GAP);
             const x = prevX + NODE_W + GAP;
@@ -448,7 +629,9 @@ function FlowStatCard({
   );
 }
 
-function FlowNode({ x, y, kind, title, sub }: { x: number; y: number; kind: string; title: string; sub: string }) {
+/** `sub` is the one-line mono summary an action node shows, and the tooltip on
+ *  every node; `body` replaces the visible line when a node has more to say. */
+function FlowNode({ x, y, kind, title, sub, body }: { x: number; y: number; kind: string; title: string; sub: string; body?: ReactNode }) {
   const colors: Record<string, { bg: string; bd: string; ic: IconComponent }> = {
     trigger: { bg: "color-mix(in oklch, var(--primary) 20%, var(--card))", bd: "var(--color-interactive-hover-border)", ic: I.Zap },
     condition: { bg: "color-mix(in oklch, oklch(0.78 0.16 75) 18%, var(--card))", bd: "color-mix(in oklch, oklch(0.78 0.16 75) 50%, var(--border))", ic: I.Filter },
@@ -461,7 +644,11 @@ function FlowNode({ x, y, kind, title, sub }: { x: number; y: number; kind: stri
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: "var(--muted-foreground)", minWidth: 0 }}>
         <Icon size={11} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
       </div>
-      <div className="font-mono" title={sub} style={{ fontSize: 11.5, color: "var(--foreground)", wordBreak: "break-all", overflowWrap: "anywhere" }}>{sub}</div>
+      {body ? (
+        <div title={sub} className="flex min-w-0 flex-col gap-0.5">{body}</div>
+      ) : (
+        <div className="font-mono" title={sub} style={{ fontSize: 11.5, color: "var(--foreground)", wordBreak: "break-all", overflowWrap: "anywhere" }}>{sub}</div>
+      )}
     </div>
   );
 }

@@ -69,13 +69,33 @@ const cmpVal = (a: unknown, b: unknown): number => {
   return as < bs ? -1 : as > bs ? 1 : 0;
 };
 
+/**
+ * The system columns a query names one way and a row carries another.
+ *
+ * `sort` and `filter` take the COLUMN (`created_at`) — that is what the list
+ * endpoint accepts — while rows arrive with the API's wire names (`createdAt`).
+ * Read literally, both sides of every comparison were `undefined`, so a
+ * `-created_at` window kept insertion order and sliced a new row off (#390).
+ */
+const WIRE_NAMES = new Map([
+  ["created_at", "createdAt"],
+  ["updated_at", "updatedAt"],
+  ["owner_id", "ownerId"],
+]);
+
+/** A row's value for a field named the way a query names it. */
+const readField = (row: Record<string, unknown>, field: string): unknown => {
+  const wire = WIRE_NAMES.get(field);
+  return wire !== undefined && !Object.hasOwn(row, field) ? row[wire] : row[field];
+};
+
 const compareRows = (
   a: Record<string, unknown>,
   b: Record<string, unknown>,
   clauses: SortClause[],
 ): number => {
   for (const { field, dir } of clauses) {
-    const c = cmpVal(a[field], b[field]);
+    const c = cmpVal(readField(a, field), readField(b, field));
     if (c !== 0) return dir === "desc" ? -c : c;
   }
   return 0;
@@ -127,7 +147,7 @@ export const matchesRow = (row: Record<string, unknown>, cond: Condition): boole
   if (isOr(cond)) return cond.$or.some((c) => matchesRow(row, c));
   if (isNot(cond)) return !matchesRow(row, cond.$not);
   for (const [field, cmp] of Object.entries(cond as Record<string, ComparisonObj>)) {
-    if (!matchLeaf(row[field], cmp)) return false;
+    if (!matchLeaf(readField(row, field), cmp)) return false;
   }
   return true;
 };

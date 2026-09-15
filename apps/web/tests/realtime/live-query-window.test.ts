@@ -92,3 +92,67 @@ describe("Stage 3 windowed maintenance (no insert refetch)", () => {
     expect(results.at(-1)!.map((r) => r.id)).toEqual(["b", "a"]);
   });
 });
+
+describe("sorting and filtering on a system column (#390)", () => {
+  // The sort and filter name the COLUMN (`created_at`), which is what the list
+  // endpoint accepts; rows arrive with the API's wire names (`createdAt`). Read
+  // literally, both sides of every comparison were `undefined`, so a newer row
+  // on a full `-created_at` window was appended and then sliced off.
+  type Stamped = { id: string; createdAt: string; ownerId?: string };
+  const stamped = (initial: Stamped[]) => {
+    const state = { data: [...initial], listCalls: 0 };
+    let fire: (e: { event: "created" | "updated"; data: Stamped }) => void = () => {};
+    const deps: LiveQueryDeps<Stamped> = {
+      list: async () => {
+        state.listCalls++;
+        return { data: [...state.data], limit: 50, offset: 0 };
+      },
+      subscribe: (_ch, onEvent) => {
+        fire = onEvent as typeof fire;
+        return () => {};
+      },
+    };
+    return { deps, state, fire: (e: Parameters<typeof fire>[0]) => fire(e) };
+  };
+
+  test("a newer row takes the top of a full `-created_at` window and the oldest leaves", async () => {
+    const m = stamped([
+      { id: "b", createdAt: "2026-09-02T00:00:00.000Z" },
+      { id: "a", createdAt: "2026-09-01T00:00:00.000Z" },
+    ]);
+    const results: Stamped[][] = [];
+    createLiveQuery<Stamped>(m.deps, "products", { sort: "-created_at", limit: 2 }, (r) => results.push(r));
+    await sleep(10);
+
+    m.fire({ event: "created", data: { id: "c", createdAt: "2026-09-03T00:00:00.000Z" } });
+    expect(results.at(-1)!.map((r) => r.id)).toEqual(["c", "b"]);
+    await sleep(150);
+    expect(m.state.listCalls).toBe(1); // placed by the sort, not by a reconcile
+  });
+
+  test("an older row stays off a full `-created_at` window", async () => {
+    const m = stamped([
+      { id: "b", createdAt: "2026-09-02T00:00:00.000Z" },
+      { id: "a", createdAt: "2026-09-01T00:00:00.000Z" },
+    ]);
+    const results: Stamped[][] = [];
+    createLiveQuery<Stamped>(m.deps, "products", { sort: "-created_at", limit: 2 }, (r) => results.push(r));
+    await sleep(10);
+
+    m.fire({ event: "created", data: { id: "z", createdAt: "2026-08-01T00:00:00.000Z" } });
+    expect(results.at(-1)!.map((r) => r.id)).toEqual(["b", "a"]);
+  });
+
+  test("the local filter reads a system column the same way the sort does", async () => {
+    const m = stamped([]);
+    const results: Stamped[][] = [];
+    createLiveQuery<Stamped>(m.deps, "products", { filter: { owner_id: { _eq: "u1" } } }, (r) =>
+      results.push(r),
+    );
+    await sleep(10);
+
+    m.fire({ event: "updated", data: { id: "theirs", createdAt: "x", ownerId: "u2" } });
+    m.fire({ event: "updated", data: { id: "mine", createdAt: "x", ownerId: "u1" } });
+    expect(results.at(-1)!.map((r) => r.id)).toEqual(["mine"]);
+  });
+});

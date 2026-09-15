@@ -1,5 +1,7 @@
 import { createApp } from "../app";
+import { serveLandingShell } from "../lib/landing-shell";
 import { timingSafeEqual } from "../lib/timing";
+import { isDemoMode } from "../services/demo";
 import type { Env } from "../env";
 
 /**
@@ -62,8 +64,16 @@ export default {
     // authenticates with its own shared secret rather than a session, and an
     // unauthenticated caller is rejected by a constant-time compare before any
     // database work happens.
-    if (new URL(request.url).pathname === "/api/_cron/tick") {
+    const { pathname } = new URL(request.url);
+    if (pathname === "/api/_cron/tick") {
       return handleCronTick(request, env);
+    }
+    // Also ahead of Hono, for a different reason: this is the admin shell, and
+    // it must carry the static shell's headers rather than Hono's — see
+    // `lib/landing-shell.ts`. Reached only where `run_worker_first` lists "/"
+    // (wrangler.playground.toml); everywhere else Static Assets answers `/`.
+    if (pathname === "/" && env.ASSETS && (request.method === "GET" || request.method === "HEAD")) {
+      return serveLandingShell(request, env.ASSETS, { shareCard: isDemoMode(env) });
     }
     const app = createApp(env);
     // Pass `ctx` through so `c.executionCtx.waitUntil` works — without it the

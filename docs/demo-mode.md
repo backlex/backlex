@@ -91,6 +91,14 @@ after the cause is fixed instead of at the next hour boundary.
 
 - The playground is just a normal deploy (Workers, Bun, Vercel, Netlify) with
   the env vars above — nothing else is special about it.
+- **Link previews (Cloudflare only).** A shared playground link unfurls on
+  LinkedIn, Slack and X with a title, description and image, because the
+  Worker adds Open Graph tags to the landing page when `DEMO_MODE` is on. That
+  needs `"/"` in `run_worker_first` — `wrangler.playground.toml` has it —
+  since Static Assets otherwise answers `/` before any code runs. The document
+  keeps exactly the static shell's headers, and an instance without
+  `DEMO_MODE` gets its shell back unchanged, so the route is safe in any
+  config. Other targets serve the plain shell, which carries no card.
 - Storage blobs whose metadata rows were wiped past the per-reset cleanup cap
   (1000 objects) are orphaned; point the playground at a dedicated bucket.
 - **Keep the playground's own database migrated.** A dedicated deploy has its
@@ -102,4 +110,5 @@ after the cause is fixed instead of at the next hour boundary.
   (`wrangler d1 execute <name>` resolves the name against the *account*, not the
   config — a stale `D1_DATABASE_NAME` override silently migrates a different
   database and still exits 0.)
-- Tests: `apps/web/tests/settings/demo-mode.test.ts`.
+- Tests: `apps/web/tests/settings/demo-mode.test.ts`, and
+  `apps/web/tests/runtime/playground-share-card.test.ts` for the link preview.

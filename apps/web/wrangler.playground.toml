@@ -60,7 +60,10 @@ PERMISSION_WRITE_CHECK = "enforce"
 directory = "./dist/client"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/health", "/health/*", "/mcp", "/embed/*", "/f/*", "/book/*", "/b/*", "/.well-known/*"]
+# "/" is the one entry wrangler.toml does not have: it lets the Worker add the
+# link-preview card (Open Graph tags) to the landing page, which Static Assets
+# would otherwise answer without running any code. See src/server/lib/landing-shell.ts.
+run_worker_first = ["/", "/api/*", "/health", "/health/*", "/mcp", "/embed/*", "/f/*", "/book/*", "/b/*", "/.well-known/*"]
 
 [[d1_databases]]
 binding = "D1"

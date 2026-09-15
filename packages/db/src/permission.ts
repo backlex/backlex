@@ -114,6 +114,19 @@ export interface EvalOpts {
    * {@link foldCase}.
    */
   foldable?: (field: string) => boolean;
+  /**
+   * JS predicate only: a field the row object does not CARRY is UNKNOWN, not
+   * `undefined`.
+   *
+   * For a caller holding a partial row that distinction is the whole answer. A
+   * realtime event's payload is not the stored row — a `published` frame skips
+   * `localized` fields (they live in the sidecar), a create echo has no database
+   * defaults — and `_neq`, `_nin` or `_null: true` against an absent key used to
+   * MATCH, delivering a row the SQL would have excluded. Off by default: a write
+   * check judges the payload it was handed, where an omitted field is genuinely
+   * absent.
+   */
+  absentIsUnknown?: boolean;
 }
 
 /**
@@ -697,8 +710,9 @@ const matchesInner = (
   now: number,
   dialect: Dialect | undefined,
   foldable?: (field: string) => boolean,
+  absentIsUnknown?: boolean,
 ): Verdict => {
-  const down = (c: Condition) => matchesInner(row, c, ctx, now, dialect, foldable);
+  const down = (c: Condition) => matchesInner(row, c, ctx, now, dialect, foldable, absentIsUnknown);
   const and = andOf(cond);
   if (and) return andVerdict(and.map(down));
   const or = orOf(cond);
@@ -745,6 +759,9 @@ const matchesInner = (
     // nothing implements matched no branch below and fell out of the bottom as
     // `true`. See `unknownOperators` in `@backlex/core`.
     if (Object.keys(cmp).some((k) => !COMPARISON_OPERATORS.has(k))) return null;
+    // The row does not say what this field holds, so nothing below can either
+    // — see EvalOpts.absentIsUnknown.
+    if (absentIsUnknown && !Object.hasOwn(row, field)) return null;
     const left = lookup(row, field);
     // An operand that did not resolve is UNKNOWN, not "not equal" — mirroring
     // the SQL side's `UNKNOWN`, so realtime and REST answer the same question.
@@ -866,7 +883,7 @@ export const matchesCondition = (
   // UNKNOWN reads as "no match", exactly as a NULL predicate excludes a row
   // from a `WHERE`. Callers get the same boolean they always got; the third
   // value exists only so `$not` cannot invent a TRUE out of it.
-  matchesInner(row, cond, ctx, opts.now ?? Date.now(), opts.dialect, opts.foldable) === true;
+  matchesInner(row, cond, ctx, opts.now ?? Date.now(), opts.dialect, opts.foldable, opts.absentIsUnknown) === true;
 
 /** Operators that ORDER two values. These are the ones with nothing to say
  *  when either side is missing — an equality still has an answer (`_eq` against

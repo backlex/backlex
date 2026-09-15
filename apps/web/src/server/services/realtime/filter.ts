@@ -79,6 +79,16 @@ export const projectRow = (
   return out;
 };
 
+/**
+ * How every predicate here reads an event's row. `absentIsUnknown` because the
+ * row is the event's payload, not the stored row: a publish frame omits
+ * `localized` fields and a create echo omits database defaults, and a condition
+ * on a field the payload lacks must not match — REST reads the stored value and
+ * may withhold the row. A frame that cannot be judged is not sent; a live query
+ * catches up on its next read.
+ */
+const evalOpts = (f: RealtimeFilter) => ({ dialect: f.dialect, absentIsUnknown: true });
+
 /** Permission gate only (ignores the live-query filter). */
 const permissionPasses = (
   row: Record<string, unknown>,
@@ -86,9 +96,7 @@ const permissionPasses = (
 ): boolean => {
   if (f.conditions === null) return true;
   if (f.conditions.length === 0) return false;
-  return f.conditions.some((c) =>
-    matchesCondition(row, c, f.authSubject, { dialect: f.dialect }),
-  );
+  return f.conditions.some((c) => matchesCondition(row, c, f.authSubject, evalOpts(f)));
 };
 
 /**
@@ -101,8 +109,7 @@ export const rowPasses = (
   f: RealtimeFilter,
 ): boolean =>
   permissionPasses(row, f) &&
-  (f.queryFilter == null ||
-    matchesCondition(row, f.queryFilter, f.authSubject, { dialect: f.dialect }));
+  (f.queryFilter == null || matchesCondition(row, f.queryFilter, f.authSubject, evalOpts(f)));
 
 /**
  * Membership transition for an `updated` event (reactive invalidation Stage 2).

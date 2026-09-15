@@ -529,6 +529,23 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     },
     [navigate],
   );
+  // Revisions: /revisions/:collection/:itemId, so an item's history can be
+  // linked and a refresh keeps it open.
+  const revisionsCollection = activeNav === "revisions" ? (segs[1] ?? null) : null;
+  const revisionsItem = activeNav === "revisions" ? (segs[2] ?? null) : null;
+  const revisionsTarget = useMemo(
+    () => ({ collection: revisionsCollection, itemId: revisionsItem }),
+    [revisionsCollection, revisionsItem],
+  );
+  const openRevisions = useCallback(
+    (collection: string | null, itemId: string | null, opts?: { replace?: boolean }) => {
+      const path = !collection
+        ? "/revisions"
+        : `/revisions/${encodeURIComponent(collection)}${itemId ? `/${encodeURIComponent(itemId)}` : ""}`;
+      navigate(path, { replace: opts?.replace });
+    },
+    [navigate],
+  );
   const activeFormId = activeNav === "forms" && segs[1] ? segs[1] : null;
   const openFormAt = useCallback(
     (id: string | null, tab?: string) => {
@@ -1330,7 +1347,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "database-import" && <DatabaseImportPage pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
             {activeNav === "kpis" && <KpisPage pushToast={pushToast} />}
-            {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}
+            {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} target={revisionsTarget} onTarget={openRevisions} />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
             {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
             {activeNav === "platform-sso" && <PlatformSsoSettingsPage pushToast={pushToast} />}

@@ -1,10 +1,15 @@
 import type { PushToast } from "../../types";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
 import { Badge, Button, EmptyState, PageHeader } from "../../ui";
 import { ConfirmDialog } from "../../sheet";
+import { Select } from "../../select";
+import { orderCollections, useCollections } from "../../queries";
+import type { ApiCollection } from "../../api";
+import { rowLabel } from "../../lib/row-label";
 import { Card } from "@backlex/ui/components/card";
+import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { RevisionsSkeleton } from "../../page-skeletons";
@@ -46,55 +51,115 @@ const fmtRevTs = (v: string | number): string => {
   return Number.isNaN(d.getTime()) ? String(v) : d.toISOString().slice(0, 16).replace("T", " ");
 };
 
-export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
+/** How a list of one collection's rows is ordered here: most recently written
+ *  first, by whichever timestamp the table actually has. */
+const recentFirst = (c: ApiCollection): string | null =>
+  c.hasUpdatedAt !== false ? "-updated_at" : c.hasCreatedAt !== false ? "-created_at" : null;
+
+export function RevisionsPage({
+  pushToast,
+  target,
+  onTarget,
+}: {
+  pushToast?: PushToast;
+  /** `/revisions/:collection/:itemId`, when the page is routed. */
+  target?: { collection: string | null; itemId: string | null };
+  onTarget?: (collection: string | null, itemId: string | null, opts?: { replace?: boolean }) => void;
+} = {}) {
   const toast = pushToast ?? (() => {});
   const { t } = useLingui();
 
   // Revisions are scoped to a (collection, itemId) pair, so we need both to
-  // query the API. Pick the first existing collection on mount, then its items.
+  // query the API. This page used to take the first collection on mount and
+  // offer no way to pick another, so every other collection's history was out
+  // of reach from here.
+  const collectionsQuery = useCollections();
+  const collections = useMemo(
+    () =>
+      orderCollections(
+        (collectionsQuery.data?.data ?? []).filter((c) => (c.status ?? "active") !== "archived"),
+        collectionsQuery.data?.meta?.groups ?? [],
+      ).flatMap(([group, list]) => list.map((c) => ({ c, group }))),
+    [collectionsQuery.data],
+  );
+
+  // The selection lives in the URL when the page is routed, so a history can
+  // be linked and survives a refresh; standalone it is local state.
+  const [local, setLocal] = useState<{ collection: string; itemId: string }>({ collection: "", itemId: "" });
+  const requestedCollection = onTarget ? (target?.collection ?? "") : local.collection;
+  const activeId = onTarget ? (target?.itemId ?? "") : local.itemId;
+  const select = (collection: string, itemId: string, opts?: { replace?: boolean }) => {
+    if (onTarget) onTarget(collection || null, itemId || null, opts);
+    else setLocal({ collection, itemId });
+  };
+  // A slug the list does not hold (dropped, not readable, a stale link) falls
+  // back to the first collection rather than an empty page.
+  const collection =
+    collections.find((x) => x.c.slug === requestedCollection)?.c ?? collections[0]?.c ?? null;
+  const collectionSlug = collection?.slug ?? "";
+  useEffect(() => {
+    if (collectionSlug && requestedCollection !== collectionSlug) select(collectionSlug, "", { replace: true });
+  }, [collectionSlug, requestedCollection]);
+
   type RowItem = { id: string; title: string };
-  const [items, setItems] = useState<RowItem[]>([]);
-  const [collectionSlug, setCollectionSlug] = useState<string>("posts");
-  const [activeId, setActiveId] = useState<string>("");
+  // Rows carry the collection they were read from, so nothing downstream can
+  // pair one collection's row id with another collection's slug mid-switch.
+  const [loaded, setLoaded] = useState<{ slug: string; rows: RowItem[] } | null>(null);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [needle, setNeedle] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => setNeedle(search.trim()), 250);
+    return () => clearTimeout(handle);
+  }, [search]);
+  const items = loaded && loaded.slug === collectionSlug ? loaded.rows : [];
   const item = items.find((x) => x.id === activeId);
 
-  const loadItems = async (slug: string) => {
+  // A later request supersedes an earlier one: typing a search fires several,
+  // and they need not answer in order.
+  const itemsRequest = useRef(0);
+  const loadItems = async (c: ApiCollection, q: string) => {
+    const request = ++itemsRequest.current;
     setItemsLoading(true);
     try {
-      const ir = await fetch(`/api/items/${encodeURIComponent(slug)}?limit=20&sort=-updated_at`, { credentials: "include" });
-      if (!ir.ok) { setItems([]); return; }
-      const ij = (await ir.json()) as { data?: any[] };
-      const rows = (ij.data ?? []).map((r) => ({
-        id: r.id,
-        title: String(r.title ?? r.name ?? r.slug ?? r.id ?? "").slice(0, 48) || r.id,
-      }));
-      setItems(rows);
-      setActiveId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : rows[0]?.id ?? ""));
+      const params = new URLSearchParams({ limit: "50" });
+      const sort = recentFirst(c);
+      if (sort) params.set("sort", sort);
+      if (q) params.set("q", q);
+      const ir = await fetch(`/api/items/${encodeURIComponent(c.slug)}?${params}`, { credentials: "include" });
+      const ij = ir.ok ? ((await ir.json()) as { data?: Record<string, unknown>[] }) : { data: [] };
+      if (request !== itemsRequest.current) return;
+      setLoaded({
+        slug: c.slug,
+        rows: (ij.data ?? []).map((r) => ({
+          id: String(r.id),
+          title: rowLabel(r, { displayTemplate: c.displayTemplate, fields: c.fields }),
+        })),
+      });
     } catch {
-      setItems([]);
+      if (request === itemsRequest.current) setLoaded({ slug: c.slug, rows: [] });
     } finally {
-      setItemsLoading(false);
+      if (request === itemsRequest.current) setItemsLoading(false);
     }
   };
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const cr = await fetch("/api/collections", { credentials: "include" });
-        if (!cr.ok || cancelled) { setItemsLoading(false); return; }
-        const cj = (await cr.json()) as { data?: { slug: string }[] };
-        const slug = cj.data?.[0]?.slug ?? "posts";
-        if (cancelled) return;
-        setCollectionSlug(slug);
-        await loadItems(slug);
-      } catch {
-        if (!cancelled) setItemsLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    if (collection) void loadItems(collection, needle);
+    else if (collectionsQuery.isFetched) setItemsLoading(false);
+  }, [collectionSlug, needle, collectionsQuery.isFetched]);
+
+  // Nothing selected yet: open the most recently written row. A selected item
+  // stays selected when a search leaves it out of the list.
+  useEffect(() => {
+    if (!itemsLoading && !activeId && items[0]) select(collectionSlug, items[0].id, { replace: true });
+  }, [itemsLoading, activeId, collectionSlug, items]);
+
+  const pickCollection = (slug: string) => {
+    if (slug === collectionSlug) return;
+    setSearch("");
+    setNeedle("");
+    select(slug, "");
+  };
 
   type RawRev = { id: string; createdAt: string | number; createdBy: string | null; snapshot: Record<string, unknown> };
   // Each recorded revision is a *pre-image*: the row state captured right
@@ -111,8 +176,10 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
   const [confirmRev, setConfirmRev] = useState<{ id: string; v: number; createdAt: string | number } | null>(null);
   const [reverting, setReverting] = useState(false);
 
+  const timelineRequest = useRef(0);
   const loadTimeline = async (slug: string, id: string) => {
-    if (!id) { setRevs([]); setLive(null); setActiveIdx(0); return; }
+    const request = ++timelineRequest.current;
+    if (!slug || !id) { setRevs([]); setLive(null); setActiveIdx(0); setRevsLoading(false); return; }
     setRevsLoading(true);
     try {
       const [rr, ir] = await Promise.all([
@@ -121,14 +188,16 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
       ]);
       const rj = rr.ok ? ((await rr.json()) as { data?: RawRev[] }) : { data: [] };
       const ij = ir.ok ? ((await ir.json()) as { data?: Record<string, unknown> }) : { data: null };
+      if (request !== timelineRequest.current) return;
       setRevs(Array.isArray(rj.data) ? rj.data : []);
       setLive(ij.data ?? null);
       setActiveIdx(0);
     } catch {
+      if (request !== timelineRequest.current) return;
       setRevs([]);
       setLive(null);
     } finally {
-      setRevsLoading(false);
+      if (request === timelineRequest.current) setRevsLoading(false);
     }
   };
 
@@ -182,7 +251,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
       }
       setConfirmRev(null);
       toast(t`Reverted — a new revision was recorded.`);
-      await loadItems(collectionSlug);
+      if (collection) await loadItems(collection, needle);
       await loadTimeline(collectionSlug, activeId);
     } catch (e) {
       toast((e as Error).message, "error");
@@ -197,15 +266,43 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
       ? t`live · updated ${fmtRevTs(String(e.snapshot.updatedAt ?? e.snapshot.updated_at ?? ""))}`
       : `${fmtRevTs(e.createdAt)} · ${e.createdBy ?? "system"}`;
 
-  // First whole-page fetch — collections + their items haven't landed yet.
-  if (itemsLoading && items.length === 0) return <RevisionsSkeleton />;
+  // First whole-page fetch — collections + their first items haven't landed
+  // yet. Later loads (another collection, a search) keep the page and show
+  // skeleton rows inside the list instead.
+  if (collectionsQuery.isPending || (collections.length > 0 && loaded === null)) return <RevisionsSkeleton />;
+
+  // The header's item name: from the list, else from the live row a deep link
+  // or a search left out of it.
+  const activeTitle =
+    item?.title ?? (live && collection ? rowLabel(live, { displayTemplate: collection.displayTemplate, fields: collection.fields }) : null);
 
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Revisions`} description={t`Every write is versioned. Inspect, diff, or revert any prior state.`} />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="w-full min-w-0 sm:w-64">
+          <Select
+            value={collectionSlug}
+            onChange={pickCollection}
+            options={collections.map(({ c, group }) => ({ value: c.slug, label: c.slug, hint: group ?? undefined }))}
+            placeholder={collections.length === 0 ? t`No collections yet` : t`Pick a collection`}
+            disabled={collections.length === 0}
+          />
+        </div>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t`Search items`}
+          aria-label={t`Search items`}
+          disabled={!collection}
+          className="h-9 w-full min-w-0 sm:w-64"
+        />
+      </div>
       <div className="grid grid-cols-[280px_220px_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <Card className="py-0 gap-0">
-          <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Items</Trans> <span className="font-mono text-[11px] text-muted-foreground">· c_{collectionSlug}</span></div>
+          <div className="truncate border-b border-border px-4 py-3.5 text-xs font-medium">
+            <Trans>Items</Trans>{collectionSlug && <span className="font-mono text-[11px] text-muted-foreground"> · {collectionSlug}</span>}
+          </div>
           <ScrollArea className="h-[60vh]">
             {itemsLoading && (
               <div className="flex flex-col gap-2 px-3 py-3">
@@ -218,22 +315,29 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
               </div>
             )}
             {!itemsLoading && items.length === 0 && (
-              <EmptyState size="sm" title={<Trans>No items in this collection yet.</Trans>} />
+              <EmptyState
+                size="sm"
+                title={
+                  !collection ? <Trans>No collections to show history for.</Trans>
+                  : needle ? <Trans>No items match your search.</Trans>
+                  : <Trans>No items in this collection yet.</Trans>
+                }
+              />
             )}
-            {items.map((it) => (
+            {!itemsLoading && items.map((it) => (
               <div
                 key={it.id}
-                onClick={() => setActiveId(it.id)}
+                onClick={() => select(collectionSlug, it.id)}
                 className={`cursor-pointer border-t border-border px-3 py-2 ${activeId === it.id ? "bg-accent" : ""}`}
               >
                 <div className="truncate text-[12.5px] font-medium">{it.title}</div>
-                <div className="font-mono text-[10.5px] text-muted-foreground">{it.id.slice(0, 14)}…</div>
+                <div className="truncate font-mono text-[10.5px] text-muted-foreground">{it.id}</div>
               </div>
             ))}
           </ScrollArea>
         </Card>
         <Card className="py-0 gap-0">
-          <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Timeline</Trans> · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
+          <div className="truncate border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Timeline</Trans> · {activeTitle ?? "—"}</div>
           <ScrollArea className="h-[60vh]">
             {revsLoading && (
               <div className="flex flex-col gap-2 px-3 py-3">

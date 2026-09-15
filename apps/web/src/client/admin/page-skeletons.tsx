@@ -710,11 +710,16 @@ function KpisSkeletonImpl() {
   );
 }
 
-/** Revisions — header, then a 3-column items / timeline / detail split. */
+/** Revisions — header, the collection picker + item search, then a 3-column
+ *  items / timeline / detail split. */
 function RevisionsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Skeleton className="h-9 w-full rounded-control sm:w-64" />
+        <Skeleton className="h-9 w-full rounded-control sm:w-64" />
+      </div>
       <div className="grid grid-cols-[280px_220px_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={6} />
         <ListCardSkeleton rows={5} />

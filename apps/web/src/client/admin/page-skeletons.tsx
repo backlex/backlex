@@ -589,7 +589,8 @@ function RealtimeSkeletonImpl() {
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
       <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
-        <ListCardSkeleton rows={5} header={false} />
+        {/* The channel list carries a header (title, count, filter). */}
+        <ListCardSkeleton rows={5} />
         <Skeleton className="h-[440px] w-full rounded-surface" />
       </div>
       {/* Broadcast channel rules, then the CDC sinks, below the grid. */}

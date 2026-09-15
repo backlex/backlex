@@ -43,6 +43,10 @@ in the playground"):
   `/api/admin/sms-config`, `/api/admin/push-config`, `/api/messaging/*`)
 - auth config + SSO (`/api/admin/auth`, `/api/admin/saml`,
   `/api/admin/ldap-config`, `/api/admin/platform-*`)
+- auth hooks (`/api/admin/auth-hooks`, and the GraphQL/MCP twins through the
+  service) — a `send-email` hook receives every end-user magic link and
+  one-time code, and every playground visitor is an admin. Sync and auth hooks
+  are also wiped on reset, so none outlives it
 - external-DB migrations (`/api/admin/migrate`) and raw SQL (`/api/admin/db`)
 - demo-account takeover (`/api/auth/change-password`, `change-email`,
   `delete-user`, `two-factor`)

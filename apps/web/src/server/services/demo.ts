@@ -68,6 +68,10 @@ const BLOCKED_WRITE_PREFIXES = [
   "/api/admin/platform-ldap-config",
   "/api/admin/migrate",
   "/api/admin/db",
+  // Not covered by `/api/admin/auth` above: the match is per path segment. A
+  // `send-email` auth hook receives every end-user magic link and one-time
+  // code, and every visitor here is an admin (the service refuses too).
+  "/api/admin/auth-hooks",
   // Advisor reads stay open (the page still renders); only `POST /apply`,
   // which runs DDL against a shared table, is blocked.
   "/api/admin/advisor",
@@ -165,6 +169,10 @@ const WIPE_TABLE_KEYS = [
   "agentMessages",
   "webhooks",
   "webhookDeliveries",
+  // Both call out to a visitor-chosen URL, and neither was wiped, so a hook
+  // outlived every reset: a sync hook kept receiving other visitors' writes.
+  "syncHooks",
+  "authHooks",
   "comments",
   "sharedLinks",
   "notifications",

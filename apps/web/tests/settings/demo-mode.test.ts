@@ -14,6 +14,7 @@ import { Database } from "bun:sqlite";
 import { sql } from "drizzle-orm";
 import { makeHarness, seedAdmin, type TestHarness } from "../setup";
 import { buildContext } from "../../src/server/context";
+import { createAuthHook } from "../../src/server/services/auth-hooks";
 import { getTemplateLazy } from "../../src/server/templates/lazy";
 import {
   DEMO_RETRY_BACKOFF_MS,
@@ -83,6 +84,32 @@ describe("demo mode — write guard", () => {
     // Reads on the same prefix still work.
     const read = await h.fetch("/api/admin/email-config");
     expect(read.status).not.toBe(403);
+  });
+
+  // A `send-email` auth hook is handed every magic link and one-time code the
+  // workspace's end-users are sent. `/api/admin/auth` did not cover it (the
+  // match is per segment), so on a playground — where every visitor is admin —
+  // one visitor could point it at their own server, and it survived the reset.
+  test("an auth hook cannot be registered on a playground, by the route or the service", async () => {
+    const hook = { event: "send-email", targetType: "url", url: "https://collector.example/hook", onError: "allow" };
+    const create = (harness: TestHarness) =>
+      harness.fetch("/api/admin/auth-hooks", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(hook) });
+
+    // The control: an ordinary instance registers it.
+    h = makeHarness();
+    await seedAdmin(h);
+    expect((await create(h)).status).toBe(201);
+    h.cleanup();
+
+    h = makeHarness({ DEMO_MODE: "1" });
+    await seedAdmin(h, undefined, undefined, { openSignup: false });
+    expect(isDemoBlockedRequest("POST", "/api/admin/auth-hooks")).toBe(true);
+    expect(isDemoBlockedRequest("GET", "/api/admin/auth-hooks")).toBe(false);
+    expect((await create(h)).status).toBe(403);
+    // GraphQL and MCP reach the service without passing the prefix list.
+    const ctx = await buildContext(h.env);
+    const me = (await (await h.fetch("/api/me")).json()) as { data: { tenantId: string } };
+    await expect(createAuthHook(ctx, me.data.tenantId, hook as never)).rejects.toThrow(/playground/);
   });
 
   // The prefix list above blocks email CONFIG, but a template's send-test is a
@@ -292,6 +319,35 @@ describe("demo mode — a reset converges on the whole template", () => {
       await expect(resetDemoWorkspace(ctx, h.env)).rejects.toThrow(/uncreated on a wiped workspace: tags/);
     } finally {
       (ctx.db as any).run = realRun;
+    }
+  });
+
+  test("sync and auth hooks do not outlive a reset", async () => {
+    h = makeHarness({ DEMO_MODE: "1", SEED_TEMPLATE: "blog" });
+    const ctx = await buildContext(h.env);
+    expect(await maybeResetDemo(ctx, h.env, new Date())).toBe(true);
+    const db = new Database(h.env.SQLITE_PATH as string);
+    try {
+      const tenant = db.query("select id from tenants limit 1").get() as { id: string };
+      // Planted around the API: the point is what the WIPE does with a hook,
+      // however it got there (one registered before this guard shipped).
+      const now = Date.now();
+      db.query(
+        "insert into auth_hooks (id, tenant_id, event, target_type, url, on_error, created_at, updated_at) values (?, ?, 'send-email', 'url', 'https://collector.example/a', 'allow', ?, ?)",
+      ).run(crypto.randomUUID(), tenant.id, now, now);
+      db.query(
+        "insert into sync_hooks (id, tenant_id, name, url, events, on_error, created_at, updated_at) values (?, ?, 'x', 'https://collector.example/s', '[\"posts.beforeCreate\"]', 'allow', ?, ?)",
+      ).run(crypto.randomUUID(), tenant.id, now, now);
+    } finally {
+      db.close();
+    }
+    await resetDemoWorkspace(ctx, h.env);
+    const after = new Database(h.env.SQLITE_PATH as string);
+    try {
+      expect((after.query("select count(*) as n from auth_hooks").get() as { n: number }).n).toBe(0);
+      expect((after.query("select count(*) as n from sync_hooks").get() as { n: number }).n).toBe(0);
+    } finally {
+      after.close();
     }
   });
 

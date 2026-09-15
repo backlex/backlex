@@ -48,6 +48,7 @@ import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { fetchOutbound } from "./storage/hosts";
+import { assertNotDemo } from "./demo";
 import { signStandardWebhook } from "../lib/standard-webhooks";
 
 type AnyDb = any;
@@ -687,6 +688,11 @@ export async function createAuthHook(
   tenantId: string,
   input: AuthHookInput,
 ): Promise<AuthHookPublic> {
+  // A `send-email` hook receives every magic link and one-time code the
+  // workspace's end-users are sent. On a playground every visitor is that
+  // workspace's admin, so one visitor's hook would collect everyone else's —
+  // refused here, where REST, GraphQL and MCP all arrive.
+  assertNotDemo(ctx.env);
   if (!isAuthHookEvent(input.event)) {
     throw new AppError("VALIDATION", `Unknown auth hook event "${String(input.event)}"`);
   }
@@ -755,6 +761,7 @@ export async function updateAuthHook(
   id: string,
   patch: Partial<AuthHookInput>,
 ): Promise<AuthHookPublic> {
+  assertNotDemo(ctx.env); // see createAuthHook — re-pointing a hook is the same capability
   const t = tableFor(ctx.dialect);
   const db = ctx.db as AnyDb;
   const [current] = (await db

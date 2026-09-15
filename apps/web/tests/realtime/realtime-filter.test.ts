@@ -93,6 +93,25 @@ describe("a field the event does not carry is UNKNOWN, never a match", () => {
     expect(renderItemEvent(published, f)).toBeNull();
     expect(renderItemEvent(published, { ...f, queryFilter: { title: { _neq: "x" } } })).toBeNull();
   });
+
+  test("a system column the frame carries under its API name is present, not absent", () => {
+    // A frame is an API row — `ownerId`, `createdAt` — while a condition names
+    // the column, `owner_id`. The matcher's lookup has always bridged the two;
+    // the absence test has to ask the same question, or every frame lacks
+    // `owner_id` and the grant owner-scoped collections are seeded with
+    // delivers nobody their own rows.
+    const own: RealtimeFilter = { authSubject: auth, conditions: [{ owner_id: { _eq: "$user.id" } }] };
+    expect(rowPasses({ id: "r1", ownerId: "u1" }, own)).toBe(true);
+    expect(rowPasses({ id: "r1", ownerId: "u2" }, own)).toBe(false);
+    const created = { event: "created", data: { id: "r1", ownerId: "u1", title: "mine" } } as IncomingItemEvent;
+    expect(renderItemEvent(created, own)).not.toBeNull();
+    // A live-query filter on a system timestamp reads it the same way.
+    const recent: RealtimeFilter = { authSubject: auth, conditions: null, queryFilter: { created_at: { _gte: 100 } } };
+    expect(rowPasses({ id: "r1", createdAt: 200 }, recent)).toBe(true);
+    expect(rowPasses({ id: "r1", createdAt: 50 }, recent)).toBe(false);
+    // …and a frame carrying NEITHER spelling is still UNKNOWN.
+    expect(rowPasses({ id: "r1", title: "no owner" }, own)).toBe(false);
+  });
 });
 
 describe("computeTransition (Stage 2 membership)", () => {

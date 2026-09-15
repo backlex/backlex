@@ -640,6 +640,19 @@ const lookup = (row: Record<string, unknown>, field: string): unknown => {
 };
 
 /**
+ * Whether the row holds `field` under either name {@link lookup} reads — the
+ * absence test behind `EvalOpts.absentIsUnknown`. An API row carries system
+ * columns as `ownerId` / `createdAt` while a condition names `owner_id`; testing
+ * the literal key alone made `owner_id` absent from every realtime frame, so the
+ * grant owner-scoped collections are seeded with delivered nobody their rows.
+ */
+const carries = (row: Record<string, unknown>, field: string): boolean => {
+  if (Object.hasOwn(row, field)) return true;
+  const camel = snakeToCamel(field);
+  return camel !== field && Object.hasOwn(row, camel);
+};
+
+/**
  * A money field's value is `{ amount, currency }`; comparisons are against the
  * amount.
  *
@@ -761,7 +774,7 @@ const matchesInner = (
     if (Object.keys(cmp).some((k) => !COMPARISON_OPERATORS.has(k))) return null;
     // The row does not say what this field holds, so nothing below can either
     // — see EvalOpts.absentIsUnknown.
-    if (absentIsUnknown && !Object.hasOwn(row, field)) return null;
+    if (absentIsUnknown && !carries(row, field)) return null;
     const left = lookup(row, field);
     // An operand that did not resolve is UNKNOWN, not "not equal" — mirroring
     // the SQL side's `UNKNOWN`, so realtime and REST answer the same question.

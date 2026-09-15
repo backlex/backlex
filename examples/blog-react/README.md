@@ -80,7 +80,8 @@ In the admin UI (`http://localhost:5173`):
    What each flag does:
    - **`ownerScoped`** — adds `owner_id` + seeds owner-scoped
      read/create/update/delete for the `authenticated` role, so each author only
-     manages their own posts. ([`docs/permissions.md`](../../docs/permissions.md))
+     manages their own posts. It does **not** seed `publish` — that is step 5.
+     ([`docs/permissions.md`](../../docs/permissions.md))
    - **`versioned`** — gives posts a managed `_status` column and powers
      `publish` / `unpublish` / `schedulePublish`.
      ([`docs/draft-publish.md`](../../docs/draft-publish.md))
@@ -90,6 +91,34 @@ In the admin UI (`http://localhost:5173`):
    - **`title` / `body` = localized** — one value per locale stored as a
      `{ en, tr }` map; `?locale=xx` collapses it on read.
      ([`docs/locale-timezone.md`](../../docs/locale-timezone.md))
+5. **Let authors publish their own posts.** Publishing is its own permission,
+   separate from editing, so a CMS can let writers draft while only editors go
+   live — and nothing grants it by default. Without this step every **Publish**
+   in the app answers `No permission to publish on "posts"`.
+
+   Grant `publish` to the `authenticated` role, limited to the caller's own rows
+   (it covers `unpublish` and `schedulePublish` too). In the admin: **Access**,
+   pick the `authenticated` role, and in its permission matrix set the `posts` ×
+   `publish` cell to **Use custom rule** with `owner_id` equals `$user.id`. Or via
+   the API:
+
+   ```bash
+   # the id of the workspace's `authenticated` role
+   curl -s http://localhost:5173/api/roles \
+     -H 'Origin: http://localhost:5173' -H 'X-Backlex-Tenant: demo' \
+     --cookie "$(your admin session cookie)"
+
+   # POST adds one permission — PUT on the same path replaces the role's whole
+   # set, including the four owner-scoped grants step 4 seeded.
+   curl -X POST http://localhost:5173/api/roles/<authenticated-role-id>/permissions \
+     -H 'Content-Type: application/json' -H 'Origin: http://localhost:5173' \
+     -H 'X-Backlex-Tenant: demo' --cookie "$(your admin session cookie)" \
+     -d '{ "collection": "posts", "action": "publish",
+           "condition": { "owner_id": { "_eq": "$user.id" } } }'
+   ```
+
+   Leave the condition off and any signed-in user could publish any post.
+   ([`docs/draft-publish.md`](../../docs/draft-publish.md#permissions))
 
 ## 3. Configure and run the example
 

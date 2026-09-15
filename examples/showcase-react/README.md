@@ -65,7 +65,8 @@ In the admin UI (`http://localhost:5173`):
 3. **Collections → New collection** named `notes`:
    - **Owner-scoped: on** — auto-adds `owner_id` and seeds owner-scoped
      read/create/update/delete for the `authenticated` role, so each user only
-     manages their own notes. (See [`docs/permissions.md`](../../docs/permissions.md).)
+     manages their own notes. It does **not** seed `publish` — step 4. (See
+     [`docs/permissions.md`](../../docs/permissions.md).)
    - **Versioning / draft-publish: on** — gives notes a managed `_status`
      column and powers the **Draft / publish** panel (`publish` / `unpublish` /
      `schedulePublish` + the `list({ status })` filter). (See
@@ -75,6 +76,25 @@ In the admin UI (`http://localhost:5173`):
    - Fields: `title` (**text**, required), `body` (**text**, long), `priority`
      (**number**), `done` (**boolean**). (`_status` is supplied by versioning;
      `created_at` is added automatically.)
+
+4. **Let users publish their own notes.** `publish` is a permission of its own,
+   separate from editing, and nothing grants it by default — without this step
+   the Draft / publish panel answers `No permission to publish on "notes"`.
+   In the admin: **Access**, pick the `authenticated` role, and in its permission
+   matrix set the `notes` × `publish` cell to **Use custom rule** with `owner_id`
+   equals `$user.id` (it covers `unpublish` and `schedulePublish` too). Or via
+   the API — `POST`, not `PUT`, which would replace the role's whole permission
+   set:
+
+   ```bash
+   curl -X POST http://localhost:5173/api/roles/<authenticated-role-id>/permissions \
+     -H 'Content-Type: application/json' -H 'Origin: http://localhost:5173' \
+     -H 'X-Backlex-Tenant: demo' --cookie "$(your admin session cookie)" \
+     -d '{ "collection": "notes", "action": "publish",
+           "condition": { "owner_id": { "_eq": "$user.id" } } }'
+   ```
+
+   (`GET /api/roles` with the same headers lists the role ids.)
 
 > If you skip the versioning / FTS toggles, those two panels surface a backend
 > error inline — every other panel still works. Turn them on when you want the

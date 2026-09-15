@@ -111,6 +111,12 @@ managed under the admin API (`/api/admin/push-templates`) and rendered at send
 time, same as email templates: a key resolves to the workspace's own row, and
 falls back to a global (`tenant_id IS NULL`) one.
 
+**Overrides** follow the [email template](/docs/api-keys-and-email/#email-templates) rule. The
+list returns one row per key with `inherited` / `overridesDefault` flags, and a
+workspace never writes the shared row: `PATCH` on it writes (and returns) the
+workspace's copy, re-keying it is a 422, `DELETE` on it is a 403, and `DELETE`
+on the copy restores the default and returns it.
+
 Pass `templateKey` wherever you would pass `title`/`body`. Those two stay
 allowed alongside it and become the **fallback** if the key resolves to
 nothing — the same contract `email` has.

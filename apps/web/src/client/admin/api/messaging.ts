@@ -93,22 +93,35 @@ export interface ApiPushTemplate {
   body: string;
   url: string | null;
   variables: string[] | null;
+  /** The instance-wide default for this key. Saving it writes this workspace's
+   *  own copy (a new id); it cannot be deleted. */
+  inherited: boolean;
+  /** This workspace's row shadows an instance-wide default — deleting it
+   *  restores that default rather than removing the key. */
+  overridesDefault: boolean;
 }
+
+export type PushTemplateInput = Pick<ApiPushTemplate, "key" | "name" | "title" | "body" | "url" | "variables">;
 
 export const pushTemplatesApi = {
   list: () => api<Envelope<ApiPushTemplate[]>>(`/api/admin/push-templates`),
-  create: (body: Omit<ApiPushTemplate, "id" | "tenantId">) =>
+  create: (body: PushTemplateInput) =>
     api<Envelope<ApiPushTemplate>>(`/api/admin/push-templates`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  patch: (id: string, body: Partial<ApiPushTemplate>) =>
-    api<{ ok: true }>(`/api/admin/push-templates/${id}`, {
+  /** Returns the row that was written — for an inherited default, the
+   *  workspace's new copy, whose id differs from the one patched. */
+  patch: (id: string, body: Partial<PushTemplateInput>) =>
+    api<{ ok: true; data: ApiPushTemplate }>(`/api/admin/push-templates/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  /** Returns what the key resolves to now: the default it was overriding, or null. */
   remove: (id: string) =>
-    api<{ ok: true }>(`/api/admin/push-templates/${id}`, { method: "DELETE" }),
+    api<{ ok: true; data: ApiPushTemplate | null }>(`/api/admin/push-templates/${id}`, {
+      method: "DELETE",
+    }),
   sendTest: (id: string, vars?: Record<string, unknown>) =>
     api<{ ok: true }>(`/api/admin/push-templates/${id}/send-test`, {
       method: "POST",

@@ -269,7 +269,11 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
             })}
           </ScrollArea>
         </Card>
-        <Card className="gap-3.5 p-[18px]">
+        {/* Fixed to the height of the two list cards beside it (their 45px
+            header + a 60vh scroll area + borders), with the fields scrolling
+            inside. Left to grow, one card per field ran a twelve-field row to
+            twice the height of everything next to it. */}
+        <Card className="min-w-0 gap-3.5 p-[18px] min-[1025px]:h-[calc(60vh+47px)]">
           {!active ? (
             revsLoading ? (
               <div className="flex flex-col gap-3">
@@ -309,7 +313,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
               {reverting ? <Trans>Reverting…</Trans> : active.kind === "live" ? <Trans>Current state</Trans> : <Trans>Revert to this</Trans>}
             </Button>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-2">
             {!hasPrev && (
               <div className="text-xs text-muted-foreground">
                 {active.kind === "live"
@@ -325,31 +329,52 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
             {hasPrev && !showFull && changedDiff.length === 0 && (
               <div className="text-xs text-muted-foreground"><Trans>No field changes from {titleFor(prev)}.</Trans></div>
             )}
-            {visibleDiff.map((d) => {
-              const isAuto = REV_AUTO_FIELDS.has(d.field);
-              return (
-                <div
-                  key={d.field}
-                  className={`flex flex-col gap-2 overflow-hidden rounded-control border border-border bg-card p-3 ${d.changed || showFull ? "" : "opacity-70"}`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-xs font-medium">{d.field}</span>
-                    {isAuto && <Badge variant="outline"><Trans>system</Trans></Badge>}
-                    {!d.changed && <Badge variant="secondary"><Trans>unchanged</Trans></Badge>}
-                  </div>
-                  <div className={`grid gap-2 ${hasPrev ? "grid-cols-2" : "grid-cols-1"}`}>
-                    {hasPrev && (
-                      <div className={`whitespace-pre-wrap rounded-control border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed ? "border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))]" : "border-border bg-card"}`}>
-                        <div className="mb-1 text-[10px] text-muted-foreground"><Trans>before</Trans></div>{fmtRevValue(d.before)}
-                      </div>
-                    )}
-                    <div className={`whitespace-pre-wrap rounded-control border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed && hasPrev ? "border-[color-mix(in_oklch,oklch(0.7_0.18_145)_40%,var(--border))] bg-[color-mix(in_oklch,oklch(0.7_0.18_145)_12%,var(--card))]" : "border-border bg-card"}`}>
-                      <div className="mb-1 text-[10px] text-muted-foreground">{hasPrev ? <Trans>after</Trans> : <Trans>value</Trans>}</div>{fmtRevValue(d.after)}
+            {visibleDiff.length > 0 && (
+              // One row per field — name, then the value (or before and after)
+              // side by side — instead of a bordered card holding a bordered
+              // box per field, which spent ~150px saying `id: …`.
+              <ScrollArea
+                type="auto"
+                className="min-h-0 flex-1 rounded-control border border-border"
+                viewportClassName="max-[1024px]:max-h-[60vh]"
+              >
+                <div className="flex flex-col">
+                  {hasPrev && (
+                    <div className="grid grid-cols-[minmax(0,170px)_minmax(0,1fr)_minmax(0,1fr)] gap-3 border-b border-border bg-muted/50 px-3 py-1.5 text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground max-[640px]:hidden">
+                      <span><Trans>field</Trans></span>
+                      <span><Trans>before</Trans></span>
+                      <span><Trans>after</Trans></span>
                     </div>
-                  </div>
+                  )}
+                  {visibleDiff.map((d) => {
+                    const isAuto = REV_AUTO_FIELDS.has(d.field);
+                    return (
+                      <div
+                        key={d.field}
+                        className={`grid items-start gap-x-3 gap-y-1.5 border-b border-border px-3 py-2 last:border-b-0 max-[640px]:grid-cols-1 ${
+                          hasPrev ? "grid-cols-[minmax(0,170px)_minmax(0,1fr)_minmax(0,1fr)]" : "grid-cols-[minmax(0,170px)_minmax(0,1fr)]"
+                        } ${d.changed || showFull ? "" : "opacity-70"}`}
+                      >
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-1">
+                          <span className="min-w-0 truncate font-mono text-xs font-medium" title={d.field}>{d.field}</span>
+                          {isAuto && <Badge variant="outline"><Trans>system</Trans></Badge>}
+                          {!d.changed && <Badge variant="secondary"><Trans>unchanged</Trans></Badge>}
+                        </div>
+                        {hasPrev && (
+                          <div className={`min-w-0 whitespace-pre-wrap rounded-control border px-2 py-1 font-mono text-[11.5px] [word-break:break-word] ${d.changed ? "border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))]" : "border-transparent"}`}>
+                            <div className="mb-0.5 text-[10px] text-muted-foreground min-[641px]:hidden"><Trans>before</Trans></div>{fmtRevValue(d.before)}
+                          </div>
+                        )}
+                        <div className={`min-w-0 whitespace-pre-wrap rounded-control border px-2 py-1 font-mono text-[11.5px] [word-break:break-word] ${d.changed && hasPrev ? "border-[color-mix(in_oklch,oklch(0.7_0.18_145)_40%,var(--border))] bg-[color-mix(in_oklch,oklch(0.7_0.18_145)_12%,var(--card))]" : "border-transparent"}`}>
+                          {hasPrev && <div className="mb-0.5 text-[10px] text-muted-foreground min-[641px]:hidden"><Trans>after</Trans></div>}
+                          {fmtRevValue(d.after)}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </ScrollArea>
+            )}
           </div>
           </>
           )}

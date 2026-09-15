@@ -278,7 +278,6 @@ msgid "(pick a provider first)"
 msgstr "(pick a provider first)"
 
 #: src/client/admin/pages/settings/documents.tsx
-#: src/client/admin/pages/settings/email-templates.tsx
 msgid "(unnamed)"
 msgstr "(unnamed)"
 
@@ -375,7 +374,7 @@ msgid "{0} collections"
 msgstr "{0} collections"
 
 #. placeholder {0}: collections.length
-#. placeholder {1}: edgeRows.length
+#. placeholder {1}: relations.length
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "{0} collections · {1} relations"
 msgstr "{0} collections · {1} relations"
@@ -982,6 +981,10 @@ msgstr "{changedCount} field(s) will change."
 msgid "{clean} already exists"
 msgstr "{clean} already exists"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "{count} filters"
+msgstr "{count} filters"
+
 #: src/client/admin/collections/items.tsx
 msgid "{count} selected"
 msgstr "{count} selected"
@@ -1028,6 +1031,10 @@ msgstr "{key} → {next}."
 msgid "{key} deleted."
 msgstr "{key} deleted."
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "{label} (copy)"
+msgstr "{label} (copy)"
+
 #: src/client/admin/pages/automation/payments.tsx
 msgid "{label} can only refund in full from here — a partial refund there adjusts individual line items, which a payment row doesn't carry."
 msgstr "{label} can only refund in full from here — a partial refund there adjusts individual line items, which a payment row doesn't carry."
@@ -1056,6 +1063,14 @@ msgstr "{loadError} — nothing is shown rather than a made-up rule, because sav
 msgid "{maxAge} days"
 msgstr "{maxAge} days"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "{n} after"
+msgstr "{n} after"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "{n} before"
+msgstr "{n} before"
+
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "{name} deliveries"
 msgstr "{name} deliveries"
@@ -1075,6 +1090,10 @@ msgstr "{past} {done} of {0} — {1}"
 #: src/client/admin/pages/observability/websites.tsx
 msgid "{pathCount} of {MAX_LIST_ENTRIES} paths"
 msgstr "{pathCount} of {MAX_LIST_ENTRIES} paths"
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "{picked} of {total} collections"
+msgstr "{picked} of {total} collections"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -1231,6 +1250,14 @@ msgstr "<0>{0}</0> has already been invited and hasn't accepted yet."
 msgid "<0>{fieldsCount}</0> fields registered."
 msgstr "<0>{fieldsCount}</0> fields registered."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "<0>{placeholder}</0> has no sample value, so the preview and the test email show it empty."
+msgstr "<0>{placeholder}</0> has no sample value, so the preview and the test email show it empty."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "<0>{placeholder}</0> is not sent with this email, so it will always be empty."
+msgstr "<0>{placeholder}</0> is not sent with this email, so it will always be empty."
+
 #: src/client/admin/pages/data/schema-versions.tsx
 msgid "<0>Branches</0> are named working copies forked from the live schema — stage changes on a branch, then apply it to live. A branch keeps its own history; a snapshot is a single frozen point."
 msgstr "<0>Branches</0> are named working copies forked from the live schema — stage changes on a branch, then apply it to live. A branch keeps its own history; a snapshot is a single frozen point."
@@ -1272,6 +1299,10 @@ msgstr "1 failed delivery in a row"
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "1 file"
 msgstr "1 file"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "1 filter"
+msgstr "1 filter"
 
 #. placeholder {0}: b.unitCount
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
@@ -1326,6 +1357,10 @@ msgstr "180 days"
 #: src/client/admin/pages/observability/consent.tsx
 #~ msgid "2 years"
 #~ msgstr "2 years"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "2–40 characters: letters, digits, _, - or ., starting with a letter or digit."
+msgstr "2–40 characters: letters, digits, _, - or ., starting with a letter or digit."
 
 #: src/client/admin/pages/account-page.tsx
 msgid "2. Save your backup codes"
@@ -1435,6 +1470,10 @@ msgstr "A consent banner is served for a registered website. Register one first,
 msgid "a cookie, not an identity — another browser answers again"
 msgstr "a cookie, not an identity — another browser answers again"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "A custom template receives whatever its sender passes. Click a variable to insert it where your cursor is."
+msgstr "A custom template receives whatever its sender passes. Click a variable to insert it where your cursor is."
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "A dashboard with that name already exists."
 msgstr "A dashboard with that name already exists."
@@ -1459,6 +1498,10 @@ msgstr "A flag is on for a caller when enabled AND its targeting (condition + ro
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "A fresh link is on its way to {0} — the previous one is dead."
 msgstr "A fresh link is on its way to {0} — the previous one is dead."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "A fresh personal link. Links sent earlier keep working."
+msgstr "A fresh personal link. Links sent earlier keep working."
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "A full URL is fine — it is reduced to the host. Subdomains count as the same site."
@@ -1650,8 +1693,12 @@ msgid "A template needs a key."
 msgstr "A template needs a key."
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "A template with key \"{trimmedKey}\" already exists."
-msgstr "A template with key \"{trimmedKey}\" already exists."
+msgid "A template with key \"{key}\" already exists."
+msgstr "A template with key \"{key}\" already exists."
+
+#: src/client/admin/pages/settings/email-templates.tsx
+#~ msgid "A template with key \"{trimmedKey}\" already exists."
+#~ msgstr "A template with key \"{trimmedKey}\" already exists."
 
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "A text column holding this row's two-letter country code, for a list of contacts spread across countries. Falls back to the default above when the column is empty."
@@ -2060,6 +2107,10 @@ msgstr "Add a row…"
 msgid "Add a step after the loop"
 msgstr "Add a step after the loop"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Add a subject and a body before sending a test."
+msgstr "Add a subject and a body before sending a test."
+
 #: src/client/admin/pages/data/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
@@ -2247,6 +2298,10 @@ msgstr "Add the choices on the Interface tab first — a lifecycle is drawn betw
 msgid "add the values up"
 msgstr "add the values up"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Add them to the sample data"
+msgstr "Add them to the sample data"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
 msgstr "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
@@ -2278,6 +2333,10 @@ msgstr "Add to the loop body"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Add to true branch"
 msgstr "Add to true branch"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Add values to the sample data to list them here."
+msgstr "Add values to the sample data to list them here."
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "Add website"
@@ -2515,6 +2574,10 @@ msgstr "All"
 msgid "All ({0})"
 msgstr "All ({0})"
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "All {total} collections"
+msgstr "All {total} collections"
+
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "All {totalTools} tools allowed."
 msgstr "All {totalTools} tools allowed."
@@ -2527,9 +2590,9 @@ msgstr "All categories"
 msgid "All clear in this category"
 msgstr "All clear in this category"
 
-#: src/client/admin/app.tsx
-#~ msgid "All collections"
-#~ msgstr "All collections"
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "All collections"
+msgstr "All collections"
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "All consumers"
@@ -2543,6 +2606,10 @@ msgstr "All events"
 msgid "all fields"
 msgstr "all fields"
 
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "All fields"
+msgstr "All fields"
+
 #: src/client/admin/collections/relational-pickers.tsx
 #: src/client/admin/pages/data/storage/index.tsx
 msgid "All files"
@@ -2551,6 +2618,10 @@ msgstr "All files"
 #: src/client/admin/pages/data/storage/index.tsx
 msgid "all folders"
 msgstr "all folders"
+
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "All groups"
+msgstr "All groups"
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "All levels"
@@ -2738,6 +2809,10 @@ msgstr "an administrator"
 msgid "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
 msgstr "An answer with nowhere to land is still returned to the flow — it just isn't written onto the row."
 
+#: src/client/admin/pages/observability/insights.tsx
+msgid "An embed has no signed-in user, so panels resolve the <0>public</0> role and nothing else. To let the embed show more, grant read to <1>public</1> on those collections under Access."
+msgstr "An embed has no signed-in user, so panels resolve the <0>public</0> role and nothing else. To let the embed show more, grant read to <1>public</1> on those collections under Access."
+
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "An end-user who can administer the org from your app. You can add one later."
 msgstr "An end-user who can administer the org from your app. You can add one later."
@@ -2834,6 +2909,10 @@ msgstr "Answered in {0}ms"
 msgid "Answers afresh every time — safe to put on a schedule."
 msgstr "Answers afresh every time — safe to put on a schedule."
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "any"
+msgstr "any"
+
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 msgid "Any audience accepted"
 msgstr "Any audience accepted"
@@ -2841,6 +2920,10 @@ msgstr "Any audience accepted"
 #: src/client/admin/pages/settings/third-party-auth-card.tsx
 #~ msgid "Any audience accepted — set one if this issuer serves other apps too."
 #~ msgstr "Any audience accepted — set one if this issuer serves other apps too."
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "any collection"
+msgstr "any collection"
 
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Any day up to the end"
@@ -2853,6 +2936,10 @@ msgstr "any event"
 #: src/client/admin/fields/field-money-editor.tsx
 msgid "Any ISO-4217 code"
 msgstr "Any ISO-4217 code"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Any item change"
+msgstr "Any item change"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
@@ -3057,7 +3144,28 @@ msgstr "Applying is additive: collections that already exist are skipped, new on
 msgid "Applying…"
 msgstr "Applying…"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Approval request"
+msgstr "Approval request"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Approval: approved"
+msgstr "Approval: approved"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Approval: expired"
+msgstr "Approval: expired"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Approval: rejected"
+msgstr "Approval: rejected"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Approval: withdrawn"
+msgstr "Approval: withdrawn"
+
 #: src/client/admin/pages/automation/approvals.tsx
+#: src/client/admin/pages/settings/email-template-variables.tsx
 #: src/client/admin/ui.tsx
 msgid "Approvals"
 msgstr "Approvals"
@@ -3438,6 +3546,10 @@ msgstr "Autosave drafts as you type"
 msgid "Availability"
 msgstr "Availability"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Available variables"
+msgstr "Available variables"
+
 #: src/client/admin/pages/account-page.tsx
 msgid "Avatar"
 msgstr "Avatar"
@@ -3781,9 +3893,22 @@ msgid "Booked."
 msgstr "Booked."
 
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/settings/email-template-variables.tsx
 #: src/client/admin/ui.tsx
 msgid "Booking"
 msgstr "Booking"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Booking cancelled"
+msgstr "Booking cancelled"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Booking confirmed"
+msgstr "Booking confirmed"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Booking moved"
+msgstr "Booking moved"
 
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/pages/book.tsx
@@ -4173,6 +4298,10 @@ msgid "Capturing…"
 msgstr "Capturing…"
 
 #: src/client/admin/pages/data/schema-graph.tsx
+msgid "Card detail"
+msgstr "Card detail"
+
+#: src/client/admin/pages/data/schema-graph.tsx
 msgid "Cardinality"
 msgstr "Cardinality"
 
@@ -4259,6 +4388,7 @@ msgstr "Changes the live schema would receive if you apply this version."
 msgid "Channel"
 msgstr "Channel"
 
+#: src/client/admin/pages/automation/realtime.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Channels"
@@ -4380,6 +4510,10 @@ msgstr "Choose a value"
 msgid "Choose a vendor"
 msgstr "Choose a vendor"
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Choose collections"
+msgstr "Choose collections"
+
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "Choose folder…"
 msgstr "Choose folder…"
@@ -4465,6 +4599,7 @@ msgid "Clear"
 msgstr "Clear"
 
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Clear all"
 msgstr "Clear all"
 
@@ -5918,6 +6053,10 @@ msgstr "Create your account to accept this invitation."
 msgid "Create your admin account"
 msgstr "Create your admin account"
 
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Create, update and delete events from every collection — including ones added later."
+msgstr "Create, update and delete events from every collection — including ones added later."
+
 #: src/client/admin/pages/access/app-orgs.tsx
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/access/users.tsx
@@ -6138,6 +6277,10 @@ msgstr "Custom roles layer additively on top of authenticated."
 msgid "custom rule"
 msgstr "custom rule"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Custom schedule"
+msgstr "Custom schedule"
+
 #: src/client/admin/fields/field-money-editor.tsx
 #: src/client/admin/pages/automation/agents.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
@@ -6156,9 +6299,21 @@ msgstr "Custom…"
 msgid "Customer email"
 msgstr "Customer email"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Customize the emails backlex sends, or write your own for flows and scheduled reports. Variables use <0>{userEmailExample}</0> placeholders."
+msgstr "Customize the emails backlex sends, or write your own for flows and scheduled reports. Variables use <0>{userEmailExample}</0> placeholders."
+
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Customize…"
 msgstr "Customize…"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "customized"
+msgstr "customized"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Customized: this workspace sends your version. Reset to go back to the built-in email."
+msgstr "Customized: this workspace sends your version. Reset to go back to the built-in email."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "cut on 30-minute inactivity"
@@ -6424,6 +6579,7 @@ msgstr "Define one on the KPIs page first."
 #: src/client/admin/pages/observability/kpis.tsx
 #: src/client/admin/pages/settings/auth-hooks-card.tsx
 #: src/client/admin/pages/settings/auth-settings.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 #: src/client/admin/pages/settings/platform-auth-settings.tsx
 #: src/client/admin/pages/settings/signing-keys-card.tsx
@@ -6568,6 +6724,7 @@ msgid "Delete tag"
 msgstr "Delete tag"
 
 #: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Delete template"
 msgstr "Delete template"
 
@@ -6603,6 +6760,10 @@ msgstr "Delete this row too (cascade)"
 #: src/client/admin/pages/data/forms/submissions-tab.tsx
 msgid "Delete this submission?"
 msgstr "Delete this submission?"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Delete this template?"
+msgstr "Delete this template?"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Delete trigger"
@@ -6735,6 +6896,10 @@ msgstr "Description"
 msgid "Deselect"
 msgstr "Deselect"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Desktop"
+msgstr "Desktop"
+
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "Destination"
 msgstr "Destination"
@@ -6813,8 +6978,8 @@ msgid "Disable embed"
 msgstr "Disable embed"
 
 #: src/client/admin/pages/observability/insights.tsx
-msgid "Disable the embed to change the scope."
-msgstr "Disable the embed to change the scope."
+#~ msgid "Disable the embed to change the scope."
+#~ msgstr "Disable the embed to change the scope."
 
 #: src/client/admin/pages/access/users.tsx
 #: src/client/admin/pages/settings/ldap-config-card.tsx
@@ -6836,6 +7001,7 @@ msgstr "disappears from the workspace list of every member, not only yours, and 
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/settings/workspace-card.tsx
@@ -6847,6 +7013,7 @@ msgid "Discard changes"
 msgstr "Discard changes"
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Discard unsaved changes?"
 msgstr "Discard unsaved changes?"
 
@@ -6953,6 +7120,10 @@ msgstr "Document fingerprint (SHA-256)"
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Document preview"
 msgstr "Document preview"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Document signed"
+msgstr "Document signed"
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Document template"
@@ -7183,6 +7354,14 @@ msgstr "Duplicate <0>{source}</0>"
 #: src/client/admin/collections/collections-index.tsx
 msgid "Duplicate collection (schema only)"
 msgstr "Duplicate collection (schema only)"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Duplicate template"
+msgstr "Duplicate template"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Duplicated as \"{name}\"."
+msgstr "Duplicated as \"{name}\"."
 
 #: src/client/admin/collections/collections-index.tsx
 msgid "Duplicating…"
@@ -7974,6 +8153,7 @@ msgstr "Evening"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
+#: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/automation/payments.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Event"
@@ -8046,9 +8226,25 @@ msgstr "Events updated. The provider was re-registered with a new secret."
 msgid "every {0} min"
 msgstr "every {0} min"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every {days} at {time}"
+msgstr "Every {days} at {time}"
+
 #: src/client/admin/pages/integration-syncs-card.tsx
 #~ msgid "Every {m} minutes"
 #~ msgstr "Every {m} minutes"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every {n} hours"
+msgstr "Every {n} hours"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every {n} hours at {minute}"
+msgstr "Every {n} hours at {minute}"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every {n} minutes"
+msgstr "Every {n} minutes"
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Every 12 hours"
@@ -8070,6 +8266,10 @@ msgstr "Every 30 minutes"
 msgid "Every app authenticating with its tokens stops being recognised immediately. The people already linked keep their accounts, so re-adding the same issuer restores access rather than creating duplicates."
 msgstr "Every app authenticating with its tokens stops being recognised immediately. The people already linked keep their accounts, so re-adding the same issuer restores access rather than creating duplicates."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Every approver with their decision. A list — it prints as JSON."
+msgstr "Every approver with their decision. A list — it prints as JSON."
+
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
 msgstr "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
@@ -8082,13 +8282,29 @@ msgstr "Every condition needs a value before this can be saved."
 msgid "Every day"
 msgstr "Every day"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every day at {time}"
+msgstr "Every day at {time}"
+
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Every free number field on <0>{collection}</0> is already on the form."
 msgstr "Every free number field on <0>{collection}</0> is already on the form."
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every hour"
+msgstr "Every hour"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every hour at {minute}"
+msgstr "Every hour at {minute}"
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Every minute"
+msgstr "Every minute"
 
 #: src/client/admin/fields/field-sequence-editor.tsx
 msgid "Every month"
@@ -8101,6 +8317,10 @@ msgstr "Every occurrence of this bug, with the latest stack trace and how many v
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Every occurrence recorded for it goes too, and a crash that happens again arrives as a brand-new group with no history."
 msgstr "Every occurrence recorded for it goes too, and a crash that happens again arrives as a brand-new group with no history."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Every one of these is sent with this email. Click one to insert it where your cursor is."
+msgstr "Every one of these is sent with this email. Click one to insert it where your cursor is."
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Every other session for your account is signed out. This one stays."
@@ -8157,6 +8377,10 @@ msgstr "Everyone — one rejection ends it"
 #: src/client/pages/sign-document.tsx
 msgid "Everyone has signed. A copy has been emailed to you."
 msgstr "Everyone has signed. A copy has been emailed to you."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Everyone who signed. A list — it prints as JSON."
+msgstr "Everyone who signed. A list — it prints as JSON."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Everything"
@@ -8469,6 +8693,7 @@ msgid "Fetching…"
 msgstr "Fetching…"
 
 #: src/client/admin/pages/data/schema-graph.tsx
+#: src/client/admin/pages/observability/revisions.tsx
 msgid "field"
 msgstr "field"
 
@@ -8608,6 +8833,10 @@ msgstr "Fill the required fields."
 msgid "Fills the fields below so you can check them. Nothing is saved until you press Save, and a preset is never matched against a visitor — one site has one policy."
 msgstr "Fills the fields below so you can check them. Nothing is saved until you press Save, and a preset is never matched against a visitor — one site has one policy."
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Fills the preview and the test email. Kept while this page is open; not saved with the template."
+msgstr "Fills the preview and the test email. Kept while this page is open; not saved with the template."
+
 #: src/client/admin/pages/settings/documents.tsx
 msgid "Fills the preview and the test render. The row arrives as `data`."
 msgstr "Fills the preview and the test render. The row arrives as `data`."
@@ -8637,6 +8866,19 @@ msgstr "Filter by name / slug…"
 msgid "Filter by path…"
 msgstr "Filter by path…"
 
+#: src/client/admin/pages/automation/realtime.tsx
+msgid "Filter channels"
+msgstr "Filter channels"
+
+#: src/client/admin/pages/automation/realtime.tsx
+msgid "Filter channels…"
+msgstr "Filter channels…"
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Filter collections"
+msgstr "Filter collections"
+
+#: src/client/admin/pages/automation/integrations.tsx
 #: src/client/admin/ui.tsx
 msgid "Filter collections…"
 msgstr "Filter collections…"
@@ -8677,6 +8919,10 @@ msgstr "Filtered by"
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "final"
 msgstr "final"
+
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "Find a table…"
+msgstr "Find a table…"
 
 #: src/client/admin/fields/field-geo-input.tsx
 msgid "Find from address"
@@ -8791,6 +9037,10 @@ msgstr "Flow paused."
 #: src/client/admin/pages/automation/flows.tsx
 msgid "Flow resumed."
 msgstr "Flow resumed."
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Flow steps and reports that name its key fall back to their own subject and body. This can't be undone."
+msgstr "Flow steps and reports that name its key fall back to their own subject and body. This can't be undone."
 
 #: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/data/template-onboarding.tsx
@@ -8908,9 +9158,17 @@ msgstr "Fork a branch to stage schema changes off to the side."
 msgid "Form design"
 msgstr "Form design"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Form invitation"
+msgstr "Form invitation"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Form link ready"
 #~ msgstr "Form link ready"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Form reminder"
+msgstr "Form reminder"
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Form submit"
@@ -8933,6 +9191,7 @@ msgid "Format"
 msgstr "Format"
 
 #: src/client/admin/pages/data/forms/index.tsx
+#: src/client/admin/pages/settings/email-template-variables.tsx
 #: src/client/admin/ui.tsx
 msgid "Forms"
 msgstr "Forms"
@@ -8984,6 +9243,10 @@ msgstr "From collection"
 msgid "From existing table"
 msgstr "From existing table"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "From must be an email address, or empty to use the configured default."
+msgstr "From must be an email address, or empty to use the configured default."
+
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 msgid "From template"
 msgstr "From template"
@@ -8995,6 +9258,10 @@ msgstr "From template"
 #: src/client/admin/pages/automation/cdc-card.tsx
 msgid "from the start"
 msgstr "from the start"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "From your sample data"
+msgstr "From your sample data"
 
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "Frontend SDK"
@@ -9549,6 +9816,10 @@ msgstr "Hours"
 msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 msgstr "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "How it ended: approved, rejected, expired or cancelled."
+msgstr "How it ended: approved, rejected, expired or cancelled."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "How long"
 msgstr "How long"
@@ -9576,6 +9847,10 @@ msgstr "How many days ahead the calendar is open."
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "How many fit at once."
 msgstr "How many fit at once."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "How many panels the report has."
+msgstr "How many panels the report has."
 
 #: src/client/admin/fields/field-rollup-editor.tsx
 msgid "how many rows"
@@ -9833,6 +10108,10 @@ msgstr "Includes {0} sample rows to explore — removable in one click later"
 #~ msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 #~ msgstr "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Incoming webhook"
+msgstr "Incoming webhook"
+
 #: src/client/admin/pages/automation/integrations.tsx
 msgid "Index a Drive folder's files as a collection. Metadata only."
 msgstr "Index a Drive folder's files as a collection. Metadata only."
@@ -9885,6 +10164,10 @@ msgstr "Input (JSON)"
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
 #~ msgstr "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Insert {placeholder}"
+msgstr "Insert {placeholder}"
 
 #: src/client/admin/fields/display-template-editor.tsx
 msgid "Insert field"
@@ -9949,8 +10232,12 @@ msgid "Integrations"
 msgstr "Integrations"
 
 #: src/client/admin/pages/data/schema-graph.tsx
-msgid "Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
-msgstr "Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
+msgid "Interactive ERD of dynamic collections. Click a table to light up its relations · drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
+msgstr "Interactive ERD of dynamic collections. Click a table to light up its relations · drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
+
+#: src/client/admin/pages/data/schema-graph.tsx
+#~ msgid "Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
+#~ msgstr "Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
@@ -10265,9 +10552,17 @@ msgstr "It stays on this policy once you write something in it, or make it the b
 msgid "Item archived."
 msgstr "Item archived."
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Item created"
+msgstr "Item created"
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "Item created."
 msgstr "Item created."
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Item deleted"
+msgstr "Item deleted"
 
 #: src/client/admin/collections/item-editor.tsx
 msgid "Item deleted."
@@ -10295,6 +10590,10 @@ msgstr "Item published."
 #: src/client/admin/collections/item-editor.tsx
 msgid "Item reverted to draft."
 msgstr "Item reverted to draft."
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Item updated"
+msgstr "Item updated"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -10510,8 +10809,12 @@ msgid "Key must be 120 characters or fewer."
 msgstr "Key must be 120 characters or fewer."
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
-msgstr "Key must be 2–40 chars (letters, digits, dash, underscore)."
+msgid "Key must be 2–40 characters: letters, digits, _, - or ., starting with a letter or digit."
+msgstr "Key must be 2–40 characters: letters, digits, _, - or ., starting with a letter or digit."
+
+#: src/client/admin/pages/settings/email-templates.tsx
+#~ msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
+#~ msgstr "Key must be 2–40 chars (letters, digits, dash, underscore)."
 
 #: src/client/admin/pages/automation/cdc-card.tsx
 #: src/client/admin/pages/data/storage/s3-card.tsx
@@ -10896,6 +11199,10 @@ msgstr "Leave empty for the latest published version."
 #: src/client/admin/fields/field-phone-editor.tsx
 msgid "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
 msgstr "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Leave empty to generate it from the HTML body."
+msgstr "Leave empty to generate it from the HTML body."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "Leave empty to match every element."
@@ -11722,8 +12029,8 @@ msgid "Migrations"
 msgstr "Migrations"
 
 #: src/client/admin/pages/data/database.tsx
-msgid "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
-msgstr "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
+#~ msgid "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
+#~ msgstr "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
 
 #: src/client/admin/fields/field-validation-editor.tsx
 msgid "Min"
@@ -11860,6 +12167,10 @@ msgstr "Missing ({0})"
 msgid "Missing rows are re-inserted. Rows that still exist are never overwritten or deleted, so this is safe to run against live data."
 msgstr "Missing rows are re-inserted. Rows that still exist are never overwritten or deleted, so this is safe to run against live data."
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Mobile"
+msgstr "Mobile"
+
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Mode"
 msgstr "Mode"
@@ -11885,6 +12196,10 @@ msgstr "Mon"
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Mono"
 msgstr "Mono"
+
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Monthly on day {day} at {time}"
+msgstr "Monthly on day {day} at {time}"
 
 #: src/client/admin/pages/observability/usage.tsx
 msgid "Monthly request quota"
@@ -12177,6 +12492,10 @@ msgstr "needs TURNSTILE_SITE_KEY on the server"
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Neither is read. Do Not Track is a standard the W3C retired; Global Privacy Control is not, and in California it carries legal weight."
 msgstr "Neither is read. Do Not Track is a standard the W3C retired; Global Privacy Control is not, and in California it carries legal weight."
+
+#: src/client/admin/pages/data/database.tsx
+msgid "neither ledger"
+msgstr "neither ledger"
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Net revenue"
@@ -12630,6 +12949,10 @@ msgstr "No bookings match."
 msgid "No branches yet"
 msgstr "No branches yet"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
+msgstr "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
+
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
 msgstr "No bulk-editable fields on this collection."
@@ -12645,6 +12968,10 @@ msgstr "No channel rules"
 #: src/client/admin/pages/automation/realtime.tsx
 msgid "No channels — create a collection to get one."
 msgstr "No channels — create a collection to get one."
+
+#: src/client/admin/pages/automation/realtime.tsx
+msgid "No channels match."
+msgstr "No channels match."
 
 #: src/client/admin/collections/item-form.tsx
 msgid "No choices configured."
@@ -12685,6 +13012,10 @@ msgstr "No collections match"
 #: src/client/admin/collections/collections-index.tsx
 msgid "No collections match your search"
 msgstr "No collections match your search"
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "No collections match."
+msgstr "No collections match."
 
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "No collections to graph — create one to populate the ERD."
@@ -13373,6 +13704,10 @@ msgstr "No sync hooks"
 msgid "No syncs"
 msgstr "No syncs"
 
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "No table matches."
+msgstr "No table matches."
+
 #: src/client/admin/pages/data/database-import.tsx
 msgid "No tables found in this source."
 msgstr "No tables found in this source."
@@ -13406,11 +13741,11 @@ msgid "No templates available."
 msgstr "No templates available."
 
 #: src/client/admin/pages/data/template-onboarding.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "No templates match your search."
 msgstr "No templates match your search."
 
 #: src/client/admin/pages/settings/documents.tsx
-#: src/client/admin/pages/settings/email-templates.tsx
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "No templates yet — use \"New template\" to add one."
 
@@ -13523,8 +13858,8 @@ msgid "none (public)"
 msgstr "none (public)"
 
 #: src/client/admin/pages/automation/integrations.tsx
-msgid "none selected = all"
-msgstr "none selected = all"
+#~ msgid "none selected = all"
+#~ msgstr "none selected = all"
 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "Not a CSS colour or length — this value is ignored."
@@ -13543,6 +13878,10 @@ msgstr "Not a period"
 msgid "not allowed"
 msgstr "not allowed"
 
+#: src/client/admin/pages/data/database.tsx
+msgid "not applied"
+msgstr "not applied"
+
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "Not asked"
 msgstr "Not asked"
@@ -13560,6 +13899,10 @@ msgstr "Not authorized"
 #: src/client/admin/pages/settings/auth-settings.tsx
 msgid "not configured"
 msgstr "not configured"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Not customized: backlex sends its built-in wording. The editor starts from a similar version — saving puts yours live for this workspace."
+msgstr "Not customized: backlex sends its built-in wording. The editor starts from a similar version — saving puts yours live for this workspace."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Not enough history yet"
@@ -13649,9 +13992,21 @@ msgstr "Not signed in."
 msgid "Not stated"
 msgstr "Not stated"
 
+#: src/client/admin/extras.tsx
+msgid "Not subscribed — no channel is being watched."
+msgstr "Not subscribed — no channel is being watched."
+
+#: src/client/admin/extras.tsx
+msgid "Not subscribed — the connection was refused or dropped."
+msgstr "Not subscribed — the connection was refused or dropped."
+
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "Not used"
 msgstr "Not used"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Not valid JSON — the preview keeps the last valid sample data until this is fixed."
+msgstr "Not valid JSON — the preview keeps the last valid sample data until this is fixed."
 
 #: src/client/admin/pages/access/rls-card.tsx
 msgid "Not yet applied"
@@ -14035,6 +14390,10 @@ msgstr "On managed cloud, generation runs on the platform gateway and this pick 
 msgid "On submit"
 msgstr "On submit"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "On the date"
+msgstr "On the date"
+
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 msgid "On update"
@@ -14184,6 +14543,10 @@ msgstr "Only rows matching (optional)"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Only scalar fields can be exposed. Submissions run the collection's validation and land as drafts on versioned collections."
 #~ msgstr "Only scalar fields can be exposed. Submissions run the collection's validation and land as drafts on versioned collections."
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Only the collections you tick send their create, update and delete events."
+msgstr "Only the collections you tick send their create, update and delete events."
 
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "Only the current state exists — no edits recorded yet."
@@ -14678,8 +15041,8 @@ msgid "Panel \"{name}\" saved."
 msgstr "Panel \"{name}\" saved."
 
 #: src/client/admin/pages/observability/insights.tsx
-msgid "panel data limited to this role's read permission"
-msgstr "panel data limited to this role's read permission"
+#~ msgid "panel data limited to this role's read permission"
+#~ msgstr "panel data limited to this role's read permission"
 
 #: src/client/admin/pages/developers/extensions.tsx
 msgid "panels"
@@ -14691,8 +15054,8 @@ msgid "Panels and saved answers that reference \"{0}\" will stop resolving."
 msgstr "Panels and saved answers that reference \"{0}\" will stop resolving."
 
 #: src/client/admin/pages/observability/insights.tsx
-msgid "panels run with full read access — for fully public stats"
-msgstr "panels run with full read access — for fully public stats"
+#~ msgid "panels run with full read access — for fully public stats"
+#~ msgstr "panels run with full read access — for fully public stats"
 
 #: src/client/admin/collections/adopt-wizard.tsx
 msgid "parent not adopted"
@@ -14913,6 +15276,7 @@ msgid "PDF templates"
 msgstr "PDF templates"
 
 #: src/client/admin/pages/access/members-panel.tsx
+#: src/client/admin/pages/data/database.tsx
 msgid "pending"
 msgstr "pending"
 
@@ -15214,6 +15578,10 @@ msgstr "Pick a target collection."
 msgid "Pick a template"
 msgstr "Pick a template"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Pick a template, or use \"New template\" to add one."
+msgstr "Pick a template, or use \"New template\" to add one."
+
 #: src/client/admin/collections/relational-pickers.tsx
 msgid "Pick a tile to select it"
 msgstr "Pick a tile to select it"
@@ -15441,6 +15809,10 @@ msgstr "Plain"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Plain — a one-line note naming the dashboard"
 msgstr "Plain — a one-line note naming the dashboard"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Plain-text body"
+msgstr "Plain-text body"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Plan"
@@ -15673,6 +16045,10 @@ msgstr "Preview of {0}"
 msgid "Preview URL"
 msgstr "Preview URL"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Preview width"
+msgstr "Preview width"
+
 #: src/client/admin/fields/display-template-editor.tsx
 #: src/client/admin/fields/field-format-editor.tsx
 msgid "Preview:"
@@ -15872,8 +16248,8 @@ msgid "Public"
 msgstr "Public"
 
 #: src/client/admin/pages/observability/insights.tsx
-msgid "Public (unscoped)"
-msgstr "Public (unscoped)"
+#~ msgid "Public (unscoped)"
+#~ msgstr "Public (unscoped)"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Public embed disabled."
@@ -16474,6 +16850,10 @@ msgstr "Record every read of this collection (list + by-id) to the audit log und
 msgid "Record into a collection of my own instead"
 msgstr "Record into a collection of my own instead"
 
+#: src/client/admin/pages/data/database.tsx
+msgid "Recorded by"
+msgstr "Recorded by"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Recorded in the delivery log. Defaults to <0>flow.run</0>."
 msgstr "Recorded in the delivery log. Defaults to <0>flow.run</0>."
@@ -16762,6 +17142,10 @@ msgstr "relation_many"
 #: src/client/admin/pages/data/schema-graph.tsx
 msgid "relations"
 msgstr "relations"
+
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "Relations only"
+msgstr "Relations only"
 
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
@@ -17167,6 +17551,10 @@ msgstr "Resend verification email"
 msgid "Reset"
 msgstr "Reset"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Reset “{confirmLabel}” to default?"
+msgstr "Reset “{confirmLabel}” to default?"
+
 #: src/client/admin/pages/access/users.tsx
 msgid "Reset 2FA"
 msgstr "Reset 2FA"
@@ -17209,6 +17597,14 @@ msgstr "Reset link sent to {sent} user{0}."
 #: src/client/admin/pages/access/users.tsx
 msgid "Reset password"
 msgstr "Reset password"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Reset to default"
+msgstr "Reset to default"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Reset to default."
+msgstr "Reset to default."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Reset view"
@@ -17838,6 +18234,10 @@ msgid "Run it again"
 msgstr "Run it again"
 
 #: src/client/admin/pages/automation/flows.tsx
+msgid "Run manually"
+msgstr "Run manually"
+
+#: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Run now"
 msgstr "Run now"
@@ -17912,6 +18312,10 @@ msgstr "Runs against the pattern's captures, not against a row — so a capture 
 #~ msgid "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
 #~ msgstr "Runs against the pattern's captures. On org:{org}:feed, {\"org\":{\"_eq\":\"$org.id\"}} means the org segment must be the caller's active org."
 
+#: src/client/admin/pages/observability/insights.tsx
+msgid "Runs as the <0>public</0> role"
+msgstr "Runs as the <0>public</0> role"
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Runs at most once per row. A flow that fires again reads the first answer back."
 msgstr "Runs at most once per row. A flow that fires again reads the first answer back."
@@ -17962,10 +18366,12 @@ msgid "SAML 2.0 SSO — workspace end-users."
 msgstr "SAML 2.0 SSO — workspace end-users."
 
 #: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Sample data"
 msgstr "Sample data"
 
 #: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Sample data must be valid JSON."
 msgstr "Sample data must be valid JSON."
 
@@ -18171,8 +18577,8 @@ msgid "Save the template before rendering."
 msgstr "Save the template before rendering."
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "Save the template before sending a test."
-msgstr "Save the template before sending a test."
+#~ msgid "Save the template before sending a test."
+#~ msgstr "Save the template before sending a test."
 
 #: src/client/pages/api-keys.tsx
 msgid "Save this secret now"
@@ -18220,6 +18626,10 @@ msgstr "Saved."
 msgid "Saving MCP guards"
 msgstr "Saving MCP guards"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Saving under this key replaces “{replacedName}” for this workspace — it goes live for real recipients."
+msgstr "Saving under this key replaces “{replacedName}” for this workspace — it goes live for real recipients."
+
 #: src/client/admin/pages/data/booking/index.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 msgid "saving…"
@@ -18241,6 +18651,7 @@ msgstr "saving…"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/captcha-card.tsx
 #: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/ldap-config-card.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -18350,8 +18761,8 @@ msgid "Scope"
 msgstr "Scope"
 
 #: src/client/admin/pages/observability/insights.tsx
-msgid "Scope the embed to a role so it only exposes what that role can read."
-msgstr "Scope the embed to a role so it only exposes what that role can read."
+#~ msgid "Scope the embed to a role so it only exposes what that role can read."
+#~ msgstr "Scope the embed to a role so it only exposes what that role can read."
 
 #: src/client/pages/api-keys.tsx
 msgid "Scope to role"
@@ -18479,6 +18890,10 @@ msgstr "Search playground"
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "Search steps…"
 msgstr "Search steps…"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Search templates"
+msgstr "Search templates"
 
 #: src/client/admin/pages/data/template-onboarding.tsx
 msgid "Search templates…"
@@ -18612,6 +19027,7 @@ msgid "Select a task…"
 msgstr "Select a task…"
 
 #: src/client/admin/pages/automation/agents.tsx
+#: src/client/admin/pages/automation/integrations.tsx
 msgid "Select all"
 msgstr "Select all"
 
@@ -18783,6 +19199,7 @@ msgstr "Sending reset link"
 #: src/client/admin/pages/access/app-users.tsx
 #: src/client/admin/pages/automation/chat.tsx
 #: src/client/admin/pages/observability/insights.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 #: src/client/pages/forgot.tsx
@@ -18816,10 +19233,66 @@ msgstr "Sent {0} units. The marketplace rules on them in its own time; watch the
 msgid "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
 msgstr "Sent 1 unit. The marketplace rules on it in its own time; watch the batch."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent from a flow step"
+msgstr "Sent from a flow step"
+
 #. placeholder {0}: meta.email
 #: src/client/pages/join-org.tsx
 msgid "Sent to <0>{0}</0>, to join as {role}."
 msgstr "Sent to <0>{0}</0>, to join as {role}."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to each approver whose turn it is to decide."
+msgstr "Sent to each approver whose turn it is to decide."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to each person invited to answer a form, with their personal link."
+msgstr "Sent to each person invited to answer a form, with their personal link."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to each signer when it is their turn to sign."
+msgstr "Sent to each signer when it is their turn to sign."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to every signer once everyone has signed, with the signed PDF attached."
+msgstr "Sent to every signer once everyone has signed, with the signed PDF attached."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to invitees who have not answered yet, with a fresh link."
+msgstr "Sent to invitees who have not answered yet, with a fresh link."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to the customer when a booking is cancelled."
+msgstr "Sent to the customer when a booking is cancelled."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to the customer when a booking is made, with a calendar invite attached."
+msgstr "Sent to the customer when a booking is made, with a calendar invite attached."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to the customer when a booking moves to another time."
+msgstr "Sent to the customer when a booking moves to another time."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to the request's notify list when it is approved."
+msgstr "Sent to the request's notify list when it is approved."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to the request's notify list when it is rejected."
+msgstr "Sent to the request's notify list when it is rejected."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to the request's notify list when nobody decided in time."
+msgstr "Sent to the request's notify list when nobody decided in time."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent to the request's notify list when the request is withdrawn."
+msgstr "Sent to the request's notify list when the request is withdrawn."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Sent with a scheduled report"
+msgstr "Sent with a scheduled report"
 
 #: src/client/admin/pages/settings/oauth-clients-card.tsx
 msgid "Separate several with a space."
@@ -19112,6 +19585,7 @@ msgid "share this record"
 msgstr "share this record"
 
 #: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "shared"
 msgstr "shared"
 
@@ -19498,6 +19972,11 @@ msgstr "Sign-up is disabled"
 msgid "Signature algorithm"
 msgstr "Signature algorithm"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "Signature request"
+msgstr "Signature request"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
 #: src/client/admin/pages/settings/signatures.tsx
 #: src/client/admin/ui.tsx
 msgid "Signatures"
@@ -20009,6 +20488,10 @@ msgstr "static panels render their config object verbatim — set it from the AP
 msgid "Status"
 msgstr "Status"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Status change"
+msgstr "Status change"
+
 #: src/client/admin/collections/collections-index.tsx
 msgid "Status field"
 msgstr "Status field"
@@ -20259,6 +20742,10 @@ msgstr "subscribe: refused"
 msgid "Subscribed. Waiting for events…"
 msgstr "Subscribed. Waiting for events…"
 
+#: src/client/admin/extras.tsx
+msgid "Subscribing…"
+msgstr "Subscribing…"
+
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "Succeeded"
 msgstr "Succeeded"
@@ -20451,6 +20938,10 @@ msgstr "System roles ship with the platform; custom roles layer additively."
 msgid "Table"
 msgstr "Table"
 
+#: src/client/admin/pages/data/schema-graph.tsx
+msgid "Table name or group…"
+msgstr "Table name or group…"
+
 #: src/client/admin/pages/data/database.tsx
 msgid "Tables"
 msgstr "Tables"
@@ -20551,6 +21042,7 @@ msgid "Template"
 msgstr "Template"
 
 #: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "Template deleted."
 msgstr "Template deleted."
 
@@ -20708,6 +21200,14 @@ msgstr "That is not a host. Use something like example.com — a full URL is fin
 msgid "That password didn't match the account for this address."
 msgstr "That password didn't match the account for this address."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "That user's email address."
+msgstr "That user's email address."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "That user's roles. A list — it prints as JSON."
+msgstr "That user's roles. A list — it prints as JSON."
+
 #. placeholder {0}: chosen.provider
 #. placeholder {1}: chosen.key
 #: src/client/admin/collections/collection-settings.tsx
@@ -20742,6 +21242,22 @@ msgstr "The answer is checked against this list and lands on {aiLastLabelExample
 msgid "The answer lands on {aiLastTextExample} for the steps that follow."
 msgstr "The answer lands on {aiLastTextExample} for the steps that follow."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The approver's email address."
+msgstr "The approver's email address."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The approver's name, if known."
+msgstr "The approver's name, if known."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The approver's role, if set."
+msgstr "The approver's role, if set."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The attached PDF's file name."
+msgstr "The attached PDF's file name."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "The authorization flow returned no redirect — start over from the client."
@@ -20761,6 +21277,10 @@ msgstr "The banner stops being served, nothing is asked and nothing is blocked, 
 #: src/client/admin/pages/observability/consent.tsx
 msgid "The banner's default"
 msgstr "The banner's default"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The booked time, in the resource's time zone."
+msgstr "The booked time, in the resource's time zone."
 
 #: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
@@ -20814,6 +21334,22 @@ msgstr "The current key stops working the moment the new one is issued, so every
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The customer's link to change or cancel the booking."
+msgstr "The customer's link to change or cancel the booking."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The dashboard's description, if it has one."
+msgstr "The dashboard's description, if it has one."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The dashboard's id."
+msgstr "The dashboard's id."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The dashboard's name."
+msgstr "The dashboard's name."
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "the default"
 msgstr "the default"
@@ -20825,6 +21361,10 @@ msgstr "The default collection"
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "The document is rendered and frozen now. A later edit to the template will not change it."
 msgstr "The document is rendered and frozen now. A later edit to the template will not change it."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The document's title."
+msgstr "The document's title."
 
 #: src/client/admin/pages/observability/websites.tsx
 msgid "The domain is not a host."
@@ -20864,6 +21404,10 @@ msgstr "The first numbers this field will issue"
 msgid "The form may have been deactivated, or its link replaced."
 msgstr "The form may have been deactivated, or its link replaced."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The form's name."
+msgstr "The form's name."
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "The formula stays in the KPI, so this tile can never disagree with it."
 msgstr "The formula stays in the KPI, so this tile can never disagree with it."
@@ -20880,9 +21424,17 @@ msgstr "The handle is what panels and AI tool calls reference — renaming the d
 msgid "the id from the visitor's banner"
 msgstr "the id from the visitor's banner"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The id of the row that triggered the flow. Any other field works the same way: data.field_name."
+msgstr "The id of the row that triggered the flow. Any other field works the same way: data.field_name."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the row that triggered the flow."
 msgstr "The id of the row to act on. <0>{itemIdInterpolationExample}</0> is the row that triggered the flow."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The id of the user the flow runs as."
+msgstr "The id of the user the flow runs as."
 
 #: src/client/admin/pages/observability/advisor.tsx
 msgid "The insights endpoint returned an error. Re-run to try again."
@@ -20941,9 +21493,21 @@ msgstr "The loop body runs once per row, with the row available as <0>{itemInter
 msgid "The move is refused until they hold a value — filling one in the same save counts."
 msgstr "The move is refused until they hold a value — filling one in the same save counts."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The name the customer booked under."
+msgstr "The name the customer booked under."
+
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "The name your site already passes to backlex()."
 msgstr "The name your site already passes to backlex()."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The note written when approval was requested, if any."
+msgstr "The note written when approval was requested, if any."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The note written when the request was sent, if any."
+msgstr "The note written when the request was sent, if any."
 
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The old slot goes back on sale, the customer is emailed, and a fresh link to change or cancel is minted."
@@ -21025,6 +21589,18 @@ msgstr "The public link stops working immediately. Submitted rows stay in the co
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 msgstr "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The reason given with the outcome, if any."
+msgstr "The reason given with the outcome, if any."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The recipient's email address."
+msgstr "The recipient's email address."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The recipient's name, if the invitation has one."
+msgstr "The recipient's name, if the invitation has one."
+
 #: src/client/admin/pages/automation/flow-builder.tsx
 msgid "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
 msgstr "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
@@ -21046,6 +21622,18 @@ msgstr "The request failed, so nothing here can be trusted to describe your site
 msgid "The request failed. This is usually temporary — try again."
 msgstr "The request failed. This is usually temporary — try again."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The request's label and value rows. A list — it prints as JSON."
+msgstr "The request's label and value rows. A list — it prints as JSON."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The resource's confirmation message, if it has one."
+msgstr "The resource's confirmation message, if it has one."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The result of the step before this one."
+msgstr "The result of the step before this one."
+
 #: src/client/admin/pages/access/app-orgs.tsx
 msgid "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
 msgstr "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
@@ -21065,6 +21653,10 @@ msgstr "The same for every row"
 #: src/client/admin/pages/data/booking/index.tsx
 msgid "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
 msgstr "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The same summary as a ready-made HTML table."
+msgstr "The same summary as a ready-made HTML table."
 
 #: src/client/admin/pages/observability/tag-manager.tsx
 msgid "The same tag you get under Websites — it carries your analytics, the tags published here and the cookie banner, so a site needs exactly one. Paste it as the first script in your head tag and keep defer: deferred scripts run in document order, and being first is what puts the consent decision ahead of every other deferred tag on the page."
@@ -21099,6 +21691,10 @@ msgstr "The server took too long to respond. If your account was created, try si
 msgid "The server-wide upload ceiling still applies on top."
 msgstr "The server-wide upload ceiling still applies on top."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The SHA-256 hash of the signed document."
+msgstr "The SHA-256 hash of the signed document."
+
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "The share link may have been revoked, or the record it pointed to was removed."
@@ -21106,6 +21702,18 @@ msgstr "The share link may have been revoked, or the record it pointed to was re
 #: src/client/admin/pages/settings/signatures.tsx
 msgid "The signed copy has been produced."
 msgstr "The signed copy has been produced."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The signer's email address."
+msgstr "The signer's email address."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The signer's name, if known."
+msgstr "The signer's name, if known."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "The signer's role on the document, if set."
+msgstr "The signer's role on the document, if set."
 
 #: src/client/pages/sign-document.tsx
 msgid "The signing link has expired."
@@ -21259,6 +21867,10 @@ msgstr "This agent has no tools — it answers from the model alone. Add tools i
 #: src/client/pages/book.tsx
 msgid "This appointment has already happened."
 msgstr "This appointment has already happened."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "This approver's personal decision link."
+msgstr "This approver's personal decision link."
 
 #: src/client/admin/pages/automation/integration-listing-dialog.tsx
 msgid "This attribute is what tells two units apart. A fixed answer gives every unit the same one — read it from a column instead unless that is what you mean."
@@ -21429,6 +22041,7 @@ msgid "This is a final state — the record cannot move on from here."
 msgstr "This is a final state — the record cannot move on from here."
 
 #: src/client/admin/pages/settings/documents.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
 msgstr "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
 
@@ -21508,6 +22121,10 @@ msgstr "This plan failed validation — review or edit the args before running."
 msgid "This provider receives your record contents"
 msgstr "This provider receives your record contents"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "This recipient's personal link. It works once."
+msgstr "This recipient's personal link. It works once."
+
 #: src/client/admin/collections/item-editor.tsx
 msgid "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
 msgstr "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
@@ -21558,6 +22175,14 @@ msgstr "This runs on the write path — a slow or failing hook affects live writ
 msgid "This runs while someone is waiting to sign in — a slow or failing hook is felt live."
 msgstr "This runs while someone is waiting to sign in — a slow or failing hook is felt live."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "This signer's personal signing link."
+msgstr "This signer's personal signing link."
+
+#: src/client/admin/collections/adopt-wizard.tsx
+msgid "This table has no <0>tenant_id</0> column, so a tenant-scoped collection over it could not match any row."
+msgstr "This table has no <0>tenant_id</0> column, so a tenant-scoped collection over it could not match any row."
+
 #: src/client/admin/fields/field-slug-input.tsx
 msgid "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
 msgstr "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
@@ -21580,6 +22205,10 @@ msgstr "This weakens two-factor authentication"
 msgid "This workspace"
 msgstr "This workspace"
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "This workspace already has a template with this key."
+msgstr "This workspace already has a template with this key."
+
 #: src/client/admin/pages/access/app-users.tsx
 msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
 msgstr "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
@@ -21588,6 +22217,10 @@ msgstr "This workspace has no custom roles yet — create one under <0>Roles & p
 msgid "This workspace has only the three built-in roles, and none of them is grantable here: <0>admin</0> is refused for end-users, and <1>authenticated</1> and <2>public</2> are already implicit. You can invite without one — they will sign in as <3>authenticated</3>."
 msgstr "This workspace has only the three built-in roles, and none of them is grantable here: <0>admin</0> is refused for end-users, and <1>authenticated</1> and <2>public</2> are already implicit. You can invite without one — they will sign in as <3>authenticated</3>."
 
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "This workspace's version is deleted and the default is sent again. Unsaved edits are lost too."
+msgstr "This workspace's version is deleted and the default is sent again. Unsaved edits are lost too."
+
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "Threshold"
 msgstr "Threshold"
@@ -21595,6 +22228,10 @@ msgstr "Threshold"
 #: src/client/admin/collections/item-views.tsx
 msgid "Thu"
 msgstr "Thu"
+
+#: src/client/admin/pages/automation/integrations.tsx
+msgid "Tick at least one collection, or choose All collections."
+msgstr "Tick at least one collection, or choose All collections."
 
 #: src/client/admin/fields/field-money-editor.tsx
 msgid "Tick this when the existing column stores 19.99 rather than 1999. backlex reads and writes it as it is, so other systems writing to the same table keep working — at the cost of the exactness whole numbers give."
@@ -22107,6 +22744,10 @@ msgstr "Two consecutive half-width fields sit side by side on one row (stacked o
 msgid "Two questions share the stored name \"{0}\". Names have to be unique."
 msgstr "Two questions share the stored name \"{0}\". Names have to be unique."
 
+#: src/client/admin/pages/data/database.tsx
+msgid "Two things record a migration: the CLI (<0>bun run db:migrate:<dialect></0>) writes <1>__drizzle_migrations</1>, and the boot runner writes <2>__backlex_migrations</2>. On Vercel and Netlify no CLI runs, so <3>runtime</3> is the expected answer there. Drizzle tracks by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
+msgstr "Two things record a migration: the CLI (<0>bun run db:migrate:<dialect></0>) writes <1>__drizzle_migrations</1>, and the boot runner writes <2>__backlex_migrations</2>. On Vercel and Netlify no CLI runs, so <3>runtime</3> is the expected answer there. Drizzle tracks by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
+
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Two to eight event names, in order, comma separated."
 msgstr "Two to eight event names, in order, comma separated."
@@ -22196,6 +22837,8 @@ msgid "undo"
 msgstr "undo"
 
 #: src/client/admin/collections/collections-index.tsx
+#: src/client/admin/pages/automation/integrations.tsx
+#: src/client/admin/pages/data/schema-graph.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Ungrouped"
 msgstr "Ungrouped"
@@ -22316,6 +22959,10 @@ msgstr "Unreachable: {0}"
 msgid "Unread"
 msgstr "Unread"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Unreadable trigger"
+msgstr "Unreadable trigger"
+
 #: src/client/admin/pages/access/role-mcp-guards.tsx
 msgid "unrestricted"
 msgstr "unrestricted"
@@ -22333,6 +22980,10 @@ msgstr "unsaved"
 #: src/client/admin/collections/item-editor.tsx
 msgid "Unsaved"
 msgstr "Unsaved"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Unsaved changes"
+msgstr "Unsaved changes"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "unset"
@@ -22622,6 +23273,10 @@ msgstr "User"
 msgid "User filter"
 msgstr "User filter"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "User signed up"
+msgstr "User signed up"
+
 #: src/client/admin/pages/observability/logs.tsx
 msgid "User-Agent"
 msgstr "User-Agent"
@@ -22660,7 +23315,6 @@ msgstr "Validation"
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
 #: src/client/admin/pages/observability/analytics.tsx
-#: src/client/admin/pages/observability/revisions.tsx
 msgid "value"
 msgstr "value"
 
@@ -22716,8 +23370,8 @@ msgid "Variables (JSON)"
 msgstr "Variables (JSON)"
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
-msgstr "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
+#~ msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
+#~ msgstr "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 msgid "Variants"
@@ -22971,6 +23625,10 @@ msgstr "Wed"
 msgid "Weekdays"
 msgstr "Weekdays"
 
+#: src/client/admin/pages/automation/flows.tsx
+msgid "Weekdays at {time}"
+msgstr "Weekdays at {time}"
+
 #: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Weekend"
 msgstr "Weekend"
@@ -23016,6 +23674,10 @@ msgstr "What each website asks its visitors, and what runs before they answer. O
 #~ msgid "What each website asks its visitors, and what runs before they answer. One policy per website."
 #~ msgstr "What each website asks its visitors, and what runs before they answer. One policy per website."
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "What is up for approval."
+msgstr "What is up for approval."
+
 #: src/client/admin/pages/automation/approvals.tsx
 msgid "What is waiting on a person — and what they decided."
 msgstr "What is waiting on a person — and what they decided."
@@ -23031,6 +23693,10 @@ msgstr "What settles it"
 #: src/client/admin/pages/automation/agents.tsx
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 msgstr "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "What text-only mail clients show. Empty means it is generated from the HTML body when the email is sent."
+msgstr "What text-only mail clients show. Empty means it is generated from the HTML body when the email is sent."
 
 #: src/client/admin/fields/field-transitions-editor.tsx
 msgid "What the action is called where this move is offered."
@@ -23092,6 +23758,14 @@ msgstr "What this role can do…"
 msgid "What to do"
 msgstr "What to do"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "What was booked."
+msgstr "What was booked."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "What was up for approval."
+msgstr "What was up for approval."
+
 #: src/client/admin/pages/observability/consent.tsx
 msgid "What your site does today. Your other tags are governed by consent alone."
 msgstr "What your site does today. Your other tags are governed by consent alone."
@@ -23152,6 +23826,10 @@ msgstr "When someone asks to be removed, start here — the preview shows everyt
 msgid "When the hook cannot answer"
 msgstr "When the hook cannot answer"
 
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "When the link expires, in UTC."
+msgstr "When the link expires, in UTC."
+
 #: src/client/admin/pages/settings/captcha-card.tsx
 msgid "When the provider cannot answer"
 msgstr "When the provider cannot answer"
@@ -23160,6 +23838,14 @@ msgstr "When the provider cannot answer"
 #: src/client/admin/fields/edit-field.tsx
 msgid "When the referenced item is deleted"
 msgstr "When the referenced item is deleted"
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "When the report was generated, as an ISO timestamp."
+msgstr "When the report was generated, as an ISO timestamp."
+
+#: src/client/admin/pages/settings/email-template-variables.tsx
+msgid "When the request expires, in UTC."
+msgstr "When the request expires, in UTC."
 
 #: src/client/admin/pages/observability/kpis.tsx
 msgid "When the row last changed"
@@ -23569,6 +24255,7 @@ msgid "You have been asked to approve this."
 msgstr "You have been asked to approve this."
 
 #: src/client/admin/collections/item-editor.tsx
+#: src/client/admin/pages/settings/email-templates.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."
 msgstr "You have edits that haven't been saved. Leaving will lose them."
 
@@ -23746,6 +24433,10 @@ msgstr "Your signature is recorded. You will get a copy once everyone has signed
 #: src/client/pages/public-form.tsx
 msgid "Your submission has been received."
 msgstr "Your submission has been received."
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Your templates"
+msgstr "Your templates"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Your tool calls show up here."

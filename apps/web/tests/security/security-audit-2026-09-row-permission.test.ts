@@ -792,3 +792,53 @@ describe("erasure removes the subject from the derived indexes too", () => {
     expect(ftsRows()).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 8 — a share link publishes only what its minter may read
+// ---------------------------------------------------------------------------
+
+describe("share links apply the row condition and the field allow-list", () => {
+  // Minting resolved `read` on the collection and never applied `whereSql`, so
+  // this portal user — who gets 404 on `otherCustomer` — could mint a link to
+  // it, and the public page answered with the whole row: `ssn` included, a
+  // field their allow-list withholds everywhere else.
+  let w: World;
+  beforeAll(async () => {
+    w = await buildWorld();
+  });
+  afterAll(() => w.h.cleanup());
+
+  const mint = (collection: string, itemId: string) =>
+    w.portal("/api/shared-links", { method: "POST", body: JSON.stringify({ collection, itemId }) });
+
+  test("the control: the by-id GET already refuses the row", async () => {
+    expect((await w.portal(`/api/items/customers/${w.otherCustomer}`)).status).toBe(404);
+  });
+
+  test("a link to a row the caller cannot read is a 404, and nothing is minted", async () => {
+    const res = await mint("customers", w.otherCustomer);
+    expect(res.status).toBe(404);
+    const listed = await w.h.fetch(`/api/shared-links?collection=customers&itemId=${w.otherCustomer}`);
+    expect(listed.status).toBe(200);
+    expect(((await listed.json()) as { data: unknown[] }).data).toEqual([]);
+  });
+
+  test("a readable row is still refused when the read is trimmed — the page shows every field", async () => {
+    expect((await w.portal(`/api/items/customers/${w.mineCustomer}`)).status).toBe(200);
+    expect((await mint("customers", w.mineCustomer)).status).toBe(403);
+  });
+
+  test("an untrimmed, unconditioned read can still share a row, and the link opens it", async () => {
+    const res = await mint("orders", w.otherOrder);
+    expect(res.status).toBe(201);
+    const url = ((await res.json()) as { data: { url: string } }).data.url;
+    const opened = await w.h.app.request(url.replace("/s/", "/api/shared/"));
+    expect(opened.status).toBe(200);
+    expect(((await opened.json()) as { data: { item: { ref: string } } }).data.item.ref).toBe("B");
+  });
+
+  test("listing a row's links answers only for a row the caller can read", async () => {
+    expect((await w.portal(`/api/shared-links?collection=customers&itemId=${w.otherCustomer}`)).status).toBe(404);
+    expect((await w.portal(`/api/shared-links?collection=orders&itemId=${w.otherOrder}`)).status).toBe(200);
+  });
+});

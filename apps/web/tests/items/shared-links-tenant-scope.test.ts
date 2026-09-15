@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import {
   buildTwoPlaneCast,
   json,
@@ -74,15 +75,42 @@ const listedIds = async (
   return body.data.map((r) => r.id);
 };
 
+/** Physical `posts` table per workspace slug. */
+const postsTable = new Map<string, string>();
+
+/**
+ * A real `posts` row in one workspace. Minting now requires a row the caller
+ * can READ, as the by-id GET does — this spec used to mint links to invented
+ * ids in a collection no workspace had, which passed only because the route
+ * never looked at the row.
+ */
+const createPost = async (who: TwoPlaneCast["ownerA"], slug: string): Promise<string> => {
+  const res = await who.fetch("/api/items/posts", inTenant(slug, json("POST", { title: "Shared" })));
+  expect(res.status).toBe(201);
+  return ((await res.json()) as { data: { id: string } }).data.id;
+};
+
 beforeAll(async () => {
   cast = await buildTwoPlaneCast();
+  for (const [who, tenant] of [
+    [cast.ownerA, cast.tenantA],
+    [cast.ownerB, cast.tenantB],
+  ] as const) {
+    const res = await who.fetch(
+      "/api/collections",
+      inTenant(tenant.slug, json("POST", { slug: "posts", fields: [{ name: "title", type: "text" }] })),
+    );
+    expect(res.status).toBe(201);
+    postsTable.set(tenant.slug, ((await res.json()) as { data: { physicalTable: string } }).data.physicalTable);
+  }
 });
 
 afterAll(() => cast?.cleanup());
 
 describe("share links are scoped to the workspace that minted them", () => {
   test("an admin of another workspace cannot revoke one", async () => {
-    const id = await mintLink(cast.ownerA, cast.tenantA.slug, "item-cross-1");
+    const itemId = await createPost(cast.ownerA, cast.tenantA.slug);
+    const id = await mintLink(cast.ownerA, cast.tenantA.slug, itemId);
 
     // ownerB is an owner — and therefore an admin — of workspace B, and holds
     // no membership in A. Under the old code this returned 200.
@@ -100,18 +128,19 @@ describe("share links are scoped to the workspace that minted them", () => {
     // handler that revoked first and answered second would look identical here.
     // `listSharedLinks` filters out revoked rows, so the link still being
     // listed for its owner is the observable proof nothing was written.
-    expect(await listedIds(cast.ownerA, cast.tenantA.slug, "item-cross-1")).toContain(id);
+    expect(await listedIds(cast.ownerA, cast.tenantA.slug, itemId)).toContain(id);
   });
 
   test("the owning workspace still can — so the refusal above is containment, not breakage", async () => {
-    const id = await mintLink(cast.ownerA, cast.tenantA.slug, "item-cross-2");
+    const itemId = await createPost(cast.ownerA, cast.tenantA.slug);
+    const id = await mintLink(cast.ownerA, cast.tenantA.slug, itemId);
 
     const res = await cast.ownerA.fetch(
       `/api/shared-links/${id}`,
       inTenant(cast.tenantA.slug, { method: "DELETE" }),
     );
     expect(res.status).toBe(200);
-    expect(await listedIds(cast.ownerA, cast.tenantA.slug, "item-cross-2")).not.toContain(id);
+    expect(await listedIds(cast.ownerA, cast.tenantA.slug, itemId)).not.toContain(id);
   });
 
   test("the listing does not spill across workspaces on a shared (collection, itemId)", async () => {
@@ -119,7 +148,23 @@ describe("share links are scoped to the workspace that minted them", () => {
     // workspaces — two tenants both having `posts` is the ordinary case, not a
     // contrived one. Before the fix the only thing keeping B's links out of A's
     // listing was `itemId` happening to differ.
-    const itemId = "item-same-id-in-both";
+    //
+    // The API mints a fresh UUID per row, so the SAME id in both workspaces is
+    // planted by copying A's row into B's own physical table.
+    const itemId = await createPost(cast.ownerA, cast.tenantA.slug);
+    const db = new Database(cast.h.env.SQLITE_PATH as string);
+    try {
+      const tableA = postsTable.get(cast.tenantA.slug)!;
+      const tableB = postsTable.get(cast.tenantB.slug)!;
+      const row = db.query(`SELECT * FROM "${tableA}" WHERE id = ?`).get(itemId) as Record<string, unknown>;
+      if ("tenant_id" in row) row.tenant_id = cast.tenantB.id;
+      const cols = Object.keys(row);
+      db.query(
+        `INSERT INTO "${tableB}" (${cols.map((c) => `"${c}"`).join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
+      ).run(...(Object.values(row) as never[]));
+    } finally {
+      db.close();
+    }
     const idInA = await mintLink(cast.ownerA, cast.tenantA.slug, itemId);
     const idInB = await mintLink(cast.ownerB, cast.tenantB.slug, itemId);
     expect(idInB).not.toBe(idInA);

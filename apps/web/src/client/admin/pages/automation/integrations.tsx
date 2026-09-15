@@ -5,12 +5,14 @@
 // admin scope which collection events the integration receives.
 import type { PushToast } from "../../types";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Badge, Button, PageHeader, relativeTime } from "../../ui";
-import { useCollections } from "../../queries";
+import { Badge, Button, Checkbox, PageHeader, relativeTime } from "../../ui";
+import { orderCollections, useCollections } from "../../queries";
+import type { ApiCollection } from "../../api";
 import { api } from "@/lib/api";
 import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Select } from "../../select";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
@@ -799,31 +801,43 @@ function ConnectDialog({
 }) {
   const { t } = useLingui();
   const collectionsQuery = useCollections();
-  const collections = collectionsQuery.data?.data ?? [];
-  // Data-plane events are `<collection>.<action>`; a `<slug>.*` subscription
-  // (matchesEventFilter prefix wildcard) covers create/update/delete for one
-  // collection. No selection = all events.
-  const eventOptions = collections.map((c) => `${c.slug}.*`);
+  // Grouped and ordered exactly as the sidebar shows them, so a collection is
+  // found where the admin already knows it lives.
+  const collectionGroups = useMemo(
+    () =>
+      orderCollections(collectionsQuery.data?.data ?? [], collectionsQuery.data?.meta?.groups ?? []).filter(
+        ([, list]) => list.length > 0,
+      ),
+    [collectionsQuery.data],
+  );
 
   const [values, setValues] = useState<Record<string, string>>({});
-  const [events, setEvents] = useState<Set<string>>(new Set(existing?.events ?? []));
-  const toggleEvent = (e: string) =>
-    setEvents((prev) => {
-      const next = new Set(prev);
-      if (next.has(e)) next.delete(e);
-      else next.add(e);
-      return next;
-    });
+  // Data-plane events are `<collection>.<action>`; a `<slug>.*` subscription
+  // (matchesEventFilter prefix wildcard) covers create/update/delete for one
+  // collection, and an empty list means every event.
+  //
+  // "Every event" is its own choice rather than "tick nothing": an empty list
+  // also covers collections created LATER, which ticking all of today's does
+  // not, and with sixty-odd collections a wall of unticked chips read as
+  // "nothing selected" rather than as the broadest subscription there is.
+  const [events, setEvents] = useState<Set<string>>(
+    new Set((existing?.events ?? []).filter((e) => e !== "*")),
+  );
+  const [scope, setScope] = useState<"all" | "some">(
+    existing?.events?.length && !existing.events.includes("*") ? "some" : "all",
+  );
 
   // Required = every field whose label doesn't say "optional".
   const ready = fields.every(
     (f) => f.label.toLowerCase().includes("optional") || (values[f.key]?.trim().length ?? 0) > 0,
   );
+  // "Some" with nothing ticked would save as an empty list — which is "all".
+  const scopeReady = scope === "all" || events.size > 0;
 
   const submit = () => {
     const config: Record<string, string> = {};
     for (const [k, v] of Object.entries(values)) if (v.trim()) config[k] = v.trim();
-    onConnect(config, [...events]);
+    onConnect(config, scope === "all" ? [] : [...events]);
   };
 
   return (
@@ -898,39 +912,13 @@ function ConnectDialog({
               </label>
             ))}
 
-            <div>
-              <span className="mb-1.5 block text-[11.5px] font-medium">
-                <Trans>Events</Trans>{" "}
-                <span className="font-normal text-muted-foreground">
-                  · <Trans>none selected = all</Trans>
-                </span>
-              </span>
-              {eventOptions.length === 0 ? (
-                <p className="text-[11.5px] text-muted-foreground">
-                  <Trans>No collections yet — events fire once you create one.</Trans>
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {eventOptions.map((e) => {
-                    const on = events.has(e);
-                    return (
-                      <button
-                        key={e}
-                        type="button"
-                        onClick={() => toggleEvent(e)}
-                        className={`rounded-control border px-2 py-1 font-mono text-[11px] transition-colors ${
-                          on
-                            ? "border-primary bg-primary/10 text-foreground"
-                            : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        {e}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <EventScopePicker
+              groups={collectionGroups}
+              scope={scope}
+              onScopeChange={setScope}
+              events={events}
+              onEventsChange={setEvents}
+            />
           </div>
         </DialogBody>
 
@@ -938,7 +926,7 @@ function ConnectDialog({
           <Button variant="ghost" onClick={onClose}>
             <Trans>Cancel</Trans>
           </Button>
-          <Button onClick={submit} disabled={busy || !ready}>
+          <Button onClick={submit} disabled={busy || !ready || !scopeReady}>
             {busy ? (
               <Trans>Connecting…</Trans>
             ) : redirectUri ? (
@@ -950,5 +938,189 @@ function ConnectDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The subscription a `<slug>.*` event filter stands for. */
+const collectionEvent = (slug: string) => `${slug}.*`;
+
+/**
+ * Which collections' events an integration receives.
+ *
+ * Two answers, said as two answers: every collection (an empty list — which
+ * also covers collections created later), or a ticked set. The ticked set is a
+ * grouped, filterable checklist in a capped scroll area, the shape the agent
+ * tool picker uses, because a flat run of chips stops being scannable long
+ * before a real schema stops growing.
+ */
+function EventScopePicker({
+  groups,
+  scope,
+  onScopeChange,
+  events,
+  onEventsChange,
+}: {
+  groups: [string | null, ApiCollection[]][];
+  scope: "all" | "some";
+  onScopeChange: (scope: "all" | "some") => void;
+  events: Set<string>;
+  onEventsChange: (next: Set<string>) => void;
+}) {
+  const { t } = useLingui();
+  const [filter, setFilter] = useState("");
+  const total = groups.reduce((n, [, list]) => n + list.length, 0);
+  const picked = groups.reduce((n, [, list]) => n + list.filter((c) => events.has(collectionEvent(c.slug))).length, 0);
+
+  const q = filter.trim().toLowerCase();
+  const visible = groups
+    .map(([group, list]) => {
+      // A matching group name keeps the whole group, so "catalog" finds every
+      // catalog table rather than only the ones whose slug contains the word.
+      const groupHit = !!q && (group ?? "").toLowerCase().includes(q);
+      const rows =
+        !q || groupHit
+          ? list
+          : list.filter((c) => c.slug.toLowerCase().includes(q) || (c.plural ?? "").toLowerCase().includes(q));
+      return [group, rows] as const;
+    })
+    .filter(([, rows]) => rows.length > 0);
+  const visibleEvents = visible.flatMap(([, rows]) => rows.map((c) => collectionEvent(c.slug)));
+  const allVisiblePicked = visibleEvents.length > 0 && visibleEvents.every((e) => events.has(e));
+
+  /** All on → clear them; otherwise tick every one. */
+  const toggleMany = (keys: string[]) => {
+    const next = new Set(events);
+    if (keys.every((k) => next.has(k))) for (const k of keys) next.delete(k);
+    else for (const k of keys) next.add(k);
+    onEventsChange(next);
+  };
+
+  if (total === 0) {
+    return (
+      <div>
+        <span className="mb-1 block text-[11.5px] font-medium">
+          <Trans>Events</Trans>
+        </span>
+        <p className="text-[11.5px] text-muted-foreground">
+          <Trans>No collections yet — events fire once you create one.</Trans>
+        </p>
+      </div>
+    );
+  }
+
+  const scopeOption = (value: "all" | "some", label: string) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={scope === value}
+      onClick={() => onScopeChange(value)}
+      className={`rounded-sm px-3 py-[5px] text-xs font-semibold transition-colors ${
+        scope === value
+          ? "bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11.5px] font-medium">
+          <Trans>Events</Trans>
+        </span>
+        <span className="text-[11px] tabular-nums text-muted-foreground">
+          {scope === "all" ? <Trans>All {total} collections</Trans> : <Trans>{picked} of {total} collections</Trans>}
+        </span>
+      </div>
+      <div
+        role="radiogroup"
+        aria-label={t`Events`}
+        className="grid grid-cols-2 gap-[3px] rounded-control border border-border bg-muted/60 p-[3px]"
+      >
+        {scopeOption("all", t`All collections`)}
+        {scopeOption("some", t`Choose collections`)}
+      </div>
+      <p className="text-[11px] leading-snug text-muted-foreground">
+        {scope === "all" ? (
+          <Trans>Create, update and delete events from every collection — including ones added later.</Trans>
+        ) : (
+          <Trans>Only the collections you tick send their create, update and delete events.</Trans>
+        )}
+      </p>
+
+      {scope === "some" && (
+        <>
+          <div className="flex items-center gap-2">
+            <Input
+              className="h-8 min-w-0 flex-1 text-[12px]"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={t`Filter collections…`}
+              aria-label={t`Filter collections`}
+            />
+            {visibleEvents.length > 0 && (
+              <button
+                type="button"
+                onClick={() => toggleMany(visibleEvents)}
+                className="shrink-0 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                {allVisiblePicked ? <Trans>Clear all</Trans> : <Trans>Select all</Trans>}
+              </button>
+            )}
+          </div>
+          <div className="overflow-hidden rounded-control border border-border">
+            <ScrollArea type="auto" viewportClassName="max-h-[240px]">
+              <div className="flex flex-col">
+                {visible.length === 0 && (
+                  <span className="px-3 py-3 text-[12px] text-muted-foreground">
+                    <Trans>No collections match.</Trans>
+                  </span>
+                )}
+                {visible.map(([group, rows]) => {
+                  const keys = rows.map((c) => collectionEvent(c.slug));
+                  const on = keys.filter((k) => events.has(k)).length;
+                  return (
+                    <div key={group ?? "__ungrouped__"} className="flex flex-col">
+                      <label className="sticky top-0 z-10 flex cursor-pointer items-center gap-2.5 border-b border-border bg-muted px-3 py-1.5">
+                        <Checkbox
+                          checked={on === keys.length}
+                          indeterminate={on > 0 && on < keys.length}
+                          onChange={() => toggleMany(keys)}
+                        />
+                        <span className="min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {group ?? t`Ungrouped`}
+                        </span>
+                        <span className="ml-auto shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                          {on}/{keys.length}
+                        </span>
+                      </label>
+                      {rows.map((c) => {
+                        const key = collectionEvent(c.slug);
+                        return (
+                          <label
+                            key={c.slug}
+                            className="flex cursor-pointer items-center gap-2.5 border-b border-border px-3 py-1.5 hover:bg-accent/50"
+                          >
+                            <Checkbox checked={events.has(key)} onChange={() => toggleMany([key])} />
+                            <span className="min-w-0 truncate font-mono text-[12px]">{c.slug}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </div>
+          {events.size === 0 && (
+            <p className="text-[11px] text-destructive">
+              <Trans>Tick at least one collection, or choose All collections.</Trans>
+            </p>
+          )}
+        </>
+      )}
+    </div>
   );
 }

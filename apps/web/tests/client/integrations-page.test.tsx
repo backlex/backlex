@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { IntegrationsPage } from "../../src/client/admin/pages/automation/integrations";
 import { renderWithProviders } from "./render";
 
@@ -190,6 +190,109 @@ describe("an OAuth provider that has not been authorized", () => {
     await waitFor(() => expect(screen.getByText("Connected")).toBeDefined());
     expect(screen.queryByText("Authorize")).toBeNull();
     expect(screen.queryByText("Reauthorize")).toBeNull();
+  });
+});
+
+// Which collections an integration hears from. With a real schema (the ecommerce
+// template ships sixty-odd collections) the old flat run of `<slug>.*` chips read
+// as "nothing selected" and hid that an EMPTY list is the broadest subscription
+// there is — it also covers collections created later. These pin the two
+// answers and exactly what each one saves.
+describe("the connect dialog's event scope", () => {
+  const COLLECTIONS = {
+    data: [
+      { slug: "products", group: "Catalog", sortOrder: 1, fields: [], ownerScoped: false, versioned: false },
+      { slug: "brands", group: "Catalog", sortOrder: 2, fields: [], ownerScoped: false, versioned: false },
+      { slug: "orders", group: "Orders", sortOrder: 1, fields: [], ownerScoped: false, versioned: false },
+      { slug: "refunds", group: "Orders", sortOrder: 2, fields: [], ownerScoped: false, versioned: false },
+      { slug: "notes", group: null, sortOrder: null, fields: [], ownerScoped: false, versioned: false },
+    ],
+    meta: { groups: ["Catalog", "Orders"] },
+  };
+  let posted: { kind: string; events: string[] | null } | null = null;
+
+  const mockConnect = () => {
+    posted = null;
+    global.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/integrations/catalog")) return json({ data: CATALOG });
+      if (url.includes("/api/collections")) return json(COLLECTIONS);
+      if (url.includes("/api/admin/integrations") && init?.method === "POST") {
+        posted = JSON.parse(String(init.body));
+        return json({ data: { id: "i-new", kind: "slack", status: "connected", config: {}, events: posted?.events ?? null } }, 201);
+      }
+      if (url.includes("/api/admin/integrations")) return json({ data: [] });
+      return json({ data: [] });
+    }) as unknown as typeof fetch;
+  };
+
+  /** Open Slack's connect dialog with the webhook URL filled in. */
+  const openSlack = async () => {
+    mockConnect();
+    renderWithProviders(<IntegrationsPage pushToast={() => {}} />);
+    // Catalog order is slack, jira, notion — Slack's card comes first.
+    const connect = await waitFor(() => screen.getAllByRole("button", { name: "Connect" })[0]!);
+    fireEvent.click(connect);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Incoming webhook URL"), {
+      target: { value: "https://hooks.slack.com/services/T/B/X" },
+    });
+    await waitFor(() => expect(within(dialog).getByText("All 5 collections")).toBeDefined());
+    return dialog;
+  };
+  const submit = (dialog: HTMLElement) =>
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "Connect" }).at(-1)!);
+  const groupBox = (dialog: HTMLElement, group: string) =>
+    within(dialog).getByText(group).closest("label")!.querySelector<HTMLElement>('[role="checkbox"]')!;
+  const rowBox = (dialog: HTMLElement, slug: string) =>
+    within(dialog).getByText(slug).closest("label")!.querySelector<HTMLElement>('[role="checkbox"]')!;
+
+  test("every collection is the default, and it saves as an empty (null) list", async () => {
+    const dialog = await openSlack();
+    expect(within(dialog).getByRole("radio", { name: "All collections" }).getAttribute("aria-checked")).toBe("true");
+    // Nothing to tick in this mode — the checklist is not even rendered.
+    expect(within(dialog).queryAllByRole("checkbox")).toHaveLength(0);
+    submit(dialog);
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect(posted!.events).toBeNull();
+  });
+
+  test("a chosen set saves exactly the ticked collections, grouped as the sidebar groups them", async () => {
+    const dialog = await openSlack();
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Choose collections" }));
+    // Sidebar order: named groups first, ungrouped last.
+    const headers = within(dialog).getAllByText(/^(Catalog|Orders|Ungrouped)$/).map((n) => n.textContent);
+    expect(headers).toEqual(["Catalog", "Orders", "Ungrouped"]);
+
+    // "Choose" with nothing ticked would save [] — which means ALL — so it is refused.
+    const connect = within(dialog).getAllByRole("button", { name: "Connect" }).at(-1)!;
+    expect((connect as HTMLButtonElement).disabled).toBe(true);
+    expect(within(dialog).getByText("Tick at least one collection, or choose All collections.")).toBeDefined();
+
+    fireEvent.click(groupBox(dialog, "Catalog"));
+    fireEvent.click(rowBox(dialog, "orders"));
+    await waitFor(() => expect(within(dialog).getByText("3 of 5 collections")).toBeDefined());
+    expect(groupBox(dialog, "Orders").getAttribute("aria-checked")).toBe("mixed");
+
+    submit(dialog);
+    await waitFor(() => expect(posted).not.toBeNull());
+    expect([...(posted!.events ?? [])].sort()).toEqual(["brands.*", "orders.*", "products.*"]);
+  });
+
+  test("the filter narrows by slug, and a group name keeps its whole group", async () => {
+    const dialog = await openSlack();
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Choose collections" }));
+    const filter = within(dialog).getByLabelText("Filter collections");
+
+    fireEvent.change(filter, { target: { value: "bra" } });
+    expect(within(dialog).getByText("brands")).toBeDefined();
+    expect(within(dialog).queryByText("products")).toBeNull();
+
+    fireEvent.change(filter, { target: { value: "orders" } });
+    expect(within(dialog).getByText("refunds")).toBeDefined();
+
+    fireEvent.change(filter, { target: { value: "zzz" } });
+    expect(within(dialog).getByText("No collections match.")).toBeDefined();
   });
 });
 

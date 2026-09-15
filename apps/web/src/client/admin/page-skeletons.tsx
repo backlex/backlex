@@ -632,20 +632,27 @@ function AdvisorSkeletonImpl() {
   );
 }
 
-/** Schema graph — header, then the ERD canvas card + a relations table. */
+/** Schema graph — header, the canvas toolbar (find, group filter, density
+ *  toggle, counts) over the full-bleed canvas, then the relations table. The
+ *  toolbar placeholders wrap like the real controls, so a phone does not jump
+ *  from one line of blocks to three when the page arrives. */
 function SchemaGraphSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
-      <HeaderSkeleton actions={2} />
-      <Card className="gap-0 py-0">
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
-          <Skeleton className="h-4 w-48" />
+      <HeaderSkeleton actions={3} />
+      <Card className="gap-0 overflow-hidden py-0">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+            <Skeleton className="h-8 w-full sm:w-52" />
+            <Skeleton className="h-8 min-w-0 flex-1 sm:w-48 sm:flex-none" />
+            <Skeleton className="h-8 w-[200px] shrink-0" />
+          </div>
+          <div className="hidden flex-1 sm:block" />
+          <Skeleton className="h-4 w-60 max-w-full" />
         </div>
-        <div className="p-6">
-          <Skeleton className="h-[360px] w-full rounded-control" />
-        </div>
+        <Skeleton className="h-[min(70vh,640px)] w-full rounded-none" />
       </Card>
-      <TableCardSkeleton rows={4} cols={6} />
+      <TableCardSkeleton rows={4} cols={5} />
     </div>
   );
 }

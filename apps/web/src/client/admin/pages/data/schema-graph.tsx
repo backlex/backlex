@@ -3,13 +3,21 @@
 //
 // Nodes come from /api/collections (collectionsApi.list). Each node is a
 // table card listing its user-defined fields; relation / relation_many fields
-// derive edges to their target collection (the field's `to` slug). Node
-// positions are draggable and persisted per-workspace in the `erdLayout`
-// setting. Inline schema editing — add / edit / drop a field, and draw a new
-// relation by dragging between two nodes — round-trips through the same
-// collection endpoints the Schema tab uses.
+// derive edges to their target collection (the field's `to` slug). Tables are
+// arranged by `schema-graph-layout.ts` — one block per admin group, layered by
+// reference direction. A position somebody drags is persisted per workspace in
+// the `erdLayout` setting and wins over that arrangement. Inline schema
+// editing — add / edit / drop a field, and draw a new relation by dragging
+// between two nodes — round-trips through the same collection endpoints the
+// Schema tab uses.
+//
+// A large schema is only readable with ways to show less of it, so the canvas
+// has four: selecting a table focuses it (it, its neighbours and the relations
+// between them stay lit, everything else fades), "Find a table" jumps to one,
+// the group filter narrows the canvas to one group and what it relates to, and
+// "Relations only" shrinks every card to the rows that draw edges.
 import type { PushToast } from "../../types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useNavigate } from "react-router";
 import {
@@ -24,10 +32,12 @@ import {
   MarkerType,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Node,
   type Edge,
   type Connection,
   type NodeProps,
+  type OnSelectionChangeParams,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { I } from "../../icons";
@@ -44,17 +54,35 @@ import {
 } from "@backlex/ui/components/dialog";
 import { Input } from "@backlex/ui/components/input";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@backlex/ui/components/popover";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@backlex/ui/components/command";
+import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import { collectionsApi, settingsApi, type ApiCollection } from "../../api";
 import { AddFieldDialog } from "../../fields/add-field";
 import { EditFieldDialog } from "../../fields/edit-field";
 import { Select } from "../../select";
 import { SchemaGraphSkeleton } from "../../page-skeletons";
+import {
+  estimateNodeHeight,
+  groupOf,
+  isRelationType,
+  layoutSchemaGraph,
+  NODE_HEADER_H,
+  NODE_ROW_H,
+  NODE_W,
+  relationEdges,
+  settleOverlaps,
+  TARGET_ANCHOR_Y,
+  visibleFields,
+  type ErdLayout,
+} from "./schema-graph-layout";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
-// Same OKLCH palette the design uses, cycled by index.
-const NODE_PALETTE = [
+// Same OKLCH palette the design uses, one colour per admin group — so the
+// accent bar says which block a card belongs to, on the canvas and the minimap.
+const GROUP_PALETTE = [
   "oklch(0.78 0.16 130)",
   "oklch(0.72 0.16 240)",
   "oklch(0.72 0.18 95)",
@@ -63,19 +91,35 @@ const NODE_PALETTE = [
   "oklch(0.74 0.16 200)",
   "oklch(0.7 0.18 320)",
   "oklch(0.76 0.14 160)",
+  "oklch(0.74 0.15 55)",
 ];
+const UNGROUPED_COLOR = "var(--muted-foreground)";
 
-const NODE_W = 248;
-const GRID_COL_GAP = 130;
-const GRID_ROW_GAP = 90;
-const GRID_ORIGIN = 40;
-// Target width/height ratio of the auto-arranged layout. The canvas is a wide
-// strip (full width × ≤640px), so spreading nodes toward this aspect lets
-// fitView use the horizontal space instead of zooming out on a narrow column.
-const AUTO_LAYOUT_ASPECT = 2.6;
+// Group-filter values that are not group names.
+const ALL_GROUPS = "__all__";
+const UNGROUPED = "__ungrouped__";
 
-type Pos = { x: number; y: number };
-type ErdLayout = Record<string, Pos>;
+// Past this many tables, full cards are too tall to read side by side, so the
+// canvas opens on relations only until the viewer picks a density themselves.
+const COMPACT_ABOVE = 24;
+const DENSITY_KEY = "backlex.schemaGraph.density";
+
+function readDensity(): "compact" | "full" | null {
+  try {
+    const v = localStorage.getItem(DENSITY_KEY);
+    return v === "compact" || v === "full" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDensity(v: "compact" | "full"): void {
+  try {
+    localStorage.setItem(DENSITY_KEY, v);
+  } catch {
+    // Storage refused (private window): the choice lasts for this visit only.
+  }
+}
 
 interface FieldRow {
   name: string;
@@ -91,6 +135,8 @@ interface CollectionNodeData {
   slug: string;
   color: string;
   fields: FieldRow[];
+  /** Draw only the relation rows — the layout was computed for that height. */
+  compact: boolean;
   adopted: boolean;
   validTargets: Set<string>;
   onOpen: (slug: string) => void;
@@ -101,6 +147,12 @@ interface CollectionNodeData {
 }
 
 type CollectionNode = Node<CollectionNodeData, "collection">;
+
+interface RelationEdgeData {
+  field: string;
+  many: boolean;
+  [key: string]: unknown;
+}
 
 const TYPE_ABBR: Record<string, string> = {
   text: "text",
@@ -115,58 +167,32 @@ const TYPE_ABBR: Record<string, string> = {
   relation_many: "rel[]",
 };
 
-// Rendered card height ≈ header (38px) + one 29px row per field.
-function estimateNodeHeight(c: ApiCollection): number {
-  return 38 + Math.max(c.fields?.length ?? 0, 1) * 29;
-}
-
-// Deterministic auto-arrange for nodes without a saved position: pick a column
-// count that shapes the whole grid close to AUTO_LAYOUT_ASPECT, then pack
-// row-major with per-column y offsets so tall cards don't force giant rows.
-function autoLayout(collections: ApiCollection[]): ErdLayout {
-  const n = collections.length;
-  if (n === 0) return {};
-  const cellW = NODE_W + GRID_COL_GAP;
-  const avgH =
-    collections.reduce((sum, c) => sum + estimateNodeHeight(c) + GRID_ROW_GAP, 0) / n;
-  const cols = Math.min(
-    n,
-    Math.max(1, Math.round(Math.sqrt((n * AUTO_LAYOUT_ASPECT * avgH) / cellW))),
-  );
-  const colY: number[] = Array.from({ length: cols }, () => GRID_ORIGIN);
-  const out: ErdLayout = {};
-  collections.forEach((c, i) => {
-    const col = i % cols;
-    out[c.slug] = { x: GRID_ORIGIN + col * cellW, y: colY[col] ?? GRID_ORIGIN };
-    colY[col] = (colY[col] ?? GRID_ORIGIN) + estimateNodeHeight(c) + GRID_ROW_GAP;
-  });
-  return out;
-}
-
 function toFieldRows(c: ApiCollection): FieldRow[] {
-  return (c.fields ?? []).map((f) => {
-    const many = f.type === "relation_many";
-    return {
-      name: f.name,
-      type: f.type,
-      required: f.required,
-      unique: f.unique,
-      to: (f as { to?: string }).to,
-      isRelation: f.type === "relation" || many,
-      many,
-    };
-  });
+  return (c.fields ?? []).map((f) => ({
+    name: f.name,
+    type: f.type,
+    required: f.required,
+    unique: f.unique,
+    to: (f as { to?: string }).to,
+    isRelation: isRelationType(f.type),
+    many: f.type === "relation_many",
+  }));
 }
 
 // ---------------------------------------------------------------------------
 // Custom node — a table card with one row per user field + relation handles.
+// Header and rows are sized from the layout's constants, which is what lets the
+// layout promise cards never overlap. Memoised because focus and filter restyle
+// the node wrapper without touching `data`, and a hover should not re-render
+// every row of every card.
 // ---------------------------------------------------------------------------
-function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
+const CollectionNodeView = memo(function CollectionNodeView({ data: d, selected }: NodeProps<CollectionNode>) {
   const { t } = useLingui();
-  const d = data;
+  const rows = visibleFields(d.fields, d.compact);
   return (
     <div
-      className={`w-[248px] overflow-hidden rounded-control border bg-card shadow-sm transition-colors ${selected ? "border-primary ring-1 ring-primary" : "border-border"}`}
+      className={`overflow-hidden rounded-control border bg-card shadow-sm transition-colors ${selected ? "border-primary ring-1 ring-primary" : "border-border"}`}
+      style={{ width: NODE_W }}
     >
       {/* Target handle — incoming relations anchor on the node's left edge. */}
       <Handle
@@ -174,9 +200,12 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
         id="t"
         position={Position.Left}
         className="!h-2.5 !w-2.5 !border-2 !border-background !bg-muted-foreground"
-        style={{ top: 22 }}
+        style={{ top: TARGET_ANCHOR_Y }}
       />
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2" style={{ background: "color-mix(in oklch, var(--muted) 35%, var(--card))" }}>
+      <div
+        className="flex items-center gap-2 border-b border-border px-3"
+        style={{ height: NODE_HEADER_H, background: "color-mix(in oklch, var(--muted) 35%, var(--card))" }}
+      >
         <span className="h-3.5 w-1 shrink-0 rounded-full" style={{ background: d.color }} />
         <span className="truncate font-mono text-[12.5px] font-medium">c_{d.slug}</span>
         <span
@@ -209,17 +238,20 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
         position={Position.Right}
         isConnectableStart
         className="!h-3 !w-3 !border-2 !border-background !bg-primary"
-        style={{ top: 22 }}
+        style={{ top: TARGET_ANCHOR_Y }}
         title={t`Drag to another collection to create a relation`}
       />
       <div className="flex flex-col">
-        {d.fields.length === 0 && (
-          <div className="px-3 py-2 text-[11.5px] text-muted-foreground"><Trans>No user fields yet.</Trans></div>
+        {!d.compact && rows.length === 0 && (
+          <div className="flex items-center px-3 text-[11.5px] text-muted-foreground" style={{ height: NODE_ROW_H }}>
+            <Trans>No user fields yet.</Trans>
+          </div>
         )}
-        {d.fields.map((f) => (
+        {rows.map((f) => (
           <div
             key={f.name}
-            className="group relative flex items-center gap-2 border-b border-border/60 px-3 py-1.5 last:border-b-0 hover:bg-accent/50"
+            className="group relative flex items-center gap-2 border-b border-border/60 px-3 last:border-b-0 hover:bg-accent/50"
+            style={{ height: NODE_ROW_H }}
           >
             {f.isRelation && <I.Link size={11} className="shrink-0 text-primary" />}
             <span className="truncate font-mono text-[11.5px]">{f.name}</span>
@@ -264,9 +296,63 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
       </div>
     </div>
   );
-}
+});
 
 const nodeTypes = { collection: CollectionNodeView };
+
+// ---------------------------------------------------------------------------
+// Find a table — a combobox over every collection; picking one jumps to it.
+// ---------------------------------------------------------------------------
+function FindTable({
+  tables,
+  onPick,
+  onOpenChange,
+  className,
+}: {
+  tables: { slug: string; group: string; color: string }[];
+  onPick: (slug: string) => void;
+  onOpenChange: (open: boolean) => void;
+  className?: string;
+}) {
+  const { t } = useLingui();
+  const [open, setOpen] = useState(false);
+  const change = (next: boolean) => {
+    setOpen(next);
+    onOpenChange(next);
+  };
+  return (
+    <Popover open={open} onOpenChange={change}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" icon={I.Search} className={`justify-start text-muted-foreground ${className ?? ""}`}>
+          <Trans>Find a table…</Trans>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 max-w-[calc(100vw-2rem)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={t`Table name or group…`} />
+          <CommandList>
+            <CommandEmpty><Trans>No table matches.</Trans></CommandEmpty>
+            {tables.map((tb) => (
+              <CommandItem
+                key={tb.slug}
+                value={tb.slug}
+                keywords={tb.group ? [tb.group] : []}
+                onSelect={() => {
+                  change(false);
+                  onPick(tb.slug);
+                }}
+              >
+                <span className="size-2 shrink-0 rounded-full" style={{ background: tb.color }} />
+                <span className="min-w-0 truncate font-mono text-[12px]">c_{tb.slug}</span>
+                {tb.group && <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{tb.group}</span>}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Create-relation dialog — shown after dragging from one node onto another.
@@ -447,28 +533,64 @@ function DropFieldDialog({
 function ErdCanvas({
   collections,
   layout,
+  groupOrder,
   pushToast,
   onMutated,
 }: {
   collections: ApiCollection[];
   layout: ErdLayout;
+  groupOrder: string[];
   pushToast: PushToast;
   onMutated: (next: ApiCollection[]) => void;
 }) {
   const { t } = useLingui();
   const navigate = useNavigate();
+  const { fitView } = useReactFlow();
+  const isMobile = useIsMobile();
   const bySlug = useMemo(() => new Map(collections.map((c) => [c.slug, c])), [collections]);
   const validSlugs = useMemo(() => new Set(collections.map((c) => c.slug)), [collections]);
+  const relations = useMemo(() => relationEdges(collections), [collections]);
 
-  // Source of truth for positions — seeded from the saved layout, filled in
-  // with the deterministic grid for any collection without a saved spot.
-  const positionsRef = useRef<ErdLayout>({});
+  const [compact, setCompact] = useState(() => {
+    const stored = readDensity();
+    return stored ? stored === "compact" : collections.length > COMPACT_ABOVE;
+  });
+  const [groupFilter, setGroupFilter] = useState(ALL_GROUPS);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Groups in the order the sidebar lists them, then any it does not know.
+  const groups = useMemo(() => {
+    const present = new Set(collections.map(groupOf).filter(Boolean));
+    const known = groupOrder.filter((g) => present.has(g));
+    return [...known, ...[...present].filter((g) => !known.includes(g)).sort()];
+  }, [collections, groupOrder]);
+  const colorOf = useCallback(
+    (group: string) =>
+      group ? (GROUP_PALETTE[groups.indexOf(group) % GROUP_PALETTE.length] ?? UNGROUPED_COLOR) : UNGROUPED_COLOR,
+    [groups],
+  );
+
+  // Positions somebody chose — seeded from the saved layout, extended by every
+  // drag. Only these are saved: a table nobody moved follows the arrangement,
+  // so it can improve (or follow a density switch) without a stale copy of an
+  // old arrangement pinning it in place.
+  const userPositions = useRef<ErdLayout>({ ...layout });
+  // The arrangement is computed once per density and set of tables, then held
+  // still: adding a field or a relation inline must not reshuffle the canvas
+  // under the person doing it. `settleOverlaps` absorbs the taller card.
+  const arrangement = useRef<{ key: string; positions: ErdLayout } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Serialize layout saves: only one PATCH in flight at a time (concurrent
   // settings writes race and one fails → the spurious "Couldn't save layout").
   // If positions change while a save is in flight, mark dirty and flush after.
   const saveInFlight = useRef(false);
   const saveDirty = useRef(false);
+  // True while a node is dragged or a relation is being drawn: a hover preview
+  // flickering the canvas under the pointer would fight either gesture.
+  const busy = useRef(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Inline-edit dialog state.
   const [addFieldSlug, setAddFieldSlug] = useState<string | null>(null);
@@ -483,12 +605,17 @@ function ErdCanvas({
     }
     saveInFlight.current = true;
     saveDirty.current = false;
+    // Positions of tables that no longer exist are dropped rather than carried
+    // forward forever in the settings row.
+    const erdLayout = Object.fromEntries(
+      Object.entries(userPositions.current).filter(([slug]) => validSlugs.has(slug)),
+    );
     try {
-      await settingsApi.patch({ erdLayout: positionsRef.current });
+      await settingsApi.patch({ erdLayout });
     } catch {
       // One retry for transient failures before surfacing the warning.
       try {
-        await settingsApi.patch({ erdLayout: positionsRef.current });
+        await settingsApi.patch({ erdLayout });
       } catch {
         pushToast(t`Couldn't save layout.`, "error");
       }
@@ -496,7 +623,7 @@ function ErdCanvas({
       saveInFlight.current = false;
       if (saveDirty.current) void saveLayoutNow();
     }
-  }, [pushToast, t]);
+  }, [pushToast, t, validSlugs]);
 
   // Debounce drag-stops (600ms); saveLayoutNow serializes the actual PATCH.
   const persistLayout = useCallback(() => {
@@ -534,69 +661,78 @@ function ErdCanvas({
   const handleDropField = useCallback((slug: string, name: string) => setDropTarget({ slug, name }), []);
 
   const buildNodes = useCallback((): CollectionNode[] => {
-    const auto = autoLayout(collections);
-    return collections.map((c, i) => {
-      const saved = positionsRef.current[c.slug] ?? layout[c.slug] ?? auto[c.slug] ?? { x: GRID_ORIGIN, y: GRID_ORIGIN };
-      positionsRef.current[c.slug] = saved;
-      return {
-        id: c.slug,
-        type: "collection",
-        position: saved,
-        data: {
-          slug: c.slug,
-          color: NODE_PALETTE[i % NODE_PALETTE.length] ?? NODE_PALETTE[0]!,
-          fields: toFieldRows(c),
-          adopted: Boolean(c.adopted),
-          validTargets: validSlugs,
-          onOpen: handleOpen,
-          onAddField: handleAddField,
-          onEditField: handleEditField,
-          onDropField: handleDropField,
-        },
-      };
-    });
-  }, [collections, layout, validSlugs, handleOpen, handleAddField, handleEditField, handleDropField]);
-
-  const buildEdges = useCallback((): Edge[] => {
-    const edges: Edge[] = [];
-    for (const c of collections) {
-      for (const f of c.fields ?? []) {
-        const many = f.type === "relation_many";
-        if (f.type !== "relation" && !many) continue;
-        const target = (f as { to?: string }).to;
-        if (!target || !validSlugs.has(target)) continue;
-        edges.push({
-          id: `${c.slug}.${f.name}->${target}`,
-          source: c.slug,
-          sourceHandle: `f:${f.name}`,
-          target,
-          targetHandle: "t",
-          label: f.name,
-          animated: many,
-          markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: "var(--foreground)", strokeWidth: 1.5, strokeDasharray: many ? "5 4" : undefined },
-          labelStyle: { fontFamily: "Geist Mono, monospace", fontSize: 10, fill: "var(--muted-foreground)" },
-          labelBgStyle: { fill: "var(--card)" },
-        });
-      }
+    const key = `${compact ? "compact" : "full"}|${[...validSlugs].sort().join(",")}`;
+    if (arrangement.current?.key !== key) {
+      arrangement.current = { key, positions: layoutSchemaGraph(collections, { compact, groupOrder }) };
     }
-    return edges;
-  }, [collections, validSlugs]);
+    const auto = arrangement.current.positions;
+    const heights: Record<string, number> = {};
+    const planned: ErdLayout = {};
+    for (const c of collections) {
+      heights[c.slug] = estimateNodeHeight(c, compact);
+      planned[c.slug] = userPositions.current[c.slug] ?? auto[c.slug] ?? { x: 40, y: 40 };
+    }
+    const placed = settleOverlaps(
+      planned,
+      heights,
+      new Set(Object.keys(userPositions.current).filter((slug) => validSlugs.has(slug))),
+    );
+    return collections.map((c) => ({
+      id: c.slug,
+      type: "collection",
+      position: placed[c.slug] ?? { x: 40, y: 40 },
+      data: {
+        slug: c.slug,
+        color: colorOf(groupOf(c)),
+        fields: toFieldRows(c),
+        compact,
+        adopted: Boolean(c.adopted),
+        validTargets: validSlugs,
+        onOpen: handleOpen,
+        onAddField: handleAddField,
+        onEditField: handleEditField,
+        onDropField: handleDropField,
+      },
+    }));
+  }, [collections, compact, groupOrder, validSlugs, colorOf, handleOpen, handleAddField, handleEditField, handleDropField]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<CollectionNode>(buildNodes());
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(buildEdges());
+  const buildEdges = useCallback(
+    (): Edge<RelationEdgeData>[] =>
+      relations.map((r) => ({
+        id: `${r.from}.${r.field}->${r.to}`,
+        source: r.from,
+        sourceHandle: `f:${r.field}`,
+        target: r.to,
+        targetHandle: "t",
+        animated: r.many,
+        markerEnd: { type: MarkerType.ArrowClosed },
+        data: { field: r.field, many: r.many },
+      })),
+    [relations],
+  );
 
-  // Rebuild whenever the collection set changes (add/edit/drop field, refresh).
-  // Positions survive via positionsRef, so dragging is preserved across edits.
+  // The first render needs nodes for `fitView`; building them on every render
+  // just to discard the result would cost a layout pass per drag frame.
+  const initial = useRef<{ nodes: CollectionNode[]; edges: Edge<RelationEdgeData>[] } | null>(null);
+  if (initial.current === null) initial.current = { nodes: buildNodes(), edges: buildEdges() };
+  const [nodes, setNodes, onNodesChange] = useNodesState<CollectionNode>(initial.current.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<RelationEdgeData>>(initial.current.edges);
+
+  // Rebuild whenever the collection set or the density changes (add/edit/drop
+  // field, refresh). Chosen positions survive via userPositions, and the
+  // current selection is carried over so an inline edit keeps its focus.
   useEffect(() => {
-    setNodes(buildNodes());
+    setNodes((prev) => {
+      const selected = new Set(prev.filter((n) => n.selected).map((n) => n.id));
+      return buildNodes().map((n) => (selected.has(n.id) ? { ...n, selected: true } : n));
+    });
     setEdges(buildEdges());
   }, [buildNodes, buildEdges, setNodes, setEdges]);
 
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
       for (const ch of changes) {
-        if (ch.type === "position" && ch.position) positionsRef.current[ch.id] = ch.position;
+        if (ch.type === "position" && ch.position) userPositions.current[ch.id] = ch.position;
       }
       onNodesChange(changes);
     },
@@ -613,27 +749,317 @@ function ErdCanvas({
     [],
   );
 
+  // --- Focus -----------------------------------------------------------------
+  // Focus IS the selection, so clicking, shift-clicking, box-selecting and
+  // clicking the background all keep meaning what they meant.
+  const onSelectionChange = useCallback(({ nodes: picked }: OnSelectionChangeParams) => {
+    const ids = picked.map((n) => n.id).sort();
+    setSelectedIds((prev) => (prev.length === ids.length && prev.every((id, i) => id === ids[i]) ? prev : ids));
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setNodes((ns) => ns.map((n) => (n.selected ? { ...n, selected: false } : n)));
+    setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)));
+    setHoverId(null);
+  }, [setNodes, setEdges]);
+
+  // Preview on hover only when nothing is selected, and only after the pointer
+  // settles: sweeping across the canvas should not strobe it.
+  const queueHover = useCallback((id: string | null, delay: number) => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHoverId(id), delay);
+  }, []);
+  // Only the hover timer is cancelled on unmount. A pending layout save is left
+  // to fire: refreshing within 600ms of a drag must not lose that drag.
+  useEffect(
+    () => () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    },
+    [],
+  );
+
+  const dialogOpen = addFieldSlug !== null || editField !== null || dropTarget !== null || pendingRel !== null;
+  useEffect(() => {
+    if ((selectedIds.length === 0 && hoverId === null) || dialogOpen || searchOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") clearSelection();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedIds.length, hoverId, dialogOpen, searchOpen, clearSelection]);
+
+  const neighbours = useMemo(() => {
+    const out = new Map<string, Set<string>>();
+    const link = (a: string, b: string) => {
+      const set = out.get(a);
+      if (set) set.add(b);
+      else out.set(a, new Set([b]));
+    };
+    for (const r of relations) {
+      link(r.from, r.to);
+      link(r.to, r.from);
+    }
+    return out;
+  }, [relations]);
+
+  const focus = useMemo(() => {
+    const ids = selectedIds.length > 0 ? selectedIds : hoverId ? [hoverId] : [];
+    if (ids.length === 0) return null;
+    const lit = new Set(ids);
+    for (const id of ids) for (const n of neighbours.get(id) ?? []) lit.add(n);
+    return { ids: new Set(ids), lit };
+  }, [selectedIds, hoverId, neighbours]);
+
+  // --- Group filter ------------------------------------------------------------
+  const filterKeyOf = (c: ApiCollection) => groupOf(c) || UNGROUPED;
+  const filter = useMemo(() => {
+    if (groupFilter === ALL_GROUPS) return null;
+    const members = new Set(collections.filter((c) => filterKeyOf(c) === groupFilter).map((c) => c.slug));
+    // The tables a group relates to stay on the canvas, faded: a group drawn
+    // without them hides exactly the relations somebody filtered to look at.
+    const related = new Set<string>();
+    for (const r of relations) {
+      if (members.has(r.from) && !members.has(r.to)) related.add(r.to);
+      if (members.has(r.to) && !members.has(r.from)) related.add(r.from);
+    }
+    return { members, related };
+  }, [groupFilter, collections, relations]);
+  const shown = useCallback(
+    (id: string) => !filter || filter.members.has(id) || filter.related.has(id),
+    [filter],
+  );
+
+  // --- What React Flow draws -----------------------------------------------------
+  // Focus and filter restyle nodes without rebuilding them. A node object is
+  // replaced only when its own look changes, so a hover does not re-render
+  // every card — and during a drag only the dragged card is new each frame.
+  const looks = useRef(new WeakMap<CollectionNode, CollectionNode>());
+  const displayNodes = useMemo(
+    () =>
+      nodes.map((n) => {
+        const hidden = !shown(n.id);
+        const className = hidden
+          ? ""
+          : focus
+            ? focus.lit.has(n.id)
+              ? ""
+              : "erd-dim"
+            : filter?.related.has(n.id)
+              ? "erd-context"
+              : "";
+        if ((n.className ?? "") === className && Boolean(n.hidden) === hidden) return n;
+        const cached = looks.current.get(n);
+        if (cached && cached.className === className && cached.hidden === hidden) return cached;
+        const next = { ...n, className, hidden };
+        looks.current.set(n, next);
+        return next;
+      }),
+    [nodes, shown, focus, filter],
+  );
+
+  const displayEdges = useMemo(
+    () =>
+      edges.map((e) => {
+        const hot = !!focus && (focus.ids.has(e.source) || focus.ids.has(e.target));
+        return {
+          ...e,
+          // A hidden node does not hide its edges on its own.
+          hidden: !shown(e.source) || !shown(e.target),
+          className: hot ? "erd-hot" : focus ? "erd-dim" : "",
+          // Names only on the relations being looked at: 130 labels at once
+          // are the noise this view exists to remove.
+          label: hot ? e.data?.field : undefined,
+          style: {
+            stroke: hot ? "var(--primary)" : "var(--muted-foreground)",
+            strokeWidth: hot ? 2 : 1.25,
+            strokeDasharray: e.data?.many ? "5 4" : undefined,
+          },
+          labelStyle: { fontFamily: "Geist Mono, monospace", fontSize: 10, fill: "var(--foreground)" },
+          labelBgStyle: { fill: "var(--card)" },
+        };
+      }),
+    [edges, focus, shown],
+  );
+
+  // --- Toolbar actions -----------------------------------------------------------
+  const tables = useMemo(
+    () =>
+      [...collections]
+        .map((c) => ({ slug: c.slug, group: groupOf(c), color: colorOf(groupOf(c)) }))
+        .sort((a, b) => {
+          const ga = a.group ? groups.indexOf(a.group) : groups.length;
+          const gb = b.group ? groups.indexOf(b.group) : groups.length;
+          return ga - gb || (a.slug < b.slug ? -1 : 1);
+        }),
+    [collections, groups, colorOf],
+  );
+
+  const jumpTo = useCallback(
+    (slug: string) => {
+      // A table the group filter hides cannot be shown; widen the canvas first.
+      if (!shown(slug)) setGroupFilter(ALL_GROUPS);
+      setNodes((ns) => ns.map((n) => (Boolean(n.selected) === (n.id === slug) ? n : { ...n, selected: n.id === slug })));
+      setEdges((es) => es.map((e) => (e.selected ? { ...e, selected: false } : e)));
+      void fitView({ nodes: [{ id: slug }], duration: 450, maxZoom: 1, padding: 0.3 });
+    },
+    [shown, setNodes, setEdges, fitView],
+  );
+
+  const onGroupFilter = useCallback(
+    (value: string) => {
+      setGroupFilter(value);
+      clearSelection();
+      const members = collections.filter((c) => filterKeyOf(c) === value).map((c) => ({ id: c.slug }));
+      // Frame the group itself; its faded neighbours may sit outside the frame.
+      void fitView({
+        ...(value === ALL_GROUPS ? {} : { nodes: members }),
+        duration: 450,
+        maxZoom: 1,
+        padding: 0.12,
+      });
+    },
+    [collections, clearSelection, fitView],
+  );
+
+  const onDensity = useCallback(
+    (next: boolean) => {
+      if (next === compact) return;
+      writeDensity(next ? "compact" : "full");
+      setCompact(next);
+      // Every card changes height and the arrangement with it, so frame the
+      // canvas again — two frames later, once React Flow has measured the
+      // cards at their new size.
+      const focusOn = selectedIds.map((id) => ({ id }));
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          void fitView({ ...(focusOn.length > 0 ? { nodes: focusOn } : {}), duration: 350, maxZoom: 1, padding: 0.08 });
+        }),
+      );
+    },
+    [compact, selectedIds, fitView],
+  );
+
+  const groupOptions = [
+    { value: ALL_GROUPS, label: t`All groups` },
+    ...groups.map((g) => ({
+      value: g,
+      label: g,
+      icon: <span className="size-2 rounded-full" style={{ background: colorOf(g) }} />,
+    })),
+    ...(collections.some((c) => !groupOf(c))
+      ? [{ value: UNGROUPED, label: t`Ungrouped`, icon: <span className="size-2 rounded-full" style={{ background: UNGROUPED_COLOR }} /> }]
+      : []),
+  ];
+
   const addSchema = addFieldSlug ? bySlug.get(addFieldSlug) : null;
   const editSrc = editField ? bySlug.get(editField.slug) : null;
   const editFieldDef = editSrc?.fields.find((f) => f.name === editField?.name) ?? null;
 
   return (
     <>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+        {/* On a phone the search takes its own line; the filter and the
+            density toggle share the next. Side by side with basis 0, all
+            three fit one line and squeeze the two labels to nothing. */}
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+          <FindTable
+            tables={tables}
+            onPick={jumpTo}
+            onOpenChange={setSearchOpen}
+            className="w-full sm:w-52"
+          />
+          {groups.length > 0 && (
+            <Select
+              size="sm"
+              value={groupFilter}
+              onChange={onGroupFilter}
+              options={groupOptions}
+              className="min-w-0 flex-1 sm:w-48 sm:flex-none"
+            />
+          )}
+          <div
+            role="group"
+            aria-label={t`Card detail`}
+            className="inline-flex shrink-0 items-center gap-[3px] rounded-control border border-border bg-muted/60 p-[3px]"
+          >
+            {([
+              [true, t`Relations only`],
+              [false, t`All fields`],
+            ] as const).map(([value, label]) => (
+              <Button
+                key={String(value)}
+                size="xs"
+                variant="ghost"
+                aria-pressed={compact === value}
+                onClick={() => onDensity(value)}
+                className={
+                  compact === value
+                    ? "bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] text-foreground hover:bg-[color-mix(in_oklch,var(--primary)_22%,transparent)]"
+                    : "text-muted-foreground"
+                }
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="hidden flex-1 sm:block" />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
+          <span className="font-medium text-foreground">
+            <Trans>{collections.length} collections · {relations.length} relations</Trans>
+          </span>
+          <span className="flex items-center gap-[5px]"><span className="h-0.5 w-4 bg-muted-foreground" /> <Trans>relation</Trans></span>
+          <span className="flex items-center gap-[5px]"><span className="w-4 border-t-2 border-dashed border-muted-foreground" /> <Trans>relation_many</Trans></span>
+        </div>
+      </div>
       <div className="h-[min(70vh,640px)] w-full">
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={displayNodes}
+          edges={displayEdges}
           nodeTypes={nodeTypes}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
-          onNodeDragStop={persistLayout}
+          onSelectionChange={onSelectionChange}
+          onNodeMouseEnter={(_, node) => {
+            if (!busy.current && selectedIds.length === 0) queueHover(node.id, 160);
+          }}
+          onNodeMouseLeave={() => queueHover(null, 90)}
+          // A tap raises mouseenter and never mouseleave, so on a touch screen
+          // the preview would outlive the selection the background tap cleared.
+          onPaneClick={() => queueHover(null, 0)}
+          onNodeDragStart={() => {
+            busy.current = true;
+            queueHover(null, 0);
+          }}
+          onNodeDragStop={() => {
+            busy.current = false;
+            persistLayout();
+          }}
+          onConnectStart={() => {
+            busy.current = true;
+            queueHover(null, 0);
+          }}
+          onConnectEnd={() => {
+            busy.current = false;
+          }}
           onConnect={onConnect}
+          // Backspace removed the selected card from the canvas — not from the
+          // schema — until the next refresh. With selection now meaning focus,
+          // that key is one press away from a phantom deletion.
+          deleteKeyCode={null}
+          defaultMarkerColor="var(--muted-foreground)"
           fitView
-          fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
-          minZoom={0.25}
+          fitViewOptions={{ padding: 0.08, maxZoom: 1 }}
+          // A 69-table template needs about 0.2 to fit on one screen.
+          minZoom={0.1}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
-          className="!bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]"
+          // Focus and filter fade through these. The underscores in React
+          // Flow's class names are escaped on purpose: Tailwind reads `_` in
+          // an arbitrary variant as a space, so `react-flow__node` compiles to
+          // the selector `.react-flow node` — valid, matching nothing, and no
+          // error anywhere to say so.
+          className="!bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] [&_.react-flow\_\_edge.erd-dim]:opacity-[0.07] [&_.react-flow\_\_edge.erd-hot]:opacity-100 [&_.react-flow\_\_edge]:opacity-50 [&_.react-flow\_\_edge]:transition-opacity [&_.react-flow\_\_node.erd-context]:opacity-50 [&_.react-flow\_\_node.erd-dim]:opacity-20 [&_.react-flow\_\_node]:transition-opacity"
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="var(--border)" />
           {/* React Flow ships a light-theme stylesheet; override the controls +
@@ -651,7 +1077,8 @@ function ErdCanvas({
             nodeBorderRadius={4}
             bgColor="var(--card)"
             maskColor="color-mix(in oklch, var(--background) 55%, transparent)"
-            style={{ width: 168, height: 112 }}
+            // Narrower on a phone, where the full size covers half the canvas.
+            style={isMobile ? { width: 112, height: 76 } : { width: 168, height: 112 }}
             className="!bottom-3 !right-3 !m-0 overflow-hidden rounded-surface border border-border shadow-md"
           />
         </ReactFlow>
@@ -761,6 +1188,7 @@ function ErdCanvas({
 export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [collections, setCollections] = useState<ApiCollection[]>([]);
+  const [groupOrder, setGroupOrder] = useState<string[]>([]);
   const [layout, setLayout] = useState<ErdLayout>({});
   const [loaded, setLoaded] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -775,6 +1203,8 @@ export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
         ]);
         if (cancelled) return;
         if (Array.isArray(cols.data)) setCollections(cols.data);
+        const groupHeaders = cols.meta?.groups;
+        if (Array.isArray(groupHeaders)) setGroupOrder(groupHeaders);
         const erd = (settings?.data as { erdLayout?: ErdLayout } | undefined)?.erdLayout;
         if (erd && typeof erd === "object") setLayout(erd);
       } catch {
@@ -786,20 +1216,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
     return () => { cancelled = true; };
   }, [reloadKey]);
 
-  const edgeRows = useMemo(() => {
-    const slugs = new Set(collections.map((c) => c.slug));
-    const out: { from: string; to: string; field: string; many: boolean }[] = [];
-    for (const c of collections) {
-      for (const f of c.fields ?? []) {
-        const many = f.type === "relation_many";
-        if (f.type !== "relation" && !many) continue;
-        const to = (f as { to?: string }).to;
-        if (!to || !slugs.has(to)) continue;
-        out.push({ from: c.slug, to, field: f.name, many });
-      }
-    }
-    return out;
-  }, [collections]);
+  const edgeRows = useMemo(() => relationEdges(collections), [collections]);
 
   const onExport = () => {
     try {
@@ -840,7 +1257,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
     <div className="flex flex-col gap-4.5">
       <PageHeader
         title={t`Schema graph`}
-        description={t`Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline.`}
+        description={t`Interactive ERD of dynamic collections. Click a table to light up its relations · drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline.`}
         actions={
           <>
             <Button variant="outline" icon={I.Refresh} onClick={onResetLayout}>
@@ -864,16 +1281,6 @@ export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
       />
 
       <Card className="gap-0 overflow-hidden py-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-          <span className="text-[12.5px] font-medium">
-            <Trans>{collections.length} collections · {edgeRows.length} relations</Trans>
-          </span>
-          <div className="flex-1" />
-          <div className="flex gap-2.5 text-[11.5px] text-muted-foreground">
-            <span className="flex items-center gap-[5px]"><span className="h-0.5 w-4 bg-foreground" /> <Trans>relation</Trans></span>
-            <span className="flex items-center gap-[5px]"><span className="w-4 border-t-2 border-dashed border-foreground" /> <Trans>relation_many</Trans></span>
-          </div>
-        </div>
         {collections.length === 0 ? (
           <div className="p-10 text-center text-[13px] text-muted-foreground">
             <Trans>No collections to graph — create one to populate the ERD.</Trans>
@@ -887,6 +1294,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
               key={reloadKey}
               collections={collections}
               layout={layout}
+              groupOrder={groupOrder}
               pushToast={pushToast}
               onMutated={setCollections}
             />

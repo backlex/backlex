@@ -4,6 +4,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { I } from "../../icons";
 import { Select } from "../../select";
 import { Button, EmptyState, PageHeader } from "../../ui";
@@ -386,12 +387,27 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
               <label className="text-[12.5px] font-medium text-foreground">
                 <Trans>Body (HTML)</Trans>
               </label>
-              <Textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                spellCheck={false}
-                className="min-h-[220px] w-full resize-y rounded-control border border-border bg-[oklch(0.18_0.01_130)] p-3 font-mono text-[12.5px] leading-[1.55] text-[oklch(0.92_0.02_130)]"
-              />
+              {/* The textarea sizes to its content (`field-sizing-content`), so
+                  a real document — a receipt is a page of CSS and table markup —
+                  made the editor, and the page, thousands of pixels tall. It
+                  still grows, but inside a capped scroll area, and typing past
+                  the fold scrolls the caret into view through it (checked with
+                  real key input — `execCommand` does not reveal the caret even
+                  in a bare textarea, so it cannot test this). The frame carries
+                  the border and the focus ring the clipped textarea cannot. */}
+              <ScrollArea
+                type="auto"
+                className="rounded-control border border-border bg-[oklch(0.18_0.01_130)] transition-[box-shadow,border-color] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30"
+                viewportClassName="max-h-[min(60vh,560px)]"
+              >
+                <Textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  spellCheck={false}
+                  aria-label={t`Body (HTML)`}
+                  className="min-h-[220px] w-full resize-none rounded-none border-0 bg-transparent p-3 font-mono text-[12.5px] leading-[1.55] text-[oklch(0.92_0.02_130)] focus-visible:ring-0"
+                />
+              </ScrollArea>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium text-foreground">

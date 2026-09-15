@@ -292,7 +292,10 @@ export const fieldService: SchemaTemplate = {
         { name: "Work orders", kind: "items-aggregate", viz: "counter", config: { collection: "work_orders", agg: "count" } },
         { name: "Visits", kind: "items-aggregate", viz: "counter", config: { collection: "visits", agg: "count" } },
         { name: "Minutes on site", kind: "items-aggregate", viz: "counter", config: { collection: "visits", agg: "sum", field: "minutes_on_site" } },
-        { name: "Invoiced", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "sum", field: "amount" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Invoiced", kind: "items-aggregate", viz: "table", config: { collection: "invoices", agg: "sum", field: "amount", groupBy: "currency" } },
         { name: "Service contracts", kind: "items-aggregate", viz: "counter", config: { collection: "service_contracts", agg: "count" } },
         { name: "Orders by status", kind: "items-aggregate", viz: "donut", config: { collection: "work_orders", agg: "count", groupBy: "status" } },
         { name: "Orders by priority", kind: "items-aggregate", viz: "bars", config: { collection: "work_orders", agg: "count", groupBy: "priority" } },

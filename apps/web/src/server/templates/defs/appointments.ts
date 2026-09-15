@@ -307,10 +307,13 @@ export const appointments: SchemaTemplate = {
       description: "Booking volume, status mix, packages and revenue.",
       panels: [
         { name: "Bookings", kind: "items-aggregate", viz: "counter", config: { collection: "bookings", agg: "count" } },
-        { name: "Revenue", kind: "items-aggregate", viz: "counter", config: { collection: "bookings", agg: "sum", field: "amount" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Revenue", kind: "items-aggregate", viz: "table", config: { collection: "bookings", agg: "sum", field: "amount", groupBy: "currency" } },
         { name: "Customers", kind: "items-aggregate", viz: "counter", config: { collection: "customers", agg: "count" } },
         { name: "Waitlist", kind: "items-aggregate", viz: "counter", config: { collection: "waitlist_entries", agg: "count" } },
-        { name: "Package revenue", kind: "items-aggregate", viz: "counter", config: { collection: "package_purchases", agg: "sum", field: "price_paid" } },
+        { name: "Package revenue", kind: "items-aggregate", viz: "table", config: { collection: "package_purchases", agg: "sum", field: "price_paid", groupBy: "currency" } },
         { name: "Bookings by status", kind: "items-aggregate", viz: "donut", config: { collection: "bookings", agg: "count", groupBy: "status" } },
         { name: "Bookings by payment", kind: "items-aggregate", viz: "bars", config: { collection: "bookings", agg: "count", groupBy: "payment_status" } },
         { name: "Blocked time by reason", kind: "items-aggregate", viz: "bars", config: { collection: "blocked_times", agg: "count", groupBy: "reason" } },

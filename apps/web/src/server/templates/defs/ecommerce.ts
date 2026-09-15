@@ -2084,9 +2084,12 @@ export const ecommerce: SchemaTemplate = {
       description: "Orders, revenue, returns and catalog health.",
       panels: [
         { name: "Orders", kind: "items-aggregate", viz: "counter", config: { collection: "orders", agg: "count" } },
-        { name: "Revenue", kind: "items-aggregate", viz: "counter", config: { collection: "orders", agg: "sum", field: "total" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Revenue", kind: "items-aggregate", viz: "table", config: { collection: "orders", agg: "sum", field: "total", groupBy: "currency" } },
         { name: "Customers", kind: "items-aggregate", viz: "counter", config: { collection: "customers", agg: "count" } },
-        { name: "Refunded", kind: "items-aggregate", viz: "counter", config: { collection: "refunds", agg: "sum", field: "amount" } },
+        { name: "Refunded", kind: "items-aggregate", viz: "table", config: { collection: "refunds", agg: "sum", field: "amount", groupBy: "currency" } },
         { name: "Orders by state", kind: "items-aggregate", viz: "donut", config: { collection: "orders", agg: "count", groupBy: "state" } },
         { name: "Orders by payment status", kind: "items-aggregate", viz: "bars", config: { collection: "orders", agg: "count", groupBy: "status" } },
         { name: "Orders by fulfillment", kind: "items-aggregate", viz: "donut", config: { collection: "orders", agg: "count", groupBy: "fulfillment_status" } },

@@ -398,8 +398,11 @@ export const invoicing: SchemaTemplate = {
       description: "Invoiced vs collected, invoice flow and spend.",
       panels: [
         { name: "Invoices", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "count" } },
-        { name: "Invoiced total", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "sum", field: "total" } },
-        { name: "Collected", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "sum", field: "amount_paid" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Invoiced total", kind: "items-aggregate", viz: "table", config: { collection: "invoices", agg: "sum", field: "total", groupBy: "currency" } },
+        { name: "Collected", kind: "items-aggregate", viz: "table", config: { collection: "invoices", agg: "sum", field: "amount_paid", groupBy: "currency" } },
         { name: "Invoices by status", kind: "items-aggregate", viz: "donut", config: { collection: "invoices", agg: "count", groupBy: "status" } },
         { name: "Quotes by status", kind: "items-aggregate", viz: "donut", config: { collection: "quotes", agg: "count", groupBy: "status" } },
         { name: "Bills by status", kind: "items-aggregate", viz: "donut", config: { collection: "bills", agg: "count", groupBy: "status" } },

@@ -302,7 +302,10 @@ export const nonprofit: SchemaTemplate = {
       description: "Giving, campaigns, grants and volunteering at a glance.",
       panels: [
         { name: "Donors", kind: "items-aggregate", viz: "counter", config: { collection: "donors", agg: "count" } },
-        { name: "Donated", kind: "items-aggregate", viz: "counter", config: { collection: "donations", agg: "sum", field: "amount" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Donated", kind: "items-aggregate", viz: "table", config: { collection: "donations", agg: "sum", field: "amount", groupBy: "currency" } },
         { name: "Pledged", kind: "items-aggregate", viz: "counter", config: { collection: "pledges", agg: "sum", field: "amount" } },
         { name: "Volunteers", kind: "items-aggregate", viz: "counter", config: { collection: "volunteers", agg: "count" } },
         { name: "Campaigns by status", kind: "items-aggregate", viz: "donut", config: { collection: "campaigns", agg: "count", groupBy: "status" } },

@@ -395,6 +395,14 @@ The shapes live in `templates/types.ts` (`TemplateFlow`, `TemplateDocument`,
   dashboards exist — a dashboard id cannot be known when the catalog is
   written, and that field is otherwise a run-time template over the triggering
   row, which knows nothing about the catalog.
+- **Dashboards** are run, not just stored: `tests/templates/templates-catalog.test.ts`
+  applies every template and runs each bundled dashboard over its sample rows,
+  and fails on any panel that answers with an error instead of a figure. The
+  usual one is a money total — a `moneyIn()` amount takes its currency from the
+  row, so `sum`/`avg`/`min`/`max` over it need `groupBy: "currency"`, and the
+  panel draws as a `table` (one line per currency). Never a `counter`: it prints
+  only the first row, so a grouped counter would show one currency's total as
+  if it were the whole, and the same spec refuses it.
 - **Documents** are a complete HTML document (backlex does not wrap them), keys
   unique within the template, and every declared `variables` entry has to be a
   real column somewhere in the template.

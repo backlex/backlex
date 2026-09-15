@@ -315,7 +315,10 @@ export const inventory: SchemaTemplate = {
         { name: "Active items", kind: "items-aggregate", viz: "counter", config: { collection: "items", agg: "count" } },
         { name: "Units on hand", kind: "items-aggregate", viz: "counter", config: { collection: "stock_levels", agg: "sum", field: "on_hand" } },
         { name: "Purchase orders", kind: "items-aggregate", viz: "counter", config: { collection: "purchase_orders", agg: "count" } },
-        { name: "PO spend", kind: "items-aggregate", viz: "counter", config: { collection: "purchase_orders", agg: "sum", field: "total" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "PO spend", kind: "items-aggregate", viz: "table", config: { collection: "purchase_orders", agg: "sum", field: "total", groupBy: "currency" } },
         { name: "POs by status", kind: "items-aggregate", viz: "donut", config: { collection: "purchase_orders", agg: "count", groupBy: "status" } },
         { name: "Lots by status", kind: "items-aggregate", viz: "donut", config: { collection: "lots", agg: "count", groupBy: "status" } },
         { name: "Adjustments by reason", kind: "items-aggregate", viz: "bars", config: { collection: "stock_adjustments", agg: "count", groupBy: "reason" } },

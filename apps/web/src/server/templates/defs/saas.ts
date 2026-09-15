@@ -403,8 +403,11 @@ export const saas: SchemaTemplate = {
       panels: [
         { name: "Accounts", kind: "items-aggregate", viz: "counter", config: { collection: "accounts", agg: "count" } },
         { name: "Subscriptions", kind: "items-aggregate", viz: "counter", config: { collection: "subscriptions", agg: "count" } },
-        { name: "Collected", kind: "items-aggregate", viz: "counter", config: { collection: "payments", agg: "sum", field: "amount" } },
-        { name: "Refunded", kind: "items-aggregate", viz: "counter", config: { collection: "refunds", agg: "sum", field: "amount" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Collected", kind: "items-aggregate", viz: "table", config: { collection: "payments", agg: "sum", field: "amount", groupBy: "currency" } },
+        { name: "Refunded", kind: "items-aggregate", viz: "table", config: { collection: "refunds", agg: "sum", field: "amount", groupBy: "currency" } },
         { name: "Subscriptions by status", kind: "items-aggregate", viz: "donut", config: { collection: "subscriptions", agg: "count", groupBy: "status" } },
         { name: "Invoices by status", kind: "items-aggregate", viz: "donut", config: { collection: "invoices", agg: "count", groupBy: "status" } },
         { name: "Payments by method", kind: "items-aggregate", viz: "bars", config: { collection: "payments", agg: "count", groupBy: "payment_method" } },

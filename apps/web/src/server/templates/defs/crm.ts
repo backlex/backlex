@@ -379,9 +379,12 @@ export const crm: SchemaTemplate = {
       description: "Pipeline value, deal flow and campaign return.",
       panels: [
         { name: "Deals", kind: "items-aggregate", viz: "counter", config: { collection: "deals", agg: "count" } },
-        { name: "Pipeline value", kind: "items-aggregate", viz: "counter", config: { collection: "deals", agg: "sum", field: "amount" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Pipeline value", kind: "items-aggregate", viz: "table", config: { collection: "deals", agg: "sum", field: "amount", groupBy: "currency" } },
         { name: "Contacts", kind: "items-aggregate", viz: "counter", config: { collection: "contacts", agg: "count" } },
-        { name: "Quoted value", kind: "items-aggregate", viz: "counter", config: { collection: "quotes", agg: "sum", field: "total" } },
+        { name: "Quoted value", kind: "items-aggregate", viz: "table", config: { collection: "quotes", agg: "sum", field: "total", groupBy: "currency" } },
         { name: "Deals by type", kind: "items-aggregate", viz: "donut", config: { collection: "deals", agg: "count", groupBy: "deal_type" } },
         { name: "Quotes by status", kind: "items-aggregate", viz: "donut", config: { collection: "quotes", agg: "count", groupBy: "status" } },
         { name: "Leads by status", kind: "items-aggregate", viz: "bars", config: { collection: "leads", agg: "count", groupBy: "status" } },

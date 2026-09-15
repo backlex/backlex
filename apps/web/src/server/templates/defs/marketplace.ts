@@ -268,7 +268,10 @@ export const marketplace: SchemaTemplate = {
       panels: [
         { name: "Vendors", kind: "items-aggregate", viz: "counter", config: { collection: "vendors", agg: "count" } },
         { name: "Listings", kind: "items-aggregate", viz: "counter", config: { collection: "listings", agg: "count" } },
-        { name: "GMV", kind: "items-aggregate", viz: "counter", config: { collection: "orders", agg: "sum", field: "total" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "GMV", kind: "items-aggregate", viz: "table", config: { collection: "orders", agg: "sum", field: "total", groupBy: "currency" } },
         { name: "Orders by status", kind: "items-aggregate", viz: "donut", config: { collection: "orders", agg: "count", groupBy: "status" } },
         { name: "Listings by status", kind: "items-aggregate", viz: "bars", config: { collection: "listings", agg: "count", groupBy: "status" } },
         { name: "Disputes by status", kind: "items-aggregate", viz: "bars", config: { collection: "disputes", agg: "count", groupBy: "status" } },

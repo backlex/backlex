@@ -262,7 +262,10 @@ export const events: SchemaTemplate = {
       panels: [
         { name: "Events", kind: "items-aggregate", viz: "counter", config: { collection: "events", agg: "count" } },
         { name: "Tickets issued", kind: "items-aggregate", viz: "counter", config: { collection: "tickets", agg: "count" } },
-        { name: "Ticket revenue", kind: "items-aggregate", viz: "counter", config: { collection: "orders", agg: "sum", field: "total" } },
+        // Money totals group by `currency` and draw as a table: each amount is
+        // in its own row's currency, so one sum would add lira to dollars, and
+        // a counter would print only the first currency's total.
+        { name: "Ticket revenue", kind: "items-aggregate", viz: "table", config: { collection: "orders", agg: "sum", field: "total", groupBy: "currency" } },
         { name: "Sponsorship raised", kind: "items-aggregate", viz: "counter", config: { collection: "sponsors", agg: "sum", field: "amount" } },
         { name: "Events by status", kind: "items-aggregate", viz: "donut", config: { collection: "events", agg: "count", groupBy: "status" } },
         { name: "Tickets by status", kind: "items-aggregate", viz: "donut", config: { collection: "tickets", agg: "count", groupBy: "status" } },

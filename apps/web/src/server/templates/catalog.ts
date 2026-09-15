@@ -1,3 +1,4 @@
+import { SYSTEM_ROLES } from "@backlex/core";
 import { BASE_TEMPLATES } from "./defs";
 import { TEMPLATE_KPIS } from "./kpis";
 import type { SchemaTemplate } from "./types";
@@ -93,8 +94,9 @@ export const templateSummaries = () =>
     sampleRows: t.collections.reduce((n, c) => n + (c.samples?.length ?? 0), 0),
     /** Admin group headers seeded by this template, in order. */
     groups: t.groups ?? [],
-    /** Bundled role names seeded on apply. */
-    roles: (t.roles ?? []).map((r) => r.name),
+    /** Bundled role names seeded on apply. An `authenticated` entry adds grants
+     *  to a role every workspace already has, so it is not one of them. */
+    roles: (t.roles ?? []).map((r) => r.name).filter((n) => n !== SYSTEM_ROLES.authenticated),
     /** Bundled dashboard names seeded on apply. */
     dashboards: (t.dashboards ?? []).map((d) => d.name),
     /**

@@ -111,6 +111,10 @@ const roles: ConfigResource = {
     // The three system roles exist in every workspace before anything is
     // applied, so carrying them would be three rows the apply must recognise
     // as no-ops — and one that could DELETE `admin` if a target had drifted.
+    // Their grants stay out too, because `upsert` REPLACES a role's grants and
+    // `authenticated` holds ones the engine adds per collection (owner-scoped
+    // defaults, a template's reads): reconciling it from a document captured
+    // before those existed would revoke end-user access workspace-wide.
     const mine = rows.filter((r) => !SYSTEM.has(String(r.name)));
     if (mine.length === 0) return [];
     // `permissions` carries no tenant_id — it is scoped only transitively via

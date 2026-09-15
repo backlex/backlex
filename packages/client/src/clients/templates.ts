@@ -53,6 +53,13 @@ export interface TemplateCatalog {
   sampleSeeds: number;
 }
 
+/** A read grant a template gives the built-in `authenticated` role. */
+export interface TemplateBuiltInGrant {
+  role: string;
+  collection: string;
+  action: "read";
+}
+
 /** Result of applying a template. Idempotent — `skipped` are collections that
  *  already existed; `seeded` counts sample rows inserted; `roles`/`dashboards`/
  *  `kpis` are bundled artifacts created by this apply. */
@@ -62,6 +69,12 @@ export interface ApplyTemplateResult {
   skipped: string[];
   seeded: number;
   roles: string[];
+  /** Read grants added to the built-in `authenticated` role — only ever on
+   *  collections this apply created. */
+  builtInGrants: TemplateBuiltInGrant[];
+  /** Grants not added: a collection they read already existed (a re-apply
+   *  never widens access on it), or the role already holds an identical one. */
+  builtInGrantsSkipped: (TemplateBuiltInGrant & { reason: "collection-existed" | "already-granted" })[];
   dashboards: string[];
   /** Slugs of bundled KPI definitions installed by this apply. Skipped per
    *  slug, so a re-apply keeps a definition an admin has tuned. */

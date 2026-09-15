@@ -2077,6 +2077,72 @@ export const ecommerce: SchemaTemplate = {
         { collection: "selling_plans", action: "read" },
       ],
     },
+    {
+      // Not a role this template creates: the grants are ADDED to the built-in
+      // role every signed-in end-user holds — with open sign-up, anyone who
+      // registers. So this is the catalog a stranger may see and nothing else:
+      // no customer, address, cart, order, payment, refund, return, discount
+      // code or gift card, and no price list (a wholesale tier is one row away
+      // from a public price, and nothing on this role says who is wholesale).
+      // The engine adds them read-only, and only on collections the apply
+      // creates (#376).
+      name: "authenticated",
+      permissions: [
+        { collection: "brands", action: "read" },
+        { collection: "categories", action: "read" },
+        { collection: "collections", action: "read" },
+        { collection: "media", action: "read" },
+        { collection: "product_types", action: "read" },
+        { collection: "attributes", action: "read" },
+        { collection: "attribute_values", action: "read" },
+        // `status` is the product's own switch — draft and archived products
+        // are not for sale. Separate from `_status`, whose drafts the engine
+        // already hides from a reader who can neither publish nor edit.
+        { collection: "products", action: "read", condition: { status: { _eq: "active" } } },
+        { collection: "product_categories", action: "read" },
+        { collection: "product_collections", action: "read" },
+        { collection: "related_products", action: "read" },
+        { collection: "product_options", action: "read" },
+        { collection: "product_option_values", action: "read" },
+        {
+          collection: "product_variants",
+          action: "read",
+          // What a shopper is shown about a unit. Left out: `cost` (the store's
+          // margin), `map_price` (a supplier agreement, never advertised) and
+          // the marketplace listing block (another system's verdict on the
+          // unit, rejection reasons included). An allow-list, so a column added
+          // later stays hidden until somebody decides it is not.
+          fields: [
+            "product",
+            "title",
+            "position",
+            "sku",
+            "barcode",
+            "gtin",
+            "mpn",
+            "external_id",
+            "price",
+            "compare_at_price",
+            "currency",
+            "is_default",
+            "inventory_quantity",
+            "inventory_policy",
+            "weight",
+            "weight_unit",
+            "requires_shipping",
+          ],
+        },
+        { collection: "variant_option_values", action: "read" },
+        { collection: "modifier_sets", action: "read" },
+        { collection: "modifier_values", action: "read" },
+        { collection: "product_modifiers", action: "read" },
+        { collection: "modifier_rules", action: "read" },
+        { collection: "product_addons", action: "read" },
+        { collection: "pages", action: "read" },
+        { collection: "menus", action: "read" },
+        { collection: "menu_items", action: "read" },
+      ],
+    },
   ],
   dashboards: [
     {

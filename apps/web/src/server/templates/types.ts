@@ -81,7 +81,12 @@ export interface TemplateCollection {
 }
 
 /** A role (+ its permission grants) seeded alongside the collections. Skipped
- *  wholesale when a role with the same name already exists in the workspace. */
+ *  wholesale when a role with the same name already exists in the workspace.
+ *
+ *  Named `authenticated`, the entry creates nothing: its grants are ADDED to
+ *  that built-in role — `read` only, and only on collections the apply
+ *  creates. `admin` and `public` are refused. See
+ *  `services/template-role-grants.ts`. */
 export interface TemplateRole {
   name: string;
   description?: string;

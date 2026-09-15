@@ -38,6 +38,9 @@ interface ApplyResult {
   skipped: string[];
   seeded: number;
   roles?: string[];
+  /** Read grants added to the built-in `authenticated` role. */
+  builtInGrants?: { role: string; collection: string; action: string }[];
+  builtInGrantsSkipped?: { role: string; collection: string; action: string; reason: string }[];
   dashboards?: string[];
   kpis?: string[];
   flows?: string[];
@@ -76,6 +79,13 @@ const printApply = (data: ApplyResult, json: boolean): void => {
     skipped: data.skipped.length ? data.skipped.join(", ") : "—",
     seeded: String(data.seeded),
     roles: data.roles?.length ? data.roles.join(", ") : "—",
+    // Who can now read what — the one line of this result that changes access.
+    "built-in grants": data.builtInGrants?.length
+      ? data.builtInGrants.map((g) => `${g.role} ${g.action} ${g.collection}`).join(", ")
+      : "—",
+    "built-in grants skipped": data.builtInGrantsSkipped?.length
+      ? data.builtInGrantsSkipped.map((g) => `${g.collection} (${g.reason})`).join(", ")
+      : "—",
     dashboards: data.dashboards?.length ? data.dashboards.join(", ") : "—",
     kpis: data.kpis?.length ? data.kpis.join(", ") : "—",
     flows: data.flows?.length ? data.flows.join(", ") : "—",

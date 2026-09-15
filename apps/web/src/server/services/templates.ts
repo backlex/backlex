@@ -53,6 +53,15 @@ import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
 import { ensureSystemRoles, type DbCtx } from "./seed";
 import { PORTAL_LINKS_KEY, mergePortalLink, type PortalLink } from "./portal-links";
+import {
+  assertTemplateRoles,
+  extractBuiltInRoleGrants,
+  isBuiltInRole,
+  seedBuiltInRoleGrants,
+  type BuiltInGrantSkip,
+  type BuiltInRoleGrant,
+  type GrantTarget,
+} from "./template-role-grants";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
@@ -99,6 +108,11 @@ export interface ApplyTemplateResult {
   samplesSkipped: Record<string, string[]>;
   /** Names of bundled roles created by this apply (existing names skipped). */
   roles: string[];
+  /** Read grants added to the built-in `authenticated` role — only ever on
+   *  collections this apply created. See `template-role-grants.ts`. */
+  builtInGrants: BuiltInRoleGrant[];
+  /** Built-in-role grants NOT added, each with the reason. */
+  builtInGrantsSkipped: BuiltInGrantSkip[];
   /** Names of bundled dashboards created by this apply (existing names skipped). */
   dashboards: string[];
   /** Slugs of bundled KPI definitions created by this apply (existing slugs
@@ -984,6 +998,8 @@ export async function applyTemplateDefinition(
   tenantId: string,
   template: SchemaTemplate,
 ): Promise<ApplyTemplateResult> {
+  // First: a refused built-in-role grant must not leave a half-built workspace.
+  assertTemplateRoles(template);
   await ensureSystemRoles(ctx, tenantId);
 
   // Header order: the template's explicit `groups` list, then any group used
@@ -1078,7 +1094,12 @@ export async function applyTemplateDefinition(
   // were just seeded. After the whole loop — see the function's own note.
   await refreshTemplateRollups(ctx, tenantId, template, new Set(created));
 
-  const roles = await seedRoles(ctx, tenantId, template.roles ?? []);
+  const roles = await seedRoles(
+    ctx,
+    tenantId,
+    (template.roles ?? []).filter((r) => !isBuiltInRole(r.name)),
+  );
+  const builtIn = await seedBuiltInRoleGrants(ctx, tenantId, template, new Set(created));
   const dashboards = await seedDashboards(ctx, tenantId, template.dashboards ?? []);
   const kpis = await seedKpis(ctx, tenantId, template.kpis ?? []);
 
@@ -1139,6 +1160,8 @@ export async function applyTemplateDefinition(
     seeded,
     samplesSkipped,
     roles,
+    builtInGrants: builtIn.granted,
+    builtInGrantsSkipped: builtIn.skipped,
     dashboards: dashboards.created,
     kpis,
     ...bundle,
@@ -1427,7 +1450,7 @@ const relationDeps = (row: ExtractRow): string[] => {
 const extractBundles = async (
   ctx: DbCtx,
   tenantId: string,
-  slugs: Set<string>,
+  exported: ReadonlyMap<string, GrantTarget>,
   omit: (o: TemplateOmission) => void,
 ): Promise<Omit<ExtractedTemplate, "label" | "description" | "groups" | "collections" | "omissions">> => {
   const s = ctx.dialect === "pg" ? pg.schema : sqlite.schema;
@@ -1448,26 +1471,27 @@ const extractBundles = async (
   };
   /** A collection this export does not carry — a reference into it would land
    *  in a workspace where the slug may mean something else, or nothing. */
-  const outside = (slug: string) => !slugs.has(slug);
+  const outside = (slug: string) => !exported.has(slug);
 
   // ---- roles + permissions ------------------------------------------------
-  // The system roles are excluded: `ensureSystemRoles` creates admin /
-  // authenticated / public in every workspace before a template is applied, so
-  // exporting them would emit three rows the seeder is guaranteed to skip.
+  // `ensureSystemRoles` creates admin / authenticated / public in every
+  // workspace before a template is applied, so the built-in roles are never
+  // emitted as roles to create — only their GRANTS, through
+  // `extractBuiltInRoleGrants`, which carries what a template may give them.
   const roleRows = (await db
     .select({ id: s.roles.id, name: s.roles.name, description: s.roles.description })
     .from(s.roles)
     .where(mine(s.roles))) as { id: string; name: string; description: string | null }[];
-  const custom = roleRows.filter(
-    (r) => r.name !== SYSTEM_ROLES.admin && r.name !== SYSTEM_ROLES.authenticated && r.name !== SYSTEM_ROLES.public,
-  );
+  const custom = roleRows.filter((r) => !isBuiltInRole(r.name));
+  const builtIn = roleRows.filter((r) => r.name !== SYSTEM_ROLES.admin && isBuiltInRole(r.name));
+  const withGrants = [...custom, ...builtIn];
   // `permissions` carries no tenant_id — it is scoped only transitively through
   // `role_id`. Constraining the QUERY to this workspace's own role ids rather
   // than reading every row and filtering afterwards: the filter would be
   // correct, but "select everything, discard what is not ours" is the shape a
   // later refactor turns into a leak, and on a shared deployment it reads every
   // workspace's grants to answer a question about one.
-  const perms = custom.length
+  const perms = withGrants.length
     ? ((await db
         .select({
           roleId: s.permissions.roleId,
@@ -1477,7 +1501,7 @@ const extractBundles = async (
           condition: s.permissions.condition,
         })
         .from(s.permissions)
-        .where(inArray(s.permissions.roleId, custom.map((r) => r.id)))) as {
+        .where(inArray(s.permissions.roleId, withGrants.map((r) => r.id)))) as {
         roleId: string;
         collection: string;
         action: string;
@@ -1512,6 +1536,23 @@ const extractBundles = async (
       })),
     };
   });
+  const builtInEntry = extractBuiltInRoleGrants(
+    perms.flatMap((p) => {
+      const role = builtIn.find((r) => r.id === p.roleId);
+      if (!role) return [];
+      const fields = json<unknown>(p.fields, null);
+      return [{
+        role: role.name,
+        collection: p.collection,
+        action: p.action,
+        fields: Array.isArray(fields) ? (fields as string[]) : null,
+        condition: json<unknown>(p.condition, null),
+      }];
+    }),
+    exported,
+    omit,
+  );
+  if (builtInEntry) roles.push(builtInEntry);
 
   // ---- dashboards + panels ------------------------------------------------
   const dashRows = (await db
@@ -2094,7 +2135,12 @@ export async function extractTemplate(
       : await extractBundles(
           ctx,
           tenantId,
-          new Set(ordered.map((r) => r.slug)),
+          new Map(
+            ordered.map((r) => [
+              r.slug,
+              { slug: r.slug, fields: r.fields ?? [], ownerScoped: !!r.ownerScoped, versioned: !!r.versioned },
+            ]),
+          ),
           (o) => omissions.push(o),
         );
 

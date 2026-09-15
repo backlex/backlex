@@ -331,12 +331,24 @@ export interface TemplateCatalog {
   sampleSeeds: number;
 }
 
+/** A read grant a template gives the built-in `authenticated` role. */
+export interface TemplateBuiltInGrant {
+  role: string;
+  collection: string;
+  action: "read";
+}
+
 export interface ApplyTemplateResult {
   templateId: string;
   created: string[];
   skipped: string[];
   seeded: number;
   roles: string[];
+  /** Grants added — only ever on collections this apply created. */
+  builtInGrants: TemplateBuiltInGrant[];
+  /** Grants not added: a collection they read already existed, or the role
+   *  already holds an identical grant. */
+  builtInGrantsSkipped: (TemplateBuiltInGrant & { reason: "collection-existed" | "already-granted" })[];
   dashboards: string[];
   kpis: string[];
   flows: string[];

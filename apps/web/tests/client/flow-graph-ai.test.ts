@@ -25,8 +25,11 @@ const graphWith = (type: string, config: Record<string, unknown>): Graph => ({
   edges: [{ from: "n1", to: "n2", branch: null }],
 });
 
+// The key as the runtime writes it. This read `item.created:tickets`, which no
+// parser recognises — it only round-tripped because an unreadable trigger fell
+// back to "item updated on posts" (#382).
 const back = (operations: unknown[]) =>
-  decompileGraph({ trigger: "item.created:tickets", operations: operations as never });
+  decompileGraph({ trigger: "event:items:tickets:created", operations: operations as never });
 
 describe("ai.generate step — compile", () => {
   test("emits the prompt and omits every blank optional", () => {

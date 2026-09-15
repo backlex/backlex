@@ -61,8 +61,11 @@ describe("sms step — compile", () => {
   });
 });
 
+// The key as the runtime writes it. This read `item.created:appointments`,
+// which no parser recognises — it only round-tripped because an unreadable
+// trigger fell back to "item updated on posts" (#382).
 const back = (operations: unknown[]) =>
-  decompileGraph({ trigger: "item.created:appointments", operations: operations as never });
+  decompileGraph({ trigger: "event:items:appointments:created", operations: operations as never });
 
 describe("sms step — decompile", () => {
   test("reconstructs the `to` toggle from an op with no userId", () => {

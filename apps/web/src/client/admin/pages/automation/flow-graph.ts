@@ -210,7 +210,14 @@ const compileTrigger = (node: GraphNode): string => {
     case "item.updated":
     case "item.deleted": {
       const evt = node.type.split(".")[1]!; // created/updated/deleted
-      const collection = node.config.collection || "*";
+      // No fallback. An empty collection used to save as `*`, so a trigger
+      // nobody pointed anywhere fired on every write in the workspace — and the
+      // node's own default was `posts`, a blog collection most workspaces lack.
+      // `*` is still one pick away, as an explicit choice.
+      const collection = String(node.config.collection ?? "").trim();
+      if (!collection) {
+        throw new FlowCompileError("Pick the collection this trigger watches (or * for every collection)");
+      }
       return `event:items:${collection}:${evt}`;
     }
     case "cron": {
@@ -260,6 +267,22 @@ const compileTrigger = (node: GraphNode): string => {
     }
     default:
       throw new FlowCompileError(`Unknown trigger type "${node.type}"`);
+  }
+};
+
+/**
+ * The key a trigger node would save as, or null while it could not be saved —
+ * a cron with no pattern, a date schedule with no field, a type the builder has
+ * no compiler for. The canvas words the node from this key, so the node and the
+ * flows list read one key the same way rather than the node guessing from
+ * whichever config fields it happens to carry.
+ */
+export const triggerKeyOf = (node: GraphNode): string | null => {
+  try {
+    return compileTrigger(node);
+  } catch (e) {
+    if (e instanceof FlowCompileError) return null;
+    throw e;
   }
 };
 
@@ -902,7 +925,7 @@ const DEFAULT_TRIGGER: GraphNode = {
   type: "item.updated",
   x: 60,
   y: 160,
-  config: { collection: "posts", when: "" },
+  config: { collection: "", when: "" },
 };
 
 /**

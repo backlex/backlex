@@ -12,6 +12,9 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { dashboardsApi, documentsApi, emailTemplatesApi, pushTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiDashboard, type ApiDocumentTemplate, type ApiEmailTemplate, type ApiPushTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "../../api";
 import { api } from "@/lib/api";
 import { timezoneOptions } from "../../preferences";
+import { triggerKeyOf } from "./flow-graph";
+import { readTrigger } from "./flow-trigger-view";
+import { useTriggerText } from "./use-trigger-text";
 
 /** Just what the payment-link step needs off `/api/admin/payments/providers`. */
 type PaymentProviderOption = { id: string; provider: string; status: string };
@@ -99,7 +102,7 @@ const CONTROLS = [
 // affordance on the trigger's outgoing port. Avoid mock action nodes —
 // they confuse the save validator and the compile path.
 const STARTER_NODES = [
-  { id: "n1", kind: "trigger", type: "item.updated", x: 60, y: 160, config: { collection: "posts", when: "" } },
+  { id: "n1", kind: "trigger", type: "item.updated", x: 60, y: 160, config: defaultConfigFor("trigger", "item.updated") },
 ];
 const STARTER_EDGES: any[] = [];
 
@@ -127,12 +130,38 @@ function taskWorthyIntegrations(
  * it, which is exactly the shape a shipping flow has.
  */
 function railSubtitle(n: any): string {
-  if (n.kind === "trigger") return n.config?.collection ?? "—";
+  if (n.kind === "trigger") {
+    // Worded from the key the node saves as, like its canvas body: only item
+    // triggers carry a collection, so a cron or a webhook read "—" here.
+    const view = readTrigger(triggerKeyOf(n) ?? "");
+    if (view.kind === "item") return view.collection ?? "*";
+    if (view.kind === "cron") return view.pattern;
+    if (view.kind === "schedule") return `${view.spec.collection}.${view.spec.field}`;
+    return "—";
+  }
   if (n.kind === "control") return n.config?.test ?? "—";
   if (n.type === "integration.task") {
     return n.config?.task ? `${n.config?.kind || "?"}.${n.config.task}` : "—";
   }
   return n.config?.fn || n.config?.to || n.config?.url || "—";
+}
+
+/**
+ * What an item trigger's Collection picker offers: this workspace's
+ * collections, then `*`. A saved slug the list does not hold — dropped since,
+ * or not loaded — stays an option, so the picker shows what the trigger still
+ * points at rather than going blank and inviting a re-pick.
+ */
+function itemTriggerCollectionOptions(
+  collections: ApiCollection[],
+  current: string | undefined,
+  allLabel: string,
+): { value: string; label: string }[] {
+  const options = collections.map((c) => ({ value: c.slug, label: c.slug }));
+  if (current && current !== "*" && !options.some((o) => o.value === current)) {
+    options.push({ value: current, label: current });
+  }
+  return [...options, { value: "*", label: allLabel }];
 }
 
 function nodeMeta(n: any) {
@@ -503,22 +532,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                         <span style={{ fontSize: 12.5, fontWeight: 500, marginLeft: "auto" }}>{m?.label}</span>
                       </div>
                       <div className="fb-node-body">
-                        {n.kind === "trigger" && n.type === "schedule" && (
-                          <>
-                            <span className="font-mono">{n.config.offsetValue ?? 0} {n.config.offsetUnit || "days"} {n.config.offsetDirection || "before"}</span>
-                            {/* Truncated rather than wrapped: this line is
-                                identifiers and a clock, and the body's
-                                break-all splits both mid-character in a node
-                                this narrow ("· 0" above "9:00"). */}
-                            <div className="fb-mono-dim fb-mono-dim-1" title={`${n.config.collection || "—"}.${n.config.field || "—"}${n.config.at ? ` · ${n.config.at}` : ""}`}>{n.config.collection || "—"}.{n.config.field || "—"}{n.config.at ? ` · ${n.config.at}` : ""}</div>
-                          </>
-                        )}
-                        {n.kind === "trigger" && n.type !== "schedule" && (
-                          <>
-                            <span className="text-muted-foreground"><Trans>on</Trans></span> <span className="font-mono">{n.config.collection || "posts"}</span>
-                            {n.config.when && <div className="fb-mono-dim">{n.config.when}</div>}
-                          </>
-                        )}
+                        {n.kind === "trigger" && <TriggerNodeBody node={n} flowId={initial?.id} />}
                         {n.kind === "control" && n.type === "if" && (
                           <span className="font-mono">{n.config.test}</span>
                         )}
@@ -617,6 +631,72 @@ function foreachSortOptions(collections: ApiCollection[], slug: string | undefin
  * counting from a text column does not misfire, it never fires at all, and
  * nothing about the saved flow looks wrong afterwards.
  */
+/**
+ * A trigger node's body, worded from the key the node would save as — the same
+ * reading the flows list gives the saved flow. It used to print
+ * `config.collection || "posts"` for every kind but a date schedule, and only
+ * item triggers carry a collection, so a cron, a webhook and a sign-up trigger
+ * all read "on posts". The header already names the kind; this says the rest.
+ */
+function TriggerNodeBody({ node, flowId }: { node: any; flowId?: string }) {
+  const describeTrigger = useTriggerText();
+  const key = triggerKeyOf(node);
+  if (key === null) {
+    // Not savable yet, so there is no reading to borrow: say what is missing.
+    if (node.type === "schedule") {
+      const c = node.config ?? {};
+      return (
+        <>
+          <span className="font-mono">{c.offsetValue ?? 0} {c.offsetUnit || "days"} {c.offsetDirection || "before"}</span>
+          {/* Truncated rather than wrapped: identifiers and a clock, which the
+              body's break-all would split mid-character in a node this narrow. */}
+          <div className="fb-mono-dim fb-mono-dim-1">{c.collection || "—"}.{c.field || "—"}{c.at ? ` · ${c.at}` : ""}</div>
+        </>
+      );
+    }
+    if (node.type === "cron") return <span className="text-muted-foreground"><Trans>No cron pattern yet</Trans></span>;
+    if (String(node.type).startsWith("item.") && !String(node.config?.collection ?? "").trim()) {
+      return <span className="text-muted-foreground"><Trans>Pick a collection</Trans></span>;
+    }
+    return <span className="text-muted-foreground">{node.type}</span>;
+  }
+  const view = readTrigger(key);
+  const text = describeTrigger(key);
+  switch (view.kind) {
+    case "item":
+      return (
+        <>
+          <span className="text-muted-foreground"><Trans>on</Trans></span>{" "}
+          {view.collection ? <span className="font-mono">{view.collection}</span> : <span>{text.meta}</span>}
+          {node.config?.when && <div className="fb-mono-dim">{node.config.when}</div>}
+        </>
+      );
+    case "cron":
+      // A cadence says the pattern in words; a pattern with no plain reading
+      // is shown as itself rather than as "Custom schedule" over it.
+      return view.cadence ? (
+        <>
+          <span>{text.title}</span>
+          <div className="fb-mono-dim fb-mono-dim-1">{view.pattern}</div>
+        </>
+      ) : (
+        <span>{view.pattern}</span>
+      );
+    case "schedule":
+      return (
+        <>
+          <span>{text.title}</span>
+          <div className="fb-mono-dim fb-mono-dim-1" title={text.summary}>{[text.target, text.meta].filter(Boolean).join(" · ")}</div>
+        </>
+      );
+    case "webhook":
+      return <span className="text-muted-foreground">POST /api/webhook/{flowId ?? ":flowId"}</span>;
+    default:
+      // `auth.signup`: the header already says everything there is to say.
+      return null;
+  }
+}
+
 function ScheduleTriggerFields({
   node,
   onChange,
@@ -744,7 +824,13 @@ function defaultConfigFor(kind: string, type: string) {
       where: "",
     };
   }
-  if (kind === "trigger") return { collection: "posts", when: "" };
+  // The cron input used to SHOW `0 9 * * *` over an empty config, so a trigger
+  // that looked set refused to save for want of a pattern.
+  if (kind === "trigger" && type === "cron") return { cron: "0 9 * * *" };
+  if (kind === "trigger" && (type === "webhook" || type === "auth.signup")) return {};
+  // Blank on purpose, like the date schedule's: `posts` was a blog collection
+  // most workspaces do not have, and a guess saves a flow that never fires.
+  if (kind === "trigger") return { collection: "", when: "" };
   if (kind === "control" && type === "if") return { test: 'status _eq "published"' };
   if (kind === "control" && type === "foreach") return { collection: "", filter: "", sort: "", limit: "" };
   if (kind === "action" && type === "email") return { to: "{{ data.author.email }}", templateKey: "", subject: "", text: "" };
@@ -901,6 +987,7 @@ function AiModelField({
 
 function FlowInspector({ node, onChange, emailTemplates = [], pushTemplates = [], fns = [], collections = [], integrations = [], taskCatalog = {}, paymentProviders = [], docTemplates = [], dashboards = [], aiModels = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; pushTemplates?: ApiPushTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; taskCatalog?: Record<string, TaskDef[]>; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[]; aiModels?: AiModelOption[] }) {
   const { t } = useLingui();
+  const describeTrigger = useTriggerText();
   if (!node) return (
     <div className="fb-inspector">
       <div className="fb-inspector-empty">
@@ -982,14 +1069,24 @@ function FlowInspector({ node, onChange, emailTemplates = [], pushTemplates = []
             {node.type.startsWith("item.") && (
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans></label>
-                <Select value={node.config.collection} onChange={(v) => onChange({ config: { collection: v } })} options={["posts", "comments", "authors", "tags", { value: "*", label: t`* (all collections)` }]} />
+                {/* The workspace's own collections. This offered posts,
+                    comments, authors and tags to every workspace, so a flow on
+                    `orders` opened with a blank picker that could not name it. */}
+                <Select
+                  value={node.config.collection || ""}
+                  onChange={(v) => onChange({ config: { collection: v } })}
+                  options={itemTriggerCollectionOptions(collections, node.config.collection, t`* (all collections)`)}
+                  placeholder={t`Pick a collection`}
+                />
               </div>
             )}
             {node.type === "cron" && (
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Schedule</Trans></label>
-                <Input value={node.config.cron || "0 9 * * *"} onChange={(e) => onChange({ config: { cron: e.target.value } })} placeholder="0 9 * * *" />
-                <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>runs daily at 09:00 UTC</Trans></span>
+                <Input value={node.config.cron ?? ""} onChange={(e) => onChange({ config: { cron: e.target.value } })} placeholder="0 9 * * *" />
+                <span className="text-[11.5px] text-muted-foreground">
+                  {String(node.config.cron ?? "").trim() ? describeTrigger(`cron:${node.config.cron}`).title : <Trans>No cron pattern yet</Trans>}
+                </span>
               </div>
             )}
             {node.type === "schedule" && (

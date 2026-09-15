@@ -98,9 +98,14 @@ export function Select({
   // edit-field's "Default (auto)" entry) sometimes pass value === "" to mean
   // "this option is selected". Map "" to a sentinel on the way in and back to
   // "" on the way out so those callsites keep working.
+  //
+  // Only when "" IS one of the options, though. Otherwise "" means nothing is
+  // chosen yet, and the sentinel matched no item — so the trigger rendered
+  // blank instead of its placeholder ("Pick a collection" never showed).
   const EMPTY = "__empty__";
+  const emptyIsAnOption = norm.some((o) => o.value === "");
   const toRadix = (v: string | undefined) =>
-    v === "" ? EMPTY : v === undefined ? undefined : v;
+    v === "" ? (emptyIsAnOption ? EMPTY : "") : v === undefined ? undefined : v;
   const fromRadix = (v: string) => (v === EMPTY ? "" : v);
 
   const triggerSize = size === "sm" ? "sm" : "default";

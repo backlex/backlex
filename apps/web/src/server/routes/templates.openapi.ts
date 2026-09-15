@@ -19,6 +19,44 @@ const TemplateSummary = z
   })
   .openapi("TemplateSummary");
 
+const names = z.array(z.string());
+const BuiltInGrant = z.object({
+  role: z.string().openapi({ example: "authenticated" }),
+  collection: z.string().openapi({ example: "products" }),
+  action: z.literal("read"),
+});
+
+const ApplyTemplateResult = z
+  .object({
+    templateId: z.string().openapi({ example: "ecommerce" }),
+    created: names.openapi({ description: "Collections this apply created." }),
+    skipped: names.openapi({ description: "Collections that already existed and were left untouched." }),
+    seeded: z.number().int().openapi({ description: "Sample rows inserted." }),
+    samplesSkipped: z
+      .record(z.string(), names)
+      .openapi({ description: "Sample rows that could not be built, by collection, with the refs they could not resolve." }),
+    roles: names.openapi({ description: "Bundled roles created by this apply." }),
+    builtInGrants: z.array(BuiltInGrant).openapi({
+      description:
+        "Read grants added to the built-in `authenticated` role — only ever on collections this apply created.",
+    }),
+    builtInGrantsSkipped: z
+      .array(BuiltInGrant.extend({ reason: z.enum(["collection-existed", "already-granted"]) }))
+      .openapi({
+        description:
+          "Built-in-role grants not added: a collection they read already existed (a re-apply never widens access on it), or the role already holds an identical grant.",
+      }),
+    dashboards: names,
+    kpis: names,
+    flows: names,
+    documents: names,
+    forms: names.openapi({ description: "Form NAMES — a form's one-time token is never returned." }),
+    agents: names,
+    flags: names,
+    channels: names,
+  })
+  .openapi("ApplyTemplateResult");
+
 apiRegistry.registerPath({
   method: "get",
   path: "/api/admin/templates",
@@ -57,7 +95,9 @@ apiRegistry.registerPath({
     "Admin-only. Seeds a vertical's collections — with admin groups, sample rows, and any role / flow / " +
     "KPI / dashboard bundle the template carries — into the ACTIVE workspace. Send either `templateId` " +
     "to apply one from the catalog, or `template` to apply a definition you authored (the same shape " +
-    "`GET /extract` returns, so a workspace round-trips).",
+    "`GET /extract` returns, so a workspace round-trips). A roles entry named `authenticated` adds " +
+    "`read` grants to that built-in role, only on collections the apply creates; `public` and `admin` " +
+    "entries, and anything but `read`, are refused with 422 before anything is written.",
   security: SECURITY,
   request: {
     body: {
@@ -77,7 +117,7 @@ apiRegistry.registerPath({
   responses: {
     201: {
       description: "Applied.",
-      content: { "application/json": { schema: z.object({ data: z.record(z.string(), z.unknown()) }) } },
+      content: { "application/json": { schema: z.object({ data: ApplyTemplateResult }) } },
     },
     ...errorResponses,
   },

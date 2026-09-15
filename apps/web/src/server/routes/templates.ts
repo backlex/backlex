@@ -70,6 +70,7 @@ export const templatesRoutes = new Hono<AppBindings>()
         skipped: result.skipped.length,
         seeded: result.seeded,
         roles: result.roles.length,
+        builtInGrants: result.builtInGrants.length,
         dashboards: result.dashboards.length,
       },
       response: { data: result },

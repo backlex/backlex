@@ -44,9 +44,12 @@ export const applyTemplate: McpTool = {
     "channels. Pass a catalog `templateId` OR an inline `template` object " +
     "(the `templates.extract` shape) to apply a custom schema. Idempotent — " +
     "anything that already exists (by slug/name/key) is skipped. Returns " +
-    "`{ templateId, created, skipped, seeded, roles, dashboards, kpis, " +
-    "flows, documents, forms, agents, flags, channels }`; a seeded form's " +
-    "one-time token is never returned, rotate the form to get its link. " +
+    "`{ templateId, created, skipped, seeded, roles, builtInGrants, " +
+    "builtInGrantsSkipped, dashboards, kpis, flows, documents, forms, agents, " +
+    "flags, channels }` — `builtInGrants` are the read grants added to the " +
+    "built-in `authenticated` role, only ever on collections this apply " +
+    "created; a seeded form's one-time token is never returned, rotate the " +
+    "form to get its link. " +
     "Requires `create` on `system_collections` (admin).",
   inputSchema: {
     type: "object",

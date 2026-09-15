@@ -79,6 +79,21 @@ const TemplateSummaryType = new GraphQLObjectType({
   },
 });
 
+/** A read grant a template gives a built-in role. `reason` is set only on a
+ *  skipped one: `collection-existed` or `already-granted`. */
+const TemplateBuiltInGrantType = new GraphQLObjectType({
+  name: "TemplateBuiltInGrant",
+  fields: {
+    role: { type: new GraphQLNonNull(GraphQLString) },
+    collection: { type: new GraphQLNonNull(GraphQLString) },
+    action: { type: new GraphQLNonNull(GraphQLString) },
+    reason: { type: GraphQLString },
+  },
+});
+const builtInGrants = {
+  type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(TemplateBuiltInGrantType))),
+};
+
 const ApplyTemplateResultType = new GraphQLObjectType({
   name: "ApplyTemplateResult",
   fields: {
@@ -87,6 +102,8 @@ const ApplyTemplateResultType = new GraphQLObjectType({
     skipped: { type: nonNullStrings },
     seeded: { type: new GraphQLNonNull(GraphQLInt) },
     roles: { type: nonNullStrings },
+    builtInGrants,
+    builtInGrantsSkipped: builtInGrants,
     dashboards: { type: nonNullStrings },
     kpis: { type: nonNullStrings },
     flows: { type: nonNullStrings },

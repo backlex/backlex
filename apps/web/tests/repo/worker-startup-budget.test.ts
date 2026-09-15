@@ -395,6 +395,16 @@ describe("worker startup budget", () => {
     // `shared-links → items/collection-loader + row-access` — land on modules
     // the graph already reached, and the nine not-on-the-startup-path guards
     // above stay green. Nothing new became reachable.
-    expect(kib).toBeLessThan(8535);
+    //
+    // Raised 8535 → 8550 on 2026-09-15, measured at 8541 (+14 KiB) — template
+    // grants to the built-in `authenticated` role (#376). One new module,
+    // `services/template-role-grants.ts` (~12 KiB, most of it the reasons: why
+    // read-only, why only on collections the apply created, why an unknown
+    // condition column is refused), plus its call sites in the already-eager
+    // `services/templates.ts`, the GraphQL twin and the MCP description. Its
+    // imports — drizzle, `@backlex/core`, `@backlex/db`, `permissions/cache`,
+    // `seed` — are all modules the graph already reached, and the not-on-the-
+    // startup-path guards above stay green. Nothing new became reachable.
+    expect(kib).toBeLessThan(8550);
   });
 });

@@ -61,8 +61,9 @@ In the admin UI (`http://localhost:5173`):
    - `products` — `name`, `price` (**decimal dollars**, `min: 0`), `stock`,
      `sku`, `status` (`draft`/`active`/`archived`), `category` (**relation →
      categories**), `description`, `featured_image` (the storage object key of
-     the photo). Owner-scoped + versioned, so each seller manages — and
-     publishes — their own catalog.
+     the photo). Versioned — a new product is a draft until it is published —
+     but **not** owner-scoped: every product belongs to the store, not to the
+     account that created it.
    - `categories` — `name`, `slug` (used to label + filter products).
    - `orders` — order headers: `total`, `subtotal`, `status` (payment state),
      `currency`, plus a separate `fulfillment_status`.
@@ -71,6 +72,48 @@ In the admin UI (`http://localhost:5173`):
 
    (Prefer to build it by hand? Any subset of those fields works — the example
    only reads/writes the columns listed in `src/backlex.ts`.)
+
+   **The catalog is readable by a signed-in shopper out of the box.** The
+   template grants the built-in `authenticated` role — every signed-in
+   end-user — `read` on the storefront collections: active products,
+   categories, the modifier tables the configurator reads, variants without
+   their cost, and the rest of the catalog. Nothing about orders, customers or
+   money. See [`docs/templates.md`](../../docs/templates.md) → *Grants for the
+   built-in `authenticated` role*.
+
+4. **Demo only — grant what checkout and the seller tools need.** This example
+   lets any shopper place an order and act as a seller, which a real store
+   never gives every signed-in account:
+
+   | Grant on `authenticated` | Used by | What it opens up |
+   |---|---|---|
+   | `create` + `read` on `orders`, `order_items`, `order_item_options` | checkout | every shopper can read **every** order |
+   | `create` + `update` + `publish` on `products` | the seller panel | every shopper can edit and publish the catalog |
+
+   Add them on a local demo workspace only — each `POST` adds one grant
+   (`PUT /api/roles/{id}/permissions` would REPLACE the role's whole set,
+   template grants included). Signs in as the local test admin; needs `jq`:
+
+   ```bash
+   API=http://localhost:5173 WS=demo   # WS = your workspace slug
+   curl -s -c .jar -H "Origin: $API" -H 'content-type: application/json' \
+     -d '{"email":"admin@example.com","password":"correct-horse-battery"}' \
+     "$API/api/auth/sign-in/email" > /dev/null
+   ROLE=$(curl -s -b .jar -H "x-backlex-tenant: $WS" "$API/api/roles" \
+     | jq -r '.data[] | select(.name == "authenticated") | .id')
+   grant() {
+     curl -s -o /dev/null -w "%{http_code} $1 $2\n" -b .jar -H "Origin: $API" \
+       -H "x-backlex-tenant: $WS" -H 'content-type: application/json' \
+       -d "{\"collection\":\"$1\",\"action\":\"$2\"}" "$API/api/roles/$ROLE/permissions"
+   }
+   for c in orders order_items order_item_options; do grant "$c" create; grant "$c" read; done
+   for a in create update publish; do grant products "$a"; done
+   rm .jar
+   ```
+
+   Each line should print `201`. Without this step the storefront still lists
+   and filters products; checkout and adding a product fail with a permission
+   error.
 
 Storage needs no collection — it's a first-class capability. See
 [`docs/storage.md`](../../docs/storage.md).

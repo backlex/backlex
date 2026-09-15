@@ -175,6 +175,57 @@ describe("config reconciler", () => {
     expect(finalGrants).toEqual(["read"]);
   });
 
+  test("a reconcile never touches the built-in `authenticated` role's grants", async () => {
+    // A role's grants are REPLACED on upsert, and `authenticated` holds grants
+    // nothing in a document put there — the owner-scoped defaults a collection
+    // seeds and the reads a template adds (#376). Reconciling it would revoke
+    // them for every end-user at once, so it is never captured, never upserted
+    // and never removed — not even when a hand-edited document names it.
+    await ok(await h.fetch("/api/collections", json({ slug: "notes", fields: [{ name: "body", type: "text" }] })), "collection");
+    const authId = ((await (await h.fetch("/api/roles")).json()) as {
+      data: { id: string; name: string }[];
+    }).data.find((r) => r.name === "authenticated")!.id;
+    // Scoped to `notes`: the boot seeder gives `authenticated` its `system_files`
+    // defaults on its own schedule, which is not what this is about.
+    const grants = async () =>
+      ((await (await h.fetch(`/api/roles/${authId}/permissions`)).json()) as {
+        data: { collection: string; action: string }[];
+      }).data
+        .filter((g) => g.collection === "notes")
+        .map((g) => `${g.collection}.${g.action}`);
+    const before = await capture("before-grant");
+    await ok(
+      await h.fetch(`/api/roles/${authId}/permissions`, json({ collection: "notes", action: "read" })),
+      "grant authenticated read",
+    );
+    // A real config change beside it, so the apply below reconciles roles at
+    // all — a diff of nothing would pass this test without running a line.
+    await ok(await h.fetch("/api/roles", json({ name: "support" })), "role");
+    expect(await grants()).toEqual(["notes.read"]);
+
+    // Back to a snapshot taken before the grant existed…
+    const reverted = await ok(await apply(before.id, true), "apply the older snapshot");
+    expect(((await reverted.json()) as { data: { noop?: boolean } }).data.noop).toBeFalsy();
+    expect(await roleNames()).not.toContain("support");
+    expect(await grants()).toEqual(["notes.read"]);
+
+    // …and to a document that names the role outright, with no grants at all.
+    const imported = ((await (
+      await ok(
+        await h.fetch(
+          "/api/admin/schema/snapshots/import",
+          json({
+            name: "names-authenticated",
+            snapshot: { ...before.snapshot, config: { roles: [{ key: "authenticated", grants: [] }] } },
+          }),
+        ),
+        "import",
+      )
+    ).json()) as { data: Snapshot }).data;
+    await ok(await apply(imported.id, true), "apply the document naming authenticated");
+    expect(await grants()).toEqual(["notes.read"]);
+  });
+
   describe("the GitOps loop closes", () => {
     // Export the document, edit it the way a human would in git, import it
     // back, apply. A document this service can produce but not re-import would

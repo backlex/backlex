@@ -17,7 +17,10 @@ more. A template is not just tables — it is a **bundle**:
   sidebar tree, in the template's order.
 - **Sample data** — a few realistic, relationally-consistent rows per
   collection so the workspace is demo-ready, removable in one click later.
-- **Optional roles** with permission grants (e.g. the blog's *Editor*).
+- **Optional roles** with permission grants (e.g. the blog's *Editor*) — and
+  **read grants for the built-in `authenticated` role**, which is how the store
+  lets a signed-in shopper see its catalog. See *Grants for the built-in
+  `authenticated` role* below.
 - **Optional insights dashboards** with pre-built panels (e.g. the store's
   *Store overview*). Panels stick to `items-aggregate`/`static` — never raw
   SQL — so seeding is safe on every runtime.
@@ -82,6 +85,9 @@ Apply is **idempotent and additive**:
   `POST /api/collections/:slug/vectorize` later if needed.
 - Bundled roles/dashboards are skipped wholesale when one with the same name
   already exists.
+- Grants for the built-in `authenticated` role are added **only on collections
+  this apply created**, so a re-apply never widens access on a collection an
+  admin already owns.
 - Bundled KPIs are skipped **per slug**, so a re-apply keeps a definition an
   admin has tuned while still installing ones added to the template since.
 - Every other bundle is skipped on its own natural key — flows and forms and
@@ -99,6 +105,10 @@ The result reports what actually happened:
 ```json
 { "data": { "templateId": "ecommerce", "created": ["products", "…"],
             "skipped": [], "seeded": 24, "roles": ["Store staff"],
+            "builtInGrants": [
+              { "role": "authenticated", "collection": "products", "action": "read" }, "…"
+            ],
+            "builtInGrantsSkipped": [],
             "dashboards": ["Store overview"],
             "kpis": ["net-revenue", "orders-placed", "…"],
             "flows": ["Low stock alert"], "documents": ["packing-slip"],
@@ -167,6 +177,73 @@ applier is additive-only), never touches rows it didn't create, and there is
 no rollback — a mid-apply failure leaves already-created collections in place
 and a re-apply converges the rest.
 
+### Grants for the built-in `authenticated` role
+
+A roles entry named `authenticated` creates nothing — every workspace already
+has that role, and every signed-in end-user holds it. Its permissions are
+**added** to it instead. This is how the E-commerce template lets a signed-in
+shopper read the catalog:
+
+```ts
+roles: [
+  {
+    name: "authenticated",
+    permissions: [
+      { collection: "categories", action: "read" },
+      { collection: "products", action: "read", condition: { status: { _eq: "active" } } },
+      { collection: "product_variants", action: "read", fields: ["product", "title", "sku", "price", "currency"] },
+    ],
+  },
+],
+```
+
+The limits are the point: `authenticated` is everyone who can sign in — with
+open sign-up, anyone at all.
+
+| Rule | Why |
+|---|---|
+| **`read` only.** A condition and a `fields` allow-list are allowed; any other action is refused. | A write on `authenticated` is a write for every account anyone can make. |
+| **`authenticated` only.** An entry named `public` or `admin` is refused. | `public` answers callers who never signed in (an unconditional public read is an [Advisor](/docs/advisor/) error), and `admin` already bypasses every check. Grant either by hand. |
+| **Only on collections this apply created** — including every collection a dotted condition passes through. | A re-apply, or an apply over a workspace that already had the slug, must never widen access on a collection its admin owns. |
+| **A condition names only real columns**, and an allow-list only real fields, of the template's own collections. | SQLite reads an unknown double-quoted identifier as a string literal, so `{ statuss: { _neq: "draft" } }` would match every row — for every signed-in user. |
+
+A refused entry fails the apply with `422` **before anything is written**. The
+result says what happened: `builtInGrants` lists the grants added, and
+`builtInGrantsSkipped` the ones that were not, each with a `reason` —
+`collection-existed` (a collection the grant reads was already there) or
+`already-granted` (the role holds an identical grant; dropping a collection
+leaves its grant rows behind, and re-creating it does not repeat them).
+
+Three consequences worth knowing:
+
+- **A skipped grant stays skipped.** An apply that fails partway leaves its
+  collections behind, so the next apply reports their grants as
+  `collection-existed` rather than adding them. Grant those by hand with
+  `POST /api/roles/{id}/permissions` — the result names every one.
+- **Grants add up.** A user's reads are the union of every role they hold. On
+  an owner-scoped collection a template's read is OR-ed with the owner-only
+  default, so give it a condition; and a `fields` allow-list hides a column only
+  from users who hold no other role that shows it.
+- **Revoking one sticks.** It is an ordinary permission delete, and a re-apply
+  does not put it back — the collection already exists.
+
+The E-commerce template grants the catalog — active products; variants without
+`cost`, `map_price` or the marketplace listing columns; categories, brands,
+collections, media, attributes, options, modifiers, add-ons, pages and menus —
+and nothing about customers, addresses, carts, orders, payments, refunds,
+returns, discounts, gift cards or price lists.
+
+**Extract and config-as-code.** An extract emits `authenticated` read grants
+on the exported collections as that same entry, so they survive a round trip.
+The owner-scoped default read is left out — the target re-creates it with the
+collection — and a read on a collection the export leaves behind, a read the
+apply would refuse, and every `public` grant are named under `omissions`.
+Non-read grants on a built-in role cannot be written in a template and are not
+carried. Schema snapshots never capture or reconcile the built-in roles at all:
+a reconcile *replaces* a role's grants, and `authenticated` holds grants no
+document put there, so reconciling it would revoke end-user access across the
+workspace.
+
 ## What a template never seeds, and why
 
 These are omissions with reasons, not gaps waiting to be filled:
@@ -213,7 +290,8 @@ plain (unlinked) columns until their target exists, since relations carry no
 hard FK constraint.
 
 **Extract carries the bundles too.** Alongside the collections and the group
-order it emits the roles (with their grants), dashboards, KPIs, flows, document
+order it emits the roles (with their grants, and the reads the built-in
+`authenticated` role holds on exported collections), dashboards, KPIs, flows, document
 templates, forms, agents, flags and channels the workspace has — the same nine
 kinds an apply seeds — so an extract is a **workspace** transport, not just a
 schema one. Add `?bundles=0` for the old collections-only document.

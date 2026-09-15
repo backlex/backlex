@@ -26,6 +26,8 @@ describe("templates — full catalog applies cleanly", () => {
         skipped: string[];
         seeded: number;
         roles: string[];
+        builtInGrants: { role: string; collection: string; action: string }[];
+        builtInGrantsSkipped: unknown[];
         dashboards: string[];
       };
 
@@ -48,7 +50,16 @@ describe("templates — full catalog applies cleanly", () => {
         expect(data.skipped).toHaveLength(0);
         const expectedSeeded = tpl.collections.reduce((n, c) => n + (c.samples?.length ?? 0), 0);
         expect(data.seeded).toBe(expectedSeeded);
-        expect(data.roles.sort()).toEqual((tpl.roles ?? []).map((r) => r.name).sort());
+        // An `authenticated` entry creates no role — its grants land on the
+        // built-in one, and on a fresh workspace every one of them must.
+        const builtIn = (tpl.roles ?? []).filter((r) => r.name === "authenticated");
+        expect(data.roles.sort()).toEqual(
+          (tpl.roles ?? []).filter((r) => r.name !== "authenticated").map((r) => r.name).sort(),
+        );
+        expect(data.builtInGrants.map((g) => g.collection).sort()).toEqual(
+          builtIn.flatMap((r) => r.permissions.map((p) => p.collection)).sort(),
+        );
+        expect(data.builtInGrantsSkipped).toEqual([]);
         expect(data.dashboards.sort()).toEqual((tpl.dashboards ?? []).map((d) => d.name).sort());
       });
 

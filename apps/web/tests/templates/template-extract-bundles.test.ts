@@ -154,9 +154,10 @@ describe("templates extract — the bundle half", () => {
 
     expect(t.collections.map((c) => c.slug)).toEqual(["tickets"]);
     expect(t.roles?.map((r) => r.name)).toEqual(["support"]);
-    // The system roles are excluded on purpose — every workspace already has
-    // them before a template is applied, so exporting them emits three rows the
-    // seeder is guaranteed to skip.
+    // The system roles are never emitted as roles to create — every workspace
+    // already has them. What a template may give `authenticated` (reads) does
+    // travel, as its own entry; this workspace granted it none, so there is
+    // none. See template-built-in-role-grants.test.ts.
     expect(t.roles?.some((r) => ["admin", "authenticated", "public"].includes(r.name))).toBe(false);
     expect(t.roles?.[0]?.permissions).toEqual([
       expect.objectContaining({ collection: "tickets", action: "read" }),

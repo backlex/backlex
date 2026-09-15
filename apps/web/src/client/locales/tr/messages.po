@@ -12950,8 +12950,8 @@ msgid "No branches yet"
 msgstr "Henüz dal yok"
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
-msgstr "Hiçbir yerleşik e-posta bu şablonu kullanmıyor — oturum açma, doğrulama, parola sıfırlama ve davet e-postalarının metni sabittir. Yalnızca bir akış adımı ya da zamanlanmış rapor anahtarını belirttiğinde gönderilir."
+#~ msgid "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
+#~ msgstr "Hiçbir yerleşik e-posta bu şablonu kullanmıyor — oturum açma, doğrulama, parola sıfırlama ve davet e-postalarının metni sabittir. Yalnızca bir akış adımı ya da zamanlanmış rapor anahtarını belirttiğinde gönderilir."
 
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
@@ -14827,6 +14827,10 @@ msgstr "Sıra"
 #: src/client/admin/pages/automation/payments.tsx
 msgid "Order cancelled"
 msgstr "Sipariş iptal edildi"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Order shipped"
+msgstr "Sipariş kargoya verildi"
 
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -23427,8 +23431,8 @@ msgid "Verification required."
 msgstr "Doğrulama gerekli."
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "verify"
-msgstr "doğrula"
+#~ msgid "verify"
+#~ msgstr "doğrula"
 
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/pages/sign-in.tsx
@@ -23440,8 +23444,8 @@ msgid "Verify & enable"
 msgstr "Doğrula ve etkinleştir"
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "Verify email"
-msgstr "E-postayı doğrula"
+#~ msgid "Verify email"
+#~ msgstr "E-postayı doğrula"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx

@@ -2135,7 +2135,8 @@ export const emailTemplates = pgTable(
   {
     id: text("id").primaryKey(),
     tenantId: text("tenant_id"),
-    /** verify | reset | magic | invite | change_email | custom */
+    /** A built-in sender's key (`form_invite`, `booking.confirmed`, …) or a
+     *  custom one a flow step or report names. */
     key: text("key").notNull(),
     name: text("name").notNull(),
     subject: text("subject").notNull(),

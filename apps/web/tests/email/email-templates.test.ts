@@ -7,16 +7,19 @@
  * admin-only enforcement.
  *
  * And the override rule, which is the part that was wrong: the instance-wide
- * defaults (`tenant_id IS NULL`, seeded at boot) used to be PATCHed and DELETEd
- * in place by id, so one workspace admin's edit rewrote the mail of every other
- * workspace. Editing a default now writes the workspace's own copy, and the
- * shared row is asserted untouched in the database itself rather than through
- * the API that used to be the problem.
+ * defaults (`tenant_id IS NULL`) used to be PATCHed and DELETEd in place by id,
+ * so one workspace admin's edit rewrote the mail of every other workspace.
+ * Editing a default now writes the workspace's own copy, and the shared row is
+ * asserted untouched in the database itself rather than through the API that
+ * used to be the problem.
+ *
+ * Nothing seeds a shared email template any more (#384 removed the five that no
+ * sender read), but the rule still governs any shared row that exists — one an
+ * operator wrote, or one a backup restore put back. So the specs plant theirs
+ * around the API, the way `push-templates.test.ts` does.
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { buildContext } from "../../src/server/context";
-import { seedEmailTemplates } from "../../src/server/services/seed";
 import { makeHarness, seedAdmin, type TestHarness } from "../setup";
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const;
@@ -250,25 +253,33 @@ const list = async (h: TestHarness, headers: Record<string, string> = {}) => {
   return ((await res.json()) as { data: TemplateRow[] }).data;
 };
 
-/** A fresh admin plus the seeded instance-wide defaults. The app seeds them on
- *  the first request of a PROCESS, not of a database, so every harness after the
- *  first one in a run would otherwise start without them. */
-const harnessWithDefaults = async (): Promise<TestHarness> => {
+/** The key of the planted shared row — deliberately NOT one a sender uses. */
+const SHARED_KEY = "digest";
+
+/** A fresh admin plus one instance-wide default, inserted around the API —
+ *  a workspace admin's writes land in their workspace, and nothing seeds one. */
+const harnessWithDefault = async (): Promise<TestHarness> => {
   const harness = makeHarness();
   await seedAdmin(harness);
-  const ctx = await buildContext(harness.env);
-  await seedEmailTemplates({ db: ctx.db, dialect: ctx.dialect });
+  const db = new Database(harness.env.SQLITE_PATH as string);
+  try {
+    db.query(
+      "insert into email_templates (id, tenant_id, key, name, subject, body_html, body_text, variables, created_at, updated_at) values (?, NULL, ?, 'Weekly digest', 'Your {{ site.name }} digest', '<p>This week on {{ site.name }}.</p>', 'This week on {{ site.name }}.', '[\"site.name\"]', ?, ?)",
+    ).run(crypto.randomUUID(), SHARED_KEY, Date.now(), Date.now());
+  } finally {
+    db.close();
+  }
   return harness;
 };
 
-/** The shared `verify` row exactly as the database holds it — read around the
- *  API on purpose, since the API is what used to rewrite it. */
-const sharedVerify = (h: TestHarness) => {
+/** The shared row exactly as the database holds it — read around the API on
+ *  purpose, since the API is what used to rewrite it. */
+const sharedRow = (h: TestHarness) => {
   const db = new Database(h.env.SQLITE_PATH as string);
   try {
     return db
-      .query("select id, subject, body_html as bodyHtml from email_templates where tenant_id is null and key = 'verify'")
-      .get() as { id: string; subject: string; bodyHtml: string } | null;
+      .query("select id, subject, body_html as bodyHtml from email_templates where tenant_id is null and key = ?")
+      .get(SHARED_KEY) as { id: string; subject: string; bodyHtml: string } | null;
   } finally {
     db.close();
   }
@@ -278,18 +289,18 @@ describe("shared defaults are copy-on-write", () => {
   let h: TestHarness;
   afterEach(() => h?.cleanup());
 
-  test("the list shows one row per key, and a seeded default reads as inherited", async () => {
-    h = await harnessWithDefaults();
+  test("the list shows one row per key, and a shared default reads as inherited", async () => {
+    h = await harnessWithDefault();
     const rows = await list(h);
-    const verify = rows.filter((r) => r.key === "verify");
-    expect(verify).toHaveLength(1);
-    expect(verify[0]!.inherited).toBe(true);
-    expect(verify[0]!.overridesDefault).toBe(false);
+    const shared = rows.filter((r) => r.key === SHARED_KEY);
+    expect(shared).toHaveLength(1);
+    expect(shared[0]!.inherited).toBe(true);
+    expect(shared[0]!.overridesDefault).toBe(false);
   });
 
   test("saving a default creates the workspace's copy and leaves the shared row alone", async () => {
-    h = await harnessWithDefaults();
-    const before = sharedVerify(h);
+    h = await harnessWithDefault();
+    const before = sharedRow(h);
     expect(before).not.toBeNull();
 
     const res = await h.fetch(
@@ -300,15 +311,15 @@ describe("shared defaults are copy-on-write", () => {
     const saved = ((await res.json()) as { data: TemplateRow }).data;
     expect(saved.id).not.toBe(before!.id);
     expect(saved.tenantId).not.toBeNull();
-    expect(saved.key).toBe("verify");
+    expect(saved.key).toBe(SHARED_KEY);
     expect(saved.subject).toBe("Workspace wording");
     // Everything the patch did not name is copied from the default, not blanked.
     expect(saved.bodyHtml).toBe(before!.bodyHtml);
     expect(saved.overridesDefault).toBe(true);
 
-    expect(sharedVerify(h)).toEqual(before);
+    expect(sharedRow(h)).toEqual(before);
 
-    const rows = (await list(h)).filter((r) => r.key === "verify");
+    const rows = (await list(h)).filter((r) => r.key === SHARED_KEY);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.id).toBe(saved.id);
     expect(rows[0]!.inherited).toBe(false);
@@ -321,16 +332,16 @@ describe("shared defaults are copy-on-write", () => {
     );
     expect(again.status).toBe(200);
     expect(((await again.json()) as { data: TemplateRow }).data.id).toBe(saved.id);
-    expect(sharedVerify(h)).toEqual(before);
+    expect(sharedRow(h)).toEqual(before);
   });
 
   test("another workspace keeps rendering the default", async () => {
-    h = await harnessWithDefaults();
+    h = await harnessWithDefault();
     const suffix = `${Date.now()}`.slice(-6);
     const other = await h.fetch("/api/tenants", json("POST", { name: `Tenant ${suffix}` }));
     expect(other.ok).toBe(true);
 
-    const shared = sharedVerify(h)!;
+    const shared = sharedRow(h)!;
     const res = await h.fetch(
       `/api/admin/email-templates/${shared.id}`,
       json("PATCH", { subject: "Only in default" }),
@@ -338,31 +349,31 @@ describe("shared defaults are copy-on-write", () => {
     expect(res.status).toBe(200);
 
     const theirs = (await list(h, { "X-Backlex-Tenant": `tenant-${suffix}` })).find(
-      (r) => r.key === "verify",
+      (r) => r.key === SHARED_KEY,
     );
     expect(theirs?.subject).toBe(shared.subject);
     expect(theirs?.inherited).toBe(true);
   });
 
   test("a default cannot be re-keyed or deleted from a workspace", async () => {
-    h = await harnessWithDefaults();
-    const shared = sharedVerify(h)!;
+    h = await harnessWithDefault();
+    const shared = sharedRow(h)!;
 
     const rekey = await h.fetch(
       `/api/admin/email-templates/${shared.id}`,
-      json("PATCH", { key: "verify_v2" }),
+      json("PATCH", { key: `${SHARED_KEY}_v2` }),
     );
     expect(rekey.status).toBe(422);
 
     const del = await h.fetch(`/api/admin/email-templates/${shared.id}`, { method: "DELETE" });
     expect(del.status).toBe(403);
     expect(((await del.json()) as { error: { code: string } }).error.code).toBe("FORBIDDEN");
-    expect(sharedVerify(h)).toEqual(shared);
+    expect(sharedRow(h)).toEqual(shared);
   });
 
   test("deleting the copy restores the default, and says which row now applies", async () => {
-    h = await harnessWithDefaults();
-    const shared = sharedVerify(h)!;
+    h = await harnessWithDefault();
+    const shared = sharedRow(h)!;
     const saved = (
       (await (
         await h.fetch(`/api/admin/email-templates/${shared.id}`, json("PATCH", { subject: "Mine" }))
@@ -375,9 +386,9 @@ describe("shared defaults are copy-on-write", () => {
     expect(restored?.id).toBe(shared.id);
     expect(restored?.inherited).toBe(true);
 
-    const verify = (await list(h)).find((r) => r.key === "verify");
-    expect(verify?.id).toBe(shared.id);
-    expect(verify?.subject).toBe(shared.subject);
+    const current = (await list(h)).find((r) => r.key === SHARED_KEY);
+    expect(current?.id).toBe(shared.id);
+    expect(current?.subject).toBe(shared.subject);
   });
 });
 
@@ -409,11 +420,11 @@ describe("template keys", () => {
   });
 
   test("creating a template under a default's key is that workspace's override", async () => {
-    h = await harnessWithDefaults();
-    const created = await createTemplate(h, { key: "reset" });
+    h = await harnessWithDefault();
+    const created = await createTemplate(h, { key: SHARED_KEY });
     expect(created.overridesDefault).toBe(true);
-    const reset = (await list(h)).filter((r) => r.key === "reset");
-    expect(reset.map((r) => r.id)).toEqual([created.id]);
+    const rows = (await list(h)).filter((r) => r.key === SHARED_KEY);
+    expect(rows.map((r) => r.id)).toEqual([created.id]);
   });
 });
 

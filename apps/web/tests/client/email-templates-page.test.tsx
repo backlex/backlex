@@ -28,7 +28,7 @@ const row = (over: Record<string, unknown>) => ({
 });
 
 const ROWS = [
-  row({ id: "shared-verify", tenantId: null, key: "verify", name: "Verify email", inherited: true, bodyHtml: "<p>{{ confirm_url }}</p>", variables: ["confirm_url"] }),
+  row({ id: "shared-digest", tenantId: null, key: "digest", name: "Weekly digest", inherited: true, bodyHtml: "<p>{{ digest_url }}</p>", variables: ["digest_url"] }),
   row({ id: "own-welcome", key: "welcome", name: "Welcome email", subject: "Welcome {{ user.name }}", bodyHtml: "<p>Hello {{ user.name }}</p>", variables: ["user.name"] }),
   row({ id: "own-approval", key: "approval_request", name: "Approval request", subject: "Approve: {{ title }}", bodyHtml: "<p>{{ title }}</p>" }),
 ];
@@ -247,16 +247,16 @@ describe("EmailTemplatesPage — management", () => {
   test("saving a shared default patches it and marks the entry customized", async () => {
     const api = mockRoutes();
     await renderPage();
-    fireEvent.click(listItem("verify")!);
-    await waitFor(() => expect(body().value).toBe("<p>{{ confirm_url }}</p>"));
-    fireEvent.change(body(), { target: { value: "<p>Confirm: {{ confirm_url }}</p>" } });
+    fireEvent.click(listItem("digest")!);
+    await waitFor(() => expect(body().value).toBe("<p>{{ digest_url }}</p>"));
+    fireEvent.change(body(), { target: { value: "<p>Read it: {{ digest_url }}</p>" } });
 
     fireEvent.click(button("Save"));
     await waitFor(() => expect(api.sent.some((s) => s.method === "PATCH")).toBe(true));
     const patch = api.sent.find((s) => s.method === "PATCH")!;
-    expect(patch.url).toEndWith("/shared-verify");
-    expect(patch.body).toMatchObject({ bodyHtml: "<p>Confirm: {{ confirm_url }}</p>", variables: ["confirm_url"] });
-    expect(listItem("verify")?.textContent).toContain("customized");
+    expect(patch.url).toEndWith("/shared-digest");
+    expect(patch.body).toMatchObject({ bodyHtml: "<p>Read it: {{ digest_url }}</p>", variables: ["digest_url"] });
+    expect(listItem("digest")?.textContent).toContain("customized");
   });
 
   test("a new template's key is checked the server's way, and saving lists it before the server answers", async () => {

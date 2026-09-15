@@ -206,9 +206,10 @@ placeholders (`renderTemplate` in `packages/core/src/email.ts`). A placeholder t
 sender does not pass renders as an empty string, silently — and values are
 inserted **unescaped**, like a [document template](/docs/documents/)'s.
 
-**Overrides.** A row with `tenant_id = NULL` is the instance-wide default; a
-workspace row with the same key shadows it. `GET /api/admin/email-templates`
-returns one row per key with `inherited` / `overridesDefault` flags. A workspace
+**Overrides.** A row with `tenant_id = NULL` is the instance-wide default (backlex
+seeds none); a workspace row with the same key shadows it.
+`GET /api/admin/email-templates` returns one row per key with `inherited` /
+`overridesDefault` flags. A workspace
 never writes the shared row: `PATCH` on it writes (and returns) the workspace's
 copy, `DELETE` on it is a 403, and `DELETE` on the copy restores the default and
 returns it. `POST /api/admin/email-templates/send-test` renders an unsaved draft
@@ -238,11 +239,23 @@ A flow `email` step passes `data`, `$user.{id,email,roles}` and `$last` plus the
 step's own `vars`; a scheduled report's covering message passes
 `dashboard.{id,name,description}` and `report.{filename,panels,generatedAt}`.
 
-The seeded `verify`, `reset`, `magic`, `invite` and `change_email` rows are **not
-read by any sender yet** — sign-in, verification, password-reset and invite mail
-is composed inline in `packages/auth` and the invite routes. Editing them changes
-nothing a user receives unless a flow or report names their key; the admin page
-says so on each of them.
+**Sign-in, verification, password-reset and invite mail is not templated.** It is
+composed inline in `packages/auth` and at each invite's send site, so no row on
+this page changes it.
+
+backlex used to seed instance-wide `verify`, `reset`, `magic`, `invite` and
+`change_email` rows that no sender read. They are no longer seeded, and migration
+`20260915120000_remove_unsent_system_email_templates` deletes the shared rows
+(#384). A workspace's own row under one of those keys is kept and is an ordinary
+custom template. Two things follow:
+
+- A flow `email` step that names one of those keys, in a workspace with no copy
+  of it, and has no subject and body of its own now fails its run with
+  `Email template "<key>" not found and no fallback provided` instead of mailing
+  the shared row with its links rendered empty.
+- A backup taken before the migration still carries the shared rows, and a
+  restore writes a missing instance-global row back — so restoring one brings them
+  back. Remove them again with the migration's statement.
 
 ## OAuth providers
 

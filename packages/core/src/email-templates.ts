@@ -20,11 +20,12 @@
  * reaches the worker's eager module graph.
  *
  * Deliberately NOT listed: `verify`, `reset`, `magic`, `invite` and
- * `change_email`. Those rows are seeded (`services/seed.ts`), but no sender
- * resolves them — sign-in, verification, password-reset and invite mail is
- * composed inline (`packages/auth`, `routes/tenants.ts`,
- * `services/app-user-invites.ts`). Listing them would promise variables that
- * nothing supplies.
+ * `change_email`. No sender resolves those keys — sign-in, verification,
+ * password-reset and invite mail is composed inline (`packages/auth`,
+ * `routes/tenants.ts`, `services/app-user-invites.ts`). They used to be seeded
+ * as instance-wide rows anyway, which the page offered for editing to no
+ * effect; the seeder and those rows are gone (#384). Listing the keys here
+ * would promise variables that nothing supplies.
  */
 import { TEMPLATE_PLACEHOLDER } from "./email";
 

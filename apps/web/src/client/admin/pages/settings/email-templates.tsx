@@ -567,15 +567,10 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
                   <Trans>This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched.</Trans>
                 </div>
               )}
-              {!active.builtIn && (status === "shared" || (status === "customized" && active.row?.overridesDefault)) && (
-                <div className="rounded-control border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11.5px]">
-                  <Trans>No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key.</Trans>
-                </div>
-              )}
               <div className="flex gap-2.5 max-[640px]:flex-col">
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <label htmlFor="email-template-name" className="text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
-                  <Input id="email-template-name" value={draft.name} maxLength={80} placeholder={t`Verify email`} onChange={(e) => setField("name")(e.target.value)} />
+                  <Input id="email-template-name" value={draft.name} maxLength={80} placeholder={t`Order shipped`} onChange={(e) => setField("name")(e.target.value)} />
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <label htmlFor="email-template-key" className="text-[12.5px] font-medium text-foreground"><Trans>Key</Trans></label>
@@ -584,7 +579,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
                     className="font-mono"
                     value={draft.key}
                     maxLength={40}
-                    placeholder={t`verify`}
+                    placeholder="order_shipped"
                     disabled={!active.isNew}
                     spellCheck={false}
                     autoComplete="off"

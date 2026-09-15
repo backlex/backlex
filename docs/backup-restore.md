@@ -161,10 +161,9 @@ Two things worth knowing about `overwrite`:
   A `users` row is a global identity — the same person can belong to several
   workspaces, so overwriting one from a single workspace's backup would be
   visible in all of them. And an **instance-global system row** (`tenant_id IS
-  NULL`) is skipped too: every workspace's dump deliberately carries those (the
-  default email templates, global `app_settings`, instance-wide `api_keys`), and
-  restating them would revert instance configuration from an operation scoped to
-  one workspace. Both appear in `keptAdditive`. Rows in your own dynamic `c_*`
+  NULL`) is skipped too: every workspace's dump deliberately carries those (global
+  `app_settings`, instance-wide `api_keys`), and restating them would revert
+  instance configuration from an operation scoped to one workspace. Both appear in `keptAdditive`. Rows in your own dynamic `c_*`
   tables are unaffected, which is what makes pre-drop recovery work.
 
 Every restore writes a `backup.restored` audit row recording the mode, the
@@ -182,10 +181,10 @@ schema rather than probed at runtime:
 - **Dump.** Most system tables filter on their own `tenant_id`. Four don't have
   one, so they're scoped through the relation that does — `users` via
   `tenant_members`, `user_roles` and `permissions` via `roles.tenant_id`, and
-  `tenants` by its own id. Globally-seeded rows (`tenant_id IS NULL`, e.g. the
-  default email templates) are included in every workspace's backup. Dynamic
-  `c_*` tables filter on `tenant_id` when the collection is tenant-scoped and are
-  dumped whole when it isn't.
+  `tenants` by its own id. Instance-global rows (`tenant_id IS NULL`) are
+  included in every workspace's backup. Dynamic `c_*` tables filter on
+  `tenant_id` when the collection is tenant-scoped and are dumped whole when it
+  isn't.
 - **Restore.** Every row is checked against the target workspace before it is
   written, not just the `collections` metadata: rows carrying a foreign
   `tenant_id` are counted in `skipped` and never inserted, and `user_roles` /

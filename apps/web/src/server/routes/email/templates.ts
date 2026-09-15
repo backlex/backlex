@@ -483,13 +483,10 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       const tpl = await findVisible(ctx, id, tenantId);
       if (!tpl) throw new AppError("NOT_FOUND", "Template not found");
 
-      // Sample vars so the preview reads naturally even when the caller doesn't
-      // supply their own. Shape mirrors what flow runs use at runtime.
+      // Sample vars so the test reads naturally even when the caller doesn't
+      // supply their own; anything the caller passes wins.
       const defaults: Record<string, unknown> = {
         user: { email: auth.email ?? "user@example.com" },
-        confirm_url: `${ctx.env.APP_URL}/verify?token=test`,
-        reset_url: `${ctx.env.APP_URL}/reset?token=test`,
-        magic_url: `${ctx.env.APP_URL}/magic?token=test`,
         site: { name: "backlex" },
       };
       await sendRendered(

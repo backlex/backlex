@@ -159,7 +159,6 @@ import type { PermResolveCache } from "./services/permissions";
 import {
   ensureDefaultTenant,
   ensureSystemRoles,
-  seedEmailTemplates,
   seedOwnerScopedPermissions,
 } from "./services/seed";
 
@@ -724,7 +723,7 @@ export const createApp = (env: Env) => {
       // One cheap SELECT; stays on the critical path.
       await warmAllowedOrigins(dbCtx, env);
       // The rest is idempotent bootstrap seeding. On an already-provisioned
-      // instance (every cold isolate after the first ever) it's ~11 no-op
+      // instance (every cold isolate after the first ever) it was ~11 no-op
       // SELECTs that needlessly blocked the first request ~110ms — traced on a
       // cold /api/collections. Defer it off the critical path; `waitUntil` keeps
       // the isolate alive until it finishes. The genuine first-user bootstrap is
@@ -734,7 +733,6 @@ export const createApp = (env: Env) => {
         const defaultTenantId = await ensureDefaultTenant(dbCtx);
         await ensureSystemRoles(dbCtx, defaultTenantId);
         await seedOwnerScopedPermissions(dbCtx, defaultTenantId, FILES_COLLECTION);
-        await seedEmailTemplates(dbCtx);
       };
       // Typed by what is actually used, not by the platform interface. The
       // global `ExecutionContext` grows over time — workers-types v5 added

@@ -12950,8 +12950,8 @@ msgid "No branches yet"
 msgstr "No branches yet"
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
-msgstr "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
+#~ msgid "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
+#~ msgstr "No built-in email uses this template — sign-in, verification, password-reset and invite emails have fixed wording. It is sent only when a flow step or a scheduled report names its key."
 
 #: src/client/admin/collections/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
@@ -14827,6 +14827,10 @@ msgstr "Order"
 #: src/client/admin/pages/automation/payments.tsx
 msgid "Order cancelled"
 msgstr "Order cancelled"
+
+#: src/client/admin/pages/settings/email-templates.tsx
+msgid "Order shipped"
+msgstr "Order shipped"
 
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -23427,8 +23431,8 @@ msgid "Verification required."
 msgstr "Verification required."
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "verify"
-msgstr "verify"
+#~ msgid "verify"
+#~ msgstr "verify"
 
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx
 #: src/client/pages/sign-in.tsx
@@ -23440,8 +23444,8 @@ msgid "Verify & enable"
 msgstr "Verify & enable"
 
 #: src/client/admin/pages/settings/email-templates.tsx
-msgid "Verify email"
-msgstr "Verify email"
+#~ msgid "Verify email"
+#~ msgstr "Verify email"
 
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/settings/saml-provider-dialog.tsx

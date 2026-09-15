@@ -137,6 +137,7 @@ import m130 from "../../drizzle/pg/20260829120000_app_settings_global_sentinel/m
 import m131 from "../../drizzle/pg/20260830090000_agent_skills/migration.sql" with { type: "text" };
 import m132 from "../../drizzle/pg/20260830090000_invite_token_hash/migration.sql" with { type: "text" };
 import m133 from "../../drizzle/pg/20260909120000_functions_author/migration.sql" with { type: "text" };
+import m134 from "../../drizzle/pg/20260915120000_remove_unsent_system_email_templates/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -278,4 +279,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260830090000_agent_skills", sql: m131 },
   { name: "20260830090000_invite_token_hash", sql: m132 },
   { name: "20260909120000_functions_author", sql: m133 },
+  { name: "20260915120000_remove_unsent_system_email_templates", sql: m134 },
 ];

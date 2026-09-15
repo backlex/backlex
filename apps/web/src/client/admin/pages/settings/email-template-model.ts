@@ -258,7 +258,7 @@ export const formatSample = (sample: Record<string, unknown>): string => JSON.st
 // ── preview ──────────────────────────────────────────────────────────────────
 
 /** A body that brings its own `<html>` is shown as it is; a fragment (every
- *  seeded default is one) is wrapped the way a mail client wraps it. */
+ *  built-in starter is one) is wrapped the way a mail client wraps it. */
 export const isCompleteDocument = (html: string): boolean => /^\s*(<!doctype\b|<html[\s>])/i.test(html);
 
 export type PreviewDevice = "desktop" | "mobile";

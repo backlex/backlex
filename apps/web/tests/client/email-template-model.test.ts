@@ -39,8 +39,8 @@ const row = (over: Partial<ApiEmailTemplate>): ApiEmailTemplate => ({
 });
 
 const ROWS = [
-  row({ id: "s-verify", tenantId: null, key: "verify", inherited: true }),
-  row({ id: "o-reset", key: "reset", overridesDefault: true }),
+  row({ id: "s-digest", tenantId: null, key: "digest", inherited: true }),
+  row({ id: "o-receipt", key: "receipt", overridesDefault: true }),
   row({ id: "o-approval", key: "approval_request" }),
   row({ id: "o-welcome", key: "welcome" }),
 ];
@@ -51,14 +51,14 @@ describe("entries", () => {
 
   test("every built-in email lists, first and in catalog order, stored or not", () => {
     expect(entries.slice(0, BUILT_IN_EMAIL_KEYS.length).map((e) => e.key)).toEqual(BUILT_IN_EMAIL_KEYS);
-    expect(entries.slice(BUILT_IN_EMAIL_KEYS.length).map((e) => e.key)).toEqual(["reset", "verify", "welcome"]);
+    expect(entries.slice(BUILT_IN_EMAIL_KEYS.length).map((e) => e.key)).toEqual(["digest", "receipt", "welcome"]);
   });
 
   test("status separates what backlex sends from what the workspace changed", () => {
     expect(entryStatus(byKey("form_invite"))).toBe("builtin");
     expect(entryStatus(byKey("approval_request"))).toBe("customized");
-    expect(entryStatus(byKey("verify"))).toBe("shared");
-    expect(entryStatus(byKey("reset"))).toBe("customized");
+    expect(entryStatus(byKey("digest"))).toBe("shared");
+    expect(entryStatus(byKey("receipt"))).toBe("customized");
     expect(entryStatus(byKey("welcome"))).toBe("custom");
   });
 
@@ -82,9 +82,9 @@ describe("keys", () => {
 
   test("taken means the workspace owns it — a default or a built-in is replaced, not taken", () => {
     expect(keyProblem("welcome", entries)).toBe("taken");
-    expect(keyProblem("verify", entries)).toBeNull();
+    expect(keyProblem("digest", entries)).toBeNull();
     expect(keyProblem("form_invite", entries)).toBeNull();
-    expect(entryReplacedBy("verify", entries)?.key).toBe("verify");
+    expect(entryReplacedBy("digest", entries)?.key).toBe("digest");
     expect(entryReplacedBy("form_invite", entries)?.key).toBe("form_invite");
     expect(entryReplacedBy("welcome", entries)).toBeNull();
   });

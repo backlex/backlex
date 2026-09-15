@@ -753,15 +753,46 @@ function TranslationsSkeletonImpl() {
   );
 }
 
-/** Email templates — header, then a list + two editor columns. */
+/** Email templates — header, then the searchable list, the editor (fields over
+ *  the variables panel, so the tallest column) and the preview, whose header
+ *  carries the desktop/mobile toggle and whose frame sits over the sample data. */
 function EmailTemplatesSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
       <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
-        <ListCardSkeleton rows={6} />
-        <Skeleton className="h-[420px] w-full rounded-surface" />
-        <Skeleton className="h-[420px] w-full rounded-surface" />
+        <Card className="gap-0 py-0">
+          <div className="border-b border-border p-2.5">
+            <Skeleton className="h-8 w-full" />
+          </div>
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1.5 border-t border-border px-3 py-3 first:border-t-0">
+              <Skeleton className="h-3.5 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </Card>
+        <Card className="gap-0 py-0">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+            <Skeleton className="h-3.5 w-12" />
+            <Skeleton className="ml-auto h-8 w-40" />
+          </div>
+          <div className="flex flex-col gap-3 p-3.5">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-[220px] w-full" />
+            <Skeleton className="h-[140px] w-full" />
+          </div>
+        </Card>
+        <Card className="gap-0 py-0">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+            <Skeleton className="h-3.5 w-14" />
+            <Skeleton className="ml-auto h-7 w-36" />
+          </div>
+          <div className="p-3 sm:p-6">
+            <Skeleton className="h-[360px] w-full rounded-surface" />
+          </div>
+        </Card>
       </div>
     </div>
   );

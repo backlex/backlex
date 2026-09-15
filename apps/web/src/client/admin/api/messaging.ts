@@ -26,29 +26,61 @@ export interface ApiEmailTemplate {
   subject: string;
   fromAddress: string | null;
   bodyHtml: string;
+  /** Plain-text part. Null means it is derived from `bodyHtml` at send time. */
   bodyText: string | null;
   variables: string[] | null;
+  /** The instance-wide default for this key. Saving it writes this workspace's
+   *  own copy (a new id); it cannot be deleted. */
+  inherited: boolean;
+  /** This workspace's row shadows an instance-wide default — deleting it
+   *  restores that default rather than removing the key. */
+  overridesDefault: boolean;
 }
+
+export type EmailTemplateInput = Pick<
+  ApiEmailTemplate,
+  "key" | "name" | "subject" | "fromAddress" | "bodyHtml" | "bodyText" | "variables"
+>;
 
 export const emailTemplatesApi = {
   list: () => api<Envelope<ApiEmailTemplate[]>>(`/api/admin/email-templates`),
   get: (id: string) => api<Envelope<ApiEmailTemplate>>(`/api/admin/email-templates/${id}`),
-  create: (body: Omit<ApiEmailTemplate, "id" | "tenantId">) =>
+  create: (body: EmailTemplateInput) =>
     api<Envelope<ApiEmailTemplate>>(`/api/admin/email-templates`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  patch: (id: string, body: Partial<ApiEmailTemplate>) =>
-    api<{ ok: true }>(`/api/admin/email-templates/${id}`, {
+  /** Returns the row that was written — for an inherited default, the
+   *  workspace's new copy, whose id differs from the one patched. */
+  patch: (id: string, body: Partial<EmailTemplateInput>) =>
+    api<{ ok: true; data: ApiEmailTemplate }>(`/api/admin/email-templates/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  /** Returns what the key resolves to now: the default it was overriding, or null. */
   remove: (id: string) =>
-    api<{ ok: true }>(`/api/admin/email-templates/${id}`, { method: "DELETE" }),
-  sendTest: (id: string, vars?: Record<string, string>) =>
+    api<{ ok: true; data: ApiEmailTemplate | null }>(`/api/admin/email-templates/${id}`, {
+      method: "DELETE",
+    }),
+  sendTest: (id: string, vars?: Record<string, unknown>) =>
     api<{ ok: true }>(`/api/admin/email-templates/${id}/send-test`, {
       method: "POST",
       body: JSON.stringify({ vars }),
+    }),
+  /** Render exactly this draft with exactly these vars and mail it to the
+   *  caller. Nothing is stored — so an unsaved edit can be tested before it
+   *  goes live for real recipients. */
+  sendDraftTest: (body: {
+    subject: string;
+    bodyHtml: string;
+    bodyText?: string | null;
+    fromAddress?: string | null;
+    vars: Record<string, unknown>;
+    to?: string;
+  }) =>
+    api<{ ok: true }>(`/api/admin/email-templates/send-test`, {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 };
 

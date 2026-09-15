@@ -29,6 +29,7 @@ import {
   type PdfPageOptions,
   type ReportPanel,
 } from "@backlex/core";
+import type { EmailRenderContexts } from "@backlex/core/email-templates";
 // The pure subpath, not the package root — see `packages/db/src/email.ts`.
 import { tryParseEmail } from "@backlex/db/email";
 import type { Ctx } from "../context";
@@ -230,7 +231,7 @@ export async function deliverReport(
       vars: {
         dashboard: { id: dashboard.id, name: dashboard.name, description: dashboard.description },
         report: { filename: rendered.filename, panels: panels.length, generatedAt: now.toISOString() },
-      },
+      } satisfies EmailRenderContexts["report"],
       fallback: {
         subject,
         html: `<p>${escapeText(dashboard.name)} is attached as a PDF.</p>`,

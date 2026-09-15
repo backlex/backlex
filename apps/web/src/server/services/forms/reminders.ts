@@ -8,6 +8,7 @@
  * up with its own opinion about when a form is still open.
  */
 import { AppError } from "@backlex/core";
+import type { BuiltInEmailVars } from "@backlex/core/email-templates";
 import type { Ctx } from "../../context";
 import { sendTemplatedEmail } from "../email";
 import { formAvailability, type FormRow } from "./index";
@@ -87,7 +88,7 @@ export const sendFormReminders = async (
             form: form.name,
             url: `${origin}${invite.url}`,
             recipient: { email: invite.email, name: invite.name ?? "" },
-          },
+          } satisfies BuiltInEmailVars["form_reminder"],
           fallback: {
             subject: `Reminder: ${form.name}`,
             // Escaped for the same reason the invite mailer is: the form name

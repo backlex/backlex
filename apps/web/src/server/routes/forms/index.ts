@@ -30,6 +30,7 @@ import {
   type MintedInvite,
 } from "../../services/forms/invites";
 import { sendTemplatedEmail } from "../../services/email";
+import type { BuiltInEmailVars } from "@backlex/core/email-templates";
 import { escapeHtml } from "../../services/signatures";
 
 const TAGS = ["forms"];
@@ -584,7 +585,7 @@ export const formsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
                 form: row.name,
                 url: `${origin}${invite.url}`,
                 recipient: { email: invite.email, name: invite.name ?? "" },
-              },
+              } satisfies BuiltInEmailVars["form_invite"],
               fallback: {
                 subject: `You're invited: ${row.name}`,
                 // Escaped: the form name and the recipient name are operator

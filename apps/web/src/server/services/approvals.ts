@@ -49,6 +49,7 @@ import {
   type ApprovalStatus,
   type WriteBackSpec,
 } from "@backlex/core";
+import type { BuiltInEmailVars } from "@backlex/core/email-templates";
 import type { Ctx } from "../context";
 import { hashToken } from "./shared-links";
 import { updateItem } from "./items/helpers";
@@ -375,8 +376,11 @@ const sendInvitations = async (
           url: link.url,
           approver: { email: approver.email, name: approver.name ?? "", role: approver.role ?? "" },
           summary: request.summary ?? [],
+          // The escaped table the built-in mail shows. Placeholders cannot loop,
+          // so without it a workspace's own template could not show the summary.
+          summaryHtml: summaryHtml(request.summary),
           expiresAt: formatStamp(request.expiresAt),
-        },
+        } satisfies BuiltInEmailVars["approval_request"],
         fallback: {
           subject: `Approval needed: ${request.title}`,
           html: `<p>${escapeHtml(approver.name || approver.email)},</p>
@@ -696,7 +700,7 @@ const sendOutcomeMail = async (
             status: x.status,
             reason: x.reason ?? "",
           })),
-        },
+        } satisfies BuiltInEmailVars["approval_approved"],
         fallback: {
           subject: `${outcome === "approved" ? "Approved" : "Not approved"}: ${request.title}`,
           html: `<p>"${escapeHtml(request.title)}" was ${escapeHtml(outcome)}.</p>${

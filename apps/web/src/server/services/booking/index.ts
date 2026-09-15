@@ -53,6 +53,7 @@ import {
   type SlotPolicy,
   type Weekday,
 } from "@backlex/core";
+import type { BuiltInEmailVars } from "@backlex/core/email-templates";
 import { sql } from "drizzle-orm";
 import type { Ctx } from "../../context";
 import { hashToken } from "../shared-links";
@@ -1071,7 +1072,9 @@ const sendBookingEmail = async (
       when,
       manageUrl: link ?? "",
       customerName: booking.customerName ?? "",
-    },
+      // The built-in body carries it; a workspace template had no way to.
+      confirmationMessage: resource.confirmationMessage ?? "",
+    } satisfies BuiltInEmailVars["booking.confirmed"],
     fallback: { subject, html: body },
     attachments: [
       {

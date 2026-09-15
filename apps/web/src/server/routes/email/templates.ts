@@ -1,20 +1,34 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES, htmlToText, renderTemplate } from "@backlex/core";
+import {
+  AppError,
+  EMAIL_TEMPLATE_KEY_PATTERN,
+  SYSTEM_ROLES,
+  htmlToText,
+  renderTemplate,
+} from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../../app";
+import type { Ctx } from "../../context";
 import { requireUser } from "../../middleware/session";
+import { assertNotDemo } from "../../services/demo";
 import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
 import { defaultHook } from "../../lib/openapi-router";
+
+// Overrides resolve like `document_templates`: a workspace row shadows the
+// instance-wide (`tenant_id IS NULL`) row with the same key, and a workspace
+// never writes the shared row. PATCH and DELETE used to reach it by id, so one
+// workspace's edit rewrote every workspace's mail (and a delete lasted until
+// the next boot re-seeded it).
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.emailTemplates : sqlite.schema.emailTemplates;
 
 const EmailTemplateInput = z
   .object({
-    key: z.string().min(2).max(40),
+    key: z.string().regex(EMAIL_TEMPLATE_KEY_PATTERN, "2–40 of A-Z a-z 0-9 _ - ., starting alphanumeric"),
     name: z.string().min(1).max(80),
     subject: z.string().min(1).max(200),
     // Accept an empty string from the form's "From" field — it's normalized to
@@ -25,7 +39,7 @@ const EmailTemplateInput = z
       .nullish()
       .openapi({ description: "Empty string or null clears the override." }),
     bodyHtml: z.string(),
-    bodyText: z.string().nullish(),
+    bodyText: z.string().nullish().openapi({ description: "Null derives the text part from `bodyHtml`." }),
     variables: z.array(z.string()).nullish(),
   })
   .openapi("EmailTemplateInput");
@@ -41,8 +55,10 @@ const EmailTemplateRow = z
     bodyHtml: z.string(),
     bodyText: z.string().nullable(),
     variables: z.array(z.string()).nullable(),
-    updatedBy: z.string().nullable(),
-    updatedAt: z.unknown().nullable(),
+    updatedBy: z.string().nullable().optional(),
+    updatedAt: z.unknown().nullable().optional(),
+    inherited: z.boolean().openapi({ description: "Instance-wide default. Saving it writes the workspace's copy." }),
+    overridesDefault: z.boolean().openapi({ description: "Shadows an instance-wide default; deleting restores it." }),
   })
   .openapi("EmailTemplateRow");
 
@@ -54,6 +70,15 @@ const SendTestInput = z
     vars: z.record(z.string(), z.unknown()).optional(),
   })
   .openapi("EmailTemplateSendTestInput");
+
+const SendDraftTestInput = SendTestInput.extend({
+  subject: z.string().min(1).max(200),
+  bodyHtml: z.string().min(1),
+  bodyText: z.string().nullish(),
+  fromAddress: z.union([z.string().email(), z.literal("")]).nullish(),
+}).openapi("EmailTemplateSendDraftTestInput");
+
+type Row = Omit<z.infer<typeof EmailTemplateRow>, "inherited" | "overridesDefault">;
 
 /** Map an optional email field to a stored value: "" / null / undefined → null. */
 const normAddr = (v: string | null | undefined) => (v ? v : null);
@@ -79,8 +104,73 @@ const idScopedToTenant = (
   tenantId: string,
 ) => and(eq(t.id, id), or(eq(t.tenantId, tenantId), isNull(t.tenantId)));
 
+const findVisible = async (ctx: Ctx, id: string, tenantId: string): Promise<Row | null> => {
+  const t = tableFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(idScopedToTenant(t, id, tenantId))
+    .limit(1)) as Row[];
+  return rows[0] ?? null;
+};
+
+const findShared = async (ctx: Ctx, key: string): Promise<Row | null> => {
+  const t = tableFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.key, key), isNull(t.tenantId)))
+    .limit(1)) as Row[];
+  return rows[0] ?? null;
+};
+
+const findOwnByKey = async (ctx: Ctx, key: string, tenantId: string): Promise<Row | null> => {
+  const t = tableFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.key, key), eq(t.tenantId, tenantId)))
+    .limit(1)) as Row[];
+  return rows[0] ?? null;
+};
+
+const flagged = (row: Row, sharedExists: boolean) => ({
+  ...row,
+  inherited: row.tenantId === null,
+  overridesDefault: row.tenantId !== null && sharedExists,
+});
+
+const sendRendered = async (
+  ctx: Ctx,
+  tenantId: string,
+  tpl: { subject: string; bodyHtml: string; bodyText?: string | null; fromAddress?: string | null },
+  vars: Record<string, unknown>,
+  to: string,
+) => {
+  // Both send-test routes end here, and together they are a mail relay: any
+  // subject and body, to any address, from the workspace's own sender. The
+  // playground publishes its admin credentials, and its write guard is a prefix
+  // list that blocks `/api/admin/email-config` but not these — so the refusal
+  // travels with the send, the way `assertNotDemo` does for GraphQL.
+  assertNotDemo(ctx.env);
+  const html = renderTemplate(tpl.bodyHtml, vars);
+  const text = tpl.bodyText ? renderTemplate(tpl.bodyText, vars) : htmlToText(html);
+  const transport = await ctx.emailFor(tenantId);
+  await transport.send({
+    to,
+    from: tpl.fromAddress || undefined,
+    subject: renderTemplate(tpl.subject, vars),
+    html,
+    text,
+  });
+};
+
 const tags = ["email-templates"];
 const adminGate = [requireUser, requireAdmin];
+const rowResponse = {
+  description: "OK",
+  content: { "application/json": { schema: z.object({ data: EmailTemplateRow }) } },
+};
 
 export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
@@ -89,8 +179,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       path: "/",
       tags,
       summary: "List email templates",
-      description:
-        "Returns tenant-scoped rows plus the global (`tenantId IS NULL`) defaults. Admin only.",
+      description: "One row per key: the workspace's own, else the instance-wide default. Admin only.",
       security: SECURITY,
       middleware: adminGate,
       responses: {
@@ -104,17 +193,22 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       },
     }),
     async (c) => {
-      // List templates for the active tenant. Falls back to global (tenantId=null)
-      // rows so an admin can see the platform-wide defaults alongside tenant
-      // overrides.
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const t = tableFor(ctx.dialect);
-      const rows = await (ctx.db as any)
+      const rows = (await (ctx.db as any)
         .select()
         .from(t)
-        .where(or(eq(t.tenantId, auth.tenantId ?? ""), isNull(t.tenantId)));
-      return c.json({ data: rows });
+        .where(or(eq(t.tenantId, auth.tenantId ?? ""), isNull(t.tenantId)))
+        .orderBy(asc(t.key))) as Row[];
+      // Both halves of an override used to list, and pickers offered the key twice.
+      const shared = new Set(rows.filter((r) => r.tenantId === null).map((r) => r.key));
+      const byKey = new Map<string, Row>();
+      for (const row of rows) {
+        const seen = byKey.get(row.key);
+        if (!seen || (seen.tenantId === null && row.tenantId !== null)) byKey.set(row.key, row);
+      }
+      return c.json({ data: [...byKey.values()].map((r) => flagged(r, shared.has(r.key))) });
     },
   )
   .openapi(
@@ -126,28 +220,15 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       security: SECURITY,
       middleware: adminGate,
       request: { params: z.object({ id: z.string() }) },
-      responses: {
-        200: {
-          description: "OK",
-          content: {
-            "application/json": { schema: z.object({ data: EmailTemplateRow }) },
-          },
-        },
-        ...errorResponses,
-      },
+      responses: { 200: rowResponse, ...errorResponses },
     }),
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
-      const t = tableFor(ctx.dialect);
-      const { id } = c.req.valid("param");
-      const rows = await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(idScopedToTenant(t, id, tenantId))
-        .limit(1);
-      if (!rows[0]) throw new AppError("NOT_FOUND", "Template not found");
-      return c.json({ data: rows[0] });
+      const row = await findVisible(ctx, c.req.valid("param").id, tenantId);
+      if (!row) throw new AppError("NOT_FOUND", "Template not found");
+      const sharedExists = row.tenantId !== null && (await findShared(ctx, row.key)) !== null;
+      return c.json({ data: flagged(row, sharedExists) });
     },
   )
   .openapi(
@@ -156,6 +237,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       path: "/",
       tags,
       summary: "Create an email template",
+      description: "Under a key with an instance-wide default this is the workspace's override; a key it already has is a 409.",
       security: SECURITY,
       middleware: adminGate,
       request: {
@@ -192,7 +274,8 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
         variables: body.variables ?? null,
       };
       await (ctx.db as any).insert(t).values({ ...row, updatedBy: auth.userId });
-      return c.json({ data: row }, 201);
+      const sharedExists = row.tenantId !== null && (await findShared(ctx, row.key)) !== null;
+      return c.json({ data: flagged(row, sharedExists) }, 201);
     },
   )
   .openapi(
@@ -201,6 +284,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       path: "/{id}",
       tags,
       summary: "Update an email template",
+      description: "On an instance-wide default this writes (and returns) the workspace's copy — read `data.id` back.",
       security: SECURITY,
       middleware: adminGate,
       request: {
@@ -213,7 +297,9 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       responses: {
         200: {
           description: "Updated",
-          content: { "application/json": { schema: OkSchema } },
+          content: {
+            "application/json": { schema: z.object({ ok: z.boolean(), data: EmailTemplateRow }) },
+          },
         },
         ...errorResponses,
       },
@@ -225,6 +311,11 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const t = tableFor(ctx.dialect);
+      const row = await findVisible(ctx, id, tenantId);
+      if (!row) throw new AppError("NOT_FOUND", "Template not found");
+      if (row.tenantId === null && body.key !== undefined && body.key !== row.key) {
+        throw new AppError("VALIDATION", `"${row.key}" is a shared default, so its key cannot change`);
+      }
       // Only touch the columns the caller actually sent — a PATCH that updates
       // just the subject must not blank out from_address / variables.
       const set: Record<string, unknown> = {
@@ -238,11 +329,43 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       if (body.bodyHtml !== undefined) set.bodyHtml = body.bodyHtml;
       if (body.bodyText !== undefined) set.bodyText = body.bodyText ?? null;
       if (body.variables !== undefined) set.variables = body.variables ?? null;
-      await (ctx.db as any)
-        .update(t)
-        .set(set)
-        .where(idScopedToTenant(t, id, tenantId));
-      return c.json({ ok: true });
+
+      let targetId = row.id;
+      if (row.tenantId === null) {
+        // Copy-on-write. A stale tab still holding the default's id saves into
+        // the existing copy rather than hitting the (tenant_id, key) index.
+        const { key: _unchanged, ...patch } = set;
+        const own = await findOwnByKey(ctx, row.key, tenantId);
+        if (own) {
+          targetId = own.id;
+          await (ctx.db as any)
+            .update(t)
+            .set(patch)
+            .where(and(eq(t.id, own.id), eq(t.tenantId, tenantId)));
+        } else {
+          targetId = crypto.randomUUID();
+          await (ctx.db as any).insert(t).values({
+            id: targetId,
+            tenantId,
+            key: row.key,
+            name: row.name,
+            subject: row.subject,
+            fromAddress: row.fromAddress,
+            bodyHtml: row.bodyHtml,
+            bodyText: row.bodyText,
+            variables: row.variables,
+            ...patch,
+          });
+        }
+      } else {
+        await (ctx.db as any)
+          .update(t)
+          .set(set)
+          .where(and(eq(t.id, row.id), eq(t.tenantId, tenantId)));
+      }
+      const saved = await findVisible(ctx, targetId, tenantId);
+      if (!saved) throw new AppError("NOT_FOUND", "Template not found");
+      return c.json({ ok: true, data: flagged(saved, (await findShared(ctx, saved.key)) !== null) });
     },
   )
   .openapi(
@@ -251,13 +374,18 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       path: "/{id}",
       tags,
       summary: "Delete an email template",
+      description: "Returns what the key resolves to now (the default it overrode, or null). Defaults are a 403.",
       security: SECURITY,
       middleware: adminGate,
       request: { params: z.object({ id: z.string() }) },
       responses: {
         200: {
           description: "Deleted",
-          content: { "application/json": { schema: OkSchema } },
+          content: {
+            "application/json": {
+              schema: z.object({ ok: z.boolean(), data: EmailTemplateRow.nullable() }),
+            },
+          },
         },
         ...errorResponses,
       },
@@ -266,10 +394,51 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
-      const { id } = c.req.valid("param");
-      await (ctx.db as any)
-        .delete(t)
-        .where(idScopedToTenant(t, id, tenantId));
+      const row = await findVisible(ctx, c.req.valid("param").id, tenantId);
+      if (!row) throw new AppError("NOT_FOUND", "Template not found");
+      if (row.tenantId === null) {
+        throw new AppError("FORBIDDEN", `"${row.key}" is a shared default and cannot be deleted from a workspace`);
+      }
+      await (ctx.db as any).delete(t).where(and(eq(t.id, row.id), eq(t.tenantId, tenantId)));
+      const fallback = await findShared(ctx, row.key);
+      return c.json({ ok: true, data: fallback ? flagged(fallback, true) : null });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/send-test",
+      tags,
+      summary: "Render + send an unsaved template as a test email",
+      description: "Renders the draft with exactly `vars` (so it matches the editor preview) and mails `to`, default the caller. Stores nothing.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        body: {
+          required: true,
+          content: { "application/json": { schema: SendDraftTestInput } },
+        },
+      },
+      responses: {
+        200: {
+          description: "Sent",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = requireTenant(c);
+      const body = c.req.valid("json");
+      await sendRendered(
+        ctx,
+        tenantId,
+        { ...body, fromAddress: normAddr(body.fromAddress) },
+        body.vars ?? {},
+        body.to ?? auth.email ?? "test@example.com",
+      );
       return c.json({ ok: true });
     },
   )
@@ -311,13 +480,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
         .json()
         .then((b) => SendTestInput.parse(b ?? {}))
         .catch(() => SendTestInput.parse({}));
-      const t = tableFor(ctx.dialect);
-      const rows = await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(idScopedToTenant(t, id, tenantId))
-        .limit(1);
-      const tpl = rows[0];
+      const tpl = await findVisible(ctx, id, tenantId);
       if (!tpl) throw new AppError("NOT_FOUND", "Template not found");
 
       // Sample vars so the preview reads naturally even when the caller doesn't
@@ -329,20 +492,13 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
         magic_url: `${ctx.env.APP_URL}/magic?token=test`,
         site: { name: "backlex" },
       };
-      const vars = { ...defaults, ...(body.vars ?? {}) };
-
-      const html = renderTemplate(tpl.bodyHtml as string, vars);
-      const text = tpl.bodyText
-        ? renderTemplate(tpl.bodyText as string, vars)
-        : htmlToText(html);
-      const transport = await ctx.emailFor(tenantId);
-      await transport.send({
-        to: body.to ?? auth.email ?? "test@example.com",
-        from: tpl.fromAddress ?? undefined,
-        subject: renderTemplate(tpl.subject as string, vars),
-        html,
-        text,
-      });
+      await sendRendered(
+        ctx,
+        tenantId,
+        tpl,
+        { ...defaults, ...(body.vars ?? {}) },
+        body.to ?? auth.email ?? "test@example.com",
+      );
       return c.json({ ok: true });
     },
   );

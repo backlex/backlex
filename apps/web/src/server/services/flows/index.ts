@@ -16,6 +16,7 @@ import {
   icsContentType,
 } from "@backlex/core";
 import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backlex/core";
+import type { EmailRenderContexts } from "@backlex/core/email-templates";
 import type { Ctx } from "../../context";
 import { loadCollection, type CollectionRow } from "../items/collection-loader";
 import { deserializeRow } from "../items/serialize";
@@ -768,7 +769,7 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     // Render context for `{{ ... }}` placeholders inside the template body.
     // Top-level `data` plus the flow user/last so templates can reach
     // `{{ data.title }}`, `{{ $user.email }}`, `{{ $last.status }}`.
-    const renderVars: Record<string, unknown> = {
+    const base = {
       data: ctx.data,
       $user: {
         id: ctx.authSubject.userId,
@@ -776,6 +777,9 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         roles: ctx.authSubject.roles,
       },
       $last: ctx.last,
+    } satisfies EmailRenderContexts["flow"];
+    const renderVars: Record<string, unknown> = {
+      ...base,
       ...((op.vars ? (interpolate(op.vars, ctx) as Record<string, unknown>) : {})),
     };
     // Tenant scope: fall back to the row's own tenantId if the runtime didn't

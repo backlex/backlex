@@ -82,6 +82,42 @@ describe("demo mode — write guard", () => {
     const read = await h.fetch("/api/admin/email-config");
     expect(read.status).not.toBe(403);
   });
+
+  // The prefix list above blocks email CONFIG, but a template's send-test is a
+  // relay of its own: any subject and body, to any address, from the
+  // workspace's sender — and on a playground every visitor is an admin. Editing
+  // a template stays open (it sends nothing); both ways of sending one do not.
+  test("an email template's send-test is refused in demo mode, and editing it is not", async () => {
+    h = makeHarness({ DEMO_MODE: "1" });
+    await seedAdmin(h, undefined, undefined, { openSignup: false });
+    const created = await h.fetch("/api/admin/email-templates", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ key: "demo_probe", name: "Probe", subject: "Hi", bodyHtml: "<p>Hi</p>" }),
+    });
+    expect(created.status).toBe(201);
+    const { data } = (await created.json()) as { data: { id: string } };
+
+    const draft = await h.fetch("/api/admin/email-templates/send-test", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ to: "someone@example.com", subject: "Anything", bodyHtml: "<p>Anything</p>" }),
+    });
+    expect(draft.status).toBe(403);
+    const stored = await h.fetch(`/api/admin/email-templates/${data.id}/send-test`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ to: "someone@example.com" }),
+    });
+    expect(stored.status).toBe(403);
+
+    const edited = await h.fetch(`/api/admin/email-templates/${data.id}`, {
+      method: "PATCH",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ subject: "Hello" }),
+    });
+    expect(edited.status).toBe(200);
+  });
 });
 
 describe("demo mode — reset", () => {

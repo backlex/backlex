@@ -199,6 +199,51 @@ Already routed through `emailFor`:
 
 Never reach for an email SDK directly.
 
+### Email templates
+
+`email_templates` rows are rendered by `sendTemplatedEmail` with `{{ dotted.path }}`
+placeholders (`renderTemplate` in `packages/core/src/email.ts`). A placeholder the
+sender does not pass renders as an empty string, silently — and values are
+inserted **unescaped**, like a [document template](/docs/documents/)'s.
+
+**Overrides.** A row with `tenant_id = NULL` is the instance-wide default; a
+workspace row with the same key shadows it. `GET /api/admin/email-templates`
+returns one row per key with `inherited` / `overridesDefault` flags. A workspace
+never writes the shared row: `PATCH` on it writes (and returns) the workspace's
+copy, `DELETE` on it is a 403, and `DELETE` on the copy restores the default and
+returns it. `POST /api/admin/email-templates/send-test` renders an unsaved draft
+with exactly the `vars` given and stores nothing.
+
+**Built-in emails.** These keys are sent by backlex itself, each with a fallback
+body, so nothing has to be stored until a workspace wants its own wording:
+
+| Key | Sent by | Variables |
+|---|---|---|
+| `form_invite`, `form_reminder` | forms | `form`, `url`, `recipient.email`, `recipient.name` |
+| `signature_request` | e-signature | `title`, `message`, `url`, `signer.email`, `signer.name`, `signer.role`, `expiresAt` |
+| `signature_completed` | e-signature | `title`, `signers`, `documentHash` |
+| `approval_request` | approvals | `title`, `message`, `url`, `approver.email`, `approver.name`, `approver.role`, `summary`, `summaryHtml`, `expiresAt` |
+| `approval_approved`, `approval_rejected`, `approval_expired`, `approval_cancelled` | approvals | `title`, `outcome`, `reason`, `approvers` |
+| `booking.confirmed`, `booking.cancelled`, `booking.rescheduled` | booking | `resource`, `when`, `manageUrl`, `customerName`, `confirmationMessage` |
+
+The source of truth is `BuiltInEmailVars` in `@backlex/core/email-templates`:
+every send site checks its `vars` with `satisfies BuiltInEmailVars["<key>"]`, and
+the admin's variable list is derived from the same module, so the table above
+and the page cannot drift from what is actually sent.
+`apps/web/tests/email/email-template-catalog.test.ts` fails if a new literal-keyed
+sender skips that check.
+
+Any other key is a **custom** template: it receives whatever its caller passes.
+A flow `email` step passes `data`, `$user.{id,email,roles}` and `$last` plus the
+step's own `vars`; a scheduled report's covering message passes
+`dashboard.{id,name,description}` and `report.{filename,panels,generatedAt}`.
+
+The seeded `verify`, `reset`, `magic`, `invite` and `change_email` rows are **not
+read by any sender yet** — sign-in, verification, password-reset and invite mail
+is composed inline in `packages/auth` and the invite routes. Editing them changes
+nothing a user receives unless a flow or report names their key; the admin page
+says so on each of them.
+
 ## OAuth providers
 
 OAuth wiring is env-level (deployment default) with per-workspace

@@ -32,6 +32,7 @@ import * as sqlite from "@backlex/db/sqlite";
 // The pure subpath, not the package root — see `packages/db/src/email.ts`.
 import { tryParseEmail } from "@backlex/db/email";
 import { AppError, renderTemplate, type PdfPageOptions } from "@backlex/core";
+import type { BuiltInEmailVars } from "@backlex/core/email-templates";
 import type { Ctx } from "../context";
 import { MAX_PDF_BYTES, resolveTemplate, safeFilename } from "./documents";
 import { hashToken } from "./shared-links";
@@ -644,7 +645,7 @@ const sendInvitations = async (
           url: link.url,
           signer: { email: signer.email, name: signer.name ?? "", role: signer.role ?? "" },
           expiresAt: formatStamp(request.expiresAt),
-        },
+        } satisfies BuiltInEmailVars["signature_request"],
         fallback: {
           subject: `Please sign: ${request.title}`,
           html: `<p>${escapeHtml(signer.name || signer.email)},</p>
@@ -1049,7 +1050,7 @@ const sendCompletionEmails = async (
           title: request.title,
           signers: signers.map((s) => ({ email: s.email, name: s.name ?? "" })),
           documentHash: request.documentHash,
-        },
+        } satisfies BuiltInEmailVars["signature_completed"],
         fallback: {
           subject: `Signed: ${request.title}`,
           html: `<p>"${escapeHtml(request.title)}" has been signed by everyone.</p>

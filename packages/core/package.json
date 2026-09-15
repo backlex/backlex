@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./adapters": "./src/adapters/index.ts",
+    "./email-templates": "./src/email-templates.ts",
     "./errors": "./src/errors.ts"
   },
   "scripts": {

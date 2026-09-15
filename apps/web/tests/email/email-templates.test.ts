@@ -5,8 +5,18 @@
  * console transport, and through a deliberately broken SMTP transport to
  * prove failures surface as clean AppError-style JSON, not a crash), and
  * admin-only enforcement.
+ *
+ * And the override rule, which is the part that was wrong: the instance-wide
+ * defaults (`tenant_id IS NULL`, seeded at boot) used to be PATCHed and DELETEd
+ * in place by id, so one workspace admin's edit rewrote the mail of every other
+ * workspace. Editing a default now writes the workspace's own copy, and the
+ * shared row is asserted untouched in the database itself rather than through
+ * the API that used to be the problem.
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { buildContext } from "../../src/server/context";
+import { seedEmailTemplates } from "../../src/server/services/seed";
 import { makeHarness, seedAdmin, type TestHarness } from "../setup";
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const;
@@ -36,6 +46,8 @@ interface TemplateRow {
   bodyHtml: string;
   bodyText: string | null;
   variables: string[] | null;
+  inherited: boolean;
+  overridesDefault: boolean;
 }
 
 const createTemplate = async (
@@ -65,6 +77,9 @@ describe("/api/admin/email-templates", () => {
     expect(created.subject).toBe(TEMPLATE.subject);
     expect(created.fromAddress).toBeNull(); // not sent → null
     expect(created.variables).toEqual(TEMPLATE.variables);
+    // No shared default named `welcome`, so this is a plain workspace template.
+    expect(created.inherited).toBe(false);
+    expect(created.overridesDefault).toBe(false);
 
     // List includes it
     const list = await h.fetch("/api/admin/email-templates");
@@ -85,7 +100,12 @@ describe("/api/admin/email-templates", () => {
       json("PATCH", { subject: "Hi again" }),
     );
     expect(patched.status).toBe(200);
-    expect(await patched.json()).toEqual({ ok: true });
+    const patchedBody = (await patched.json()) as { ok: boolean; data: TemplateRow };
+    expect(patchedBody.ok).toBe(true);
+    // The saved row comes back — an override of a default has a NEW id, and
+    // the caller has no other way to learn it.
+    expect(patchedBody.data.id).toBe(created.id);
+    expect(patchedBody.data.subject).toBe("Hi again");
     const after = (
       (await (await h.fetch(`/api/admin/email-templates/${created.id}`)).json()) as {
         data: TemplateRow;
@@ -100,7 +120,8 @@ describe("/api/admin/email-templates", () => {
       method: "DELETE",
     });
     expect(del.status).toBe(200);
-    expect(await del.json()).toEqual({ ok: true });
+    // Nothing shared sits behind `welcome`, so the key now resolves to nothing.
+    expect(await del.json()).toEqual({ ok: true, data: null });
     const gone = await h.fetch(`/api/admin/email-templates/${created.id}`);
     expect(gone.status).toBe(404);
     const body = (await gone.json()) as { error: { code: string } };
@@ -220,5 +241,249 @@ describe("/api/admin/email-templates", () => {
     expect(create.status).toBe(403);
     const body = (await create.json()) as { error: { code: string } };
     expect(body.error.code).toBe("FORBIDDEN");
+  });
+});
+
+const list = async (h: TestHarness, headers: Record<string, string> = {}) => {
+  const res = await h.fetch("/api/admin/email-templates", { headers });
+  expect(res.status).toBe(200);
+  return ((await res.json()) as { data: TemplateRow[] }).data;
+};
+
+/** A fresh admin plus the seeded instance-wide defaults. The app seeds them on
+ *  the first request of a PROCESS, not of a database, so every harness after the
+ *  first one in a run would otherwise start without them. */
+const harnessWithDefaults = async (): Promise<TestHarness> => {
+  const harness = makeHarness();
+  await seedAdmin(harness);
+  const ctx = await buildContext(harness.env);
+  await seedEmailTemplates({ db: ctx.db, dialect: ctx.dialect });
+  return harness;
+};
+
+/** The shared `verify` row exactly as the database holds it — read around the
+ *  API on purpose, since the API is what used to rewrite it. */
+const sharedVerify = (h: TestHarness) => {
+  const db = new Database(h.env.SQLITE_PATH as string);
+  try {
+    return db
+      .query("select id, subject, body_html as bodyHtml from email_templates where tenant_id is null and key = 'verify'")
+      .get() as { id: string; subject: string; bodyHtml: string } | null;
+  } finally {
+    db.close();
+  }
+};
+
+describe("shared defaults are copy-on-write", () => {
+  let h: TestHarness;
+  afterEach(() => h?.cleanup());
+
+  test("the list shows one row per key, and a seeded default reads as inherited", async () => {
+    h = await harnessWithDefaults();
+    const rows = await list(h);
+    const verify = rows.filter((r) => r.key === "verify");
+    expect(verify).toHaveLength(1);
+    expect(verify[0]!.inherited).toBe(true);
+    expect(verify[0]!.overridesDefault).toBe(false);
+  });
+
+  test("saving a default creates the workspace's copy and leaves the shared row alone", async () => {
+    h = await harnessWithDefaults();
+    const before = sharedVerify(h);
+    expect(before).not.toBeNull();
+
+    const res = await h.fetch(
+      `/api/admin/email-templates/${before!.id}`,
+      json("PATCH", { subject: "Workspace wording" }),
+    );
+    expect(res.status).toBe(200);
+    const saved = ((await res.json()) as { data: TemplateRow }).data;
+    expect(saved.id).not.toBe(before!.id);
+    expect(saved.tenantId).not.toBeNull();
+    expect(saved.key).toBe("verify");
+    expect(saved.subject).toBe("Workspace wording");
+    // Everything the patch did not name is copied from the default, not blanked.
+    expect(saved.bodyHtml).toBe(before!.bodyHtml);
+    expect(saved.overridesDefault).toBe(true);
+
+    expect(sharedVerify(h)).toEqual(before);
+
+    const rows = (await list(h)).filter((r) => r.key === "verify");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.id).toBe(saved.id);
+    expect(rows[0]!.inherited).toBe(false);
+
+    // A stale tab still holding the SHARED id saves into the same copy rather
+    // than colliding with it on the (tenant_id, key) unique index.
+    const again = await h.fetch(
+      `/api/admin/email-templates/${before!.id}`,
+      json("PATCH", { subject: "Second save" }),
+    );
+    expect(again.status).toBe(200);
+    expect(((await again.json()) as { data: TemplateRow }).data.id).toBe(saved.id);
+    expect(sharedVerify(h)).toEqual(before);
+  });
+
+  test("another workspace keeps rendering the default", async () => {
+    h = await harnessWithDefaults();
+    const suffix = `${Date.now()}`.slice(-6);
+    const other = await h.fetch("/api/tenants", json("POST", { name: `Tenant ${suffix}` }));
+    expect(other.ok).toBe(true);
+
+    const shared = sharedVerify(h)!;
+    const res = await h.fetch(
+      `/api/admin/email-templates/${shared.id}`,
+      json("PATCH", { subject: "Only in default" }),
+    );
+    expect(res.status).toBe(200);
+
+    const theirs = (await list(h, { "X-Backlex-Tenant": `tenant-${suffix}` })).find(
+      (r) => r.key === "verify",
+    );
+    expect(theirs?.subject).toBe(shared.subject);
+    expect(theirs?.inherited).toBe(true);
+  });
+
+  test("a default cannot be re-keyed or deleted from a workspace", async () => {
+    h = await harnessWithDefaults();
+    const shared = sharedVerify(h)!;
+
+    const rekey = await h.fetch(
+      `/api/admin/email-templates/${shared.id}`,
+      json("PATCH", { key: "verify_v2" }),
+    );
+    expect(rekey.status).toBe(422);
+
+    const del = await h.fetch(`/api/admin/email-templates/${shared.id}`, { method: "DELETE" });
+    expect(del.status).toBe(403);
+    expect(((await del.json()) as { error: { code: string } }).error.code).toBe("FORBIDDEN");
+    expect(sharedVerify(h)).toEqual(shared);
+  });
+
+  test("deleting the copy restores the default, and says which row now applies", async () => {
+    h = await harnessWithDefaults();
+    const shared = sharedVerify(h)!;
+    const saved = (
+      (await (
+        await h.fetch(`/api/admin/email-templates/${shared.id}`, json("PATCH", { subject: "Mine" }))
+      ).json()) as { data: TemplateRow }
+    ).data;
+
+    const del = await h.fetch(`/api/admin/email-templates/${saved.id}`, { method: "DELETE" });
+    expect(del.status).toBe(200);
+    const restored = ((await del.json()) as { data: TemplateRow | null }).data;
+    expect(restored?.id).toBe(shared.id);
+    expect(restored?.inherited).toBe(true);
+
+    const verify = (await list(h)).find((r) => r.key === "verify");
+    expect(verify?.id).toBe(shared.id);
+    expect(verify?.subject).toBe(shared.subject);
+  });
+});
+
+describe("template keys", () => {
+  let h: TestHarness;
+  afterEach(() => h?.cleanup());
+
+  test("a built-in sender's dotted key is accepted, whitespace is not", async () => {
+    // `booking.confirmed` is what the booking service resolves. The admin used
+    // to refuse the dot, so the booking emails could not be customized at all.
+    h = makeHarness();
+    await seedAdmin(h);
+    const dotted = await createTemplate(h, { key: "booking.confirmed" });
+    expect(dotted.key).toBe("booking.confirmed");
+    expect(dotted.overridesDefault).toBe(false);
+
+    for (const key of ["has space", "x", "-leading", "a".repeat(41)]) {
+      const res = await h.fetch("/api/admin/email-templates", json("POST", { ...TEMPLATE, key }));
+      expect(`${key} → ${res.status}`).toBe(`${key} → 422`);
+    }
+  });
+
+  test("a key the workspace already owns is a 409, not a 500", async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await createTemplate(h);
+    const dupe = await h.fetch("/api/admin/email-templates", json("POST", TEMPLATE));
+    expect(dupe.status).toBe(409);
+  });
+
+  test("creating a template under a default's key is that workspace's override", async () => {
+    h = await harnessWithDefaults();
+    const created = await createTemplate(h, { key: "reset" });
+    expect(created.overridesDefault).toBe(true);
+    const reset = (await list(h)).filter((r) => r.key === "reset");
+    expect(reset.map((r) => r.id)).toEqual([created.id]);
+  });
+});
+
+describe("send-test of an unsaved draft", () => {
+  let h: TestHarness;
+  let emails: string[] = [];
+  const restoreLog = console.log;
+  afterEach(() => {
+    console.log = restoreLog;
+    h?.cleanup();
+  });
+
+  const capture = () => {
+    emails = [];
+    console.log = (...args: unknown[]) => {
+      const line = args.map(String).join(" ");
+      if (line.startsWith("[email]")) emails.push(line);
+    };
+  };
+
+  test("renders exactly the draft and the vars it was given, and stores nothing", async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const before = await list(h);
+    capture();
+    const res = await h.fetch(
+      "/api/admin/email-templates/send-test",
+      json("POST", {
+        to: "probe@example.test",
+        subject: "Signed: {{ title }}",
+        bodyHtml: "<p>{{ title }} for {{ signer.name }}</p>",
+        // No `site.name` default is merged in: the mail matches the preview.
+        vars: { title: "MSA", signer: { name: "Ada" } },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(emails).toHaveLength(1);
+    expect(emails[0]).toContain('to=probe@example.test subject="Signed: MSA"');
+    expect(emails[0]).toContain("MSA for Ada");
+    expect((await list(h)).length).toBe(before.length);
+  });
+
+  test("an explicit plain-text part is sent instead of the derived one", async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    capture();
+    const res = await h.fetch(
+      "/api/admin/email-templates/send-test",
+      json("POST", {
+        to: "probe@example.test",
+        subject: "Hi",
+        bodyHtml: "<p>html part</p>",
+        bodyText: "text part for {{ who }}",
+        vars: { who: "Grace" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(emails[0]).toContain("text part for Grace");
+    expect(emails[0]).not.toContain("html part");
+  });
+
+  test("a draft with no subject or body is refused before anything is sent", async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    capture();
+    const res = await h.fetch(
+      "/api/admin/email-templates/send-test",
+      json("POST", { subject: "", bodyHtml: "" }),
+    );
+    expect(res.status).toBe(422);
+    expect(emails).toEqual([]);
   });
 });

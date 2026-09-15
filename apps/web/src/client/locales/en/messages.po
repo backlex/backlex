@@ -981,7 +981,7 @@ msgstr "{changedCount} field(s) will change."
 msgid "{clean} already exists"
 msgstr "{clean} already exists"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "{count} filters"
 msgstr "{count} filters"
 
@@ -1063,11 +1063,11 @@ msgstr "{loadError} — nothing is shown rather than a made-up rule, because sav
 msgid "{maxAge} days"
 msgstr "{maxAge} days"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "{n} after"
 msgstr "{n} after"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "{n} before"
 msgstr "{n} before"
 
@@ -1300,7 +1300,7 @@ msgstr "1 failed delivery in a row"
 msgid "1 file"
 msgstr "1 file"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "1 filter"
 msgstr "1 filter"
 
@@ -2909,7 +2909,7 @@ msgstr "Answered in {0}ms"
 msgid "Answers afresh every time — safe to put on a schedule."
 msgstr "Answers afresh every time — safe to put on a schedule."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "any"
 msgstr "any"
 
@@ -2921,7 +2921,7 @@ msgstr "Any audience accepted"
 #~ msgid "Any audience accepted — set one if this issuer serves other apps too."
 #~ msgstr "Any audience accepted — set one if this issuer serves other apps too."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "any collection"
 msgstr "any collection"
 
@@ -2937,7 +2937,7 @@ msgstr "any event"
 msgid "Any ISO-4217 code"
 msgstr "Any ISO-4217 code"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Any item change"
 msgstr "Any item change"
 
@@ -6277,7 +6277,7 @@ msgstr "Custom roles layer additively on top of authenticated."
 msgid "custom rule"
 msgstr "custom rule"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Custom schedule"
 msgstr "Custom schedule"
 
@@ -8153,8 +8153,8 @@ msgstr "Evening"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
-#: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/automation/payments.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Event"
 msgstr "Event"
@@ -8226,7 +8226,7 @@ msgstr "Events updated. The provider was re-registered with a new secret."
 msgid "every {0} min"
 msgstr "every {0} min"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {days} at {time}"
 msgstr "Every {days} at {time}"
 
@@ -8234,15 +8234,15 @@ msgstr "Every {days} at {time}"
 #~ msgid "Every {m} minutes"
 #~ msgstr "Every {m} minutes"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {n} hours"
 msgstr "Every {n} hours"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {n} hours at {minute}"
 msgstr "Every {n} hours at {minute}"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {n} minutes"
 msgstr "Every {n} minutes"
 
@@ -8282,7 +8282,7 @@ msgstr "Every condition needs a value before this can be saved."
 msgid "Every day"
 msgstr "Every day"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every day at {time}"
 msgstr "Every day at {time}"
 
@@ -8290,11 +8290,11 @@ msgstr "Every day at {time}"
 msgid "Every free number field on <0>{collection}</0> is already on the form."
 msgstr "Every free number field on <0>{collection}</0> is already on the form."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every hour"
 msgstr "Every hour"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every hour at {minute}"
 msgstr "Every hour at {minute}"
 
@@ -8302,7 +8302,7 @@ msgstr "Every hour at {minute}"
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every minute"
 msgstr "Every minute"
 
@@ -10108,7 +10108,7 @@ msgstr "Includes {0} sample rows to explore — removable in one click later"
 #~ msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 #~ msgstr "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Incoming webhook"
 msgstr "Incoming webhook"
 
@@ -10552,7 +10552,7 @@ msgstr "It stays on this policy once you write something in it, or make it the b
 msgid "Item archived."
 msgstr "Item archived."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Item created"
 msgstr "Item created"
 
@@ -10560,7 +10560,7 @@ msgstr "Item created"
 msgid "Item created."
 msgstr "Item created."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Item deleted"
 msgstr "Item deleted"
 
@@ -10591,7 +10591,7 @@ msgstr "Item published."
 msgid "Item reverted to draft."
 msgstr "Item reverted to draft."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Item updated"
 msgstr "Item updated"
 
@@ -12197,7 +12197,7 @@ msgstr "Mon"
 msgid "Mono"
 msgstr "Mono"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Monthly on day {day} at {time}"
 msgstr "Monthly on day {day} at {time}"
 
@@ -13021,7 +13021,12 @@ msgstr "No collections match."
 msgid "No collections to graph — create one to populate the ERD."
 msgstr "No collections to graph — create one to populate the ERD."
 
+#: src/client/admin/pages/observability/revisions.tsx
+msgid "No collections to show history for."
+msgstr "No collections to show history for."
+
 #: src/client/admin/collections/collections-index.tsx
+#: src/client/admin/pages/observability/revisions.tsx
 msgid "No collections yet"
 msgstr "No collections yet"
 
@@ -13077,6 +13082,10 @@ msgstr "No crashes here"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "No crashes match these filters"
 msgstr "No crashes match these filters"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "No cron pattern yet"
+msgstr "No cron pattern yet"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "No data yet — run the panel."
@@ -13342,6 +13351,10 @@ msgstr "No items"
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "No items in this collection yet."
 msgstr "No items in this collection yet."
+
+#: src/client/admin/pages/observability/revisions.tsx
+msgid "No items match your search."
+msgstr "No items match your search."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "No items recorded — send props.items with a purchase."
@@ -14390,7 +14403,7 @@ msgstr "On managed cloud, generation runs on the platform gateway and this pick 
 msgid "On submit"
 msgstr "On submit"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "On the date"
 msgstr "On the date"
 
@@ -15423,6 +15436,7 @@ msgstr "physical c_<slug> tables"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/data/search-playground.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/revisions.tsx
 msgid "Pick a collection"
 msgstr "Pick a collection"
 
@@ -18233,7 +18247,7 @@ msgstr "Run hook"
 msgid "Run it again"
 msgstr "Run it again"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Run manually"
 msgstr "Run manually"
 
@@ -18321,8 +18335,8 @@ msgid "Runs at most once per row. A flow that fires again reads the first answer
 msgstr "Runs at most once per row. A flow that fires again reads the first answer back."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
-msgid "runs daily at 09:00 UTC"
-msgstr "runs daily at 09:00 UTC"
+#~ msgid "runs daily at 09:00 UTC"
+#~ msgstr "runs daily at 09:00 UTC"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Runs every panel and prints the dashboard to a PDF. To send it on a schedule instead, add a \"Deliver report\" step to a cron flow."
@@ -18866,6 +18880,10 @@ msgstr "Search index rebuilt: {0} indexed, {1} empty, {2} total."
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Search index rebuilt: {0} indexed, {1} total."
 msgstr "Search index rebuilt: {0} indexed, {1} total."
+
+#: src/client/admin/pages/observability/revisions.tsx
+msgid "Search items"
+msgstr "Search items"
 
 #: src/client/admin/pages/data/storage/index.tsx
 msgid "Search keys…"
@@ -20488,7 +20506,7 @@ msgstr "static panels render their config object verbatim — set it from the AP
 msgid "Status"
 msgstr "Status"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Status change"
 msgstr "Status change"
 
@@ -22959,7 +22977,7 @@ msgstr "Unreachable: {0}"
 msgid "Unread"
 msgstr "Unread"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Unreadable trigger"
 msgstr "Unreadable trigger"
 
@@ -23273,7 +23291,7 @@ msgstr "User"
 msgid "User filter"
 msgstr "User filter"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "User signed up"
 msgstr "User signed up"
 
@@ -23625,7 +23643,7 @@ msgstr "Wed"
 msgid "Weekdays"
 msgstr "Weekdays"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Weekdays at {time}"
 msgstr "Weekdays at {time}"
 

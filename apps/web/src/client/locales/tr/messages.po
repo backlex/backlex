@@ -981,7 +981,7 @@ msgstr "{changedCount} alan değişecek."
 msgid "{clean} already exists"
 msgstr "{clean} zaten var"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "{count} filters"
 msgstr "{count} filtre"
 
@@ -1063,11 +1063,11 @@ msgstr "{loadError} — uydurma bir kural yerine hiçbir şey gösterilmiyor, ç
 msgid "{maxAge} days"
 msgstr "{maxAge} gün"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "{n} after"
 msgstr "{n} sonra"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "{n} before"
 msgstr "{n} önce"
 
@@ -1300,7 +1300,7 @@ msgstr "üst üste 1 başarısız teslimat"
 msgid "1 file"
 msgstr "1 dosya"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "1 filter"
 msgstr "1 filtre"
 
@@ -2909,7 +2909,7 @@ msgstr "{0}ms içinde yanıtladı"
 msgid "Answers afresh every time — safe to put on a schedule."
 msgstr "Her seferinde yeni bir yanıt verir — zamanlanmış çalıştırmaya uygun."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "any"
 msgstr "herhangi"
 
@@ -2921,7 +2921,7 @@ msgstr "Her audience kabul ediliyor"
 #~ msgid "Any audience accepted — set one if this issuer serves other apps too."
 #~ msgstr "Her audience kabul ediliyor — bu sağlayıcı başka uygulamalara da hizmet ediyorsa bir değer girin."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "any collection"
 msgstr "herhangi bir koleksiyon"
 
@@ -2937,7 +2937,7 @@ msgstr "herhangi bir olay"
 msgid "Any ISO-4217 code"
 msgstr "Herhangi bir ISO-4217 kodu"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Any item change"
 msgstr "Herhangi bir öğe değişikliği"
 
@@ -6277,7 +6277,7 @@ msgstr "Özel roller, authenticated rolünün üzerine eklenerek katmanlanır."
 msgid "custom rule"
 msgstr "özel kural"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Custom schedule"
 msgstr "Özel zamanlama"
 
@@ -8153,8 +8153,8 @@ msgstr "Akşam"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
-#: src/client/admin/pages/automation/flows.tsx
 #: src/client/admin/pages/automation/payments.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 #: src/client/admin/pages/automation/webhooks.tsx
 msgid "Event"
 msgstr "Olay"
@@ -8226,7 +8226,7 @@ msgstr "Olaylar güncellendi. Sağlayıcı yeni bir gizli anahtarla yeniden kayd
 msgid "every {0} min"
 msgstr "{0} dakikada bir"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {days} at {time}"
 msgstr "{days} günleri saat {time}"
 
@@ -8234,15 +8234,15 @@ msgstr "{days} günleri saat {time}"
 #~ msgid "Every {m} minutes"
 #~ msgstr "{m} dakikada bir"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {n} hours"
 msgstr "Her {n} saatte bir"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {n} hours at {minute}"
 msgstr "Her {n} saatte bir ({minute})"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every {n} minutes"
 msgstr "Her {n} dakikada bir"
 
@@ -8282,7 +8282,7 @@ msgstr "Kaydedebilmek için her koşulun bir değeri olmalı."
 msgid "Every day"
 msgstr "Her gün"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every day at {time}"
 msgstr "Her gün saat {time}"
 
@@ -8290,11 +8290,11 @@ msgstr "Her gün saat {time}"
 msgid "Every free number field on <0>{collection}</0> is already on the form."
 msgstr "<0>{collection}</0> içindeki boştaki tüm sayı alanları zaten formda."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every hour"
 msgstr "Her saat başı"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every hour at {minute}"
 msgstr "Her saat ({minute})"
 
@@ -8302,7 +8302,7 @@ msgstr "Her saat ({minute})"
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bir izin listesiyle daraltmak için aşağıdan bir araç işaretleyin."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Every minute"
 msgstr "Her dakika"
 
@@ -10108,7 +10108,7 @@ msgstr "Keşfetmek için {0} örnek satır içerir — sonradan tek tıkla kald�
 #~ msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 #~ msgstr "Gelen veriler insert/update başarılı olmadan önce bu kuralla eşleşmelidir. Başarısızlıklar <0>422 invalid_payload</0> döndürür."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Incoming webhook"
 msgstr "Gelen webhook"
 
@@ -10552,7 +10552,7 @@ msgstr "İçine bir şey yazdığınızda ya da bandın dili yaptığınızda bu
 msgid "Item archived."
 msgstr "Öğe arşivlendi."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Item created"
 msgstr "Öğe oluşturuldu"
 
@@ -10560,7 +10560,7 @@ msgstr "Öğe oluşturuldu"
 msgid "Item created."
 msgstr "Öğe oluşturuldu."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Item deleted"
 msgstr "Öğe silindi"
 
@@ -10591,7 +10591,7 @@ msgstr "Öğe yayınlandı."
 msgid "Item reverted to draft."
 msgstr "Öğe taslağa döndürüldü."
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Item updated"
 msgstr "Öğe güncellendi"
 
@@ -12197,7 +12197,7 @@ msgstr "Pzt"
 msgid "Mono"
 msgstr "Eşaralıklı"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Monthly on day {day} at {time}"
 msgstr "Her ayın {day}. günü saat {time}"
 
@@ -13021,7 +13021,12 @@ msgstr "Eşleşen koleksiyon yok."
 msgid "No collections to graph — create one to populate the ERD."
 msgstr "Grafik için koleksiyon yok — ERD'yi doldurmak için bir tane oluşturun."
 
+#: src/client/admin/pages/observability/revisions.tsx
+msgid "No collections to show history for."
+msgstr "Geçmişi gösterilecek koleksiyon yok."
+
 #: src/client/admin/collections/collections-index.tsx
+#: src/client/admin/pages/observability/revisions.tsx
 msgid "No collections yet"
 msgstr "Henüz koleksiyon yok"
 
@@ -13077,6 +13082,10 @@ msgstr "Burada çökme yok"
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "No crashes match these filters"
 msgstr "Bu filtrelere uyan çökme yok"
+
+#: src/client/admin/pages/automation/flow-builder.tsx
+msgid "No cron pattern yet"
+msgstr "Henüz cron deseni yok"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "No data yet — run the panel."
@@ -13342,6 +13351,10 @@ msgstr "Öğe yok"
 #: src/client/admin/pages/observability/revisions.tsx
 msgid "No items in this collection yet."
 msgstr "Bu koleksiyonda henüz öğe yok."
+
+#: src/client/admin/pages/observability/revisions.tsx
+msgid "No items match your search."
+msgstr "Aramanızla eşleşen öğe yok."
 
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "No items recorded — send props.items with a purchase."
@@ -14390,7 +14403,7 @@ msgstr "Yönetilen bulutta üretim platform ağ geçidinde çalışır ve bu se�
 msgid "On submit"
 msgstr "Gönderimde"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "On the date"
 msgstr "Tarihin kendisinde"
 
@@ -15423,6 +15436,7 @@ msgstr "fiziksel c_<slug> tabloları"
 #: src/client/admin/pages/automation/integration-syncs-card.tsx
 #: src/client/admin/pages/data/search-playground.tsx
 #: src/client/admin/pages/observability/kpis.tsx
+#: src/client/admin/pages/observability/revisions.tsx
 msgid "Pick a collection"
 msgstr "Bir koleksiyon seçin"
 
@@ -18233,7 +18247,7 @@ msgstr "Kanca çalıştır"
 msgid "Run it again"
 msgstr "Yeniden çalıştır"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Run manually"
 msgstr "Elle çalıştırılır"
 
@@ -18321,8 +18335,8 @@ msgid "Runs at most once per row. A flow that fires again reads the first answer
 msgstr "Satır başına en fazla bir kez çalışır. Yeniden tetiklenen bir akış ilk yanıtı geri okur."
 
 #: src/client/admin/pages/automation/flow-builder.tsx
-msgid "runs daily at 09:00 UTC"
-msgstr "her gün 09:00 UTC'de çalışır"
+#~ msgid "runs daily at 09:00 UTC"
+#~ msgstr "her gün 09:00 UTC'de çalışır"
 
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Runs every panel and prints the dashboard to a PDF. To send it on a schedule instead, add a \"Deliver report\" step to a cron flow."
@@ -18866,6 +18880,10 @@ msgstr "Arama indeksi yeniden oluşturuldu: {0} indekslendi, {1} boş, toplam {2
 #: src/client/admin/pages/data/search-playground.tsx
 msgid "Search index rebuilt: {0} indexed, {1} total."
 msgstr "Arama indeksi yeniden oluşturuldu: {0} indekslendi, toplam {1}."
+
+#: src/client/admin/pages/observability/revisions.tsx
+msgid "Search items"
+msgstr "Öğelerde ara"
 
 #: src/client/admin/pages/data/storage/index.tsx
 msgid "Search keys…"
@@ -20488,7 +20506,7 @@ msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşt
 msgid "Status"
 msgstr "Durum"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Status change"
 msgstr "Durum değişikliği"
 
@@ -22959,7 +22977,7 @@ msgstr "Erişilemedi: {0}"
 msgid "Unread"
 msgstr "Okunmamış"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Unreadable trigger"
 msgstr "Okunamayan tetikleyici"
 
@@ -23273,7 +23291,7 @@ msgstr "Kullanıcı"
 msgid "User filter"
 msgstr "Kullanıcı filtresi"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "User signed up"
 msgstr "Kullanıcı kaydoldu"
 
@@ -23625,7 +23643,7 @@ msgstr "Çar"
 msgid "Weekdays"
 msgstr "Hafta içi"
 
-#: src/client/admin/pages/automation/flows.tsx
+#: src/client/admin/pages/automation/use-trigger-text.ts
 msgid "Weekdays at {time}"
 msgstr "Hafta içi her gün saat {time}"
 

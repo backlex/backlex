@@ -383,6 +383,18 @@ describe("worker startup budget", () => {
     // `routes/items/read.ts`, and the nine "not on the startup path" guards are
     // green. `bun run startup:budget` — the half that reads the BUILT bundle —
     // is the one to watch if this ever stops being true.
-    expect(kib).toBeLessThan(8515);
+    //
+    // Raised 8515 → 8535 on 2026-09-15, measured at 8526 — main sat at ~8514.7,
+    // so the first eager change of the issue sweep tripped it. +11.3 KiB across
+    // four files that were ALREADY eager, most of it the reasons written next to
+    // the code: `routes/push/templates.ts` +5.0 (copy-on-write for shared rows,
+    // #385), `services/demo.ts` +4.6 (the orphan-table sweep and the loud apply
+    // check, #386; the auth-hook deny entry), `routes/shared-links/index.ts`
+    // +1.3 (`readableRow` on mint and list), `services/auth-hooks.ts` +0.4.
+    // Their new import edges — `auth-hooks → demo`, `demo → items/sql-helpers`,
+    // `shared-links → items/collection-loader + row-access` — land on modules
+    // the graph already reached, and the nine not-on-the-startup-path guards
+    // above stay green. Nothing new became reachable.
+    expect(kib).toBeLessThan(8535);
   });
 });

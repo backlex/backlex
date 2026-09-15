@@ -3,7 +3,7 @@ import { hashSecret } from "@backlex/auth/secret-hash";
 import { dropCollection } from "@backlex/db";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, gte, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Env } from "../env";
 import type { Ctx } from "../context";
 import { invalidateTenantCollections } from "./collections/cache";
@@ -17,6 +17,7 @@ import {
   assignRoleByName,
 } from "./seed";
 import { applyTemplate } from "./templates";
+import { queryAll } from "./items/sql-helpers";
 import { getTemplateLazy } from "../templates/lazy";
 import { SYSTEM_ROLES } from "@backlex/core";
 
@@ -221,9 +222,51 @@ const WIPE_TABLE_KEYS = [
 
 export interface DemoResetResult {
   droppedCollections: number;
+  /** Managed tables no `collections` row pointed at, dropped by the sweep. */
+  droppedOrphanTables: number;
   templateApplied: boolean;
   at: number;
 }
+
+/** A managed base table — `derivePhysicalTable`'s `c_<12 hex>_<slug>`. */
+const MANAGED_TABLE = /^c_[0-9a-f]{12}_[a-z0-9_]+$/;
+/** The sidecars `dropCollection` removes alongside their base table. */
+const SIDECAR_SUFFIX = /__(?:i18n|fts(?:_data|_idx|_content|_docsize|_config)?)$/;
+
+/**
+ * Every managed base table that physically exists, whatever the metadata says.
+ *
+ * The wipe used to drop only the tables `collections` listed. A table whose
+ * metadata row was lost became invisible to every reset after that, and the
+ * template apply then skipped its slug because the table existed — silently,
+ * forever. That is how the playground ran without `carts`, `order_items`,
+ * `fulfillments`, `discounts`, `collections` and `redirects` for a month: six
+ * tables orphaned in August while branch builds replayed migrations against
+ * its live D1 (#386).
+ *
+ * Read with no bound LIKE (D1 refuses a bound pattern) and filtered here.
+ */
+const listManagedBaseTables = async (ctx: Ctx): Promise<string[]> => {
+  const rows = await queryAll<{ name: string }>(
+    ctx,
+    ctx.dialect === "pg"
+      ? sql.raw(
+          `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'`,
+        )
+      : sql.raw(`SELECT name FROM sqlite_master WHERE type = 'table'`),
+  );
+  const bases = new Set<string>();
+  for (const { name } of rows) {
+    if (typeof name === "string" && MANAGED_TABLE.test(name)) bases.add(name.replace(SIDECAR_SUFFIX, ""));
+  }
+  return [...bases].sort();
+};
+
+/** The global scheduler watermarks (`scheduler.ts` `claimSweep`) share the
+ *  settings table, and the wipe must leave them: deleting them every hour made
+ *  the DAILY schema-reapply sweep run hourly, into the middle of the reset's
+ *  own table creation. */
+const SWEEP_KEY_PREFIX = "__sweep__";
 
 /**
  * Wipe the playground back to its seeded state:
@@ -272,6 +315,25 @@ export const resetDemoWorkspace = async (
   }
   await (db as any).delete(ct);
 
+  // 1b. Whatever is left of the managed tables: orphans from an earlier lost
+  // metadata row, and any drop above that failed (its metadata is gone now, so
+  // this is the only place it can still be caught). Adopted tables are never
+  // ours to drop.
+  const adoptedTables = new Set(collections.filter((c) => c.adopted).map((c) => c.physicalTable));
+  const orphans: string[] = [];
+  for (const table of await listManagedBaseTables(ctx)) {
+    if (adoptedTables.has(table)) continue;
+    try {
+      await dropCollection(db, dialect, table);
+      orphans.push(table);
+    } catch (e) {
+      console.error("[demo-reset] orphan drop failed", table, (e as Error).message);
+    }
+  }
+  if (orphans.length > 0) {
+    console.error(`[demo-reset] dropped ${orphans.length} table(s) no collection pointed at: ${orphans.join(", ")}`);
+  }
+
   // 2a. Stored file objects — best-effort, capped so a spammed playground
   // can't stall the reset; leftover blobs are orphaned metadata-free objects.
   try {
@@ -304,7 +366,21 @@ export const resetDemoWorkspace = async (
   // Keep the reset timestamp (written as a claim before the wipe) — drop every
   // other setting so visitor branding/config changes don't survive.
   const st = settingsTable(dialect);
-  await (db as any).delete(st).where(ne(st.key, DEMO_LAST_RESET_KEY));
+  await (db as any)
+    .delete(st)
+    .where(
+      and(
+        ne(st.key, DEMO_LAST_RESET_KEY),
+        // Kept only as the scheduler writes them — instance-wide rows — so a
+        // workspace setting that merely borrows the prefix is still wiped. The
+        // prefix is a range, not a LIKE: see listManagedBaseTables.
+        or(
+          isNotNull(st.tenantId),
+          lt(st.key, SWEEP_KEY_PREFIX),
+          gte(st.key, `${SWEEP_KEY_PREFIX}\u{10FFFF}`),
+        ),
+      ),
+    );
 
   // 3. Workspaces + users: keep only the default workspace and the demo admin.
   const { email, password } = demoCredentials(env);
@@ -367,23 +443,42 @@ export const resetDemoWorkspace = async (
   await ensureTenantMembership(ctx, tenantId, demoUserId, email, "owner");
 
   // 4. Re-seed the vertical template (roles/dashboards/sample rows).
+  //
+  // Both failure shapes now throw, so `maybeResetDemo` hands the claim back and
+  // retries in minutes. They used to be swallowed: an apply that died half way
+  // logged one line and left the playground partly seeded for the hour, and a
+  // SKIPPED collection — which on a just-wiped workspace can only mean a table
+  // survived the wipe — was not reported at all.
   let templateApplied = false;
   if (env.SEED_TEMPLATE && (await getTemplateLazy(env.SEED_TEMPLATE))) {
+    let result: Awaited<ReturnType<typeof applyTemplate>>;
     try {
-      await applyTemplate(ctx, tenantId, env.SEED_TEMPLATE);
-      templateApplied = true;
+      result = await applyTemplate(ctx, tenantId, env.SEED_TEMPLATE);
     } catch (e) {
-      console.error("[demo-reset] template apply failed", (e as Error).message);
+      // Drizzle's message is the SQL it ran; what the database said is on `cause`.
+      const cause = (e as { cause?: unknown }).cause;
+      console.error(
+        "[demo-reset] template apply failed",
+        (e as Error).message,
+        cause instanceof Error ? cause.message : (cause ?? ""),
+      );
+      throw e;
     }
+    if (result.skipped.length > 0) {
+      throw new Error(
+        `[demo-reset] ${env.SEED_TEMPLATE} left ${result.skipped.length} collection(s) uncreated on a wiped workspace: ${result.skipped.join(", ")}`,
+      );
+    }
+    templateApplied = true;
   }
 
   await writeLastResetAt(ctx, tenantId, now.getTime());
   invalidateTenantCollections(tenantId);
   invalidateAllPermissions();
   console.log(
-    `[demo-reset] wiped playground (${dropped} collections) + reseeded${templateApplied ? ` from ${env.SEED_TEMPLATE}` : ""}`,
+    `[demo-reset] wiped playground (${dropped} collections${orphans.length ? `, ${orphans.length} orphan tables` : ""}) + reseeded${templateApplied ? ` from ${env.SEED_TEMPLATE}` : ""}`,
   );
-  return { droppedCollections: dropped, templateApplied, at: now.getTime() };
+  return { droppedCollections: dropped, droppedOrphanTables: orphans.length, templateApplied, at: now.getTime() };
 };
 
 /**

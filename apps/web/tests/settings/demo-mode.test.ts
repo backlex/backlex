@@ -10,9 +10,11 @@
  *    `maybeResetDemo` without any manual sign-up.
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { sql } from "drizzle-orm";
 import { makeHarness, seedAdmin, type TestHarness } from "../setup";
 import { buildContext } from "../../src/server/context";
+import { getTemplateLazy } from "../../src/server/templates/lazy";
 import {
   DEMO_RETRY_BACKOFF_MS,
   demoResetIntervalMs,
@@ -208,6 +210,117 @@ describe("demo mode — reset", () => {
     expect(list.status).toBe(200);
     const { data } = (await list.json()) as any;
     expect((data as unknown[]).length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The playground ran for a month without six ecommerce collections (#386).
+ * Their physical tables had lost their `collections` rows in August, while
+ * branch builds replayed migrations against the live D1. The wipe dropped only
+ * the tables the metadata listed, so the orphans survived every reset; the
+ * template apply then skipped those slugs because the table existed; and the
+ * reset reported success. Each spec below re-creates one link of that chain.
+ */
+describe("demo mode — a reset converges on the whole template", () => {
+  /** Managed base tables on disk vs the ones a `collections` row points at. */
+  const tableCensus = (harness: TestHarness) => {
+    const db = new Database(harness.env.SQLITE_PATH as string);
+    try {
+      const onDisk = (db.query("select name from sqlite_master where type = 'table'").all() as { name: string }[])
+        .map((r) => r.name)
+        .filter((n) => /^c_[0-9a-f]{12}_[a-z0-9_]+$/.test(n) && !/__(i18n|fts)/.test(n));
+      const described = (db.query("select slug, physical_table as t from collections").all() as { slug: string; t: string }[]);
+      return { onDisk: onDisk.sort(), described };
+    } finally {
+      db.close();
+    }
+  };
+
+  const templateSlugs = async (id: string) =>
+    ((await getTemplateLazy(id))?.collections ?? []).map((c) => c.slug).sort();
+
+  test("a table no collection points at is dropped, and its collection comes back with its rows", async () => {
+    h = makeHarness({ DEMO_MODE: "1", SEED_TEMPLATE: "blog" });
+    const ctx = await buildContext(h.env);
+    expect(await maybeResetDemo(ctx, h.env, new Date())).toBe(true);
+
+    // Lose `tags`' metadata row and keep its table — the August state.
+    const db = new Database(h.env.SQLITE_PATH as string);
+    try {
+      db.query("delete from collections where slug = 'tags'").run();
+    } finally {
+      db.close();
+    }
+
+    const result = await resetDemoWorkspace(ctx, h.env);
+    expect(result.droppedOrphanTables).toBe(1);
+    expect(result.templateApplied).toBe(true);
+
+    const { onDisk, described } = tableCensus(h);
+    expect(described.map((c) => c.slug).sort()).toEqual(await templateSlugs("blog"));
+    // No table on disk that nothing describes.
+    expect(onDisk).toEqual(described.map((c) => c.t).sort());
+
+    const check = new Database(h.env.SQLITE_PATH as string);
+    try {
+      const tags = described.find((c) => c.slug === "tags")!;
+      const rows = check.query(`select count(*) as n from "${tags.t}"`).get() as { n: number };
+      // Sample rows are seeded only into a collection the apply CREATED; a
+      // skipped one came back empty, and so did everything that referenced it.
+      expect(rows.n).toBeGreaterThan(0);
+    } finally {
+      check.close();
+    }
+  });
+
+  test("a collection the template could not create fails the reset, instead of reporting success", async () => {
+    h = makeHarness({ DEMO_MODE: "1", SEED_TEMPLATE: "blog" });
+    const ctx = await buildContext(h.env);
+    expect(await maybeResetDemo(ctx, h.env, new Date())).toBe(true);
+    const tags = tableCensus(h).described.find((c) => c.slug === "tags")!;
+
+    // A table that will not drop — the one failure the sweep cannot repair —
+    // must surface as a failed reset (which `maybeResetDemo` retries within
+    // minutes), not as an hour of a playground missing a collection.
+    const realRun = (ctx.db as any).run.bind(ctx.db);
+    (ctx.db as any).run = (query: any) => {
+      const text = String(query?.queryChunks?.map((c: any) => c?.value ?? c).join("") ?? "");
+      if (text.includes(`DROP TABLE IF EXISTS "${tags.t}"`)) throw new Error("simulated: table will not drop");
+      return realRun(query);
+    };
+    try {
+      await expect(resetDemoWorkspace(ctx, h.env)).rejects.toThrow(/uncreated on a wiped workspace: tags/);
+    } finally {
+      (ctx.db as any).run = realRun;
+    }
+  });
+
+  test("the scheduler's sweep watermarks survive a reset, and nothing else borrowing the prefix does", async () => {
+    h = makeHarness({ DEMO_MODE: "1", SEED_TEMPLATE: "blog" });
+    const ctx = await buildContext(h.env);
+    expect(await maybeResetDemo(ctx, h.env, new Date())).toBe(true);
+    const db = new Database(h.env.SQLITE_PATH as string);
+    try {
+      const tenant = db.query("select id from tenants limit 1").get() as { id: string };
+      const insert = db.query("insert into app_settings (id, tenant_id, key, value, updated_at) values (?, ?, ?, '1', ?)");
+      insert.run("__sweep__schema_reapply", null, "__sweep__schema_reapply", Date.now());
+      insert.run(crypto.randomUUID(), tenant.id, "__sweep__visitor", Date.now());
+    } finally {
+      db.close();
+    }
+    await resetDemoWorkspace(ctx, h.env);
+    const after = new Database(h.env.SQLITE_PATH as string);
+    try {
+      const keys = (after.query("select key from app_settings where key >= '__sweep__' and key < '__sweep_~'").all() as { key: string }[]).map((r) => r.key);
+      // Wiped hourly, the DAILY reapply ran every hour, into the reset's own
+      // table creation (`schema-reapply-failed … CREATE TABLE …brands__i18n`).
+      expect(keys).toContain("__sweep__schema_reapply");
+      // Kept only as the scheduler writes them: instance-wide. A workspace row
+      // under the same prefix is visitor state and goes with the rest.
+      expect(keys).not.toContain("__sweep__visitor");
+    } finally {
+      after.close();
+    }
   });
 });
 

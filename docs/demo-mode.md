@@ -58,13 +58,19 @@ and `USAGE_LIMIT_*`.
 for a manual wipe) converges the instance back to its seeded state:
 
 1. drops every managed collection's physical table + all collection metadata,
+   then every managed table (`c_<12 hex>_<slug>`) still on disk that no
+   collection row points at — an orphan would otherwise survive every reset and
+   make the template skip its collection for good,
 2. best-effort deletes stored file objects, then truncates every visitor-state
    system table (flows, webhooks, api keys, app users, forms, dashboards,
-   settings, …),
+   settings, …) — keeping the scheduler's `__sweep__*` watermarks,
 3. deletes every workspace except the default one and every user except the
    demo admin — recreating the admin with the published password if a visitor
    changed or deleted it,
 4. re-applies `SEED_TEMPLATE` (collections, sample rows, roles, dashboards).
+   An apply that throws, or that skips any collection on the freshly wiped
+   workspace, fails the reset — so it is retried (below) instead of leaving a
+   partly seeded playground for the whole interval.
 
 The last-reset timestamp is persisted in `app_settings`, so the cadence
 survives isolate restarts; each isolate re-checks it at most every 5 minutes.

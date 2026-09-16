@@ -27,8 +27,11 @@ export interface Kpi {
 export type KpiInput = Omit<Kpi, "id" | "tenantId" | "createdBy">;
 
 export interface KpiPoint {
-  /** Present only on a grouped KPI's rows. */
+  /** Present only on a grouped KPI's rows. For a relation, the related id. */
   label?: string;
+  /** The related row's name when grouped by a relation the caller may read —
+   *  render `display ?? label`. */
+  display?: string;
   /** Null for an avg/min/max over an empty window — which is not a zero. */
   value: number | null;
   previousValue: number | null;

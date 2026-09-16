@@ -21,6 +21,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Ctx } from "../../context";
 import { type AggregateOpts, runItemsAggregate } from "../items/aggregate";
+import { relationLabels } from "../items/relation-labels";
 import { serialize } from "../items/serialize";
 import { resolvePermission } from "../permissions";
 
@@ -139,8 +140,14 @@ const DEFAULT_BUCKETS = 24;
 const MAX_BUCKETS = 200;
 
 export interface KpiPoint {
-  /** Present only for a grouped metric. */
+  /** Present only for a grouped metric. The grouped value itself — for a
+   *  relation that is the related row's id, and it stays the id so a caller can
+   *  match or filter on it. */
   label?: string;
+  /** The human name for `label` when the metric is grouped by a relation the
+   *  caller may read ("News" for a category id). Absent otherwise — render
+   *  `display ?? label`. */
+  display?: string;
   value: number | null;
   previousValue: number | null;
   delta: number | null;
@@ -412,19 +419,44 @@ export const runKpi = async (
   for (const row of previousRows ?? []) {
     previousByLabel.set(String(row.label), row.value);
   }
+  // A relation groups by the stored id; name each one the way the admin would,
+  // clamped to what this caller may read on the TARGET collection.
+  const displays = await relationLabels(
+    ctx,
+    auth,
+    tenantId,
+    kpi.collection,
+    kpi.groupBy,
+    currentRows.map((row) => String(row.label)),
+  );
   const rows = currentRows.map((row) => {
     const label = String(row.label);
+    const display = displays.get(label);
     const previousValue = previousRows
       ? readValue(previousByLabel.get(label), kpi.agg)
       : null;
     const currency = (row.currency as string | undefined) ?? null;
     return pairPoint(readValue(row.value, kpi.agg), previousValue, {
       label,
+      ...(display !== undefined ? { display } : {}),
       ...(currency ? { currency } : {}),
     });
   });
   return { ...meta, point: null, rows, series };
 };
+
+/**
+ * A KPI result on the `{label, value}` shape every dashboard panel renders.
+ *
+ * One function for the three panel paths (dashboard run, panel preview, saved
+ * panel) so a relation's name reaches all of them: `label` becomes `display`
+ * where there is one, because a chart has one label column and it should read
+ * "News", not the id.
+ */
+export const kpiPanelRows = (result: KpiResult): Record<string, unknown>[] =>
+  result.rows
+    ? result.rows.map(({ display, ...r }) => ({ ...r, label: display ?? r.label }))
+    : [{ label: result.name, ...(result.point ?? {}) }];
 
 /**
  * Evaluate a metric with the caller's own read visibility resolved for it.

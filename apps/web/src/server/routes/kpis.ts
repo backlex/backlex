@@ -113,6 +113,7 @@ const KpiSeriesPointSchema = z.object({
 
 const KpiPointSchema = z.object({
   label: z.string().optional(),
+  display: z.string().optional(),
   value: z.number().nullable(),
   previousValue: z.number().nullable(),
   delta: z.number().nullable(),

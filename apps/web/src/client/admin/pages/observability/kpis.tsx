@@ -708,7 +708,7 @@ function KpiTile({
         <div className="flex flex-col gap-1">
           {data.rows.slice(0, 5).map((row) => (
             <div key={row.label} className="flex items-baseline justify-between gap-2 text-[12.5px]">
-              <span className="truncate text-muted-foreground">{row.label}</span>
+              <span className="truncate text-muted-foreground">{row.display ?? row.label}</span>
               <span className="shrink-0 font-medium tabular-nums">
                 {formatValue(row.value, kpi, row.currency, locale)}
               </span>

@@ -9,7 +9,9 @@
     ".": "./src/index.ts",
     "./adapters": "./src/adapters/index.ts",
     "./email-templates": "./src/email-templates.ts",
-    "./errors": "./src/errors.ts"
+    "./errors": "./src/errors.ts",
+    "./appearance": "./src/appearance.ts",
+    "./row-label": "./src/row-label.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

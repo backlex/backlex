@@ -63,8 +63,10 @@ export interface ApiKpi {
 }
 
 export interface ApiKpiPoint {
-  /** Present only on a grouped KPI's rows. */
+  /** Present only on a grouped KPI's rows. For a relation, the related id. */
   label?: string;
+  /** The related row's name when grouped by a relation — render `display ?? label`. */
+  display?: string;
   value: number | null;
   previousValue: number | null;
   delta: number | null;

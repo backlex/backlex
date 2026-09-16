@@ -30,7 +30,7 @@ import {
   analyticsRetention,
 } from "./analytics";
 import { type AggregateOpts, runItemsAggregate } from "./items/aggregate";
-import { requireKpi, runKpiForCaller } from "./kpis";
+import { requireKpi, kpiPanelRows, runKpiForCaller } from "./kpis";
 import { queryAll } from "./items/sql-helpers";
 import { resolvePermission } from "./permissions";
 import { assertWritableScope, isInstanceOperator } from "./roles/guards";
@@ -614,9 +614,7 @@ const runPanel = async (
       });
       // Flatten onto the {label, value} shape every panel viz already renders,
       // keeping the comparison fields for tiles that show a delta.
-      const data = result.rows
-        ? result.rows.map((r) => ({ ...r }))
-        : [{ label: result.name, ...(result.point ?? {}) }];
+      const data = kpiPanelRows(result);
       return { ...base, data };
     }
     if (panel.kind === "analytics") {

@@ -88,6 +88,10 @@ const KpiPointType = new GraphQLObjectType({
   name: "KpiPoint",
   fields: {
     label: { type: GraphQLString },
+    display: {
+      type: GraphQLString,
+      description: "The human name for `label` when grouped by a relation the caller may read.",
+    },
     value: { type: GraphQLFloat },
     previousValue: { type: GraphQLFloat },
     delta: { type: GraphQLFloat },

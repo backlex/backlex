@@ -15,7 +15,7 @@ import {
 // Shared with the dashboard runner + the public embed, so an `analytics` panel
 // renders identically wherever it's drawn.
 import { runAnalyticsPanel } from "../services/dashboards";
-import { requireKpi, runKpiForCaller } from "../services/kpis";
+import { requireKpi, kpiPanelRows, runKpiForCaller } from "../services/kpis";
 import { assertWritableScope, isInstanceOperator } from "../services/roles/guards";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -426,9 +426,7 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         const result = await runKpiForCaller(ctx, auth, tenantId, kpi, {
           rangeDays: Number(cfg.rangeDays) || undefined,
         });
-        const out = result.rows
-          ? result.rows.map((r) => ({ ...r }))
-          : [{ label: result.name, ...(result.point ?? {}) }];
+        const out = kpiPanelRows(result);
         return c.json({ data: out, ms: Date.now() - t0 });
       }
       if (body.kind !== "sql" || !body.sql) {
@@ -514,9 +512,7 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         const result = await runKpiForCaller(ctx, auth, tenantId, kpi, {
           rangeDays: Number((panel.config as { rangeDays?: unknown }).rangeDays) || undefined,
         });
-        const out = result.rows
-          ? result.rows.map((r) => ({ ...r }))
-          : [{ label: result.name, ...(result.point ?? {}) }];
+        const out = kpiPanelRows(result);
         return c.json({ data: out, ms: Date.now() - t0 });
       }
 

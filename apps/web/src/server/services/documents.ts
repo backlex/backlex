@@ -22,6 +22,7 @@ import {
   withThemeVars,
   type Appearance,
 } from "@backlex/core/appearance";
+import { applyShell } from "@backlex/core/template-shell";
 import type { Ctx } from "../context";
 
 type AnyDb = any;
@@ -352,7 +353,10 @@ export async function renderDocument(
     ...(footerHtml ? { footerHtml: fill(footerHtml) } : {}),
   };
 
-  const bytes = await ctx.pdf.render(fill(bodyHtml), opts);
+  // The BODY gets the themed shell; the running header and footer do not. Those
+  // are rendered into the sheet's own margin boxes by the PDF engine, so each
+  // would become a second full document sitting in a 20mm strip.
+  const bytes = await ctx.pdf.render(applyShell(fill(bodyHtml), appearance, "document"), opts);
   if (bytes.byteLength > MAX_PDF_BYTES) {
     throw new AppError(
       "VALIDATION",

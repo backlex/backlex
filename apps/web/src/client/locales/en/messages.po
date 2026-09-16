@@ -8510,6 +8510,10 @@ msgstr "Exit pages"
 msgid "Expand collections"
 msgstr "Expand collections"
 
+#: src/client/admin/pages/settings/template-preview-frame.tsx
+msgid "Expand preview"
+msgstr "Expand preview"
+
 #: src/client/admin/pages/automation/jobs.tsx
 msgid "Expects"
 msgstr "Expects"
@@ -17532,6 +17536,10 @@ msgstr "rendering only — never affects storage or sorting"
 msgid "Rendering…"
 msgstr "Rendering…"
 
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Renders the body inside a document with these colours and font. Turn it off to send exactly what the body says. A body that starts with its own <html> is never wrapped."
+msgstr "Renders the body inside a document with these colours and font. Turn it off to send exactly what the body says. A body that starts with its own <html> is never wrapped."
+
 #: src/client/admin/pages/observability/analytics.tsx
 msgid "Reopen"
 msgstr "Reopen"
@@ -24312,6 +24320,10 @@ msgstr "Wrangler"
 #: src/client/admin/pages/settings/index.tsx
 msgid "wrangler.toml snippet"
 msgstr "wrangler.toml snippet"
+
+#: src/client/admin/pages/settings/template-appearance.tsx
+msgid "Wrap the body in this theme"
+msgstr "Wrap the body in this theme"
 
 #: src/client/admin/pages/access/condition-editor.tsx
 #~ msgid "writable"

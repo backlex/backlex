@@ -21,6 +21,15 @@ export interface Appearance {
   theme?: AppearanceTheme;
   accent?: string;
   font?: AppearanceFont;
+  /**
+   * Wrap a fragment body in the themed document (`template-shell.ts`).
+   * Absent means yes — the setting exists to turn it OFF for a template whose
+   * author wants the bare fragment on the wire. A body that is already a
+   * complete document is never wrapped regardless.
+   *
+   * Only templates read this; the public form and booking pages ignore it.
+   */
+  shell?: boolean;
 }
 
 export interface Palette {
@@ -122,6 +131,9 @@ export const normalizeAppearance = (raw: unknown): Appearance | null => {
   if (APPEARANCE_THEMES.includes(r.theme as AppearanceTheme)) out.theme = r.theme as AppearanceTheme;
   if (typeof r.accent === "string" && ACCENT_PATTERN.test(r.accent)) out.accent = r.accent;
   if (APPEARANCE_FONTS.includes(r.font as AppearanceFont)) out.font = r.font as AppearanceFont;
+  // Only `false` is worth keeping: `shell: true` is the default, and storing it
+  // would make an otherwise-empty appearance non-null for no behaviour.
+  if (r.shell === false) out.shell = false;
   return Object.keys(out).length > 0 ? out : null;
 };
 
@@ -145,7 +157,10 @@ export const appearanceProblem = (raw: unknown): string | null => {
     if (k === "font" && !APPEARANCE_FONTS.includes(v as AppearanceFont)) {
       return `appearance.font must be one of ${APPEARANCE_FONTS.join(", ")}`;
     }
-    if (k !== "theme" && k !== "accent" && k !== "font") return `appearance.${k} is not a setting`;
+    if (k === "shell" && typeof v !== "boolean") return "appearance.shell must be a boolean";
+    if (k !== "theme" && k !== "accent" && k !== "font" && k !== "shell") {
+      return `appearance.${k} is not a setting`;
+    }
   }
   return null;
 };

@@ -291,6 +291,17 @@ export const NAV_SETTINGS: NavItem[] = [
 ];
 
 /**
+ * Pages that get `.page--wide` instead of the 1180px reading measure.
+ *
+ * Both are template editors whose third column holds a preview at a REAL
+ * layout size — 720px for a desktop email, 794px for an A4 sheet. At the
+ * normal width that column is 378px, so the frame is drawn at about half size
+ * and the body text is illegible. A page that must show a fixed-width thing is
+ * sized by that thing, not by a column of prose.
+ */
+export const WIDE_NAV_IDS: ReadonlySet<string> = new Set(["email-templates", "documents"]);
+
+/**
  * Nav ids whose pages a NON-admin can actually use — everything else is
  * backed exclusively by admin-gated endpoints (requireAdminMw and friends)
  * and would render as a wall of 403s. The sidebar and command palette hide

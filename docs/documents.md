@@ -133,9 +133,22 @@ A template can carry the same **theme, accent and font** a
 [public form](/docs/forms/) has: `theme` is `light` or `dark`, `accent` a
 `#rrggbb` colour, `font` one of `sans`, `lexend`, `mono`, `system`.
 
-A template is raw HTML, so an appearance restyles nothing on its own. It reaches
-the template as **`{{ theme.* }}` values**, filled in on every render — so the
-template decides where each colour goes:
+An appearance does two things.
+
+**It wraps the body.** A body that is a FRAGMENT — every built-in template is
+one — is rendered inside a document built from the theme: page background, a
+card, the text colour, the font, and the accent on links. So picking dark, or a
+new accent, changes the mail and the PDF without the template mentioning the
+theme anywhere. The email shell is table-based with inline styles (what mail
+clients agree on); the PDF shell is CSS and loads the webfont.
+
+Two escapes: a body that already starts with `<!doctype`/`<html>` is **never**
+wrapped — an author who wrote a document owns it — and `appearance.shell: false`
+turns the wrap off for one template, for a bare fragment on the wire. The
+Appearance tab shows that as a *Wrap the body in this theme* switch.
+
+**It also reaches the body as `{{ theme.* }}` values**, filled in on every
+render, so a template can put a colour exactly where it wants one:
 
 ```html
 <body style="background: {{ theme.bg }}; color: {{ theme.text }}; font-family: {{ theme.font }}">

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate, templatePathValue } from "@backlex/core";
 import { withThemeVars } from "@backlex/core/appearance";
+import { applyShell } from "@backlex/core/template-shell";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -14,7 +15,7 @@ import { Badge, Button, EmptyState, IconButton, PageHeader } from "../../ui";
 import { ConfirmDialog } from "../../sheet";
 import { emailTemplatesApi, type ApiEmailTemplate, type EmailTemplateInput } from "../../api";
 import { EmailTemplatesSkeleton } from "../../page-skeletons";
-import { ScaledPreview } from "./template-preview-frame";
+import { PreviewExpandButton, PreviewExpandDialog, ScaledPreview } from "./template-preview-frame";
 import { TemplateAppearancePanel, ThemeVariables } from "./template-appearance";
 import { TemplateEditorTabs } from "./template-tabs";
 import {
@@ -77,6 +78,8 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
   /** Sample data per entry, as the JSON text being edited. In-session only. */
   const [samples, setSamples] = useState<Record<string, string>>({});
   const [device, setDevice] = useState<PreviewDevice>("desktop");
+  /** The preview at 1:1 in a dialog — the column never has room for 720px. */
+  const [expanded, setExpanded] = useState(false);
   /** Which panel of the editor is open. Kept across templates on purpose — an
    *  admin restyling a set of emails stays on Appearance as they move down the
    *  list, rather than being sent back to the body every time. */
@@ -453,10 +456,16 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
   const keyIssue = active?.isNew && draft.key.trim() ? keyProblem(draft.key.trim(), entries) : null;
   const replaced = active?.isNew && !keyIssue ? entryReplacedBy(draft.key.trim(), entries) : null;
   const replacedName = replaced ? labelOf(replaced) : "";
-  // `theme.*` as the mailer fills it — from this draft's appearance, not the sample.
+  // `theme.*` as the mailer fills it — from this draft's appearance, not the
+  // sample — and then the same shell the mailer wraps the result in, so the
+  // preview is the message rather than a stripped-down cousin of it.
   const renderVars = withThemeVars(sampleVars, draft.appearance);
   const renderedSubject = renderTemplate(draft.subject, renderVars);
-  const previewHtml = renderTemplate(draft.bodyHtml, renderVars);
+  const previewHtml = applyShell(
+    renderTemplate(draft.bodyHtml, renderVars),
+    draft.appearance,
+    "email",
+  );
   const confirmLabel = confirm && confirm.kind !== "discard" ? labelOf(confirm.entry) : "";
 
   return (
@@ -475,7 +484,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
           </Button>
         }
       />
-      <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
+      <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1.35fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <Card className="gap-0 overflow-hidden py-0">
           <div className="border-b border-border p-2.5">
             <Input
@@ -743,6 +752,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
                 </button>
               ))}
             </div>
+            <PreviewExpandButton onClick={() => setExpanded(true)} />
           </div>
           <div className="flex min-w-0 items-baseline gap-2 border-b border-border px-4 py-2.5 text-[12.5px]">
             <span className="shrink-0 text-muted-foreground"><Trans>Subject</Trans></span>
@@ -753,9 +763,11 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
                 template authored by one workspace admin is still somebody
                 else's markup running in another one's session, so it renders
                 in `sandbox=""`, which grants nothing. The body renders through
-                `renderTemplate` — the function the mailer calls — and nothing
-                is restyled on the way in: the preview used to paint every link
-                as a pill button, which no recipient ever saw. */}
+                `renderTemplate` — the function the mailer calls — and is then
+                wrapped by `applyShell`, the function the mailer wraps with, so
+                what shows here is the message. Nothing is restyled BEYOND that:
+                the preview used to paint every link as a pill button, which no
+                recipient ever saw. */}
             <ScaledPreview
               html={previewHtml}
               width={PREVIEW_SIZE[device].width}
@@ -766,6 +778,15 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
               device={device}
             />
           </div>
+          <PreviewExpandDialog
+            open={expanded}
+            onOpenChange={setExpanded}
+            html={previewHtml}
+            width={PREVIEW_SIZE[device].width}
+            height={PREVIEW_SIZE[device].height}
+            complete={isCompleteDocument(previewHtml)}
+            title={t`Email preview`}
+          />
           <div className="flex flex-col gap-1.5 border-t border-border p-3.5">
             <label htmlFor="email-template-sample" className="text-[12.5px] font-medium text-foreground"><Trans>Sample data</Trans></label>
             <ScrollArea type="auto" className="rounded-control border border-border bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30" viewportClassName="max-h-[320px]">

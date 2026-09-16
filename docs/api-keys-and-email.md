@@ -219,15 +219,23 @@ In the admin the editor is three tabs — **Content**, **Appearance**,
 **Variables** — and a variable the sample data leaves empty raises a dot on the
 Variables tab.
 
-**Appearance.** A template takes the same `appearance` — `{ theme, accent, font }`
-— as a [document template](/docs/documents/#appearance), and renders with the
-same `{{ theme.accent }}`, `{{ theme.bg }}`, `{{ theme.text }}`… values. They are
-filled on every send of a stored template and on both test sends (the draft's
-own `appearance` for the unsaved one), and never count as a variable the sender
-owes. Mail clients support little CSS, so write them into inline `style`
-attributes; `theme.fontsHref` is ignored by most clients, which fall back along
-the `theme.font` stack. A built-in email nobody has customized is sent with
-backlex's own wording and has no appearance until it is saved.
+**Appearance.** A template takes the same `appearance` — `{ theme, accent, font,
+shell }` — as a [document template](/docs/documents/#appearance). A fragment
+body is rendered inside a themed document (table-based with inline styles, which
+is what mail clients agree on), so the theme shows without the body mentioning
+it; `shell: false` sends the bare fragment, and a body that starts with its own
+`<html>` is never wrapped. The values also reach the body as
+`{{ theme.accent }}`, `{{ theme.bg }}`, `{{ theme.text }}`… — filled on every
+send of a stored template and on both test sends (the draft's own `appearance`
+for the unsaved one), and never counted as a variable the sender owes. Mail
+clients support little CSS, so write those into inline `style` attributes;
+`theme.fontsHref` is ignored by most clients, which fall back along the
+`theme.font` stack.
+
+The **plain-text** alternative is taken from the body BEFORE the wrap, so a
+text-only reader gets the message and not the layout tables. A built-in email
+nobody has customized is sent with backlex's own wording, and gets the shell on
+its defaults — light, `#8B6CFF`, Manrope.
 
 **Built-in emails.** These keys are sent by backlex itself, each with a fallback
 body, so nothing has to be stored until a workspace wants its own wording:

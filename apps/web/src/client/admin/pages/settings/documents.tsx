@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate, templatePathValue } from "@backlex/core";
 import { withThemeVars } from "@backlex/core/appearance";
+import { applyShell } from "@backlex/core/template-shell";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -46,7 +47,7 @@ import {
 } from "./email-template-model";
 import { VariableWarnings, VariablesPanel } from "./email-template-variables";
 import { TemplateAppearancePanel, ThemeVariables } from "./template-appearance";
-import { ScaledPreview } from "./template-preview-frame";
+import { PreviewExpandButton, PreviewExpandDialog, ScaledPreview } from "./template-preview-frame";
 import { TemplateEditorTabs } from "./template-tabs";
 
 /**
@@ -91,6 +92,8 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [rendering, setRendering] = useState(false);
+  /** The preview at 1:1 in a dialog — no column fits an A4 sheet's 794px. */
+  const [expanded, setExpanded] = useState(false);
   /** Which panel of the editor is open — kept across templates, as on the
    *  email page. */
   const [tab, setTab] = useState<EditorTab>("content");
@@ -432,8 +435,14 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
   const keyIssue = active?.isNew && draft.key.trim() ? docKeyProblem(draft.key.trim(), entries) : null;
   const replaced = active?.isNew && !keyIssue ? docEntryReplacedBy(draft.key.trim(), entries) : null;
   const replacedName = replaced ? labelOf(replaced) : "";
+  // Rendered and then wrapped exactly as `renderDocument` does it, so what the
+  // frame shows is the sheet the PDF renderer is handed.
   const renderVars = withThemeVars(sampleVars, draft.appearance);
-  const previewHtml = renderTemplate(draft.bodyHtml, renderVars);
+  const previewHtml = applyShell(
+    renderTemplate(draft.bodyHtml, renderVars),
+    draft.appearance,
+    "document",
+  );
   const sheet = sheetSize(draft.format, draft.landscape);
   const orientation = draft.landscape ? t`Landscape` : t`Portrait`;
   const confirmLabel = confirm && confirm.kind !== "discard" ? labelOf(confirm.entry) : "";
@@ -475,7 +484,7 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
           </Button>
         }
       />
-      <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
+      <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1.35fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <Card className="gap-0 overflow-hidden py-0">
           <div className="border-b border-border p-2.5">
             <Input
@@ -746,14 +755,18 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
             <span className="text-[11.5px] text-muted-foreground">
               <Trans>approximate — use Render PDF for the real thing</Trans>
             </span>
+            <span className="ml-auto">
+              <PreviewExpandButton onClick={() => setExpanded(true)} />
+            </span>
           </div>
           <div className="min-h-[280px] bg-[oklch(0.97_0.005_130)] p-3 sm:p-6">
             {/* An iframe with `sandbox=""` (see html-preview.tsx): a template is
                 an admin's markup, but in a workspace with more than one admin it
                 is still somebody else's HTML running in this session. It is
                 interpolated by `renderTemplate` with `theme.*` filled from the
-                draft's appearance — the function and the values the renderer
-                uses — and laid out at the sheet's real width. */}
+                draft's appearance, then wrapped by `applyShell` — the two
+                functions and the values the renderer uses — and laid out at the
+                sheet's real width. */}
             <ScaledPreview
               html={previewHtml}
               width={sheet.width}
@@ -765,6 +778,16 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
               caption={`${draft.format} · ${orientation} · ${sheet.width}×${sheet.height}px`}
             />
           </div>
+          <PreviewExpandDialog
+            open={expanded}
+            onOpenChange={setExpanded}
+            html={previewHtml}
+            width={sheet.width}
+            height={sheet.height}
+            complete={isCompleteDocument(previewHtml)}
+            title={t`Document preview`}
+            caption={`${draft.format} · ${orientation} · ${sheet.width}×${sheet.height}px`}
+          />
           <div className="flex flex-col gap-1.5 border-t border-border p-3.5">
             <label htmlFor="document-template-sample" className="text-[12.5px] font-medium text-foreground"><Trans>Sample data</Trans></label>
             <ScrollArea type="auto" className="rounded-control border border-border bg-card focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30" viewportClassName="max-h-[320px]">

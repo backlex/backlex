@@ -11,6 +11,7 @@
     "./email-templates": "./src/email-templates.ts",
     "./errors": "./src/errors.ts",
     "./appearance": "./src/appearance.ts",
+    "./template-shell": "./src/template-shell.ts",
     "./row-label": "./src/row-label.ts"
   },
   "scripts": {

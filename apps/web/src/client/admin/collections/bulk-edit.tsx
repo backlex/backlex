@@ -104,7 +104,7 @@ export function BulkEditDialog({ open, count, schema, onClose, onApply }: BulkEd
           <DialogDescription className="text-[12.5px] text-muted-foreground">
             <Trans>
               Only the fields you change are written to all {count} selected rows in{" "}
-              <span className="font-mono">c_{slug}</span>; everything else is left untouched.
+              <span className="font-mono">{slug}</span>; everything else is left untouched.
             </Trans>
           </DialogDescription>
         </DialogHeader>

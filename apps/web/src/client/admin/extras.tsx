@@ -504,7 +504,7 @@ export function SchemaView({
 
 export function AlterPreview({
   pendingField,
-  table = "c_collection",
+  table = "collection",
 }: { pendingField?: Partial<SchemaField> | null; table?: string }) {
   if (!pendingField) return null;
   // Mirrors SQLITE_TYPES in packages/db/src/field-types.ts. A map rather than a
@@ -556,7 +556,7 @@ export function AlterPreview({
 
 export function EmptyItems({ onCreate, slug }: { onCreate: () => void; slug?: string }) {
   const { t } = useLingui();
-  const tableName = slug ? `c_${slug}` : t`this collection`;
+  const tableName = slug ? `${slug}` : t`this collection`;
   return (
     <EmptyState
       bare

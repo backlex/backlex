@@ -207,7 +207,7 @@ const CollectionNodeView = memo(function CollectionNodeView({ data: d, selected 
         style={{ height: NODE_HEADER_H, background: "color-mix(in oklch, var(--muted) 35%, var(--card))" }}
       >
         <span className="h-3.5 w-1 shrink-0 rounded-full" style={{ background: d.color }} />
-        <span className="truncate font-mono text-[12.5px] font-medium">c_{d.slug}</span>
+        <span className="truncate font-mono text-[12.5px] font-medium">{d.slug}</span>
         <span
           className="ml-auto shrink-0 text-[10.5px] text-muted-foreground"
           title={t`${d.fields.length} fields`}
@@ -343,7 +343,7 @@ function FindTable({
                 }}
               >
                 <span className="size-2 shrink-0 rounded-full" style={{ background: tb.color }} />
-                <span className="min-w-0 truncate font-mono text-[12px]">c_{tb.slug}</span>
+                <span className="min-w-0 truncate font-mono text-[12px]">{tb.slug}</span>
                 {tb.group && <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">{tb.group}</span>}
               </CommandItem>
             ))}
@@ -395,7 +395,7 @@ function CreateRelationDialog({
         <DialogHeader>
           <DialogTitle><Trans>New relation</Trans></DialogTitle>
           <DialogDescription>
-            <Trans>Add a relation field on <span className="font-mono">c_{from}</span> pointing to <span className="font-mono">c_{to}</span>.</Trans>
+            <Trans>Add a relation field on <span className="font-mono">{from}</span> pointing to <span className="font-mono">{to}</span>.</Trans>
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 py-1">
@@ -476,7 +476,7 @@ function DropFieldDialog({
         <DialogHeader>
           <DialogTitle><Trans>Drop field</Trans></DialogTitle>
           <DialogDescription>
-            <Trans>This runs <span className="font-mono">ALTER TABLE … DROP COLUMN {target.name}</span> on <span className="font-mono">c_{target.slug}</span>. The column is removed for good.</Trans>
+            <Trans>This runs <span className="font-mono">ALTER TABLE … DROP COLUMN {target.name}</span> on <span className="font-mono">{target.slug}</span>. The column is removed for good.</Trans>
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 text-[13px]">
@@ -1094,7 +1094,7 @@ function ErdCanvas({
           await patchFields(
             addSchema.slug,
             [...addSchema.fields, field as never],
-            t`Column "${(field as { name?: string }).name}" added to c_${addSchema.slug}.`,
+            t`Column "${(field as { name?: string }).name}" added to ${addSchema.slug}.`,
           );
           setAddFieldSlug(null);
         }}
@@ -1150,8 +1150,8 @@ function ErdCanvas({
             // column: "drops then reappears"). Reconcile only on error.
             pushToast(
               res.snapshotId
-                ? t`Column "${name}" dropped from c_${slug}. ${res.nonNull} value(s) saved to a backup.`
-                : t`Column "${name}" dropped from c_${slug}.`,
+                ? t`Column "${name}" dropped from ${slug}. ${res.nonNull} value(s) saved to a backup.`
+                : t`Column "${name}" dropped from ${slug}.`,
             );
           } catch (e) {
             onMutated(prev);
@@ -1173,7 +1173,7 @@ function ErdCanvas({
           await patchFields(
             pendingRel.from,
             [...src.fields, { name, type: kind, to: pendingRel.to, required: false } as never],
-            t`Relation "${name}" added · c_${pendingRel.from} → c_${pendingRel.to}.`,
+            t`Relation "${name}" added · ${pendingRel.from} → ${pendingRel.to}.`,
           );
           setPendingRel(null);
         }}
@@ -1328,9 +1328,9 @@ export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
             <TableBody>
               {edgeRows.map((e) => (
                 <TableRow key={`${e.from}.${e.field}->${e.to}`}>
-                  <TableCell className="font-mono">c_{e.from}</TableCell>
+                  <TableCell className="font-mono">{e.from}</TableCell>
                   <TableCell><I.ChevronRight size={12} className="text-muted-foreground" /></TableCell>
-                  <TableCell className="font-mono">c_{e.to}</TableCell>
+                  <TableCell className="font-mono">{e.to}</TableCell>
                   <TableCell>
                     <Badge variant={e.many ? "secondary" : "outline"}>{e.many ? "relation_many" : "relation"}</Badge>
                   </TableCell>

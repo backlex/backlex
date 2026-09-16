@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
+import { ACCENT_PATTERN, normalizeAppearance } from "@backlex/core/appearance";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import {
@@ -773,6 +774,7 @@ async function seedDocuments(
       pageOptions: doc.pageOptions ?? null,
       filename: doc.filename ?? null,
       variables: doc.variables ?? null,
+      appearance: normalizeAppearance(doc.appearance),
       updatedBy: null,
       createdAt: now,
       updatedAt: now,
@@ -1756,10 +1758,17 @@ const extractBundles = async (
       pageOptions: s.documentTemplates.pageOptions,
       filename: s.documentTemplates.filename,
       variables: s.documentTemplates.variables,
+      appearance: s.documentTemplates.appearance,
     })
     .from(s.documentTemplates)
     .where(mine(s.documentTemplates))) as Record<string, unknown>[]).map(
-    (d) => compact({ ...d, pageOptions: json(d.pageOptions, undefined), variables: json(d.variables, undefined) }) as TemplateDocument,
+    (d) =>
+      compact({
+        ...d,
+        pageOptions: json(d.pageOptions, undefined),
+        variables: json(d.variables, undefined),
+        appearance: normalizeAppearance(json(d.appearance, undefined)) ?? undefined,
+      }) as TemplateDocument,
   );
 
   // ---- forms ---------------------------------------------------------------
@@ -2357,6 +2366,14 @@ export const CustomTemplateInput = z.object({
         pageOptions: z.record(z.string(), z.unknown()).optional(),
         filename: z.string().max(200).optional(),
         variables: z.array(z.string().max(60)).max(100).optional(),
+        appearance: z
+          .object({
+            theme: z.enum(["light", "dark"]).optional(),
+            accent: z.string().regex(ACCENT_PATTERN).optional(),
+            font: z.enum(["sans", "lexend", "mono", "system"]).optional(),
+          })
+          .strict()
+          .optional(),
       }),
     )
     .max(100)

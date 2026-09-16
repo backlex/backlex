@@ -16,6 +16,7 @@ import {
   parseCustomTemplate,
 } from "../services/templates";
 import { logActivity } from "../services/activity";
+import { assertNotDemo } from "../services/demo";
 import { readJson } from "../lib/body";
 
 const requireTenant = (c: { get: (k: string) => unknown }): string => {
@@ -78,6 +79,7 @@ export const templatesRoutes = new Hono<AppBindings>()
     return c.json({ data: result }, 201);
   })
   .post("/clear-samples", requireUser, requirePlatformMw, requireAdminMw, async (c) => {
+    assertNotDemo(c.get("ctx").env);
     const tenantId = requireTenant(c);
     // Full ctx — vector cleanup needs the embedding adapter + env.
     const result = await clearTemplateSamples(c.get("ctx"), tenantId);

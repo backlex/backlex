@@ -182,11 +182,15 @@ export function VariablesPanel({
   sample,
   usedPaths,
   onInsert,
+  kind = "email",
 }: {
-  entry: TemplateEntry;
+  entry: Pick<TemplateEntry, "id" | "builtIn" | "isNew">;
   sample: Record<string, unknown> | null;
   usedPaths: string[];
   onInsert: (path: string, context?: RenderContext) => void;
+  /** A document template is rendered, not sent, and only a flow step renders
+   *  one — so it offers the flow's variables and not a report's. */
+  kind?: "email" | "document";
 }) {
   const { t, i18n } = useLingui();
   const builtIn = entry.isNew ? null : entry.builtIn;
@@ -196,7 +200,7 @@ export function VariablesPanel({
   const [group, setGroup] = useState<Group>(() => {
     for (const p of usedPaths) {
       const ctx = contextOf(p);
-      if (ctx) return ctx;
+      if (ctx && (kind === "email" || ctx === "flow")) return ctx;
     }
     return "sample";
   });
@@ -227,17 +231,26 @@ export function VariablesPanel({
             value={group}
             onChange={(v) => setGroup(v as Group)}
             className="ml-auto min-w-0"
-            options={[
-              { value: "sample", label: t`From your sample data` },
-              { value: "flow", label: t`Sent from a flow step` },
-              { value: "report", label: t`Sent with a scheduled report` },
-            ]}
+            options={
+              kind === "document"
+                ? [
+                    { value: "sample", label: t`From your sample data` },
+                    { value: "flow", label: t`Rendered from a flow step` },
+                  ]
+                : [
+                    { value: "sample", label: t`From your sample data` },
+                    { value: "flow", label: t`Sent from a flow step` },
+                    { value: "report", label: t`Sent with a scheduled report` },
+                  ]
+            }
           />
         )}
       </div>
       <span className="text-[11.5px] text-muted-foreground">
         {builtIn ? (
           <Trans>Every one of these is sent with this email. Click one to insert it where your cursor is.</Trans>
+        ) : kind === "document" ? (
+          <Trans>A document receives whatever renders it — a flow step passes the row as data. Click a variable to insert it where your cursor is.</Trans>
         ) : (
           <Trans>A custom template receives whatever its sender passes. Click a variable to insert it where your cursor is.</Trans>
         )}
@@ -279,7 +292,9 @@ export function VariablesPanel({
 export function VariableWarnings({
   warnings,
   onAddToSample,
+  kind = "email",
 }: {
+  kind?: "email" | "document";
   warnings: VariableWarning[];
   /** Offered for `no-sample` warnings: puts the missing paths in the sample data. */
   onAddToSample?: () => void;
@@ -302,6 +317,11 @@ export function VariableWarnings({
                   <Trans>
                     <span className="font-mono">{placeholder}</span> is not sent with this email, so it will always
                     be empty.
+                  </Trans>
+                ) : kind === "document" ? (
+                  <Trans>
+                    <span className="font-mono">{placeholder}</span> has no sample value, so the preview and the test
+                    render show it empty.
                   </Trans>
                 ) : (
                   <Trans>

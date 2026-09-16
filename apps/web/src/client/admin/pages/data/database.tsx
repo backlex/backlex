@@ -106,7 +106,8 @@ function SqlEditor({ pushToast }: { pushToast: PushToast }) {
       try {
         const r = await dbAdminApi.tables();
         if (cancelled) return;
-        if (Array.isArray(r.data)) setTables(r.data);
+        // Collection tables (`c_*`) are reached through Collections, not here.
+        if (Array.isArray(r.data)) setTables(r.data.filter((t) => !t.name.startsWith("c_")));
       } catch {
         // leave tables empty
       } finally {
@@ -128,9 +129,6 @@ function SqlEditor({ pushToast }: { pushToast: PushToast }) {
     const out: { name: string; sql: string }[] = [];
     for (const [name, dep] of Object.entries(SNIPPET_TABLE_DEPS)) {
       if (names.has(dep)) out.push({ name, sql: SNIPPET_SQL[name]! });
-    }
-    for (const t of tables.filter((t) => t.name.startsWith("c_")).slice(0, 5)) {
-      out.push({ name: `Browse ${t.name}`, sql: browseSql(t.name) });
     }
     if (tables.length > 0) {
       const union = tables

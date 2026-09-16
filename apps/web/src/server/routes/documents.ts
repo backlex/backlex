@@ -3,8 +3,9 @@ import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
+import { AppearanceSchema } from "../lib/appearance-schema";
 import {
   deleteTemplate,
   listTemplates,
@@ -59,6 +60,7 @@ const TemplateInput = z
     pageOptions: PageOptions.nullish(),
     filename: z.string().max(200).nullish(),
     variables: z.array(z.string()).nullish(),
+    appearance: AppearanceSchema.nullish(),
   })
   .openapi("DocumentTemplateInput");
 
@@ -74,7 +76,9 @@ const TemplateView = z
     pageOptions: z.unknown(),
     filename: z.string().nullable(),
     variables: z.array(z.string()),
+    appearance: AppearanceSchema.nullable(),
     inherited: z.boolean(),
+    overridesDefault: z.boolean().openapi({ description: "Shadows an instance-wide default; deleting restores it." }),
     createdAt: z.unknown().nullable(),
     updatedAt: z.unknown().nullable(),
   })
@@ -84,6 +88,11 @@ const RenderInput = z
   .object({
     templateKey: z.string().min(1).max(200).optional(),
     html: z.string().min(1).optional(),
+    headerHtml: z.string().nullish().openapi({ description: "Running header for `html`. Ignored with `templateKey`." }),
+    footerHtml: z.string().nullish().openapi({ description: "Running footer for `html`. Ignored with `templateKey`." }),
+    appearance: AppearanceSchema.nullish().openapi({
+      description: "Rendered as `theme.*`; overrides a template's own appearance, so an unsaved draft can be test-rendered.",
+    }),
     vars: z.record(z.string(), z.unknown()).optional(),
     pageOptions: PageOptions.optional(),
     filename: z.string().max(200).optional(),
@@ -158,18 +167,25 @@ export const documentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags,
       summary: "Delete a document template",
       description:
-        "Admin-only. Removes the workspace's own row; an inherited default is not deletable from inside a workspace.",
+        "Admin-only. Removes the workspace's own row; an inherited default is not deletable from inside a workspace. Returns what the key resolves to now (the default it overrode, or null).",
       security: SECURITY,
       middleware: adminGate,
       request: { params: z.object({ key: z.string() }) },
       responses: {
-        200: { description: "OK", content: { "application/json": { schema: OkSchema } } },
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({ ok: z.boolean(), data: TemplateView.nullable() }),
+            },
+          },
+        },
         ...errorResponses,
       },
     }),
     async (c) => {
-      await deleteTemplate(c.get("ctx"), tenantOf(c), c.req.valid("param").key);
-      return c.json({ ok: true });
+      const data = await deleteTemplate(c.get("ctx"), tenantOf(c), c.req.valid("param").key);
+      return c.json({ ok: true, data });
     },
   )
   .openapi(

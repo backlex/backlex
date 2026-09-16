@@ -34,6 +34,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { ConfigItem } from "@backlex/db";
 import { SYSTEM_ROLES } from "@backlex/core";
+import { normalizeAppearance } from "@backlex/core/appearance";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { nowFor } from "./items/helpers";
@@ -301,6 +302,7 @@ const documents: ConfigResource = {
         pageOptions: r.pageOptions ?? undefined,
         filename: r.filename,
         variables: r.variables ?? undefined,
+        appearance: normalizeAppearance(r.appearance) ?? undefined,
         // `updatedBy` is a user id — provenance, not config, and meaningless
         // in another workspace.
       }),
@@ -328,6 +330,7 @@ const documents: ConfigResource = {
       pageOptions: item.pageOptions ?? null,
       filename: (item.filename as string | undefined) ?? null,
       variables: (item.variables as string[] | undefined) ?? null,
+      appearance: normalizeAppearance(item.appearance),
       updatedAt: now,
     };
     if (existing[0]) {

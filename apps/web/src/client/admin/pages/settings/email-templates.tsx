@@ -1,7 +1,8 @@
 import type { PushToast } from "../../types";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate, templatePathValue } from "@backlex/core";
+import { withThemeVars } from "@backlex/core/appearance";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -13,7 +14,9 @@ import { Badge, Button, EmptyState, IconButton, PageHeader } from "../../ui";
 import { ConfirmDialog } from "../../sheet";
 import { emailTemplatesApi, type ApiEmailTemplate, type EmailTemplateInput } from "../../api";
 import { EmailTemplatesSkeleton } from "../../page-skeletons";
-import { HtmlPreview } from "../../html-preview";
+import { ScaledPreview } from "./template-preview-frame";
+import { TemplateAppearancePanel, ThemeVariables } from "./template-appearance";
+import { TemplateEditorTabs } from "./template-tabs";
 import {
   EMPTY_DRAFT,
   PREVIEW_SIZE,
@@ -27,6 +30,7 @@ import {
   formatSample,
   insertText,
   isCompleteDocument,
+  isThemePath,
   keyProblem,
   parseSample,
   sameDraft,
@@ -45,6 +49,7 @@ const userEmailExample = "{{ user.email }}";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Field = "subject" | "bodyHtml" | "bodyText";
+type EditorTab = "content" | "appearance" | "variables";
 type Confirm =
   | { kind: "discard"; then: () => void }
   | { kind: "delete" | "reset"; entry: TemplateEntry };
@@ -72,6 +77,10 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
   /** Sample data per entry, as the JSON text being edited. In-session only. */
   const [samples, setSamples] = useState<Record<string, string>>({});
   const [device, setDevice] = useState<PreviewDevice>("desktop");
+  /** Which panel of the editor is open. Kept across templates on purpose — an
+   *  admin restyling a set of emails stays on Appearance as they move down the
+   *  list, rather than being sent back to the body every time. */
+  const [tab, setTab] = useState<EditorTab>("content");
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -205,6 +214,10 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
 
   const insertVariable = (path: string, context?: RenderContext) => {
     const placeholder = `{{ ${path} }}`;
+    // The variable lists live in their own tabs, so the field the caret is in
+    // is not on screen while one is clicked. Show it again with the insert —
+    // otherwise the placeholder lands somewhere the author cannot see.
+    setTab("content");
     const focused = (Object.keys(fieldRefs) as Field[]).find((f) => fieldRefs[f].current === document.activeElement);
     const field: Field = focused ?? caret.current?.field ?? "bodyHtml";
     const el = fieldRefs[field].current;
@@ -260,7 +273,8 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
       fromAddress: from || null,
       bodyHtml: draft.bodyHtml,
       bodyText: draft.bodyText.trim() ? draft.bodyText : null,
-      variables: usedPaths,
+      variables: usedPaths.filter((p) => !isThemePath(p)),
+      appearance: draft.appearance,
     };
     const snapshot = { rows, baseline, newId, activeKey };
     const replaces = active.isNew ? entryReplacedBy(fields.key, entries) : null;
@@ -290,6 +304,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
             bodyHtml: fields.bodyHtml,
             bodyText: fields.bodyText,
             variables: fields.variables,
+            appearance: fields.appearance,
           })).data
         : (await emailTemplatesApi.create(fields)).data;
       setRows((r) => upsertRow(r, saved));
@@ -317,7 +332,8 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
       fromAddress: draft.fromAddress.trim() || null,
       bodyHtml: draft.bodyHtml,
       bodyText: draft.bodyText.trim() ? draft.bodyText : null,
-      variables: usedPaths,
+      variables: usedPaths.filter((p) => !isThemePath(p)),
+      appearance: draft.appearance,
     };
     const snapshot = { rows, activeKey, draft, baseline };
     const copy: TemplateEntry = { id: `pending:${key}`, key, row: null, builtIn: null };
@@ -407,6 +423,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
         bodyHtml: draft.bodyHtml,
         bodyText: draft.bodyText.trim() ? draft.bodyText : null,
         fromAddress: from && EMAIL_RE.test(from) ? from : null,
+        appearance: draft.appearance,
         vars: parsedSample,
       });
       pushToast(t`Test email sent.`);
@@ -436,8 +453,10 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
   const keyIssue = active?.isNew && draft.key.trim() ? keyProblem(draft.key.trim(), entries) : null;
   const replaced = active?.isNew && !keyIssue ? entryReplacedBy(draft.key.trim(), entries) : null;
   const replacedName = replaced ? labelOf(replaced) : "";
-  const renderedSubject = renderTemplate(draft.subject, sampleVars);
-  const previewHtml = renderTemplate(draft.bodyHtml, sampleVars);
+  // `theme.*` as the mailer fills it — from this draft's appearance, not the sample.
+  const renderVars = withThemeVars(sampleVars, draft.appearance);
+  const renderedSubject = renderTemplate(draft.subject, renderVars);
+  const previewHtml = renderTemplate(draft.bodyHtml, renderVars);
   const confirmLabel = confirm && confirm.kind !== "discard" ? labelOf(confirm.entry) : "";
 
   return (
@@ -549,9 +568,28 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
               </Button>
             </div>
           </div>
+          {active && (
+            <div className="border-b border-border px-3.5 py-2.5">
+              <TemplateEditorTabs
+                value={tab}
+                onChange={setTab}
+                tabs={[
+                  { value: "content", label: <Trans>Content</Trans>, icon: <I.Code size={13} /> },
+                  { value: "appearance", label: <Trans>Appearance</Trans>, icon: <I.Palette size={13} /> },
+                  {
+                    value: "variables",
+                    label: <Trans>Variables</Trans>,
+                    icon: <I.Braces size={13} />,
+                    count: usedPaths.filter((p) => !isThemePath(p)).length,
+                    warn: warnings.length > 0,
+                  },
+                ]}
+              />
+            </div>
+          )}
           {active ? (
             <div className="flex flex-col gap-2.5 p-3.5">
-              {active.builtIn && !active.isNew && (
+              {tab === "content" && active.builtIn && !active.isNew && (
                 <div className="flex flex-col gap-0.5 rounded-control border border-border px-3 py-2 text-[11.5px] text-muted-foreground">
                   <span className="text-foreground">{i18n._(BUILT_IN_EMAIL_LABELS[active.builtIn].when)}</span>
                   {status === "builtin" && (
@@ -562,11 +600,12 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
                   )}
                 </div>
               )}
-              {status === "shared" && (
+              {tab === "content" && status === "shared" && (
                 <div className="rounded-control border border-border px-3 py-2 text-[11.5px] text-muted-foreground">
                   <Trans>This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched.</Trans>
                 </div>
               )}
+              {tab === "content" && (<>
               <div className="flex gap-2.5 max-[640px]:flex-col">
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <label htmlFor="email-template-name" className="text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
@@ -659,11 +698,25 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
                   <Trans>What text-only mail clients show. Empty means it is generated from the HTML body when the email is sent.</Trans>
                 </span>
               </div>
-              <VariablesPanel key={active.id} entry={active} sample={parsedSample} usedPaths={usedPaths} onInsert={insertVariable} />
-              <VariableWarnings
-                warnings={warnings}
-                onAddToSample={parsedSample ? addMissingToSample : undefined}
-              />
+              </>)}
+              {tab === "appearance" && (
+                <>
+                  <TemplateAppearancePanel
+                    value={draft.appearance}
+                    onChange={(appearance) => setDraft((d) => ({ ...d, appearance }))}
+                  />
+                  <ThemeVariables appearance={draft.appearance} onInsert={(path) => insertVariable(path)} />
+                </>
+              )}
+              {tab === "variables" && (
+                <>
+                  <VariablesPanel key={active.id} entry={active} sample={parsedSample} usedPaths={usedPaths} onInsert={insertVariable} />
+                  <VariableWarnings
+                    warnings={warnings}
+                    onAddToSample={parsedSample ? addMissingToSample : undefined}
+                  />
+                </>
+              )}
             </div>
           ) : (
             <EmptyState size="sm" icon={I.Mail} title={<Trans>Pick a template, or use "New template" to add one.</Trans>} />
@@ -703,7 +756,15 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
                 `renderTemplate` — the function the mailer calls — and nothing
                 is restyled on the way in: the preview used to paint every link
                 as a pill button, which no recipient ever saw. */}
-            <PreviewFrame html={previewHtml} device={device} title={t`Email preview`} />
+            <ScaledPreview
+              html={previewHtml}
+              width={PREVIEW_SIZE[device].width}
+              height={PREVIEW_SIZE[device].height}
+              complete={isCompleteDocument(previewHtml)}
+              title={t`Email preview`}
+              testId="email-preview-frame"
+              device={device}
+            />
           </div>
           <div className="flex flex-col gap-1.5 border-t border-border p-3.5">
             <label htmlFor="email-template-sample" className="text-[12.5px] font-medium text-foreground"><Trans>Sample data</Trans></label>
@@ -773,57 +834,6 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
           if (c?.kind === "reset") void onRemove(c.entry);
         }}
       />
-    </div>
-  );
-}
-
-/**
- * The preview at a device's layout width, scaled down to fit when the column is
- * narrower than that — which a desktop email always is here. Shrinking a frame
- * of the real width shows how the email lays out on that device; squeezing the
- * email into the column instead would only ever show the column's width.
- *
- * The sizer carries the scaled box, so nothing wider than the column reaches the
- * layout and a phone viewport never scrolls sideways.
- */
-function PreviewFrame({ html, device, title }: { html: string; device: PreviewDevice; title: string }) {
-  const outer = useRef<HTMLDivElement>(null);
-  const [available, setAvailable] = useState(0);
-  useLayoutEffect(() => {
-    const el = outer.current;
-    if (!el) return;
-    const measure = () => setAvailable(el.clientWidth);
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const { width, height } = PREVIEW_SIZE[device];
-  // `available` is 0 until measured (and always, without layout): show 1:1.
-  const scale = available > 0 && available < width ? available / width : 1;
-  return (
-    <div ref={outer} className="w-full min-w-0">
-      <div
-        className="mx-auto overflow-hidden rounded-surface bg-white shadow-[0_1px_4px_oklch(0_0_0/0.06)]"
-        style={{ width: Math.floor(width * scale), height: Math.floor(height * scale) }}
-      >
-        <div
-          data-testid="email-preview-frame"
-          data-device={device}
-          style={{
-            width,
-            height,
-            transform: scale < 1 ? `scale(${scale})` : undefined,
-            transformOrigin: "top left",
-          }}
-        >
-          <HtmlPreview title={title} complete={isCompleteDocument(html)} html={html} className="h-full" />
-        </div>
-      </div>
-      <div className="mt-2 text-center font-mono text-[10.5px] text-muted-foreground">
-        {width}px{scale < 1 ? ` · ${Math.round(scale * 100)}%` : ""}
-      </div>
     </div>
   );
 }

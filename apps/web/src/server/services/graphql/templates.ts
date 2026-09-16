@@ -24,6 +24,7 @@ import {
   parseCustomTemplate,
 } from "../templates";
 import { templateSummariesLazy } from "../../templates/lazy";
+import { assertNotDemo } from "../demo";
 
 // ── Schema templates ───────────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/admin/templates` + MCP
@@ -264,6 +265,8 @@ export const templateMutationFields: Record<string, GraphQLFieldConfig<unknown, 
     resolve: async (_src, _args, gqlCtx) => {
       const tenantId = requireTemplateAdmin(gqlCtx);
       try {
+        // See `services/demo.ts::assertNotDemo` — GraphQL skips the prefix list.
+        assertNotDemo(gqlCtx.ctx.env);
         // Full ctx — vector cleanup needs the embedding adapter + env.
         return await clearTemplateSamples(gqlCtx.ctx, tenantId);
       } catch (e) {

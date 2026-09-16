@@ -75,6 +75,9 @@ const BLOCKED_WRITE_PREFIXES = [
   // Advisor reads stay open (the page still renders); only `POST /apply`,
   // which runs DDL against a shared table, is blocked.
   "/api/admin/advisor",
+  // The playground's sample rows ARE the demo: removing them leaves every
+  // visitor an empty workspace until the next reset.
+  "/api/admin/templates/clear-samples",
   "/api/messaging",
   // The playground publishes its admin credentials, so anyone may sign in as
   // an admin there. `POST /api/tenants` then mints a workspace whose slug is

@@ -309,7 +309,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 <TableBody>
                   {collections.map((c) => (
                     <TableRow key={c.slug} className="cursor-pointer" onClick={() => setActiveNav("collections")}>
-                      <TableCell><span className="font-mono text-[12.5px]">c_{c.slug}</span></TableCell>
+                      <TableCell><span className="font-mono text-[12.5px]">{c.slug}</span></TableCell>
                       <TableCell className="text-right tabular-nums">{c.rows}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">{c.size}</TableCell>
                       <TableCell className="text-right tabular-nums">{c.writes}</TableCell>

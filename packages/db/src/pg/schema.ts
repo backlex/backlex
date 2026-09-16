@@ -2144,6 +2144,8 @@ export const emailTemplates = pgTable(
     bodyHtml: text("body_html").notNull(),
     bodyText: text("body_text"),
     variables: jsonb("variables").$type<string[]>(),
+    /** Theme, accent and font — rendered as `{{ theme.* }}`. See `@backlex/core/appearance`. */
+    appearance: jsonb("appearance").$type<Record<string, unknown>>(),
     updatedBy: text("updated_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -2172,6 +2174,8 @@ export const documentTemplates = pgTable(
     /** Suggested output name; templated like the body (`invoice-{{ data.no }}.pdf`). */
     filename: text("filename"),
     variables: jsonb("variables").$type<string[]>(),
+    /** Theme, accent and font — rendered as `{{ theme.* }}`. See `@backlex/core/appearance`. */
+    appearance: jsonb("appearance").$type<Record<string, unknown>>(),
     updatedBy: text("updated_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

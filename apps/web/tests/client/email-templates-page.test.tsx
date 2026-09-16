@@ -85,6 +85,16 @@ const listItem = (key: string) =>
 
 const body = () => document.getElementById("email-template-html") as HTMLTextAreaElement;
 
+/** The editor's panels are tabs now; a test that types in a field has to open
+ *  the tab holding it, exactly as an admin does. */
+const openTab = (name: string) => {
+  const trigger = document.querySelector(`[data-testid=template-tab-${name}]`) as HTMLElement | null;
+  if (!trigger) throw new Error(`no ${name} tab`);
+  fireEvent.mouseDown(trigger);
+  fireEvent.click(trigger);
+};
+
+
 const renderPage = async () => {
   renderWithProviders(<EmailTemplatesPage pushToast={() => {}} />);
   await waitFor(() => expect(body()).not.toBeNull());
@@ -128,19 +138,27 @@ describe("EmailTemplatesPage — variables", () => {
     await renderPage();
     const area = body();
     fireEvent.change(area, { target: { value: "<p>Hi </p>" } });
-    area.focus();
-    // Right after "<p>Hi " — inside the paragraph, well short of the end.
-    area.setSelectionRange(6, 6);
-    fireEvent.select(area);
+    // Right after "<p>Hi " — inside the paragraph, well short of the end. The
+    // selection travels with the event rather than through `focus()`: the tab
+    // switch below unmounts the field, and a focus-dependent caret reads back
+    // as "end of value" often enough to make this test lie.
+    fireEvent.select(area, { target: { selectionStart: 6, selectionEnd: 6 } });
 
+    // Clicking a variable also brings the body back on screen — the list it
+    // was clicked in lives in another tab.
+    openTab("variables");
     fireEvent.click(button("Insert {{ recipient.name }}"));
     await waitFor(() => expect(body().value).toBe("<p>Hi {{ recipient.name }}</p>"));
+    expect(document.getElementById("email-template-html")).not.toBeNull();
   });
 
   test("a typo'd variable in a built-in email is called out as never sent", async () => {
     mockRoutes();
     await renderPage();
     fireEvent.change(body(), { target: { value: "<p>{{ recipient.email }} {{ usr.email }}</p>" } });
+    // The warning has its own tab now, and the tab says so from the outside.
+    expect(document.querySelector("[data-testid=template-tab-warn-variables]")).not.toBeNull();
+    openTab("variables");
     const status = await screen.findByRole("status");
     expect(status.textContent).toContain("{{ usr.email }}");
     expect(status.textContent).toContain("is not sent with this email");
@@ -155,6 +173,7 @@ describe("EmailTemplatesPage — variables", () => {
     await waitFor(() => expect(body().value).toBe("<p>Hello {{ user.name }}</p>"));
     fireEvent.change(body(), { target: { value: "<p>Hello {{ user.name }}, order {{ order.number }}</p>" } });
 
+    openTab("variables");
     const status = await screen.findByRole("status");
     expect(status.textContent).toContain("{{ order.number }}");
     expect(status.textContent).toContain("has no sample value");
@@ -300,6 +319,28 @@ describe("EmailTemplatesPage — management", () => {
     fireEvent.click(button("Cancel", dialog));
     await waitFor(() => expect(document.querySelector("[role=alertdialog]")).toBeNull());
     expect(body().value).toBe("<p>edited</p>");
+  });
+
+  test("a chosen theme reaches the preview and travels with the test send", async () => {
+    const api = mockRoutes();
+    await renderPage();
+    fireEvent.change(body(), { target: { value: '<p style="color:{{ theme.accent }}">{{ theme.mode }}</p>' } });
+    openTab("appearance");
+    const panel = await waitFor(() => {
+      const found = document.querySelector("[data-testid=template-appearance]");
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    fireEvent.click(button("Dark", panel));
+    await waitFor(() => {
+      const frame = document.querySelector("[data-testid=email-preview-frame] iframe");
+      expect(frame?.getAttribute("srcdoc")).toContain(">dark</p>");
+    });
+    // A theme variable is never a variable the sender owes — no warning dot.
+    expect(document.querySelector("[data-testid=template-tab-warn-variables]")).toBeNull();
+    fireEvent.click(button("Send test"));
+    await waitFor(() => expect(api.sent.some((s) => s.url.endsWith("/send-test"))).toBe(true));
+    expect(api.sent.find((s) => s.url.endsWith("/send-test"))!.body).toMatchObject({ appearance: { theme: "dark" } });
   });
 
   test("send test mails the draft as it stands, with the sample data", async () => {

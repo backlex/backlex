@@ -1,3 +1,4 @@
+import type { Appearance } from "@backlex/core/appearance";
 /**
  * The few shapes more than one admin domain reaches for.
  *
@@ -27,7 +28,12 @@ export interface ApiDocumentTemplate {
   };
   filename: string | null;
   variables: string[] | null;
+  /** Theme, accent and font — rendered as `{{ theme.* }}`. Null when unset. */
+  appearance: Appearance | null;
   /** An instance-wide default this workspace has not overridden. Saving one
    *  creates the override; it never changes the shared row. */
   inherited: boolean;
+  /** This workspace's copy shadows an instance-wide default — deleting it
+   *  restores the default rather than removing the key. */
+  overridesDefault?: boolean;
 }

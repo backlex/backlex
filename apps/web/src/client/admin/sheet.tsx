@@ -155,7 +155,7 @@ export function ItemSheet({
           <DialogDescription className="text-[12.5px] text-muted-foreground">
             {mode === "create" ? (
               <Trans>
-                Insert into <span className="font-mono">c_{slug}</span>
+                Insert into <span className="font-mono">{slug}</span>
                 {ownerScoped ? (
                   <>
                     . Owner is set to <span className="font-mono">$user.id</span>

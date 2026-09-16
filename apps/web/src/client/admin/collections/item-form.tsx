@@ -1939,7 +1939,7 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
           )}
           <div className="text-[11.5px] text-muted-foreground">
             <Trans>
-              Stores a row id from <span className="font-mono">c_{target || "—"}</span>.
+              Stores a row id from <span className="font-mono">{target || "—"}</span>.
             </Trans>
             {!target && <Trans> Set the target collection in the field settings.</Trans>}
           </div>

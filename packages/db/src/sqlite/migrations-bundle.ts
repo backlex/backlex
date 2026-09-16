@@ -143,6 +143,7 @@ import m136 from "../../drizzle/sqlite/20260830090000_agent_skills/migration.sql
 import m137 from "../../drizzle/sqlite/20260830090000_invite_token_hash/migration.sql" with { type: "text" };
 import m138 from "../../drizzle/sqlite/20260909120000_functions_author/migration.sql" with { type: "text" };
 import m139 from "../../drizzle/sqlite/20260915120000_remove_unsent_system_email_templates/migration.sql" with { type: "text" };
+import m140 from "../../drizzle/sqlite/20260916120000_template_appearance/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -290,4 +291,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260830090000_invite_token_hash", sql: m137 },
   { name: "20260909120000_functions_author", sql: m138 },
   { name: "20260915120000_remove_unsent_system_email_templates", sql: m139 },
+  { name: "20260916120000_template_appearance", sql: m140 },
 ];

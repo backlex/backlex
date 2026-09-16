@@ -1744,6 +1744,8 @@ export const emailTemplates = sqliteTable(
     bodyHtml: text("body_html").notNull(),
     bodyText: text("body_text"),
     variables: text("variables", { mode: "json" }).$type<string[]>(),
+    /** Theme, accent and font — rendered as `{{ theme.* }}`. See `@backlex/core/appearance`. */
+    appearance: text("appearance", { mode: "json" }).$type<Record<string, unknown>>(),
     updatedBy: text("updated_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
@@ -1770,6 +1772,8 @@ export const documentTemplates = sqliteTable(
     /** Suggested output name; templated like the body (`invoice-{{ data.no }}.pdf`). */
     filename: text("filename"),
     variables: text("variables", { mode: "json" }).$type<string[]>(),
+    /** Theme, accent and font — rendered as `{{ theme.* }}`. See `@backlex/core/appearance`. */
+    appearance: text("appearance", { mode: "json" }).$type<Record<string, unknown>>(),
     updatedBy: text("updated_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),

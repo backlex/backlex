@@ -215,6 +215,20 @@ copy, `DELETE` on it is a 403, and `DELETE` on the copy restores the default and
 returns it. `POST /api/admin/email-templates/send-test` renders an unsaved draft
 with exactly the `vars` given and stores nothing.
 
+In the admin the editor is three tabs — **Content**, **Appearance**,
+**Variables** — and a variable the sample data leaves empty raises a dot on the
+Variables tab.
+
+**Appearance.** A template takes the same `appearance` — `{ theme, accent, font }`
+— as a [document template](/docs/documents/#appearance), and renders with the
+same `{{ theme.accent }}`, `{{ theme.bg }}`, `{{ theme.text }}`… values. They are
+filled on every send of a stored template and on both test sends (the draft's
+own `appearance` for the unsaved one), and never count as a variable the sender
+owes. Mail clients support little CSS, so write them into inline `style`
+attributes; `theme.fontsHref` is ignored by most clients, which fall back along
+the `theme.font` stack. A built-in email nobody has customized is sent with
+backlex's own wording and has no appearance until it is saved.
+
 **Built-in emails.** These keys are sent by backlex itself, each with a fallback
 body, so nothing has to be stored until a workspace wants its own wording:
 

@@ -120,11 +120,54 @@ body, running header, running footer and filename alike.
 | `headerHtml` / `footerHtml` | Running header/footer, drawn on every page. Chromium's `pageNumber` / `totalPages` spans work. |
 | `pageOptions` | `format` (A4 default), `landscape`, `margin`, `printBackground`. |
 | `filename` | Suggested output name, templated. `.pdf` is appended if missing. |
+| `appearance` | `{ theme, accent, font }` — see [Appearance](#appearance). Null clears it. |
 
 **Backgrounds print by default.** Every browser's print path turns them off,
 which is why an invoice with a coloured header renders as a white rectangle;
 someone who wrote a background into a template meant it. Set
 `printBackground: false` to opt out.
+
+### Appearance
+
+A template can carry the same **theme, accent and font** a
+[public form](/docs/forms/) has: `theme` is `light` or `dark`, `accent` a
+`#rrggbb` colour, `font` one of `sans`, `lexend`, `mono`, `system`.
+
+A template is raw HTML, so an appearance restyles nothing on its own. It reaches
+the template as **`{{ theme.* }}` values**, filled in on every render — so the
+template decides where each colour goes:
+
+```html
+<body style="background: {{ theme.bg }}; color: {{ theme.text }}; font-family: {{ theme.font }}">
+  <h1 style="color: {{ theme.accent }}">Fatura {{ data.no }}</h1>
+  <a style="background: {{ theme.accent }}; color: {{ theme.accentInk }}">Öde</a>
+</body>
+```
+
+| Variable | Value |
+|---|---|
+| `theme.mode` | `light` or `dark` |
+| `theme.accent` | The accent colour |
+| `theme.accentInk` | Text that reads on the accent — dark on a pale accent, white on a dark one |
+| `theme.bg` / `theme.card` | Page and panel background |
+| `theme.text` / `theme.muted` / `theme.faint` | Body, secondary and least prominent text |
+| `theme.border` | Borders and dividers |
+| `theme.font` | A CSS `font-family` value |
+| `theme.fontsHref` | Stylesheet URL for the web fonts, for a `<link>` in the head |
+
+A template with **no appearance still gets every value** — the light palette, the
+default accent and font — so a template written against `{{ theme.accent }}` never
+renders an empty `color:`. The palettes are the forms' own
+(`@backlex/core/appearance`), so the same choice means the same hex everywhere.
+A caller that passes its own `theme` variable keeps it: the render's `vars` win.
+
+An appearance that is not one of those values is refused on every surface —
+`accent: "red"` is a 422 on REST and a `VALIDATION` error on GraphQL — rather
+than being dropped, because a value that reaches a `style=""` attribute must be
+one the renderer knows.
+
+[Email templates](/docs/api-keys-and-email/#email-templates) take the same
+`appearance` and the same `theme.*` values.
 
 ### Workspace overrides
 
@@ -134,6 +177,10 @@ rather than both. Editing an inherited default from inside a workspace creates
 the override — it never changes what other workspaces render. Deleting removes
 only the workspace's own row; an inherited default returns a 404 rather than
 silently doing nothing.
+
+A row that shadows a default carries `overridesDefault: true`, and deleting it
+is a **reset**: the response's `data` is the shared default the key resolves to
+again (or `null` when there was none), on every surface.
 
 ## Rendering
 
@@ -211,7 +258,7 @@ rule and the no-renderer refusal hold identically on all of them.
 | **GraphQL** | `documentTemplates`, `saveDocumentTemplate`, `deleteDocumentTemplate`, `renderDocument` (base64, since GraphQL has no byte type) |
 | **MCP** | `documents.templates_list / _save / _delete`, `documents.render` |
 | **CLI** | `backlex documents <list\|save\|delete\|render>` |
-| **Admin** | *Document templates* under Settings — editor, live HTML preview, and a **Render PDF** button that produces the real thing |
+| **Admin** | *Document templates* under Settings — the email-template editor's twin: search, shared / customized badges, duplicate, delete and reset-to-default, an unsaved-changes guard, a preview at the real sheet size, and **Render PDF**. The editor is four tabs — **Content** (name, key, body), **Page** (sheet, orientation, filename, running header and footer), **Appearance**, **Variables** — and the Variables tab carries a dot when the sample data leaves one empty, because the warning is behind a click. Email templates have the same strip without **Page**. |
 
 `documents.render` over MCP returns the metadata and a byte count, **not** the
 bytes: base64 in a tool result fills an agent's context window for no benefit.
@@ -219,4 +266,7 @@ Use the flow op or the SDK when the file has to go somewhere.
 
 The admin preview is an **approximation** — page breaks, running headers and
 margins exist only in the renderer, so *Render PDF* is what tells you whether a
-template actually works.
+template actually works. It renders the **draft as it stands**, unsaved edits
+included: `POST /render` takes `html` with its own `headerHtml`, `footerHtml`
+and `appearance`, and an `appearance` sent with a `templateKey` overrides the
+template's own for that render.

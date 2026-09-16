@@ -800,7 +800,7 @@ function RelationTrigger({ value, label, error, target, placeholder, onOpen, onC
         </>
       ) : (
         <span className="flex-1 text-[13px] text-muted-foreground">
-          {placeholder ?? t`No row from c_${target} selected`}
+          {placeholder ?? t`No row from ${target} selected`}
         </span>
       )}
       <Button size="sm" variant="outline" onClick={onOpen}>
@@ -881,7 +881,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
       <DialogContent className="w-[min(720px,92vw)] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
-            <Trans>Pick a row from <span className="font-mono">c_{target}</span></Trans>
+            <Trans>Pick a row from <span className="font-mono">{target}</span></Trans>
           </DialogTitle>
           <DialogDescription className="text-[12.5px]">
             <Trans>The 100 most recently updated rows. Search runs across the whole collection.</Trans>
@@ -918,7 +918,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
             {err && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{err}</div>}
             {!loading && !err && filtered.length === 0 && (
               <div className="p-3 text-[12.5px] text-muted-foreground">
-                {q ? t`No rows match "${q}".` : t`c_${target} is empty.`}
+                {q ? t`No rows match "${q}".` : t`${target} is empty.`}
               </div>
             )}
             {filtered.map((r) => {

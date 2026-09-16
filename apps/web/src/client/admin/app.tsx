@@ -1418,8 +1418,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         .catch(() => -1);
                   setConfirm({
                     title: adopted
-                      ? <Trans>Archive collection <span className="font-mono">c_{slug}</span>?</Trans>
-                      : <Trans>Delete collection <span className="font-mono">c_{slug}</span>?</Trans>,
+                      ? <Trans>Archive collection <span className="font-mono">{slug}</span>?</Trans>
+                      : <Trans>Delete collection <span className="font-mono">{slug}</span>?</Trans>,
                     description: adopted
                       ? <Trans>Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
                       : rows === 0
@@ -1434,10 +1434,10 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         invalidateCollections();
                         if (activeCollection === slug) setActiveCollection(null);
                         pushToast(resp.archived
-                          ? t`Collection c_${slug} archived. Restore it from the Archived view.`
+                          ? t`Collection ${slug} archived. Restore it from the Archived view.`
                           : resp.snapshotId
-                            ? t`Collection c_${slug} dropped. ${resp.rows} row(s) saved to a backup.`
-                            : t`Collection c_${slug} dropped.`);
+                            ? t`Collection ${slug} dropped. ${resp.rows} row(s) saved to a backup.`
+                            : t`Collection ${slug} dropped.`);
                       } catch (e) {
                         pushToast((e as Error).message, "error");
                       }
@@ -1446,14 +1446,14 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   });
                 }}
                 onRestore={(slug) => setConfirm({
-                  title: <Trans>Restore collection <span className="font-mono">c_{slug}</span>?</Trans>,
+                  title: <Trans>Restore collection <span className="font-mono">{slug}</span>?</Trans>,
                   description: <Trans>Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured.</Trans>,
                   actionLabel: t`Restore collection`,
                   destructive: false,
                   onConfirm: async () => {
                     try {
                       await collectionsApi.restore(slug);
-                      pushToast(t`Collection c_${slug} restored.`);
+                      pushToast(t`Collection ${slug} restored.`);
                       // Refresh both list entries — the restored row falls
                       // off the archived list and back onto the active one.
                       invalidateCollections();
@@ -1510,7 +1510,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   <Trans>collections</Trans>
                 </button>
                 <span className="text-white/20">/</span>
-                <span className="font-semibold text-foreground">c_{activeCollection}</span>
+                <span className="font-semibold text-foreground">{activeCollection}</span>
               </div>
               {/* "Backlex Console" collection header — display-name title +
                   {rows · fields · owner-scoped} subtitle on the left, the
@@ -1854,7 +1854,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     }}
                     onDropField={(name) => setConfirm({
                       title: t`Drop column "${name}"?`,
-                      description: <Trans>The column and its values are removed from <span className="font-mono">c_{activeCollection || "posts"}</span>. Any values it holds are saved to a pre-drop backup first.</Trans>,
+                      description: <Trans>The column and its values are removed from <span className="font-mono">{activeCollection || "posts"}</span>. Any values it holds are saved to a pre-drop backup first.</Trans>,
                       actionLabel: t`Drop column`,
                       destructive: true,
                       onConfirm: async () => {
@@ -1896,7 +1896,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   onRename={async (nextSlug) => {
                     const slug = activeCollection || "posts";
                     setConfirm({
-                      title: <Trans>Rename <span className="font-mono">c_{slug}</span> → <span className="font-mono">c_{nextSlug}</span>?</Trans>,
+                      title: <Trans>Rename <span className="font-mono">{slug}</span> → <span className="font-mono">{nextSlug}</span>?</Trans>,
                       description: <Trans>Permission rules, webhook patterns, function triggers, flow steps, revisions, comments, and audit log entries that reference <span className="font-mono">{slug}</span> will be updated. The physical table is not renamed.</Trans>,
                       actionLabel: t`Rename collection`,
                       destructive: false,
@@ -1913,7 +1913,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                               .map(([k, n]) => `${n} ${k}`)
                               .join(", ")
                             : "";
-                          pushToast(t`Renamed to c_${nextSlug}${totals ? ` (${totals} updated)` : ""}.`);
+                          pushToast(t`Renamed to ${nextSlug}${totals ? ` (${totals} updated)` : ""}.`);
                         } catch (e) {
                           pushToast((e as Error).message, "error");
                         }
@@ -1972,8 +1972,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           .catch(() => -1);
                     setConfirm({
                       title: adopted
-                        ? <Trans>Archive collection <span className="font-mono">c_{activeCollection}</span>?</Trans>
-                        : <Trans>Delete collection <span className="font-mono">c_{activeCollection}</span>?</Trans>,
+                        ? <Trans>Archive collection <span className="font-mono">{activeCollection}</span>?</Trans>
+                        : <Trans>Delete collection <span className="font-mono">{activeCollection}</span>?</Trans>,
                       description: adopted
                         ? <Trans>Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
                         : rows === 0
@@ -1988,10 +1988,10 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           invalidateCollections();
                           setActiveCollection(null);
                           pushToast(resp.archived
-                            ? t`Collection c_${slug} archived. Restore it from the Archived view.`
+                            ? t`Collection ${slug} archived. Restore it from the Archived view.`
                             : resp.snapshotId
-                              ? t`Collection c_${slug} dropped. ${resp.rows} row(s) saved to a backup.`
-                              : t`Collection c_${slug} dropped.`);
+                              ? t`Collection ${slug} dropped. ${resp.rows} row(s) saved to a backup.`
+                              : t`Collection ${slug} dropped.`);
                         } catch (e) {
                           pushToast((e as Error).message, "error");
                         }
@@ -2054,7 +2054,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             // Refetch — the new row comes back metrics-enriched from the
             // canonical list rather than the wizard's partial draft.
             invalidateCollections();
-            pushToast(t`Collection c_${c.slug} created.`);
+            pushToast(t`Collection ${c.slug} created.`);
             created = true;
           } catch (e) {
             pushToast((e as Error).message, "error");
@@ -2113,7 +2113,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           const slug = activeCollection || "posts";
           await collectionsApi.patch(slug, { fields: merged.fields as any });
           setSchemaState(merged);
-          pushToast(t`Column "${(field as any).name}" added to c_${slug}.`);
+          pushToast(t`Column "${(field as any).name}" added to ${slug}.`);
         } catch (e) {
           pushToast((e as Error).message);
         }

@@ -465,7 +465,7 @@ export function ItemEditorPage({
             )}
           </div>
           <span className="truncate font-mono text-[11px] text-muted-foreground">
-            c_{slug}
+            {slug}
             {mode === "edit" ? ` · ${itemId}` : ""}
           </span>
         </div>
@@ -813,7 +813,7 @@ export function ItemEditorPage({
         title={<Trans>Delete this item?</Trans>}
         description={
           <Trans>
-            This removes the row from <span className="font-mono">c_{slug}</span>. Revisions remain available.
+            This removes the row from <span className="font-mono">{slug}</span>. Revisions remain available.
           </Trans>
         }
         actionLabel={t`Delete`}

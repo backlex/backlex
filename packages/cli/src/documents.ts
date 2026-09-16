@@ -23,6 +23,22 @@ interface TemplateRow {
   updatedAt?: unknown;
 }
 
+/** `--theme` / `--accent` / `--font` as an appearance, or undefined when none
+ *  was given. The server validates the values, so a typo is refused with the
+ *  allowed list rather than guessed at here. */
+const appearanceFlags = (
+  args: string[],
+): { theme?: "light" | "dark"; accent?: string; font?: "sans" | "lexend" | "mono" | "system" } | undefined => {
+  const out: Record<string, string> = {};
+  const theme = flag(args, "--theme");
+  const accent = flag(args, "--accent");
+  const font = flag(args, "--font");
+  if (theme) out.theme = theme;
+  if (accent) out.accent = accent;
+  if (font) out.font = font;
+  return Object.keys(out).length > 0 ? (out as never) : undefined;
+};
+
 const HELP = `backlex documents <list|save|delete|render>
 
   list
@@ -30,9 +46,13 @@ const HELP = `backlex documents <list|save|delete|render>
              [--header-file <p>] [--footer-file <p>]
              [--filename <tpl>] [--format <A4|Letter|Legal|A3|A5>]
              [--landscape] [--margin <20mm>]
+             [--theme <light|dark>] [--accent <#rrggbb>]
+             [--font <sans|lexend|mono|system>]
   delete <key>
   render [--template <key> | --html-file <path>]
          [--vars <json>] [--out <path>] [--stdout]
+         [--theme <light|dark>] [--accent <#rrggbb>]
+         [--font <sans|lexend|mono|system>]
 
   A template body is a COMPLETE html document, not a fragment — it sets its
   own fonts, page size and print styles.
@@ -40,6 +60,10 @@ const HELP = `backlex documents <list|save|delete|render>
   Values are interpolated with {{ data.field }} in the body, the running
   header/footer and the filename alike. --vars takes the whole render
   context, so the usual shape is: --vars '{"data":{"no":"2026-114"}}'
+
+  --theme / --accent / --font set the template's appearance, which it reads
+  as {{ theme.accent }}, {{ theme.bg }}, {{ theme.text }}, {{ theme.font }}
+  and so on. On render they override the template's own for that one run.
 
   A workspace's template overrides an instance-wide default with the same
   key; saving one never changes what other workspaces render.
@@ -124,6 +148,8 @@ export const runDocuments = async (args: string[]): Promise<void> => {
         if (margin) pageOptions.margin = margin;
         if (has(rest, "--landscape")) pageOptions.landscape = true;
         if (Object.keys(pageOptions).length > 0) body.pageOptions = pageOptions;
+        const appearance = appearanceFlags(rest);
+        if (appearance) body.appearance = appearance;
 
         const res = await client.request<{ data: TemplateRow }>(
           "PUT",
@@ -174,6 +200,7 @@ export const runDocuments = async (args: string[]): Promise<void> => {
           ...(html ? { html } : {}),
           ...(vars ? { vars } : {}),
           ...(flag(rest, "--filename") ? { filename: flag(rest, "--filename")! } : {}),
+          ...(appearanceFlags(rest) ? { appearance: appearanceFlags(rest)! } : {}),
         });
 
         if (has(rest, "--stdout")) {

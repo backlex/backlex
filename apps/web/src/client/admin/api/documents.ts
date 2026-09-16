@@ -74,8 +74,10 @@ export const documentsApi = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  /** Returns what the key resolves to now: the shared default it was
+   *  overriding, or null. */
   remove: (key: string) =>
-    api<{ ok: true }>(`/api/admin/documents/templates/${encodeURIComponent(key)}`, {
+    api<{ ok: true; data: ApiDocumentTemplate | null }>(`/api/admin/documents/templates/${encodeURIComponent(key)}`, {
       method: "DELETE",
     }),
   /** Returns the PDF itself, so this bypasses the JSON envelope helper. */

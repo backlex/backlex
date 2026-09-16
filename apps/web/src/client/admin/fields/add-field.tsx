@@ -510,7 +510,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         <div>
           <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
             <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
-              <Trans>Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></Trans>
+              <Trans>Add field to <span className="font-mono">{schema?.slug || "posts"}</span></Trans>
             </DialogTitle>
             <DialogDescription className="text-[12.5px]">
               <Trans>Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.</Trans>
@@ -717,7 +717,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 {!presentational && (
                   <div className="mt-1.5">
                     <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>
-                    <AlterPreview table={`c_${schema?.slug || "collection"}`} pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
+                    <AlterPreview table={`${schema?.slug || "collection"}`} pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
                   </div>
                 )}
               </div>

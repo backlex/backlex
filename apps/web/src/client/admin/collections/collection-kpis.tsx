@@ -243,7 +243,7 @@ export function CollectionKpisPanel({
                 <span className="text-[15px] font-semibold tabular-nums">
                   {data.rows.length === 0
                     ? "—"
-                    : `${data.rows[0]?.label ?? "—"} · ${formatValue(data.rows[0]?.value ?? null, kpi, data.rows[0]?.currency, locale)}`}
+                    : `${data.rows[0]?.display ?? data.rows[0]?.label ?? "—"} · ${formatValue(data.rows[0]?.value ?? null, kpi, data.rows[0]?.currency, locale)}`}
                 </span>
               ) : (
                 <>

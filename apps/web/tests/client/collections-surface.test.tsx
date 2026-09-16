@@ -69,12 +69,12 @@ describe("CollectionsIndex", () => {
         collections={[collection(), collection({ slug: "authors" })] as never}
       />,
     );
-    // The row is labelled by the PHYSICAL table (`c_<slug>`), not the slug on
-    // its own — worth pinning, because it is what an operator matches against
-    // when they go looking in the database.
+    // The card is labelled by the slug alone. It used to read `c_<slug>`, which
+    // named no real table either — managed tables are `c_<tenantPrefix12>_<slug>`.
     const { container } = view;
-    await waitFor(() => expect(container.textContent).toContain("c_posts"));
-    expect(container.textContent).toContain("c_authors");
+    await waitFor(() => expect(container.textContent).toContain("posts"));
+    expect(container.textContent).toContain("authors");
+    expect(container.textContent).not.toContain("c_");
   });
 
   test("an empty workspace gets an empty state, not a bare list", async () => {
@@ -85,7 +85,7 @@ describe("CollectionsIndex", () => {
       <CollectionsIndex {...props} collections={[] as never} />,
     );
     await waitFor(() => expect(container.textContent).toBeTruthy());
-    expect(container.textContent).not.toContain("c_posts");
+    expect(container.textContent).not.toContain("posts");
   });
 
   test("a non-admin does not get the DDL-backed actions", async () => {
@@ -95,7 +95,7 @@ describe("CollectionsIndex", () => {
     const { container } = renderWithProviders(
       <CollectionsIndex {...props} collections={[collection()] as never} canManage={false} />,
     );
-    await waitFor(() => expect(container.textContent).toContain("c_posts"));
+    await waitFor(() => expect(container.textContent).toContain("posts"));
     expect(container.textContent).not.toContain("New collection");
   });
 
@@ -109,7 +109,7 @@ describe("CollectionsIndex", () => {
         collections={[collection({ slug: "site_settings", singleton: true, count: 1 })] as never}
       />,
     );
-    await waitFor(() => expect(container.textContent).toContain("c_site_settings"));
+    await waitFor(() => expect(container.textContent).toContain("site_settings"));
   });
 });
 

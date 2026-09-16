@@ -405,6 +405,21 @@ describe("worker startup budget", () => {
     // imports — drizzle, `@backlex/core`, `@backlex/db`, `permissions/cache`,
     // `seed` — are all modules the graph already reached, and the not-on-the-
     // startup-path guards above stay green. Nothing new became reachable.
-    expect(kib).toBeLessThan(8550);
+    //
+    // Raised 8550 → 8580 on 2026-09-16, measured at 8565 (+15 KiB) — template
+    // appearance and relation labels. Four new modules, all declarations and
+    // the reasons for them: `@backlex/core/appearance` (7.6 KiB — the palettes
+    // MOVED here out of `client/lib/public-theme.ts` so the mailer and the PDF
+    // renderer read the same hex the admin shows, which is why the client side
+    // did not shrink the server figure), `@backlex/core/row-label` (4.5 KiB,
+    // likewise moved out of the admin so a KPI grouped by a relation is named
+    // the way the relation picker names it), `services/items/relation-labels`
+    // (4.3 KiB) and `lib/appearance-schema` (1.0 KiB). Their imports — drizzle,
+    // `@hono/zod-openapi`, `permissions`, `items/{collection-loader,row-access,
+    // serialize,sql-helpers}` — are modules the graph already reached, and the
+    // not-on-the-startup-path guards above stay green. Nothing new became
+    // reachable; `bun run startup:budget` is still the half that would notice
+    // if any of it became expensive.
+    expect(kib).toBeLessThan(8580);
   });
 });

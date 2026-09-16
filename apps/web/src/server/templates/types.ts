@@ -237,6 +237,8 @@ export interface TemplateDocument {
   filename?: string;
   /** Names the render refuses to run without. */
   variables?: string[];
+  /** Theme, accent and font, read as `{{ theme.* }}`. See `@backlex/core/appearance`. */
+  appearance?: { theme?: "light" | "dark"; accent?: string; font?: "sans" | "lexend" | "mono" | "system" };
 }
 
 /**

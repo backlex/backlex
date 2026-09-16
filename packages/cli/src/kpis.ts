@@ -31,6 +31,8 @@ interface KpiRow {
 
 interface KpiPoint {
   label?: string;
+  /** The related row's name when grouped by a relation. */
+  display?: string;
   value: number | null;
   previousValue: number | null;
   delta: number | null;
@@ -150,7 +152,7 @@ export const runKpis = async (args: string[]): Promise<void> => {
         if (data.rows) {
           printTable(
             data.rows.map((r) => ({
-              [data.groupBy ?? "group"]: r.label ?? "—",
+              [data.groupBy ?? "group"]: r.display ?? r.label ?? "—",
               value: describePoint(r),
             })),
           );

@@ -8,6 +8,7 @@ import {
   htmlToText,
   renderTemplate,
 } from "@backlex/core";
+import { normalizeAppearance, withThemeVars, type Appearance } from "@backlex/core/appearance";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../../app";
@@ -16,6 +17,7 @@ import { requireUser } from "../../middleware/session";
 import { assertNotDemo } from "../../services/demo";
 import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
 import { defaultHook } from "../../lib/openapi-router";
+import { AppearanceSchema } from "../../lib/appearance-schema";
 
 // Overrides resolve like `document_templates`: a workspace row shadows the
 // instance-wide (`tenant_id IS NULL`) row with the same key, and a workspace
@@ -41,6 +43,7 @@ const EmailTemplateInput = z
     bodyHtml: z.string(),
     bodyText: z.string().nullish().openapi({ description: "Null derives the text part from `bodyHtml`." }),
     variables: z.array(z.string()).nullish(),
+    appearance: AppearanceSchema.nullish(),
   })
   .openapi("EmailTemplateInput");
 
@@ -55,6 +58,7 @@ const EmailTemplateRow = z
     bodyHtml: z.string(),
     bodyText: z.string().nullable(),
     variables: z.array(z.string()).nullable(),
+    appearance: AppearanceSchema.nullable(),
     updatedBy: z.string().nullable().optional(),
     updatedAt: z.unknown().nullable().optional(),
     inherited: z.boolean().openapi({ description: "Instance-wide default. Saving it writes the workspace's copy." }),
@@ -76,6 +80,7 @@ const SendDraftTestInput = SendTestInput.extend({
   bodyHtml: z.string().min(1),
   bodyText: z.string().nullish(),
   fromAddress: z.union([z.string().email(), z.literal("")]).nullish(),
+  appearance: AppearanceSchema.nullish(),
 }).openapi("EmailTemplateSendDraftTestInput");
 
 type Row = Omit<z.infer<typeof EmailTemplateRow>, "inherited" | "overridesDefault">;
@@ -136,6 +141,9 @@ const findOwnByKey = async (ctx: Ctx, key: string, tenantId: string): Promise<Ro
 
 const flagged = (row: Row, sharedExists: boolean) => ({
   ...row,
+  // Read back through the same filter the renderer uses, so the API never
+  // returns an appearance the mailer would not honour.
+  appearance: normalizeAppearance(row.appearance),
   inherited: row.tenantId === null,
   overridesDefault: row.tenantId !== null && sharedExists,
 });
@@ -143,8 +151,14 @@ const flagged = (row: Row, sharedExists: boolean) => ({
 const sendRendered = async (
   ctx: Ctx,
   tenantId: string,
-  tpl: { subject: string; bodyHtml: string; bodyText?: string | null; fromAddress?: string | null },
-  vars: Record<string, unknown>,
+  tpl: {
+    subject: string;
+    bodyHtml: string;
+    bodyText?: string | null;
+    fromAddress?: string | null;
+    appearance?: Appearance | Record<string, unknown> | null;
+  },
+  rawVars: Record<string, unknown>,
   to: string,
 ) => {
   // Both send-test routes end here, and together they are a mail relay: any
@@ -153,6 +167,9 @@ const sendRendered = async (
   // list that blocks `/api/admin/email-config` but not these — so the refusal
   // travels with the send, the way `assertNotDemo` does for GraphQL.
   assertNotDemo(ctx.env);
+  // `theme.*` exactly as `sendTemplatedEmail` fills it, so a test mail matches
+  // what a real recipient of the saved template gets.
+  const vars = withThemeVars(rawVars, normalizeAppearance(tpl.appearance));
   const html = renderTemplate(tpl.bodyHtml, vars);
   const text = tpl.bodyText ? renderTemplate(tpl.bodyText, vars) : htmlToText(html);
   const transport = await ctx.emailFor(tenantId);
@@ -272,6 +289,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
         bodyHtml: body.bodyHtml,
         bodyText: body.bodyText ?? null,
         variables: body.variables ?? null,
+        appearance: normalizeAppearance(body.appearance),
       };
       await (ctx.db as any).insert(t).values({ ...row, updatedBy: auth.userId });
       const sharedExists = row.tenantId !== null && (await findShared(ctx, row.key)) !== null;
@@ -329,6 +347,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
       if (body.bodyHtml !== undefined) set.bodyHtml = body.bodyHtml;
       if (body.bodyText !== undefined) set.bodyText = body.bodyText ?? null;
       if (body.variables !== undefined) set.variables = body.variables ?? null;
+      if (body.appearance !== undefined) set.appearance = normalizeAppearance(body.appearance);
 
       let targetId = row.id;
       if (row.tenantId === null) {
@@ -354,6 +373,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook }
             bodyHtml: row.bodyHtml,
             bodyText: row.bodyText,
             variables: row.variables,
+            appearance: row.appearance,
             ...patch,
           });
         }

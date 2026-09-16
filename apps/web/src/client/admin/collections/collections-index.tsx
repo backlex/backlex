@@ -19,6 +19,7 @@ import { AdoptWizard } from "./adopt-wizard";
 import { AddFromTemplateDialog } from "../pages/data/template-onboarding";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { useUrlState } from "@/lib/use-url-state";
+import { useAuthSurface } from "@/lib/auth";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Card } from "@backlex/ui/components/card";
 import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
@@ -97,6 +98,8 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
   const templatesCatalog = useTemplatesCatalog(canManage && !showArchived);
   const sampleSeeds = templatesCatalog.data?.sampleSeeds ?? 0;
   const clearSamples = useClearTemplateSamples();
+  // A playground's sample rows are the demo itself; the server refuses too.
+  const { surface } = useAuthSurface();
   // `collections` arrives enriched (metrics merge + status filter) from the
   // parent. The real fetch lifecycle lives in React Query — observe the same
   // cached query so the skeleton tracks the actual request instead of the
@@ -330,7 +333,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
         pushToast={pushToast}
       />
 
-      {canManage && !showArchived && sampleSeeds > 0 && (
+      {canManage && !showArchived && !surface?.demo && sampleSeeds > 0 && (
         <div className="flex flex-wrap items-center gap-2.5 rounded-surface border border-border bg-muted/40 px-3.5 py-2.5">
           <I.Sparkles size={14} className="text-primary shrink-0" />
           <span className="flex-1 min-w-[200px] text-[12.5px] text-muted-foreground">
@@ -692,7 +695,7 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
           style={{ background: `color-mix(in srgb, ${accent} 13%, transparent)`, color: accent }}
         ><Ic size={14} /></span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate font-mono text-[13px] text-foreground">c_{c.slug}</span>
+          <span className="truncate font-mono text-[13px] text-foreground">{c.slug}</span>
           <span className="truncate text-[11px] text-muted-foreground" title={c.note ?? undefined}>
             {c.note ? c.note : <Trans>{c.fields} fields</Trans>}
           </span>

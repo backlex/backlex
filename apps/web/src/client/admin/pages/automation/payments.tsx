@@ -88,9 +88,21 @@ type DeliveryRow = {
   createdAt?: number | string | null;
 };
 
-/** Stripe's mark is the simple-icons single-path glyph. Polar and Lemon
- *  Squeezy don't publish one we can vendor, so they get a lettermark and the
- *  fruit respectively — better an honest stand-in than an invented "logo". */
+/** Brand glyphs are simple-icons single-path SVGs (CC0; the later entries from
+ *  16.31.0). Polar, PayTR, iyzico and Authorize.Net are not in that set, so
+ *  they keep a lettermark — better an honest stand-in than an invented "logo".
+ *  (simple-icons' `polars` is the dataframe library, not Polar.) */
+const LEMONSQUEEZY_MARK = "m7.4916 10.835 2.3748-6.5114a3.1497 3.1497 0 0 0-.065-2.3418C9.0315.183 6.9427-.398 5.2928.265 3.643.929 2.71 2.4348 3.512 4.3046l2.8197 6.5615c.219.509.97.489 1.16-.03m1.6798 1.0969 6.5334-2.7758c2.1699-.9219 2.7218-3.6907 1.022-5.2905l-.068-.063c-1.6669-1.5469-4.4217-1.002-5.3706 1.0359L8.3566 11.135c-.234.503.295 1.0199.8159.7979m.373.87 6.6454-2.5119c2.2078-.8349 4.6206.745 4.5886 3.0398l-.002.09c-.048 2.2358-2.3938 3.7376-4.5536 2.9467l-6.6724-2.4418a.595.595 0 0 1-.006-1.1229m-.386 1.9269 6.4375 2.9767a3.2997 3.2997 0 0 1 1.6658 1.6989c.769 1.7998-.283 3.6396-1.9328 4.3016-1.6499.662-3.4097.235-4.2097-1.6359l-2.8027-6.5694c-.217-.509.328-1.009.8419-.772";
+const PADDLE_MARK = "M2.363 7.904v.849a3.95 3.95 0 0 1 3.65 2.425c.198.476.3.987.299 1.502h.791c0-1.04.416-2.037 1.157-2.772a3.962 3.962 0 0 1 2.792-1.149V7.91a3.959 3.959 0 0 1-3.65-2.425 3.893 3.893 0 0 1-.299-1.502h-.791c0 1.04-.416 2.037-1.157 2.772a3.96 3.96 0 0 1-2.792 1.149M13.105 2.51H6.312V0h6.793c4.772 0 8.532 3.735 8.532 8.314 0 4.58-3.76 8.314-8.532 8.314H9.156V24H6.312v-9.882h6.793c3.319 0 5.688-2.352 5.688-5.804 0-3.451-2.37-5.804-5.688-5.804";
+const ADYEN_MARK = "M11.64703 9.88245v2.93377c0 .13405.10867.24271.24272.24271h.46316V9.88245h1.76474v5.1503c0 .46916-.38033.8495-.8495.8495H9.94303v-1.23507h2.40991v-.52942h-1.62108c-.46917 0-.8495-.38033-.8495-.8495V9.88245h1.76467Zm-8.26124.00001c.46917 0 .8495.38034.8495.8495v3.3858H.8495c-.46916 0-.8495-.38033-.8495-.8495v-.94805c0-.46917.38034-.8495.8495-.8495h.91521v1.3455c0 .13406.10867.24272.24272.24272h.46316V11.184c0-.13405-.10867-.24271-.24272-.24271l-2.16719-.00002V9.88246Zm5.79068-1.76471v6.00001H5.79068c-.46917 0-.8495-.38033-.8495-.8495v-2.53631c0-.46917.38033-.8495.8495-.8495h.91515v2.93377c0 .13405.10867.24271.24272.24271h.46316l.00005-4.94118h1.76471Zm9.03286 1.76471a.8495.8495 0 0 1 .8495.8495v.94805c0 .46917-.38033.8495-.8495.8495h-.9152v-1.3455c0-.13404-.10868-.2427-.24272-.2427h-.46317v1.8749c0 .13406.10867.24272.24272.24272h2.16719v1.05883h-3.32511c-.46917 0-.8495-.38033-.8495-.8495v-3.3858Zm4.94117 0c.46916 0 .8495.38034.8495.8495v3.3858h-1.7647V11.184c-.0004-.13388-.10884-.24232-.24272-.24272h-.46316v3.1765H19.7647V9.88245Z";
+const KLARNA_MARK = "M4.592 2v20H0V2h4.592zm11.46 0c0 4.194-1.583 8.105-4.415 11.068l-.278.283L17.702 22h-5.668l-6.893-9.4 1.779-1.332c2.858-2.14 4.535-5.378 4.637-8.924L11.562 2h4.49zM21.5 17a2.5 2.5 0 110 5 2.5 2.5 0 010-5z";
+/** `size` is for wordmarks (Adyen): simple-icons fits them to the 24-wide box,
+ *  so at the default 20px their letters are about 4px tall. */
+const SI = ({ d, size = 20 }: { d: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d={d} />
+  </svg>
+);
 const STRIPE_MARK =
   "M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z";
 
@@ -99,22 +111,15 @@ const STRIPE_MARK =
  *  nearly nothing, in either theme. */
 type Brand = { mark: ReactNode; markBg: string; markFg?: string };
 const BRANDS: Record<string, Brand> = {
-  stripe: {
-    mark: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d={STRIPE_MARK} />
-      </svg>
-    ),
-    markBg: "#635BFF",
-  },
+  stripe: { mark: <SI d={STRIPE_MARK} />, markBg: "#635BFF" },
   polar: { mark: "P", markBg: "#0062FF" },
-  lemonsqueezy: { mark: "\u{1F34B}", markBg: "#FFC233" },
-  paddle: { mark: "Pd", markBg: "#FDDD35", markFg: "#1B1B1B" },
+  lemonsqueezy: { mark: <SI d={LEMONSQUEEZY_MARK} />, markBg: "#FFC233", markFg: "#1B1B1B" },
+  paddle: { mark: <SI d={PADDLE_MARK} />, markBg: "#FDDD35", markFg: "#1B1B1B" },
   paytr: { mark: "PT", markBg: "#00A0E9" },
   iyzico: { mark: "iy", markBg: "#1E64FF" },
-  adyen: { mark: "A", markBg: "#0ABF53" },
+  adyen: { mark: <SI d={ADYEN_MARK} size={34} />, markBg: "#0ABF53" },
   authorizenet: { mark: "An", markBg: "#25529C" },
-  klarna: { mark: "K", markBg: "#FFB3C7", markFg: "#0B051D" },
+  klarna: { mark: <SI d={KLARNA_MARK} />, markBg: "#FFB3C7", markFg: "#0B051D" },
   dummy: { mark: "TE", markBg: "oklch(0.55 0.13 75)" },
 };
 const brandFor = (provider: string): Brand =>

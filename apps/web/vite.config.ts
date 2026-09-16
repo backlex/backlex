@@ -440,20 +440,63 @@ const pkgVersion = (() => {
     return "0.0.0";
   }
 })();
-// Prefer the cloud template tag (set by scripts/build-worker-template.ts),
-// then the nearest git tag, then the package.json version. Release tags are
-// `worker-vX.Y.Z` → strip the `worker-` prefix for display.
-//
-// `--match 'worker-v*'` is load-bearing: this repo tags four independent
-// packages off the same history (`backlex-v*`, `cli-v*`, `ui-v*`, `worker-v*`),
-// and a bare `describe --tags` answers with whichever came last — on
-// 1037d0fc that was `integrations-v0.2.1-59-g…`, a version of something this
-// bundle is not. Without a match there is also no `--always` fallback worth
-// having, since any tag at all outranks it.
-const appVersion = (
-  process.env.TEMPLATE_VERSION ??
-  git("describe --tags --match 'worker-v*' --always --dirty", `v${pkgVersion}`)
-).replace(/^worker-/, "");
+/**
+ * Which worker version this bundle is, in the four places it can be known.
+ *
+ * `--match 'worker-v*'` is load-bearing: this repo tags five independent things
+ * off one history (`backlex-v*`, `cli-v*`, `ui-v*`, `integrations-v*`,
+ * `worker-v*`), and a bare `describe --tags` answers with whichever came last —
+ * on 1037d0fc that was `integrations-v0.2.1-59-g…`, a version of something this
+ * bundle is not.
+ *
+ * But `describe` alone is not enough on the runner, and that is the whole
+ * reason for the ladder below. **Cloudflare Workers Builds clones without
+ * tags**, so the match found nothing there and `--always` handed back a bare
+ * sha: the live sign-in card read `vafaf468` after `afaf4688` shipped.
+ * Measured on the deployed bundle, not assumed — locally the same call answers
+ * `worker-v0.4.126-230-g…`, so this is invisible until something is live.
+ *
+ * Fetching the tags fixes the refs but NOT `describe`, and the distinction is
+ * the one `.github/workflows/test.yml` already writes down for the release
+ * guard: `git tag --list` reads refs and never walks to the tagged commits,
+ * while `describe` walks. A depth-1 clone therefore has no path from HEAD back
+ * to any tag, so `describe` keeps failing however many tag refs are present.
+ * Hence the two-step: fetch the refs cheaply, and if `describe` still cannot
+ * place HEAD, name the newest released tag and pin the exact commit beside it
+ * (`0.4.126+afaf468`), which is the honest reading of a `main` deploy — that
+ * release, plus what has landed since.
+ */
+const workerDescribe = () => git("describe --tags --match 'worker-v*' --dirty", "");
+const newestWorkerTag = () =>
+  git("tag --list 'worker-v*' --sort=-v:refname", "").split("\n")[0]?.trim() ?? "";
+
+const resolveAppVersion = (): string => {
+  const described = workerDescribe();
+  if (described) return described;
+  // Only on a runner: a local checkout that cannot place HEAD has no tags to
+  // fetch either, and a build should not reach the network to print a string.
+  if (!process.env.WORKERS_CI && !process.env.CI) return "";
+  // Refs only, depth 1 — the same command test.yml uses, for the same reason.
+  // The refspec is quoted because `git()` runs through a shell: an unquoted
+  // `worker-v*` expands against the files in this directory the day somebody
+  // adds one, and the refspec would silently become something else.
+  git(
+    "fetch --no-recurse-submodules --depth=1 origin '+refs/tags/worker-v*:refs/tags/worker-v*'",
+    "",
+  );
+  const afterFetch = workerDescribe();
+  if (afterFetch) return afterFetch;
+  const tag = newestWorkerTag();
+  const sha = git("rev-parse --short HEAD", "");
+  return tag && sha ? `${tag}+${sha}` : tag;
+};
+
+// Prefer the cloud template tag (set by scripts/build-worker-template.ts), then
+// the ladder above, then a bare sha, then the package.json version. Release
+// tags are `worker-vX.Y.Z` → strip the `worker-` prefix for display.
+const appVersion =
+  (process.env.TEMPLATE_VERSION ?? resolveAppVersion()).replace(/^worker-/, "") ||
+  git("describe --always --dirty", `v${pkgVersion}`);
 const gitCommit = git("rev-parse --short HEAD", "unknown");
 const buildDate = new Date().toISOString().slice(0, 10);
 const wranglerVersion = (() => {

@@ -3,6 +3,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError, renderTemplate, htmlToText, type EmailAttachment } from "@backlex/core";
 import { normalizeAppearance, withThemeVars } from "@backlex/core/appearance";
+import { applyShell } from "@backlex/core/template-shell";
 import type { Ctx } from "../../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -136,12 +137,16 @@ export const sendTemplatedEmail = async (
   if (tpl) {
     // A stored template renders with its own appearance as `theme.*`; a
     // fallback below has none and gets only what the caller passed.
-    const themed = withThemeVars(vars, normalizeAppearance(tpl.appearance));
+    const appearance = normalizeAppearance(tpl.appearance);
+    const themed = withThemeVars(vars, appearance);
     const subject = renderTemplate(tpl.subject, themed);
-    const html = renderTemplate(tpl.bodyHtml, themed);
+    const body = renderTemplate(tpl.bodyHtml, themed);
+    // Text FIRST, from the unwrapped body: `htmlToText` over the shell would
+    // walk the layout tables and hand a plain-text reader the chrome.
     const text = tpl.bodyText
       ? renderTemplate(tpl.bodyText, themed)
-      : htmlToText(html);
+      : htmlToText(body);
+    const html = applyShell(body, appearance, "email");
     await transport.send({
       to: opts.to,
       from: tpl.fromAddress ?? opts.fallback?.from ?? undefined,
@@ -160,12 +165,17 @@ export const sendTemplatedEmail = async (
 
   const fb = opts.fallback ?? {};
   const subject = fb.subject ? renderTemplate(fb.subject, vars) : undefined;
-  const html = fb.html ? renderTemplate(fb.html, vars) : undefined;
+  const body = fb.html ? renderTemplate(fb.html, vars) : undefined;
   const text = fb.text
     ? renderTemplate(fb.text, vars)
-    : html
-      ? htmlToText(html)
+    : body
+      ? htmlToText(body)
       : undefined;
+  // A fallback is the built-in mail for a template nobody customized, so there
+  // is no stored appearance to read — it gets the shell's own defaults, which
+  // is the point: an instance that never opened the panel still sends
+  // something that looks composed rather than four bare `<p>`s.
+  const html = body === undefined ? undefined : applyShell(body, null, "email");
 
   if (!subject || (!text && !html)) {
     throw new Error(

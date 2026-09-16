@@ -3,11 +3,17 @@
  * theme, accent and font a form's design panel offers, in the same vocabulary
  * (`@backlex/core/appearance`).
  *
- * A template is raw HTML, so choosing a theme does not restyle it behind the
- * author's back. The choice becomes `{{ theme.* }}` values the HTML reads — the
- * same values the mailer and the PDF renderer fill in — which is why the tab
- * lists those variables under the controls rather than on a separate screen:
- * picking a colour and putting it somewhere is one task.
+ * What a choice here DOES, in two halves. A fragment body is rendered inside a
+ * document built from the theme — background, card, text colour, font, link
+ * accent — which is the half that makes the panel worth opening at all: before
+ * it existed, none of the thirteen built-in templates mentioned `theme.`, so
+ * picking dark changed precisely nothing. The same values also reach the body
+ * as `{{ theme.* }}` placeholders, which is why the tab lists those variables
+ * under the controls rather than on a separate screen: picking a colour and
+ * putting it somewhere is one task.
+ *
+ * The wrap is a switch, off-able per template, and a body that brings its own
+ * `<html>` is never wrapped — an author who wrote a document owns it.
  *
  * Each control shows what it DOES rather than naming it: the theme as two
  * miniature documents in the palettes a recipient would see, the font as the
@@ -31,7 +37,7 @@ import {
 import { cn } from "@backlex/ui/lib/utils";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import { I } from "../../icons";
-import { Button } from "../../ui";
+import { Button, Switch } from "../../ui";
 import { PanelLabel } from "../data/forms/panels";
 
 const THEME_VAR_DESCRIPTIONS: Record<keyof ThemeVars, MessageDescriptor> = {
@@ -62,6 +68,10 @@ const compact = (a: Appearance): Appearance | null => {
   if (a.theme && a.theme !== "light") out.theme = a.theme;
   if (a.accent && a.accent.toLowerCase() !== ACCENTS[0].toLowerCase()) out.accent = a.accent;
   if (a.font && a.font !== "sans") out.font = a.font;
+  // Only the OFF position is a setting: wrapping is what an unset appearance
+  // already does, so storing `shell: true` would keep a row's appearance
+  // non-null for a choice identical to having made none.
+  if (a.shell === false) out.shell = false;
   return Object.keys(out).length > 0 ? out : null;
 };
 
@@ -119,10 +129,12 @@ export function TemplateAppearancePanel({
   value: Appearance | null;
   onChange: (next: Appearance | null) => void;
 }) {
+  const { t } = useLingui();
   const theme: AppearanceTheme = value?.theme ?? "light";
   const accent = safeAccent(value?.accent);
   const font: AppearanceFont = value?.font ?? "sans";
-  const patch = (p: Appearance) => onChange(compact({ theme, accent, font, ...p }));
+  const shell = value?.shell !== false;
+  const patch = (p: Appearance) => onChange(compact({ theme, accent, font, shell, ...p }));
 
   return (
     <div className="flex flex-col gap-4" data-testid="template-appearance">
@@ -179,6 +191,25 @@ export function TemplateAppearancePanel({
             </button>
           ))}
         </div>
+      </div>
+      <div className="flex items-start justify-between gap-3 rounded-control border border-border p-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="text-[12.5px] font-medium text-foreground">
+            <Trans>Wrap the body in this theme</Trans>
+          </div>
+          <p className="text-[11.5px] text-muted-foreground">
+            <Trans>
+              Renders the body inside a document with these colours and font. Turn it off to
+              send exactly what the body says. A body that starts with its own {"<html>"} is
+              never wrapped.
+            </Trans>
+          </p>
+        </div>
+        <Switch
+          checked={shell}
+          onChange={(v) => patch({ shell: v })}
+          title={t`Wrap the body in this theme`}
+        />
       </div>
     </div>
   );

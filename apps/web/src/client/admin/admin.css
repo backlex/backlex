@@ -253,6 +253,21 @@ html.dark [data-slot="sidebar"][data-mobile="true"] {
   view-transition-name: main-pane;
 }
 
+/*
+ * A page whose content is a fixed-width thing it must SHOW, not a column of
+ * forms to read.
+ *
+ * 1180px is a reading measure, and for the template editors it was the whole
+ * problem: list + editor + preview split what was left, so on a 1600px monitor
+ * the preview column offered 378px and a 720px email was drawn at 53% — body
+ * text at under 7px. Nothing about that is fixed by scaling better; the column
+ * simply has to be wider than an email. Measured, not guessed: 1560 − 56 of
+ * padding − 240 list − 28 gap leaves 1236, and the 1/1.35 split below gives
+ * the preview ~708px of the ~770 a 720px frame needs — so the last few percent
+ * are what the expand dialog is for.
+ */
+.page--wide { max-width: 1560px; }
+
 /* ─── View Transitions ───
    Subtle, fast page/route animations driven by `withViewTransition`
    (apps/web/src/client/admin/lib/nav-transition.ts). Only `main-pane` (the

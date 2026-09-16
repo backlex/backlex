@@ -34,7 +34,8 @@ import { tryParseEmail } from "@backlex/db/email";
 import { AppError, renderTemplate, type PdfPageOptions } from "@backlex/core";
 import type { BuiltInEmailVars } from "@backlex/core/email-templates";
 import type { Ctx } from "../context";
-import { normalizeAppearance, withThemeVars } from "@backlex/core/appearance";
+import { normalizeAppearance, withThemeVars, type Appearance } from "@backlex/core/appearance";
+import { applyShell } from "@backlex/core/template-shell";
 import { MAX_PDF_BYTES, resolveTemplate, safeFilename } from "./documents";
 import { hashToken } from "./shared-links";
 import { updateItem } from "./items/helpers";
@@ -519,6 +520,7 @@ export const createSignatureRequest = async (
   }
 
   let vars = input.vars ?? {};
+  let appearance: Appearance | null = null;
   let bodyHtml = input.html;
   let headerHtml: string | undefined;
   let footerHtml: string | undefined;
@@ -537,14 +539,19 @@ export const createSignatureRequest = async (
     title = title || tpl.name;
     // The template's appearance as `theme.*`, as a plain render would give it —
     // the frozen snapshot has to be the document the template produces.
-    vars = withThemeVars(vars, normalizeAppearance(tpl.appearance));
+    appearance = normalizeAppearance(tpl.appearance);
+    vars = withThemeVars(vars, appearance);
   }
   if (!bodyHtml?.trim()) throw new AppError("VALIDATION", "A signature request needs a document body");
 
   // The snapshot. Header and footer are interpolated into it as well and kept
   // on the request, so the signed re-render reproduces the whole page — a
   // running footer that says "page 1 of 3" is part of the document.
-  const snapshot = renderTemplate(bodyHtml, vars);
+  // The shell goes in HERE rather than at PDF time: the snapshot is what gets
+  // hashed and what the signed re-render reproduces, so it has to be the whole
+  // document a reader sees, chrome included. Wrapping it now also makes the
+  // later render a no-op — a complete document is never wrapped twice.
+  const snapshot = applyShell(renderTemplate(bodyHtml, vars), appearance, "document");
   const frozenOptions: PdfPageOptions = {
     ...pageOptions,
     ...input.pageOptions,

@@ -281,9 +281,15 @@ export const formatSample = (sample: Record<string, unknown>): string => JSON.st
 
 // ── preview ──────────────────────────────────────────────────────────────────
 
-/** A body that brings its own `<html>` is shown as it is; a fragment (every
- *  built-in starter is one) is wrapped the way a mail client wraps it. */
-export const isCompleteDocument = (html: string): boolean => /^\s*(<!doctype\b|<html[\s>])/i.test(html);
+/**
+ * A body that brings its own `<html>` is shown as it is; a fragment (every
+ * built-in starter is one) is wrapped in the themed shell.
+ *
+ * Re-exported from core rather than re-written here: the RENDERER asks the same
+ * question now (`template-shell.ts`), and a preview that drew the line one byte
+ * differently from the mailer would be lying about which bodies get wrapped.
+ */
+export { isCompleteDocument } from "@backlex/core/template-shell";
 
 export type PreviewDevice = "desktop" | "mobile";
 

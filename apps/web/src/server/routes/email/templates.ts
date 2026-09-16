@@ -9,6 +9,7 @@ import {
   renderTemplate,
 } from "@backlex/core";
 import { normalizeAppearance, withThemeVars, type Appearance } from "@backlex/core/appearance";
+import { applyShell } from "@backlex/core/template-shell";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../../app";
@@ -167,11 +168,14 @@ const sendRendered = async (
   // list that blocks `/api/admin/email-config` but not these — so the refusal
   // travels with the send, the way `assertNotDemo` does for GraphQL.
   assertNotDemo(ctx.env);
-  // `theme.*` exactly as `sendTemplatedEmail` fills it, so a test mail matches
-  // what a real recipient of the saved template gets.
-  const vars = withThemeVars(rawVars, normalizeAppearance(tpl.appearance));
-  const html = renderTemplate(tpl.bodyHtml, vars);
-  const text = tpl.bodyText ? renderTemplate(tpl.bodyText, vars) : htmlToText(html);
+  // `theme.*` exactly as `sendTemplatedEmail` fills it, and the same shell
+  // around the result, so a test mail matches what a real recipient of the
+  // saved template gets — including the text part, taken before the wrap.
+  const appearance = normalizeAppearance(tpl.appearance);
+  const vars = withThemeVars(rawVars, appearance);
+  const body = renderTemplate(tpl.bodyHtml, vars);
+  const text = tpl.bodyText ? renderTemplate(tpl.bodyText, vars) : htmlToText(body);
+  const html = applyShell(body, appearance, "email");
   const transport = await ctx.emailFor(tenantId);
   await transport.send({
     to,

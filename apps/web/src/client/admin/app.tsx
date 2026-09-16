@@ -23,6 +23,7 @@ import {
   NAV_DEVELOPERS,
   NAV_ITEMS,
   NAV_SETTINGS,
+  WIDE_NAV_IDS,
   type AdapterId,
   type CollectionListItem,
   type CollectionSchema,
@@ -1288,7 +1289,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         />
 
         <div className="scrollarea" style={{ flex: 1 }}>
-          <div className="page">
+          <div className={WIDE_NAV_IDS.has(activeNav) ? "page page--wide" : "page"}>
             <Suspense fallback={<PageSkeleton nav={activeNav} />}>
             {unknownRoute && (
               <EmptyState

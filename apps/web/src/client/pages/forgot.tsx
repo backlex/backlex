@@ -12,7 +12,7 @@ import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
 import { auth, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
-import { version as appVersion } from "../../../package.json";
+import { APP_VERSION_LABEL as appVersion } from "@/lib/app-version";
 
 /** OSS-admin wrapper around `<ForgotPage>` from `@backlex/auth-ui`. */
 export const Forgot = () => {

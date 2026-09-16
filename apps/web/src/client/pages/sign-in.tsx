@@ -14,7 +14,7 @@ import { PlatformSso, useHasPlatformSso } from "@/components/platform-sso";
 import { notifyError } from "@/lib/error";
 import { auth, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
-import { version as appVersion } from "../../../package.json";
+import { APP_VERSION_LABEL as appVersion } from "@/lib/app-version";
 
 /**
  * Thin wrapper that wires the OSS admin's Lingui copy, React Router, the

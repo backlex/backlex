@@ -443,9 +443,16 @@ const pkgVersion = (() => {
 // Prefer the cloud template tag (set by scripts/build-worker-template.ts),
 // then the nearest git tag, then the package.json version. Release tags are
 // `worker-vX.Y.Z` → strip the `worker-` prefix for display.
+//
+// `--match 'worker-v*'` is load-bearing: this repo tags four independent
+// packages off the same history (`backlex-v*`, `cli-v*`, `ui-v*`, `worker-v*`),
+// and a bare `describe --tags` answers with whichever came last — on
+// 1037d0fc that was `integrations-v0.2.1-59-g…`, a version of something this
+// bundle is not. Without a match there is also no `--always` fallback worth
+// having, since any tag at all outranks it.
 const appVersion = (
   process.env.TEMPLATE_VERSION ??
-  git("describe --tags --always --dirty", `v${pkgVersion}`)
+  git("describe --tags --match 'worker-v*' --always --dirty", `v${pkgVersion}`)
 ).replace(/^worker-/, "");
 const gitCommit = git("rev-parse --short HEAD", "unknown");
 const buildDate = new Date().toISOString().slice(0, 10);
